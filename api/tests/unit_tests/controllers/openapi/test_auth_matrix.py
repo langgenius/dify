@@ -45,6 +45,11 @@ does rather than what a route's declaration suggests:
 membership failure with a real scope failure on the same request. Neither
 `INSUFFICIENT_SCOPE` nor `NON_MEMBER` alone proves which one a doubly-broken request
 hears; membership runs EARLY and scope NORMAL, so it hears membership.
+
+Routes that declare the same requirement tuple answer every case the same way,
+so `MATRIX` runs the cases on one representative per tuple and `DECLARED` pins
+which tuple each of the 25 routes carries. A route that changes its tuple fails
+the wiring test; a tuple that changes its answers fails its representative's rows.
 """
 
 from __future__ import annotations
@@ -56,6 +61,7 @@ from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum, auto
+from functools import singledispatch
 from unittest.mock import patch
 
 import pytest
@@ -69,12 +75,26 @@ from werkzeug.test import TestResponse
 import libs.oauth_bearer as oauth_bearer_module
 import libs.rate_limit as rate_limit_module
 from app_factory import create_flask_app_with_configs
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi.auth.requirements import (
+    CheckAppAccess,
+    CheckAppApiEnabled,
+    CheckRBACPermission,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
+    CheckWorkspaceRole,
+    Requirement,
+)
 from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.human_input_form import CheckFormSurface
 from enums import DeploymentEdition, WebAppAccessMode
 from libs.oauth_bearer import (
     BearerAuthenticator,
     ResolvedRow,
+    Scope,
     TokenType,
     sha256_hex,
 )
@@ -476,8 +496,16 @@ SCENARIOS: dict[Case, Scenario] = {
 }
 
 
-_ACCOUNT_ONLY_NO_WORKSPACE: dict[Case, Expect] = {
+ROUTER_CASE_ROUTE = "account.get"
+ROUTER_CASES: dict[Case, Expect] = {
     Case.NO_BEARER: DENY_NO_BEARER,
+    Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+    Case.EE_LICENSE_INVALID: DENY_LICENSE,
+}
+"""Answered by the router before any route-specific requirement runs, so pinned once."""
+
+
+_ACCOUNT_ONLY_NO_WORKSPACE: dict[Case, Expect] = {
     Case.MEMBER: ADMIT,
     Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
     Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
@@ -486,128 +514,71 @@ _ACCOUNT_ONLY_NO_WORKSPACE: dict[Case, Expect] = {
     # scope — same answer pre- and post-PR.
     Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_SCOPE,
     Case.LOW_ROLE: ADMIT,
-    Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-    Case.EE_LICENSE_INVALID: DENY_LICENSE,
     Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
     Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
+}
+
+_ACCOUNT_MEMBER_NO_ROLE: dict[Case, Expect] = {
+    Case.MEMBER: ADMIT,
+    Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
+    Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
+    Case.NON_MEMBER: DENY_NON_MEMBER,
+    Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
+    Case.LOW_ROLE: ADMIT,
+    Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
+    Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
+}
+
+_ACCOUNT_MEMBER_WITH_ROLE: dict[Case, Expect] = {
+    Case.MEMBER: ADMIT,
+    Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
+    Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
+    Case.NON_MEMBER: DENY_NON_MEMBER,
+    Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
+    Case.LOW_ROLE: DENY_ROLE,
+    Case.RBAC_ON_LOW_ROLE: ADMIT,
+    Case.RBAC_ON_DENIED: DENY_RBAC,
+}
+
+_DUAL_SUBJECT_RUN: dict[Case, Expect] = {
+    Case.MEMBER: ADMIT,
+    Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
+    Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
+    Case.NON_MEMBER: DENY_NON_MEMBER,
+    Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
+    Case.LOW_ROLE: ADMIT,
+    Case.APP_API_DISABLED: DENY_API_DISABLED,
+    Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
+    Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
+    Case.EE_ACCOUNT_PUBLIC: ADMIT,
+    Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
+    Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
+    Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
+    Case.EE_ACCOUNT_PRIVATE_REFUSED: DENY_PRIVATE_APP,
+    Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
+    Case.EE_ACCOUNT_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
+    Case.EE_EXTERNAL_PUBLIC: ADMIT,
+    Case.EE_EXTERNAL_SSO_VERIFIED: ADMIT,
+    Case.EE_EXTERNAL_PRIVATE_ALL: DENY_ACCESS_MODE,
+    Case.EE_EXTERNAL_PRIVATE: DENY_ACCESS_MODE,
+    Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
+    Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
+    Case.RBAC_ON_DENIED: DENY_RBAC,
+    Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
 }
 
 
 MATRIX: dict[str, dict[Case, Expect]] = {
     "account.get": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
-    "account.sessions.revoke_self": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
-    "account.sessions.list": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
-    "account.sessions.revoke_one": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
     "workspaces.list": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
-    "workspaces.describe": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
-    "apps.list": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
-        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
-    },
-    "workspaces.switch": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
-        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
-    },
-    "workspaces.members.list": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
-        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
-    },
+    "apps.list": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "workspaces.switch": dict(_ACCOUNT_MEMBER_NO_ROLE),
     # invite/remove check WORKSPACE_MEMBER_MANAGE; update_role checks WORKSPACE_ROLE_MANAGE
     # (matches check_member_permission's own add/remove vs update split)
-    "workspaces.members.invite": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: DENY_ROLE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-    },
-    "workspaces.members.remove": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: DENY_ROLE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-    },
-    "workspaces.members.update_role": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: DENY_ROLE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-    },
-    "app_dsl.import": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: DENY_ROLE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-    },
-    "app_dsl.import_confirm": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: DENY_ROLE,
-        Case.RBAC_ON_LOW_ROLE: ADMIT,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-    },
+    "workspaces.members.invite": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "workspaces.members.update_role": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "app_dsl.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "apps.describe": {
-        Case.NO_BEARER: DENY_NO_BEARER,
         Case.MEMBER: ADMIT,
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
@@ -617,8 +588,6 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -630,7 +599,6 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
     },
     "app_dsl.export": {
-        Case.NO_BEARER: DENY_NO_BEARER,
         Case.MEMBER: ADMIT,
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
@@ -640,8 +608,6 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -652,205 +618,13 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.RBAC_ON_DENIED: DENY_RBAC,
     },
-    "app_dsl.check_dependencies": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: DENY_ROLE,
-        Case.APP_API_DISABLED: DENY_API_DISABLED,
-        Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.EE_ACCOUNT_PUBLIC: ADMIT,
-        Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: ADMIT,
-        Case.EE_ACCOUNT_MODE_UNRESOLVED: ADMIT,
-        Case.RBAC_ON_LOW_ROLE: ADMIT,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-    },
-    "app_run.run": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: ADMIT,
-        Case.APP_API_DISABLED: DENY_API_DISABLED,
-        Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.EE_ACCOUNT_PUBLIC: ADMIT,
-        Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.EE_EXTERNAL_PUBLIC: ADMIT,
-        Case.EE_EXTERNAL_SSO_VERIFIED: ADMIT,
-        Case.EE_EXTERNAL_PRIVATE_ALL: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
-    },
-    "app_run.stop": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: ADMIT,
-        Case.APP_API_DISABLED: DENY_API_DISABLED,
-        Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.EE_ACCOUNT_PUBLIC: ADMIT,
-        Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.EE_EXTERNAL_PUBLIC: ADMIT,
-        Case.EE_EXTERNAL_SSO_VERIFIED: ADMIT,
-        Case.EE_EXTERNAL_PRIVATE_ALL: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
-    },
+    "app_run.run": dict(_DUAL_SUBJECT_RUN),
+    "human_input_form.get": dict(_DUAL_SUBJECT_RUN),
     "files.upload": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: ADMIT,
-        Case.APP_API_DISABLED: DENY_API_DISABLED,
-        Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.EE_ACCOUNT_PUBLIC: ADMIT,
-        Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.EE_EXTERNAL_PUBLIC: ADMIT,
-        Case.EE_EXTERNAL_SSO_VERIFIED: ADMIT,
-        Case.EE_EXTERNAL_PRIVATE_ALL: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
+        **_DUAL_SUBJECT_RUN,
         Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
-    "human_input_form.get": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: ADMIT,
-        Case.APP_API_DISABLED: DENY_API_DISABLED,
-        Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.EE_ACCOUNT_PUBLIC: ADMIT,
-        Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.EE_EXTERNAL_PUBLIC: ADMIT,
-        Case.EE_EXTERNAL_SSO_VERIFIED: ADMIT,
-        Case.EE_EXTERNAL_PRIVATE_ALL: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
-    },
-    "human_input_form.submit": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: ADMIT,
-        Case.APP_API_DISABLED: DENY_API_DISABLED,
-        Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.EE_ACCOUNT_PUBLIC: ADMIT,
-        Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.EE_EXTERNAL_PUBLIC: ADMIT,
-        Case.EE_EXTERNAL_SSO_VERIFIED: ADMIT,
-        Case.EE_EXTERNAL_PRIVATE_ALL: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
-    },
-    "workflow_events.stream": {
-        Case.NO_BEARER: DENY_NO_BEARER,
-        Case.MEMBER: ADMIT,
-        Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
-        Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
-        Case.NON_MEMBER: DENY_NON_MEMBER,
-        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
-        Case.LOW_ROLE: ADMIT,
-        Case.APP_API_DISABLED: DENY_API_DISABLED,
-        Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
-        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
-        Case.EE_ACCOUNT_PUBLIC: ADMIT,
-        Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_PERMITTED: ADMIT,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_ACCOUNT_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.EE_EXTERNAL_PUBLIC: ADMIT,
-        Case.EE_EXTERNAL_SSO_VERIFIED: ADMIT,
-        Case.EE_EXTERNAL_PRIVATE_ALL: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE: DENY_ACCESS_MODE,
-        Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
-        Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
-        Case.RBAC_ON_DENIED: DENY_RBAC,
-        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
-    },
     "permitted_external.list": {
-        Case.NO_BEARER: DENY_NO_BEARER,
         Case.MEMBER: ADMIT_NO_MOUNT,
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
@@ -858,18 +632,13 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         # membership: this route's CheckSubject allows only ExternalSsoSubject.
         Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_WRONG_SUBJECT,
         Case.EDITION_NOT_ENTERPRISE: DENY_EDITION,
-        Case.LICENSE_INVALID: DENY_LICENSE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
     },
     "permitted_external.describe": {
-        Case.NO_BEARER: DENY_NO_BEARER,
         Case.MEMBER: ADMIT,
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_WRONG_SUBJECT,
         Case.EDITION_NOT_ENTERPRISE: DENY_EDITION,
-        Case.LICENSE_INVALID: DENY_LICENSE,
-        Case.EE_LICENSE_INVALID: DENY_LICENSE,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: Expect(
@@ -884,6 +653,119 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
     },
 }
+"""One representative per distinct declared requirement tuple; `DECLARED` pins the rest."""
+
+
+_ACCOUNT = (AccountSubject,)
+_ACCOUNT_OR_EXTERNAL = (AccountSubject, ExternalSsoSubject)
+_OWNER_ADMIN = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
+_EDITOR_UP = frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
+
+_REQ_ACCOUNT_FULL = (CheckSubject(allowed=_ACCOUNT), CheckScope(Scope.FULL))
+_REQ_ACCOUNT_WORKSPACE_READ = (CheckSubject(allowed=_ACCOUNT), CheckScope(Scope.WORKSPACE_READ))
+_REQ_ACCOUNT_APPS_READ_MEMBER = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.APPS_READ),
+    CheckWorkspaceMember(),
+)
+_REQ_ACCOUNT_WORKSPACE_READ_MEMBER = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.WORKSPACE_READ),
+    CheckWorkspaceMember(),
+)
+_REQ_MEMBER_MANAGE = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckRBACPermission(RBACCheck(RBACPermission.WORKSPACE_MEMBER_MANAGE, Workspace())),
+    CheckWorkspaceRole(_OWNER_ADMIN),
+)
+_REQ_ROLE_MANAGE = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckRBACPermission(RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace())),
+    CheckWorkspaceRole(_OWNER_ADMIN),
+)
+_REQ_DSL_WORKSPACE = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
+    CheckWorkspaceRole(_EDITOR_UP),
+)
+_REQ_DSL_APP = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_READ),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp())),
+    CheckWorkspaceRole(_EDITOR_UP),
+)
+_REQ_APP_DESCRIBE = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_READ),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())),
+)
+_REQ_RUN = (
+    CheckSubject(allowed=_ACCOUNT_OR_EXTERNAL),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_RUN),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
+    CheckAppAccess(),
+)
+_REQ_RUN_FORM = (*_REQ_RUN, CheckFormSurface())
+_REQ_FILES = (
+    CheckSubject(allowed=_ACCOUNT_OR_EXTERNAL),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_RUN),
+    CheckAppAccess(),
+)
+_REQ_EXTERNAL_LIST = (
+    CheckSubject(allowed=(ExternalSsoSubject,)),
+    CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
+)
+_REQ_EXTERNAL_DESCRIBE = (
+    CheckSubject(allowed=(ExternalSsoSubject,)),
+    CheckAppApiEnabled(),
+    CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
+    CheckAppAccess(),
+)
+
+DECLARED: dict[str, tuple[Requirement, ...]] = {
+    "account.get": _REQ_ACCOUNT_FULL,
+    "account.sessions.revoke_self": _REQ_ACCOUNT_FULL,
+    "account.sessions.list": _REQ_ACCOUNT_FULL,
+    "account.sessions.revoke_one": _REQ_ACCOUNT_FULL,
+    "apps.describe": _REQ_APP_DESCRIBE,
+    "apps.list": _REQ_ACCOUNT_APPS_READ_MEMBER,
+    "workspaces.list": _REQ_ACCOUNT_WORKSPACE_READ,
+    "workspaces.describe": _REQ_ACCOUNT_WORKSPACE_READ,
+    "workspaces.switch": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "workspaces.members.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "workspaces.members.invite": _REQ_MEMBER_MANAGE,
+    "workspaces.members.remove": _REQ_MEMBER_MANAGE,
+    "workspaces.members.update_role": _REQ_ROLE_MANAGE,
+    "app_dsl.import": _REQ_DSL_WORKSPACE,
+    "app_dsl.import_confirm": _REQ_DSL_WORKSPACE,
+    "app_dsl.export": _REQ_DSL_APP,
+    "app_dsl.check_dependencies": _REQ_DSL_APP,
+    "app_run.run": _REQ_RUN,
+    "app_run.stop": _REQ_RUN,
+    "files.upload": _REQ_FILES,
+    "human_input_form.get": _REQ_RUN_FORM,
+    "human_input_form.submit": _REQ_RUN_FORM,
+    "workflow_events.stream": _REQ_RUN,
+    "permitted_external.list": _REQ_EXTERNAL_LIST,
+    "permitted_external.describe": _REQ_EXTERNAL_DESCRIBE,
+}
+"""Every route's `@endpoint(requirements=...)`, in declared order. A route that
+shares a tuple with a `MATRIX` representative is covered by that representative's
+rows only while this table says it still declares the same tuple."""
 
 
 ROUTES_BY_ID = {route.id: route for route in ROUTES}
@@ -893,8 +775,18 @@ def _applicable(route: Route, case: Case) -> bool:
     return CASE_REQUIRES[case] <= route.traits
 
 
+def _rows(route: Route) -> Iterator[tuple[Route, Case, Expect]]:
+    for case in Case:
+        if not _applicable(route, case):
+            continue
+        if case not in ROUTER_CASES:
+            yield route, case, MATRIX[route.id][case]
+        elif route.id == ROUTER_CASE_ROUTE:
+            yield route, case, ROUTER_CASES[case]
+
+
 ROWS: tuple[tuple[Route, Case, Expect], ...] = tuple(
-    (route, case, MATRIX[route.id][case]) for route in ROUTES for case in Case if _applicable(route, case)
+    row for route in ROUTES if route.id in MATRIX for row in _rows(route)
 )
 
 
@@ -1260,13 +1152,8 @@ def test_allow_deny_matrix(
         assert body.get("message") == expected.message
 
 
-def test_matrix_covers_every_route_and_case() -> None:
-    assert {route.id for route in ROUTES} == set(MATRIX)
-    assert len(ROUTES) == 25
-    for route in ROUTES:
-        declared = set(MATRIX[route.id])
-        reachable = {case for case in Case if _applicable(route, case)}
-        assert declared == reachable, route.id
+def _rule_path(route: Route) -> str:
+    return "/openapi/v1" + route.path.replace("{", "<string:").replace("}", ">")
 
 
 def _endpoint_spec(app: Flask, rule: Rule, method: str) -> EndpointSpec | None:
@@ -1303,14 +1190,59 @@ def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:
             target = guarded if _endpoint_spec(matrix_app, rule, method) is not None else unguarded
             target.add(entry)
 
-    expected = {
-        (route.method, "/openapi/v1" + route.path.replace("{", "<string:").replace("}", ">")) for route in ROUTES
-    }
+    expected = {(route.method, _rule_path(route)) for route in ROUTES}
     assert guarded == expected
     # The remainder is the device-flow and documentation surface. Its size is pinned
     # rather than enumerated: a list of exemptions rots silently — the one this
     # replaced still named `swagger.json`, a route that is not registered at all.
     assert len(unguarded) == 13
+
+
+@singledispatch
+def _config(_requirement: Requirement) -> object:
+    return None
+
+
+@_config.register
+def _(requirement: CheckSubject) -> object:
+    return requirement.allowed
+
+
+@_config.register
+def _(requirement: CheckScope) -> object:
+    return requirement.scope
+
+
+@_config.register
+def _(requirement: CheckRBACPermission) -> object:
+    return tuple((check.scene, repr(check.locator)) for check in requirement.checks)
+
+
+@_config.register
+def _(requirement: CheckWorkspaceRole) -> object:
+    return requirement.allowed_roles
+
+
+def _canonical(requirement: Requirement) -> tuple[type[Requirement], object]:
+    """`Requirement` has no `__eq__`, so compare by type plus the config that sets it apart."""
+    return type(requirement), _config(requirement)
+
+
+def _spec_for(app: Flask, route: Route) -> EndpointSpec | None:
+    for rule in app.url_map.iter_rules():
+        if str(rule) == _rule_path(route) and route.method in (rule.methods or set()):
+            return _endpoint_spec(app, rule, route.method)
+    return None
+
+
+@pytest.mark.parametrize("route", ROUTES, ids=[route.id for route in ROUTES])
+def test_route_declares_expected_requirements(route: Route, matrix_app: Flask) -> None:
+    """The guard that lets `MATRIX` run one representative per tuple: a route
+    that drifts from the tuple its representative was chosen for fails here.
+    """
+    spec = _spec_for(matrix_app, route)
+    assert spec is not None, route.id
+    assert [*map(_canonical, spec.requirements)] == [*map(_canonical, DECLARED[route.id])]
 
 
 ERROR_DEFAULT_RESPONSE: dict[str, object] = {

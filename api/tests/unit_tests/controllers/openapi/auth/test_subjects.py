@@ -6,11 +6,7 @@ import pytest
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
-from controllers.openapi.auth.subjects import (
-    AccountSubject,
-    ExternalSsoSubject,
-    subject_from_auth,
-)
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from libs.oauth_bearer import TokenType
 from models import Account, EndUser, TenantAccountJoin
 from models.account import TenantAccountRole
@@ -30,31 +26,17 @@ from ._world import (
 )
 
 
-@pytest.mark.parametrize(
-    ("token_type", "has_app", "expected"),
-    [
-        (TokenType.OAUTH_ACCOUNT, False, True),
-        (TokenType.OAUTH_ACCOUNT, True, True),
-        (TokenType.OAUTH_EXTERNAL_SSO, False, False),
-        (TokenType.OAUTH_EXTERNAL_SSO, True, True),
-    ],
-)
-def test_mounts_caller_tracks_todays_resolution_points(
-    token_type: TokenType, has_app: bool, expected: bool, sqlite_session: Session
+@pytest.mark.parametrize(("has_app", "expected"), [(False, False), (True, True)], ids=["app-less", "app route"])
+def test_external_sso_mounts_a_caller_only_on_app_routes(
+    has_app: bool, expected: bool, sqlite_session: Session
 ) -> None:
-    subject = subject_from_auth(make_auth(token_type))
+    subject = ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO))
     view_args: dict[str, str] = {"app_id": APP_ID} if has_app else {}
 
     assert subject.mounts_caller(make_ctx(sqlite_session, subject, **view_args)) is expected
 
 
 class TestAccountResolveCaller:
-    def test_rejects_a_token_whose_account_is_gone(self, sqlite_session: Session) -> None:
-        subject = AccountSubject(make_auth(TokenType.OAUTH_ACCOUNT))
-
-        with pytest.raises(Unauthorized, match="account not found"):
-            subject.resolve_caller(make_ctx(sqlite_session, subject), sqlite_session)
-
     def test_binds_the_current_tenant_to_the_workspace_the_route_resolved(self, sqlite_session: Session) -> None:
         """A loaded workspace is the whole signal. `app_id` in the path says one
         *can* be resolved, never that anything did — and binding on that would

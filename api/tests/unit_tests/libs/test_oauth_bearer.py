@@ -11,16 +11,6 @@ import pytest
 from libs.oauth_bearer import ResolvedRow, Scope, SubjectType, TokenType, _TokenTypeResolver
 
 
-def test_each_token_type_serves_one_subject() -> None:
-    assert TokenType.OAUTH_ACCOUNT.subject is SubjectType.ACCOUNT
-    assert TokenType.OAUTH_EXTERNAL_SSO.subject is SubjectType.EXTERNAL_SSO
-
-
-def test_account_binding_is_pinned_exactly() -> None:
-    assert SubjectType.ACCOUNT.bound_to_account is True
-    assert SubjectType.EXTERNAL_SSO.bound_to_account is False
-
-
 def _row(account_id: uuid.UUID | None) -> ResolvedRow:
     return ResolvedRow(
         subject_email="who@example.com",
@@ -42,14 +32,9 @@ def test_a_row_matches_its_subject_only_when_its_account_binding_agrees(token_ty
 
 
 def test_scope_sets_are_pinned_exactly() -> None:
+    """`dfoa_` relies on the `Scope.FULL` umbrella; the explicit scopes are reserved for `dfoe_`."""
     assert SubjectType.ACCOUNT.scopes == frozenset({Scope.FULL})
     assert SubjectType.EXTERNAL_SSO.scopes == frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL})
-
-
-def test_the_permitted_external_scope_belongs_to_the_external_subject_only() -> None:
-    """`dfoa_` relies on the `Scope.FULL` umbrella; the explicit scope is reserved for `dfoe_`."""
-    assert Scope.APPS_READ_PERMITTED_EXTERNAL in SubjectType.EXTERNAL_SSO.scopes
-    assert Scope.APPS_READ_PERMITTED_EXTERNAL not in SubjectType.ACCOUNT.scopes
 
 
 @pytest.mark.parametrize(

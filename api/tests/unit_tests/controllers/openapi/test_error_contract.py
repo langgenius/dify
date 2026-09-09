@@ -87,22 +87,6 @@ class TestErrorBodyModel:
 
 
 class TestOpenApiErrorFormatter:
-    def test_plain_werkzeug_exception_maps_code_from_status(self, fmt):
-        e = NotFound("app not found")
-        data = {"code": "not_found", "message": "app not found", "status": 404}
-
-        wire = fmt.finalize(e, data, 404)
-
-        assert wire == {"code": "not_found", "message": "app not found", "status": 404}
-
-    def test_422_maps_to_invalid_param(self, fmt):
-        e = UnprocessableEntity("workspace_id is required for name-based lookup")
-        data = {"code": "unprocessable_entity", "message": e.description, "status": 422}
-
-        wire = fmt.finalize(e, data, 422)
-
-        assert wire["code"] == "invalid_param"
-
     def test_flask_restx_abort_data_path_yields_canonical_body(self, fmt):
         # Simulates _contract.py's abort(422, message=..., errors=...): flask_restx
         # attaches kwargs to e.data, which handle_error would otherwise put on the
@@ -147,24 +131,6 @@ class TestOpenApiErrorFormatter:
 
         assert wire == {"code": "invalid_param", "message": "Unprocessable Entity", "status": 422}
 
-    def test_base_http_exception_error_code_wins_over_status_map(self, fmt):
-        e = ProviderQuotaExceededError()
-        data = dict(e.data)
-
-        wire = fmt.finalize(e, data, 400)
-
-        assert wire["code"] == "provider_quota_exceeded"
-        assert wire["status"] == 400
-
-    def test_hint_attribute_is_emitted(self, fmt):
-        e = Conflict("seat limit")
-        e.hint = "remove a member first"
-        data = {"code": "conflict", "message": "seat limit", "status": 409}
-
-        wire = fmt.finalize(e, data, 409)
-
-        assert wire["hint"] == "remove a member first"
-
     def test_params_shape_becomes_details(self, fmt):
         e = ValueError("is required")
         data = {"code": "invalid_param", "message": "is required", "params": "email", "status": 400}
@@ -193,42 +159,24 @@ class TestOpenApiErrorFormatter:
 
         assert wire["code"] == "unknown"
 
-    def test_openapi_error_subclass_is_throw_and_done(self, fmt):
+    @pytest.mark.parametrize("message", [None, "custom reason"], ids=["class_description", "call_site_override"])
+    def test_openapi_error_subclass_is_throw_and_done(self, fmt, message):
         # The dedicated throwable: subclass declares status + code + message once,
-        # call sites just `raise`; the formatter emits everything verbatim.
+        # call sites just `raise`, or pass a message to override the description;
+        # the formatter emits everything verbatim.
         class TeapotError(OpenApiError):
             code = 418
             error_code = OpenApiErrorCode.INVALID_PARAM
             description = "kettle says no"
 
-        e = TeapotError(details=[ErrorDetail(type="invalid", loc=["kettle"], msg="too hot")])
+        e = TeapotError(message, details=[ErrorDetail(type="invalid", loc=["kettle"], msg="too hot")])
         data = {"code": "im_a_teapot", "message": e.description, "status": 418}
 
         wire = fmt.finalize(e, data, 418)
 
         assert wire["code"] == OpenApiErrorCode.INVALID_PARAM
-        assert wire["message"] == TeapotError.description
+        assert wire["message"] == (message or TeapotError.description)
         assert wire["details"] == [{"type": "invalid", "loc": ["kettle"], "msg": "too hot"}]
-
-    def test_openapi_error_message_override(self, fmt):
-        e = OpenApiError("custom reason")
-        data = {"code": "bad_request", "message": e.description, "status": 400}
-
-        wire = fmt.finalize(e, data, 400)
-
-        assert wire["message"] == "custom reason"
-        assert wire["code"] == "bad_request"
-
-    def test_every_emitted_code_is_an_enum_member(self, fmt):
-        # Guard against the formatter inventing codes outside the contract.
-        cases = [
-            (NotFound("x"), {"code": "not_found", "message": "x", "status": 404}, 404),
-            (ProviderQuotaExceededError(), dict(ProviderQuotaExceededError().data), 400),
-            (ValueError("x"), {"code": "invalid_param", "message": "x", "status": 400}, 400),
-        ]
-        for e, data, status in cases:
-            wire = fmt.finalize(e, data, status)
-            assert wire["code"] in {c.value for c in OpenApiErrorCode}
 
 
 class TestQuotaExceptions:

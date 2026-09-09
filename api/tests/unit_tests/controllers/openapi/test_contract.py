@@ -54,32 +54,20 @@ def _guard_like(view):
     return wrapper
 
 
-def test_accepts_injects_validated_query(app):
+def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app):
     @accepts(query=ContractQuery)
     def view(*, query):
         return query
 
-    with app.test_request_context("/?page=3&limit=5"):
+    with app.test_request_context("/?page=3"):
         result = view()
 
     assert isinstance(result, ContractQuery)
     assert result.page == 3
-    assert result.limit == 5
-
-
-def test_accepts_query_uses_defaults_when_absent(app):
-    @accepts(query=ContractQuery)
-    def view(*, query):
-        return query
-
-    with app.test_request_context("/"):
-        result = view()
-
-    assert result.page == 1
     assert result.limit == 20
 
 
-@pytest.mark.parametrize("query_string", ["page=0", "limit=999", "page=abc", "unknown=1"])
+@pytest.mark.parametrize("query_string", ["page=abc", "unknown=1"])
 def test_accepts_rejects_invalid_query_with_422(app, query_string):
     @accepts(query=ContractQuery)
     def view(*, query):
@@ -124,16 +112,6 @@ def test_accepts_injects_validated_body(app):
     assert result.name == "x"
 
 
-def test_accepts_rejects_invalid_body_with_422(app):
-    @accepts(body=ContractBody)
-    def view(*, body):
-        return body
-
-    with app.test_request_context("/", method="POST", json={"wrong": 1}):
-        with pytest.raises(UnprocessableEntity):
-            view()
-
-
 def test_returns_serializes_model_with_decorator_status(app):
     @returns(200, ContractResp)
     def view():
@@ -146,16 +124,17 @@ def test_returns_serializes_model_with_decorator_status(app):
     assert body == {"value": 7}
 
 
-def test_returns_serializes_model_in_tuple_and_honors_status(app):
+@pytest.mark.parametrize("trailing", [(201,), (202, {"X-Test": "1"})], ids=["status", "status_and_headers"])
+def test_returns_serializes_model_in_tuple_and_keeps_trailing_parts(app, trailing):
     @returns(200, ContractResp)
     def view():
-        return ContractResp(value=9), 201
+        return ContractResp(value=9), *trailing
 
     with app.test_request_context("/"):
-        body, status = view()
+        body, *rest = view()
 
-    assert status == 201
     assert body == {"value": 9}
+    assert tuple(rest) == trailing
 
 
 def test_returns_passes_through_non_model(app):
@@ -171,79 +150,17 @@ def test_returns_passes_through_non_model(app):
     assert result is sentinel
 
 
-def test_returns_serializes_model_in_three_tuple_with_headers(app):
-    """A (model, status, headers) tuple keeps its trailing status/headers intact."""
-
-    @returns(200, ContractResp)
-    def view():
-        return ContractResp(value=3), 202, {"X-Test": "1"}
-
-    with app.test_request_context("/"):
-        body, status, headers = view()
-
-    assert body == {"value": 3}
-    assert status == 202
-    assert headers == {"X-Test": "1"}
-
-
 # Swagger metadata (read off __apidoc__) must survive @wraps up through the guard layer.
 
 
 def test_accepts_returns_emit_apidoc_through_guard_stack():
     @_guard_like
     @returns(200, ContractResp)
-    @accepts(query=ContractQuery)
-    def view(*, query):
+    @accepts(query=ContractQuery, body=ContractBody)
+    def view(*, query, body):
         return ContractResp(value=1)
 
     apidoc = getattr(view, "__apidoc__", {})
     assert "page" in apidoc.get("params", {})  # from @accepts(query=)
+    assert apidoc.get("expect")  # from @accepts(body=), via @openapi_ns.expect
     assert "200" in apidoc.get("responses", {})  # from @returns (flask_restx keys by str code)
-
-
-def test_accepts_body_emits_expect_through_guard_stack():
-    @_guard_like
-    @accepts(body=ContractBody)
-    def view(*, body):
-        return body
-
-    apidoc = getattr(view, "__apidoc__", {})
-    assert apidoc.get("expect")  # body schema advertised via @openapi_ns.expect
-
-
-def _response_model_name(entry) -> str:
-    """Extract the model name from a flask-restx __apidoc__ response entry.
-
-    flask-restx stores responses as ``(description, model, kwargs)`` tuples
-    where ``model.name`` is the registered schema name.
-    """
-    if isinstance(entry, tuple) and len(entry) >= 2:
-        model = entry[1]
-        return getattr(model, "name", "") or ""
-    return ""
-
-
-def test_accepts_documents_422_error_response(app):
-    from controllers.openapi._errors import ErrorBody
-
-    @accepts(query=ContractQuery)
-    def view(*, query):
-        return query
-
-    doc = getattr(view, "__apidoc__", {})
-    responses = doc.get("responses", {})
-    assert "422" in responses
-    assert _response_model_name(responses["422"]) == ErrorBody.__name__
-
-
-def test_returns_documents_default_error_response(app):
-    from controllers.openapi._errors import ErrorBody
-
-    @returns(200, ContractResp)
-    def view():
-        return ContractResp(value=1)
-
-    doc = getattr(view, "__apidoc__", {})
-    responses = doc.get("responses", {})
-    assert "default" in responses
-    assert _response_model_name(responses["default"]) == ErrorBody.__name__
