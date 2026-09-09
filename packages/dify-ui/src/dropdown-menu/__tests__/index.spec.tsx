@@ -296,6 +296,7 @@ describe('dropdown-menu wrapper', () => {
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent>
+            {/* oxlint-disable-next-line jsx-a11y/anchor-has-content -- Base UI merges this item's children and accessible name into the render element. */}
             <DropdownMenuLinkItem render={<a href="/account" />} aria-label="account link">
               Account settings
             </DropdownMenuLinkItem>

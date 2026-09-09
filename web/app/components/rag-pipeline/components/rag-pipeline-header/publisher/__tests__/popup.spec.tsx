@@ -1,12 +1,15 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { Popup } from '../popup'
 
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
 let mockIsAllowPublishAsCustom = true
 
-const render = (ui: React.ReactElement) => {
+const renderWithoutPricing = (ui: React.ReactElement) => {
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { knowledge_pipeline: { publish_enabled: mockIsAllowPublishAsCustom } },
@@ -45,7 +48,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockSetPublishedAt = vi.fn()
 const mockMutateDatasetRes = vi.fn()
-const mockSetShowPricingModal = vi.fn()
+
 const mockInvalidPublishedPipelineInfo = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidCustomizedTemplateList = vi.fn()
@@ -150,12 +153,6 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => 'https://docs.dify.ai',
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: <T,>(
-    selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T,
-  ) => selector({ setShowPricingModal: mockSetShowPricingModal }),
-}))
-
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => '/api/datasets/ds-123',
 }))
@@ -220,6 +217,11 @@ vi.mock('@remixicon/react', () => ({
   RiPlayCircleLine: () => <span />,
   RiTerminalBoxLine: () => <span />,
 }))
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
 
 describe('Popup', () => {
   beforeEach(() => {
@@ -339,7 +341,7 @@ describe('Popup', () => {
   })
 
   describe('Publish As Knowledge Pipeline', () => {
-    it('should show pricing modal when not allowed', () => {
+    it('should show pricing modal when not allowed', async () => {
       mockIsAllowPublishAsCustom = false
       const onRequestClose = vi.fn()
       render(<Popup onRequestClose={onRequestClose} />)
@@ -347,7 +349,9 @@ describe('Popup', () => {
       fireEvent.click(screen.getByText('pipeline.common.publishAs'))
 
       expect(onRequestClose).toHaveBeenCalledTimes(1)
-      expect(mockSetShowPricingModal).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
     it('should request closing the outer popover before opening publish-as modal', () => {

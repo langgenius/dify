@@ -47,13 +47,13 @@ from controllers.console.workspace.error import (
     RepeatPasswordNotMatchError,
 )
 from controllers.console.wraps import model_validate, setup_required
-from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from machinery.context import RequestContext
 from services import account_errors
+from services.account_education_service import EDUCATION_EDITIONS
 from services.entities.account_entities import AccountProfileChanges
 
 
@@ -518,7 +518,7 @@ class AccountDeleteUpdateFeedbackApi(Resource):
 @console_ns.route("/account/education/verify")
 class EducationVerifyApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationVerifyResponse.__name__])
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(editions=EDUCATION_EDITIONS)
     def get(self, request_context: RequestContext):
         try:
             verification = application_services().accounts.education.verify(request_context)
@@ -533,7 +533,7 @@ class EducationVerifyApi(Resource):
 class EducationApi(Resource):
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationActivateResponse.__name__])
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(editions=EDUCATION_EDITIONS)
     @model_validate(EducationActivatePayload)
     def post(self, args: EducationActivatePayload, request_context: RequestContext):
         try:
@@ -550,7 +550,7 @@ class EducationApi(Resource):
         return dump_response(EducationActivateResponse, activation)
 
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationStatusResponse.__name__])
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(editions=EDUCATION_EDITIONS)
     def get(self, request_context: RequestContext):
         return dump_response(EducationStatusResponse, application_services().accounts.education.status(request_context))
 
@@ -559,7 +559,7 @@ class EducationApi(Resource):
 class EducationAutoCompleteApi(Resource):
     @console_ns.doc(params=query_params_from_model(EducationAutocompleteQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(editions=EDUCATION_EDITIONS)
     @model_validate(EducationAutocompleteQuery)
     def get(self, args: EducationAutocompleteQuery, request_context: RequestContext):
         return dump_response(

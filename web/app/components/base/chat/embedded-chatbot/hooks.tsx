@@ -1,5 +1,4 @@
 import type { ChatConfig, ChatItem, OnFeedback } from '../types'
-/* oxlint-disable typescript/no-explicit-any */
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
 import type { Locale } from '@/i18n-config'
 import type { AppData, ConversationItem } from '@/models/share'

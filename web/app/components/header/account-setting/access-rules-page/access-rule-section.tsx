@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessPolicyWithBindings } from '@/models/access-control'
+import type { AccessRule } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -15,7 +15,7 @@ import AccessRuleRow from './access-rule-row'
 
 type AccessRuleSectionProps = {
   title: string
-  rules: AccessPolicyWithBindings[]
+  rules: AccessRule[]
   totalCount?: number
   isLoadingRules: boolean
   isFetchingNextPage?: boolean
@@ -24,8 +24,9 @@ type AccessRuleSectionProps = {
   error?: unknown
   defaultExpanded?: boolean
   onCreate?: () => void
-  onViewRule?: (rule: AccessPolicyWithBindings) => void
-  onEditRule?: (rule: AccessPolicyWithBindings) => void
+  onViewRule?: (rule: AccessRule) => void
+  onEditRule?: (rule: AccessRule) => void
+  onRetry?: () => void
   className?: string
 }
 
@@ -42,6 +43,7 @@ const AccessRuleSection = ({
   onCreate,
   onViewRule,
   onEditRule,
+  onRetry,
   className,
 }: AccessRuleSectionProps) => {
   const { t } = useTranslation()
@@ -144,7 +146,12 @@ const AccessRuleSection = ({
           />
         }
       >
-        {isLoadingRules ? (
+        {error ? (
+          <div role="alert" className="flex items-center justify-center gap-3 py-8">
+            <span>{t(($) => $['api.actionFailed'], { ns: 'common' })}</span>
+            <Button onClick={onRetry}>{t(($) => $['operation.retry'], { ns: 'common' })}</Button>
+          </div>
+        ) : isLoadingRules ? (
           <div className="px-1 py-8 text-center">
             <Loading type="app" />
           </div>

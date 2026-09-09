@@ -1,7 +1,7 @@
 import type { CardPayload } from '../index'
 import { render } from '@testing-library/react'
 import { useAtomValue } from 'jotai'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { PluginCategoryEnum } from '../../types'
 import Card from '../index'

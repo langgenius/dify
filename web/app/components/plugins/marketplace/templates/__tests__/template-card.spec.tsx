@@ -2,7 +2,7 @@ import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TemplateCard from '../template-card'
 
 const { mockPush } = vi.hoisted(() => ({

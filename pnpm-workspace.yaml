@@ -1,21 +1,3 @@
-saveExact: true
-catalogMode: prefer
-dedupeDirectDeps: true
-engineStrict: true
-minimumReleaseAge: 0
-minimumReleaseAgeExclude:
-  - vite-plus
-  - '@voidzero-dev/*'
-  - oxlint
-  - '@oxlint/*'
-  - oxlint-tsgolint
-  - '@oxlint-tsgolint/*'
-  - oxfmt
-  - '@oxfmt/*'
-  - vitest
-  - '@vitest/*'
-verifyDepsBeforeRun: install
-optimisticRepeatInstall: true
 allowBuilds:
   '@parcel/watcher': false
   canvas: false
@@ -23,7 +5,14 @@ allowBuilds:
   sharp: false
 autoInstallPeers: false
 blockExoticSubdeps: true
+catalogMode: strict
+catalogPrune: true
+dedupeDirectDeps: true
+engineStrict: true
+minimumReleaseAge: 0
+optimisticRepeatInstall: true
 resolutionMode: time-based
+saveExact: true
 shellEmulator: true
 strictDepBuilds: true
 trustPolicy: no-downgrade
@@ -31,6 +20,7 @@ trustPolicyExclude:
   - chokidar@4.0.3
   - reselect@5.1.1
   - semver@6.3.1
+verifyDepsBeforeRun: install
 packages:
   - web
   - e2e
@@ -41,9 +31,7 @@ overrides:
   '@babel/core@<=7.29.0': ^7.29.1
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
   canvas: ^3.2.3
-  esbuild@<0.27.2: 0.27.2
-  esbuild@>=0.17.0 <0.28.1: ^0.28.2
-  esbuild@>=0.27.3 <0.28.1: ^0.28.2
+  esbuild@<0.28.1: ^0.28.2
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.1.1: ^4.1.2
   picomatch@>=4.0.0 <4.0.4: 4.0.7
@@ -195,8 +183,8 @@ catalog:
   i18next-resources-to-backend: 1.2.3
   iconify-import-svg: 0.2.0
   immer: 11.1.18
-  jotai: 2.20.3
-  jotai-scope: 0.11.0
+  jotai: 3.0.0
+  jotai-scope: 0.12.2
   jotai-tanstack-query: 0.11.0
   js-cookie: 3.0.8
   js-yaml: 5.4.1
@@ -255,9 +243,9 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.2
   vinext: 1.0.0-beta.8
-  vite: npm:@voidzero-dev/vite-plus-core@0.3.0
+  vite: npm:@voidzero-dev/vite-plus-core@0.3.1
   vite-plugin-inspect: 12.0.2
-  vite-plus: 0.3.0
+  vite-plus: 0.3.1
   vitest: 4.1.11
   vitest-browser-react: 2.2.0
   vitest-canvas-mock: 1.1.5
@@ -268,6 +256,3 @@ peerDependencyRules:
   allowAny:
     - vite
     - vitest
-  allowedVersions:
-    vite: '*'
-    vitest: '*'

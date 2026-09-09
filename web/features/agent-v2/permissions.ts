@@ -1,13 +1,39 @@
 'use client'
 
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import {
+  agentDefaultPermissionKeysAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/permission-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
+import { AgentPermission, getAgentACLCapabilities } from './acl'
 
-const AGENT_PREVIEW_PERMISSION_KEY = 'agent.acl.preview'
+export function useCanCreateAgents() {
+  return hasPermission(useAtomValue(workspacePermissionKeysAtom), AgentPermission.Create)
+}
 
-export const useCanManageAgents = () => {
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+export function useCanImportAgents() {
+  return hasPermission(
+    useAtomValue(agentDefaultPermissionKeysAtom),
+    AgentPermission.ImportExportDSL,
+  )
+}
 
-  return hasPermission(workspacePermissionKeys, AGENT_PREVIEW_PERMISSION_KEY)
+export function useAgentPermissions(agentId: string | undefined) {
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const agentQuery = useQuery(
+    consoleQuery.agent.byAgentId.get.queryOptions({
+      input: agentId ? { params: { agent_id: agentId } } : skipToken,
+    }),
+  )
+
+  const capabilities = getAgentACLCapabilities(agentQuery.data?.permission_keys)
+  return {
+    agentQuery,
+    ...capabilities,
+    canAccessConfig: capabilities.canAccessConfig && systemFeatures.rbac_enabled,
+  }
 }

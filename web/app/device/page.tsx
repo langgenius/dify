@@ -109,8 +109,7 @@ export default function DevicePage() {
       setView({ kind: 'authorize_sso' }) // oxlint-disable-line eslint-react/set-state-in-effect
       consumed = true
     } else if (urlUserCode && isValidUserCode(urlUserCode)) {
-      if (account)
-        setView({ kind: 'authorize_account', userCode: urlUserCode }) // oxlint-disable-line eslint-react/set-state-in-effect
+      if (account) setView({ kind: 'authorize_account', userCode: urlUserCode }) // oxlint-disable-line eslint-react/set-state-in-effect
       else setView({ kind: 'chooser', userCode: urlUserCode }) // oxlint-disable-line eslint-react/set-state-in-effect
       consumed = true
     }

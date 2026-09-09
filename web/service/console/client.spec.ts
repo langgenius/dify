@@ -98,6 +98,7 @@ const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutat
   icon_url: overrides.icon_url ?? null,
   mode: overrides.mode ?? 'agent',
   name: overrides.name ?? 'Agent',
+  permission_keys: overrides.permission_keys ?? [],
   role: overrides.role ?? 'Assistant',
 })
 

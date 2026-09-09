@@ -6,32 +6,27 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { mailToSupport } from '@/app/components/header/utils/util'
-import { useModalContext } from '@/context/modal-context'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { render as renderWithoutPricing } from '@/test/console/render'
 import SupportMenu from '../support-menu'
 
 let plan: CloudPlan = 'team'
 
-const {
-  mockConfig,
-  mockOpenZendeskWindow,
-  mockMailToSupport,
-  mockSetShowPricingModal,
-  mockToastError,
-} = vi.hoisted(() => ({
-  mockConfig: {
-    supportEmailAddress: '',
-    zendeskWidgetKey: 'zendesk-key',
-  },
-  mockOpenZendeskWindow: vi.fn(),
-  mockMailToSupport: vi.fn(),
-  mockSetShowPricingModal: vi.fn(),
-  mockToastError: vi.fn(),
-}))
+const { mockConfig, mockOpenZendeskWindow, mockMailToSupport, onPricingUrlUpdate, mockToastError } =
+  vi.hoisted(() => ({
+    mockConfig: {
+      supportEmailAddress: '',
+      zendeskWidgetKey: 'zendesk-key',
+    },
+    mockOpenZendeskWindow: vi.fn(),
+    mockMailToSupport: vi.fn(),
+    onPricingUrlUpdate: vi.fn(),
+    mockToastError: vi.fn(),
+  }))
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     langGeniusVersionInfo: { current_version: '1.0.0' },
@@ -67,9 +62,10 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-}))
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
 
 describe('SupportMenu', () => {
   let deploymentEdition: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' = 'CLOUD'
@@ -85,9 +81,7 @@ describe('SupportMenu', () => {
       userProfile: { email: 'user@example.com' },
     }
     plan = 'team'
-    ;(useModalContext as Mock).mockReturnValue({
-      setShowPricingModal: mockSetShowPricingModal,
-    })
+
     ;(mailToSupport as Mock).mockReturnValue('mailto:support@example.com')
   })
 
@@ -150,7 +144,7 @@ describe('SupportMenu', () => {
     await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('common.api.actionFailed'))
   })
 
-  it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', () => {
+  it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', async () => {
     plan = 'sandbox'
 
     renderSupportMenu()
@@ -165,13 +159,16 @@ describe('SupportMenu', () => {
       screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(
-      screen.getByRole('menuitem', {
-        name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
-      }),
-    )
+    const upgradeItem = screen.getByRole('menuitem', {
+      name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
+    })
+    expect(upgradeItem).not.toHaveAttribute('aria-label')
+    expect(screen.getByText('billing.upgradeBtn.encourageShort')).not.toHaveAttribute('aria-hidden')
+    fireEvent.click(upgradeItem)
 
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
     expect(zendeskRuntime.open).not.toHaveBeenCalled()
   })
 
@@ -186,7 +183,7 @@ describe('SupportMenu', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
-    expect(mockSetShowPricingModal).not.toHaveBeenCalled()
+    expect(onPricingUrlUpdate).not.toHaveBeenCalled()
   })
 
   it('keeps email support for Cloud sandbox plan with support email and no Zendesk configured', () => {
