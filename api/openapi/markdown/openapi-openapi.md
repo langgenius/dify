@@ -831,7 +831,7 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
 | app_mode | string |  | No |
-| current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
+| current_dsl_version | string, <br>**Default:** 0.8.0 |  | No |
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
