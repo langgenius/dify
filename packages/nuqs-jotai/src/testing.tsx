@@ -2,16 +2,16 @@ import type { ComponentProps } from 'react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { QueryStateProvider } from './index'
 
-/** The real nuqs test adapter, with the same atom registration as production. */
+/** The real nuqs test adapter, with the same group registration as production. */
 export function QueryTestingAdapter({
-  atoms,
+  groups,
   children,
   ...options
 }: ComponentProps<typeof NuqsTestingAdapter> &
-  Pick<ComponentProps<typeof QueryStateProvider>, 'atoms'>) {
+  Pick<ComponentProps<typeof QueryStateProvider>, 'groups'>) {
   return (
     <NuqsTestingAdapter {...options}>
-      <QueryStateProvider atoms={atoms}>{children}</QueryStateProvider>
+      <QueryStateProvider groups={groups}>{children}</QueryStateProvider>
     </NuqsTestingAdapter>
   )
 }

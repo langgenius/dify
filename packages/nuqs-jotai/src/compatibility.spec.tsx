@@ -13,7 +13,7 @@ import {
 } from 'nuqs'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
-import { atomWithSearchParams, QueryStateProvider } from './index'
+import { createQueryGroup, QueryStateProvider } from './index'
 
 // nuqs retains its last-flush timestamp in a module singleton, so keep the
 // fake monotonic clock running across cases just as the browser clock does.
@@ -33,7 +33,8 @@ describe.each(['nuqs', 'atoms'] as const)('%s compatibility', (implementation) =
     const onUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
     let read!: () => Values<P>
     let write!: SetValues<P>
-    const queryAtom = atomWithSearchParams(parsers, options)
+    const queryAtomGroup = createQueryGroup(parsers, options)
+    const queryAtom = queryAtomGroup.atom
     function AtomCapture() {
       const store = useStore()
       read = () => store.get(queryAtom)
@@ -56,7 +57,7 @@ describe.each(['nuqs', 'atoms'] as const)('%s compatibility', (implementation) =
           onUrlUpdate={onUpdate}
         >
           {implementation === 'atoms' ? (
-            <QueryStateProvider atoms={[queryAtom]}>
+            <QueryStateProvider groups={[queryAtomGroup]}>
               <AtomCapture />
             </QueryStateProvider>
           ) : (

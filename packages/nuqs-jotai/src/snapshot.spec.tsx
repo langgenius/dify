@@ -1,24 +1,30 @@
 import { act, cleanup, render, screen } from '@testing-library/react'
-import { useStore } from 'jotai'
+import { useAtomValueRawSync, useStore } from 'jotai'
 import { parseAsIsoDate, parseAsNativeArrayOf, parseAsString } from 'nuqs'
 import { afterEach, expect, it } from 'vite-plus/test'
-import { atomWithSearchParam, atomWithSearchParams, useQueryAtomValue } from './index'
+import { createQueryGroup } from './index'
 import { QueryTestingAdapter } from './testing'
 
 afterEach(cleanup)
 
 it('notifies aliased readers of typed updates even when the encoded URL stays unchanged', async () => {
-  const dateAtom = atomWithSearchParam('day', parseAsIsoDate)
-  const aliasAtom = atomWithSearchParams({ date: parseAsIsoDate }, { urlKeys: { date: 'day' } })
+  const dateAtomGroup = createQueryGroup({ day: parseAsIsoDate })
+  const dateAtom = dateAtomGroup.fields.day
+  const aliasAtomGroup = createQueryGroup({ date: parseAsIsoDate }, { urlKeys: { date: 'day' } })
+  const aliasAtom = aliasAtomGroup.atom
 
   let store!: ReturnType<typeof useStore>
   function Reader() {
     store = useStore()
-    const { date } = useQueryAtomValue(aliasAtom)
+    const { date } = useAtomValueRawSync(aliasAtom)
     return <p>{date?.toISOString()}</p>
   }
   const view = render(
-    <QueryTestingAdapter atoms={[dateAtom, aliasAtom]} searchParams="day=2026-09-09" hasMemory>
+    <QueryTestingAdapter
+      groups={[dateAtomGroup, aliasAtomGroup]}
+      searchParams="day=2026-09-09"
+      hasMemory
+    >
       <Reader />
     </QueryTestingAdapter>,
   )
@@ -36,7 +42,11 @@ it('notifies aliased readers of typed updates even when the encoded URL stays un
   expect(screen.getByText(later.toISOString())).toBeDefined()
   view.unmount()
   render(
-    <QueryTestingAdapter atoms={[dateAtom, aliasAtom]} searchParams="day=2026-09-09" hasMemory>
+    <QueryTestingAdapter
+      groups={[dateAtomGroup, aliasAtomGroup]}
+      searchParams="day=2026-09-09"
+      hasMemory
+    >
       <Reader />
     </QueryTestingAdapter>,
   )
@@ -44,15 +54,17 @@ it('notifies aliased readers of typed updates even when the encoded URL stays un
 })
 
 it('shares cleared values while retaining each reader default', async () => {
-  const first = atomWithSearchParam('q', parseAsString.withDefault('first'))
-  const second = atomWithSearchParam('q', parseAsString.withDefault('second'))
+  const firstGroup = createQueryGroup({ q: parseAsString.withDefault('first') })
+  const first = firstGroup.fields.q
+  const secondGroup = createQueryGroup({ q: parseAsString.withDefault('second') })
+  const second = secondGroup.fields.q
   let store!: ReturnType<typeof useStore>
   function Capture() {
     store = useStore()
     return null
   }
   render(
-    <QueryTestingAdapter atoms={[first, second]} hasMemory>
+    <QueryTestingAdapter groups={[firstGroup, secondGroup]} hasMemory>
       <Capture />
     </QueryTestingAdapter>,
   )
@@ -68,16 +80,20 @@ it('shares cleared values while retaining each reader default', async () => {
 })
 
 it('inherits nuqs native-array normalization after the URL commits', async () => {
-  const items = atomWithSearchParam('items', parseAsNativeArrayOf(parseAsString), {
-    clearOnDefault: false,
-  })
+  const itemsGroup = createQueryGroup(
+    { items: parseAsNativeArrayOf(parseAsString) },
+    {
+      clearOnDefault: false,
+    },
+  )
+  const items = itemsGroup.fields.items
   let store!: ReturnType<typeof useStore>
   function Capture() {
     store = useStore()
     return null
   }
   const view = render(
-    <QueryTestingAdapter atoms={[items]} hasMemory>
+    <QueryTestingAdapter groups={[itemsGroup]} hasMemory>
       <Capture />
     </QueryTestingAdapter>,
   )
@@ -93,7 +109,7 @@ it('inherits nuqs native-array normalization after the URL commits', async () =>
 
   view.unmount()
   render(
-    <QueryTestingAdapter atoms={[items]} searchParams="items=" hasMemory>
+    <QueryTestingAdapter groups={[itemsGroup]} searchParams="items=" hasMemory>
       <Capture />
     </QueryTestingAdapter>,
   )

@@ -1,10 +1,10 @@
 'use client'
 
-import type { Atom, WritableAtom } from 'jotai'
+import type { WritableAtom } from 'jotai'
 import type { Options, SetValues, UseQueryStatesKeysMap, UseQueryStatesOptions, Values } from 'nuqs'
 import type { ReactNode } from 'react'
 import type { Binding } from './binding'
-import { atom, useAtomValueRawSync, useSetAtom } from 'jotai'
+import { atom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { atomWithLazy, useHydrateAtoms } from 'jotai/utils'
 import { useQueryStates } from 'nuqs'
@@ -25,28 +25,32 @@ export type QueryAtom<Value> = WritableAtom<
   Value,
   [update: Value | null | ((previous: Value) => Value | null), options?: Options],
   Promise<URLSearchParams>
-> &
-  Registered
+>
 
 export type SearchParamsAtom<P extends KeyMap> = WritableAtom<
   Values<P>,
   Parameters<SetValues<P>>,
   Promise<URLSearchParams>
-> &
-  Registered
+>
 
 export type SearchParamsOptions<P extends KeyMap> = Options & {
   urlKeys?: UseQueryStatesOptions<P>['urlKeys']
   debugLabel?: string
 }
 
-export function atomWithSearchParams<P extends KeyMap>(
+export type QueryGroup<P extends KeyMap> = Registered & {
+  readonly atom: SearchParamsAtom<P>
+  readonly fields: { readonly [K in keyof P]: QueryAtom<Values<P>[K]> }
+}
+
+/** One nuqs hook and snapshot shared by a composite atom and its field atoms. */
+export function createQueryGroup<P extends KeyMap>(
   parsers: P,
   { debugLabel = 'query', ...options }: SearchParamsOptions<P> = {},
-): SearchParamsAtom<P> {
+): QueryGroup<P> {
   const valueAtom = atom<Values<KeyMap>>({})
   const bindingAtom = atomWithLazy<Binding>(() => {
-    throw new Error('[nuqs-jotai] Register this atom in QueryStateProvider')
+    throw new Error('[nuqs-jotai] Register this group in QueryStateProvider')
   })
   const definition: Definition = { parsers, options, valueAtom, bindingAtom }
   const queryAtom = atom(
@@ -62,17 +66,9 @@ export function atomWithSearchParams<P extends KeyMap>(
   queryAtom.debugLabel = debugLabel
   valueAtom.debugLabel = `${debugLabel}.snapshot`
   bindingAtom.debugLabel = `${debugLabel}.binding`
-  return Object.assign(queryAtom, { [definitionKey]: definition })
-}
-
-export function atomsWithSearchParams<P extends KeyMap>(
-  parsers: P,
-  options: SearchParamsOptions<P> = {},
-): { readonly [K in keyof P]: QueryAtom<Values<P>[K]> } {
-  const group = atomWithSearchParams(parsers, options)
   function forKey<K extends keyof P>(key: K): QueryAtom<Values<P>[K]> {
     const field = atom(
-      (get) => get(group)[key],
+      (get) => get(queryAtom)[key],
       (
         _get,
         set,
@@ -80,7 +76,7 @@ export function atomsWithSearchParams<P extends KeyMap>(
         writeOptions?: Options,
       ) =>
         set(
-          group,
+          queryAtom,
           (current) =>
             ({
               [key]:
@@ -91,47 +87,27 @@ export function atomsWithSearchParams<P extends KeyMap>(
           writeOptions,
         ),
     )
-    field.debugLabel = `${options.debugLabel ?? 'query'}.${String(key)}`
-    return Object.assign(field, { [definitionKey]: group[definitionKey] })
+    field.debugLabel = `${debugLabel}.${String(key)}`
+    return field
   }
-  return Object.fromEntries(Object.keys(parsers).map((key) => [key, forKey(key)])) as {
-    readonly [K in keyof P]: QueryAtom<Values<P>[K]>
+  return {
+    atom: queryAtom,
+    fields: Object.fromEntries(
+      Object.keys(parsers).map((key) => [key, forKey(key)]),
+    ) as QueryGroup<P>['fields'],
+    [definitionKey]: definition,
   }
-}
-
-export function atomWithSearchParam<P extends KeyMap[string]>(
-  key: string,
-  parser: P,
-  options: Options & { debugLabel?: string } = {},
-): QueryAtom<Values<{ value: P }>['value']> {
-  const { value } = atomsWithSearchParams(
-    { value: parser },
-    { ...options, urlKeys: { value: key } },
-  )
-  value.debugLabel = options.debugLabel ?? key
-  return value
-}
-
-/** Use Jotai's synchronous subscription for authoritative URL snapshots. */
-export function useQueryAtomValue<Value>(queryAtom: Atom<Value>): Value {
-  return useAtomValueRawSync(queryAtom)
-}
-
-export function useQueryAtom<Value, Args extends unknown[], Result>(
-  queryAtom: WritableAtom<Value, Args, Result>,
-) {
-  return [useQueryAtomValue(queryAtom), useSetAtom(queryAtom)] as const
 }
 
 /** Mount beneath the framework's NuqsAdapter. Register groups once per URL scope. */
 export function QueryStateProvider({
-  atoms,
+  groups,
   children,
 }: {
-  atoms: readonly Registered[]
+  groups: readonly Registered[]
   children: ReactNode
 }) {
-  const definitions = [...new Set(atoms.map((queryAtom) => queryAtom[definitionKey]))]
+  const definitions = [...new Set(groups.map((group) => group[definitionKey]))]
   return (
     <ScopeProvider
       atoms={definitions.flatMap((definition) => [definition.valueAtom, definition.bindingAtom])}

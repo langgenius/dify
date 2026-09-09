@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { act, cleanup, render, screen } from '@testing-library/react'
-import { useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import {
   debounce,
   parseAsInteger,
@@ -12,12 +12,7 @@ import {
 import { enableHistorySync, NuqsAdapter } from 'nuqs/adapters/react'
 import { Activity, StrictMode, useLayoutEffect } from 'react'
 import { afterEach, expect, it, vi } from 'vite-plus/test'
-import {
-  atomWithSearchParam,
-  atomWithSearchParams,
-  QueryStateProvider,
-  useQueryAtomValue,
-} from './index'
+import { createQueryGroup, QueryStateProvider } from './index'
 import { QueryTestingAdapter } from './testing'
 
 afterEach(() => {
@@ -36,8 +31,10 @@ it.each([
   async ({ reverse, delay }) => {
     vi.useFakeTimers()
     window.history.replaceState(null, '', '/?day=2026-09-09')
-    const first = atomWithSearchParams({ date: parseAsIsoDate }, { urlKeys: { date: 'day' } })
-    const second = atomWithSearchParam('day', parseAsIsoDate)
+    const firstGroup = createQueryGroup({ date: parseAsIsoDate }, { urlKeys: { date: 'day' } })
+    const first = firstGroup.atom
+    const secondGroup = createQueryGroup({ day: parseAsIsoDate })
+    const second = secondGroup.fields.day
     let date = new Date('2026-09-09T12:34:56.000Z')
     function NativeReader({ children }: { children?: ReactNode }) {
       const [value] = useQueryState('day', parseAsIsoDate)
@@ -50,8 +47,8 @@ it.each([
     }
     function Consumer() {
       const write = useSetAtom(second)
-      const a = useQueryAtomValue(first).date
-      const b = useQueryAtomValue(second)
+      const a = useAtomValueRawSync(first).date
+      const b = useAtomValueRawSync(second)
       useLayoutEffect(() => {
         void write(date, { limitUrlUpdates: throttle(delay) })
       }, [write])
@@ -69,7 +66,9 @@ it.each([
           <Activity mode={hidden ? 'hidden' : 'visible'}>
             <NuqsAdapter>
               <NativeReader>
-                <QueryStateProvider atoms={reverse ? [second, first] : [first, second]}>
+                <QueryStateProvider
+                  groups={reverse ? [secondGroup, firstGroup] : [firstGroup, secondGroup]}
+                >
                   <Consumer />
                 </QueryStateProvider>
               </NativeReader>
@@ -98,7 +97,8 @@ it.each([
 )
 
 it('rejects buffered mount commands when unmounted before the effect-pass drain', async () => {
-  const page = atomWithSearchParam('page', parseAsInteger)
+  const pageGroup = createQueryGroup({ page: parseAsInteger })
+  const page = pageGroup.fields.page
   const onUrlUpdate = vi.fn()
   let command!: Promise<URLSearchParams>
   function Writer() {
@@ -109,7 +109,7 @@ it('rejects buffered mount commands when unmounted before the effect-pass drain'
     return null
   }
   const view = render(
-    <QueryTestingAdapter atoms={[page]} onUrlUpdate={onUrlUpdate}>
+    <QueryTestingAdapter groups={[pageGroup]} onUrlUpdate={onUrlUpdate}>
       <Writer />
     </QueryTestingAdapter>,
   )
@@ -124,9 +124,10 @@ it.each([0, Infinity])(
   async (delay) => {
     vi.useFakeTimers()
     window.history.replaceState(null, '', '/?page=1')
-    const page = atomWithSearchParam('page', parseAsInteger.withDefault(1))
+    const pageGroup = createQueryGroup({ page: parseAsInteger.withDefault(1) })
+    const page = pageGroup.fields.page
     function Reader() {
-      return <p>Page {useQueryAtomValue(page)}</p>
+      return <p>Page {useAtomValueRawSync(page)}</p>
     }
     function Writer() {
       const set = useSetAtom(page)
@@ -138,7 +139,7 @@ it.each([0, Infinity])(
     render(
       <StrictMode>
         <NuqsAdapter>
-          <QueryStateProvider atoms={[page]}>
+          <QueryStateProvider groups={[pageGroup]}>
             <Reader />
             <Writer />
           </QueryStateProvider>
@@ -153,11 +154,12 @@ it.each([0, Infinity])(
 )
 
 it('reads the current URL in the first layout effect after Activity reveal', async () => {
-  const page = atomWithSearchParam('page', parseAsInteger.withDefault(1))
+  const pageGroup = createQueryGroup({ page: parseAsInteger.withDefault(1) })
+  const page = pageGroup.fields.page
   window.history.replaceState(null, '', '/?page=1')
   const seen: number[] = []
   function Reader() {
-    const value = useQueryAtomValue(page)
+    const value = useAtomValueRawSync(page)
     useLayoutEffect(() => {
       seen.push(value)
     }, [])
@@ -167,7 +169,7 @@ it('reads the current URL in the first layout effect after Activity reveal', asy
     return (
       <Activity mode={hidden ? 'hidden' : 'visible'}>
         <NuqsAdapter>
-          <QueryStateProvider atoms={[page]}>
+          <QueryStateProvider groups={[pageGroup]}>
             <Reader />
           </QueryStateProvider>
         </NuqsAdapter>
@@ -191,8 +193,10 @@ it.each(['nuqs-first', 'atom-first'] as const)(
     vi.useFakeTimers()
     window.history.replaceState(null, '', '/?page=1')
     enableHistorySync()
-    const page = atomWithSearchParam('page', parseAsInteger.withDefault(1))
-    const search = atomWithSearchParam('q', parseAsString)
+    const pageGroup = createQueryGroup({ page: parseAsInteger.withDefault(1) })
+    const page = pageGroup.fields.page
+    const searchGroup = createQueryGroup({ q: parseAsString })
+    const search = searchGroup.fields.q
     let setSearch!: (value: string) => Promise<URLSearchParams>
     let setPage!: (value: number) => Promise<URLSearchParams>
     function Capture() {
@@ -208,11 +212,11 @@ it.each(['nuqs-first', 'atom-first'] as const)(
         order === 'nuqs-first'
           ? atomPage(value, { history: 'push' })
           : nuqsPage(value, { history: 'push' })
-      return <p>{useQueryAtomValue(search)}</p>
+      return <p>{useAtomValueRawSync(search)}</p>
     }
     render(
       <NuqsAdapter>
-        <QueryStateProvider atoms={[page, search]}>
+        <QueryStateProvider groups={[pageGroup, searchGroup]}>
           <Capture />
         </QueryStateProvider>
       </NuqsAdapter>,
@@ -235,9 +239,10 @@ it.each(['nuqs-first', 'atom-first'] as const)(
 it('forwards reveal layout commands after nuqs reattaches its subscriptions', async () => {
   vi.useFakeTimers()
   window.history.replaceState(null, '', '/?page=1')
-  const page = atomWithSearchParam('page', parseAsInteger.withDefault(1))
+  const pageGroup = createQueryGroup({ page: parseAsInteger.withDefault(1) })
+  const page = pageGroup.fields.page
   function Consumer() {
-    const value = useQueryAtomValue(page)
+    const value = useAtomValueRawSync(page)
     const write = useSetAtom(page)
     useLayoutEffect(() => {
       void write((current) => current + 1)
@@ -248,7 +253,7 @@ it('forwards reveal layout commands after nuqs reattaches its subscriptions', as
     return (
       <Activity mode={hidden ? 'hidden' : 'visible'}>
         <NuqsAdapter>
-          <QueryStateProvider atoms={[page]}>
+          <QueryStateProvider groups={[pageGroup]}>
             <Consumer />
           </QueryStateProvider>
         </NuqsAdapter>
@@ -272,10 +277,11 @@ it('forwards reveal layout commands after nuqs reattaches its subscriptions', as
 
 it('refreshes a hidden reader while its URL bridge remains mounted', async () => {
   window.history.replaceState(null, '', '/?page=1')
-  const page = atomWithSearchParam('page', parseAsInteger.withDefault(1))
+  const pageGroup = createQueryGroup({ page: parseAsInteger.withDefault(1) })
+  const page = pageGroup.fields.page
   const seen: number[] = []
   function Consumer() {
-    const value = useQueryAtomValue(page)
+    const value = useAtomValueRawSync(page)
     useLayoutEffect(() => {
       seen.push(value)
     }, [])
@@ -284,7 +290,7 @@ it('refreshes a hidden reader while its URL bridge remains mounted', async () =>
   function App({ hidden }: { hidden: boolean }) {
     return (
       <NuqsAdapter>
-        <QueryStateProvider atoms={[page]}>
+        <QueryStateProvider groups={[pageGroup]}>
           <Activity mode={hidden ? 'hidden' : 'visible'}>
             <Consumer />
           </Activity>

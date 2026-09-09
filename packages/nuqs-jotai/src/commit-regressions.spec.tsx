@@ -1,9 +1,9 @@
 import { act, cleanup, render } from '@testing-library/react'
-import { atom, useStore } from 'jotai'
+import { atom, useAtomValueRawSync, useStore } from 'jotai'
 import { parseAsInteger, useQueryStates } from 'nuqs'
 import { useLayoutEffect } from 'react'
 import { afterEach, expect, it, vi } from 'vite-plus/test'
-import { atomsWithSearchParams, atomWithSearchParam, useQueryAtomValue } from './index'
+import { createQueryGroup } from './index'
 import { QueryTestingAdapter } from './testing'
 
 afterEach(cleanup)
@@ -11,7 +11,8 @@ afterEach(cleanup)
 it.each(['atoms', 'nuqs'] as const)(
   'uses current adapter defaults and processing for update-time layout writes (%s)',
   async (implementation) => {
-    const page = atomWithSearchParam('page', parseAsInteger)
+    const pageGroup = createQueryGroup({ page: parseAsInteger })
+    const page = pageGroup.fields.page
     const onUrlUpdate = vi.fn()
     let command: Promise<URLSearchParams> | undefined
     function Writer({ updated }: { updated: boolean }) {
@@ -27,7 +28,7 @@ it.each(['atoms', 'nuqs'] as const)(
     function App({ updated }: { updated: boolean }) {
       return (
         <QueryTestingAdapter
-          atoms={[page]}
+          groups={[pageGroup]}
           hasMemory
           defaultOptions={{ history: updated ? 'push' : 'replace' }}
           processUrlSearchParams={(search) => {
@@ -53,10 +54,11 @@ it.each(['atoms', 'nuqs'] as const)(
 )
 
 it('publishes related fields as one complete snapshot to derived subscribers', async () => {
-  const fields = atomsWithSearchParams({
+  const fieldsGroup = createQueryGroup({
     a: parseAsInteger.withDefault(0),
     b: parseAsInteger.withDefault(0),
   })
+  const fields = fieldsGroup.fields
   const pair = atom((get) => [get(fields.a), get(fields.b)])
   let store!: ReturnType<typeof useStore>
   let write!: ReturnType<
@@ -66,11 +68,11 @@ it('publishes related fields as one complete snapshot to derived subscribers', a
     store = useStore()
     const [, nativeWrite] = useQueryStates({ a: parseAsInteger, b: parseAsInteger })
     write = nativeWrite
-    useQueryAtomValue(pair)
+    useAtomValueRawSync(pair)
     return null
   }
   render(
-    <QueryTestingAdapter atoms={[fields.a, fields.b]} hasMemory>
+    <QueryTestingAdapter groups={[fieldsGroup]} hasMemory>
       <Capture />
     </QueryTestingAdapter>,
   )
@@ -81,6 +83,13 @@ it('publishes related fields as one complete snapshot to derived subscribers', a
       await write({ a: 1, b: 1 })
     })
     expect(seen).toEqual([[1, 1]])
+    await act(async () => {
+      await store.set(fieldsGroup.atom, { a: 2, b: 2 })
+    })
+    expect(seen).toEqual([
+      [1, 1],
+      [2, 2],
+    ])
   } finally {
     unsubscribe()
   }
