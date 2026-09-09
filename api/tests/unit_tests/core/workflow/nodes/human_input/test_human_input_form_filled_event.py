@@ -1,9 +1,45 @@
 import datetime
-from collections.abc import Mapping
+import json
+from collections.abc import Generator, Iterable, Mapping, Sequence
+from contextlib import nullcontext
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import MagicMock, patch
 
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
+import pytest
+from flask import Flask
+from sqlalchemy.orm import Session
+
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
+from core.app.apps.advanced_chat.generate_task_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
+from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
+from core.app.entities.app_invoke_entities import (
+    DIFY_RUN_CONTEXT_KEY,
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+)
+from core.app.entities.queue_entities import (
+    AppQueueEvent,
+    QueueEvent,
+    QueueWorkflowStartedEvent,
+    WorkflowQueueMessage,
+)
+from core.app.entities.task_entities import HumanInputFormFilledResponse, StreamResponse
+from core.repositories.human_input_repository import (
+    HumanInputFormEntity,
+    HumanInputFormRecord,
+    HumanInputFormRepository,
+    HumanInputFormSubmissionRepository,
+)
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
@@ -17,20 +53,38 @@ from core.workflow.nodes.human_input.entities import (
     UserActionConfig,
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from core.workflow.system_variables import default_system_variables
-from graphon.entities import GraphInitParams
+from core.workflow.nodes.human_input.human_input_node import DifyHumanInputNode as HumanInputNode
+from core.workflow.system_variables import build_system_variables
+from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
+from graphon.entities import GraphInitParams, WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import (
+    GraphEngineEvent,
+    NodeRunHumanInputFormFilledEvent,
+    NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.answer.answer_node import AnswerNode
+from graphon.nodes.answer.entities import AnswerNodeData
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
+from libs.helper import compact_generate_response
+from models.account import Account
+from models.enums import MessageStatus
+from models.execution_extra_content import HumanInputContent
+from models.model import AppMode, Message
 
 
 class _FakeFormRepository:
@@ -91,8 +145,10 @@ def _build_node(
         "Attachment: {{#$output.attachment#}}\n"
         "Attachments: {{#$output.attachments#}}"
     ),
+    *,
+    with_inputs: bool = True,
 ) -> HumanInputNode:
-    system_variables = default_system_variables()
+    system_variables = build_system_variables(app_id="app", workflow_execution_id="run-1")
     graph_runtime_state = GraphRuntimeState(
         variable_pool=VariablePool.from_bootstrap(
             system_variables=system_variables,
@@ -166,6 +222,10 @@ def _build_node(
         expiration_time=naive_utc_now() + datetime.timedelta(days=1),
     )
 
+    if not with_inputs:
+        config["data"]["inputs"] = []
+        fake_form.submitted_data = {}
+
     repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
@@ -175,8 +235,10 @@ def _build_node(
     )
 
 
-def _build_timeout_node() -> HumanInputNode:
-    system_variables = default_system_variables()
+def _build_timeout_node(
+    expiration_time: datetime.datetime | None = None, *, status: HumanInputFormStatus = HumanInputFormStatus.TIMEOUT
+) -> HumanInputNode:
+    system_variables = build_system_variables(app_id="app", workflow_execution_id="run-1")
     graph_runtime_state = GraphRuntimeState(
         variable_pool=VariablePool.from_bootstrap(
             system_variables=system_variables,
@@ -217,8 +279,9 @@ def _build_timeout_node() -> HumanInputNode:
         submitted=False,
         selected_action_id=None,
         submitted_data=None,
-        status=HumanInputFormStatus.TIMEOUT,
-        expiration_time=naive_utc_now() - datetime.timedelta(minutes=1),
+        status=status,
+        created_at=naive_utc_now(),
+        expiration_time=expiration_time or naive_utc_now() - datetime.timedelta(minutes=1),
     )
 
     repo = _FakeFormRepository(fake_form)
@@ -236,9 +299,10 @@ def test_human_input_node_emits_form_filled_event_before_succeeded():
     events = list(node.run())
 
     assert isinstance(events[0], NodeRunStartedEvent)
-    assert isinstance(events[1], NodeRunSucceededEvent)
+    assert isinstance(events[1], NodeRunHumanInputFormFilledEvent)
+    assert isinstance(events[2], NodeRunSucceededEvent)
 
-    completed_event = events[1]
+    completed_event = events[2]
     assert completed_event.node_run_result.outputs["__rendered_content"] == StringSegment(
         value="Please enter your name:\n\nAlice\nDecision: approve\nAttachment: [file]\nAttachments: [1 files]"
     )
@@ -257,11 +321,303 @@ def test_human_input_node_emits_form_filled_event_before_succeeded():
     assert completed_event.node_run_result.inputs["attachments"].value[0].type == FileType.IMAGE
 
 
-def test_human_input_node_emits_timeout_event_before_succeeded():
-    node = _build_timeout_node()
+def test_human_input_node_emits_timeout_event_before_succeeded(monkeypatch: pytest.MonkeyPatch):
+    expiration_time = datetime.datetime(2025, 1, 1)
+    form = MagicMock(spec=HumanInputFormRecord)
+    form.app_id = "app"
+    form.node_id = "node-1"
+    form.expiration_time = expiration_time
+    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", lambda _self, _form_id: form)
+    node = _build_timeout_node(expiration_time)
 
     events = list(node.run())
 
     assert isinstance(events[0], NodeRunStartedEvent)
-    assert isinstance(events[1], NodeRunSucceededEvent)
-    assert events[1].node_run_result.edge_source_handle == "__timeout"
+    assert isinstance(events[1], NodeRunHumanInputFormTimeoutEvent)
+    assert events[1].expiration_time == expiration_time
+    assert isinstance(events[2], NodeRunSucceededEvent)
+    assert events[2].node_run_result.edge_source_handle == "__timeout"
+
+
+def _publish_node_events(node: HumanInputNode) -> list[AppQueueEvent]:
+    return _publish_graph_events(node.run())
+
+
+def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEvent]:
+    queue_manager = MagicMock(spec=AppQueueManager)
+    runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app")
+    workflow_entry = MagicMock(spec=WorkflowEntry)
+
+    for event in events:
+        runner._handle_event(workflow_entry, event)
+
+    published = []
+    for call in queue_manager.publish.call_args_list:
+        event = call.args[0]
+        assert isinstance(event, AppQueueEvent)
+        published.append(event)
+    return published
+
+
+def _sse_payloads(
+    events: Sequence[AppQueueEvent],
+    invoke_from: InvokeFrom,
+    app: Flask,
+    runtime_state: GraphRuntimeState | None = None,
+) -> list[dict[str, Any]]:
+    generate_entity = AdvancedChatAppGenerateEntity(
+        task_id="task-1",
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow",
+        ),
+        inputs={},
+        query="hello",
+        files=[],
+        user_id="user",
+        stream=True,
+        invoke_from=invoke_from,
+        workflow_run_id="run-1",
+    )
+    if runtime_state is None:
+        runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-1")
+            ),
+            start_at=0,
+        )
+    queue_manager = MagicMock(spec=AppQueueManager)
+    queue_manager.invoke_from = invoke_from
+    queue_manager.graph_runtime_state = runtime_state
+    queue_manager.listen.return_value = iter(
+        WorkflowQueueMessage(task_id="task-1", app_mode=AppMode.ADVANCED_CHAT, event=event) for event in events
+    )
+    pipeline = AdvancedChatAppGenerateTaskPipeline(
+        application_generate_entity=generate_entity,
+        workflow=WorkflowSnapshot(id="workflow", tenant_id="tenant", features_dict={}),
+        queue_manager=queue_manager,
+        conversation=ConversationSnapshot(id="conversation-1", mode=AppMode.ADVANCED_CHAT),
+        message=MessageSnapshot(
+            id="message-1", query="hello", created_at=naive_utc_now(), status=MessageStatus.PAUSED, answer=""
+        ),
+        user=Account(name="tester", email="tester@example.com"),
+        stream=True,
+        dialogue_count=1,
+        draft_var_saver_factory=MagicMock(),
+    )
+    session = MagicMock(spec=Session)
+    session.scalar.return_value = None
+    form = MagicMock(spec=HumanInputFormEntity)
+    form.id = "form-1"
+    form_repository = MagicMock(spec=HumanInputFormRepository)
+    form_repository.get_form.return_value = form
+
+    def responses() -> Generator[StreamResponse, None, None]:
+        for response in pipeline._process_stream_response():
+            if isinstance(response, HumanInputFormFilledResponse):
+                # Dify persists the submitted form's chat content before emitting
+                # its SSE event. Keep the real handler and mock only storage I/O.
+                content = session.add.call_args.args[0]
+                assert isinstance(content, HumanInputContent)
+                assert content.form_id == "form-1"
+                assert content.message_id == "message-1"
+            yield response
+
+    with (
+        app.test_request_context(),
+        patch.object(pipeline, "_database_session", return_value=nullcontext(session)),
+        patch.object(pipeline, "_get_message", return_value=Message(id="message-1", status=MessageStatus.PAUSED)),
+        patch(
+            "core.app.apps.advanced_chat.generate_task_pipeline.HumanInputFormRepositoryImpl",
+            return_value=form_repository,
+        ),
+    ):
+        if not any(isinstance(event, QueueWorkflowStartedEvent) for event in events):
+            list(
+                pipeline._handle_workflow_started_event(
+                    QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION)
+                )
+            )
+        response = compact_generate_response(
+            BaseAppGenerator.convert_to_event_stream(
+                AdvancedChatAppGenerateResponseConverter.convert(pipeline._to_stream_response(responses()), invoke_from)
+            )
+        )
+        assert response.mimetype == "text/event-stream"
+        return [
+            json.loads(line.removeprefix("data: ")) for line in response.get_data(as_text=True).splitlines() if line
+        ]
+
+
+@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
+def test_submitted_human_input_reaches_response_stream(invoke_from: InvokeFrom, app: Flask):
+    events = _publish_node_events(_build_node())
+
+    payloads = _sse_payloads(events, invoke_from, app)
+
+    # Dify's original HumanInputNode (9c339239850) emitted the form event
+    # before node completion; its runner and task pipeline preserved that order.
+    assert [payload["event"] for payload in payloads] == [
+        "node_started",
+        "human_input_form_filled",
+        "node_finished",
+    ]
+    assert [event.event for event in events] == [
+        QueueEvent.NODE_STARTED,
+        QueueEvent.HUMAN_INPUT_FORM_FILLED,
+        QueueEvent.NODE_SUCCEEDED,
+    ]
+    payload = payloads[1]
+    assert payload["workflow_run_id"] == "run-1"
+    assert payload["data"]["node_id"] == "node-1"
+    assert payload["data"]["node_title"] == "Human Input"
+    assert payload["data"]["action_id"] == "Accept"
+    assert payload["data"]["action_text"] == "Approve"
+    assert payload["data"]["rendered_content"] == (
+        "Please enter your name:\n\nAlice\nDecision: approve\nAttachment: [file]\nAttachments: [1 files]"
+    )
+    submitted_data = payload["data"]["submitted_data"]
+    assert submitted_data["name"] == "Alice"
+    assert submitted_data["decision"] == "approve"
+    assert submitted_data["attachment"]["filename"] == "resume.pdf"
+    assert submitted_data["attachments"][0]["filename"] == "a.png"
+
+
+def test_button_only_human_input_reaches_response_stream(app: Flask):
+    events = _publish_node_events(_build_node("Approve deployment?", with_inputs=False))
+
+    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app)
+
+    assert [payload["event"] for payload in payloads] == [
+        "node_started",
+        "human_input_form_filled",
+        "node_finished",
+    ]
+    assert payloads[1]["data"]["rendered_content"] == "Approve deployment?"
+    assert payloads[1]["data"]["submitted_data"] == {}
+    assert payloads[1]["data"]["action_id"] == "Accept"
+
+
+@pytest.mark.parametrize("status", [HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.WAITING])
+def test_timed_out_human_input_reaches_response_stream(
+    status: HumanInputFormStatus, monkeypatch: pytest.MonkeyPatch, app: Flask
+):
+    expiration_time = datetime.datetime(2025, 1, 1)
+    form = MagicMock(spec=HumanInputFormRecord)
+    form.app_id = "app"
+    form.node_id = "node-1"
+    form.expiration_time = expiration_time
+    repository = MagicMock(spec=HumanInputFormSubmissionRepository)
+    repository.get_by_form_id.return_value = form
+    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
+
+    events = _publish_node_events(_build_timeout_node(expiration_time, status=status))
+
+    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app)
+    assert [payload["event"] for payload in payloads] == [
+        "node_started",
+        "human_input_form_timeout",
+        "node_finished",
+    ]
+    assert [event.event for event in events] == [
+        QueueEvent.NODE_STARTED,
+        QueueEvent.HUMAN_INPUT_FORM_TIMEOUT,
+        QueueEvent.NODE_SUCCEEDED,
+    ]
+    assert payloads[1]["data"] == {
+        "node_id": "node-1",
+        "node_title": "Human Input",
+        "expiration_time": 1735689600,
+    }
+    repository.get_by_form_id.assert_called_once_with("00000000-0000-4000-8000-000000000001")
+
+
+@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
+@pytest.mark.parametrize("timed_out", [False, True])
+@pytest.mark.parametrize("terminal", ["end", "answer"])
+def test_human_input_completion_precedes_downstream_and_workflow_finish(
+    timed_out: bool, terminal: str, invoke_from: InvokeFrom, monkeypatch: pytest.MonkeyPatch, app: Flask
+):
+    expiration_time = datetime.datetime(2025, 1, 1)
+    node = _build_timeout_node(expiration_time) if timed_out else _build_node("Approve?", with_inputs=False)
+    runtime_state = node.graph_runtime_state
+    runtime_state.variable_pool.add(["sys", "workflow_execution_id"], StringSegment(value="run-1"))
+    init_params = GraphInitParams(workflow_id="workflow", graph_config={}, run_context={}, call_depth=0)
+    start = StartNode(
+        node_id="start",
+        data=StartNodeData(title="Start", variables=[]),
+        graph_init_params=init_params,
+        graph_runtime_state=runtime_state,
+    )
+    if terminal == "answer":
+        terminal_node = AnswerNode(
+            node_id="answer",
+            data=AnswerNodeData(title="Answer", answer="Approved"),
+            graph_init_params=init_params,
+            graph_runtime_state=runtime_state,
+        )
+    else:
+        terminal_node = EndNode(
+            node_id="end",
+            data=EndNodeData(title="End", outputs=[]),
+            graph_init_params=init_params,
+            graph_runtime_state=runtime_state,
+        )
+    graph = (
+        Graph.new()
+        .add_root(start)
+        .add_node(node, from_node_id="start")
+        .add_node(terminal_node, from_node_id=node.id, source_handle="__timeout" if timed_out else "Accept")
+        .build()
+    )
+    engine = GraphEngine(
+        workflow_id="workflow",
+        graph=graph,
+        graph_runtime_state=runtime_state,
+        command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(min_workers=1, max_workers=1),
+    )
+    form = MagicMock(spec=HumanInputFormRecord)
+    form.app_id = "app"
+    form.node_id = node.id
+    form.expiration_time = expiration_time
+    repository = MagicMock(spec=HumanInputFormSubmissionRepository)
+    repository.get_by_form_id.return_value = form
+    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
+
+    events = _publish_graph_events(iter_dify_graph_engine_events(engine))
+    payloads = _sse_payloads(events, invoke_from, app, runtime_state)
+
+    form_event = "human_input_form_timeout" if timed_out else "human_input_form_filled"
+    # Preserve Dify's app pipeline contract before f4ec608ef42. The earlier
+    # ad81513b6aa fix already placed message_end before workflow_finished.
+    assert [(payload["event"], payload.get("data", {}).get("node_id")) for payload in payloads] == [
+        ("workflow_started", None),
+        ("node_started", "start"),
+        ("node_finished", "start"),
+        ("node_started", "node-1"),
+        (form_event, "node-1"),
+        *([("message", None)] if terminal == "answer" else []),
+        ("node_finished", "node-1"),
+        ("node_started", terminal),
+        ("node_finished", terminal),
+        ("message_end", None),
+        ("workflow_finished", None),
+    ]
+    assert payloads[-1]["data"]["status"] == "succeeded"
+
+
+@pytest.mark.parametrize("form_owner", [None, ("other-app", "node-1"), ("app", "other-node")])
+def test_timeout_rejects_missing_or_unrelated_form(form_owner: tuple[str, str] | None, monkeypatch: pytest.MonkeyPatch):
+    form = None
+    if form_owner is not None:
+        form = MagicMock(spec=HumanInputFormRecord)
+        form.app_id, form.node_id = form_owner
+    repository = MagicMock(spec=HumanInputFormSubmissionRepository)
+    repository.get_by_form_id.return_value = form
+    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
+
+    with pytest.raises(ValueError, match="Cannot resolve timed-out human input form"):
+        _publish_node_events(_build_timeout_node())

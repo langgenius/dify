@@ -53,6 +53,7 @@ from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapt
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
+from core.workflow.nodes.human_input.human_input_node import DifyHumanInputNode
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.entities.base_node_data import BaseNodeData
@@ -522,6 +523,8 @@ class DifyNodeFactory(NodeFactory):
     ) -> type[Node]:
         if node_type == BuiltinNodeTypes.LLM:
             return DifyLLMNode
+        if node_type == BuiltinNodeTypes.HUMAN_INPUT:
+            return DifyHumanInputNode
         return resolve_workflow_node_class(
             node_type=node_type,
             node_version=node_version,
