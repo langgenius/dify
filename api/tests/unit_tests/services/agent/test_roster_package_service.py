@@ -50,6 +50,7 @@ class _MemoryStorage:
         self.files = files
         self.before_read = before_read
         self.read_count = 0
+        self.bytes_yielded: dict[str, int] = {}
 
     def load_stream(self, filename: str) -> Generator[bytes, None, None]:
         self.read_count += 1
@@ -57,7 +58,9 @@ class _MemoryStorage:
             self.before_read()
         content = self.files[filename]
         for offset in range(0, len(content), 7):
-            yield content[offset : offset + 7]
+            chunk = content[offset : offset + 7]
+            self.bytes_yielded[filename] = self.bytes_yielded.get(filename, 0) + len(chunk)
+            yield chunk
 
 
 def _zip(members: dict[str, bytes]) -> bytes:
@@ -587,9 +590,11 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
         exporter.export(tenant_id="tenant-1", agent_id=agent.id)
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_MANIFEST_BYTES=max_manifest_bytes)
 
-    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_BYTES=len(skill_payload) + len(file_payload))
+    file_bytes_before_limit_check = storage.bytes_yielded["tools/guide.pdf"]
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_BYTES=len(skill_payload) + 1)
     with pytest.raises(RosterAgentPackageTooLargeError):
         exporter.export(tenant_id="tenant-1", agent_id=agent.id)
+    assert storage.bytes_yielded["tools/guide.pdf"] - file_bytes_before_limit_check == 7
 
 
 def test_export_uses_current_workspace_skill_bindings(

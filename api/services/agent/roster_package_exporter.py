@@ -207,7 +207,8 @@ class RosterAgentPackageExporter:
                     *(item.payload for item in skill_sources),
                     *(item.payload for item in file_sources),
                 ]:
-                    member = self._write_storage_member(archive, payload)
+                    remaining_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - total_size
+                    member = self._write_storage_member(archive, payload, max_bytes=remaining_bytes)
                     total_size += member.size
                     if total_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                         raise RosterAgentPackageTooLargeError("Roster Agent package payloads exceed the size limit")
@@ -387,7 +388,13 @@ class RosterAgentPackageExporter:
         ).all()
         return {item.id: item for item in rows}
 
-    def _write_storage_member(self, archive: zipfile.ZipFile, payload: _PayloadSource) -> RosterAgentPackageMember:
+    def _write_storage_member(
+        self,
+        archive: zipfile.ZipFile,
+        payload: _PayloadSource,
+        *,
+        max_bytes: int,
+    ) -> RosterAgentPackageMember:
         digest = hashlib.sha256()
         size = 0
         try:
@@ -395,9 +402,9 @@ class RosterAgentPackageExporter:
                 for chunk in self._storage.load_stream(payload.storage_key):
                     if not isinstance(chunk, bytes):
                         raise TypeError("storage stream returned a non-bytes chunk")
-                    size += len(chunk)
-                    if size > dify_config.AGENT_PACKAGE_MAX_BYTES:
+                    if size + len(chunk) > max_bytes:
                         raise RosterAgentPackageTooLargeError("Roster Agent package payload exceeds the size limit")
+                    size += len(chunk)
                     digest.update(chunk)
                     target.write(chunk)
         except RosterAgentPackageTooLargeError:
