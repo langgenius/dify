@@ -7,9 +7,9 @@ straight back to ``document_segments`` for citations.
 
 import logging
 from dataclasses import dataclass
-from typing import override
+from typing import Any, override
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import Select, delete, exists, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from core.rag.datasource.graph.graph_base import (
@@ -19,8 +19,8 @@ from core.rag.datasource.graph.graph_base import (
     StoredEntity,
     StoredRelation,
 )
+from core.rag.datasource.graph.graph_lock import graph_index_lock
 from core.rag.graph.entities import UNKNOWN_ENTITY_TYPE, ChunkGraph
-from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DatasetGraphChunkLink, DatasetGraphEntity, DatasetGraphRelation
 
 logger = logging.getLogger(__name__)
@@ -62,13 +62,22 @@ class PostgresGraphStore(BaseGraphStore):
 
         # Documents of the same dataset can be indexed in parallel; serialize the
         # read-modify-write merge so concurrent workers cannot both insert the
-        # same entity and trip the unique constraint.
-        lock_name = f"graph_indexing_lock_{self.dataset.id}"
-        with redis_client.lock(lock_name, timeout=600):
+        # same entity and trip the unique constraint. The lease is renewed
+        # between phases so a slow merge cannot lose it half-written.
+        with graph_index_lock(self.dataset.id) as renew:
             entity_ids = self._merge_entities(chunk_graphs, session=session)
+            renew()
             relation_ids = self._merge_relations(chunk_graphs, entity_ids, session=session)
+            renew()
             self._merge_chunk_links(chunk_graphs, entity_ids, relation_ids, session=session)
             session.flush()
+            # Provenance for these chunks was just replaced, so the counters
+            # derived from it are stale for everything the batch touched.
+            self._recompute_counters(
+                list(entity_ids.values()),
+                list(relation_ids.values()),
+                session=session,
+            )
 
     def _merge_entities(self, chunk_graphs: list[ChunkGraph], *, session: Session) -> dict[str, str]:
         """Upsert every extracted entity and return a normalized-name -> id map."""
@@ -95,7 +104,8 @@ class PostgresGraphStore(BaseGraphStore):
                 session.add(row)
                 session.flush()
             else:
-                row.frequency += merged.count
+                # `frequency` is recomputed from the chunk links at the end of the
+                # merge, so it is deliberately not incremented here.
                 if row.entity_type == UNKNOWN_ENTITY_TYPE and merged.entity_type != UNKNOWN_ENTITY_TYPE:
                     row.entity_type = merged.entity_type
                 row.description = self._merge_description(row.description, merged.description)
@@ -174,7 +184,8 @@ class PostgresGraphStore(BaseGraphStore):
                 session.add(row)
                 session.flush()
             else:
-                row.weight += float(merged.count)
+                # As with entity frequency, the weight is recomputed from the
+                # chunk links once the merge is done.
                 row.description = self._merge_description(row.description, merged.description)
             key_to_id[key] = row.id
         return key_to_id
@@ -240,21 +251,27 @@ class PostgresGraphStore(BaseGraphStore):
     def delete_by_document_ids(self, document_ids: list[str], *, session: Session) -> None:
         if not document_ids:
             return
-        for batch in _batched(document_ids):
-            session.execute(
-                delete(DatasetGraphChunkLink).where(
-                    DatasetGraphChunkLink.dataset_id == self.dataset.id,
-                    DatasetGraphChunkLink.document_id.in_(batch),
+        with graph_index_lock(self.dataset.id):
+            affected = self._collect_linked_ids(DatasetGraphChunkLink.document_id, document_ids, session=session)
+            for batch in _batched(document_ids):
+                session.execute(
+                    delete(DatasetGraphChunkLink).where(
+                        DatasetGraphChunkLink.dataset_id == self.dataset.id,
+                        DatasetGraphChunkLink.document_id.in_(batch),
+                    )
                 )
-            )
-        self._prune_orphans(session=session)
+            self._prune_orphans(session=session)
+            self._recompute_counters(*affected, session=session)
 
     @override
     def delete_by_index_node_ids(self, index_node_ids: list[str], *, session: Session) -> None:
         if not index_node_ids:
             return
-        self._delete_links_by_index_node_ids(index_node_ids, session=session)
-        self._prune_orphans(session=session)
+        with graph_index_lock(self.dataset.id):
+            affected = self._collect_linked_ids(DatasetGraphChunkLink.index_node_id, index_node_ids, session=session)
+            self._delete_links_by_index_node_ids(index_node_ids, session=session)
+            self._prune_orphans(session=session)
+            self._recompute_counters(*affected, session=session)
 
     @override
     def delete(self, *, session: Session) -> None:
@@ -271,6 +288,92 @@ class PostgresGraphStore(BaseGraphStore):
                     DatasetGraphChunkLink.index_node_id.in_(batch),
                 )
             )
+
+    def _collect_linked_ids(
+        self,
+        column: Any,
+        values: list[str],
+        *,
+        session: Session,
+    ) -> tuple[list[str], list[str]]:
+        """Return the entity and relation ids whose provenance is about to change.
+
+        Read before the links are deleted: afterwards nothing says which counters
+        went stale, and recomputing the whole dataset on every document deletion
+        is far more work than this.
+        """
+        entity_ids: set[str] = set()
+        relation_ids: set[str] = set()
+        for batch in _batched(values):
+            rows = session.execute(
+                select(DatasetGraphChunkLink.entity_id, DatasetGraphChunkLink.relation_id).where(
+                    DatasetGraphChunkLink.dataset_id == self.dataset.id,
+                    column.in_(batch),
+                )
+            ).all()
+            for entity_id, relation_id in rows:
+                if entity_id:
+                    entity_ids.add(entity_id)
+                if relation_id:
+                    relation_ids.add(relation_id)
+        return list(entity_ids), list(relation_ids)
+
+    def _recompute_counters(
+        self,
+        entity_ids: list[str],
+        relation_ids: list[str],
+        *,
+        session: Session,
+    ) -> None:
+        """Reset entity frequency and relation weight to their supporting-chunk counts.
+
+        Both counters mean "how many chunks support this fact", so they are
+        derived rather than incremented: an increment survives re-indexing and
+        orphan pruning as permanent drift, and since ``search_entities`` ranks
+        seeds by frequency, that drift steers retrieval.
+
+        Rows that no longer exist simply do not match, so this is safe to call
+        with ids that pruning has already deleted.
+        """
+        session.flush()
+        for batch in _batched(entity_ids):
+            session.execute(
+                update(DatasetGraphEntity)
+                .where(
+                    DatasetGraphEntity.dataset_id == self.dataset.id,
+                    DatasetGraphEntity.id.in_(batch),
+                )
+                .values(
+                    frequency=select(func.count())
+                    .select_from(DatasetGraphChunkLink)
+                    .where(DatasetGraphChunkLink.entity_id == DatasetGraphEntity.id)
+                    .scalar_subquery()
+                )
+                .execution_options(synchronize_session=False)
+            )
+        for batch in _batched(relation_ids):
+            session.execute(
+                update(DatasetGraphRelation)
+                .where(
+                    DatasetGraphRelation.dataset_id == self.dataset.id,
+                    DatasetGraphRelation.id.in_(batch),
+                )
+                .values(
+                    weight=select(func.count())
+                    .select_from(DatasetGraphChunkLink)
+                    .where(DatasetGraphChunkLink.relation_id == DatasetGraphRelation.id)
+                    .scalar_subquery()
+                )
+                .execution_options(synchronize_session=False)
+            )
+        session.flush()
+        # These are bulk UPDATEs, so the identity map still holds the values the
+        # rows had before them, and callers do read those rows back. Only the
+        # graph rows are expired: the session is shared with the indexing run,
+        # whose own objects have nothing to do with these counters.
+        for instance in list(session.identity_map.values()):
+            if isinstance(instance, DatasetGraphEntity | DatasetGraphRelation):
+                session.expire(instance)
 
     def _prune_orphans(self, *, session: Session) -> None:
         """Delete nodes and edges that no surviving chunk supports.
@@ -313,22 +416,40 @@ class PostgresGraphStore(BaseGraphStore):
         session.flush()
 
     @override
-    def get_entities_by_names(self, names: list[str], *, session: Session) -> list[StoredEntity]:
-        return [self._to_entity(row) for row in self._fetch_entities_by_names(names, session=session)]
+    def get_entities_by_names(
+        self,
+        names: list[str],
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[StoredEntity]:
+        return [
+            self._to_entity(row)
+            for row in self._fetch_entities_by_names(names, session=session, document_ids=document_ids)
+        ]
 
     @override
-    def search_entities(self, keywords: list[str], limit: int, *, session: Session) -> list[StoredEntity]:
+    def search_entities(
+        self,
+        keywords: list[str],
+        limit: int,
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[StoredEntity]:
         cleaned = [keyword for keyword in (k.strip() for k in keywords) if keyword]
         if not cleaned:
             return []
         # Names are stored case-folded, so a plain LIKE is already case-insensitive.
         conditions = [DatasetGraphEntity.name.like(f"%{_escape_like(keyword)}%", escape="\\") for keyword in cleaned]
-        rows = session.scalars(
+        stmt = (
             select(DatasetGraphEntity)
             .where(DatasetGraphEntity.dataset_id == self.dataset.id, or_(*conditions))
             .order_by(DatasetGraphEntity.frequency.desc())
             .limit(limit)
-        ).all()
+        )
+        stmt = self._restrict_entities_to_documents(stmt, document_ids)
+        rows = session.scalars(stmt).all()
         return [self._to_entity(row) for row in rows]
 
     @override
@@ -358,25 +479,41 @@ class PostgresGraphStore(BaseGraphStore):
         return [self._to_entity(row) for row in rows]
 
     @override
-    def get_relations(self, entity_ids: list[str], limit: int, *, session: Session) -> list[StoredRelation]:
+    def get_relations(
+        self,
+        entity_ids: list[str],
+        limit: int,
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[StoredRelation]:
         if not entity_ids:
             return []
         rows: list[DatasetGraphRelation] = []
         for batch in _batched(entity_ids):
-            rows.extend(
-                session.scalars(
-                    select(DatasetGraphRelation)
-                    .where(
-                        DatasetGraphRelation.dataset_id == self.dataset.id,
-                        or_(
-                            DatasetGraphRelation.source_entity_id.in_(batch),
-                            DatasetGraphRelation.target_entity_id.in_(batch),
-                        ),
-                    )
-                    .order_by(DatasetGraphRelation.weight.desc())
-                    .limit(limit)
-                ).all()
+            stmt = (
+                select(DatasetGraphRelation)
+                .where(
+                    DatasetGraphRelation.dataset_id == self.dataset.id,
+                    or_(
+                        DatasetGraphRelation.source_entity_id.in_(batch),
+                        DatasetGraphRelation.target_entity_id.in_(batch),
+                    ),
+                )
+                .order_by(DatasetGraphRelation.weight.desc())
+                .limit(limit)
             )
+            if document_ids:
+                stmt = stmt.where(
+                    exists(
+                        select(DatasetGraphChunkLink.id).where(
+                            DatasetGraphChunkLink.dataset_id == self.dataset.id,
+                            DatasetGraphChunkLink.relation_id == DatasetGraphRelation.id,
+                            DatasetGraphChunkLink.document_id.in_(document_ids),
+                        )
+                    )
+                )
+            rows.extend(session.scalars(stmt).all())
         # Batching can exceed the caller's budget; keep the strongest edges.
         rows.sort(key=lambda row: row.weight, reverse=True)
         return [self._to_relation(row) for row in rows[:limit]]
@@ -388,24 +525,21 @@ class PostgresGraphStore(BaseGraphStore):
         relation_ids: list[str],
         *,
         session: Session,
+        document_ids: list[str] | None = None,
     ) -> list[StoredChunkLink]:
         links: list[StoredChunkLink] = []
-        for batch in _batched(entity_ids):
-            rows = session.scalars(
-                select(DatasetGraphChunkLink).where(
+        for column, ids in (
+            (DatasetGraphChunkLink.entity_id, entity_ids),
+            (DatasetGraphChunkLink.relation_id, relation_ids),
+        ):
+            for batch in _batched(ids):
+                stmt = select(DatasetGraphChunkLink).where(
                     DatasetGraphChunkLink.dataset_id == self.dataset.id,
-                    DatasetGraphChunkLink.entity_id.in_(batch),
+                    column.in_(batch),
                 )
-            ).all()
-            links.extend(self._to_link(row) for row in rows)
-        for batch in _batched(relation_ids):
-            rows = session.scalars(
-                select(DatasetGraphChunkLink).where(
-                    DatasetGraphChunkLink.dataset_id == self.dataset.id,
-                    DatasetGraphChunkLink.relation_id.in_(batch),
-                )
-            ).all()
-            links.extend(self._to_link(row) for row in rows)
+                if document_ids:
+                    stmt = stmt.where(DatasetGraphChunkLink.document_id.in_(document_ids))
+                links.extend(self._to_link(row) for row in session.scalars(stmt).all())
         return links
 
     @override
@@ -433,20 +567,37 @@ class PostgresGraphStore(BaseGraphStore):
             entity_types={row[0]: row[1] for row in type_rows},
         )
 
-    def _fetch_entities_by_names(self, names: list[str], *, session: Session) -> list[DatasetGraphEntity]:
+    def _fetch_entities_by_names(
+        self,
+        names: list[str],
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[DatasetGraphEntity]:
         if not names:
             return []
         rows: list[DatasetGraphEntity] = []
         for batch in _batched(names):
-            rows.extend(
-                session.scalars(
-                    select(DatasetGraphEntity).where(
-                        DatasetGraphEntity.dataset_id == self.dataset.id,
-                        DatasetGraphEntity.name.in_(batch),
-                    )
-                ).all()
+            stmt = select(DatasetGraphEntity).where(
+                DatasetGraphEntity.dataset_id == self.dataset.id,
+                DatasetGraphEntity.name.in_(batch),
             )
+            rows.extend(session.scalars(self._restrict_entities_to_documents(stmt, document_ids)).all())
         return rows
+
+    def _restrict_entities_to_documents(self, stmt: Select[Any], document_ids: list[str] | None) -> Select[Any]:
+        """Keep only entities that some chunk of ``document_ids`` mentions."""
+        if not document_ids:
+            return stmt
+        return stmt.where(
+            exists(
+                select(DatasetGraphChunkLink.id).where(
+                    DatasetGraphChunkLink.dataset_id == self.dataset.id,
+                    DatasetGraphChunkLink.entity_id == DatasetGraphEntity.id,
+                    DatasetGraphChunkLink.document_id.in_(document_ids),
+                )
+            )
+        )
 
     def _fetch_relations_by_source_ids(self, source_ids: list[str], *, session: Session) -> list[DatasetGraphRelation]:
         rows: list[DatasetGraphRelation] = []

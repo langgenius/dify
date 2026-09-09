@@ -9,12 +9,13 @@ vector results.
 
 import logging
 from collections import defaultdict
+from collections.abc import Collection
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.rag.datasource.graph.graph_base import StoredEntity, StoredRelation
+from core.rag.datasource.graph.graph_base import StoredChunkLink, StoredEntity, StoredRelation
 from core.rag.datasource.graph.graph_factory import GraphStore
 from core.rag.graph.entities import GraphIndexSetting, RetrievedGraphPath, normalize_entity_name
 from core.rag.graph.entity_extractor import EntityRelationExtractor
@@ -28,6 +29,8 @@ logger = logging.getLogger(__name__)
 MAX_QUERY_KEYWORDS = 12
 # Keywords shorter than this match far too many entity names to be useful.
 MIN_KEYWORD_LENGTH = 2
+# SQLite (used by some test setups) caps bound parameters, so chunk large IN lists.
+_SEGMENT_LOOKUP_CHUNK_SIZE = 500
 
 
 @dataclass
@@ -91,6 +94,12 @@ class GraphRetrieval:
     ) -> list[Document]:
         """Return chunks reachable from entities mentioned in ``query``.
 
+        ``document_ids_filter`` is treated as the boundary of the graph, not as a
+        post-filter on the results: seeds, traversal and provenance are all
+        restricted to facts sourced from those documents, so an excluded document
+        can neither contribute a seed entity, bridge a multi-hop path, nor leak
+        an entity name through the ``graph_path`` explanation.
+
         Returns an empty list when the dataset has no graph, when no entity in
         the query matches the graph, or when the walk reaches no chunk.
         """
@@ -99,26 +108,41 @@ class GraphRetrieval:
             return []
 
         store = GraphStore(dataset)
-        seeds = cls._find_seed_entities(store, dataset, query, setting, session=session)
+        seeds = cls._find_seed_entities(
+            store, dataset, query, setting, session=session, document_ids=document_ids_filter
+        )
         if not seeds:
             return []
 
-        entity_hits, relation_hits = cls._walk(store, seeds, setting, session=session)
+        entity_hits, relation_hits = cls._walk(store, seeds, setting, session=session, document_ids=document_ids_filter)
         if not entity_hits and not relation_hits:
             return []
 
-        chunk_scores, chunk_paths = cls._score_chunks(store, entity_hits, relation_hits, session=session)
-        if not chunk_scores:
+        links = store.get_chunk_links(
+            list(entity_hits.keys()),
+            list(relation_hits.keys()),
+            session=session,
+            document_ids=document_ids_filter,
+        )
+        if not links:
             return []
 
-        return cls._build_documents(
+        # Resolve the segments first: a disabled or still-indexing chunk must not
+        # even contribute to the scores of the chunks it is ranked against.
+        segments = cls._resolve_segments(
             dataset,
-            chunk_scores,
-            chunk_paths,
-            top_k,
+            {link.index_node_id for link in links},
             session=session,
             document_ids_filter=document_ids_filter,
         )
+        if not segments:
+            return []
+
+        chunk_scores, chunk_paths = cls._score_chunks(links, entity_hits, relation_hits, visible=segments.keys())
+        if not chunk_scores:
+            return []
+
+        return cls._build_documents(chunk_scores, chunk_paths, segments, top_k)
 
     @staticmethod
     def _get_setting(dataset: Dataset) -> GraphIndexSetting | None:
@@ -147,19 +171,26 @@ class GraphRetrieval:
         setting: GraphIndexSetting,
         *,
         session: Session,
+        document_ids: list[str] | None = None,
     ) -> list[StoredEntity]:
         """Match the query against entity names, lexically first, then via the LLM.
 
         Lexical matching is free and handles the common case where the question
-        names an entity outright. The LLM fallback only runs when that finds
-        nothing, which keeps the cost of graph retrieval near zero for most
-        queries.
+        names an entity outright. The LLM fallback costs one call per query that
+        matches nothing lexically, so it is opt-out per dataset and only runs
+        after the free path has failed.
         """
         keywords = extract_query_keywords(query)
-        seeds = store.search_entities(keywords, setting.max_seed_entities, session=session) if keywords else []
+        seeds = (
+            store.search_entities(keywords, setting.max_seed_entities, session=session, document_ids=document_ids)
+            if keywords
+            else []
+        )
         if seeds:
             return seeds
 
+        if not setting.llm_query_fallback:
+            return []
         if not setting.model_provider_name or not setting.model_name:
             return []
         try:
@@ -171,11 +202,11 @@ class GraphRetrieval:
         if not mentions:
             return []
 
-        seeds = store.get_entities_by_names(mentions, session=session)
+        seeds = store.get_entities_by_names(mentions, session=session, document_ids=document_ids)
         if seeds:
             return seeds[: setting.max_seed_entities]
         # Fall back to partial matching on the extracted mentions.
-        return store.search_entities(mentions, setting.max_seed_entities, session=session)
+        return store.search_entities(mentions, setting.max_seed_entities, session=session, document_ids=document_ids)
 
     @classmethod
     def _walk(
@@ -185,6 +216,7 @@ class GraphRetrieval:
         setting: GraphIndexSetting,
         *,
         session: Session,
+        document_ids: list[str] | None = None,
     ) -> tuple[dict[str, _EntityHit], dict[str, _RelationHit]]:
         """Breadth-first walk out from the seeds, decaying the score per hop."""
         entity_hits: dict[str, _EntityHit] = {}
@@ -204,7 +236,9 @@ class GraphRetrieval:
         for hop in range(1, setting.max_depth + 1):
             if not frontier:
                 break
-            relations = store.get_relations(frontier, setting.max_neighbors_per_hop, session=session)
+            relations = store.get_relations(
+                frontier, setting.max_neighbors_per_hop, session=session, document_ids=document_ids
+            )
             if not relations:
                 break
 
@@ -301,26 +335,27 @@ class GraphRetrieval:
     @classmethod
     def _score_chunks(
         cls,
-        store: GraphStore,
+        links: list[StoredChunkLink],
         entity_hits: dict[str, _EntityHit],
         relation_hits: dict[str, _RelationHit],
         *,
-        session: Session,
+        visible: Collection[str],
     ) -> tuple[dict[str, float], dict[str, RetrievedGraphPath]]:
         """Aggregate node/edge scores onto the chunks that support them.
 
         Scores are summed so a chunk supporting several matched facts outranks
         one supporting a single fact, then normalized to ``(0, 1]`` so they sit
-        on the same scale as vector scores when the two are merged.
+        on the same scale as vector scores when the two are merged. Only chunks
+        in ``visible`` are scored, so a chunk that cannot be returned also cannot
+        change the ranking of the ones that can.
         """
-        links = store.get_chunk_links(list(entity_hits.keys()), list(relation_hits.keys()), session=session)
-        if not links:
-            return {}, {}
-
         chunk_scores: dict[str, float] = defaultdict(float)
         best_hit: dict[str, tuple[float, RetrievedGraphPath]] = {}
+        visible_nodes = set(visible)
 
         for link in links:
+            if link.index_node_id not in visible_nodes:
+                continue
             if link.entity_id is not None:
                 hit = entity_hits.get(link.entity_id)
                 if hit is None:
@@ -350,43 +385,59 @@ class GraphRetrieval:
                     ),
                 )
 
+        if not chunk_scores:
+            return {}, {}
         max_score = max(chunk_scores.values())
         normalized = {node_id: score / max_score for node_id, score in chunk_scores.items()}
         return normalized, {node_id: path for node_id, (_, path) in best_hit.items()}
 
     @classmethod
-    def _build_documents(
+    def _resolve_segments(
         cls,
         dataset: Dataset,
-        chunk_scores: dict[str, float],
-        chunk_paths: dict[str, RetrievedGraphPath],
-        top_k: int,
+        index_node_ids: Collection[str],
         *,
         session: Session,
         document_ids_filter: list[str] | None = None,
+    ) -> dict[str, DocumentSegment]:
+        """Return the returnable segments among ``index_node_ids``, keyed by node id.
+
+        A disabled or still-indexing segment must never surface, even though its
+        facts may linger in the graph until the next rebuild.
+        """
+        node_ids = list(index_node_ids)
+        segments: dict[str, DocumentSegment] = {}
+        for start in range(0, len(node_ids), _SEGMENT_LOOKUP_CHUNK_SIZE):
+            batch = node_ids[start : start + _SEGMENT_LOOKUP_CHUNK_SIZE]
+            stmt = select(DocumentSegment).where(
+                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.index_node_id.in_(batch),
+                DocumentSegment.enabled == True,
+                DocumentSegment.status == SegmentStatus.COMPLETED,
+            )
+            if document_ids_filter:
+                stmt = stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
+            for segment in session.scalars(stmt).all():
+                # The column is nullable; a segment without one cannot be the
+                # chunk any of these graph facts came from.
+                if segment.index_node_id:
+                    segments[segment.index_node_id] = segment
+        return segments
+
+    @classmethod
+    def _build_documents(
+        cls,
+        chunk_scores: dict[str, float],
+        chunk_paths: dict[str, RetrievedGraphPath],
+        segments: dict[str, DocumentSegment],
+        top_k: int,
     ) -> list[Document]:
-        """Resolve scored chunk ids to segments, preserving citation metadata."""
+        """Turn scored chunk ids into documents, preserving citation metadata."""
         ranked_node_ids = sorted(chunk_scores, key=lambda node_id: chunk_scores[node_id], reverse=True)[:top_k]
-        if not ranked_node_ids:
-            return []
-
-        stmt = select(DocumentSegment).where(
-            DocumentSegment.dataset_id == dataset.id,
-            DocumentSegment.index_node_id.in_(ranked_node_ids),
-            # A disabled or still-indexing segment must never surface, even
-            # though its facts may linger in the graph until the next rebuild.
-            DocumentSegment.enabled == True,
-            DocumentSegment.status == SegmentStatus.COMPLETED,
-        )
-        if document_ids_filter:
-            stmt = stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
-
-        segments = session.scalars(stmt).all()
-        segment_map = {segment.index_node_id: segment for segment in segments}
 
         documents: list[Document] = []
         for node_id in ranked_node_ids:
-            segment = segment_map.get(node_id)
+            segment = segments.get(node_id)
             if not segment:
                 continue
             path = chunk_paths.get(node_id)

@@ -254,10 +254,96 @@ class TestRetrieve:
         seed_keywords(["acme"])
 
         documents = GraphRetrieval.retrieve(
+            dataset, "What does Acme own?", top_k=10, session=session, document_ids_filter=["doc-1", "doc-2"]
+        )
+
+        assert {document.metadata["doc_id"] for document in documents} == {"node-1", "node-2"}
+
+    def test_an_excluded_document_cannot_seed_the_walk(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords(["acme"])
+
+        # Acme is only mentioned in doc-1. With the filter narrowed to doc-2 the
+        # query matches nothing the caller is allowed to see, so the walk never
+        # starts -- the filter is the boundary of the graph, not a sieve applied
+        # to whatever the walk happened to reach.
+        documents = GraphRetrieval.retrieve(
             dataset, "What does Acme own?", top_k=10, session=session, document_ids_filter=["doc-2"]
         )
 
-        assert {document.metadata["doc_id"] for document in documents} == {"node-2"}
+        assert documents == []
+
+    def test_an_excluded_document_cannot_bridge_a_multi_hop_path(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords(["acme"])
+
+        # Only doc-2 knows that Globex owns Initech, so with doc-2 excluded the
+        # walk must stop at Globex instead of stepping over it into doc-3.
+        documents = GraphRetrieval.retrieve(
+            dataset, "What does Acme own?", top_k=10, session=session, document_ids_filter=["doc-1", "doc-3"]
+        )
+
+        assert {document.metadata["doc_id"] for document in documents} == {"node-1"}
+
+    def test_graph_path_never_names_an_excluded_document(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _dataset()
+        _build_chain_graph(session, dataset)
+        seed_keywords(["acme"])
+
+        documents = GraphRetrieval.retrieve(
+            dataset, "What does Acme own?", top_k=10, session=session, document_ids_filter=["doc-1", "doc-2"]
+        )
+
+        # The explanation is user-visible, so it must not leak entity names or
+        # predicates that only appear in a document the caller filtered out.
+        walked = {
+            value
+            for document in documents
+            for value in document.metadata["graph_path"]["entities"] + document.metadata["graph_path"]["relations"]
+        }
+        assert not any("Umbrella" in value or "operates" in value for value in walked)
+
+    def test_a_disabled_segment_does_not_skew_the_ranking(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
+        dataset = _dataset(max_depth=1)
+        store = PostgresGraphStore(dataset)
+        store.add_chunk_graphs(
+            [
+                # node-1 supports one matched fact, node-2 two -- but node-2 is
+                # disabled, so the surviving chunk must score a clean 1.0 rather
+                # than being normalized against a chunk nobody can see.
+                _link("node-1", "doc-1", "acme", "globex", "acquired"),
+                ChunkGraph(
+                    index_node_id="node-2",
+                    document_id="doc-2",
+                    extraction=GraphExtraction(
+                        entities=[_entity("acme"), _entity("globex"), _entity("initech")],
+                        relations=[
+                            GraphRelation(source="acme", target="globex", predicate="acquired"),
+                            GraphRelation(source="acme", target="initech", predicate="funds"),
+                        ],
+                    ),
+                ),
+            ],
+            session=session,
+        )
+        _segment(session, "node-1", "doc-1", "Acme acquired Globex.")
+        _segment(session, "node-2", "doc-2", "Acme acquired Globex and funds Initech.", enabled=False)
+        seed_keywords(["acme"])
+
+        documents = GraphRetrieval.retrieve(dataset, "What does Acme own?", top_k=10, session=session)
+
+        assert [document.metadata["doc_id"] for document in documents] == ["node-1"]
+        assert documents[0].metadata["score"] == 1.0
 
     def test_scores_are_normalized_to_at_most_one(
         self, session: Session, seed_keywords: Callable[[list[str]], None]

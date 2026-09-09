@@ -2,6 +2,7 @@
 
 import concurrent.futures
 import logging
+import threading
 from typing import Any, cast
 
 from flask import Flask, current_app
@@ -31,6 +32,27 @@ logger = logging.getLogger(__name__)
 MAX_PREDICATE_LENGTH = 255
 MAX_DESCRIPTION_LENGTH = 2000
 
+_slots_lock = threading.Lock()
+_extraction_slots: threading.BoundedSemaphore | None = None
+
+
+def _acquire_extraction_slot() -> threading.BoundedSemaphore:
+    """Return the process-wide budget of concurrent extraction calls.
+
+    ``KNOWLEDGE_GRAPH_EXTRACTION_WORKERS`` bounds one call's thread pool, but
+    bulk indexing runs through many celery tasks at once, so without a shared
+    budget the real concurrency -- and the LLM bill -- is workers times however
+    many tasks a worker happens to be running. Held per process, so total spend
+    still scales with the number of deployed workers; that is the number
+    operators control.
+    """
+    global _extraction_slots
+    if _extraction_slots is None:
+        with _slots_lock:
+            if _extraction_slots is None:
+                _extraction_slots = threading.BoundedSemaphore(dify_config.KNOWLEDGE_GRAPH_EXTRACTION_WORKERS)
+    return _extraction_slots
+
 
 class EntityRelationExtractor:
     """Extracts a per-chunk subgraph using the dataset's configured LLM.
@@ -39,6 +61,17 @@ class EntityRelationExtractor:
     skipped with a warning rather than failing the whole indexing run, because
     the vector/keyword index for that chunk is already valid on its own and the
     graph is an enhancement layer over it.
+
+    Known limitation -- document content is untrusted input. It reaches the
+    extraction prompt verbatim, and whatever entities and relations come back
+    are persisted as facts without a confidence gate or a schema constraint, so
+    a crafted document can plant edges that later act as false multi-hop
+    bridges. The blast radius is bounded by the dataset (facts never cross into
+    another knowledge base) and every fact stays traceable to the chunk that
+    produced it, so a suspect bridge can be followed back to its source.
+    Uploading a document is already a privileged action for exactly this kind of
+    reason; treat a knowledge base with a graph the way you would treat one
+    whose documents feed a summarizer.
     """
 
     def __init__(self, tenant_id: str, setting: GraphIndexSetting):
@@ -119,11 +152,12 @@ class EntityRelationExtractor:
     def _extract_one(self, flask_app: Flask | None, document: Document) -> ChunkGraph | None:
         metadata = document.metadata or {}
         try:
-            if flask_app:
-                with flask_app.app_context():
+            with _acquire_extraction_slot():
+                if flask_app:
+                    with flask_app.app_context():
+                        extraction = self.extract(document.page_content)
+                else:
                     extraction = self.extract(document.page_content)
-            else:
-                extraction = self.extract(document.page_content)
         except Exception:
             # A failed chunk must not abort indexing: the chunk stays searchable
             # through the vector/keyword index, it just has no graph facts.

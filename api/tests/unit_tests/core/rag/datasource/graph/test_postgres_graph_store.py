@@ -107,6 +107,40 @@ class TestAddChunkGraphs:
 
         assert _count(session, DatasetGraphChunkLink) == 1
 
+    def test_reindexing_a_chunk_does_not_inflate_its_counters(
+        self, store: PostgresGraphStore, session: Session
+    ) -> None:
+        chunk = _chunk_graph(
+            "node-1",
+            "doc-1",
+            [_entity("acme"), _entity("globex")],
+            [GraphRelation(source="acme", target="globex", predicate="acquired")],
+        )
+        store.add_chunk_graphs([chunk], session=session)
+        store.add_chunk_graphs([chunk], session=session)
+        store.add_chunk_graphs([chunk], session=session)
+
+        # Still one supporting chunk, so still frequency 1 and weight 1. Counters
+        # that only ever climbed would read 3 here and, since seeds are ranked by
+        # frequency, would steer retrieval towards whatever was re-indexed most.
+        assert [entity.frequency for entity in session.scalars(select(DatasetGraphEntity)).all()] == [1, 1]
+        assert session.scalars(select(DatasetGraphRelation)).one().weight == 1.0
+
+    def test_counters_drop_back_when_a_supporting_document_is_deleted(
+        self, store: PostgresGraphStore, session: Session
+    ) -> None:
+        relation = GraphRelation(source="acme", target="globex", predicate="acquired")
+        entities = [_entity("acme"), _entity("globex")]
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", entities, [relation])], session=session)
+        store.add_chunk_graphs([_chunk_graph("node-2", "doc-2", entities, [relation])], session=session)
+
+        store.delete_by_document_ids(["doc-2"], session=session)
+
+        # One of the two supporting chunks is gone, so the counters that survive
+        # must describe what is left rather than what once was.
+        assert [entity.frequency for entity in session.scalars(select(DatasetGraphEntity)).all()] == [1, 1]
+        assert session.scalars(select(DatasetGraphRelation)).one().weight == 1.0
+
     def test_unknown_type_is_upgraded_when_a_later_chunk_types_the_entity(
         self, store: PostgresGraphStore, session: Session
     ) -> None:
@@ -252,6 +286,59 @@ class TestQueries:
         store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [_entity("acme")])], session=session)
 
         assert store.search_entities(["", "  "], 10, session=session) == []
+
+    def test_search_entities_can_be_scoped_to_documents(self, store: PostgresGraphStore, session: Session) -> None:
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [_entity("acme")])], session=session)
+        store.add_chunk_graphs([_chunk_graph("node-2", "doc-2", [_entity("acme corp")])], session=session)
+
+        results = store.search_entities(["acme"], 10, session=session, document_ids=["doc-2"])
+
+        # Retrieval passes the caller's document filter down here, so an entity
+        # only the excluded document mentions must not come back as a seed.
+        assert [entity.name for entity in results] == ["acme corp"]
+
+    def test_get_entities_by_names_can_be_scoped_to_documents(
+        self, store: PostgresGraphStore, session: Session
+    ) -> None:
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [_entity("acme")])], session=session)
+
+        assert store.get_entities_by_names(["acme"], session=session, document_ids=["doc-2"]) == []
+        assert len(store.get_entities_by_names(["acme"], session=session, document_ids=["doc-1"])) == 1
+
+    def test_get_relations_can_be_scoped_to_documents(self, store: PostgresGraphStore, session: Session) -> None:
+        store.add_chunk_graphs(
+            [
+                _chunk_graph(
+                    "node-1",
+                    "doc-1",
+                    [_entity("acme"), _entity("globex")],
+                    [GraphRelation(source="acme", target="globex", predicate="acquired")],
+                ),
+                _chunk_graph(
+                    "node-2",
+                    "doc-2",
+                    [_entity("acme"), _entity("initech")],
+                    [GraphRelation(source="acme", target="initech", predicate="funds")],
+                ),
+            ],
+            session=session,
+        )
+        acme = session.scalars(select(DatasetGraphEntity).where(DatasetGraphEntity.name == "acme")).one()
+
+        relations = store.get_relations([acme.id], 10, session=session, document_ids=["doc-2"])
+
+        # A fact only the excluded document supports must not bridge to its far
+        # endpoint, whatever that endpoint is.
+        assert [relation.predicate for relation in relations] == ["funds"]
+
+    def test_get_chunk_links_can_be_scoped_to_documents(self, store: PostgresGraphStore, session: Session) -> None:
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [_entity("acme")])], session=session)
+        store.add_chunk_graphs([_chunk_graph("node-2", "doc-2", [_entity("acme")])], session=session)
+        acme = session.scalars(select(DatasetGraphEntity)).one()
+
+        links = store.get_chunk_links([acme.id], [], session=session, document_ids=["doc-1"])
+
+        assert [link.index_node_id for link in links] == ["node-1"]
 
     def test_get_relations_walks_both_directions(self, store: PostgresGraphStore, session: Session) -> None:
         store.add_chunk_graphs(

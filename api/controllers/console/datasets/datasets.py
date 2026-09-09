@@ -128,6 +128,9 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model_provider: str | None = None
     retrieval_model: dict[str, Any] | None = Field(default=None)
     summary_index_setting: dict[str, Any] | None = Field(default=None)
+    # Validated and merged over the stored setting by
+    # DatasetService.validate_graph_index_setting; kept loose here so the
+    # console can send a partial object.
     graph_index_setting: dict[str, Any] | None = Field(default=None)
     partial_member_list: list[dict[str, str]] | None = None
     external_retrieval_model: dict[str, Any] | None = Field(default=None)

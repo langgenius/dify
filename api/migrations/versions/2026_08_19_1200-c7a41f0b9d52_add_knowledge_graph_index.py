@@ -42,6 +42,9 @@ def upgrade():
         batch_op.create_index("dataset_graph_entity_tenant_idx", ["tenant_id"], unique=False)
         batch_op.create_index("dataset_graph_entity_dataset_idx", ["dataset_id"], unique=False)
         batch_op.create_index("dataset_graph_entity_dataset_type_idx", ["dataset_id", "entity_type"], unique=False)
+        batch_op.create_index(
+            "dataset_graph_entity_dataset_frequency_idx", ["dataset_id", "frequency"], unique=False
+        )
 
     op.create_table(
         "dataset_graph_relations",
@@ -109,6 +112,7 @@ def downgrade():
     op.drop_table("dataset_graph_relations")
 
     with op.batch_alter_table("dataset_graph_entities", schema=None) as batch_op:
+        batch_op.drop_index("dataset_graph_entity_dataset_frequency_idx")
         batch_op.drop_index("dataset_graph_entity_dataset_type_idx")
         batch_op.drop_index("dataset_graph_entity_dataset_idx")
         batch_op.drop_index("dataset_graph_entity_tenant_idx")

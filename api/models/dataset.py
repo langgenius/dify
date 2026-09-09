@@ -1898,6 +1898,11 @@ class DatasetGraphEntity(TypeBase):
         sa.Index("dataset_graph_entity_tenant_idx", "tenant_id"),
         sa.Index("dataset_graph_entity_dataset_idx", "dataset_id"),
         sa.Index("dataset_graph_entity_dataset_type_idx", "dataset_id", "entity_type"),
+        # Seed lookup and the console entity list both rank by frequency within a
+        # dataset. The `LIKE '%term%'` probe in front of that ordering still can
+        # not use a btree index; a trigram index would need the pg_trgm
+        # extension, which the deployment cannot be assumed to have.
+        sa.Index("dataset_graph_entity_dataset_frequency_idx", "dataset_id", "frequency"),
     )
 
     id: Mapped[str] = mapped_column(

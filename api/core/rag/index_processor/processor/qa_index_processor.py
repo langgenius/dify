@@ -165,6 +165,12 @@ class QAIndexProcessor(BaseIndexProcessor):
     def clean(
         self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
     ) -> None:
+        # Graph cleanup runs first: the vector/keyword legs below can raise, and
+        # callers such as clean_dataset_task swallow that failure and carry on
+        # deleting the dataset, which would strand graph rows forever. The
+        # service contains its own failures, so this cannot mask them either.
+        self._clean_graph_index(dataset, node_ids, session=session)
+
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
@@ -192,8 +198,6 @@ class QAIndexProcessor(BaseIndexProcessor):
             vector.delete_by_ids(node_ids)
         else:
             vector.delete()
-
-        self._clean_graph_index(dataset, node_ids, session=session)
 
     @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:

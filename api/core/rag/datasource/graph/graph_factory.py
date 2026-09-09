@@ -57,11 +57,24 @@ class GraphStore:
     def delete(self, *, session: Session) -> None:
         self._store.delete(session=session)
 
-    def get_entities_by_names(self, names: list[str], *, session: Session) -> list[StoredEntity]:
-        return self._store.get_entities_by_names(names, session=session)
+    def get_entities_by_names(
+        self,
+        names: list[str],
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[StoredEntity]:
+        return self._store.get_entities_by_names(names, session=session, document_ids=document_ids)
 
-    def search_entities(self, keywords: list[str], limit: int, *, session: Session) -> list[StoredEntity]:
-        return self._store.search_entities(keywords, limit, session=session)
+    def search_entities(
+        self,
+        keywords: list[str],
+        limit: int,
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[StoredEntity]:
+        return self._store.search_entities(keywords, limit, session=session, document_ids=document_ids)
 
     def get_entities_by_ids(self, entity_ids: list[str], *, session: Session) -> list[StoredEntity]:
         return self._store.get_entities_by_ids(entity_ids, session=session)
@@ -69,8 +82,15 @@ class GraphStore:
     def list_entities(self, limit: int, *, session: Session) -> list[StoredEntity]:
         return self._store.list_entities(limit, session=session)
 
-    def get_relations(self, entity_ids: list[str], limit: int, *, session: Session) -> list[StoredRelation]:
-        return self._store.get_relations(entity_ids, limit, session=session)
+    def get_relations(
+        self,
+        entity_ids: list[str],
+        limit: int,
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[StoredRelation]:
+        return self._store.get_relations(entity_ids, limit, session=session, document_ids=document_ids)
 
     def get_chunk_links(
         self,
@@ -78,8 +98,9 @@ class GraphStore:
         relation_ids: list[str],
         *,
         session: Session,
+        document_ids: list[str] | None = None,
     ) -> list[StoredChunkLink]:
-        return self._store.get_chunk_links(entity_ids, relation_ids, session=session)
+        return self._store.get_chunk_links(entity_ids, relation_ids, session=session, document_ids=document_ids)
 
     def stats(self, *, session: Session) -> GraphStats:
         return self._store.stats(session=session)

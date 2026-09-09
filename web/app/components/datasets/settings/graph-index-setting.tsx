@@ -69,7 +69,15 @@ const GraphIndexSetting = ({
     [onGraphIndexSettingChange],
   )
 
+  const handleQueryFallbackChange = useCallback(
+    (value: boolean) => {
+      onGraphIndexSettingChange?.({ llm_query_fallback: value })
+    },
+    [onGraphIndexSettingChange],
+  )
+
   const maxDepthLabel = t(($) => $['form.graphIndex.maxDepth'], { ns: 'datasetSettings' })
+  const queryFallbackLabel = t(($) => $['form.graphIndex.queryFallback'], { ns: 'datasetSettings' })
 
   return (
     <div className="space-y-4">
@@ -116,6 +124,12 @@ const GraphIndexSetting = ({
               <div className="mt-2 system-xs-regular text-text-tertiary">
                 {t(($) => $['form.graphIndex.modelTip'], { ns: 'datasetSettings' })}
               </div>
+              {/* One LLM call per chunk is easy to miss until the invoice
+                arrives, so the cost is stated where the model is chosen. */}
+              <div className="mt-1 flex items-start gap-x-1 system-xs-regular text-text-warning-secondary">
+                <span className="mt-0.5 i-ri-alert-fill size-4 shrink-0" />
+                <span>{t(($) => $['form.graphIndex.costTip'], { ns: 'datasetSettings' })}</span>
+              </div>
             </div>
           </div>
           <div className="flex gap-x-1">
@@ -155,6 +169,23 @@ const GraphIndexSetting = ({
               </div>
               <div className="mt-2 system-xs-regular text-text-tertiary">
                 {t(($) => $['form.graphIndex.maxDepthTip'], { ns: 'datasetSettings' })}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-x-1">
+            <div className="flex h-7 w-45 shrink-0 items-center pt-1">
+              <div className="system-sm-medium text-text-tertiary">{queryFallbackLabel}</div>
+            </div>
+            <div className="grow py-1.5">
+              <Switch
+                aria-label={queryFallbackLabel}
+                checked={graphIndexSetting?.llm_query_fallback ?? true}
+                onCheckedChange={handleQueryFallbackChange}
+                size="md"
+                disabled={readonly}
+              />
+              <div className="mt-2 system-xs-regular text-text-tertiary">
+                {t(($) => $['form.graphIndex.queryFallbackTip'], { ns: 'datasetSettings' })}
               </div>
             </div>
           </div>

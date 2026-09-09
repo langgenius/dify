@@ -276,13 +276,18 @@ class RetrievalService:
         query: str,
         top_k: int,
         all_documents: list[Document],
-        exceptions: list[str],
         document_ids_filter: list[str] | None = None,
     ):
         """Walk the dataset's knowledge graph and append the chunks it reaches.
 
         Runs alongside vector and full-text search for hybrid retrieval, so the
         merged result set is deduplicated and reranked as a whole.
+
+        The graph is an enhancement layer over the primary legs, so a failure is
+        logged and the leg is skipped: it deliberately does not join the shared
+        ``exceptions`` list that :meth:`_retrieve` raises on, otherwise an
+        unavailable graph backend would take down hybrid and keyword retrieval
+        for the whole dataset even when vector and full-text search succeeded.
         """
         with flask_app.app_context():
             try:
@@ -299,9 +304,8 @@ class RetrievalService:
                         document_ids_filter=document_ids_filter,
                     )
                 all_documents.extend(documents)
-            except Exception as e:
-                logger.error(e, exc_info=True)
-                exceptions.append(str(e))
+            except Exception:
+                logger.exception("Knowledge graph retrieval failed for dataset %s, skipping the graph leg", dataset_id)
 
     @classmethod
     @trace_span()
@@ -911,7 +915,6 @@ class RetrievalService:
                             query=query,
                             top_k=top_k,
                             all_documents=all_documents_item,
-                            exceptions=exceptions,
                             document_ids_filter=document_ids_filter,
                         )
                     )

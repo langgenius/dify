@@ -1,11 +1,13 @@
 import logging
 import time
+from typing import Any
 
 import click
 from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
+from core.rag.graph.graph_index_service import GraphIndexService
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
@@ -39,6 +41,7 @@ def clean_dataset_task(
     collection_binding_id: str,
     doc_form: str,
     pipeline_id: str | None = None,
+    graph_index_setting: dict[str, Any] | None = None,
 ):
     """
     Clean dataset when dataset deleted.
@@ -48,6 +51,8 @@ def clean_dataset_task(
     :param index_struct: index struct dict
     :param collection_binding_id: collection binding id
     :param doc_form: dataset form
+    :param graph_index_setting: knowledge-graph configuration, carried over from the
+        deleted dataset row so the graph backend can be purged
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
@@ -63,6 +68,7 @@ def clean_dataset_task(
                 indexing_technique=indexing_technique,
                 index_struct=index_struct,
                 collection_binding_id=collection_binding_id,
+                graph_index_setting=graph_index_setting,
             )
             documents = session.scalars(select(Document).where(Document.dataset_id == dataset_id)).all()
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id)).all()
@@ -89,6 +95,12 @@ def clean_dataset_task(
                         fg="yellow",
                     )
                 )
+
+            # Purge the knowledge graph before the vector/keyword cleanup below:
+            # that step is allowed to fail without aborting the deletion, so
+            # anything sequenced after it can be skipped and leave graph rows
+            # (and Neo4j nodes) behind for a dataset that no longer exists.
+            GraphIndexService.purge_dataset(dataset, session=session)
 
             # Add exception handling around IndexProcessorFactory.clean() to prevent single point of failure
             # This ensures Document/Segment deletion can continue even if vector database cleanup fails

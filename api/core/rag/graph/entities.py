@@ -27,6 +27,10 @@ _EDGE_PUNCTUATION = " \t\r\n\"'`*_-–—.,;:!?()[]{}<>《》「」『』（）�
 # condense; the column is String(255) so we also need a hard bound.
 MAX_ENTITY_NAME_LENGTH = 255
 
+# A custom extraction prompt is prepended to every chunk, so an unbounded one is
+# a per-chunk cost multiplier as well as a way to blow the model's context.
+MAX_EXTRACT_PROMPT_LENGTH = 20000
+
 
 def normalize_entity_name(name: str) -> str:
     """Return the canonical dedup key for an entity name.
@@ -110,6 +114,7 @@ class GraphIndexSetting(BaseModel):
     max_entities_per_chunk: int = Field(default=16, ge=1, le=64)
     extract_prompt: str | None = Field(
         default=None,
+        max_length=MAX_EXTRACT_PROMPT_LENGTH,
         description="Overrides the built-in extraction prompt. Must instruct the model to answer with JSON.",
     )
     # retrieval-time knobs
@@ -121,6 +126,11 @@ class GraphIndexSetting(BaseModel):
         gt=0.0,
         le=1.0,
         description="Score multiplier applied per additional hop away from a seed entity.",
+    )
+    llm_query_fallback: bool = Field(
+        default=True,
+        description="Ask the extraction LLM for seed entities when the query matches no entity name."
+        " Costs one LLM call per query that misses; turn it off to keep retrieval free.",
     )
 
 

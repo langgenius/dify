@@ -82,17 +82,43 @@ class BaseGraphStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_entities_by_names(self, names: list[str], *, session: Session) -> list[StoredEntity]:
-        """Look up entities by their normalized names."""
+    def get_entities_by_names(
+        self,
+        names: list[str],
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[StoredEntity]:
+        """Look up entities by their normalized names.
+
+        ``document_ids``, where given, restricts the result to entities some
+        chunk of those documents mentions. Retrieval passes the caller's
+        document filter down so that excluded documents cannot contribute seeds
+        or bridge a multi-hop path (see :class:`~core.rag.graph.graph_retrieval.GraphRetrieval`).
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def search_entities(self, keywords: list[str], limit: int, *, session: Session) -> list[StoredEntity]:
+    def search_entities(
+        self,
+        keywords: list[str],
+        limit: int,
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[StoredEntity]:
         """Find entities whose name partially matches any keyword, most frequent first."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_relations(self, entity_ids: list[str], limit: int, *, session: Session) -> list[StoredRelation]:
+    def get_relations(
+        self,
+        entity_ids: list[str],
+        limit: int,
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[StoredRelation]:
         """Return edges incident to any of ``entity_ids``, in either direction."""
         raise NotImplementedError
 
@@ -112,6 +138,7 @@ class BaseGraphStore(ABC):
         relation_ids: list[str],
         *,
         session: Session,
+        document_ids: list[str] | None = None,
     ) -> list[StoredChunkLink]:
         """Return the chunks that support the given nodes and edges."""
         raise NotImplementedError

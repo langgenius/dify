@@ -369,11 +369,19 @@ export const zDatasetExternalRetrievalModelResponse = z.object({
 
 /**
  * DatasetGraphIndexSettingResponse
+ *
+ * Knowledge-graph configuration of a dataset.
  */
 export const zDatasetGraphIndexSettingResponse = z.object({
   enabled: z.boolean().nullish(),
   entity_types: z.array(z.string()).nullish(),
+  extract_prompt: z.string().nullish(),
+  hop_decay: z.number().nullish(),
+  llm_query_fallback: z.boolean().nullish(),
   max_depth: z.int().nullish(),
+  max_entities_per_chunk: z.int().nullish(),
+  max_neighbors_per_hop: z.int().nullish(),
+  max_seed_entities: z.int().nullish(),
   model_name: z.string().nullish(),
   model_provider_name: z.string().nullish(),
 })

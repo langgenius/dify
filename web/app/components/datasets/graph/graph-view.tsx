@@ -108,7 +108,10 @@ const GraphView = ({ entities, relations, focusedEntityName, onEntityClick }: Gr
         },
         label: {
           show: false,
-          formatter: relation.predicate,
+          // A string formatter is a template: ECharts would expand `{a}`,
+          // `{b}` and friends inside a predicate the extraction model wrote.
+          // Returning the text from a callback renders it verbatim.
+          formatter: () => relation.predicate,
           fontSize: 10,
           color: colors.mutedLabel,
         },

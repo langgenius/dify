@@ -172,9 +172,14 @@ export const useFormState = () => {
       return
     }
 
+    // An external knowledge base indexes nothing locally, so there is no graph
+    // to build: the control is hidden and the field is never sent.
+    const supportsGraphIndex = currentDataset?.provider !== 'external'
+
     // Extraction cannot run without a model, and silently indexing nothing would
     // look like the graph feature is broken rather than unconfigured.
     if (
+      supportsGraphIndex &&
       graphIndexSetting?.enabled &&
       (!graphIndexSetting.model_name || !graphIndexSetting.model_provider_name)
     ) {
@@ -206,8 +211,9 @@ export const useFormState = () => {
         embedding_model_provider: embeddingModel.provider,
         keyword_number: keywordNumber,
         summary_index_setting: summaryIndexSetting,
-        graph_index_setting: graphIndexSetting,
       }
+
+      if (supportsGraphIndex) body.graph_index_setting = graphIndexSetting
 
       if (currentDataset!.provider === 'external') {
         body.external_knowledge_id = currentDataset!.external_knowledge_info.external_knowledge_id

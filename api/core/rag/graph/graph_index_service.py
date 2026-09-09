@@ -2,6 +2,7 @@
 
 import logging
 
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from core.rag.datasource.graph.graph_base import GraphStats, StoredEntity, StoredRelation
@@ -9,7 +10,7 @@ from core.rag.datasource.graph.graph_factory import GraphStore
 from core.rag.graph.entities import GraphIndexSetting
 from core.rag.graph.entity_extractor import EntityRelationExtractor
 from core.rag.models.document import Document
-from models.dataset import Dataset
+from models.dataset import Dataset, DatasetGraphChunkLink, DatasetGraphEntity, DatasetGraphRelation
 
 logger = logging.getLogger(__name__)
 
@@ -93,9 +94,45 @@ class GraphIndexService:
             logger.exception("Failed to delete the knowledge graph for dataset %s", dataset.id)
 
     @classmethod
+    def purge_dataset(cls, dataset: Dataset, *, session: Session) -> None:
+        """Drop every graph row for a dataset, whatever its settings say.
+
+        Used by dataset deletion, where the settings-based guards used elsewhere
+        are the wrong contract: a dataset whose ``graph_index_setting`` was
+        cleared (or never reached the deletion task) would silently keep its
+        entities, relations and provenance links forever.
+
+        The metadata tables are cleared directly as well as through the
+        configured backend, because a deployment can switch ``GRAPH_STORE``
+        after indexing and the backend in force today is not necessarily the one
+        that wrote yesterday's rows.
+        """
+        for model in (DatasetGraphChunkLink, DatasetGraphRelation, DatasetGraphEntity):
+            try:
+                session.execute(delete(model).where(model.dataset_id == dataset.id))
+            except Exception:
+                logger.exception("Failed to delete %s rows for dataset %s", model.__tablename__, dataset.id)
+        try:
+            GraphStore(dataset).delete(session=session)
+        except Exception:
+            logger.exception("Failed to delete the knowledge graph for dataset %s", dataset.id)
+
+    @staticmethod
+    def is_enabled(dataset: Dataset) -> bool:
+        """Whether the console should expose the graph for this dataset.
+
+        Deliberately weaker than :meth:`get_setting`, which also requires an
+        extraction model: an existing graph stays inspectable while its model is
+        being reconfigured. Turning the feature off, however, hides it
+        everywhere -- the API must not keep serving stale graph data after the UI
+        has stopped offering it.
+        """
+        return dataset.graph_index_enabled
+
+    @classmethod
     def get_stats(cls, dataset: Dataset, *, session: Session) -> GraphStats:
         """Return entity/relation counts for a dataset, or zeros when no graph exists."""
-        if not dataset.graph_index_setting:
+        if not cls.is_enabled(dataset):
             return GraphStats()
         return GraphStore(dataset).stats(session=session)
 
@@ -113,7 +150,7 @@ class GraphIndexService:
         With no query, returns the most frequently mentioned entities, which is
         a useful default view of what the extractor found.
         """
-        if not dataset.graph_index_setting:
+        if not cls.is_enabled(dataset):
             return [], []
 
         from core.rag.graph.graph_retrieval import extract_query_keywords

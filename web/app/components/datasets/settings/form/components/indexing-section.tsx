@@ -198,8 +198,10 @@ const IndexingSection = ({
         </>
       )}
 
-      {/* Knowledge Graph Index Setting */}
-      {!!indexMethod && (
+      {/* Knowledge Graph Index Setting.
+          External knowledge bases have no documents of their own to extract a
+          graph from, so the control would do nothing there. */}
+      {!!indexMethod && currentDataset?.provider !== 'external' && (
         <>
           <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
           <GraphIndexSetting

@@ -16485,11 +16485,19 @@ Model class for provider custom model configuration.
 
 #### DatasetGraphIndexSettingResponse
 
+Knowledge-graph configuration of a dataset.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
 | entity_types | [ string ] |  | No |
+| extract_prompt | string |  | No |
+| hop_decay | number |  | No |
+| llm_query_fallback | boolean |  | No |
 | max_depth | integer |  | No |
+| max_entities_per_chunk | integer |  | No |
+| max_neighbors_per_hop | integer |  | No |
+| max_seed_entities | integer |  | No |
 | model_name | string |  | No |
 | model_provider_name | string |  | No |
 

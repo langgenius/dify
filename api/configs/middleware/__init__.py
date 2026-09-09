@@ -134,8 +134,21 @@ class GraphStoreConfig(BaseSettings):
     )
 
     KNOWLEDGE_GRAPH_EXTRACTION_WORKERS: PositiveInt = Field(
-        description="Number of chunks whose entities/relations are extracted concurrently during indexing.",
+        description="Number of chunks whose entities/relations are extracted concurrently during indexing."
+        " This is a per-process budget: it caps concurrent extraction LLM calls across every indexing task"
+        " running in one worker, so total spend scales with the number of deployed workers, not with batch size.",
         default=5,
+    )
+
+    KNOWLEDGE_GRAPH_INDEX_LOCK_TIMEOUT: PositiveInt = Field(
+        description="Seconds a worker may hold the per-dataset graph merge lease before it expires."
+        " The lease is renewed between merge phases, so this only has to cover a single phase.",
+        default=600,
+    )
+
+    KNOWLEDGE_GRAPH_INDEX_LOCK_WAIT: PositiveInt = Field(
+        description="Seconds a worker waits for another worker's graph merge lease before giving up.",
+        default=60,
     )
 
     KNOWLEDGE_GRAPH_NEO4J_URI: str = Field(

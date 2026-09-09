@@ -902,6 +902,26 @@ describe('useFormState', () => {
       })
     })
 
+    it('should not send a graph index setting for an external provider', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.handleGraphIndexSettingChange({ enabled: true })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      // An external knowledge base indexes nothing locally, so there is no graph
+      // to build and the server rejects the field.
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.not.objectContaining({ graph_index_setting: expect.anything() }),
+      })
+    })
+
     it('should use correct external retrieval settings', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
       const { result } = renderHook(() => useFormState())

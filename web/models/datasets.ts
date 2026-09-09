@@ -59,7 +59,13 @@ export type GraphIndexSetting = {
   model_name?: string
   model_provider_name?: string
   entity_types?: string[]
+  max_entities_per_chunk?: number
+  extract_prompt?: string
   max_depth?: number
+  max_seed_entities?: number
+  max_neighbors_per_hop?: number
+  hop_decay?: number
+  llm_query_fallback?: boolean
 }
 
 export type DataSet = {
