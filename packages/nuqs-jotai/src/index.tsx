@@ -13,6 +13,7 @@ const definitionKey = Symbol('nuqs-jotai.definition')
 type KeyMap = UseQueryStatesKeysMap
 type Binding = {
   write: SetValues<KeyMap>
+  refresh: (write: SetValues<KeyMap>) => void
   connect: (write: SetValues<KeyMap>) => () => void
   dispose: () => void
 }
@@ -142,6 +143,11 @@ function createBinding(): Binding {
       if (writer && waiting.length === 0) return writer(...args)
       return new Promise((resolve, reject) => waiting.push({ args, resolve, reject }))
     },
+    refresh(write) {
+      // Only refresh an attached connection. Mount/reveal commands must still
+      // wait until nuqs reattaches its passive subscriptions.
+      if (writer) writer = write
+    },
     connect(write) {
       writer = write
       let active = true
@@ -208,6 +214,9 @@ function Bridge({ definition, children }: { definition: Definition; children: Re
     { dangerouslyForceHydrate: true },
   )
   useInsertionEffect(() => () => binding.dispose(), [binding])
+  // Refresh before descendant layout commands run, without publishing a
+  // speculative render's writer or attaching mount/reveal connections early.
+  useInsertionEffect(() => binding.refresh(write), [binding, write])
   // Connect after this hook subscribes; held commands wait for the effect pass.
   useEffect(() => binding.connect(write), [binding, write])
   return children

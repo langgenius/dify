@@ -83,6 +83,11 @@ unmount rejects any unforwarded commands. The bridge does not parse, normalize o
 schedule URL commits itself. Saved writers throw after the bridge unmounts.
 Commands already forwarded to nuqs follow nuqs's lifetime and cancellation behavior.
 
+For an already attached bridge, the writer is refreshed during the commit before
+layout effects run. Layout commands therefore use the current adapter defaults
+and URL processing callback after an update. This does not attach a mount/reveal
+connection before nuqs's subscriptions are ready.
+
 ## Composite groups and field atoms
 
 ```tsx
@@ -107,6 +112,16 @@ Composite atoms accept partial updates or `null` to clear the group. All factori
 accept functional updates, parser options, URL aliases, and per-write options.
 Field atoms select individual values so unrelated fields retain their identity and
 do not notify their subscribers.
+
+**A group is the snapshot consistency boundary.** Define fields read together by
+a derived atom or query with one `atomsWithSearchParams` or
+`atomWithSearchParams` call. Each group publishes one snapshot, so a multi-field
+update observed by that group reaches its derived subscribers as one complete
+value. Independently created groups publish separately: even one native nuqs
+write updating both keys can notify a cross-group subscriber with an intermediate
+combination such as `[newSearch, oldPage]` before the final pair. React batching
+does not make these separate Jotai store writes atomic. Registering independent
+atoms in the same provider does not merge them into a group.
 
 Provider defaults and `processUrlSearchParams` belong on the native NuqsAdapter.
 Defaults, option precedence, native-array encoding, typed value retention, pending
