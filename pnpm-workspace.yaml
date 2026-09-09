@@ -183,8 +183,8 @@ catalog:
   i18next-resources-to-backend: 1.2.3
   iconify-import-svg: 0.2.0
   immer: 11.1.18
-  jotai: 2.20.3
-  jotai-scope: 0.11.0
+  jotai: 3.0.0
+  jotai-scope: 0.12.2
   jotai-tanstack-query: 0.11.0
   js-cookie: 3.0.8
   js-yaml: 5.4.1
