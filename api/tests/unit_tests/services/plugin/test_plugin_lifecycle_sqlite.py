@@ -8,7 +8,6 @@ from models import Tenant
 from models.account import (
     TenantPluginAutoUpgradeCategory,
     TenantPluginAutoUpgradeMode,
-    TenantPluginAutoUpgradeStrategy,
     TenantPluginAutoUpgradeStrategySetting,
     TenantPluginDebugPermission,
     TenantPluginInstallPermission,
