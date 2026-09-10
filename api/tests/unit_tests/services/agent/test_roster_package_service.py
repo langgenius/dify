@@ -127,8 +127,6 @@ def _manifest(*, skill_payload: bytes, file_payload: bytes) -> RosterAgentPackag
             RosterAgentPackageFile(
                 id="f_000001",
                 path="f_000001.pdf",
-                original_name="guide.pdf",
-                mime_type="application/pdf",
                 size=len(file_payload),
                 sha256=hashlib.sha256(file_payload).hexdigest(),
             )
@@ -217,8 +215,6 @@ def test_file_resource_rejects_invalid_metadata(overrides: dict[str, object], me
     values: dict[str, object] = {
         "id": "f_000001",
         "path": "f_000001.pdf",
-        "original_name": "guide.pdf",
-        "mime_type": "application/pdf",
         "size": 1,
         "sha256": "0" * 64,
     }
@@ -268,7 +264,6 @@ def test_manifest_rejects_duplicate_localized_skill_names() -> None:
         ("skill_name", "config skill name must match"),
         ("unreferenced_skill", "agent_config skill resources must be referenced"),
         ("missing_file", "config file reference must resolve"),
-        ("file_name", "config file name must match"),
         ("unreferenced_file", "file resources must be referenced"),
     ],
 )
@@ -283,8 +278,6 @@ def test_manifest_rejects_inconsistent_resource_index(mutation: str, message: st
         app.package.soul.config_skills = []
     elif mutation == "missing_file":
         values["files"] = list[dict[str, object]]()
-    elif mutation == "file_name":
-        values["files"][0]["original_name"] = "renamed.pdf"
     else:
         app.package.soul.config_files = []
 
@@ -329,8 +322,6 @@ def test_package_files_reuse_existing_dsl_file_kinds(file_kind: str) -> None:
         "path",
         "size",
         "sha256",
-        "original_name",
-        "mime_type",
     }
 
 
@@ -946,6 +937,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
             assert exported_app.package.soul.prompt.system_prompt == "draft"
             assert exported_app.package.soul.config_skills[0].file_id == "s_000001"
             assert exported_app.package.soul.config_files[0].file_id == "f_000001"
+            assert exported_app.package.soul.config_files[0].mime_type == "application/pdf"
             assert exported_app.package.soul.config_skills[1].is_missing is True
             assert exported_app.package.soul.config_skills[1].file_id == ""
             assert exported_app.package.soul.config_files[1].is_missing is True
@@ -957,8 +949,6 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
                 "size",
                 "sha256",
                 "audit",
-                "original_name",
-                "mime_type",
             }
             assert set(app_data) == {"version", "kind", "app", "agent", "agent_packages", "dependencies"}
             assert app_data["kind"] == "app"
@@ -1230,3 +1220,56 @@ def test_export_download_closes_owned_archive(app: Flask) -> None:
         finally:
             response.close()
     assert exported.archive.closed
+
+
+@pytest.mark.parametrize("file_kind", ["upload_file", "tool_file"])
+@pytest.mark.parametrize(
+    ("declared_mime", "stored_mime", "expected_mime"),
+    [
+        ("text/plain", "application/pdf", "text/plain"),
+        (None, "application/pdf", "application/pdf"),
+        (None, "", "application/octet-stream"),
+    ],
+)
+def test_export_preserves_file_metadata_in_dsl(
+    monkeypatch: pytest.MonkeyPatch, file_kind: str, declared_mime: str | None, stored_mime: str, expected_mime: str
+) -> None:
+    from unittest.mock import Mock
+
+    from models.model import UploadFile
+
+    exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage({}))
+    tool_file = ToolFile(
+        user_id="account-1",
+        tenant_id="tenant-1",
+        conversation_id=None,
+        file_key="payload",
+        mimetype=stored_mime,
+        name="original.pdf",
+        size=1,
+        original_url=None,
+    )
+    tool_file.id = "source-id"
+    upload_file = Mock(spec=UploadFile, id="source-id", key="payload", mime_type=stored_mime)
+    monkeypatch.setattr(exporter, "_tool_files", Mock(return_value={"source-id": tool_file}))
+    monkeypatch.setattr(exporter, "_upload_files", Mock(return_value={"source-id": upload_file}))
+    soul = AgentSoulConfig.model_validate(
+        {
+            "config_files": [
+                {"name": "original.pdf", "file_kind": file_kind, "file_id": "source-id", "mime_type": declared_mime}
+            ]
+        }
+    )
+
+    portable_soul, _, sources = exporter._collect_payloads(session=Mock(spec=Session), tenant_id="tenant-1", soul=soul)
+
+    ref = portable_soul.config_files[0]
+    assert (ref.name, ref.file_kind, ref.mime_type, ref.file_id) == (
+        "original.pdf",
+        file_kind,
+        expected_mime,
+        sources[0].id,
+    )
+    assert sources[0].storage_key == "payload"
+    assert soul.config_files[0].mime_type == declared_mime
+    assert soul.config_files[0].file_id == "source-id"

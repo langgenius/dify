@@ -68,8 +68,6 @@ class RosterAgentPackageSkill(_RosterAgentPackageResource):
 
 class RosterAgentPackageFile(_RosterAgentPackageResource):
     id: str = Field(pattern=r"^f_[0-9]{6}$")
-    original_name: str = Field(min_length=1, max_length=255)
-    mime_type: str = Field(default="application/octet-stream", min_length=1, max_length=255)
 
     @model_validator(mode="after")
     def validate_file_metadata(self) -> Self:
@@ -133,8 +131,6 @@ class RosterAgentPackageManifest(BaseModel):
             file_resource = file_by_id.get(file_ref.file_id)
             if file_resource is None:
                 raise ValueError("config file reference must resolve to a package file")
-            if file_resource.original_name != file_ref.name:
-                raise ValueError("config file name must match its resource metadata")
             referenced_file_ids.add(file_resource.id)
         unreferenced_files = {item.id for item in self.files if item.id not in referenced_file_ids}
         if unreferenced_files:
