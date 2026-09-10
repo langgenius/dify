@@ -181,35 +181,46 @@ const MembersPage = () => {
             )}
           </div>
         </div>
-        <div className="overflow-visible lg:overflow-visible">
-          <div className="flex min-w-120 items-center border-b border-divider-regular py-1.75">
-            <div className="w-65 shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['members.name'], { ns: 'common' })}
-            </div>
-            <div className="w-30 shrink-0 system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['members.lastActive'], { ns: 'common' })}
-            </div>
-            <div className="min-w-0 grow px-3 system-xs-medium-uppercase text-text-tertiary">
-              {roleColumnLabel}
-            </div>
-          </div>
-          <div className="relative min-w-120">
-            {accounts.map((account) => (
-              <MemberRow
-                key={account.id}
-                member={account}
-                roles={account.roles}
-                isCurrentUser={userProfileEmail === account.email}
-                canManage={canManageMembers}
-                canTransferOwnership={
-                  isCurrentWorkspaceOwner && features?.is_allow_transfer_workspace === true
-                }
-                allowMultipleRoles={systemFeatures.rbac_enabled}
-                onOpenDetails={handleOpenDetails}
-                onTransferOwnership={handleTransferOwnership}
-              />
-            ))}
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-150 table-fixed text-left">
+            <colgroup>
+              <col className="w-65" />
+              <col className="w-30" />
+              <col />
+              {canManageMembers && <col className="w-12" />}
+            </colgroup>
+            <thead>
+              <tr className="border-b border-divider-regular">
+                <th className="px-3 py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['members.name'], { ns: 'common' })}
+                </th>
+                <th className="py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['members.lastActive'], { ns: 'common' })}
+                </th>
+                <th className="px-3 py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
+                  {roleColumnLabel}
+                </th>
+                {canManageMembers && <td />}
+              </tr>
+            </thead>
+            <tbody>
+              {accounts.map((account) => (
+                <MemberRow
+                  key={account.id}
+                  member={account}
+                  roles={account.roles}
+                  isCurrentUser={userProfileEmail === account.email}
+                  canManage={canManageMembers}
+                  canTransferOwnership={
+                    isCurrentWorkspaceOwner && features?.is_allow_transfer_workspace === true
+                  }
+                  allowMultipleRoles={systemFeatures.rbac_enabled}
+                  onOpenDetails={handleOpenDetails}
+                  onTransferOwnership={handleTransferOwnership}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
       {invitationResults && (
