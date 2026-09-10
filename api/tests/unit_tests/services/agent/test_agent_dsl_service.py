@@ -288,7 +288,7 @@ def test_import_warnings_cover_runtime_setup_removed_from_package(
     )
     monkeypatch.setattr("services.agent.dsl_service.get_tenant_knowledge_dataset_rows", Mock(return_value={}))
 
-    _, warnings = AgentDslService(unbound_session)._resolve_package_soul(
+    _, warnings = AgentDslService(unbound_session).resolve_package_soul(
         tenant_id="tenant-1",
         package=make_portable_agent_package(_agent(), soul),
         package_path="agent_packages.agent_1",
@@ -414,7 +414,7 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(
     service = AgentDslService(sqlite_session)
     soul = AgentSoulConfig(config_note="portable")
     warning = DslImportWarning(code="setup", path="agent.soul", message="setup required")
-    service._resolve_package_soul = Mock(return_value=(soul, [warning]))
+    service.resolve_package_soul = Mock(return_value=(soul, [warning]))
     service._unique_roster_name = Mock(return_value="Portable Agent import")
     agent = _agent()
     agent.active_config_snapshot_id = "snapshot-1"
@@ -778,7 +778,7 @@ def test_create_imported_inline_agent_uses_import_provenance(unbound_session: Se
     service = AgentDslService(unbound_session)
     soul = AgentSoulConfig(config_note="inline")
     warning = DslImportWarning(code="setup", path="agent", message="setup")
-    service._resolve_package_soul = Mock(return_value=(soul, [warning]))
+    service.resolve_package_soul = Mock(return_value=(soul, [warning]))
     service._create_workflow_only_agent = Mock(return_value=(_agent(), _snapshot(soul=soul)))
     workflow = _workflow()
 
@@ -865,7 +865,7 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(
     get_dataset_rows = Mock(return_value={"existing": existing_dataset})
     monkeypatch.setattr("services.agent.dsl_service.get_tenant_knowledge_dataset_rows", get_dataset_rows)
 
-    resolved, warnings = AgentDslService(sqlite_session)._resolve_package_soul(
+    resolved, warnings = AgentDslService(sqlite_session).resolve_package_soul(
         tenant_id="tenant-1",
         package=make_portable_agent_package(_agent(), soul),
         package_path="agent_packages.agent_1",
