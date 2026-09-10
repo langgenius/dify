@@ -14,6 +14,7 @@ from core.model_manager import ModelInstance
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.file_saver import LLMFileSaver
@@ -27,7 +28,7 @@ from tests.workflow_test_utils import build_test_graph_init_params
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
 
 
-def init_llm_node(config: dict) -> LLMNode:
+def init_llm_node(config: dict[str, object]) -> LLMNode:
     graph_config = {
         "edges": [
             {
@@ -74,7 +75,7 @@ def init_llm_node(config: dict) -> LLMNode:
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     prompt_message_serializer = MagicMock(spec=PromptMessageSerializerProtocol)
-    prompt_message_serializer.serialize.side_effect = lambda *, model_mode, prompt_messages: [
+    prompt_message_serializer.serialize.side_effect = lambda *, prompt_messages, **_kwargs: [
         message.model_dump(mode="json") for message in prompt_messages
     ]
     llm_file_saver = MagicMock(spec=LLMFileSaver)
@@ -99,7 +100,7 @@ def _mock_db_session_close(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(db.session, "close", MagicMock())
 
 
-def test_execute_llm(monkeypatch: pytest.MonkeyPatch):
+def test_execute_llm(monkeypatch: pytest.MonkeyPatch) -> None:
     node = init_llm_node(
         config={
             "id": "llm",
@@ -139,9 +140,9 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch):
         mock_model_instance = MagicMock(spec=ModelInstance)
         mock_model_instance.provider = "openai"
         mock_model_instance.model_name = "gpt-3.5-turbo"
-        mock_model_instance.credentials = {}
-        mock_model_instance.parameters = {}
-        mock_model_instance.stop = []
+        mock_model_instance.credentials = dict[str, object]()
+        mock_model_instance.parameters = dict[str, object]()
+        mock_model_instance.stop = list[str]()
         mock_model_instance.model_type_instance = MagicMock()
         mock_model_instance.model_type_instance.get_model_schema.return_value = MagicMock(
             model_properties={},
@@ -176,7 +177,7 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch):
         return mock_model_instance
 
     # Mock fetch_prompt_messages to avoid database calls
-    def mock_fetch_prompt_messages_1(**_kwargs):
+    def mock_fetch_prompt_messages_1(**_kwargs: object) -> tuple[list[PromptMessage], list[str]]:
         from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
         return [
@@ -193,17 +194,16 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch):
 
         for item in result:
             if isinstance(item, StreamCompletedEvent):
-                if item.node_run_result.status != WorkflowNodeExecutionStatus.SUCCEEDED:
-                    print(f"Error: {item.node_run_result.error}")
-                    print(f"Error type: {item.node_run_result.error_type}")
-                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED, (
+                    f"{item.node_run_result.error_type}: {item.node_run_result.error}"
+                )
                 assert item.node_run_result.process_data is not None
                 assert item.node_run_result.outputs is not None
                 assert item.node_run_result.outputs.get("text") is not None
                 assert item.node_run_result.outputs.get("usage", {})["total_tokens"] > 0
 
 
-def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch):
+def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Test execute LLM node with jinja2
     """
@@ -254,9 +254,9 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch):
         mock_model_instance = MagicMock(spec=ModelInstance)
         mock_model_instance.provider = "openai"
         mock_model_instance.model_name = "gpt-3.5-turbo"
-        mock_model_instance.credentials = {}
-        mock_model_instance.parameters = {}
-        mock_model_instance.stop = []
+        mock_model_instance.credentials = dict[str, object]()
+        mock_model_instance.parameters = dict[str, object]()
+        mock_model_instance.stop = list[str]()
         mock_model_instance.model_type_instance = MagicMock()
         mock_model_instance.model_type_instance.get_model_schema.return_value = MagicMock(
             model_properties={},
@@ -291,7 +291,7 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch):
         return mock_model_instance
 
     # Mock fetch_prompt_messages to avoid database calls
-    def mock_fetch_prompt_messages_2(**_kwargs):
+    def mock_fetch_prompt_messages_2(**_kwargs: object) -> tuple[list[PromptMessage], list[str]]:
         from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
         return [
@@ -313,7 +313,7 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch):
                 assert "what's the weather today?" in json.dumps(item.node_run_result.process_data)
 
 
-def test_extract_json():
+def test_extract_json() -> None:
     llm_texts = [
         '<think>\n\n</think>{"name": "test", "age": 123',  # resoning model (deepseek-r1)
         '{"name":"test","age":123}',  # json schema model (gpt-4o)

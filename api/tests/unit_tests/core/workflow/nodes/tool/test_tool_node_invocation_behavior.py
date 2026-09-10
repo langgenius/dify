@@ -4,8 +4,6 @@ import time
 import uuid
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.node_factory import DifyNodeFactory
@@ -21,7 +19,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
-def init_tool_node(config: dict):
+def init_tool_node(config: dict[str, object]) -> ToolNode:
     graph_config = {
         "edges": [
             {
@@ -76,7 +74,7 @@ def init_tool_node(config: dict):
     return node
 
 
-def test_tool_variable_invoke(monkeypatch: pytest.MonkeyPatch):
+def test_tool_variable_invoke() -> None:
     node = init_tool_node(
         config={
             "id": "1",
@@ -111,7 +109,7 @@ def test_tool_variable_invoke(monkeypatch: pytest.MonkeyPatch):
                 assert item.node_run_result.outputs.get("text") is not None
 
 
-def test_tool_mixed_invoke(monkeypatch: pytest.MonkeyPatch):
+def test_tool_mixed_invoke() -> None:
     node = init_tool_node(
         config={
             "id": "1",

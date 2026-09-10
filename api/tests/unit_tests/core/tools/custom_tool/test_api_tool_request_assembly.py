@@ -1,3 +1,5 @@
+import pytest
+
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.common_entities import I18nObject
@@ -6,7 +8,7 @@ from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
 
 pytest_plugins = ("tests.unit_tests.core.tools.custom_tool.api_tool_http_fixture",)
 
-tool_bundle = {
+tool_bundle: dict[str, object] = {
     "server_url": "http://www.example.com/{path_param}",
     "method": "post",
     "author": "",
@@ -32,7 +34,8 @@ parameters = {
 }
 
 
-def test_api_tool(setup_http_mock):
+@pytest.mark.usefixtures("setup_http_mock")
+def test_api_tool() -> None:
     tool = ApiTool(
         entity=ToolEntity(
             identity=ToolIdentity(provider="", author="", name="", label=I18nObject(en_US="test tool")),
