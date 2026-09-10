@@ -173,11 +173,11 @@ class PreparedRosterAgentPackage:
 
 @dataclass
 class RosterAgentPackageExport:
+    """Download artifact owning its archive until the response closes."""
+
     archive: BinaryIO
     filename: str
     size: int
-    manifest: RosterAgentPackageManifest
-    app: AgentAppDsl
 
     def close(self) -> None:
         self.archive.close()
