@@ -68,11 +68,8 @@ class RosterAgentPackageSkill(_RosterAgentPackageResource):
 
 class RosterAgentPackageFile(_RosterAgentPackageResource):
     id: str = Field(pattern=r"^f_[0-9]{6}$")
-    role: Literal["agent_config_file", "binary_dependency"]
     original_name: str = Field(min_length=1, max_length=255)
     mime_type: str = Field(default="application/octet-stream", min_length=1, max_length=255)
-    platform: str | None = Field(default=None, max_length=64)
-    arch: str | None = Field(default=None, max_length=64)
 
     @model_validator(mode="after")
     def validate_file_metadata(self) -> Self:
@@ -80,10 +77,6 @@ class RosterAgentPackageFile(_RosterAgentPackageResource):
             raise ValueError("file path must start with the resource id and include an extension")
         if "/" in self.path or "\\" in self.path:
             raise ValueError("file path must be a root-level archive member")
-        if self.role == "agent_config_file" and (self.platform is not None or self.arch is not None):
-            raise ValueError("agent config files must not declare platform or arch")
-        if self.role == "binary_dependency" and ((self.platform is None) != (self.arch is None)):
-            raise ValueError("binary dependencies must declare platform and arch together")
         return self
 
 
@@ -138,16 +131,14 @@ class RosterAgentPackageManifest(BaseModel):
             if file_ref.is_missing:
                 continue
             file_resource = file_by_id.get(file_ref.file_id)
-            if file_resource is None or file_resource.role != "agent_config_file":
-                raise ValueError("config file reference must resolve to an agent_config_file resource")
+            if file_resource is None:
+                raise ValueError("config file reference must resolve to a package file")
             if file_resource.original_name != file_ref.name:
                 raise ValueError("config file name must match its resource metadata")
             referenced_file_ids.add(file_resource.id)
-        unreferenced_files = {
-            item.id for item in self.files if item.role == "agent_config_file" and item.id not in referenced_file_ids
-        }
+        unreferenced_files = {item.id for item in self.files if item.id not in referenced_file_ids}
         if unreferenced_files:
-            raise ValueError("agent_config_file resources must be referenced by the Agent Soul")
+            raise ValueError("file resources must be referenced by the Agent Soul")
 
 
 @dataclass

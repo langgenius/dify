@@ -259,7 +259,6 @@ class RosterAgentPackageExporter:
                         files.append(
                             RosterAgentPackageFile(
                                 id=source.id,
-                                role="agent_config_file",
                                 path=source.path,
                                 original_name=source.original_name,
                                 mime_type=source.mime_type,
