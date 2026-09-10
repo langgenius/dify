@@ -631,7 +631,8 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
     exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage(skill_payloads))
     sources = [
         roster_package_exporter_module._SkillSource(
-            payload=roster_package_exporter_module._PayloadSource(item.path, item.path),
+            path=item.path,
+            storage_key=item.path,
             id=item.id,
             scope=item.scope,
             name=item.name,
@@ -714,7 +715,8 @@ def test_export_rejects_unusable_or_oversized_skill_payload(
     if case == "size_limit":
         apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
     source = roster_package_exporter_module._SkillSource(
-        payload=roster_package_exporter_module._PayloadSource("s_000001.zip", "skill"),
+        path="s_000001.zip",
+        storage_key="skill",
         id="s_000001",
         scope="agent_config",
         name="research",
