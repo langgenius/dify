@@ -65,14 +65,9 @@ class _Storage(Protocol):
 
 
 @dataclass(frozen=True)
-class _PayloadSource:
+class _SkillSource:
     path: str
     storage_key: str
-
-
-@dataclass(frozen=True)
-class _SkillSource:
-    payload: _PayloadSource
     id: str
     scope: Literal["agent_config", "workspace"]
     name: str
@@ -84,7 +79,8 @@ class _SkillSource:
 
 @dataclass(frozen=True)
 class _FileSource:
-    payload: _PayloadSource
+    path: str
+    storage_key: str
     id: str
     original_name: str
     mime_type: str
@@ -219,20 +215,19 @@ class RosterAgentPackageExporter:
                 skill_packages = SkillPackageService()
                 sources: list[_SkillSource | _FileSource] = [*skill_sources, *file_sources]
                 for source in sources:
-                    payload = source.payload
                     remaining_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - total_size
                     if isinstance(source, _SkillSource):
                         remaining_bytes = min(remaining_bytes, dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024)
-                    member = self._write_storage_member(archive, payload, max_bytes=remaining_bytes)
+                    member = self._write_storage_member(
+                        archive, path=source.path, storage_key=source.storage_key, max_bytes=remaining_bytes
+                    )
                     total_size += member.size
-                    member_metadata[payload.path] = member
+                    member_metadata[source.path] = member
                     if isinstance(source, _SkillSource):
                         # Inspect only the embedded Skill; our writer already owns
                         # the outer container, resource sizes, and digests.
                         try:
-                            inspection = skill_packages.inspect(
-                                content=archive.read(payload.path), filename=payload.path
-                            )
+                            inspection = skill_packages.inspect(content=archive.read(source.path), filename=source.path)
                         except SkillPackageError as exc:
                             raise RosterAgentPackageExportFailedError(
                                 f"Roster Agent package contains unusable Skill {source.name!r}"
@@ -259,9 +254,9 @@ class RosterAgentPackageExporter:
                             display_name=item.display_name,
                             description=item.description,
                             priority=item.priority,
-                            path=item.payload.path,
-                            size=member_metadata[item.payload.path].size,
-                            sha256=member_metadata[item.payload.path].sha256,
+                            path=item.path,
+                            size=member_metadata[item.path].size,
+                            sha256=member_metadata[item.path].sha256,
                             audit=RosterAgentPackageAudit(ref=item.audit_ref),
                         )
                         for item in skill_sources
@@ -270,11 +265,11 @@ class RosterAgentPackageExporter:
                         RosterAgentPackageFile(
                             id=item.id,
                             role="agent_config_file",
-                            path=item.payload.path,
+                            path=item.path,
                             original_name=item.original_name,
                             mime_type=item.mime_type,
-                            size=member_metadata[item.payload.path].size,
-                            sha256=member_metadata[item.payload.path].sha256,
+                            size=member_metadata[item.path].size,
+                            sha256=member_metadata[item.path].sha256,
                             audit=RosterAgentPackageAudit(ref=item.audit_ref),
                         )
                         for item in file_sources
@@ -332,7 +327,8 @@ class RosterAgentPackageExporter:
             portable_skill_ref["is_missing"] = False
             skill_sources.append(
                 _SkillSource(
-                    payload=_PayloadSource(path, tool_file.file_key),
+                    path=path,
+                    storage_key=tool_file.file_key,
                     id=resource_id,
                     scope="agent_config",
                     name=skill_ref.name,
@@ -375,7 +371,8 @@ class RosterAgentPackageExporter:
             portable_file_ref["is_missing"] = False
             file_sources.append(
                 _FileSource(
-                    payload=_PayloadSource(path, storage_key),
+                    path=path,
+                    storage_key=storage_key,
                     id=resource_id,
                     original_name=file_ref.name,
                     mime_type=mime_type or "application/octet-stream",
@@ -399,7 +396,8 @@ class RosterAgentPackageExporter:
             path = f"{resource_id}.zip"
             sources.append(
                 _SkillSource(
-                    payload=_PayloadSource(path, archive.storage_key),
+                    path=path,
+                    storage_key=archive.storage_key,
                     id=resource_id,
                     scope="workspace",
                     name=archive.name,
@@ -432,15 +430,16 @@ class RosterAgentPackageExporter:
     def _write_storage_member(
         self,
         archive: zipfile.ZipFile,
-        payload: _PayloadSource,
         *,
+        path: str,
+        storage_key: str,
         max_bytes: int,
     ) -> RosterAgentPackageMember:
         digest = hashlib.sha256()
         size = 0
         try:
-            with archive.open(payload.path, "w", force_zip64=True) as target:
-                for chunk in self._storage.load_stream(payload.storage_key):
+            with archive.open(path, "w", force_zip64=True) as target:
+                for chunk in self._storage.load_stream(storage_key):
                     if not isinstance(chunk, bytes):
                         raise TypeError("storage stream returned a non-bytes chunk")
                     if size + len(chunk) > max_bytes:
@@ -451,8 +450,8 @@ class RosterAgentPackageExporter:
         except RosterAgentPackageTooLargeError:
             raise
         except Exception as exc:
-            raise RosterAgentPackageExportFailedError(f"Unable to read package resource {payload.path!r}") from exc
-        return RosterAgentPackageMember(path=payload.path, size=size, sha256=digest.hexdigest())
+            raise RosterAgentPackageExportFailedError(f"Unable to read package resource {path!r}") from exc
+        return RosterAgentPackageMember(path=path, size=size, sha256=digest.hexdigest())
 
     @staticmethod
     def _safe_extension(filename: str) -> str:
