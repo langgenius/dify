@@ -245,8 +245,6 @@ class RosterAgentPackageReader:
             raise InvalidRosterAgentPackageError("Roster Agent package must not contain encrypted members")
         if info.compress_type not in _ALLOWED_COMPRESSIONS:
             raise InvalidRosterAgentPackageError("Roster Agent package uses unsupported compression")
-        if info.file_size < 0 or info.compress_size < 0:
-            raise InvalidRosterAgentPackageError("Roster Agent package contains invalid ZIP metadata")
         if info.file_size and info.compress_size == 0:
             raise InvalidRosterAgentPackageError("Roster Agent package contains invalid ZIP metadata")
         return normalized
