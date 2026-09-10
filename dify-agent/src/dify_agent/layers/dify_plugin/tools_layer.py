@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
-from pydantic_ai import RunContext, Tool
+from pydantic_ai import RunContext, Tool, ToolReturn
 from pydantic_ai.tools import ToolDefinition
 from typing_extensions import Self, override
 
@@ -55,7 +55,10 @@ PLUGIN_FILE_DEFAULT_TYPE = "custom"
 _FILE_UPLOAD_BEGIN = "<<<DIFY_PLUGIN_TOOL_FILE_UPLOAD_BEGIN>>>"
 _FILE_UPLOAD_END = "<<<DIFY_PLUGIN_TOOL_FILE_UPLOAD_END>>>"
 _FILE_UPLOAD_TIMEOUT_SECONDS = 60.0
+_TOOL_BLOB_UPLOAD_TIMEOUT_SECONDS = 120.0
+_MAX_TOOL_BLOB_UPLOAD_BYTES = 30 * 1024 * 1024
 _SUPPORTED_REMOTE_URL_PREFIXES = ("http://", "https://")
+_TOOL_FILE_URL_PATTERN = "/files/tools/"
 
 
 class DifyPluginToolsDeps(LayerDeps):
@@ -81,6 +84,18 @@ class _DownloadFileResponse(BaseModel):
     mime_type: str | None = None
     size: int
     download_url: str
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class _UploadedToolFileResponse(BaseModel):
+    id: str
+    reference: str | None = None
+    name: str
+    size: int
+    extension: str | None = None
+    mime_type: str | None = None
+    preview_url: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -152,6 +167,92 @@ class _DifyPluginToolFileClient:
             return _DownloadFileResponse.model_validate(envelope.data)
         except ValidationError as exc:
             raise DifyPluginToolClientError("Invalid Dify API file download data.") from exc
+
+    async def upload_blob(
+        self,
+        *,
+        execution_context: DifyExecutionContextLayerConfig,
+        blob: bytes,
+        mimetype: str,
+        filename: str | None = None,
+    ) -> _UploadedToolFileResponse:
+        missing_fields = []
+        if execution_context.user_id is None:
+            missing_fields.append("user_id")
+        if execution_context.user_from is None:
+            missing_fields.append("user_from")
+        if missing_fields:
+            missing = ", ".join(missing_fields)
+            raise DifyPluginToolsClientConfigurationError(
+                f"Missing required execution context fields for blob uploads: {missing}."
+            )
+        if len(blob) > _MAX_TOOL_BLOB_UPLOAD_BYTES:
+            raise DifyPluginToolClientError(
+                f"Tool blob exceeds the {_MAX_TOOL_BLOB_UPLOAD_BYTES} byte upload limit.",
+                status_code=413,
+            )
+
+        resolved_filename = filename or _default_blob_filename(mimetype)
+        upload_request_payload = {
+            "tenant_id": execution_context.tenant_id,
+            "user_id": execution_context.user_id,
+            "user_from": execution_context.user_from,
+            "filename": resolved_filename,
+            "mimetype": mimetype,
+            "conversation_id": execution_context.conversation_id,
+            "max_size": _MAX_TOOL_BLOB_UPLOAD_BYTES,
+        }
+        try:
+            upload_request = await self.http_client.post(
+                f"{self.base_url}/inner/api/agent/files/upload-request",
+                headers={
+                    "X-Inner-Api-Key": self.api_key,
+                    "Content-Type": "application/json",
+                },
+                json=upload_request_payload,
+                timeout=_TOOL_BLOB_UPLOAD_TIMEOUT_SECONDS,
+            )
+        except (httpx.InvalidURL, httpx.UnsupportedProtocol) as exc:
+            raise DifyPluginToolClientError(f"Dify API file upload is misconfigured: {exc}") from exc
+        except httpx.TimeoutException as exc:
+            raise DifyPluginToolClientError("Dify API file upload request timed out.") from exc
+        except httpx.RequestError as exc:
+            raise DifyPluginToolClientError(f"Dify API file upload request failed: {exc}") from exc
+
+        if upload_request.status_code >= 400:
+            raise DifyPluginToolClientError(
+                upload_request.text or f"HTTP {upload_request.status_code}",
+                status_code=upload_request.status_code,
+            )
+        try:
+            upload_request_body = upload_request.json()
+        except ValueError as exc:
+            raise DifyPluginToolClientError("Invalid Dify API file upload request response.") from exc
+        upload_uri = upload_request_body.get("upload_uri")
+        if not isinstance(upload_uri, str) or not upload_uri:
+            raise DifyPluginToolClientError("Dify API file upload request response is missing upload_uri.")
+
+        upload_url = upload_uri if _is_remote_url(upload_uri) else f"{self.base_url.rstrip('/')}{upload_uri}"
+        try:
+            upload_response = await self.http_client.post(
+                upload_url,
+                files={"file": (resolved_filename, blob, mimetype)},
+                timeout=_TOOL_BLOB_UPLOAD_TIMEOUT_SECONDS,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyPluginToolClientError("Dify API file upload timed out.") from exc
+        except httpx.RequestError as exc:
+            raise DifyPluginToolClientError(f"Dify API file upload failed: {exc}") from exc
+
+        if upload_response.status_code >= 400:
+            raise DifyPluginToolClientError(
+                upload_response.text or f"HTTP {upload_response.status_code}",
+                status_code=upload_response.status_code,
+            )
+        try:
+            return _UploadedToolFileResponse.model_validate(upload_response.json())
+        except ValidationError as exc:
+            raise DifyPluginToolClientError("Invalid Dify API file upload response.") from exc
 
 
 @dataclass(slots=True)
@@ -259,7 +360,7 @@ def _build_pydantic_ai_tool(
     tool_description = tool_config.description or tool_name
     tool_schema = deepcopy(tool_config.parameters_json_schema)
 
-    async def invoke_tool(_ctx: RunContext[object], **tool_arguments: object) -> str:
+    async def invoke_tool(_ctx: RunContext[object], **tool_arguments: object) -> str | ToolReturn:
         try:
             merged_arguments = await _prepare_tool_arguments(
                 effective_parameters,
@@ -274,7 +375,18 @@ def _build_pydantic_ai_tool(
                 credentials=dict(tool_config.credentials),
                 tool_parameters=merged_arguments,
             )
-            return _convert_tool_response_to_text(messages)
+            observation, tool_files = await _convert_tool_response(
+                messages,
+                file_client=file_context.file_client,
+                execution_context=file_context.execution_context,
+            )
+            if tool_files:
+                return ToolReturn(
+                    return_value=observation,
+                    content=observation,
+                    metadata={"tool_files": tool_files},
+                )
+            return observation
         except DifyPluginToolClientError as exc:
             return _tool_error_text(tool_name=tool_name, error=exc)
         except ValueError as exc:
@@ -633,18 +745,21 @@ def _tool_error_text(*, tool_name: str, error: DifyPluginToolClientError) -> str
     return f"tool invoke error: {error}"
 
 
-def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeMessage]) -> str:
-    """Convert daemon stream messages into the plain-text tool observation.
+async def _convert_tool_response(
+    tool_response: Sequence[DifyPluginToolInvokeMessage],
+    *,
+    file_client: _DifyPluginToolFileClient,
+    execution_context: DifyExecutionContextLayerConfig,
+) -> tuple[str, list[dict[str, object]]]:
+    """Convert daemon stream messages into a compact observation and file metadata.
 
-    This preserves the user-facing semantics Dify's agent tool runtime relies on:
-    text is appended directly, links/images become user-check instructions, JSON
-    output is included unless explicitly suppressed, variable messages stay
-    internal, and everything else falls back to ``str(message)``. JSON fragments
-    are deduplicated against existing text so mixed text/JSON streams do not
-    repeat the same content unnecessarily.
+    Binary BLOB outputs are persisted through Dify's signed upload API so the
+    model receives a short description plus reusable file references instead of
+    a Python-style byte representation.
     """
     parts: list[str] = []
     json_parts: list[str] = []
+    tool_files: list[dict[str, object]] = []
 
     for response in tool_response:
         if response.type is DifyPluginToolInvokeMessage.MessageType.TEXT:
@@ -655,6 +770,9 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
             link_message = response.message
             if isinstance(link_message, DifyPluginToolInvokeMessage.TextMessage):
                 parts.append(f"result link: {link_message.text}. please tell user to check it.")
+                tool_file = _tool_file_metadata_from_meta_or_url(response.meta, link_message.text)
+                if tool_file is not None:
+                    tool_files.append(tool_file)
         elif response.type in {
             DifyPluginToolInvokeMessage.MessageType.IMAGE_LINK,
             DifyPluginToolInvokeMessage.MessageType.IMAGE,
@@ -663,6 +781,45 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
                 "image has been created and sent to user already, "
                 "you do not need to create it, just tell the user to check it now."
             )
+            link_message = response.message
+            if isinstance(link_message, DifyPluginToolInvokeMessage.TextMessage):
+                tool_file = _tool_file_metadata_from_meta_or_url(response.meta, link_message.text, file_type="image")
+                if tool_file is not None:
+                    tool_files.append(tool_file)
+        elif response.type is DifyPluginToolInvokeMessage.MessageType.BINARY_LINK:
+            link_message = response.message
+            if isinstance(link_message, DifyPluginToolInvokeMessage.TextMessage):
+                parts.append(
+                    f"generated file: {link_message.text}. please tell the user to check the attachment."
+                )
+                tool_file = _tool_file_metadata_from_meta_or_url(response.meta, link_message.text)
+                if tool_file is not None:
+                    tool_files.append(tool_file)
+        elif response.type is DifyPluginToolInvokeMessage.MessageType.BLOB:
+            meta = response.meta or {}
+            mimetype = meta.get("mime_type") if isinstance(meta.get("mime_type"), str) else None
+            mimetype = mimetype or "application/octet-stream"
+            filename = meta.get("filename") if isinstance(meta.get("filename"), str) else None
+            if not isinstance(response.message, DifyPluginToolInvokeMessage.BlobMessage):
+                raise ValueError("unexpected blob message payload")
+            uploaded = await file_client.upload_blob(
+                execution_context=execution_context,
+                blob=response.message.blob,
+                mimetype=mimetype,
+                filename=filename,
+            )
+            tool_file = _tool_file_metadata_from_upload(uploaded)
+            tool_files.append(tool_file)
+            if "image" in (uploaded.mime_type or mimetype):
+                parts.append(
+                    "image has been created and sent to user already, "
+                    "you do not need to create it, just tell the user to check it now."
+                )
+            else:
+                parts.append(
+                    f"generated file `{uploaded.name}` has been saved. "
+                    "please tell the user to check the attachment."
+                )
         elif response.type is DifyPluginToolInvokeMessage.MessageType.JSON:
             json_message = response.message
             if isinstance(json_message, DifyPluginToolInvokeMessage.JsonMessage) and not json_message.suppress_output:
@@ -675,7 +832,64 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
     if json_parts:
         existing_parts = set(parts)
         parts.extend(part for part in json_parts if part not in existing_parts)
-    return "".join(parts)
+    return "".join(parts), tool_files
+
+
+def _default_blob_filename(mimetype: str) -> str:
+    extension = mimetypes.guess_extension(mimetype) or ".bin"
+    return f"tool-output{extension}"
+
+
+def _tool_file_metadata_from_upload(uploaded: _UploadedToolFileResponse) -> dict[str, object]:
+    extension = uploaded.extension or _extension_from_filename(uploaded.name) or ".bin"
+    return {
+        "tool_file_id": uploaded.id,
+        "reference": uploaded.reference,
+        "filename": uploaded.name,
+        "mime_type": uploaded.mime_type,
+        "url": f"{_TOOL_FILE_URL_PATTERN}{uploaded.id}{extension}",
+        "transfer_method": "tool_file",
+        "type": "image" if uploaded.mime_type and "image" in uploaded.mime_type else "custom",
+    }
+
+
+def _tool_file_metadata_from_meta_or_url(
+    meta: Mapping[str, object] | None,
+    url: str,
+    *,
+    file_type: str | None = None,
+) -> dict[str, object] | None:
+    normalized_meta = dict(meta or {})
+    tool_file_id = normalized_meta.get("tool_file_id")
+    if not isinstance(tool_file_id, str) or not tool_file_id:
+        tool_file_id = _extract_tool_file_id(url)
+    if not tool_file_id:
+        return None
+    mime_type = normalized_meta.get("mime_type")
+    filename = normalized_meta.get("filename")
+    extension = _extension_from_filename(filename if isinstance(filename, str) else None)
+    resolved_type = file_type
+    if resolved_type is None and isinstance(mime_type, str) and "image" in mime_type:
+        resolved_type = "image"
+    return {
+        "tool_file_id": tool_file_id,
+        "reference": normalized_meta.get("reference"),
+        "filename": filename,
+        "mime_type": mime_type,
+        "url": url,
+        "transfer_method": "tool_file",
+        "type": resolved_type or "custom",
+        **({"extension": extension} if extension else {}),
+    }
+
+
+def _extract_tool_file_id(url: str) -> str | None:
+    if _TOOL_FILE_URL_PATTERN not in url:
+        return None
+    file_part = url.split(_TOOL_FILE_URL_PATTERN, 1)[-1].split("?")[0]
+    if not file_part:
+        return None
+    return file_part.rsplit(".", 1)[0] if "." in file_part else file_part
 
 
 __all__ = ["DifyPluginToolsDeps", "DifyPluginToolsLayer"]

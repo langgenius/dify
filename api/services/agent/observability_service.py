@@ -143,8 +143,16 @@ class AgentObservabilityService:
         message: Message,
         conversation: Conversation | None = None,
         feedbacks: Sequence[MessageFeedback] = (),
+        *,
+        session: Any | None = None,
     ) -> dict[str, Any]:
         invoke_from = message.invoke_from.value if message.invoke_from else None
+        message_files: list[dict[str, Any]] = []
+        if session is not None:
+            message_files = [
+                dict(file_info)
+                for file_info in message.message_files_with_session(session=session)
+            ]
         return {
             "id": message.id,
             "message_id": message.id,
@@ -160,6 +168,7 @@ class AgentObservabilityService:
             "from_account_id": message.from_account_id,
             "feedback_enabled": True,
             "feedbacks": [cls._serialize_message_feedback(feedback) for feedback in feedbacks],
+            "message_files": message_files,
             "message_tokens": int(message.message_tokens or 0),
             "answer_tokens": int(message.answer_tokens or 0),
             "total_tokens": cls._total_tokens(message),
@@ -219,6 +228,7 @@ class AgentObservabilityService:
                     self.serialize_log_message(
                         message,
                         feedbacks=feedbacks_by_message.get(message.id, ()),
+                        session=self._session,
                     )
                     for message in messages
                 )

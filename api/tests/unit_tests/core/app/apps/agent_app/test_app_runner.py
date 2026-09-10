@@ -63,6 +63,7 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueMessageFileEvent,
 )
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
@@ -70,7 +71,8 @@ from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
-from models.model import AppMode, Message, MessageAgentThought
+from models.model import AppMode, Message, MessageAgentThought, MessageFile
+from models.tools import ToolFile
 
 
 @pytest.fixture(autouse=True)
@@ -1117,6 +1119,64 @@ def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session)
     assert rows[0].tool == "knowledge_base_search"
     assert rows[0].tool_input == '{"query": "browser"}'
     assert rows[0].observation == "Knowledge base search results: browser skill"
+
+
+def test_tool_return_metadata_persists_assistant_message_files(sqlite_session: Session) -> None:
+    message = _message_record()
+    sqlite_session.add(message)
+    tool_file = ToolFile(
+        user_id="user-1",
+        tenant_id="tenant-1",
+        conversation_id="conv-1",
+        file_key="tool-files/tool-file-1",
+        mimetype="image/png",
+        name="cat.png",
+        size=128,
+    )
+    tool_file.id = "tool-file-1"
+    sqlite_session.add(tool_file)
+    sqlite_session.commit()
+
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id=message.id,
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "gpt_image_2_generate",
+                    "content": (
+                        "image has been created and sent to user already, "
+                        "you do not need to create it, just tell the user to check it now."
+                    ),
+                    "tool_call_id": "tool-call-1",
+                    "metadata": {
+                        "tool_files": [
+                            {
+                                "tool_file_id": "tool-file-1",
+                                "url": "/files/tools/tool-file-1.png",
+                                "mime_type": "image/png",
+                                "type": "image",
+                                "transfer_method": "tool_file",
+                            }
+                        ]
+                    },
+                },
+            },
+        )
+    )
+
+    message_files = list(sqlite_session.scalars(select(MessageFile).where(MessageFile.message_id == message.id)).all())
+    assert len(message_files) == 1
+    assert message_files[0].upload_file_id == "tool-file-1"
+    assert message_files[0].belongs_to.value == "assistant"
+    assert any(isinstance(event, QueueMessageFileEvent) for event in qm.events)
 
 
 def test_thinking_after_tool_starts_new_snapshot_row(sqlite_session: Session) -> None:
