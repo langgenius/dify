@@ -8,13 +8,14 @@ import {
   difyBuilderDraftAtom,
   difyBuilderSendDraftAtom,
 } from './store'
+import { useDifyBuilderModel } from './use-dify-builder-model'
 
 const COMPOSITION_END_DELAY = 50
 
-const DifyBuilderPromptInput = () => {
+const DifyBuilderPromptInput = ({ hasModel }: { hasModel: boolean }) => {
   const { t } = useTranslation()
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
-  const canCompose = useAtomValue(difyBuilderCanComposeAtom)
+  const canCompose = useAtomValue(difyBuilderCanComposeAtom) && hasModel
   const isComposingRef = useRef(false)
   const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -30,9 +31,11 @@ const DifyBuilderPromptInput = () => {
       disabled={!canCompose}
       aria-label={t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })}
       placeholder={
-        canCompose
-          ? t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })
-          : t(($) => $['difyBuilder.useActions'], { ns: 'workflow' })
+        !hasModel
+          ? t(($) => $['workflowGenerator.modelRequired'], { ns: 'workflow' })
+          : canCompose
+            ? t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })
+            : t(($) => $['difyBuilder.useActions'], { ns: 'workflow' })
       }
       className="block min-h-10 w-full grow resize-none bg-transparent px-2 py-1 text-sm leading-5 tracking-[-0.07px] text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder disabled:cursor-not-allowed"
       onChange={(event) => setDraft(event.currentTarget.value)}
@@ -57,9 +60,9 @@ const DifyBuilderPromptInput = () => {
   )
 }
 
-const DifyBuilderSendButton = () => {
+const DifyBuilderSendButton = ({ hasModel }: { hasModel: boolean }) => {
   const { t } = useTranslation()
-  const canSend = useAtomValue(difyBuilderCanSendDraftAtom)
+  const canSend = useAtomValue(difyBuilderCanSendDraftAtom) && hasModel
 
   return (
     <button
@@ -76,6 +79,8 @@ const DifyBuilderSendButton = () => {
 const DifyBuilderComposer = () => {
   const { t } = useTranslation()
   const sendDraft = useSetAtom(difyBuilderSendDraftAtom)
+  const { model, modelList } = useDifyBuilderModel()
+  const hasModel = model !== null
 
   return (
     <form
@@ -83,14 +88,15 @@ const DifyBuilderComposer = () => {
       className="mx-4 h-21 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1"
       onSubmit={(event) => {
         event.preventDefault()
-        void sendDraft()
+        if (!model) return
+        void sendDraft(model)
       }}
     >
       <div className="flex h-full flex-col items-end justify-end p-1.5">
-        <DifyBuilderPromptInput />
+        <DifyBuilderPromptInput hasModel={hasModel} />
         <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 pl-1">
-          <DifyBuilderModelSelector />
-          <DifyBuilderSendButton />
+          <DifyBuilderModelSelector model={model} modelList={modelList} />
+          <DifyBuilderSendButton hasModel={hasModel} />
         </div>
       </div>
     </form>
