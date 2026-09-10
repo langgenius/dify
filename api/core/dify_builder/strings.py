@@ -15,12 +15,12 @@ from dataclasses import dataclass
 class Template:
     pattern: re.Pattern
     template: str
-    translate_fields: frozenset  # capture-group names that are prose (kept); others re-inserted verbatim
+    translate_fields: frozenset[str]  # capture-group names that are prose (kept); others re-inserted verbatim
 
 
 # Non-interpolated static strings (reply_text microcopy, card chrome, decision
 # texts, checkpoint labels, static summary items, form chrome, bodies).
-PLAIN: frozenset = frozenset(
+PLAIN: frozenset[str] = frozenset(
     {
         # reply_text microcopy
         "Let's clarify the requirements.",
@@ -104,12 +104,16 @@ PLAIN: frozenset = frozenset(
         "I couldn't generate a valid workflow graph from this plan. "
         "Adjust the goal or the plan and approve again to retry.",
         "Source: checklist",
+        # status values shown in SummaryRow (value= positional/kwarg, invisible to the guard regex)
+        "Complete",
+        "Published",
+        "config edit",
         # (add any others the guard test reports)
     }
 )
 
 
-TEMPLATES: list = [
+TEMPLATES: list[Template] = [
     Template(
         pattern=re.compile(r"^Workflow built \((?P<count>\d+) nodes\)$"),
         template="Workflow built ({count} nodes)",
@@ -148,7 +152,7 @@ TEMPLATES: list = [
 ]
 
 
-def match_template(value: str):
+def match_template(value: str) -> tuple[Template, dict[str, str]] | None:
     """Return (Template, captured_groups) for the first matching template, else None."""
     for tpl in TEMPLATES:
         m = tpl.pattern.match(value)
