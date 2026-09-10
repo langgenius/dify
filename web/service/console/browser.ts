@@ -23,7 +23,13 @@ function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClien
         silent: options.context.silent,
       })
     },
-    interceptors: [onError((error) => console.error(error))],
+    interceptors: [
+      onError((error, { signal }) => {
+        // Query teardown cancels in-flight requests; keep rejection semantics without an error overlay.
+        if (signal?.aborted && error === signal.reason) return
+        console.error(error)
+      }),
+    ],
   })
 }
 

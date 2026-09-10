@@ -199,6 +199,52 @@ describe('consoleQuery transport context', () => {
     vi.restoreAllMocks()
   })
 
+  it.each([undefined, new Error('Navigation cancelled')])(
+    'should reject cancelled requests without reporting a console error (reason: %s)',
+    async (reason) => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((resource, options) => {
+        const signal = options?.signal ?? (resource instanceof Request ? resource.signal : null)
+        if (!signal) throw new Error('Expected an abort signal')
+        return new Promise<Response>((_resolve, reject) => {
+          if (signal.aborted) reject(signal.reason)
+          else signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        })
+      })
+      const consoleQuery = await loadConsoleQueryWithFetch()
+      const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+        input: { params: { agent_id: 'agent-1' } },
+      })
+      const controller = new AbortController()
+      const result = Promise.resolve(
+        queryOptions.queryFn({ signal: controller.signal } as QueryFunctionContext),
+      ).catch((error: unknown) => error)
+
+      await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled())
+      controller.abort(reason)
+
+      expect(await result).toBe(controller.signal.reason)
+      expect(consoleError).not.toHaveBeenCalled()
+    },
+  )
+
+  it('should still report and reject network failures', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = new TypeError('Failed to fetch')
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(error)
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+      input: { params: { agent_id: 'agent-1' } },
+    })
+
+    await expect(
+      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).rejects.toMatchObject({ name: 'NetworkError', cause: error })
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'NetworkError', cause: error }),
+    )
+  })
+
   it('should forward silent context to the base request transport', async () => {
     const request = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({}), {
