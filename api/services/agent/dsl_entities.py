@@ -197,7 +197,7 @@ def make_portable_agent_package(
     YAML and clipboard exports mark resources missing because they omit payloads.
     """
 
-    soul_data = make_portable_agent_soul(agent_soul).model_dump(mode="json")
+    portable_soul = make_portable_agent_soul(agent_soul)
     omitted_assets = [
         AgentPackageOmittedAsset(
             kind="skill",
@@ -220,16 +220,14 @@ def make_portable_agent_package(
         for item in agent_soul.config_files
         if not include_assets or item.is_missing
     )
-    for item in soul_data.get("config_skills", []):
-        if not include_assets or item["is_missing"]:
-            item["file_id"] = ""
-            item["is_missing"] = True
-    for item in soul_data.get("config_files", []):
-        if not include_assets or item["is_missing"]:
-            item["file_id"] = ""
-            item["is_missing"] = True
-
-    portable_soul = AgentSoulConfig.model_validate(soul_data)
+    for skill_ref in portable_soul.config_skills:
+        if not include_assets or skill_ref.is_missing:
+            skill_ref.file_id = ""
+            skill_ref.is_missing = True
+    for file_ref in portable_soul.config_files:
+        if not include_assets or file_ref.is_missing:
+            file_ref.file_id = ""
+            file_ref.is_missing = True
     icon_type = agent.icon_type.value if agent.icon_type is not None else None
     return AgentPackage(
         metadata=AgentPackageMetadata(
