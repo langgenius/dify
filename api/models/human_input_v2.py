@@ -56,6 +56,14 @@ from pydantic import (
     RootModel,
     TypeAdapter,
 )
+from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
+from repositories.human_input_v2.delivery_repository import (
+    EmailTargetSnapshot,
+    IMUserTargetSnapshot,
+    InitiatorSnapshot,
+    SubmissionAuthType,
+    TargetSnapshot,
+)
 from repositories.human_input_v2.im_channel_repository import IMChannelStatus
 from sqlalchemy import orm
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -1272,6 +1280,14 @@ class RecipientSnapshot(BaseModel):
 
 class HumanInputRecipient(DefaultFieldsDCMixin, TypeBase):
     __tablename__ = "hitlv2_recipients"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "form_id",
+            "subject_type",
+            "subject_value",
+            name="hitlv2_recipients_subject_uq",
+        ),
+    )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     form_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1302,64 +1318,6 @@ class DeliveryType(StrEnum):
     STANDALONE_WEB = "standalone_web"
 
 
-class SubmissionAuthType(StrEnum):
-    # CONSOLE means that this delivery is authenticated with
-    # console session. It requires an assoiciated Dify `Account`.
-    CONSOLE = "console"
-
-    # WEB_APP means that this delivery is authenticated with web app
-    # session. It requires an assoiciated `Enduser`.
-    #
-    # Please note that service API also uses `WEB_APP` auth type.
-    WEB_APP = "web_app"
-
-    # IM means that this delivery should be authenticated by correponding
-    # IM events. For example, the deliveried card should generate an IM callback /
-    # streaming event. The Dify instance consumes the event and determines
-    # whether it is a valid submission. It requires an associated IM user.
-    IM = "im"
-
-    # IM means that this delivery must be authenticated by send an OTP email
-    # to the corresponding email address. This auth type has no assoicated Dify or IM
-    # identity.
-    EMAIL_OTP = "email_otp"
-
-
-class DeliveryTargetType(StrEnum):
-    IM_USER = "im_user"
-    EMAIL = "email"
-    INITIATOR = "initiator"
-
-
-class IMUserTargetSnapshot(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
-
-    type: Literal[DeliveryTargetType.IM_USER] = DeliveryTargetType.IM_USER
-
-    im_provider: IMProvider
-    im_tenant_id: str
-    im_provider_user_id: str
-
-
-class EmailTargetSnapshot(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
-
-    type: Literal[DeliveryTargetType.EMAIL] = DeliveryTargetType.EMAIL
-
-    email_address: EmailStr
-
-
-class InitiatorSnapshot(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
-
-    type: Literal[DeliveryTargetType.INITIATOR] = DeliveryTargetType.INITIATOR
-
-
-type TargetSnapshot = Annotated[
-    IMUserTargetSnapshot | EmailTargetSnapshot | InitiatorSnapshot,
-    Field(discriminator="type"),
-]
-
 _TARGET_SNAPSHOT_ADAPTER: TypeAdapter[TargetSnapshot] = TypeAdapter(TargetSnapshot)
 
 
@@ -1383,11 +1341,6 @@ class HumanInputDelivery(DefaultFieldsDCMixin, TypeBase):
         ),
         nullable=False,
     )
-
-
-class DeliveryStatus(StrEnum):
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
 
 
 class DeliveryResponse(RootModel[dict[str, JsonValue]]):

@@ -89,7 +89,8 @@ class RecipientRepository(Protocol):
     encode or interpret these persistence fields.
 
     Callers own the transaction so recipient creation can be atomic with form
-    creation. Implementations must not commit or roll back that transaction.
+    creation. Implementations must not begin, commit, roll back, or create
+    savepoints in that transaction. The caller rolls back on write failure.
     Persist and restore the supplied source configurations as provenance only.
     Pydantic validation at the storage boundary checks their serialized shape;
     it must not evaluate selectors, resolve identities, or query directories.
@@ -104,11 +105,14 @@ class RecipientRepository(Protocol):
         different Contacts never merge merely because they share an email address.
 
         Atomically create missing subjects with generated IDs and timestamps.
-        Reuse existing recipients on retries, including concurrent creation,
-        preserving their IDs, sources, names, and timestamps. This does not
+        Reuse existing recipients on retries, preserving their IDs, sources,
+        names, and timestamps. Concurrent creation may raise a database write
+        conflict; the caller must roll back and retry the whole transaction.
+        The repository does not recover or retry a failed transaction. This does not
         replace the form's recipient set or remove recipients absent from params.
-        Empty input returns an empty tuple. Partial batch writes must not persist
-        on failure. The caller only invokes this during form initialization;
+        Empty input returns an empty tuple. On failure, the caller rolls back
+        the transaction so partial batch writes do not persist.
+        The caller only invokes this during form initialization;
         delivery retries and workflow resume read the persisted recipients.
         """
         ...
@@ -127,17 +131,5 @@ class RecipientRepository(Protocol):
 
         Return None when the recipient is missing or outside the bound tenant
         and form. Actor verification and submission acceptance belong to callers.
-        """
-        ...
-
-    def get_recipient_by_subject(
-        self,
-        subject: RecipientSubject,
-    ) -> Recipient | None:
-        """Find the form recipient matching an already-resolved subject exactly.
-
-        The caller supplies the same canonical identity used during creation.
-        Return None when absent; never fall back from a Contact to an email
-        subject or infer recipient identity from a delivery address.
         """
         ...

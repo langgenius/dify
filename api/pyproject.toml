@@ -26,6 +26,7 @@ dependencies = [
     # Stable: production-proven, cap below the next major
     "aliyun-log-python-sdk==0.9.44",
     "azure-identity>=1.25.3,<2.0.0",
+    "email-validator>=2.3.0,<3.0.0",
     "flask-compress>=1.24,<2.0.0",
     "flask-login==0.6.3",
     "flask-migrate>=4.1.0,<5.0.0",
