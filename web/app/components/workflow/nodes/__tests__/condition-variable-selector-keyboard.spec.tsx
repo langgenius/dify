@@ -17,7 +17,7 @@ function IfElseSelectorHarness() {
     <IfElseConditionVarSelector
       open={open}
       onOpenChange={setOpen}
-      valueSelector={['source', 'previous']}
+      valueSelector={['env', 'answer']}
       varType={VarType.number}
       availableNodes={[]}
       nodesOutputVars={variables}
@@ -32,7 +32,7 @@ function LoopSelectorHarness() {
     <LoopConditionVarSelector
       open={open}
       onOpenChange={setOpen}
-      valueSelector={['source', 'previous']}
+      valueSelector={['env', 'answer']}
       varType={VarType.number}
       availableNodes={[]}
       nodesOutputVars={variables}
