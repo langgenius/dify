@@ -35,11 +35,6 @@ def _normalize(members: dict[str, bytes], *, filename: str = "skill.zip") -> Nor
     return SkillPackageService().validate_and_normalize(content=_zip(members), filename=filename)
 
 
-def _archive_members(content: bytes) -> list[str]:
-    with zipfile.ZipFile(io.BytesIO(content)) as archive:
-        return sorted(info.filename for info in archive.infolist() if not info.is_dir())
-
-
 def test_normalize_replaces_invalid_utf8_member_names() -> None:
     original = _zip(
         {
@@ -108,28 +103,6 @@ def test_normalized_highly_compressible_skill_passes_reinspection() -> None:
         assert archive.read("data.bin") == payload
 
 
-def test_valid_skill_normalizes_manifest():
-    manifest = _normalize({"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('hi')\n"}).manifest
-
-    assert manifest.name == "pdf-toolkit"
-    assert manifest.description == "Tools for working with PDF files."
-    assert manifest.entry_path == "SKILL.md"
-    assert set(manifest.files) == {"SKILL.md", "scripts/run.py"}
-    assert manifest.size > 0
-    assert len(manifest.hash) == 64
-
-
-def test_validate_and_normalize_accepts_crlf_skill_md():
-    crlf_skill_md = _SKILL_MD.replace("\n", "\r\n")
-    package = _normalize({"SKILL.md": crlf_skill_md.encode()})
-
-    assert package.manifest.name == "pdf-toolkit"
-    assert package.manifest.description == "Tools for working with PDF files."
-    with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
-        assert b"\r" not in archive.read("SKILL.md")
-        assert archive.read("SKILL.md").decode() == _SKILL_MD
-
-
 def test_inspect_reports_uncompressed_size_without_rebuilding(monkeypatch: pytest.MonkeyPatch):
     members = {"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('hi')\n"}
 
@@ -159,8 +132,11 @@ def test_inspection_and_normalization_keep_distinct_size_meanings(prefix: str, c
     assert inspection.uncompressed_size == sum(len(value) for value in members.values())
     expected_size = len(_SKILL_MD.encode()) + len(script)
     assert normalized.manifest.size == expected_size
+    assert normalized.manifest.name == "pdf-toolkit"
+    assert normalized.manifest.description == "Tools for working with PDF files."
     with zipfile.ZipFile(io.BytesIO(normalized.archive_bytes)) as archive:
         assert sum(info.file_size for info in archive.infolist()) == expected_size
+        assert archive.read("SKILL.md") == _SKILL_MD.encode()
     if prefix or crlf:
         assert inspection.uncompressed_size > normalized.manifest.size
 
@@ -192,6 +168,9 @@ def test_normalization_preserves_selected_skill_contents(prefix: str, extra_memb
     original = _zip({**{prefix + path: content for path, content in expected.items()}, **extra_members})
     package = SkillPackageService().validate_and_normalize(content=original, filename="skill.zip")
 
+    assert package.manifest.name == "pdf-toolkit"
+    assert package.manifest.description == "Tools for working with PDF files."
+    assert package.manifest.size == sum(len(content) for content in expected.values())
     assert package.manifest.entry_path == "SKILL.md"
     assert package.manifest.files == sorted(expected)
     with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
