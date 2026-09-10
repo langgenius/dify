@@ -1,6 +1,7 @@
 import type {
   AgentKnowledgeDatasetConfig,
   AgentSoulAppFeaturesConfig,
+  AgentSoulMemoryConfig,
   AgentSoulModelConfig,
   ToolProviderType,
 } from '@dify/contracts/api/console/agent/types.gen'
@@ -121,6 +122,7 @@ export type AgentSoulConfigFormState = {
   prompt: string
   model?: AgentComposerModel
   appFeatures?: AgentSoulAppFeaturesConfig
+  memory?: AgentSoulMemoryConfig
   skills: AgentSkill[]
   files: AgentFileNode[]
   tools: AgentTool[]

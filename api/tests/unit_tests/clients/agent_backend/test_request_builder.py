@@ -529,3 +529,26 @@ def test_deferred_tool_results_threaded_into_request():
 
     assert request.deferred_tool_results is not None
     assert "tool-call-1" in request.deferred_tool_results.calls
+
+
+@pytest.mark.parametrize("kind", ["workflow", "app"])
+def test_memory_callbacks_are_private_layers_for_both_entrypoints(kind):
+    from dify_agent.layers.memory import DifyMemoryLayerConfig
+
+    prepare = DifyPluginToolConfig(
+        plugin_id="example/memory", provider="memory", tool_name="recall", credential_type="api-key"
+    )
+    observe = prepare.model_copy(update={"tool_name": "record"})
+    business = prepare.model_copy(update={"tool_name": "search"})
+    run_input = _run_input() if kind == "workflow" else _agent_app_input()
+    run_input.memory = DifyMemoryLayerConfig(prepare=prepare, observe=observe)
+    run_input.tools = DifyPluginToolsLayerConfig(tools=[prepare, observe, business])
+    builder = AgentBackendRunRequestBuilder()
+    request = (
+        builder.build_for_workflow_node(run_input) if kind == "workflow" else builder.build_for_agent_app(run_input)
+    )
+    layers = {layer.name: layer for layer in request.composition.layers}
+    assert layers["external_memory"].type == "dify.external_memory"
+    assert layers["external_memory"].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    model_tools = layers[DIFY_PLUGIN_TOOLS_LAYER_ID].config
+    assert [tool.tool_name for tool in model_tools.tools] == ["search"]

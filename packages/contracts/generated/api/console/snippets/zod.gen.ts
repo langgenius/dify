@@ -817,15 +817,6 @@ export const zAgentMemoryArtifactConfig = z.object({
 })
 
 /**
- * AgentSoulMemoryConfig
- */
-export const zAgentSoulMemoryConfig = z.object({
-  artifacts: z.array(zAgentMemoryArtifactConfig).optional(),
-  budget: z.string().nullish(),
-  scope: z.string().nullish(),
-})
-
-/**
  * AgentSoulModelCredentialRef
  *
  * Reference to model credentials resolved only at runtime.
@@ -1308,6 +1299,31 @@ export const zAgentSoulDifyToolConfig = z.object({
 export const zAgentSoulToolsConfig = z.object({
   cli_tools: z.array(zAgentCliToolConfig).optional(),
   dify_tools: z.array(zAgentSoulDifyToolConfig).optional(),
+})
+
+/**
+ * AgentExternalMemoryConfig
+ *
+ * Stored references for provider-neutral external memory; contains no secrets.
+ */
+export const zAgentExternalMemoryConfig = z.object({
+  capture: z.boolean().optional().default(true),
+  capture_max_bytes: z.int().gte(512).lte(32768).optional().default(8192),
+  max_bytes: z.int().gte(512).lte(32768).optional().default(8000),
+  observe: zAgentSoulDifyToolConfig,
+  prepare: zAgentSoulDifyToolConfig,
+  subject_id: z.string().min(1).max(256).nullish(),
+  subject_kind: z.enum(['business', 'user']).optional().default('user'),
+})
+
+/**
+ * AgentSoulMemoryConfig
+ */
+export const zAgentSoulMemoryConfig = z.object({
+  artifacts: z.array(zAgentMemoryArtifactConfig).optional(),
+  budget: z.string().nullish(),
+  external: zAgentExternalMemoryConfig.nullish(),
+  scope: z.string().nullish(),
 })
 
 /**

@@ -33,6 +33,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
 )
 from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.memory import DIFY_MEMORY_LAYER_ID, DIFY_MEMORY_LAYER_TYPE_ID, DifyMemoryLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
@@ -212,6 +213,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
+    memory: DifyMemoryLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement; a deferred call ends the run and
@@ -259,6 +261,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
+    memory: DifyMemoryLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement (ENG-635).
@@ -387,7 +390,8 @@ class AgentBackendRunRequestBuilder:
             )
         )
 
-        if run_input.tools is not None and run_input.tools.tools:
+        model_tools = _without_memory_callbacks(run_input.tools, run_input.memory)
+        if model_tools is not None and model_tools.tools:
             plugin_tool_deps = {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
             if include_shell:
                 plugin_tool_deps["shell"] = DIFY_SHELL_LAYER_ID
@@ -397,7 +401,7 @@ class AgentBackendRunRequestBuilder:
                     type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
                     deps=plugin_tool_deps,
                     metadata=run_input.metadata,
-                    config=run_input.tools,
+                    config=model_tools,
                 )
             )
 
@@ -420,6 +424,17 @@ class AgentBackendRunRequestBuilder:
                     deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.knowledge,
+                )
+            )
+
+        if run_input.memory is not None:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_MEMORY_LAYER_ID,
+                    type=DIFY_MEMORY_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.memory,
                 )
             )
 
@@ -565,7 +580,8 @@ class AgentBackendRunRequestBuilder:
             ]
         )
 
-        if run_input.tools is not None and run_input.tools.tools:
+        model_tools = _without_memory_callbacks(run_input.tools, run_input.memory)
+        if model_tools is not None and model_tools.tools:
             plugin_tool_deps = {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
             if include_shell:
                 plugin_tool_deps["shell"] = DIFY_SHELL_LAYER_ID
@@ -575,7 +591,7 @@ class AgentBackendRunRequestBuilder:
                     type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
                     deps=plugin_tool_deps,
                     metadata=run_input.metadata,
-                    config=run_input.tools,
+                    config=model_tools,
                 )
             )
 
@@ -598,6 +614,17 @@ class AgentBackendRunRequestBuilder:
                     deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.knowledge,
+                )
+            )
+
+        if run_input.memory is not None:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_MEMORY_LAYER_ID,
+                    type=DIFY_MEMORY_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.memory,
                 )
             )
 
@@ -658,3 +685,16 @@ def redact_for_agent_backend_log(value: object) -> object:
     if isinstance(value, list):
         return [redact_for_agent_backend_log(item) for item in value]
     return value
+
+
+def _without_memory_callbacks(
+    tools: DifyPluginToolsLayerConfig | None, memory: DifyMemoryLayerConfig | None
+) -> DifyPluginToolsLayerConfig | None:
+    if tools is None or memory is None:
+        return tools
+    private = {(tool.plugin_id, tool.provider, tool.tool_name) for tool in (memory.prepare, memory.observe)}
+    return tools.model_copy(
+        update={
+            "tools": [tool for tool in tools.tools if (tool.plugin_id, tool.provider, tool.tool_name) not in private]
+        }
+    )

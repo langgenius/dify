@@ -6,7 +6,7 @@ this module only keeps the invoke-time boundary:
 
 - POST ``/plugin/{tenant_id}/dispatch/tool/invoke``
 - request headers ``X-Api-Key``, ``X-Plugin-ID``, and ``Content-Type``
-- top-level ``user_id`` forwarding when shared execution context includes one
+- top-level ``user_id`` and ``app_id`` forwarding when shared execution context includes one
 - stream decoding and blob-chunk merging for agent observations
 
 The shared execution-context layer still owns tenant/user daemon context, while
@@ -160,6 +160,7 @@ class DifyPluginDaemonToolClient:
     plugin_id: str
     user_id: str | None
     http_client: httpx.AsyncClient = field(repr=False)
+    app_id: str | None = None
 
     def __post_init__(self) -> None:
         self.plugin_daemon_url = self.plugin_daemon_url.rstrip("/")
@@ -207,6 +208,8 @@ class DifyPluginDaemonToolClient:
         payload: dict[str, object] = {"data": to_plugin_daemon_jsonable(dict(request_data))}
         if self.user_id is not None:
             payload["user_id"] = self.user_id
+        if self.app_id is not None:
+            payload["app_id"] = self.app_id
 
         url = f"{self.plugin_daemon_url}/{path}"
         async with self.http_client.stream("POST", url, headers=self._headers(), json=payload) as response:

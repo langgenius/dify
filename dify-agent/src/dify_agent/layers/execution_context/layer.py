@@ -68,6 +68,7 @@ class DifyExecutionContextLayer(PlainLayer[NoLayerDeps, DifyExecutionContextLaye
             plugin_daemon_url=self.daemon_url,
             plugin_daemon_api_key=self.daemon_api_key,
             user_id=self.config.user_id,
+            app_id=self.config.app_id,
             http_client=http_client,
         )
 

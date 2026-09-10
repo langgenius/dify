@@ -5,3 +5,5 @@ source code stays under `src/dify_agent`, while framework-neutral Agenton code
 stays under `src/agenton` and `src/agenton_collections`.
 
 See the [operations guide](guide/index.md) for local server behavior.
+
+See [External memory](external-memory.md) for provider-neutral recall and capture callbacks.

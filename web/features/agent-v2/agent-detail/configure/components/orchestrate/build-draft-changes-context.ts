@@ -34,7 +34,7 @@ const changedKeysBySection: Record<
 > = {
   skills: ['skills'],
   files: ['files'],
-  advancedSettings: ['envVariables'],
+  advancedSettings: ['envVariables', 'memory'],
 }
 
 const AgentBuildDraftChangedKeysContext = createContext<ReadonlySet<AgentBuildDraftChangedKey>>(

@@ -1,4 +1,5 @@
 import asyncio
+import json
 from collections.abc import AsyncIterator, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from decimal import Decimal
@@ -3269,3 +3270,109 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
 
     assert [event.type for event in sink.events["run-invalid-shell-offset"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-invalid-shell-offset"] == "failed"
+
+
+@pytest.mark.parametrize("name, layer_type", [("wrong", "dify.external_memory"), ("external_memory", "plain.prompt")])
+def test_runner_rejects_inactive_memory_configuration(name, layer_type):
+    request = _request()
+    request.composition.layers.append(RunLayerSpec(name=name, type=layer_type, config={}))
+
+    async def scenario():
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(AgentRunValidationError, match="(External memory|Reserved layer)"):
+                await AgentRunRunner(
+                    sink=InMemoryRunEventSink(),
+                    request=request,
+                    run_id="invalid-memory",
+                    plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+
+def test_runner_memory_uses_compaction_budget_and_keeps_snapshot_clean(monkeypatch):
+    from dify_agent.layers.memory import DifyMemoryLayerConfig
+
+    requests = []
+
+    def daemon(request):
+        data = json.loads(request.content)["data"]
+        requests.append(data)
+        operation = data["tool_parameters"]["request"]
+        if data["tool"] == "recall":
+            assert operation["max_bytes"] == 1750
+            value = {"status": "ready", "content": "Prior preference", "content_bytes": 16}
+        else:
+            value = {"status": "accepted"}
+        return httpx.Response(
+            200,
+            text="data: "
+            + json.dumps(
+                {
+                    "code": 0,
+                    "message": "",
+                    "data": {"type": "json", "message": {"json_object": value}},
+                }
+            )
+            + "\n\n",
+        )
+
+    async def model(messages, info):
+        assert not info.function_tools
+        instructions = [message.instructions for message in messages if isinstance(message, ModelRequest)]
+        assert "Prior preference" in instructions[-1]
+        yield "Finished"
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", lambda *args, **kwargs: FunctionModel(stream_function=model))
+    request = _request(include_history=True, context_window_tokens=10000, model_settings={"max_tokens": 3000})
+    context = next(layer for layer in request.composition.layers if layer.name == "execution_context")
+    context.config = DifyExecutionContextLayerConfig(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        user_from="account",
+        agent_mode="workflow_run",
+        invoke_from="service-api",
+    )
+    tool = {
+        "plugin_id": "example/memory",
+        "provider": "memory",
+        "credential_type": "api-key",
+        "credentials": {"token": "provider-secret"},
+    }
+    request.composition.layers.append(
+        RunLayerSpec(
+            name="external_memory",
+            type="dify.external_memory",
+            deps={"execution_context": "execution_context"},
+            config=DifyMemoryLayerConfig(
+                prepare={**tool, "tool_name": "recall"}, observe={**tool, "tool_name": "record"}
+            ),
+        )
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(daemon)) as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="memory-with-history",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+    success = next(event for event in sink.events["memory-with-history"] if isinstance(event, RunSucceededEvent))
+    assert success.data.output == "Finished"
+    snapshot = success.data.session_snapshot
+    assert "Prior preference" not in snapshot.model_dump_json()
+    assert "provider-secret" not in snapshot.model_dump_json()
+    history = _history_messages_from_snapshot(snapshot)
+    assert any(
+        isinstance(part, TextPart) and part.content == "Finished" for message in history for part in message.parts
+    )
+    records = [item["tool_parameters"]["request"] for item in requests if item["tool"] == "record"]
+    assert [item["event"] for item in records] == ["user_prompt", "model_response", "run_end"]
+    assert records[-1]["payload"]["status"] == "succeeded"
