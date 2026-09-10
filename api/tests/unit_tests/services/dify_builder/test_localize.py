@@ -42,6 +42,16 @@ def test_detect_language_english_fallback_on_empty(monkeypatch):
     assert loc.detect_language("") == "en"
 
 
+def test_detect_language_clean_code_passes(monkeypatch):
+    loc, _ = _localizer(monkeypatch, detect="ja")
+    assert loc.detect_language("hello") == "ja"
+
+
+def test_detect_language_rejects_non_code_reply(monkeypatch):
+    loc, _ = _localizer(monkeypatch, detect="The language is Japanese.")
+    assert loc.detect_language("hello") == "en"
+
+
 def test_localize_translates_catalog_string(monkeypatch):
     loc, _ = _localizer(monkeypatch, table={"Test run": "测试运行"})
     items = [ConversationItem(kind="test_result", payload={"title": "Test run", "tone": "success"})]
