@@ -29,20 +29,30 @@ _DETECT_SYSTEM = (
 # ONLY the code" and returns a sentence instead.
 _LANG_CODE_RE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$")
 
+# (source_string, language) -> translation, for the fixed static-string catalog
+# (core.dify_builder.strings). Module-level and shared across Localizer
+# instances/tenants/sessions: entries are catalog strings translated into a
+# given target language, independent of any tenant or session state, so a
+# language's finite vocabulary really is translated once process-wide rather
+# than once per advance-task invocation (a fresh Localizer is constructed per
+# invocation). Plain dict is fine under gevent/GIL: a set is atomic, and a
+# concurrent duplicate translation of the same key is harmless and idempotent
+# -- no lock needed.
+_TRANSLATION_CACHE: dict[tuple[str, str], str] = {}
+
 
 class Localizer:
     def __init__(self, model_provider: Callable[[], object | None]) -> None:
         self._model_provider = model_provider
-        self._cache: dict[tuple[str, str], str] = {}
 
     # -- detection ----------------------------------------------------------
     def detect_language(self, text: str) -> str:
         if not text or not text.strip():
             return "en"
-        model = self._model_provider()
-        if model is None:
-            return "en"
         try:
+            model = self._model_provider()
+            if model is None:
+                return "en"
             raw = llm.invoke_text(model, system=_DETECT_SYSTEM, user=text[:2000]).strip()
         except Exception:
             logger.exception("dify_builder: language detection failed; defaulting to en")
@@ -75,7 +85,7 @@ class Localizer:
     def _collect(self, value, language: str, needed: set[str]) -> None:
         if isinstance(value, str):
             src = self._source_to_translate(value)
-            if src is not None and (src, language) not in self._cache:
+            if src is not None and (src, language) not in _TRANSLATION_CACHE:
                 needed.add(src)
         elif isinstance(value, dict):
             for v in value.values():
@@ -105,11 +115,11 @@ class Localizer:
 
     def _translate_value(self, value: str, language: str) -> str:
         if value in strings.PLAIN:
-            return self._cache.get((value, language), value)
+            return _TRANSLATION_CACHE.get((value, language), value)
         m = strings.match_template(value)
         if m is not None:
             tpl, groups = m
-            translated_tpl = self._cache.get((tpl.template, language), tpl.template)
+            translated_tpl = _TRANSLATION_CACHE.get((tpl.template, language), tpl.template)
             try:
                 return translated_tpl.format(**groups)
             except Exception:
@@ -117,10 +127,14 @@ class Localizer:
         return value
 
     def _fill_cache(self, sources: list[str], language: str) -> None:
-        misses = [s for s in sources if (s, language) not in self._cache]
+        misses = [s for s in sources if (s, language) not in _TRANSLATION_CACHE]
         if not misses:
             return
-        model = self._model_provider()
+        try:
+            model = self._model_provider()
+        except Exception:
+            logger.exception("dify_builder: model_provider failed during translation; leaving strings in English")
+            return
         if model is None:
             return
         system = (
@@ -137,4 +151,4 @@ class Localizer:
             return
         for src in misses:
             out = table.get(src)
-            self._cache[(src, language)] = out if isinstance(out, str) and out else src
+            _TRANSLATION_CACHE[(src, language)] = out if isinstance(out, str) and out else src
