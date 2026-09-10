@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
@@ -14,7 +15,7 @@ from models import AppStar
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog
-from services.billing_service import NetworkAccessGroupUpstreamError
+from services.network_access_group_service import NetworkAccessGroupUpstreamError
 from tasks.remove_app_and_related_data_task import (
     _delete_app_stars,
     _delete_app_workflow_archive_logs,
@@ -152,17 +153,20 @@ def test_community_app_cleanup_does_not_schedule_binding_cleanup(monkeypatch: py
 
 
 def test_independent_binding_cleanup_task_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
-    cleanup = MagicMock(return_value={"deleted": True})
+    service = MagicMock()
+    service.cleanup_app_binding.return_value = {"deleted": True}
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    monkeypatch.setattr(
-        remove_app_task_module.BillingService,
-        "cleanup_app_network_access_group_binding",
-        cleanup,
-    )
 
-    remove_app_task_module.cleanup_app_network_access_group_binding_task.run(tenant_id="tenant-1", app_id="app-1")
+    with patch(
+        "extensions.ext_application_services.application_services",
+        return_value=SimpleNamespace(network_access_groups=service),
+    ):
+        remove_app_task_module.cleanup_app_network_access_group_binding_task.run(
+            tenant_id="tenant-1",
+            app_id="app-1",
+        )
 
-    cleanup.assert_called_once_with("tenant-1", "app-1")
+    service.cleanup_app_binding.assert_called_once_with(workspace_id="tenant-1", app_id="app-1")
     assert remove_app_task_module.cleanup_app_network_access_group_binding_task.max_retries == 24
 
 
@@ -172,16 +176,22 @@ def test_independent_binding_cleanup_task_retries_with_exponential_backoff(
     upstream_error = NetworkAccessGroupUpstreamError(409, "NETWORK_ACCESS_APP_STILL_EXISTS")
     retry_error = RuntimeError("retry scheduled")
     retry = MagicMock(side_effect=retry_error)
+    service = MagicMock()
+    service.cleanup_app_binding.side_effect = upstream_error
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    monkeypatch.setattr(
-        remove_app_task_module.BillingService,
-        "cleanup_app_network_access_group_binding",
-        MagicMock(side_effect=upstream_error),
-    )
     monkeypatch.setattr(remove_app_task_module.cleanup_app_network_access_group_binding_task, "retry", retry)
 
-    with pytest.raises(RuntimeError, match="retry scheduled"):
-        remove_app_task_module.cleanup_app_network_access_group_binding_task.run(tenant_id="tenant-1", app_id="app-1")
+    with (
+        patch(
+            "extensions.ext_application_services.application_services",
+            return_value=SimpleNamespace(network_access_groups=service),
+        ),
+        pytest.raises(RuntimeError, match="retry scheduled"),
+    ):
+        remove_app_task_module.cleanup_app_network_access_group_binding_task.run(
+            tenant_id="tenant-1",
+            app_id="app-1",
+        )
 
     retry.assert_called_once_with(exc=upstream_error, countdown=15)
     assert remove_app_task_module._network_access_binding_cleanup_retry_delay(5) == 480

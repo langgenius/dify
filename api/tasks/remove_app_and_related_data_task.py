@@ -52,7 +52,6 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from services.api_token_service import ApiTokenCache
-from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +75,14 @@ def cleanup_app_network_access_group_binding_task(self, tenant_id: str, app_id: 
     if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         return
     try:
-        BillingService.cleanup_app_network_access_group_binding(tenant_id, app_id)
+        # Import lazily because AppService imports this task module while the
+        # application-service composition root imports AppService dependencies.
+        from extensions.ext_application_services import application_services
+
+        application_services().network_access_groups.cleanup_app_binding(
+            workspace_id=tenant_id,
+            app_id=app_id,
+        )
     except Exception as e:
         countdown = _network_access_binding_cleanup_retry_delay(self.request.retries)
         logger.exception(
