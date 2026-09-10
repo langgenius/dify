@@ -5,6 +5,7 @@ import uuid
 from collections.abc import Generator, Sequence
 from decimal import Decimal
 from json import dumps
+from typing import override
 
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
@@ -31,6 +32,7 @@ from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, 
 
 
 class MockModelClass(PluginModelClient):
+    @override
     def fetch_model_providers(self, tenant_id: str) -> Sequence[PluginModelProviderEntity]:
         """
         Fetch model providers for the given tenant.
@@ -91,15 +93,16 @@ class MockModelClass(PluginModelClient):
             )
         ]
 
+    @override
     def get_model_schema(
         self,
         tenant_id: str,
-        user_id: str,
+        user_id: str | None,
         plugin_id: str,
         provider: str,
         model_type: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, object],
     ) -> AIModelEntity | None:
         """
         Get model schema
@@ -236,20 +239,20 @@ class MockModelClass(PluginModelClient):
                     ),
                 )
 
+    @override
     def invoke_llm(
         self: PluginModelClient,
-        *,
         tenant_id: str,
-        user_id: str,
+        user_id: str | None,
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, object],
         prompt_messages: list[PromptMessage],
-        model_parameters: dict | None = None,
+        model_parameters: dict[str, object] | None = None,
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: bool = True,
         app_id: str | None = None,
-    ):
+    ) -> Generator[LLMResultChunk, None, None]:
         return MockModelClass.mocked_chat_create_stream(model=model, prompt_messages=prompt_messages, tools=tools)

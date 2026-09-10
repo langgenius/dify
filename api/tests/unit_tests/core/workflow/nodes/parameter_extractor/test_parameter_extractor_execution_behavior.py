@@ -3,6 +3,7 @@
 import os
 import time
 import uuid
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,6 +15,8 @@ from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities import AssistantPromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.message_entities import PromptMessage
+from graphon.model_runtime.memory.prompt_message_memory import PromptMessageMemory
 from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
@@ -24,19 +27,22 @@ from tests.workflow_test_utils import build_test_graph_init_params
 pytest_plugins = ("tests.unit_tests.core.workflow.nodes.parameter_extractor.fixtures.plugin_daemon",)
 
 
-def get_mocked_fetch_memory(memory_text: str):
-    class MemoryMock:
+def get_mocked_fetch_memory(memory_text: str) -> MagicMock:
+    class MemoryMock(PromptMessageMemory):
+        @override
         def get_history_prompt_messages(
             self,
             max_token_limit: int = 2000,
             message_limit: int | None = None,
-        ):
+        ) -> list[PromptMessage]:
             return [UserPromptMessage(content=memory_text), AssistantPromptMessage(content="mocked answer")]
 
     return MagicMock(return_value=MemoryMock())
 
 
-def init_parameter_extractor_node(config: dict, memory=None):
+def init_parameter_extractor_node(
+    config: dict[str, object], memory: PromptMessageMemory | None = None
+) -> ParameterExtractorNode:
     graph_config = {
         "edges": [
             {
@@ -91,7 +97,8 @@ def _mock_db_session_close(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(db.session, "close", MagicMock())
 
 
-def test_function_calling_parameter_extractor(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.usefixtures("setup_model_mock")
+def test_function_calling_parameter_extractor(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Test function calling for parameter extractor.
     """
@@ -132,7 +139,8 @@ def test_function_calling_parameter_extractor(setup_model_mock, monkeypatch: pyt
     assert result.outputs.get("__reason") == None
 
 
-def test_instructions(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.usefixtures("setup_model_mock")
+def test_instructions(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Test chat parameter extractor.
     """
@@ -182,7 +190,8 @@ def test_instructions(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
             assert "what's the weather in SF" in prompt.get("text")
 
 
-def test_chat_parameter_extractor(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.usefixtures("setup_model_mock")
+def test_chat_parameter_extractor(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Test chat parameter extractor.
     """
@@ -233,7 +242,8 @@ def test_chat_parameter_extractor(setup_model_mock, monkeypatch: pytest.MonkeyPa
                 assert '<structure>\n{"type": "object"' in prompt.get("text")
 
 
-def test_completion_parameter_extractor(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.usefixtures("setup_model_mock")
+def test_completion_parameter_extractor(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Test completion parameter extractor.
     """
@@ -280,7 +290,7 @@ def test_completion_parameter_extractor(setup_model_mock, monkeypatch: pytest.Mo
     assert "SF" in result.process_data.get("prompts", [])[0].get("text")
 
 
-def test_extract_json_response():
+def test_extract_json_response() -> None:
     """
     Test extract json response.
     """
@@ -318,7 +328,7 @@ def test_extract_json_response():
     assert result["location"] == "kawaii"
 
 
-def test_extract_json_from_tool_call():
+def test_extract_json_from_tool_call() -> None:
     """
     Test extract json response.
     """
@@ -358,7 +368,8 @@ def test_extract_json_from_tool_call():
     assert result["location"] == "kawaii"
 
 
-def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.usefixtures("setup_model_mock")
+def test_chat_parameter_extractor_with_memory(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Test chat parameter extractor with memory.
     """

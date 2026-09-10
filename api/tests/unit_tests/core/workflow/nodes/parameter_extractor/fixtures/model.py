@@ -15,8 +15,8 @@ def get_mocked_fetch_model_config(
     provider: str,
     model: str,
     mode: str,
-    credentials: dict,
-):
+    credentials: dict[str, object],
+) -> MagicMock:
     model_assembly = create_plugin_model_assembly(tenant_id="9d2074fc-6f86-45a9-b09d-6ecc63b9056b")
     model_provider_factory = model_assembly.model_provider_factory
     model_type_instance = model_assembly.create_model_type_instance(provider=provider, model_type=ModelType.LLM)
@@ -57,8 +57,8 @@ def get_mocked_fetch_model_instance(
     provider: str,
     model: str,
     mode: str,
-    credentials: dict,
-):
+    credentials: dict[str, object],
+) -> MagicMock:
     mock_fetch_model_config = get_mocked_fetch_model_config(
         provider=provider,
         model=model,

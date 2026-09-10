@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 
 import pytest
 
@@ -16,7 +16,7 @@ def mock_plugin_daemon(
     :return: unpatch function
     """
 
-    def unpatch():
+    def unpatch() -> None:
         monkeypatch.undo()
 
     monkeypatch.setattr(PluginModelClient, "invoke_llm", MockModelClass.invoke_llm)
@@ -27,7 +27,7 @@ def mock_plugin_daemon(
 
 
 @pytest.fixture
-def setup_model_mock(monkeypatch: pytest.MonkeyPatch):
+def setup_model_mock(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
     unpatch = mock_plugin_daemon(monkeypatch)
     yield
     unpatch()
