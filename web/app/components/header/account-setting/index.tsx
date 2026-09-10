@@ -27,6 +27,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
+import IpPoliciesPage from './ip-policies-page'
 import MembersPage from './members-page'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
@@ -74,6 +75,11 @@ export default function AccountSetting({
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
   const activeMenu = (() => {
+    if (
+      activeTab === ACCOUNT_SETTING_TAB.IP_POLICIES &&
+      systemFeatures.deployment_edition !== 'CLOUD'
+    )
+      return ACCOUNT_SETTING_TAB.MEMBERS
     if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES
     if (activeTab === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && !canViewWorkflowLogArchives)
@@ -94,6 +100,12 @@ export default function AccountSetting({
       name: t(($) => $['settings.members'], { ns: 'common' }),
       icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.IP_POLICIES,
+      name: t(($) => $['settings.ipPolicies'], { ns: 'common' }),
+      icon: <span className={cn('i-ri-shield-keyhole-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-shield-keyhole-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
@@ -142,6 +154,8 @@ export default function AccountSetting({
     const visibleTabs: AccountSettingTab[] = []
 
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
+    if (systemFeatures.deployment_edition === 'CLOUD')
+      visibleTabs.push(ACCOUNT_SETTING_TAB.IP_POLICIES)
 
     if (canManageWorkspaceRoles) {
       visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
@@ -247,6 +261,7 @@ export default function AccountSetting({
                 </div>
                 <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
                   {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+                  {activeMenu === ACCOUNT_SETTING_TAB.IP_POLICIES && <IpPoliciesPage />}
                   {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
                     <PermissionsPage containerRef={scrollContainerRef} />
                   )}
