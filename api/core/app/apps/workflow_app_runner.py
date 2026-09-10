@@ -75,6 +75,8 @@ from graphon.engine_events import (
     NodeEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
+    NodeRunHumanInputFormFilledEvent,
+    NodeRunHumanInputFormTimeoutEvent,
     NodeRunIterationFailedEvent,
     NodeRunIterationNextEvent,
     NodeRunIterationStartedEvent,
@@ -381,7 +383,7 @@ class WorkflowBasedAppRunner:
                 graph_config=workflow.graph_dict, config=target_node_config
             )
         except NotImplementedError:
-            variable_mapping = {}
+            variable_mapping = dict[str, Sequence[str]]()
         variable_mapping = inject_default_system_variable_mappings(
             node_id=target_node_config["id"],
             node_type=node_type,
@@ -438,6 +440,10 @@ class WorkflowBasedAppRunner:
             (layer for layer in self._graph_engine_layers if isinstance(layer, PauseStatePersistenceLayer)), None
         )
         for event in workflow_entry.run(pause_state_layer=pause_state_layer):
+            if isinstance(event, NodeRunHumanInputFormFilledEvent | NodeRunHumanInputFormTimeoutEvent):
+                if event.id in published_form_ids:
+                    continue
+                published_form_ids.add(event.id)
             if isinstance(
                 event,
                 GraphRunPausedEvent
@@ -537,6 +543,37 @@ class WorkflowBasedAppRunner:
         iteration_id = node_metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID.value)
         loop_id = node_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
         match event:
+            case NodeRunHumanInputFormFilledEvent():
+                self._publish_event(
+                    QueueHumanInputFormFilledEvent(
+                        form_id=event.id,
+                        node_id=resolve_human_input_node_id(
+                            node_id=event.node_id,
+                            form_id=event.id,
+                            variable_pool=workflow_entry.graph_engine.runtime_state.variable_pool,
+                        ),
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        rendered_content=event.rendered_content,
+                        action_id=event.action_id,
+                        action_text=event.action_text,
+                        submitted_data=event.submitted_data,
+                    )
+                )
+            case NodeRunHumanInputFormTimeoutEvent():
+                self._publish_event(
+                    QueueHumanInputFormTimeoutEvent(
+                        form_id=event.id,
+                        node_id=resolve_human_input_node_id(
+                            node_id=event.node_id,
+                            form_id=event.id,
+                            variable_pool=workflow_entry.graph_engine.runtime_state.variable_pool,
+                        ),
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        expiration_time=event.expiration_time,
+                    )
+                )
             case GraphRunStartedEvent():
                 self._publish_event(QueueWorkflowStartedEvent(reason=event.reason))
             case GraphRunSucceededEvent():
