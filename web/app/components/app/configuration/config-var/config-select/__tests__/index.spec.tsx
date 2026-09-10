@@ -38,26 +38,31 @@ describe('ConfigSelect Component', () => {
     })
   })
 
-  it('renders add button', () => {
-    render(<ConfigSelect {...defaultProps} />)
-
-    expect(screen.getByText('appDebug.variableConfig.addOption')).toBeInTheDocument()
-  })
-
   it('handles option deletion', () => {
     render(<ConfigSelect {...defaultProps} />)
     fireEvent.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[0]!)
     expect(defaultProps.onChange).toHaveBeenCalledWith(['Option 2'])
   })
 
-  it('handles adding new option', () => {
-    render(<ConfigSelect {...defaultProps} />)
-    const addButton = screen.getByText('appDebug.variableConfig.addOption')
-
-    fireEvent.click(addButton)
-
-    expect(defaultProps.onChange).toHaveBeenCalledWith([...defaultProps.options, ''])
-  })
+  it.each(['{Enter}', ' '])(
+    'adds an option with %s without submitting the enclosing form',
+    async (key) => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault())
+      render(
+        <form onSubmit={onSubmit}>
+          <ConfigSelect options={[]} onChange={defaultProps.onChange} />
+        </form>,
+      )
+      await user.tab()
+      expect(
+        screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }),
+      ).toHaveFocus()
+      await user.keyboard(key)
+      expect(defaultProps.onChange).toHaveBeenCalledExactlyOnceWith([''])
+      expect(onSubmit).not.toHaveBeenCalled()
+    },
+  )
 
   it('updates option values and clears focus styles on blur', () => {
     render(<ConfigSelect {...defaultProps} />)

@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useStore } from '@tanstack/react-form'
-import { isValidElement, memo, useCallback, useMemo } from 'react'
+import { isValidElement, memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
@@ -143,6 +143,35 @@ const BaseField = ({
     help,
   } = formSchema
   const disabled = propsDisabled || formSchemaDisabled
+  const controlId = useId()
+  const labelId = `${controlId}-label`
+  const descriptionId = `${controlId}-description`
+  const messageId = `${controlId}-message`
+  const meta = useStore(field.form.store, (state) => state.fieldMeta[field.name])
+  const errors = fieldState?.errors ?? (meta?.isTouched ? meta.errors : [])
+  const validateStatus =
+    fieldState?.validateStatus ?? (errors?.length ? FormItemValidateStatusEnum.Error : undefined)
+  const messages =
+    validateStatus === FormItemValidateStatusEnum.Error
+      ? errors
+      : validateStatus === FormItemValidateStatusEnum.Warning
+        ? fieldState?.warnings
+        : undefined
+  const hasMessage = !!messages?.length
+  const controlProps = {
+    'aria-describedby':
+      [description && descriptionId, hasMessage && messageId].filter(Boolean).join(' ') ||
+      undefined,
+    'aria-invalid': validateStatus === FormItemValidateStatusEnum.Error || undefined,
+    'aria-required': required || undefined,
+  }
+  const isSingleControl = [
+    FormTypeEnum.textInput,
+    FormTypeEnum.secretInput,
+    FormTypeEnum.textNumber,
+    FormTypeEnum.select,
+    FormTypeEnum.dynamicSelect,
+  ].includes(formItemType)
 
   const [
     translatedLabel,
@@ -242,9 +271,17 @@ const BaseField = ({
     <>
       <div className={cn(fieldClassName)}>
         <div className={cn(labelClassName, formLabelClassName)}>
-          {translatedLabel}
+          {isSingleControl ? (
+            <label id={labelId} htmlFor={controlId}>
+              {translatedLabel || name}
+            </label>
+          ) : (
+            <span id={labelId}>{translatedLabel || name}</span>
+          )}
           {required && !isValidElement(label) && (
-            <span className="ml-1 text-text-destructive-secondary">*</span>
+            <span aria-hidden="true" className="ml-1 text-text-destructive-secondary">
+              *
+            </span>
           )}
           {translatedTooltip && (
             <Infotip aria-label={translatedTooltip} className="ml-0.5" popupClassName="w-[200px]">
@@ -252,16 +289,17 @@ const BaseField = ({
             </Infotip>
           )}
         </div>
-        <div className={cn(inputContainerClassName)}>
+        <div className={cn(inputContainerClassName)} data-form-field={field.name}>
           {[FormTypeEnum.textInput, FormTypeEnum.secretInput, FormTypeEnum.textNumber].includes(
             formItemType,
           ) && (
             <Input
-              id={field.name}
+              id={controlId}
               name={field.name}
+              {...controlProps}
               className={cn(
                 inputClassName,
-                VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus as FormItemValidateStatusEnum]
+                VALIDATE_STATUS_STYLE_MAP[validateStatus as FormItemValidateStatusEnum]
                   ?.componentClassName,
               )}
               value={value || ''}
@@ -284,11 +322,7 @@ const BaseField = ({
                 disabled={disabled}
                 onValueChange={handleChange}
               >
-                <SelectTrigger
-                  id={field.name}
-                  aria-label={translatedLabel || field.name}
-                  className="px-2"
-                >
+                <SelectTrigger id={controlId} {...controlProps} className="px-2">
                   <SelectValue<string, true> placeholder={translatedPlaceholder}>
                     {(selectedValue) =>
                       selectedValue?.length
@@ -319,11 +353,7 @@ const BaseField = ({
                   handleChange(next)
                 }}
               >
-                <SelectTrigger
-                  id={field.name}
-                  aria-label={translatedLabel || field.name}
-                  className="px-2"
-                >
+                <SelectTrigger id={controlId} {...controlProps} className="px-2">
                   <SelectValue<string> placeholder={translatedPlaceholder}>
                     {(nextValue) =>
                       getSingleSelectLabel(nextValue, memorizedOptions, translatedPlaceholder)
@@ -342,6 +372,8 @@ const BaseField = ({
             ))}
           {formItemType === FormTypeEnum.checkbox /* && multiple */ && (
             <CheckboxList
+              {...controlProps}
+              aria-labelledby={labelId}
               name={field.name}
               title={name}
               value={value}
@@ -359,11 +391,7 @@ const BaseField = ({
                 disabled={disabled || isDynamicOptionsLoading}
                 onValueChange={field.handleChange}
               >
-                <SelectTrigger
-                  id={field.name}
-                  aria-label={translatedLabel || field.name}
-                  className="px-2"
-                >
+                <SelectTrigger id={controlId} {...controlProps} className="px-2">
                   <SelectValue<string, true> placeholder={dynamicPlaceholder}>
                     {(selectedValue) =>
                       selectedValue?.length
@@ -404,11 +432,7 @@ const BaseField = ({
                   field.handleChange(next)
                 }}
               >
-                <SelectTrigger
-                  id={field.name}
-                  aria-label={translatedLabel || field.name}
-                  className="px-2"
-                >
+                <SelectTrigger id={controlId} {...controlProps} className="px-2">
                   <SelectValue<string> placeholder={dynamicPlaceholder}>
                     {(nextValue) =>
                       getSingleSelectLabel(nextValue, dynamicOptions, dynamicPlaceholder)
@@ -440,6 +464,8 @@ const BaseField = ({
               <Fieldset
                 render={
                   <RadioGroup
+                    {...controlProps}
+                    aria-labelledby={labelId}
                     value={stringValue}
                     onValueChange={(optionValue) => handleChange(optionValue)}
                     className={cn(memorizedOptions.length >= 3 && 'flex-col items-stretch')}
@@ -454,7 +480,7 @@ const BaseField = ({
                   >
                     <FieldLabel
                       className={cn(
-                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary',
+                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-components-input-border-active',
                         value === option.value &&
                           'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
                         disabled && 'cursor-not-allowed opacity-50',
@@ -479,6 +505,8 @@ const BaseField = ({
               <Fieldset
                 render={
                   <RadioGroup<boolean>
+                    {...controlProps}
+                    aria-labelledby={labelId}
                     className="w-fit gap-3"
                     value={booleanValue}
                     onValueChange={(v) => field.handleChange(v)}
@@ -501,28 +529,25 @@ const BaseField = ({
               </Fieldset>
             </Field>
           )}
-          {fieldState?.validateStatus &&
-            [FormItemValidateStatusEnum.Error, FormItemValidateStatusEnum.Warning].includes(
-              fieldState?.validateStatus,
-            ) && (
-              <div
-                className={cn(
-                  'mt-1 px-0 py-0.5 system-xs-regular',
-                  VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].textClassName,
-                )}
-              >
-                {
-                  fieldState?.[
-                    VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus]
-                      .infoFieldName as keyof FieldState
-                  ]
-                }
-              </div>
-            )}
+          {hasMessage && (
+            <div
+              id={messageId}
+              className={cn(
+                'mt-1 px-0 py-0.5 system-xs-regular',
+                VALIDATE_STATUS_STYLE_MAP[validateStatus!].textClassName,
+              )}
+            >
+              {messages
+                .map((message) => (typeof message === 'string' ? message : message.message))
+                .join(' ')}
+            </div>
+          )}
         </div>
       </div>
       {description && (
-        <div className="mt-4 system-xs-regular text-text-tertiary">{translatedDescription}</div>
+        <div id={descriptionId} className="mt-4 system-xs-regular text-text-tertiary">
+          {translatedDescription}
+        </div>
       )}
       {url && (
         <a

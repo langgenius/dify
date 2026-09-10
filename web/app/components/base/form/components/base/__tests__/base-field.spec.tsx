@@ -74,6 +74,32 @@ describe('BaseField', () => {
     })
   })
 
+  it.each([
+    FormTypeEnum.textInput,
+    FormTypeEnum.secretInput,
+    FormTypeEnum.textNumber,
+    FormTypeEnum.select,
+  ])('associates the visible label, description and required state for %s', async (type) => {
+    const user = userEvent.setup()
+    renderBaseField({
+      formSchema: {
+        type,
+        name: 'credential',
+        label: 'Credential',
+        description: 'Use the workspace credential',
+        required: true,
+        options: [{ label: 'Primary', value: 'primary' }],
+      },
+    })
+    const control = screen.getByLabelText('Credential')
+    expect(control).toHaveAccessibleName('Credential')
+    expect(control).toHaveAccessibleDescription('Use the workspace credential')
+    expect(control).toBeRequired()
+    await user.click(screen.getByText('Credential'))
+    if (type === FormTypeEnum.select) expect(control).toHaveAttribute('aria-expanded', 'true')
+    else expect(control).toHaveFocus()
+  })
+
   it('should render text input and propagate changes', async () => {
     const onChange = vi.fn()
     renderBaseField({
@@ -188,6 +214,31 @@ describe('BaseField', () => {
     expect(onChange).toHaveBeenCalledWith('visibility', 'private')
   })
 
+  it.each([
+    { type: FormTypeEnum.select, role: 'combobox' },
+    { type: FormTypeEnum.radio, role: 'radiogroup' },
+    { type: FormTypeEnum.checkbox, role: 'group' },
+  ])('associates $type validation and description with the named control', ({ type, role }) => {
+    renderBaseField({
+      formSchema: {
+        type,
+        name: 'access',
+        label: 'Access level',
+        description: 'Choose an access level',
+        required: true,
+        options: [{ label: 'Public', value: 'public' }],
+      },
+      defaultValues: { access: type === FormTypeEnum.checkbox ? [] : '' },
+      fieldState: {
+        validateStatus: FormItemValidateStatusEnum.Error,
+        errors: ['Choose an option'],
+      },
+    })
+    const control = screen.getByRole(role, { name: 'Access level' })
+    expect(control).toHaveAttribute('aria-invalid', 'true')
+    expect(control).toHaveAccessibleDescription('Choose an access level Choose an option')
+  })
+
   it('should show validation message when field state has an error', () => {
     renderBaseField({
       formSchema: {
@@ -202,7 +253,9 @@ describe('BaseField', () => {
       },
     })
 
-    expect(screen.getByText('Name is required')).toBeInTheDocument()
+    const input = screen.getByRole('textbox', { name: 'Name' })
+    expect(input).toBeInvalid()
+    expect(input).toHaveAccessibleDescription('Name is required')
   })
 
   it('should render description and help link when provided', () => {

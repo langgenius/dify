@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
@@ -98,17 +99,19 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
         </div>
       )}
 
-      <div
+      <Button
+        type="button"
+        variant="tertiary"
         onClick={() => {
           onChange([...options, ''])
         }}
-        className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
+        className="mt-1 h-9 w-full justify-start"
       >
-        <RiAddLine className="size-4" />
-        <div className="system-sm-medium text-[13px]">
+        <RiAddLine aria-hidden="true" className="size-4" />
+        <span className="system-sm-medium text-[13px]">
           {t(($) => $['variableConfig.addOption'], { ns: 'appDebug' })}
-        </div>
-      </div>
+        </span>
+      </Button>
     </div>
   )
 }
