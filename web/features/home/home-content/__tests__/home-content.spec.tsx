@@ -921,6 +921,8 @@ describe('HomeContent', () => {
     })
 
     it('should keep selected category when clearing search text', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing', 'Translate'],
         allList: [
@@ -935,15 +937,9 @@ describe('HomeContent', () => {
 
       renderHomeContent({ searchParams: { category: 'Writing' } })
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'alp' } })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      await user.type(input, 'alp')
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
@@ -951,7 +947,9 @@ describe('HomeContent', () => {
   })
 
   describe('User Interactions', () => {
-    it('should filter apps by search keywords', async () => {
+    it('should filter local templates immediately as the user types', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [
@@ -961,12 +959,8 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      await user.type(input, 'gam')
 
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
       expect(screen.getByText('Gamma')).toBeInTheDocument()
@@ -1379,6 +1373,8 @@ describe('HomeContent', () => {
 
   describe('Edge Cases', () => {
     it('should reset search results when clear icon is clicked', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [
@@ -1388,17 +1384,11 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      await user.type(input, 'gam')
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Gamma')).toBeInTheDocument()
