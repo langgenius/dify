@@ -26,9 +26,7 @@ def all_hitl_forms_submitted(session: Session, form_ids: Sequence[str]) -> bool:
     if len(forms) != len(unique_form_ids):
         return False
 
-    return all(
-        form.status == HumanInputFormStatus.SUBMITTED or form.submitted_at is not None for form in forms
-    )
+    return all(form.status == HumanInputFormStatus.SUBMITTED or form.submitted_at is not None for form in forms)
 
 
 def maybe_enqueue_resume_for_submitted_hitl_pause(
