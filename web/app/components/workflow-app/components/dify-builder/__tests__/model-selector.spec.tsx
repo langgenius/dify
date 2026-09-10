@@ -14,6 +14,7 @@ import DifyBuilderModelSelector from '../model-selector'
 import { createSessionView } from '../session/__tests__/fixtures'
 import { difyBuilderSessionViewAtom } from '../session/state'
 import { difyBuilderSelectedModelAtom } from '../store'
+import { useDifyBuilderModel } from '../use-dify-builder-model'
 
 vi.mock('@/service/common', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/common')>()),
@@ -60,6 +61,11 @@ const userModel: SessionModel = {
   name: 'gpt-4o',
   mode: 'chat',
   completion_params: {},
+}
+
+const ModelSelectorWithData = () => {
+  const props = useDifyBuilderModel()
+  return <DifyBuilderModelSelector {...props} />
 }
 
 const renderSelector = ({
@@ -111,7 +117,7 @@ const renderSelector = ({
   return renderWithConsoleQuery(
     <Provider store={store}>
       <NuqsWrapper>
-        <DifyBuilderModelSelector />
+        <ModelSelectorWithData />
       </NuqsWrapper>
     </Provider>,
     { queryClient },
