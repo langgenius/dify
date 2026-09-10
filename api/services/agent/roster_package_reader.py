@@ -258,8 +258,8 @@ class RosterAgentPackageReader:
         info: zipfile.ZipInfo,
         *,
         collect: bool,
-        max_bytes: int | None = None,
-        expected_size: int | None = None,
+        max_bytes: int,
+        expected_size: int,
     ) -> tuple[bytes, str, int]:
         digest = hashlib.sha256()
         output = io.BytesIO() if collect else None
@@ -267,14 +267,14 @@ class RosterAgentPackageReader:
         with archive.open(info) as member:
             while chunk := member.read(_COPY_CHUNK_SIZE):
                 size += len(chunk)
-                if max_bytes is not None and size > max_bytes:
+                if size > max_bytes:
                     raise RosterAgentPackageTooLargeError("Roster Agent package member exceeds the size limit")
-                if expected_size is not None and size > expected_size:
+                if size > expected_size:
                     raise InvalidRosterAgentPackageError("Roster Agent package member failed integrity checks")
                 digest.update(chunk)
                 if output is not None:
                     output.write(chunk)
-        if expected_size is not None and size != expected_size:
+        if size != expected_size:
             raise InvalidRosterAgentPackageError("Roster Agent package member failed integrity checks")
         return output.getvalue() if output is not None else b"", digest.hexdigest(), size
 

@@ -732,7 +732,8 @@ def test_export_rejects_unusable_or_oversized_skill_payload(
         exporter._build_archive(app=app, skill_sources=[source], file_sources=[])
 
 
-def test_read_member_enforces_actual_output_limit() -> None:
+@pytest.mark.parametrize("max_bytes", [0, 8])
+def test_read_member_enforces_actual_output_limit(max_bytes: int) -> None:
     package = _zip({"payload.bin": b"x" * 32})
 
     with zipfile.ZipFile(io.BytesIO(package)) as archive:
@@ -741,7 +742,8 @@ def test_read_member_enforces_actual_output_limit() -> None:
                 archive,
                 archive.getinfo("payload.bin"),
                 collect=True,
-                max_bytes=8,
+                max_bytes=max_bytes,
+                expected_size=32,
             )
 
     assert exc_info.value.error_code == "roster_agent_package_too_large"
@@ -757,8 +759,20 @@ def test_read_member_validates_actual_size_while_streaming(expected_size: int) -
                 archive,
                 archive.getinfo("payload.bin"),
                 collect=False,
+                max_bytes=32,
                 expected_size=expected_size,
             )
+
+
+@pytest.mark.parametrize("collect", [False, True])
+def test_read_empty_member_with_zero_budget(collect: bool) -> None:
+    with zipfile.ZipFile(io.BytesIO(_zip({"empty.bin": b""}))) as archive:
+        payload, digest, size = RosterAgentPackageReader._read_member(
+            archive, archive.getinfo("empty.bin"), collect=collect, max_bytes=0, expected_size=0
+        )
+    assert payload == b""
+    assert digest == hashlib.sha256(b"").hexdigest()
+    assert size == 0
 
 
 def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
