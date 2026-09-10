@@ -575,6 +575,50 @@ def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed():
     assert result.run.status == "failed"
 
 
+def test_test_and_repair_run_draft_raises_captures_error_on_run():
+    """Regression: a launch-time exception must be captured on run.error
+    (logged + stored), not silently discarded into a blank failed stub. A
+    non-input error still routes to the config-repair gate."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
+    assert result.run is not None
+    assert "kaboom-provider" in (result.run.error or "")
+
+
+def test_test_and_repair_run_draft_raises_input_error_routes_to_testdata_gate():
+    """A launch-time exception whose message is an input-validation error
+    (stale test inputs no longer match the current start node) must route back
+    to the testdata gate -- not the blind config-repair loop -- and the real
+    error must be captured on the run."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(ValueError("query is required in input form"))
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(built_node_ids=["llm"], test_input_ref="ti-1")
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    assert result.context.test_input_ref == ""  # stale input cleared
+    assert result.run is not None
+    assert "in input form" in (result.run.error or "")
+
+
 def test_await_repair_approve_applies_and_retests():
     from core.dify_builder.handlers_build import handle_await_repair
     from core.dify_builder.models import MutationIntent

@@ -243,13 +243,21 @@ def _string_list(value: object) -> list[str]:
     return [item for item in value if isinstance(item, str)] if isinstance(value, list) else []
 
 
-_INPUT_FAILURE_SIGNALS = ("file variable", "not provided", "missing input")
+def launch_error_text(exc: BaseException) -> str:
+    """The exception message for a launch-failed verify run, or the type name
+    when it's empty (so the stored error is never blank)."""
+    return str(exc).strip() or type(exc).__name__
+
+
+# "in input form" matches base_app_generator._validate_inputs rejections.
+_INPUT_FAILURE_SIGNALS = ("file variable", "not provided", "missing input", "in input form")
 
 
 def is_input_failure(run: Run) -> bool:
-    """Heuristic: True if a failed node's error looks like a missing/invalid test
-    INPUT (vs a config bug) -- so the flow can route back to the testdata gate
-    instead of the config-repair gate. Signal-substring match on node errors.
+    """True if the failure looks like a missing/invalid test INPUT (vs a config
+    bug), so the flow routes back to the testdata gate. Substring-matches the
+    signals against failed-node errors and, for a launch failure (empty
+    ``per_node``), against ``run.error``.
 
     Final-review fix (Important #1): the bare ``"required"`` and generic
     ``"variable not found"`` signals were dropped -- both also appear in
@@ -261,11 +269,13 @@ def is_input_failure(run: Run) -> bool:
     ``"file variable"`` alone still matches the real file-input E2E error,
     "File variable not found for selector: [...]".
     """
-    for n in run.per_node:
-        if n.status == "failed" and n.error:
-            low = n.error.lower()
-            if any(sig in low for sig in _INPUT_FAILURE_SIGNALS):
-                return True
+    texts = [n.error for n in run.per_node if n.status == "failed" and n.error]
+    if run.error:
+        texts.append(run.error)
+    for text in texts:
+        low = text.lower()
+        if any(sig in low for sig in _INPUT_FAILURE_SIGNALS):
+            return True
     return False
 
 

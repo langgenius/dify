@@ -10,6 +10,7 @@ no handler -- its completion summary is emitted by the governance-tail handlers
 ``handle_await_learning`` for the ask policy).
 """
 
+import logging
 import uuid
 
 from core.dify_builder.changes import describe_changed_nodes, describe_proposed_nodes
@@ -42,6 +43,7 @@ from core.dify_builder.handlers_fix import (
     emit_canvas,
     first_failed_node,
     is_input_failure,
+    launch_error_text,
     merge_known_keys,
     mint_checkpoint,
     perform_revert,
@@ -61,6 +63,8 @@ from core.dify_builder.models import (
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "build_registry",
@@ -579,9 +583,12 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 
     try:
         raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
-        status, per_node, dify_run_id = raw.status, raw.per_node, raw.dify_run_id
-    except Exception:  # never crash the advance -- surface as a failed run
-        status, per_node, dify_run_id = "failed", [], ""
+        status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, ""
+    except Exception as exc:
+        # Never crash the advance; capture the launch error (log + store) instead
+        # of swallowing it, so diagnose/routing have something to act on.
+        logger.exception("dify_builder verify run failed to launch (session=%s, app=%s)", s.id, s.app_id)
+        status, per_node, dify_run_id, run_error = "failed", [], "", launch_error_text(exc)
 
     if status == "succeeded":
         progress.complete("build-run-test")
@@ -595,6 +602,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         dify_run_id=dify_run_id,
         status=status,
         per_node=per_node,
+        error=run_error,
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
