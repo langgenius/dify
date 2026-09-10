@@ -117,7 +117,6 @@ def _manifest(*, skill_payload: bytes, file_payload: bytes) -> RosterAgentPackag
                 id="s_000001",
                 scope="agent_config",
                 name="research",
-                description="Research skill.",
                 path="s_000001.zip",
                 size=len(skill_payload),
                 sha256=hashlib.sha256(skill_payload).hexdigest(),
@@ -184,8 +183,6 @@ def test_manifest_rejects_dangling_resource_references() -> None:
     ("overrides", "message"),
     [
         ({"path": "wrong.zip"}, "skill path must be"),
-        ({"scope": "workspace"}, "workspace skill priority is required"),
-        ({"priority": 0}, "agent config skill priority must be omitted"),
         ({"sha256": "not-a-digest"}, "sha256 must be"),
     ],
 )
@@ -250,7 +247,6 @@ def test_manifest_rejects_duplicate_localized_skill_names() -> None:
         "id": "s_000002",
         "path": "s_000002.zip",
         "scope": "workspace",
-        "priority": 0,
     }
     values["skills"].append(duplicate)
 
@@ -604,7 +600,6 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
                 id=path.removesuffix(".zip"),
                 scope="agent_config",
                 name=f"research-{index}",
-                description="Research skill.",
                 path=path,
                 size=len(payload),
                 sha256=hashlib.sha256(payload).hexdigest(),
@@ -634,9 +629,9 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
             id=item.id,
             scope=item.scope,
             name=item.name,
-            display_name=item.display_name,
-            description=item.description,
-            priority=item.priority,
+            display_name=None,
+            description="Research skill.",
+            priority=None,
             audit_ref="source",
         )
         for item in manifest.skills
@@ -1101,10 +1096,20 @@ def test_export_uses_current_workspace_skill_bindings(
         with RosterAgentPackageReader().read(exported.archive) as prepared:
             assert len(prepared.manifest.skills) == 1
             assert prepared.manifest.skills[0].scope == "workspace"
-            assert prepared.manifest.skills[0].priority == 0
+            assert set(prepared.manifest.skills[0].model_dump()) == {
+                "id",
+                "path",
+                "size",
+                "sha256",
+                "audit",
+                "scope",
+                "name",
+                "mime_type",
+            }
+            assert prepared.app.package.workspace_skills[0].priority == 0
             assert prepared.manifest.skills[0].name == "legacy-published"
-            assert prepared.manifest.skills[0].display_name == "Legacy Published"
-            assert prepared.manifest.skills[0].description == "Research skill."
+            assert prepared.app.package.workspace_skills[0].display_name == "Legacy Published"
+            assert prepared.app.package.workspace_skills[0].description == "Research skill."
             assert prepared.app.package.soul.config_skills[0].is_missing is True
             assert prepared.manifest.skills[0].sha256 == hashlib.sha256(workspace_payload).hexdigest()
 
@@ -1273,3 +1278,26 @@ def test_export_preserves_file_metadata_in_dsl(
     assert sources[0].storage_key == "payload"
     assert soul.config_files[0].mime_type == declared_mime
     assert soul.config_files[0].file_id == "source-id"
+
+
+@pytest.mark.parametrize("mutation", ["missing", "extra", "duplicate"])
+def test_manifest_requires_workspace_skill_dsl_metadata(mutation: str) -> None:
+    from services.agent.dsl_entities import AgentPackageWorkspaceSkill
+
+    manifest = _manifest(skill_payload=_skill_archive(), file_payload=b"pdf-content")
+    app = _package_app()
+    manifest.skills[0].scope = "workspace"
+    app.package.soul.config_skills = []
+    descriptor = AgentPackageWorkspaceSkill(
+        name="research", display_name="Research", description="Research skill.", priority=3
+    )
+    app.package.workspace_skills = [descriptor]
+    manifest.validate_app(app)
+    if mutation == "missing":
+        app.package.workspace_skills = []
+    elif mutation == "extra":
+        app.package.workspace_skills.append(descriptor.model_copy(update={"name": "extra"}))
+    else:
+        app.package.workspace_skills.append(descriptor)
+    with pytest.raises(ValueError, match="workspace skill"):
+        manifest.validate_app(app)
