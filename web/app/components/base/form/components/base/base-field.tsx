@@ -10,6 +10,7 @@ import {
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
@@ -148,7 +149,8 @@ const BaseField = ({
   const descriptionId = `${controlId}-description`
   const messageId = `${controlId}-message`
   const meta = useStore(field.form.store, (state) => state.fieldMeta[field.name])
-  const errors = fieldState?.errors ?? (meta?.isTouched ? meta.errors : [])
+  // Nonempty external errors take priority; clearing them restores client validation.
+  const errors = fieldState?.errors?.length ? fieldState.errors : meta?.isTouched ? meta.errors : []
   const validateStatus =
     fieldState?.validateStatus ?? (errors?.length ? FormItemValidateStatusEnum.Error : undefined)
   const messages =
@@ -165,12 +167,12 @@ const BaseField = ({
     'aria-invalid': validateStatus === FormItemValidateStatusEnum.Error || undefined,
     'aria-required': required || undefined,
   }
+  const isDynamicSelect = formItemType === FormTypeEnum.dynamicSelect
+  const isSelect = formItemType === FormTypeEnum.select || isDynamicSelect
   const isSingleControl = [
     FormTypeEnum.textInput,
     FormTypeEnum.secretInput,
     FormTypeEnum.textNumber,
-    FormTypeEnum.select,
-    FormTypeEnum.dynamicSelect,
   ].includes(formItemType)
 
   const [
@@ -267,11 +269,20 @@ const BaseField = ({
       : null
   const dynamicNoticeClassName = dynamicOptionsError ? 'text-text-destructive-secondary' : undefined
 
-  return (
+  const selectOptions = isDynamicSelect ? dynamicOptions : memorizedOptions
+  const selectPlaceholder = isDynamicSelect ? dynamicPlaceholder : translatedPlaceholder
+  const handleSelectChange = isDynamicSelect ? field.handleChange : handleChange
+  const selectDisabled = disabled || (isDynamicSelect && isDynamicOptionsLoading)
+
+  const content = (
     <>
       <div className={cn(fieldClassName)}>
         <div className={cn(labelClassName, formLabelClassName)}>
-          {isSingleControl ? (
+          {isSelect ? (
+            <SelectLabel className="inline p-0 text-inherit [font:inherit]">
+              {translatedLabel || name}
+            </SelectLabel>
+          ) : isSingleControl ? (
             <label id={labelId} htmlFor={controlId}>
               {translatedLabel || name}
             </label>
@@ -313,63 +324,50 @@ const BaseField = ({
               showCopyIcon={showCopy}
             />
           )}
-          {formItemType === FormTypeEnum.select &&
-            (multiple ? (
-              <Select<string, true>
-                multiple
-                items={memorizedOptions}
-                value={Array.isArray(value) ? value : []}
-                disabled={disabled}
-                onValueChange={handleChange}
-              >
-                <SelectTrigger id={controlId} {...controlProps} className="px-2">
-                  <SelectValue<string, true> placeholder={translatedPlaceholder}>
+          {isSelect && (
+            <>
+              <SelectTrigger id={controlId} {...controlProps} className="px-2">
+                {multiple ? (
+                  <SelectValue<string, true> placeholder={selectPlaceholder}>
                     {(selectedValue) =>
                       selectedValue?.length
                         ? t(($) => $['dynamicSelect.selected'], {
                             ns: 'common',
                             count: selectedValue.length,
                           })
-                        : translatedPlaceholder
+                        : selectPlaceholder
                     }
                   </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="max-h-80 bg-components-panel-bg-blur">
-                  {memorizedOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <SelectItemText>{option.label}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Select<string>
-                items={memorizedOptions}
-                value={getSingleSelectValue(value, memorizedOptions)}
-                disabled={disabled}
-                onValueChange={(next) => {
-                  if (next == null) return
-                  handleChange(next)
-                }}
-              >
-                <SelectTrigger id={controlId} {...controlProps} className="px-2">
-                  <SelectValue<string> placeholder={translatedPlaceholder}>
+                ) : (
+                  <SelectValue<string> placeholder={selectPlaceholder}>
                     {(nextValue) =>
-                      getSingleSelectLabel(nextValue, memorizedOptions, translatedPlaceholder)
+                      getSingleSelectLabel(nextValue, selectOptions, selectPlaceholder)
                     }
                   </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="max-h-80 bg-components-panel-bg-blur">
-                  {memorizedOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <SelectItemText>{option.label}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ))}
+                )}
+              </SelectTrigger>
+              <SelectContent
+                className={cn('bg-components-panel-bg-blur', !isDynamicSelect && 'max-h-80')}
+              >
+                {isDynamicSelect && dynamicNoticeTitle && (
+                  <div
+                    className={cn(
+                      'flex h-5.5 items-center px-3 system-xs-medium-uppercase text-text-tertiary',
+                      dynamicNoticeClassName,
+                    )}
+                  >
+                    {dynamicNoticeTitle}
+                  </div>
+                )}
+                {selectOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <SelectItemText>{option.label}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </>
+          )}
           {formItemType === FormTypeEnum.checkbox /* && multiple */ && (
             <CheckboxList
               {...controlProps}
@@ -382,83 +380,6 @@ const BaseField = ({
               maxHeight="200px"
             />
           )}
-          {formItemType === FormTypeEnum.dynamicSelect &&
-            (multiple ? (
-              <Select<string, true>
-                multiple
-                items={dynamicOptions}
-                value={Array.isArray(value) ? value : []}
-                disabled={disabled || isDynamicOptionsLoading}
-                onValueChange={field.handleChange}
-              >
-                <SelectTrigger id={controlId} {...controlProps} className="px-2">
-                  <SelectValue<string, true> placeholder={dynamicPlaceholder}>
-                    {(selectedValue) =>
-                      selectedValue?.length
-                        ? t(($) => $['dynamicSelect.selected'], {
-                            ns: 'common',
-                            count: selectedValue.length,
-                          })
-                        : dynamicPlaceholder
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="bg-components-panel-bg-blur">
-                  {dynamicNoticeTitle && (
-                    <div
-                      className={cn(
-                        'flex h-5.5 items-center px-3 system-xs-medium-uppercase text-text-tertiary',
-                        dynamicNoticeClassName,
-                      )}
-                    >
-                      {dynamicNoticeTitle}
-                    </div>
-                  )}
-                  {dynamicOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <SelectItemText>{option.label}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Select<string>
-                items={dynamicOptions}
-                value={getSingleSelectValue(value, dynamicOptions)}
-                disabled={disabled || isDynamicOptionsLoading}
-                onValueChange={(next) => {
-                  if (next == null) return
-                  field.handleChange(next)
-                }}
-              >
-                <SelectTrigger id={controlId} {...controlProps} className="px-2">
-                  <SelectValue<string> placeholder={dynamicPlaceholder}>
-                    {(nextValue) =>
-                      getSingleSelectLabel(nextValue, dynamicOptions, dynamicPlaceholder)
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="bg-components-panel-bg-blur">
-                  {dynamicNoticeTitle && (
-                    <div
-                      className={cn(
-                        'flex h-5.5 items-center px-3 system-xs-medium-uppercase text-text-tertiary',
-                        dynamicNoticeClassName,
-                      )}
-                    >
-                      {dynamicNoticeTitle}
-                    </div>
-                  )}
-                  {dynamicOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <SelectItemText>{option.label}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ))}
           {formItemType === FormTypeEnum.radio && (
             <Field name={name} className="contents">
               <Fieldset
@@ -560,6 +481,32 @@ const BaseField = ({
         </a>
       )}
     </>
+  )
+
+  if (!isSelect) return content
+
+  return multiple ? (
+    <Select<string, true>
+      multiple
+      items={selectOptions}
+      value={Array.isArray(value) ? value : []}
+      disabled={selectDisabled}
+      onValueChange={handleSelectChange}
+    >
+      {content}
+    </Select>
+  ) : (
+    <Select<string>
+      items={selectOptions}
+      value={getSingleSelectValue(value, selectOptions)}
+      disabled={selectDisabled}
+      onValueChange={(next) => {
+        if (next == null) return
+        handleSelectChange(next)
+      }}
+    >
+      {content}
+    </Select>
   )
 }
 

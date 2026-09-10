@@ -1,5 +1,5 @@
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
@@ -29,6 +29,42 @@ const requiredSchema = (label: string): FormSchema => ({
 })
 
 describe('BaseForm validation accessibility', () => {
+  it('shows client validation again after editing clears a server error', async () => {
+    const user = userEvent.setup()
+    const ref = createRef<FormRefObject>()
+    render(
+      <>
+        <BaseForm
+          ref={ref}
+          formSchemas={[requiredSchema('API token')]}
+          onChange={(name) => ref.current?.setFields([{ name, errors: [] }])}
+        />
+        <button type="button" onClick={() => ref.current?.getFormValues({})}>
+          Save credentials
+        </button>
+      </>,
+    )
+    const input = screen.getByLabelText('API token')
+    await user.type(input, 'rejected-token')
+    act(() => {
+      ref.current?.setFields([{ name: 'token', errors: ['Token was rejected'] }])
+    })
+    expect(input).toBeInvalid()
+    expect(input).toHaveAccessibleDescription('Paste your API token Token was rejected')
+
+    await user.clear(input)
+    await user.click(screen.getByRole('button', { name: 'Save credentials' }))
+    expect(input).toHaveFocus()
+    expect(input).toBeInvalid()
+    expect(input).toHaveAccessibleDescription('Paste your API token Token is required')
+    expect(screen.queryByText('Token was rejected')).not.toBeInTheDocument()
+
+    await user.type(input, 'valid-token')
+    expect(input).not.toBeInvalid()
+    expect(input).toHaveAccessibleDescription('Paste your API token')
+    expect(screen.queryByText('Token is required')).not.toBeInTheDocument()
+  })
+
   it('focuses the invalid field in the submitting form and associates the error until corrected', async () => {
     const user = userEvent.setup()
     const ref = createRef<FormRefObject>()

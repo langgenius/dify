@@ -74,31 +74,82 @@ describe('BaseField', () => {
     })
   })
 
+  it.each([FormTypeEnum.textInput, FormTypeEnum.secretInput, FormTypeEnum.textNumber])(
+    'associates the visible label, description and required state for %s',
+    async (type) => {
+      const user = userEvent.setup()
+      renderBaseField({
+        formSchema: {
+          type,
+          name: 'credential',
+          label: 'Credential',
+          description: 'Use the workspace credential',
+          required: true,
+          options: [{ label: 'Primary', value: 'primary' }],
+        },
+      })
+      const control = screen.getByLabelText('Credential')
+      expect(control).toHaveAccessibleName('Credential')
+      expect(control).toHaveAccessibleDescription('Use the workspace credential')
+      expect(control).toBeRequired()
+      await user.click(screen.getByText('Credential'))
+      expect(control).toHaveFocus()
+    },
+  )
+
   it.each([
-    FormTypeEnum.textInput,
-    FormTypeEnum.secretInput,
-    FormTypeEnum.textNumber,
-    FormTypeEnum.select,
-  ])('associates the visible label, description and required state for %s', async (type) => {
-    const user = userEvent.setup()
-    renderBaseField({
-      formSchema: {
-        type,
-        name: 'credential',
-        label: 'Credential',
-        description: 'Use the workspace credential',
-        required: true,
-        options: [{ label: 'Primary', value: 'primary' }],
-      },
-    })
-    const control = screen.getByLabelText('Credential')
-    expect(control).toHaveAccessibleName('Credential')
-    expect(control).toHaveAccessibleDescription('Use the workspace credential')
-    expect(control).toBeRequired()
-    await user.click(screen.getByText('Credential'))
-    if (type === FormTypeEnum.select) expect(control).toHaveAttribute('aria-expanded', 'true')
-    else expect(control).toHaveFocus()
-  })
+    { type: FormTypeEnum.select, multiple: false },
+    { type: FormTypeEnum.select, multiple: true },
+    { type: FormTypeEnum.dynamicSelect, multiple: false },
+    { type: FormTypeEnum.dynamicSelect, multiple: true },
+  ])(
+    'focuses the $type trigger from its label and supports keyboard selection (multiple: $multiple)',
+    async ({ type, multiple }) => {
+      const user = userEvent.setup()
+      const options = [{ label: 'Primary', value: 'primary' }]
+      mockDynamicOptions.mockReturnValue({
+        data: { options },
+        isLoading: false,
+        error: null,
+      })
+      renderBaseField({
+        formSchema: {
+          type,
+          multiple,
+          name: 'credential',
+          label: 'Credential',
+          description: 'Use the workspace credential',
+          tooltip: 'Credential help',
+          required: true,
+          options,
+        },
+        defaultValues: { credential: multiple ? [] : '' },
+        fieldState: {
+          validateStatus: FormItemValidateStatusEnum.Error,
+          errors: ['Choose a credential'],
+        },
+        showCurrentValue: true,
+      })
+
+      const control = screen.getByRole('combobox', { name: 'Credential' })
+      expect(control).toHaveAccessibleDescription(
+        'Use the workspace credential Choose a credential',
+      )
+      expect(control).toBeInvalid()
+      expect(control).toBeRequired()
+      expect(screen.getByRole('button', { name: 'Credential help' })).toBeInTheDocument()
+      await user.click(screen.getByText('Credential'))
+      expect(control).toHaveFocus()
+      expect(control).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+      await user.keyboard('{ArrowDown}')
+      expect(control).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByRole('option', { name: 'Primary' })).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(screen.getByTestId('field-value')).toHaveTextContent('primary')
+    },
+  )
 
   it('should render text input and propagate changes', async () => {
     const onChange = vi.fn()
