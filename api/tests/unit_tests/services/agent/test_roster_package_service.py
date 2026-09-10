@@ -227,30 +227,22 @@ def test_manifest_rejects_unsupported_soul_version() -> None:
         manifest.validate_app(_package_app(AgentSoulConfig(schema_version=2)))
 
 
-def test_manifest_rejects_duplicate_resource_ids() -> None:
-    skill_payload = _skill_archive()
-    file_payload = b"pdf-content"
-    values = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
-    duplicate = {**values["skills"][0], "name": "duplicate"}
-    values["skills"].append(duplicate)
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        pytest.param({"name": "duplicate"}, "resource ids must be unique", id="duplicate-id"),
+        pytest.param(
+            {"id": "s_000002", "path": "s_000002.zip", "scope": "workspace"},
+            "skill names must be unique",
+            id="duplicate-localized-name",
+        ),
+    ],
+)
+def test_manifest_rejects_duplicate_resources(overrides: dict[str, str], message: str) -> None:
+    values = _manifest(skill_payload=_skill_archive(), file_payload=b"pdf-content").model_dump(mode="json")
+    values["skills"].append({**values["skills"][0], **overrides})
 
-    with pytest.raises(ValidationError, match="resource ids must be unique"):
-        RosterAgentPackageManifest.model_validate(values)
-
-
-def test_manifest_rejects_duplicate_localized_skill_names() -> None:
-    skill_payload = _skill_archive()
-    file_payload = b"pdf-content"
-    values = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
-    duplicate = {
-        **values["skills"][0],
-        "id": "s_000002",
-        "path": "s_000002.zip",
-        "scope": "workspace",
-    }
-    values["skills"].append(duplicate)
-
-    with pytest.raises(ValidationError, match="skill names must be unique"):
+    with pytest.raises(ValidationError, match=message):
         RosterAgentPackageManifest.model_validate(values)
 
 

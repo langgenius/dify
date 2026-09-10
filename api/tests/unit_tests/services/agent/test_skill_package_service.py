@@ -141,12 +141,6 @@ def test_inspection_and_normalization_keep_distinct_size_meanings(prefix: str, c
         assert inspection.uncompressed_size > normalized.manifest.size
 
 
-def test_name_and_description_are_required_in_frontmatter():
-    with pytest.raises(SkillPackageError) as exc_info:
-        _normalize({"SKILL.md": b"# heading-name\n\nbody"})
-    assert exc_info.value.code == "missing_skill_name"
-
-
 def test_shallowest_skill_md_preferred_during_normalization():
     manifest = _normalize({"SKILL.md": _SKILL_MD.encode(), "nested/SKILL.md": _SKILL_MD.encode()}).manifest
     assert manifest.entry_path == "SKILL.md"
@@ -181,18 +175,6 @@ def test_normalization_preserves_selected_skill_contents(prefix: str, extra_memb
         assert package.manifest.hash != hashlib.sha256(original).hexdigest()
 
 
-def test_validate_and_normalize_rejects_multiple_depth_2_skill_roots_with_sibling_skill_tree():
-    with pytest.raises(SkillPackageError) as exc_info:
-        _normalize(
-            {
-                "pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
-                "pdf-toolkit/scripts/run.py": b"print('hi')\n",
-                "other-tool/SKILL.md": _SKILL_MD.encode(),
-            }
-        )
-    assert exc_info.value.code == "files_outside_skill_root"
-
-
 @pytest.mark.parametrize(
     ("members", "filename", "code"),
     [
@@ -212,6 +194,43 @@ def test_validate_and_normalize_rejects_multiple_depth_2_skill_roots_with_siblin
             "invalid_skill_description",
         ),
         ({"SKILL.md": b"\xff\xfenot utf8"}, "skill.zip", "skill_md_not_utf8"),
+        pytest.param({"SKILL.md": b"# heading-name\n\nbody"}, "skill.zip", "missing_skill_name", id="no-frontmatter"),
+        pytest.param(
+            {
+                "pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
+                "pdf-toolkit/scripts/run.py": b"print('hi')\n",
+                "other-tool/SKILL.md": _SKILL_MD.encode(),
+            },
+            "skill.zip",
+            "files_outside_skill_root",
+            id="multiple-skill-roots",
+        ),
+        pytest.param({"../evil.txt": b"x", "SKILL.md": _SKILL_MD.encode()}, "skill.zip", "unsafe_path", id="zip-slip"),
+        pytest.param(
+            {"SKILL.md": b"---\n: : : not yaml\n---\n# x\n"},
+            "skill.zip",
+            "invalid_frontmatter",
+            id="invalid-frontmatter",
+        ),
+        pytest.param(
+            {"SKILL.md": b"---\n# heading-wins\nbody"}, "skill.zip", "missing_skill_name", id="unterminated-frontmatter"
+        ),
+        pytest.param(
+            {"bundle/pdf-toolkit/SKILL.md": _SKILL_MD.encode(), "README.md": b"x"},
+            "skill.zip",
+            "files_outside_skill_root",
+            id="outside-deep-root",
+        ),
+        pytest.param(
+            {
+                "pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
+                "pdf-toolkit/scripts/run.py": b"print('x')\n",
+                "pdf-toolkit/scripts/./run.py": b"print('y')\n",
+            },
+            "skill.zip",
+            "duplicate_member_path",
+            id="duplicate-normalized-path",
+        ),
     ],
 )
 def test_invalid_packages_rejected(members: dict[str, bytes], filename: str, code: str):
@@ -225,13 +244,6 @@ def test_non_zip_content_rejected():
     with pytest.raises(SkillPackageError) as exc_info:
         SkillPackageService().validate_and_normalize(content=b"not a zip", filename="skill.zip")
     assert exc_info.value.code == "invalid_archive"
-
-
-def test_zip_slip_member_rejected():
-    payload = _zip({"../evil.txt": b"x", "SKILL.md": _SKILL_MD.encode()})
-    with pytest.raises(SkillPackageError) as exc_info:
-        SkillPackageService().validate_and_normalize(content=payload, filename="skill.zip")
-    assert exc_info.value.code == "unsafe_path"
 
 
 def test_empty_archive_rejected():
@@ -280,37 +292,6 @@ def test_high_compression_ratio_uses_absolute_expansion_limit(monkeypatch: pytes
     with pytest.raises(SkillPackageError) as exc_info:
         service.inspect(content=content, filename="skill.zip")
     assert exc_info.value.code == "archive_too_large"
-
-
-def test_bad_frontmatter_yaml_rejected():
-    bad = b"---\n: : : not yaml\n---\n# x\n"
-    with pytest.raises(SkillPackageError) as exc_info:
-        _normalize({"SKILL.md": bad})
-    assert exc_info.value.code == "invalid_frontmatter"
-
-
-def test_unterminated_frontmatter_rejected():
-    with pytest.raises(SkillPackageError) as exc_info:
-        _normalize({"SKILL.md": b"---\n# heading-wins\nbody"})
-    assert exc_info.value.code == "missing_skill_name"
-
-
-def test_validate_and_normalize_rejects_files_outside_selected_skill_root():
-    with pytest.raises(SkillPackageError) as exc_info:
-        _normalize({"bundle/pdf-toolkit/SKILL.md": _SKILL_MD.encode(), "README.md": b"x"})
-    assert exc_info.value.code == "files_outside_skill_root"
-
-
-def test_validate_and_normalize_rejects_duplicate_normalized_paths():
-    with pytest.raises(SkillPackageError) as exc_info:
-        _normalize(
-            {
-                "pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
-                "pdf-toolkit/scripts/run.py": b"print('x')\n",
-                "pdf-toolkit/scripts/./run.py": b"print('y')\n",
-            }
-        )
-    assert exc_info.value.code == "duplicate_member_path"
 
 
 def test_validate_and_normalize_maps_member_decompression_failures_to_invalid_archive(monkeypatch: pytest.MonkeyPatch):
