@@ -1,5 +1,6 @@
-from collections.abc import Callable
+from collections.abc import Callable, Generator, Iterator
 from io import BytesIO
+from typing import override
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -456,6 +457,184 @@ def test_quota_managed_tts_releases_when_provider_fails_before_first_chunk() -> 
         list(model_instance.invoke_tts(content_text="hello"))
 
     reservation.commit.assert_not_called()
+    reservation.release.assert_called_once_with()
+
+
+class _TrackedTTSStream(Iterator[bytes]):
+    def __init__(self, chunks: list[bytes], *, error: Exception | None = None, fail_close: bool = False) -> None:
+        self._chunks: Iterator[bytes] = iter(chunks)
+        self._error: Exception | None = error
+        self._fail_close: bool = fail_close
+        self.close_calls: int = 0
+
+    @override
+    def __next__(self) -> bytes:
+        try:
+            return next(self._chunks)
+        except StopIteration:
+            if self._error is not None:
+                raise self._error
+            raise
+
+    def close(self) -> None:
+        self.close_calls += 1
+        if self._fail_close:
+            raise RuntimeError("provider close failed")
+
+
+@pytest.mark.parametrize("consume_all", [False, True])
+def test_quota_managed_tts_closes_retained_provider_generator(consume_all: bool) -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="tts-model", model_type=ModelType.TTS)],
+        model_type=ModelType.TTS,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+    reservation = MagicMock()
+    events: list[str] = []
+    reservation.release.side_effect = lambda: events.append("release")
+
+    def provider_stream() -> Generator[bytes, None, None]:
+        try:
+            yield b"first"
+            yield b"second"
+        finally:
+            events.append("close")
+
+    provider = provider_stream()
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(ModelInstance, "invoke_tts", return_value=provider),
+    ):
+        response = model_instance.invoke_tts(content_text="hello")
+        assert isinstance(response, Generator)
+        assert next(response) == b"first"
+        if consume_all:
+            assert list(response) == [b"second"]
+        response.close()
+        response.close()
+
+    assert events == ["close", "release"]
+
+
+def test_quota_managed_tts_close_before_iteration_does_not_reserve_or_invoke() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="tts-model", model_type=ModelType.TTS)],
+        model_type=ModelType.TTS,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+    with (
+        patch.object(model_instance, "reserve_quota") as reserve,
+        patch.object(ModelInstance, "invoke_tts") as invoke,
+    ):
+        response = model_instance.invoke_tts(content_text="hello")
+        assert isinstance(response, Generator)
+        response.close()
+
+    reserve.assert_not_called()
+    invoke.assert_not_called()
+
+
+@pytest.mark.parametrize("chunks", [[], [b"first"]])
+@pytest.mark.parametrize("fail_close", [False, True])
+def test_quota_managed_tts_preserves_provider_error_and_releases_after_close_failure(
+    chunks: list[bytes], fail_close: bool
+) -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="tts-model", model_type=ModelType.TTS)],
+        model_type=ModelType.TTS,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+    reservation = MagicMock()
+    error = RuntimeError("provider failed")
+    provider = _TrackedTTSStream(chunks, error=error, fail_close=fail_close)
+
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(ModelInstance, "invoke_tts", return_value=provider),
+        pytest.raises(RuntimeError) as exc_info,
+    ):
+        list(model_instance.invoke_tts(content_text="hello"))
+
+    assert exc_info.value is error
+    assert provider.close_calls == 1
+    assert reservation.commit.call_count == len(chunks)
+    reservation.release.assert_called_once_with()
+
+
+def test_quota_managed_tts_closes_separate_iterator_and_iterable() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="tts-model", model_type=ModelType.TTS)],
+        model_type=ModelType.TTS,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+    iterator = _TrackedTTSStream([b"first", b"second"])
+
+    class ProviderResponse:
+        def __init__(self) -> None:
+            self.close_calls: int = 0
+
+        def __iter__(self) -> Iterator[bytes]:
+            return iterator
+
+        def close(self) -> None:
+            self.close_calls += 1
+
+    provider = ProviderResponse()
+    with (
+        patch.object(model_instance, "reserve_quota"),
+        patch.object(ModelInstance, "invoke_tts", return_value=provider),
+    ):
+        response = model_instance.invoke_tts(content_text="hello")
+        assert isinstance(response, Generator)
+        assert next(response) == b"first"
+        response.close()
+
+    assert iterator.close_calls == 1
+    assert provider.close_calls == 1
+
+
+def test_quota_managed_tts_closes_provider_when_first_chunk_commit_fails() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="tts-model", model_type=ModelType.TTS)],
+        model_type=ModelType.TTS,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+    reservation = MagicMock()
+    error = RuntimeError("quota commit failed")
+    reservation.commit.side_effect = error
+    provider = _TrackedTTSStream([b"first"], fail_close=True)
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(ModelInstance, "invoke_tts", return_value=provider),
+        pytest.raises(RuntimeError) as exc_info,
+    ):
+        list(model_instance.invoke_tts(content_text="hello"))
+
+    assert exc_info.value is error
+    assert provider.close_calls == 1
+    reservation.release.assert_called_once_with()
+
+
+def test_quota_managed_tts_accepts_plain_iterable_without_close() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="tts-model", model_type=ModelType.TTS)],
+        model_type=ModelType.TTS,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+    reservation = MagicMock()
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(ModelInstance, "invoke_tts", return_value=[b"first", b"second"]),
+    ):
+        assert list(model_instance.invoke_tts(content_text="hello")) == [b"first", b"second"]
+
+    assert reservation.commit.call_count == 2
     reservation.release.assert_called_once_with()
 
 
