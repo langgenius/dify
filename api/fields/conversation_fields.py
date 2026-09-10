@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from pydantic import Field, WithJsonSchema, field_validator, model_validator
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from fields.base import ResponseModel
@@ -57,6 +58,30 @@ class _AnnotationResponseSource(_SessionResponseSource[MessageAnnotation]):
 
 
 class MessageResponseSource(_SessionResponseSource[MessageModel]):
+    def __init__(
+        self,
+        source: MessageModel,
+        *,
+        session: Session,
+        workflow_run_elapsed_time: float | None = None,
+    ) -> None:
+        super().__init__(source, session=session)
+        self._workflow_run_elapsed_time = workflow_run_elapsed_time
+
+    @property
+    def workflow_run_elapsed_time(self) -> float | None:
+        if self._workflow_run_elapsed_time is not None:
+            return self._workflow_run_elapsed_time
+        workflow_run_id = self._source.workflow_run_id
+        if not workflow_run_id:
+            return None
+        from models.workflow import WorkflowRun
+
+        elapsed_time = self._session.scalar(
+            select(WorkflowRun.elapsed_time).where(WorkflowRun.id == workflow_run_id)
+        )
+        return float(elapsed_time) if elapsed_time is not None else None
+
     @property
     def inputs(self) -> dict[str, Any]:
         return self._source.inputs_with_session(session=self._session)
@@ -276,6 +301,7 @@ class MessageDetail(ResponseModel):
     from_account_id: str | None = None
     feedbacks: list[Feedback]
     workflow_run_id: str | None = None
+    workflow_run_elapsed_time: float | None = None
     annotation: ConversationAnnotation | None = None
     annotation_hit_history: ConversationAnnotationHitHistory | None = None
     created_at: int | None = None

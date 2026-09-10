@@ -49,6 +49,7 @@ from libs.login import login_required
 from models.account import Account
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from models.workflow import WorkflowRun
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
@@ -426,6 +427,17 @@ class AgentMessageApi(Resource):
         return _get_message_detail(session=session, app_model=app_model, message_id=message_id)
 
 
+def _batch_workflow_run_elapsed_times(session: Session, messages: list[Message]) -> dict[str, float]:
+    workflow_run_ids = list({message.workflow_run_id for message in messages if message.workflow_run_id})
+    if not workflow_run_ids:
+        return {}
+
+    rows = session.execute(
+        select(WorkflowRun.id, WorkflowRun.elapsed_time).where(WorkflowRun.id.in_(workflow_run_ids))
+    ).all()
+    return {str(row.id): float(row.elapsed_time) for row in rows}
+
+
 def _list_chat_messages(
     *,
     args: ChatMessagesQuery,
@@ -498,11 +510,19 @@ def _list_chat_messages(
 
     history_messages = list(reversed(history_messages))
     attach_message_extra_contents(history_messages)
+    workflow_run_elapsed_times = _batch_workflow_run_elapsed_times(session, history_messages)
 
     return dump_response(
         MessageInfiniteScrollPaginationResponse,
         InfiniteScrollPagination(
-            data=[MessageResponseSource(message, session=session) for message in history_messages],
+            data=[
+                MessageResponseSource(
+                    message,
+                    session=session,
+                    workflow_run_elapsed_time=workflow_run_elapsed_times.get(message.workflow_run_id or ""),
+                )
+                for message in history_messages
+            ],
             limit=args.limit,
             has_more=has_more,
         ),

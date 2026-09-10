@@ -104,7 +104,10 @@ export const getFormattedChatList = (
       more: {
         time: dayjs.unix(item.created_at).tz(timezone).format(format),
         tokens: item.answer_tokens + item.message_tokens,
-        latency: (item.provider_response_latency ?? 0).toFixed(2),
+        latency: (
+          item.workflow_run_elapsed_time ?? item.provider_response_latency ?? 0
+        ).toFixed(2),
+        latencyIsWorkflowTime: item.workflow_run_elapsed_time != null,
       },
       citation: item.metadata?.retriever_resources,
       annotation: (() => {
