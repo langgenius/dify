@@ -50,19 +50,12 @@ class RosterAgentPackageSkill(_RosterAgentPackageResource):
     id: str = Field(pattern=r"^s_[0-9]{6}$")
     scope: Literal["agent_config", "workspace"]
     name: str = Field(min_length=1, max_length=64)
-    display_name: str | None = Field(default=None, max_length=128)
-    description: str = Field(default="", max_length=1024)
-    priority: int | None = Field(default=None, ge=0)
     mime_type: Literal["application/zip"] = "application/zip"
 
     @model_validator(mode="after")
     def validate_skill_path(self) -> Self:
         if self.path != f"{self.id}.zip":
             raise ValueError("skill path must be the resource id with a .zip extension")
-        if self.scope == "workspace" and self.priority is None:
-            raise ValueError("workspace skill priority is required")
-        if self.scope == "agent_config" and self.priority is not None:
-            raise ValueError("agent config skill priority must be omitted")
         return self
 
 
@@ -122,6 +115,12 @@ class RosterAgentPackageManifest(BaseModel):
         }
         if unreferenced_skills:
             raise ValueError("agent_config skill resources must be referenced by the Agent Soul")
+
+        workspace_names = [item.name for item in app.package.workspace_skills]
+        if len(workspace_names) != len(set(workspace_names)):
+            raise ValueError("workspace skill names must be unique in the Agent DSL")
+        if set(workspace_names) != {item.name for item in self.skills if item.scope == "workspace"}:
+            raise ValueError("workspace skill references must match the package resource index")
 
         file_by_id = {item.id: item for item in self.files}
         referenced_file_ids: set[str] = set()
