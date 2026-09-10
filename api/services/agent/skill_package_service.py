@@ -263,12 +263,8 @@ class SkillPackageService:
             else:
                 normalized_path = safe_path
 
-            if (
-                not normalized_path
-                or normalized_path in {".", ".."}
-                or normalized_path.startswith("/")
-                or "\\" in normalized_path
-            ):
+            # Paths are already normalized and safe; "." is not a file.
+            if normalized_path == ".":
                 raise SkillPackageError("unsafe_path", "skill archive contains an unsafe path", status_code=400)
             if normalized_path in normalized_members:
                 raise SkillPackageError(

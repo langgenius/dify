@@ -153,6 +153,7 @@ def test_shallowest_skill_md_preferred_during_normalization():
         pytest.param("", {}, id="root"),
         pytest.param("pdf-toolkit/", {}, id="single-folder"),
         pytest.param("pdf-toolkit/", {"README.md": b"bundle notes\n"}, id="root-outsider"),
+        pytest.param("pdf-toolkit/", {".": b"x"}, id="dot-outsider"),
         pytest.param("pdf-toolkit/", {"bundle/other.txt": b"x"}, id="nested-outsider"),
         pytest.param("bundle/pdf-toolkit/", {}, id="deep-root"),
     ],
@@ -179,6 +180,7 @@ def test_normalization_preserves_selected_skill_contents(prefix: str, extra_memb
     ("members", "filename", "code"),
     [
         ({"README.md": b"x"}, "skill.zip", "missing_skill_md"),
+        ({"SKILL.md": _SKILL_MD.encode(), ".": b"x"}, "skill.zip", "unsafe_path"),
         ({"SKILL.md": _SKILL_MD.encode()}, "skill.tar", "unsupported_extension"),
         ({"SKILL.md": b""}, "skill.zip", "empty_skill_md"),
         ({"SKILL.md": b"---\ndescription: valid\n---\n# no name here"}, "skill.zip", "missing_skill_name"),
