@@ -80,26 +80,43 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   const { type, label, variable } = tempPayload
   const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
   const docLink = useDocLink()
+  const fieldId = React.useId()
   const hiddenDescriptionAriaLabel = t(($) => $['variableConfig.hiddenDescription'], {
     ns: 'appDebug',
   }).replace(/<[^>]+>/g, '')
 
   return (
     <div className="space-y-2">
-      <Field title={t(($) => $['variableConfig.fieldType'], { ns: 'appDebug' })}>
-        <TypeSelector value={type} items={selectOptions} onSelect={onTypeChange} />
+      <Field
+        titleId={`${fieldId}-type-label`}
+        title={t(($) => $['variableConfig.fieldType'], { ns: 'appDebug' })}
+      >
+        <TypeSelector
+          aria-labelledby={`${fieldId}-type-label`}
+          value={type}
+          items={selectOptions}
+          onSelect={onTypeChange}
+        />
       </Field>
 
-      <Field title={t(($) => $['variableConfig.varName'], { ns: 'appDebug' })}>
+      <Field
+        htmlFor={`${fieldId}-variable`}
+        title={t(($) => $['variableConfig.varName'], { ns: 'appDebug' })}
+      >
         <Input
+          id={`${fieldId}-variable`}
           value={variable}
           onChange={onVarNameChange}
           onBlur={onVarKeyBlur}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
       </Field>
-      <Field title={t(($) => $['variableConfig.labelName'], { ns: 'appDebug' })}>
+      <Field
+        htmlFor={`${fieldId}-label`}
+        title={t(($) => $['variableConfig.labelName'], { ns: 'appDebug' })}
+      >
         <Input
+          id={`${fieldId}-label`}
           value={label as string}
           onChange={(e) => onPayloadChange('label')(e.target.value)}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
@@ -107,8 +124,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       </Field>
 
       {isStringInput && (
-        <Field title={t(($) => $['variableConfig.maxLength'], { ns: 'appDebug' })}>
+        <Field
+          htmlFor={`${fieldId}-max-length`}
+          title={t(($) => $['variableConfig.maxLength'], { ns: 'appDebug' })}
+        >
           <ConfigString
+            id={`${fieldId}-max-length`}
             maxLength={type === InputVarType.textInput ? TEXT_MAX_LENGTH : Infinity}
             modelId={modelId}
             value={maxLength}
@@ -118,8 +139,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       {type === InputVarType.textInput && (
-        <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
+        <Field
+          htmlFor={`${fieldId}-default`}
+          title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
+        >
           <Input
+            id={`${fieldId}-default`}
             value={typeof tempPayload.default === 'string' ? tempPayload.default : ''}
             onChange={(e) => onPayloadChange('default')(e.target.value || undefined)}
             placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
@@ -128,9 +153,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       {type === InputVarType.paragraph && (
-        <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
+        <Field
+          htmlFor={`${fieldId}-default`}
+          title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
+        >
           <Textarea
-            aria-label={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
+            id={`${fieldId}-default`}
             value={String(tempPayload.default ?? '')}
             onValueChange={(value) => onPayloadChange('default')(value || undefined)}
             placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
@@ -139,8 +167,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       {type === InputVarType.number && (
-        <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
+        <Field
+          htmlFor={`${fieldId}-default`}
+          title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
+        >
           <Input
+            id={`${fieldId}-default`}
             type="number"
             value={
               typeof tempPayload.default === 'number' || typeof tempPayload.default === 'string'
@@ -154,14 +186,21 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       {type === InputVarType.checkbox && (
-        <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
+        <Field
+          titleId={`${fieldId}-default-label`}
+          title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
+        >
           <Select
             value={checkboxDefaultSelectValue}
             onValueChange={(value) =>
               onPayloadChange('default')(value === CHECKBOX_DEFAULT_TRUE_VALUE)
             }
           >
-            <SelectTrigger size="large" className="w-full">
+            <SelectTrigger
+              aria-labelledby={`${fieldId}-default-label`}
+              size="large"
+              className="w-full"
+            >
               <SelectValue
                 placeholder={t(($) => $['variableConfig.selectDefaultValue'], { ns: 'appDebug' })}
               />
@@ -196,7 +235,10 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             <ConfigSelect options={options || []} onChange={onPayloadChange('options')} />
           </Field>
           {options && options.length > 0 && (
-            <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
+            <Field
+              titleId={`${fieldId}-default-label`}
+              title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
+            >
               <Select<string>
                 key={`default-select-${options.join('-')}`}
                 value={
@@ -207,7 +249,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                   onPayloadChange('default')(value === EMPTY_SELECT_VALUE ? undefined : value)
                 }}
               >
-                <SelectTrigger size="large" className="w-full">
+                <SelectTrigger
+                  aria-labelledby={`${fieldId}-default-label`}
+                  size="large"
+                  className="w-full"
+                >
                   <SelectValue
                     placeholder={t(($) => $['variableConfig.selectDefaultValue'], {
                       ns: 'appDebug',

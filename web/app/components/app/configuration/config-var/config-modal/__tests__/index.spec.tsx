@@ -1,6 +1,7 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
 import { useStore } from '@/app/components/app/store'
@@ -73,6 +74,83 @@ describe('ConfigModal', () => {
       }),
       undefined,
     )
+  })
+
+  it('should label editable fields and submit once when Enter is pressed', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    render(
+      <ConfigModal
+        isCreate
+        isShow
+        payload={createPayload({ label: 'Question' })}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    expect(screen.getByRole('textbox', { name: 'appDebug.variableConfig.varName' })).toHaveValue(
+      'question',
+    )
+    expect(screen.getByRole('textbox', { name: 'appDebug.variableConfig.labelName' })).toHaveValue(
+      'Question',
+    )
+    expect(
+      screen.getByRole('spinbutton', { name: 'appDebug.variableConfig.maxLength' }),
+    ).toHaveValue(32)
+    const defaultInput = screen.getByRole('textbox', {
+      name: 'appDebug.variableConfig.defaultValue',
+    })
+    await user.click(defaultInput)
+    await user.keyboard('{Enter}')
+
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ default: 'hello' }), undefined)
+  })
+
+  it.each([InputVarType.checkbox, InputVarType.select])(
+    'should associate the default selector label for %s',
+    (type) => {
+      render(
+        <ConfigModal
+          isShow
+          payload={createPayload({
+            type,
+            label: 'Question',
+            options: ['alpha'],
+            default: undefined,
+          })}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />,
+      )
+
+      expect(
+        screen.getByRole('combobox', { name: 'appDebug.variableConfig.fieldType' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('combobox', { name: 'appDebug.variableConfig.defaultValue' }),
+      ).toBeInTheDocument()
+    },
+  )
+
+  it('should cancel without submitting the form', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    const onClose = vi.fn()
+    render(
+      <ConfigModal
+        isShow
+        payload={createPayload({ label: 'Question' })}
+        onClose={onClose}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 
   it('should keep scrolling inside the form body so scrollbars do not cover dialog corners', () => {

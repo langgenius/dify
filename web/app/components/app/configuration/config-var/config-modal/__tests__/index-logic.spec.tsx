@@ -22,18 +22,21 @@ vi.mock('../form-fields', () => ({
         <div data-testid="payload-schema">{String(props.tempPayload.json_schema ?? '')}</div>
         <div data-testid="payload-default">{String(props.tempPayload.default ?? '')}</div>
         <button
+          type="button"
           data-testid="invalid-key-blur"
           onClick={() => props.onVarKeyBlur({ target: { value: 'invalid key' } })}
         >
           invalid-key-blur
         </button>
         <button
+          type="button"
           data-testid="valid-key-blur"
           onClick={() => props.onVarKeyBlur({ target: { value: 'auto_label' } })}
         >
           valid-key-blur
         </button>
         <button
+          type="button"
           data-testid="invalid-name-change"
           onClick={() =>
             props.onVarNameChange({
@@ -49,27 +52,35 @@ vi.mock('../form-fields', () => ({
           invalid-name-change
         </button>
         <button
+          type="button"
           data-testid="valid-json-change"
           onClick={() => props.onJSONSchemaChange('{\n  "foo": "bar"\n}')}
         >
           valid-json-change
         </button>
-        <button data-testid="empty-json-change" onClick={() => props.onJSONSchemaChange('   ')}>
+        <button
+          type="button"
+          data-testid="empty-json-change"
+          onClick={() => props.onJSONSchemaChange('   ')}
+        >
           empty-json-change
         </button>
         <button
+          type="button"
           data-testid="invalid-json-change"
           onClick={() => props.onJSONSchemaChange('{invalid-json}')}
         >
           invalid-json-change
         </button>
         <button
+          type="button"
           data-testid="type-change"
           onClick={() => props.onTypeChange({ value: InputVarType.singleFile })}
         >
           type-change
         </button>
         <button
+          type="button"
           data-testid="file-payload-change"
           onClick={() =>
             props.onFilePayloadChange({ ...props.tempPayload, default: 'file-default' })

@@ -24,6 +24,7 @@ export type Item = {
 }
 
 type Props = Readonly<{
+  'aria-labelledby'?: string
   value: string | number
   onSelect: (value: Item) => void
   items: Item[]
@@ -32,7 +33,14 @@ type Props = Readonly<{
   readonly?: boolean
   hideChecked?: boolean
 }>
-const TypeSelector: FC<Props> = ({ value, onSelect, items, popupInnerClassName, readonly }) => {
+const TypeSelector: FC<Props> = ({
+  value,
+  onSelect,
+  items,
+  popupInnerClassName,
+  readonly,
+  'aria-labelledby': labelledBy,
+}) => {
   const selectedItem = value ? items.find((item) => item.value === value) : undefined
 
   return (
@@ -45,6 +53,7 @@ const TypeSelector: FC<Props> = ({ value, onSelect, items, popupInnerClassName, 
       }}
     >
       <SelectTrigger
+        aria-labelledby={labelledBy}
         className={cn(
           'h-9 rounded-lg px-2 text-sm',
           readonly ? 'cursor-not-allowed' : 'cursor-pointer',

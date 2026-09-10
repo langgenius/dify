@@ -7,22 +7,29 @@ import { useTranslation } from 'react-i18next'
 type Props = Readonly<{
   className?: string
   title: string
+  htmlFor?: string
+  titleId?: string
   isOptional?: boolean
   children: React.JSX.Element
 }>
 
-const Field: FC<Props> = ({ className, title, isOptional, children }) => {
+const Field: FC<Props> = ({ className, title, htmlFor, titleId, isOptional, children }) => {
   const { t } = useTranslation()
+  const Label = htmlFor ? 'label' : 'div'
   return (
     <div className={cn(className)}>
-      <div className="system-sm-semibold leading-8! text-text-secondary">
+      <Label
+        id={titleId}
+        htmlFor={htmlFor}
+        className="block system-sm-semibold leading-8! text-text-secondary"
+      >
         {title}
         {isOptional && (
           <span className="ml-1 system-xs-regular text-text-tertiary">
             ({t(($) => $['variableConfig.optional'], { ns: 'appDebug' })})
           </span>
         )}
-      </div>
+      </Label>
       <div>{children}</div>
     </div>
   )

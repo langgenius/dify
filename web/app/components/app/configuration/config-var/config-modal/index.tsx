@@ -182,40 +182,49 @@ const ConfigModal: FC<IConfigModalProps> = ({
       }}
     >
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden! border-none p-0! text-left align-middle">
-        <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
-            ns: 'appDebug',
-          })}
-        </DialogTitle>
-
-        <div
-          ref={modalRef}
-          tabIndex={-1}
-          data-testid="config-modal-scroll-area"
-          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-4 pb-8"
+        <form
+          noValidate
+          className="flex min-h-0 flex-col"
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleConfirm()
+          }}
         >
-          <ConfigModalFormFields
-            checkboxDefaultSelectValue={checkboxDefaultSelectValue}
-            isStringInput={isStringInput}
-            jsonSchemaStr={jsonSchemaStr}
-            maxLength={max_length}
-            modelId={modelConfig.model_id}
-            onFilePayloadChange={(payload) => setTempPayload(payload as InputVar)}
-            onJSONSchemaChange={handleJSONSchemaChange}
-            onPayloadChange={handlePayloadChange}
-            onTypeChange={handleTypeChange}
-            onVarKeyBlur={handleVarKeyBlur}
-            onVarNameChange={handleVarNameChange}
-            options={options}
-            selectOptions={selectOptions}
-            showHiddenField={showHiddenField}
-            tempPayload={tempPayload}
-            t={t}
-          />
-        </div>
-        <div className="shrink-0 px-6 pt-2 pb-6">
-          <ModalFoot onConfirm={handleConfirm} onCancel={onClose} />
-        </div>
+          <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
+            {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
+              ns: 'appDebug',
+            })}
+          </DialogTitle>
+
+          <div
+            ref={modalRef}
+            tabIndex={-1}
+            data-testid="config-modal-scroll-area"
+            className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-4 pb-8"
+          >
+            <ConfigModalFormFields
+              checkboxDefaultSelectValue={checkboxDefaultSelectValue}
+              isStringInput={isStringInput}
+              jsonSchemaStr={jsonSchemaStr}
+              maxLength={max_length}
+              modelId={modelConfig.model_id}
+              onFilePayloadChange={(payload) => setTempPayload(payload as InputVar)}
+              onJSONSchemaChange={handleJSONSchemaChange}
+              onPayloadChange={handlePayloadChange}
+              onTypeChange={handleTypeChange}
+              onVarKeyBlur={handleVarKeyBlur}
+              onVarNameChange={handleVarNameChange}
+              options={options}
+              selectOptions={selectOptions}
+              showHiddenField={showHiddenField}
+              tempPayload={tempPayload}
+              t={t}
+            />
+          </div>
+          <div className="shrink-0 px-6 pt-2 pb-6">
+            <ModalFoot confirmType="submit" onCancel={onClose} />
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   )
