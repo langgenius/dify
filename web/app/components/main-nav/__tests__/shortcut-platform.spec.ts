@@ -1,4 +1,4 @@
-import { getPlatformFromUserAgent } from './platform'
+import { getPlatformFromUserAgent } from '../shortcut-platform'
 
 describe('getPlatformFromUserAgent', () => {
   it.each([
