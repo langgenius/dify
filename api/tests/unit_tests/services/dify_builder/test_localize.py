@@ -1,7 +1,22 @@
 """M2 Localizer: detect language, translate only catalog/template strings, cache."""
 
+import pytest
+
 from core.dify_builder.models import ConversationItem
+from services.dify_builder.agent import localize as localize_mod
 from services.dify_builder.agent.localize import Localizer
+
+
+@pytest.fixture(autouse=True)
+def _clear_translation_cache():
+    # _TRANSLATION_CACHE is module-level (shared across Localizer instances so a
+    # language's finite vocabulary is really translated once process-wide). Tests
+    # must not leak cache entries into each other, so clear it before every test --
+    # this keeps e.g. test_localize_caches_translations' translate_calls == 1
+    # assertion deterministic regardless of test order.
+    localize_mod._TRANSLATION_CACHE.clear()
+    yield
+    localize_mod._TRANSLATION_CACHE.clear()
 
 
 class _FakeModel:
@@ -87,3 +102,40 @@ def test_localize_caches_translations(monkeypatch):
     for _ in range(3):
         loc.localize_items([ConversationItem(kind="summary", payload={"title": "Review"})], "zh-Hans")
     assert fake.translate_calls == 1  # translated once, cached thereafter
+
+
+def test_localize_shares_cache_across_instances(monkeypatch):
+    # The catalog translation cache is module-level: a fresh Localizer per
+    # advance-task invocation must still hit the cache a prior instance filled.
+    loc1, fake1 = _localizer(monkeypatch, table={"Review": "评审"})
+    loc1.localize_items([ConversationItem(kind="summary", payload={"title": "Review"})], "zh-Hans")
+    assert fake1.translate_calls == 1
+
+    loc2, fake2 = _localizer(monkeypatch, table={"Review": "评审"})
+    out = loc2.localize_items([ConversationItem(kind="summary", payload={"title": "Review"})], "zh-Hans")
+    assert out[0].payload["title"] == "评审"
+    assert fake2.translate_calls == 0  # second instance reused the module-level cache
+
+
+def test_detect_language_provider_raising_falls_back_to_en(monkeypatch):
+    # Env callbacks must not raise (see localize.Localizer usage in the engine
+    # Env); a model_provider that raises must degrade to the "en" fallback
+    # instead of propagating out of detect_language.
+    def raising_provider():
+        raise RuntimeError("boom")
+
+    loc = Localizer(raising_provider)
+    assert loc.detect_language("hello") == "en"
+
+
+def test_fill_cache_provider_raising_leaves_strings_untranslated(monkeypatch):
+    # Same contract for the translate path: a raising model_provider must not
+    # propagate out of localize_items -- it should degrade to a no-op (original
+    # strings kept).
+    def raising_provider():
+        raise RuntimeError("boom")
+
+    loc = Localizer(raising_provider)
+    items = [ConversationItem(kind="summary", payload={"title": "Review"})]
+    out = loc.localize_items(items, "zh-Hans")
+    assert out[0].payload["title"] == "Review"
