@@ -56,6 +56,7 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageMember,
     RosterAgentPackageSkill,
 )
+from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.skill_management_service import RuntimeAgentSkillArchive, SkillManagementService
 
@@ -274,6 +275,10 @@ class RosterAgentPackageExporter:
             size = output.tell()
             if size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                 raise RosterAgentPackageTooLargeError("Roster Agent package exceeds the archive size limit")
+            output.seek(0)
+            with RosterAgentPackageReader().read(output) as prepared:
+                if prepared.invalid_skills:
+                    raise RosterAgentPackageExportFailedError("Roster Agent package contains unusable Skill payloads")
             output.seek(0)
             return RosterAgentPackageExport(
                 archive=output,

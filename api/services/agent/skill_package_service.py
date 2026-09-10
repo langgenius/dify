@@ -123,6 +123,8 @@ class SkillPackageService:
                 skill_md_bytes=inspection.skill_md_bytes,
             )
 
+        if len(normalized_archive_bytes) > dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024:
+            raise SkillPackageError("archive_too_large", "normalized skill archive exceeds size limit", status_code=400)
         try:
             manifest = SkillManifest(
                 name=inspection.metadata.name,

@@ -623,6 +623,23 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
     with pytest.raises(RosterAgentPackageTooLargeError, match="nested Skill contents"):
         RosterAgentPackageReader().read(io.BytesIO(package))
 
+    exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage(skill_payloads))
+    sources = [
+        roster_package_exporter_module._SkillSource(
+            payload=roster_package_exporter_module._PayloadSource(item.path, item.path),
+            id=item.id,
+            scope=item.scope,
+            name=item.name,
+            display_name=item.display_name,
+            description=item.description,
+            priority=item.priority,
+            audit_ref="source",
+        )
+        for item in manifest.skills
+    ]
+    with pytest.raises(RosterAgentPackageTooLargeError, match="nested Skill contents"):
+        exporter._build_archive(app=_package_app(soul), skill_sources=sources, file_sources=[])
+
 
 @pytest.mark.parametrize("failure", ["checksum", "size", "name", "crc"])
 def test_reader_records_unusable_skills_and_preserves_other_members(failure: str) -> None:
@@ -672,6 +689,25 @@ def test_member_read_rechecks_limit_and_integrity_after_preflight() -> None:
         prepared.archive.write(modified)
         with pytest.raises(InvalidRosterAgentPackageError, match="integrity checks"):
             reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload))
+
+
+def test_export_rejects_unusable_skill_payload() -> None:
+    payload = _zip({"README.md": b"missing skill manifest"})
+    source = roster_package_exporter_module._SkillSource(
+        payload=roster_package_exporter_module._PayloadSource("s_000001.zip", "skill"),
+        id="s_000001",
+        scope="agent_config",
+        name="research",
+        display_name=None,
+        description="Research skill.",
+        priority=None,
+        audit_ref="source",
+    )
+    app = _package_app()
+    app.package.soul.config_files = []
+    exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage({"skill": payload}))
+    with pytest.raises(RosterAgentPackageExportFailedError, match="unusable Skill"):
+        exporter._build_archive(app=app, skill_sources=[source], file_sources=[])
 
 
 def test_read_member_enforces_actual_output_limit() -> None:
