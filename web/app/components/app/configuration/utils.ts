@@ -1,13 +1,46 @@
+import type { Namespace, SelectorParam, TFunction } from 'i18next'
 import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
 import type { Collection } from '@/app/components/tools/types'
-import type { BlockStatus, ChatPromptConfig, CompletionPromptConfig, ModelConfig } from '@/models/debug'
+import type {
+  BlockStatus,
+  ChatPromptConfig,
+  CompletionPromptConfig,
+  ModelConfig,
+} from '@/models/debug'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'
 
+export type SelectorTranslate<Ns extends Namespace> = <
+  const TargetNs extends Ns,
+  const Selector extends SelectorParam<TargetNs>,
+>(
+  selector: Selector,
+  options: { ns: TargetNs } & Record<string, unknown>,
+) => ReturnType<TFunction>
+
+type StringSelectorTranslate<Ns extends Namespace> = <
+  const TargetNs extends Ns,
+  const Selector extends SelectorParam<TargetNs>,
+>(
+  selector: Selector,
+  options: { ns: TargetNs } & Record<string, unknown>,
+) => string
+
+export const getStringSelectorTranslate = <Ns extends Namespace>(
+  translate: SelectorTranslate<Ns>,
+): StringSelectorTranslate<Ns> => {
+  return (selector, options) => {
+    const result = translate(selector, options)
+    if (typeof result !== 'string')
+      throw new TypeError('Expected translation selector to return a string')
+
+    return result
+  }
+}
+
 export const withCollectionIconBasePath = (collectionList: Collection[], prefix?: string) => {
-  if (!prefix)
-    return collectionList
+  if (!prefix) return collectionList
 
   return collectionList.map((item) => {
     if (typeof item.icon === 'string' && !item.icon.includes(prefix))
@@ -36,13 +69,25 @@ export const buildConfigurationFeaturesData = (
         detail: modelConfig.file_upload?.image?.detail || Resolution.high,
         enabled: !!modelConfig.file_upload?.image?.enabled,
         number_limits: modelConfig.file_upload?.image?.number_limits || 3,
-        transfer_methods: modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+        transfer_methods: modelConfig.file_upload?.image?.transfer_methods || [
+          'local_file',
+          'remote_url',
+        ],
       },
       enabled: !!(modelConfig.file_upload?.enabled || modelConfig.file_upload?.image?.enabled),
       allowed_file_types: modelConfig.file_upload?.allowed_file_types || [],
-      allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || [...(FILE_EXTS[SupportUploadFileTypes.image] ?? []), ...(FILE_EXTS[SupportUploadFileTypes.video] ?? [])].map(ext => `.${ext}`),
-      allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods || modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-      number_limits: modelConfig.file_upload?.number_limits || modelConfig.file_upload?.image?.number_limits || 3,
+      allowed_file_extensions:
+        modelConfig.file_upload?.allowed_file_extensions ||
+        [
+          ...(FILE_EXTS[SupportUploadFileTypes.image] ?? []),
+          ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
+        ].map((ext) => `.${ext}`),
+      allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods ||
+        modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+      number_limits:
+        modelConfig.file_upload?.number_limits ||
+        modelConfig.file_upload?.image?.number_limits ||
+        3,
       fileUploadConfig: fileUploadConfigResponse,
     } as FileUpload,
     suggested: modelConfig.suggested_questions_after_answer || { enabled: false },
@@ -73,8 +118,7 @@ export const getConfigurationPublishingState = ({
   promptTemplate: string
 }) => {
   const promptEmpty = (() => {
-    if (mode !== AppModeEnum.COMPLETION)
-      return false
+    if (mode !== AppModeEnum.COMPLETION) return false
 
     if (isAdvancedMode) {
       if (modelModeType === ModelModeType.chat)
@@ -88,12 +132,10 @@ export const getConfigurationPublishingState = ({
 
   const cannotPublish = (() => {
     if (mode !== AppModeEnum.COMPLETION) {
-      if (!isAdvancedMode)
-        return false
+      if (!isAdvancedMode) return false
 
       if (modelModeType === ModelModeType.completion) {
-        if (!hasSetBlockStatus.history || !hasSetBlockStatus.query)
-          return true
+        if (!hasSetBlockStatus.history || !hasSetBlockStatus.query) return true
       }
 
       return false

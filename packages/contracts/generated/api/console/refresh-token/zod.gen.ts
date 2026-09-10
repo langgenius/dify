@@ -10,6 +10,14 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * SimpleResultMessageResponse
+ */
+export const zSimpleResultMessageResponse = z.object({
+  message: z.string(),
+  result: z.string(),
+})
+
+/**
  * Success
  */
 export const zPostRefreshTokenResponse = zSimpleResultResponse

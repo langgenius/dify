@@ -26,6 +26,8 @@ export enum FormTypeEnum {
   object = 'object',
   array = 'array',
   dynamicSelect = 'dynamic-select',
+  date = 'date',
+  dateRange = 'date-range',
 }
 
 export type FormOption = {
@@ -68,6 +70,7 @@ export enum ModelFeatureEnum {
   video = 'video',
   document = 'document',
   audio = 'audio',
+  polling = 'polling',
   StructuredOutput = 'structured-output',
 }
 
@@ -121,11 +124,24 @@ export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & {
     type: string
   }
 }
-export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number, max?: number, placeholder?: TypeWithI18N }
-export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[], placeholder?: TypeWithI18N }
+export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & {
+  min?: number
+  max?: number
+  placeholder?: TypeWithI18N
+}
+export type CredentialFormSchemaSelect = CredentialFormSchemaBase & {
+  options: FormOption[]
+  placeholder?: TypeWithI18N
+}
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }
-export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder?: TypeWithI18N }
-export type CredentialFormSchema = CredentialFormSchemaTextInput | CredentialFormSchemaSelect | CredentialFormSchemaRadio | CredentialFormSchemaSecretInput
+export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & {
+  placeholder?: TypeWithI18N
+}
+export type CredentialFormSchema =
+  | CredentialFormSchemaTextInput
+  | CredentialFormSchemaSelect
+  | CredentialFormSchemaRadio
+  | CredentialFormSchemaSecretInput
 
 export type ModelItem = {
   model: string
@@ -226,15 +242,6 @@ export type ModelProvider = {
   allow_custom_token?: boolean
 }
 
-export type Model = {
-  provider: string
-  icon_small: TypeWithI18N
-  icon_small_dark?: TypeWithI18N
-  label: TypeWithI18N
-  models: ModelItem[]
-  status: ModelStatusEnum
-}
-
 export type DefaultModelResponse = {
   model: string
   model_type: ModelTypeEnum
@@ -247,6 +254,7 @@ export type DefaultModelResponse = {
 export type DefaultModel = {
   provider: string
   model: string
+  plugin_id?: string
 }
 
 export type CustomConfigurationModelFixedFields = {
@@ -302,6 +310,14 @@ export type ModelCredential = {
   available_credentials: Credential[]
   current_credential_id?: string
   current_credential_name?: string
+}
+
+export type ModelCredentialPayload = {
+  credentials: Record<string, unknown>
+  model: string
+  model_type: ModelTypeEnum
+  name?: string
+  credential_id?: string
 }
 
 export enum ModelModalModeEnum {

@@ -7,15 +7,26 @@
  * Covers URL param reading, cookie persistence, API bind on mount,
  * cookie cleanup after successful bind, and error handling for 400 status.
  */
-import { act, cleanup, render, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
 import * as React from 'react'
 import usePSInfo from '@/app/components/billing/partner-stack/use-ps-info'
 import { PARTNER_STACK_CONFIG } from '@/config'
+import { renderHookWithConsoleQuery, renderWithConsoleQuery } from '@/test/console/query-data'
+
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
+
+const renderPSInfo = () =>
+  renderHookWithConsoleQuery(() => usePSInfo(), {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockSearchParams = new URLSearchParams()
-const mockMutateAsync = vi.fn()
+const mocks = vi.hoisted(() => ({
+  request: vi.fn(),
+}))
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
 vi.mock('@/next/navigation', () => ({
@@ -24,22 +35,15 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/',
 }))
 
-vi.mock('@/service/use-billing', () => ({
-  useBindPartnerStackInfo: () => ({
-    mutateAsync: mockMutateAsync,
-  }),
-  useBillingUrl: () => ({
-    data: '',
-    isFetching: false,
-    refetch: vi.fn(),
-  }),
+vi.mock('@/service/base', () => ({
+  request: (...args: unknown[]) => mocks.request(...args),
+  sseGeneratorPost: vi.fn(),
 }))
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: true,
     PARTNER_STACK_CONFIG: {
       cookieName: 'partner_stack_info',
       saveCookieDays: 90,
@@ -50,12 +54,10 @@ vi.mock('@/config', async (importOriginal) => {
 // ─── Cookie helpers ──────────────────────────────────────────────────────────
 const getCookieData = () => {
   const raw = Cookies.get(PARTNER_STACK_CONFIG.cookieName)
-  if (!raw)
-    return null
+  if (!raw) return null
   try {
     return JSON.parse(raw)
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -68,6 +70,8 @@ const clearCookie = () => {
   Cookies.remove(PARTNER_STACK_CONFIG.cookieName)
 }
 
+const getBindRequest = () => mocks.request.mock.calls[0]?.[2]?.request as Request | undefined
+
 // ═══════════════════════════════════════════════════════════════════════════════
 describe('Partner Stack Flow', () => {
   beforeEach(() => {
@@ -75,7 +79,7 @@ describe('Partner Stack Flow', () => {
     cleanup()
     clearCookie()
     mockSearchParams = new URLSearchParams()
-    mockMutateAsync.mockResolvedValue({})
+    mocks.request.mockResolvedValue(Response.json({}))
   })
 
   // ─── 1. URL Param Reading ───────────────────────────────────────────────
@@ -86,7 +90,7 @@ describe('Partner Stack Flow', () => {
         ps_xid: 'click-456',
       })
 
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
 
       expect(result.current.psPartnerKey).toBe('partner-123')
       expect(result.current.psClickId).toBe('click-456')
@@ -95,7 +99,7 @@ describe('Partner Stack Flow', () => {
     it('should fall back to cookie when URL params are not present', () => {
       setCookieData({ partnerKey: 'cookie-partner', clickId: 'cookie-click' })
 
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
 
       expect(result.current.psPartnerKey).toBe('cookie-partner')
       expect(result.current.psClickId).toBe('cookie-click')
@@ -108,14 +112,14 @@ describe('Partner Stack Flow', () => {
         ps_xid: 'url-click',
       })
 
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
 
       expect(result.current.psPartnerKey).toBe('url-partner')
       expect(result.current.psClickId).toBe('url-click')
     })
 
     it('should return null for both values when no params and no cookie', () => {
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
 
       expect(result.current.psPartnerKey).toBeUndefined()
       expect(result.current.psClickId).toBeUndefined()
@@ -130,7 +134,7 @@ describe('Partner Stack Flow', () => {
         ps_xid: 'new-click',
       })
 
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
       act(() => result.current.saveOrUpdate())
 
       const cookieData = getCookieData()
@@ -148,7 +152,7 @@ describe('Partner Stack Flow', () => {
       })
 
       const cookieSetSpy = vi.spyOn(Cookies, 'set')
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
       act(() => result.current.saveOrUpdate())
 
       // Should not call set because values haven't changed
@@ -162,7 +166,7 @@ describe('Partner Stack Flow', () => {
       })
 
       const cookieSetSpy = vi.spyOn(Cookies, 'set')
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
       act(() => result.current.saveOrUpdate())
 
       expect(cookieSetSpy).not.toHaveBeenCalled()
@@ -175,7 +179,7 @@ describe('Partner Stack Flow', () => {
       })
 
       const cookieSetSpy = vi.spyOn(Cookies, 'set')
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
       act(() => result.current.saveOrUpdate())
 
       expect(cookieSetSpy).not.toHaveBeenCalled()
@@ -185,21 +189,22 @@ describe('Partner Stack Flow', () => {
 
   // ─── 3. Bind API Flow ──────────────────────────────────────────────────
   describe('Bind API flow', () => {
-    it('should call mutateAsync with partnerKey and clickId on bind', async () => {
+    it('should bind the partner key and click ID through the billing API', async () => {
       mockSearchParams = new URLSearchParams({
         ps_partner_key: 'bind-partner',
         ps_xid: 'bind-click',
       })
 
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
       await act(async () => {
         await result.current.bind()
       })
 
-      expect(mockMutateAsync).toHaveBeenCalledWith({
-        partnerKey: 'bind-partner',
-        clickId: 'bind-click',
-      })
+      expect(mocks.request).toHaveBeenCalledTimes(1)
+      const request = getBindRequest()
+      expect(request?.method).toBe('PUT')
+      expect(request?.url).toContain('/billing/partners/bind-partner/tenants')
+      await expect(request?.clone().json()).resolves.toEqual({ click_id: 'bind-click' })
     })
 
     it('should remove cookie after successful bind', async () => {
@@ -209,7 +214,7 @@ describe('Partner Stack Flow', () => {
         ps_xid: 'rm-click',
       })
 
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
       await act(async () => {
         await result.current.bind()
       })
@@ -219,14 +224,14 @@ describe('Partner Stack Flow', () => {
     })
 
     it('should remove cookie on 400 error (already bound)', async () => {
-      mockMutateAsync.mockRejectedValue({ status: 400 })
+      mocks.request.mockRejectedValue({ status: 400 })
       setCookieData({ partnerKey: 'err-partner', clickId: 'err-click' })
       mockSearchParams = new URLSearchParams({
         ps_partner_key: 'err-partner',
         ps_xid: 'err-click',
       })
 
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
       await act(async () => {
         await result.current.bind()
       })
@@ -236,14 +241,14 @@ describe('Partner Stack Flow', () => {
     })
 
     it('should not remove cookie on non-400 errors', async () => {
-      mockMutateAsync.mockRejectedValue({ status: 500 })
+      mocks.request.mockRejectedValue({ status: 500 })
       setCookieData({ partnerKey: 'keep-partner', clickId: 'keep-click' })
       mockSearchParams = new URLSearchParams({
         ps_partner_key: 'keep-partner',
         ps_xid: 'keep-click',
       })
 
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
       await act(async () => {
         await result.current.bind()
       })
@@ -258,12 +263,12 @@ describe('Partner Stack Flow', () => {
         ps_xid: 'click-only',
       })
 
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
       await act(async () => {
         await result.current.bind()
       })
 
-      expect(mockMutateAsync).not.toHaveBeenCalled()
+      expect(mocks.request).not.toHaveBeenCalled()
     })
 
     it('should not call bind a second time (idempotency)', async () => {
@@ -272,25 +277,25 @@ describe('Partner Stack Flow', () => {
         ps_xid: 'click-once',
       })
 
-      const { result } = renderHook(() => usePSInfo())
+      const { result } = renderPSInfo()
 
       // First bind
       await act(async () => {
         await result.current.bind()
       })
-      expect(mockMutateAsync).toHaveBeenCalledTimes(1)
+      expect(mocks.request).toHaveBeenCalledTimes(1)
 
       // Second bind should be skipped (hasBind = true)
       await act(async () => {
         await result.current.bind()
       })
-      expect(mockMutateAsync).toHaveBeenCalledTimes(1)
+      expect(mocks.request).toHaveBeenCalledTimes(1)
     })
   })
 
   // ─── 4. PartnerStack Component Mount ────────────────────────────────────
   describe('PartnerStack component mount behavior', () => {
-    it('should call saveOrUpdate and bind on mount when IS_CLOUD_EDITION is true', async () => {
+    it('should call saveOrUpdate and bind on mount', async () => {
       mockSearchParams = new URLSearchParams({
         ps_partner_key: 'mount-partner',
         ps_xid: 'mount-click',
@@ -301,18 +306,11 @@ describe('Partner Stack Flow', () => {
 
       render(<PartnerStack />)
 
-      // The component calls saveOrUpdate and bind in useEffect
       await waitFor(() => {
-        // Bind should have been called
-        expect(mockMutateAsync).toHaveBeenCalledWith({
-          partnerKey: 'mount-partner',
-          clickId: 'mount-click',
-        })
+        expect(mocks.request).toHaveBeenCalledTimes(1)
+        expect(getBindRequest()?.url).toContain('/billing/partners/mount-partner/tenants')
+        expect(Cookies.get(PARTNER_STACK_CONFIG.cookieName)).toBeUndefined()
       })
-
-      // Cookie should have been saved (saveOrUpdate was called before bind)
-      // After bind succeeds, cookie is removed
-      expect(Cookies.get(PARTNER_STACK_CONFIG.cookieName)).toBeUndefined()
     })
 
     it('should render nothing (return null)', async () => {

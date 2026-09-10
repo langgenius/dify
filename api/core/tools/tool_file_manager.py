@@ -4,6 +4,7 @@ import hmac
 import logging
 import os
 import time
+import urllib.parse
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
 from uuid import uuid4
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 class ToolFileManager:
     @staticmethod
     def _build_graph_file_reference(tool_file: ToolFile) -> File:
-        extension = guess_extension(tool_file.mimetype) or ".bin"
+        extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
         return File(
             file_type=get_file_type_by_mime_type(tool_file.mimetype),
             transfer_method=FileTransferMethod.TOOL_FILE,
@@ -70,7 +71,7 @@ class ToolFileManager:
         mimetype: str,
         filename: str | None = None,
     ) -> ToolFile:
-        extension = guess_extension(mimetype) or ".bin"
+        extension = resolve_extension(filename=filename, mimetype=mimetype)
         unique_name = uuid4().hex
         unique_filename = f"{unique_name}{extension}"
         # default just as before
@@ -120,7 +121,8 @@ class ToolFileManager:
             or response.headers.get("Content-Type", "").split(";")[0].strip()
             or "application/octet-stream"
         )
-        extension = guess_extension(mimetype) or ".bin"
+        url_filename = os.path.basename(urllib.parse.urlparse(file_url).path)
+        extension = resolve_extension(filename=url_filename, mimetype=mimetype)
         unique_name = uuid4().hex
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
@@ -218,6 +220,13 @@ from graphon.file.tool_file_parser import set_tool_file_manager_factory
 
 def _factory() -> ToolFileManager:
     return ToolFileManager()
+
+
+def resolve_extension(*, filename: str | None, mimetype: str) -> str:
+    filename_extension = os.path.splitext(filename or "")[1].lower()
+    if filename_extension:
+        return filename_extension
+    return guess_extension(mimetype) or ".bin"
 
 
 set_tool_file_manager_factory(_factory)

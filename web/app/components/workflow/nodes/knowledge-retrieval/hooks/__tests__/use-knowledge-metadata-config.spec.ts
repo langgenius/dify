@@ -28,7 +28,9 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', ()
 
 const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
 
-const createPayload = (overrides: Partial<KnowledgeRetrievalNodeType> = {}): KnowledgeRetrievalNodeType => ({
+const createPayload = (
+  overrides: Partial<KnowledgeRetrievalNodeType> = {},
+): KnowledgeRetrievalNodeType => ({
   title: 'Knowledge Retrieval',
   desc: '',
   type: BlockEnum.KnowledgeRetrieval,
@@ -62,14 +64,26 @@ describe('use-knowledge-metadata-config', () => {
       const activeConfig = config!
       if (activeConfig.filterVar({ type: VarType.string } as never, ['string-node', 'topic'])) {
         return {
-          availableVars: [{ nodeId: 'string-node', title: 'String Node', vars: [{ variable: 'topic', type: VarType.string }] }],
+          availableVars: [
+            {
+              nodeId: 'string-node',
+              title: 'String Node',
+              vars: [{ variable: 'topic', type: VarType.string }],
+            },
+          ],
           availableNodes: [],
           availableNodesWithParent: [{ id: 'string-node', data: { title: 'String Node' } }],
         } as unknown as ReturnType<typeof useAvailableVarList>
       }
 
       return {
-        availableVars: [{ nodeId: 'number-node', title: 'Number Node', vars: [{ variable: 'score', type: VarType.number }] }],
+        availableVars: [
+          {
+            nodeId: 'number-node',
+            title: 'Number Node',
+            vars: [{ variable: 'score', type: VarType.number }],
+          },
+        ],
         availableNodes: [],
         availableNodesWithParent: [{ id: 'number-node', data: { title: 'Number Node' } }],
       } as unknown as ReturnType<typeof useAvailableVarList>
@@ -78,11 +92,13 @@ describe('use-knowledge-metadata-config', () => {
 
   it('manages metadata filters, conditions, model state, and available vars', () => {
     const { inputRef, setInputs } = createState(createPayload())
-    const { result } = renderHook(() => useKnowledgeMetadataConfig({
-      id: 'knowledge-node',
-      inputRef,
-      setInputs,
-    }))
+    const { result } = renderHook(() =>
+      useKnowledgeMetadataConfig({
+        id: 'knowledge-node',
+        inputRef,
+        setInputs,
+      }),
+    )
 
     act(() => {
       result.current.handleMetadataFilterModeChange(MetadataFilteringModeEnum.manual)
@@ -100,8 +116,10 @@ describe('use-knowledge-metadata-config', () => {
       })
     })
 
-    const firstCondition = setInputs.mock.calls[1]![0].metadata_filtering_conditions!.conditions[0] as MetadataFilteringCondition
-    const secondCondition = setInputs.mock.calls[2]![0].metadata_filtering_conditions!.conditions[1] as MetadataFilteringCondition
+    const firstCondition = setInputs.mock.calls[1]![0].metadata_filtering_conditions!
+      .conditions[0] as MetadataFilteringCondition
+    const secondCondition = setInputs.mock.calls[2]![0].metadata_filtering_conditions!
+      .conditions[1] as MetadataFilteringCondition
 
     act(() => {
       result.current.handleUpdateCondition(secondCondition.id, {
@@ -119,27 +137,47 @@ describe('use-knowledge-metadata-config', () => {
       result.current.handleMetadataCompletionParamsChange({ top_p: 0.3 })
     })
 
-    expect(setInputs).toHaveBeenLastCalledWith(expect.objectContaining({
-      metadata_model_config: {
-        provider: 'openai',
-        name: 'gpt-4.1-mini',
-        mode: AppModeEnum.CHAT,
-        completion_params: { top_p: 0.3 },
-      },
-    }))
+    expect(setInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata_model_config: {
+          provider: 'openai',
+          name: 'gpt-4.1-mini',
+          mode: AppModeEnum.CHAT,
+          completion_params: { top_p: 0.3 },
+        },
+      }),
+    )
     expect(inputRef.current.metadata_filtering_mode).toBe(MetadataFilteringModeEnum.manual)
     expect(inputRef.current.metadata_filtering_conditions).toEqual({
       logical_operator: LogicalOperator.or,
-      conditions: [{
-        ...secondCondition,
-        comparison_operator: ComparisonOperator.largerThan,
-        value: 0.8,
-      }],
+      conditions: [
+        {
+          ...secondCondition,
+          comparison_operator: ComparisonOperator.largerThan,
+          value: 0.8,
+        },
+      ],
     })
-    expect(result.current.availableStringVars).toEqual([{ nodeId: 'string-node', title: 'String Node', vars: [{ variable: 'topic', type: VarType.string }] }])
-    expect(result.current.availableNumberVars).toEqual([{ nodeId: 'number-node', title: 'Number Node', vars: [{ variable: 'score', type: VarType.number }] }])
-    expect(result.current.availableStringNodesWithParent).toEqual([{ id: 'string-node', data: { title: 'String Node' } }])
-    expect(result.current.availableNumberNodesWithParent).toEqual([{ id: 'number-node', data: { title: 'Number Node' } }])
+    expect(result.current.availableStringVars).toEqual([
+      {
+        nodeId: 'string-node',
+        title: 'String Node',
+        vars: [{ variable: 'topic', type: VarType.string }],
+      },
+    ])
+    expect(result.current.availableNumberVars).toEqual([
+      {
+        nodeId: 'number-node',
+        title: 'Number Node',
+        vars: [{ variable: 'score', type: VarType.number }],
+      },
+    ])
+    expect(result.current.availableStringNodesWithParent).toEqual([
+      { id: 'string-node', data: { title: 'String Node' } },
+    ])
+    expect(result.current.availableNumberNodesWithParent).toEqual([
+      { id: 'number-node', data: { title: 'Number Node' } },
+    ])
     expect(result.current.filterStringVar({ type: VarType.string } as never)).toBe(true)
     expect(result.current.filterStringVar({ type: VarType.number } as never)).toBe(false)
     expect(result.current.filterFileVar({ type: VarType.file } as never)).toBe(true)
@@ -151,13 +189,15 @@ describe('use-knowledge-metadata-config', () => {
     const initialPayload = createPayload({
       metadata_filtering_conditions: {
         logical_operator: LogicalOperator.and,
-        conditions: [{
-          id: 'condition-existing',
-          metadata_id: 'meta-1',
-          name: 'topic',
-          comparison_operator: ComparisonOperator.is,
-          value: 'city',
-        }],
+        conditions: [
+          {
+            id: 'condition-existing',
+            metadata_id: 'meta-1',
+            name: 'topic',
+            comparison_operator: ComparisonOperator.is,
+            value: 'city',
+          },
+        ],
       },
       metadata_model_config: {
         provider: 'openai',
@@ -167,11 +207,13 @@ describe('use-knowledge-metadata-config', () => {
       },
     })
     const { inputRef, setInputs } = createState(initialPayload)
-    const { result } = renderHook(() => useKnowledgeMetadataConfig({
-      id: 'knowledge-node',
-      inputRef,
-      setInputs,
-    }))
+    const { result } = renderHook(() =>
+      useKnowledgeMetadataConfig({
+        id: 'knowledge-node',
+        inputRef,
+        setInputs,
+      }),
+    )
 
     act(() => {
       result.current.handleRemoveCondition('missing-condition')
@@ -192,13 +234,15 @@ describe('use-knowledge-metadata-config', () => {
     const initialPayload = createPayload({
       metadata_filtering_conditions: {
         logical_operator: LogicalOperator.or,
-        conditions: [{
-          id: 'condition-existing',
-          metadata_id: 'meta-1',
-          name: 'topic',
-          comparison_operator: ComparisonOperator.is,
-          value: 'city',
-        }],
+        conditions: [
+          {
+            id: 'condition-existing',
+            metadata_id: 'meta-1',
+            name: 'topic',
+            comparison_operator: ComparisonOperator.is,
+            value: 'city',
+          },
+        ],
       },
       metadata_model_config: {
         provider: 'openai',
@@ -208,11 +252,13 @@ describe('use-knowledge-metadata-config', () => {
       },
     })
     const { inputRef, setInputs } = createState(initialPayload)
-    const { result } = renderHook(() => useKnowledgeMetadataConfig({
-      id: 'knowledge-node',
-      inputRef,
-      setInputs,
-    }))
+    const { result } = renderHook(() =>
+      useKnowledgeMetadataConfig({
+        id: 'knowledge-node',
+        inputRef,
+        setInputs,
+      }),
+    )
 
     act(() => {
       result.current.handleToggleConditionLogicalOperator()
@@ -222,7 +268,9 @@ describe('use-knowledge-metadata-config', () => {
       })
     })
 
-    expect(inputRef.current.metadata_filtering_conditions?.logical_operator).toBe(LogicalOperator.and)
+    expect(inputRef.current.metadata_filtering_conditions?.logical_operator).toBe(
+      LogicalOperator.and,
+    )
     expect(inputRef.current.metadata_model_config).toEqual({
       provider: 'anthropic',
       name: 'claude-sonnet',
@@ -236,11 +284,13 @@ describe('use-knowledge-metadata-config', () => {
       metadata_filtering_conditions: undefined,
     })
     const { inputRef, setInputs } = createState(initialPayload)
-    const { result } = renderHook(() => useKnowledgeMetadataConfig({
-      id: 'knowledge-node',
-      inputRef,
-      setInputs,
-    }))
+    const { result } = renderHook(() =>
+      useKnowledgeMetadataConfig({
+        id: 'knowledge-node',
+        inputRef,
+        setInputs,
+      }),
+    )
 
     act(() => {
       result.current.handleRemoveCondition('missing-condition')

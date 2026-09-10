@@ -19,7 +19,7 @@ from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task
 
@@ -207,8 +207,6 @@ class TestBatchCleanDocumentTask:
         """
         fake = Faker()
 
-        from models.enums import CreatorUserRole
-
         upload_file = UploadFile(
             tenant_id=account.current_tenant.id,
             storage_type=StorageType.LOCAL,
@@ -257,7 +255,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully
@@ -313,7 +314,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=[],
         )
 
         # Verify database cleanup
@@ -353,7 +357,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully
@@ -448,7 +455,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully despite storage failure
@@ -506,7 +516,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task with multiple documents
         batch_clean_document_task(
-            document_ids=document_ids, dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=file_ids
+            document_ids=document_ids,
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=file_ids,
         )
 
         # Verify that the task completed successfully for all documents
@@ -643,7 +656,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task with large batch
         batch_clean_document_task(
-            document_ids=document_ids, dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=file_ids
+            document_ids=document_ids,
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=file_ids,
         )
 
         end_time = time.perf_counter()
@@ -736,7 +752,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully

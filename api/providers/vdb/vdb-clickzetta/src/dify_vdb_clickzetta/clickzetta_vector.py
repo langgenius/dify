@@ -361,12 +361,13 @@ class ClickzettaVector(BaseVector):
                 first_pass = json.loads(raw_metadata)
 
                 # Handle double-encoded JSON
-                if isinstance(first_pass, str):
-                    metadata = parse_metadata_json(first_pass)
-                elif isinstance(first_pass, dict):
-                    metadata = first_pass
-                else:
-                    metadata = {}
+                match first_pass:
+                    case str():
+                        metadata = parse_metadata_json(first_pass)
+                    case dict():
+                        metadata = first_pass
+                    case _:
+                        metadata = {}
             else:
                 metadata = {}
         except (json.JSONDecodeError, ValueError, TypeError):
@@ -942,12 +943,13 @@ class ClickzettaVector(BaseVector):
                                 # First parse may yield a string (double-encoded JSON)
                                 first_pass = json.loads(row[2])
 
-                                if isinstance(first_pass, str):
-                                    metadata = parse_metadata_json(first_pass)
-                                elif isinstance(first_pass, dict):
-                                    metadata = first_pass
-                                else:
-                                    metadata = {}
+                                match first_pass:
+                                    case str():
+                                        metadata = parse_metadata_json(first_pass)
+                                    case dict():
+                                        metadata = first_pass
+                                    case _:
+                                        metadata = {}
                             else:
                                 metadata = {}
                         except (json.JSONDecodeError, ValueError, TypeError):

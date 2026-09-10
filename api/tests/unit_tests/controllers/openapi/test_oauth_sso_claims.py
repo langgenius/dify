@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -17,15 +17,13 @@ def app() -> Flask:
 
 
 def _ee_features():
-    from services.feature_service import LicenseStatus
+    from services.entities.feature_entities import LicenseStatus
 
-    m = MagicMock()
-    m.license.status = LicenseStatus.ACTIVE
-    return m
+    return LicenseStatus.ACTIVE
 
 
 @patch("controllers.openapi.oauth_device_sso.jws")
-@patch("libs.device_flow_security.FeatureService.get_system_features")
+@patch("libs.device_flow_security.SystemFeatureService.get_license_status")
 def test_sso_complete_rejects_assertion_missing_email(ee_feat, jws_mod, app: Flask):
     ee_feat.return_value = _ee_features()
     jws_mod.verify.return_value = {"issuer": "https://idp.example", "user_code": "ABCD-EFGH", "nonce": "n"}
@@ -34,12 +32,13 @@ def test_sso_complete_rejects_assertion_missing_email(ee_feat, jws_mod, app: Fla
     jws_mod.VerifyError = Exception
 
     client = app.test_client()
-    resp = client.get("/openapi/v1/oauth/device/sso-complete?sso_assertion=blob")
-    assert resp.status_code == 400, resp.data
+    resp = client.get("/openapi/v1/oauth/device/sso-complete?sso_assertion=blob", follow_redirects=False)
+    assert resp.status_code == 302, resp.data
+    assert "sso_error=sso_failed" in resp.headers["Location"]
 
 
 @patch("controllers.openapi.oauth_device_sso.jws")
-@patch("libs.device_flow_security.FeatureService.get_system_features")
+@patch("libs.device_flow_security.SystemFeatureService.get_license_status")
 def test_sso_complete_rejects_assertion_empty_issuer(ee_feat, jws_mod, app: Flask):
     ee_feat.return_value = _ee_features()
     jws_mod.verify.return_value = {"email": "x@y.com", "issuer": "", "user_code": "ABCD-EFGH", "nonce": "n"}
@@ -48,8 +47,9 @@ def test_sso_complete_rejects_assertion_empty_issuer(ee_feat, jws_mod, app: Flas
     jws_mod.VerifyError = Exception
 
     client = app.test_client()
-    resp = client.get("/openapi/v1/oauth/device/sso-complete?sso_assertion=blob")
-    assert resp.status_code == 400
+    resp = client.get("/openapi/v1/oauth/device/sso-complete?sso_assertion=blob", follow_redirects=False)
+    assert resp.status_code == 302
+    assert "sso_error=sso_failed" in resp.headers["Location"]
 
 
 def test_verify_approval_grant_raises_on_missing_field():

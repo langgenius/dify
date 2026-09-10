@@ -166,12 +166,13 @@ class PluginEntity(PluginInstallation):
         return self
 
 
-class PluginDependency(BaseModel):
-    class Type(StrEnum):
-        Github = PluginInstallationSource.Github
-        Marketplace = PluginInstallationSource.Marketplace
-        Package = PluginInstallationSource.Package
+class PluginDependencyType(StrEnum):
+    Github = PluginInstallationSource.Github
+    Marketplace = PluginInstallationSource.Marketplace
+    Package = PluginInstallationSource.Package
 
+
+class PluginDependency(BaseModel):
     class Github(BaseModel):
         repo: str
         version: str
@@ -194,7 +195,7 @@ class PluginDependency(BaseModel):
         plugin_unique_identifier: str
         version: str | None = None
 
-    type: Type
+    type: PluginDependencyType
     value: Github | Marketplace | Package
     current_identifier: str | None = None
 

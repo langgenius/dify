@@ -10,7 +10,6 @@
   "imageUploader.tip": "Tải lên hoặc thả hình ảnh (Tối đa {{batchCount}}, {{size}}MB mỗi ảnh)",
   "imageUploader.tooltip": "Tải hình ảnh lên (Tối đa {{batchCount}}, {{size}}MB mỗi ảnh)",
   "input.countWarning": "Tối đa 200 ký tự.",
-  "input.indexWarning": "Chỉ có sẵn trong Kiến thức chất lượng cao.",
   "input.placeholder": "Vui lòng nhập một văn bản, khuyến nghị sử dụng một câu khẳng định ngắn.",
   "input.testing": "Đang kiểm tra",
   "input.title": "Văn bản nguồn",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "Nội dung truy vấn",
   "table.header.source": "Nguồn",
   "table.header.time": "Thời gian",
-  "title": "Kiểm tra truy vấn",
-  "viewChart": "Xem BIỂU ĐỒ VECTOR",
-  "viewDetail": "Xem chi tiết"
+  "title": "Kiểm tra truy vấn"
 }

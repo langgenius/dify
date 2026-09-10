@@ -4,6 +4,7 @@ from collections.abc import Generator, Sequence
 from decimal import Decimal
 from json import dumps
 
+from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl.model import PluginModelClient
 
@@ -41,6 +42,7 @@ class MockModelClass(PluginModelClient):
                 tenant_id=tenant_id,
                 plugin_unique_identifier="langgenius/openai/openai",
                 plugin_id="langgenius/openai",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="openai",
                     label=I18nObject(
@@ -246,5 +248,6 @@ class MockModelClass(PluginModelClient):
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: bool = True,
+        app_id: str | None = None,
     ):
         return MockModelClass.mocked_chat_create_stream(model=model, prompt_messages=prompt_messages, tools=tools)

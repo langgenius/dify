@@ -25,7 +25,7 @@ def _create_app(db_session: Session, account: Account, *, name: str = "Uploader"
         icon="🤖",
         icon_background="#FF6B6B",
     )
-    app_model = AppService().create_app(tenant.id, params, account)
+    app_model = AppService().create_app(tenant.id, params, account, session=db_session)
     db_session.commit()
     return app_model
 
@@ -43,7 +43,7 @@ class TestAppFileUpload:
         api = AppFileUploadApi()
         data = {"file": (BytesIO(content), "note.txt", "text/plain")}
         with app.test_request_context(
-            f"/openapi/v1/apps/{app_model.id}/files/upload",
+            f"/openapi/v1/apps/{app_model.id}/files",
             method="POST",
             data=data,
             content_type="multipart/form-data",

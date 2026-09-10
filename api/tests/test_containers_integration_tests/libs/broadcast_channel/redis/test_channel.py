@@ -20,7 +20,7 @@ from testcontainers.redis import RedisContainer
 
 from libs.broadcast_channel.channel import BroadcastChannel, Subscription, Topic
 from libs.broadcast_channel.exc import SubscriptionClosedError
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
+from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel as RedisBroadcastChannel
 
 
 class TestRedisBroadcastChannelIntegration:

@@ -20,11 +20,7 @@ const VariableOrConstantInputField = ({
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label
-        htmlFor="variable-or-constant"
-        label={label}
-        {...(labelOptions ?? {})}
-      />
+      <Label htmlFor="variable-or-constant" label={label} {...(labelOptions ?? {})} />
       <div className="flex items-center">
         <VarReferencePicker
           className="grow"

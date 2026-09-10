@@ -57,6 +57,17 @@ def test_reback_resolves_tenant_tool_file_to_file():
     assert file.extension == ".png"
 
 
+def test_reback_prefers_filename_extension_over_mimetype():
+    tf = _seed(mimetype="application/octet-stream", name="report.docx", size=99)
+    file = reback_tool_file_output(tenant_id=TENANT, tool_file_id=tf)
+
+    assert file is not None
+    assert file.filename == "report.docx"
+    assert file.mime_type == "application/octet-stream"
+    assert file.extension == ".docx"
+    assert file.type == FileType.CUSTOM
+
+
 def test_reback_other_tenant_returns_none():
     tf = _seed()
     assert reback_tool_file_output(tenant_id="33333333-3333-3333-3333-333333333333", tool_file_id=tf) is None

@@ -5,11 +5,14 @@ import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../types'
 import TextGenerationItem from '../text-generation-item'
 
 const mockUseDebugConfigurationContext = vi.fn()
-const mockUseProviderContext = vi.fn()
+const mockModelListQuery = vi.fn()
 const mockUseFeatures = vi.fn()
 const mockUseTextGeneration = vi.fn()
 const mockUseEventEmitterContextContext = vi.fn()
 const mockPromptVariablesToUserInputsForm = vi.fn()
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
 
 let capturedTextGenerationProps: {
   content: string
@@ -19,14 +22,17 @@ let capturedTextGenerationProps: {
   className?: string
 } | null = null
 
-let eventSubscriptionCallback: ((v: { type: string, payload?: Record<string, unknown> }) => void) | null = null
+let eventSubscriptionCallback:
+  | ((v: { type: string; payload?: Record<string, unknown> }) => void)
+  | null = null
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => mockModelListQuery(),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
@@ -37,12 +43,19 @@ vi.mock('@/app/components/base/text-generation/hooks', () => ({
   useTextGeneration: () => mockUseTextGeneration(),
 }))
 
+vi.mock('@/app/components/app/configuration/toast', () => ({
+  toast: {
+    error: mockToastError,
+  },
+}))
+
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => mockUseEventEmitterContextContext(),
 }))
 
 vi.mock('@/utils/model-config', () => ({
-  promptVariablesToUserInputsForm: (...args: unknown[]) => mockPromptVariablesToUserInputsForm(...args),
+  promptVariablesToUserInputsForm: (...args: unknown[]) =>
+    mockPromptVariablesToUserInputsForm(...args),
 }))
 
 vi.mock('@/app/components/app/text-generate/item', () => ({
@@ -59,7 +72,9 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
   },
 }))
 
-const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({
+const createModelAndParameter = (
+  overrides: Partial<ModelAndParameter> = {},
+): ModelAndParameter => ({
   id: 'model-1',
   model: 'gpt-3.5-turbo',
   provider: 'openai',
@@ -73,9 +88,7 @@ const createDefaultMocks = () => {
     modelConfig: {
       configs: {
         prompt_template: 'Hello {{name}}',
-        prompt_variables: [
-          { key: 'name', name: 'Name', type: 'string', is_context_var: false },
-        ],
+        prompt_variables: [{ key: 'name', name: 'Name', type: 'string', is_context_var: false }],
       },
       system_parameters: {},
     },
@@ -93,8 +106,8 @@ const createDefaultMocks = () => {
     datasetConfigs: { retrieval_model: 'single' },
   })
 
-  mockUseProviderContext.mockReturnValue({
-    textGenerationModelList: [
+  mockModelListQuery.mockReturnValue({
+    data: [
       {
         provider: 'openai',
         models: [
@@ -128,7 +141,9 @@ const createDefaultMocks = () => {
 
   mockUseEventEmitterContextContext.mockReturnValue({
     eventEmitter: {
-      useSubscription: (callback: (v: { type: string, payload?: Record<string, unknown> }) => void) => {
+      useSubscription: (
+        callback: (v: { type: string; payload?: Record<string, unknown> }) => void,
+      ) => {
         eventSubscriptionCallback = callback
       },
     },
@@ -372,7 +387,16 @@ describe('TextGenerationItem', () => {
         expect.objectContaining({
           inputs: { name: 'World' },
         }),
+        expect.objectContaining({
+          onNotifyError: expect.any(Function),
+        }),
       )
+
+      const callbacks = handleSend.mock.calls[0]![2] as {
+        onNotifyError: (message: string) => void
+      }
+      callbacks.onNotifyError('Base model not found')
+      expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 
     it('should ignore other event types', () => {
@@ -429,6 +453,7 @@ describe('TextGenerationItem', () => {
             }),
           }),
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -457,10 +482,19 @@ describe('TextGenerationItem', () => {
         expect.any(String),
         expect.objectContaining({
           files: [
-            expect.objectContaining({ id: 'f1', transfer_method: TransferMethod.local_file, url: '' }),
-            expect.objectContaining({ id: 'f2', transfer_method: TransferMethod.remote_url, url: 'https://example.com/file' }),
+            expect.objectContaining({
+              id: 'f1',
+              transfer_method: TransferMethod.local_file,
+              url: '',
+            }),
+            expect.objectContaining({
+              id: 'f2',
+              transfer_method: TransferMethod.remote_url,
+              url: 'https://example.com/file',
+            }),
           ],
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -473,17 +507,19 @@ describe('TextGenerationItem', () => {
         messageId: null,
       })
 
-      mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-        const state = {
-          features: {
-            moreLikeThis: { enabled: false },
-            moderation: { enabled: false },
-            text2speech: { enabled: false },
-            file: { enabled: false },
-          },
-        }
-        return selector(state)
-      })
+      mockUseFeatures.mockImplementation(
+        (selector: (state: Record<string, unknown>) => unknown) => {
+          const state = {
+            features: {
+              moreLikeThis: { enabled: false },
+              moderation: { enabled: false },
+              text2speech: { enabled: false },
+              file: { enabled: false },
+            },
+          }
+          return selector(state)
+        },
+      )
 
       renderComponent()
 
@@ -497,6 +533,7 @@ describe('TextGenerationItem', () => {
         expect.not.objectContaining({
           files: expect.anything(),
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -521,6 +558,7 @@ describe('TextGenerationItem', () => {
         expect.not.objectContaining({
           files: expect.anything(),
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -545,6 +583,7 @@ describe('TextGenerationItem', () => {
         expect.not.objectContaining({
           files: expect.anything(),
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
   })
@@ -559,8 +598,8 @@ describe('TextGenerationItem', () => {
         messageId: null,
       })
 
-      mockUseProviderContext.mockReturnValue({
-        textGenerationModelList: [
+      mockModelListQuery.mockReturnValue({
+        data: [
           {
             provider: 'openai',
             models: [
@@ -592,6 +631,7 @@ describe('TextGenerationItem', () => {
             }),
           }),
         }),
+        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -604,8 +644,8 @@ describe('TextGenerationItem', () => {
         messageId: null,
       })
 
-      mockUseProviderContext.mockReturnValue({
-        textGenerationModelList: [],
+      mockModelListQuery.mockReturnValue({
+        data: [],
       })
 
       renderComponent()
@@ -615,7 +655,6 @@ describe('TextGenerationItem', () => {
         payload: { message: 'Test', files: [] },
       })
 
-      // Should still call handleSend without crashing
       expect(handleSend).toHaveBeenCalled()
     })
   })

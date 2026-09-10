@@ -7,7 +7,7 @@ separate ``agent-backend.v1`` event stream.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from enum import StrEnum
 
@@ -18,6 +18,8 @@ from dify_agent.protocol import (
     CreateRunRequest,
     CreateRunResponse,
     DeferredToolCallPayload,
+    RunCancelledEvent,
+    RunCancelledEventData,
     RunEvent,
     RunFailedEvent,
     RunFailedEventData,
@@ -69,9 +71,39 @@ class FakeAgentBackendRunClient:
         del request
         return CancelRunResponse(run_id=run_id, status="cancelled")
 
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        """Return a deterministic cleanup-complete cancellation event."""
+        del after
+        request = request or CancelRunRequest()
+        _ = self.cancel_run(run_id, request)
+        return RunCancelledEvent(
+            id="cancel-0",
+            run_id=run_id,
+            created_at=_FIXED_TIME,
+            data=RunCancelledEventData(
+                reason=request.reason,
+                message=request.message,
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
         """Yield the deterministic public ``RunEvent`` sequence for ``run_id``."""
         for event in self._events(run_id):
+            if should_stop is not None and should_stop():
+                return
             if after is not None and event.id is not None and event.id <= after:
                 continue
             yield event
@@ -125,7 +157,11 @@ class FakeAgentBackendRunClient:
                         id="2-0",
                         run_id=run_id,
                         created_at=_FIXED_TIME,
-                        data=RunFailedEventData(error="fake failure", reason="unit_test"),
+                        data=RunFailedEventData(
+                            error="fake failure",
+                            reason="unit_test",
+                            session_snapshot=CompositorSessionSnapshot(layers=[]),
+                        ),
                     ),
                 )
             case FakeAgentBackendScenario.PAUSED:

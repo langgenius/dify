@@ -2,13 +2,14 @@ import type { ReactNode } from 'react'
 import type { IConfigVarProps } from '../index'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
-import { toast } from '@langgenius/dify-ui/toast'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
+import { toast } from '@/app/components/app/configuration/toast'
 import DebugConfigurationContext from '@/context/debug-configuration'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
-
 import ConfigVar, { ADD_EXTERNAL_DATA_TOOL } from '../index'
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
@@ -58,7 +59,9 @@ vi.mock('react-sortablejs', () => ({
   },
 }))
 
-type DebugConfigurationState = React.ComponentProps<typeof DebugConfigurationContext.Provider>['value']
+type DebugConfigurationState = React.ComponentProps<
+  typeof DebugConfigurationContext.Provider
+>['value']
 
 const defaultDebugConfigValue = {
   mode: AppModeEnum.CHAT,
@@ -68,10 +71,13 @@ const defaultDebugConfigValue = {
   },
 } as unknown as DebugConfigurationState
 
-const createDebugConfigValue = (overrides: Partial<DebugConfigurationState> = {}): DebugConfigurationState => ({
-  ...defaultDebugConfigValue,
-  ...overrides,
-} as unknown as DebugConfigurationState)
+const createDebugConfigValue = (
+  overrides: Partial<DebugConfigurationState> = {},
+): DebugConfigurationState =>
+  ({
+    ...defaultDebugConfigValue,
+    ...overrides,
+  }) as unknown as DebugConfigurationState
 
 let variableIndex = 0
 const createPromptVariable = (overrides: Partial<PromptVariable> = {}): PromptVariable => {
@@ -85,7 +91,10 @@ const createPromptVariable = (overrides: Partial<PromptVariable> = {}): PromptVa
   }
 }
 
-const renderConfigVar = (props: Partial<IConfigVarProps> = {}, debugOverrides: Partial<DebugConfigurationState> = {}) => {
+const renderConfigVar = (
+  props: Partial<IConfigVarProps> = {},
+  debugOverrides: Partial<DebugConfigurationState> = {},
+) => {
   const defaultProps: IConfigVarProps = {
     promptVariables: [],
     readonly: false,
@@ -142,6 +151,49 @@ describe('ConfigVar', () => {
       })
 
       expect(onPromptVariablesChange).toHaveBeenCalledWith([secondVar, firstVar])
+    })
+
+    it('commits variable keyboard sorting only after confirmation', async () => {
+      const user = userEvent.setup()
+      const onPromptVariablesChange = vi.fn()
+      const first = createPromptVariable({ key: 'first', name: 'First' })
+      const second = createPromptVariable({ key: 'second', name: 'Second' })
+      renderConfigVar({ promptVariables: [first, second], onPromptVariablesChange })
+      const handle = screen.getAllByRole('button', { name: /sort.handle/ })[0]!
+      handle.focus()
+      await user.keyboard('{Enter}{ArrowDown}')
+      expect(handle).toHaveFocus()
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
+      await user.keyboard('{Enter}')
+      expect(onPromptVariablesChange).toHaveBeenCalledExactlyOnceWith([second, first])
+    })
+
+    it('does not expose keyboard sorting in readonly mode', () => {
+      renderConfigVar({
+        readonly: true,
+        promptVariables: [createPromptVariable(), createPromptVariable()],
+      })
+      expect(screen.queryByRole('button', { name: /sort.handle/ })).not.toBeInTheDocument()
+    })
+
+    it('should ignore sortable updates when the variable order is unchanged', () => {
+      const onPromptVariablesChange = vi.fn()
+      const firstVar = createPromptVariable({ key: 'first', name: 'First' })
+      const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
+
+      renderConfigVar({
+        promptVariables: [firstVar, secondVar],
+        onPromptVariablesChange,
+      })
+
+      act(() => {
+        latestSortableProps?.setList([
+          { id: 'first', variable: firstVar },
+          { id: 'second', variable: secondVar },
+        ])
+      })
+
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
     })
   })
 
@@ -233,7 +285,9 @@ describe('ConfigVar', () => {
       const item = screen.getByTitle('name · Name')
       const itemContainer = item.closest('div.group')
       expect(itemContainer).not.toBeNull()
-      fireEvent.click(within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }))
+      fireEvent.click(
+        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
+      )
 
       const editDialog = await screen.findByRole('dialog')
       const saveButton = within(editDialog).getByRole('button', { name: 'common.operation.save' })
@@ -257,9 +311,13 @@ describe('ConfigVar', () => {
       const item = screen.getByTitle('first · First')
       const itemContainer = item.closest('div.group')
       expect(itemContainer).not.toBeNull()
-      fireEvent.click(within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }))
+      fireEvent.click(
+        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
+      )
 
-      const inputs = await screen.findAllByPlaceholderText('appDebug.variableConfig.inputPlaceholder')
+      const inputs = await screen.findAllByPlaceholderText(
+        'appDebug.variableConfig.inputPlaceholder',
+      )
       fireEvent.change(inputs[0]!, { target: { value: 'second' } })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -281,9 +339,13 @@ describe('ConfigVar', () => {
       const item = screen.getByTitle('first · First')
       const itemContainer = item.closest('div.group')
       expect(itemContainer).not.toBeNull()
-      fireEvent.click(within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }))
+      fireEvent.click(
+        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
+      )
 
-      const inputs = await screen.findAllByPlaceholderText('appDebug.variableConfig.inputPlaceholder')
+      const inputs = await screen.findAllByPlaceholderText(
+        'appDebug.variableConfig.inputPlaceholder',
+      )
       fireEvent.change(inputs[1]!, { target: { value: 'Second' } })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -405,7 +467,9 @@ describe('ConfigVar', () => {
       const itemContainer = item.closest('div.group')
       expect(itemContainer).not.toBeNull()
 
-      fireEvent.click(within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }))
+      fireEvent.click(
+        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
+      )
 
       const modalState = setShowExternalDataToolModal.mock.calls.at(-1)?.[0]
 
@@ -453,7 +517,9 @@ describe('ConfigVar', () => {
       const itemContainer = item.closest('div.group')
       expect(itemContainer).not.toBeNull()
 
-      fireEvent.click(within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }))
+      fireEvent.click(
+        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
+      )
 
       const modalState = setShowExternalDataToolModal.mock.calls.at(-1)?.[0]
 

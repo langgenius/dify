@@ -49,8 +49,8 @@ const PageSelector = ({
 
   if (!rows.length) {
     return (
-      <div className="flex h-[296px] items-center justify-center text-[13px] text-text-tertiary">
-        {t('dataSource.notion.selector.noSearchResult', { ns: 'common' })}
+      <div className="flex h-74 items-center justify-center text-[13px] text-text-tertiary">
+        {t(($) => $['dataSource.notion.selector.noSearchResult'], { ns: 'common' })}
       </div>
     )
   }

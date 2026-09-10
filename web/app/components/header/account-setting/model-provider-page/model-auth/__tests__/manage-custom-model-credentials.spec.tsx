@@ -1,5 +1,6 @@
 import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ManageCustomModelCredentials from '../manage-custom-model-credentials'
 
 // Mock hooks
@@ -17,6 +18,8 @@ vi.mock('../authorized', () => ({
     renderTrigger,
     items,
     popupTitle,
+    isOpen,
+    onOpenChange,
   }: {
     renderTrigger: (o?: boolean) => React.ReactNode
     items: Array<{
@@ -24,16 +27,23 @@ vi.mock('../authorized', () => ({
       selectedCredential?: { credential_id?: string }
     }>
     popupTitle: string
+    isOpen?: boolean
+    onOpenChange?: (open: boolean) => void
   }) => (
     <div data-testid="authorized-mock">
       <div data-testid="trigger-closed">{renderTrigger()}</div>
       <div data-testid="trigger-open">{renderTrigger(true)}</div>
       <div data-testid="popup-title">{popupTitle}</div>
       <div data-testid="items-count">{items.length}</div>
+      <button type="button" data-open={isOpen} onClick={() => onOpenChange?.(false)}>
+        close
+      </button>
       <div data-testid="items-selected">
         {items.map((item, index) => (
           <span
-            key={item.model?.model ?? item.selectedCredential?.credential_id ?? `missing-${popupTitle}`}
+            key={
+              item.model?.model ?? item.selectedCredential?.credential_id ?? `missing-${popupTitle}`
+            }
             data-testid={`selected-${index}`}
           >
             {item.selectedCredential ? 'has-cred' : 'no-cred'}
@@ -79,7 +89,9 @@ describe('ManageCustomModelCredentials', () => {
     expect(screen.getByTestId('authorized-mock')).toBeInTheDocument()
     expect(screen.getAllByText(/modelProvider.auth.manageCredentials/).length).toBeGreaterThan(0)
     expect(screen.getByTestId('items-count')).toHaveTextContent('2')
-    expect(screen.getByTestId('popup-title')).toHaveTextContent('modelProvider.auth.customModelCredentials')
+    expect(screen.getByTestId('popup-title')).toHaveTextContent(
+      'modelProvider.auth.customModelCredentials',
+    )
   })
 
   it('should render trigger in both open and closed states', () => {
@@ -97,6 +109,21 @@ describe('ManageCustomModelCredentials', () => {
 
     expect(screen.getByTestId('trigger-closed')).toBeInTheDocument()
     expect(screen.getByTestId('trigger-open')).toBeInTheDocument()
+  })
+
+  it('should forward controlled open state', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    mockUseCustomModels.mockReturnValue([{ model: 'gpt-4' }])
+
+    render(
+      <ManageCustomModelCredentials provider={mockProvider} isOpen onOpenChange={onOpenChange} />,
+    )
+
+    const closeButton = screen.getByRole('button', { name: 'close' })
+    expect(closeButton).toHaveAttribute('data-open', 'true')
+    await user.click(closeButton)
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it('should pass undefined selectedCredential when model has no current_credential_id', () => {

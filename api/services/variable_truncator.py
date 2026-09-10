@@ -278,14 +278,14 @@ class VariableTruncator(BaseTruncator):
         target_length = self._array_element_limit
 
         for i, item in enumerate(value):
-            # Dirty fix:
-            # The output of `Start` node may contain list of `File` elements,
-            # causing `AssertionError` while invoking `_truncate_json_primitives`.
-            #
-            # This check ensures that `list[File]` are handled separately
-            if isinstance(item, File):
-                truncated_value.append(item)
-                continue
+            # ``File`` is routed through ``_truncate_json_primitives`` (whose
+            # dedicated ``File`` branch returns the file as-is with its real
+            # serialized size). That preserves the count cap
+            # (``array_element_limit``) and the byte budget (``target_size``)
+            # for ``list[File]`` — the original "Dirty fix" branch above this
+            # loop bypassed both guarantees and reported ``used_size=2`` even
+            # when the returned array serialized to well over the budget.
+            # See https://github.com/langgenius/dify/issues/39218.
             if i >= target_length:
                 return _PartResult(truncated_value, used_size, True)
             if i > 0:
@@ -295,7 +295,7 @@ class VariableTruncator(BaseTruncator):
                 break
 
             remaining_budget = target_size - used_size
-            if item is None or isinstance(item, (str, list, dict, bool, int, float, UpdatedVariable)):
+            if item is None or isinstance(item, (str, list, dict, bool, int, float, File, UpdatedVariable)):
                 part_result = self._truncate_json_primitives(item, remaining_budget)
             else:
                 raise UnknownTypeError(f"got unknown type {type(item)} in array truncation")

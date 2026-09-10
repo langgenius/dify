@@ -37,27 +37,39 @@ const FieldHarness = ({ config, initialData = {} }: FieldHarnessProps) => {
 
 describe('BaseField', () => {
   it('should render a text input field when configured as text input', () => {
-    render(<FieldHarness config={createConfig({ label: 'Username' })} initialData={{ fieldA: '' }} />)
+    render(
+      <FieldHarness config={createConfig({ label: 'Username' })} initialData={{ fieldA: '' }} />,
+    )
 
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.getByText('Username')).toBeInTheDocument()
   })
 
   it('should render a number input when configured as number input', () => {
-    render(<FieldHarness config={createConfig({ type: BaseFieldType.numberInput, label: 'Age' })} initialData={{ fieldA: 20 }} />)
+    render(
+      <FieldHarness
+        config={createConfig({ type: BaseFieldType.numberInput, label: 'Age' })}
+        initialData={{ fieldA: 20 }}
+      />,
+    )
 
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.getByText('Age')).toBeInTheDocument()
   })
 
   it('should render a checkbox when configured as checkbox', () => {
-    render(<FieldHarness config={createConfig({ type: BaseFieldType.checkbox, label: 'Agree' })} initialData={{ fieldA: false }} />)
+    render(
+      <FieldHarness
+        config={createConfig({ type: BaseFieldType.checkbox, label: 'Agree' })}
+        initialData={{ fieldA: false }}
+      />,
+    )
 
     expect(screen.getByText('Agree')).toBeInTheDocument()
   })
 
   it('should render paragraph and select fields based on configuration', () => {
-    const scenarios: Array<{ config: BaseConfiguration, initialData: Record<string, unknown> }> = [
+    const scenarios: Array<{ config: BaseConfiguration; initialData: Record<string, unknown> }> = [
       {
         config: createConfig({
           type: BaseFieldType.paragraph,
@@ -76,14 +88,16 @@ describe('BaseField', () => {
     ]
 
     for (const scenario of scenarios) {
-      const { unmount } = render(<FieldHarness config={scenario.config} initialData={scenario.initialData} />)
+      const { unmount } = render(
+        <FieldHarness config={scenario.config} initialData={scenario.initialData} />,
+      )
       expect(screen.getByText(scenario.config.label)).toBeInTheDocument()
       unmount()
     }
   })
 
   it('should render file uploader when configured as file', () => {
-    const scenarios: Array<{ config: BaseConfiguration, initialData: Record<string, unknown> }> = [
+    const scenarios: Array<{ config: BaseConfiguration; initialData: Record<string, unknown> }> = [
       {
         config: createConfig({
           type: BaseFieldType.file,
@@ -108,7 +122,9 @@ describe('BaseField', () => {
     ]
 
     for (const scenario of scenarios) {
-      const { unmount } = render(<FieldHarness config={scenario.config} initialData={scenario.initialData} />)
+      const { unmount } = render(
+        <FieldHarness config={scenario.config} initialData={scenario.initialData} />,
+      )
       expect(screen.getByText(scenario.config.label)).toBeInTheDocument()
       unmount()
     }

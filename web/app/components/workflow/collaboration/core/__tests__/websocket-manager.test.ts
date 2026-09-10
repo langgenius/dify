@@ -34,8 +34,7 @@ const createMockSocket = (id: string): MockSocket => {
     }),
     trigger: (event: string, ...args: unknown[]) => {
       const handler = handlers.get(event)
-      if (handler)
-        handler(...args)
+      if (handler) handler(...args)
     },
   }
 
@@ -46,6 +45,14 @@ describe('WebSocketClient', () => {
   beforeEach(() => {
     vi.resetModules()
     ioMock.mockReset()
+  })
+
+  it('identifies the built-in socket URLs', async () => {
+    const { isDefaultSocketUrl } = await import('../websocket-manager')
+
+    expect(isDefaultSocketUrl('ws://localhost')).toBe(true)
+    expect(isDefaultSocketUrl('ws://localhost:5001')).toBe(true)
+    expect(isDefaultSocketUrl('wss://collaboration.example.com')).toBe(false)
   })
 
   it('connects with default url and registers base listeners', async () => {
@@ -95,7 +102,9 @@ describe('WebSocketClient', () => {
     const client = new WebSocketClient()
     client.connect('app-auth')
 
-    const connectHandler = mockSocket.on.mock.calls.find(call => call[0] === 'connect')?.[1] as () => void
+    const connectHandler = mockSocket.on.mock.calls.find(
+      (call) => call[0] === 'connect',
+    )?.[1] as () => void
     expect(connectHandler).toBeDefined()
     connectHandler()
 

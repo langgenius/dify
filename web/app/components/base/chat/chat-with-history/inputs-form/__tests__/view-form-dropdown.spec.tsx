@@ -2,14 +2,14 @@ import type { ChatWithHistoryContextValue } from '../../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useChatWithHistoryContext } from '../../context'
 import ViewFormDropdown from '../view-form-dropdown'
 
 // Mocks for components used by InputsFormContent (the real sibling)
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({ value, name }: { value: boolean, name: string }) => (
+  default: ({ value, name }: { value: boolean; name: string }) => (
     <div data-testid="mock-bool-input" role="checkbox" aria-checked={value}>
       {name}
     </div>
@@ -17,7 +17,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-i
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, placeholder }: { value: string, placeholder?: React.ReactNode }) => (
+  default: ({ value, placeholder }: { value: string; placeholder?: React.ReactNode }) => (
     <div data-testid="mock-code-editor">
       <span>{value}</span>
       {placeholder}
@@ -66,17 +66,19 @@ describe('ViewFormDropdown', () => {
     // Initially, settings icon should be hidden (portal content)
     expect(screen.queryByText('share.chat.chatSettingsTitle')).not.toBeInTheDocument()
 
-    // Find trigger (ActionButton renders a button)
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: 'share.chat.viewChatSettings' })
     expect(trigger).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
     // Open dropdown
     await user.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('share.chat.chatSettingsTitle')).toBeInTheDocument()
     expect(screen.getByText('Test Label')).toBeInTheDocument()
 
     // Close dropdown
     await user.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('share.chat.chatSettingsTitle')).not.toBeInTheDocument()
   })
 
@@ -90,22 +92,22 @@ describe('ViewFormDropdown', () => {
 
     const user = userEvent.setup()
     render(<ViewFormDropdown />)
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'share.chat.viewChatSettings' }))
 
     expect(screen.getByText('Text Form')).toBeInTheDocument()
     expect(screen.getByText('Num Form')).toBeInTheDocument()
   })
 
-  it('applies correct state to ActionButton when open', async () => {
+  it('exposes popup-open state on the trigger', async () => {
     const user = userEvent.setup()
     render(<ViewFormDropdown />)
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: 'share.chat.viewChatSettings' })
 
     // closed state
-    expect(trigger).not.toHaveClass('action-btn-hover')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
     // open state
     await user.click(trigger)
-    expect(trigger).toHaveClass('action-btn-hover')
+    expect(trigger).toHaveAttribute('data-popup-open')
   })
 })

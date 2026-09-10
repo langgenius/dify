@@ -1,10 +1,7 @@
 import { act, waitFor } from '@testing-library/react'
 import { baseRunningData } from '../../../__tests__/workflow-test-env'
 import { useWorkflowNodeRetry } from '../use-workflow-node-retry'
-import {
-  getNodeRuntimeState,
-  renderRunEventHook,
-} from './test-helpers'
+import { getNodeRuntimeState, renderRunEventHook } from './test-helpers'
 
 describe('useWorkflowNodeRetry', () => {
   it('pushes retry data to tracing and updates _retryIndex', async () => {

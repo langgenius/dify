@@ -1,6 +1,12 @@
 from libs.exception import BaseHTTPException
 
 
+class CurrentWorkspaceArchivedError(BaseHTTPException):
+    error_code = "current_workspace_archived"
+    description = "The current workspace has been archived."
+    code = 409
+
+
 class RepeatPasswordNotMatchError(BaseHTTPException):
     error_code = "repeat_password_not_match"
     description = "New password and repeat password does not match."
@@ -19,6 +25,12 @@ class InvalidInvitationCodeError(BaseHTTPException):
     code = 400
 
 
+class MissingInvitationCodeRequestError(BaseHTTPException):
+    error_code = "missing_invitation_code"
+    description = "Invitation code is required."
+    code = 400
+
+
 class AccountAlreadyInitedError(BaseHTTPException):
     error_code = "account_already_inited"
     description = "The account has been initialized. Please refresh the page."
@@ -34,4 +46,10 @@ class AccountNotInitializedError(BaseHTTPException):
 class InvalidAccountDeletionCodeError(BaseHTTPException):
     error_code = "invalid_account_deletion_code"
     description = "Invalid account deletion code."
+    code = 400
+
+
+class InvalidMemberRoleError(BaseHTTPException):
+    error_code = "invalid_role"
+    description = "Invalid role."
     code = 400

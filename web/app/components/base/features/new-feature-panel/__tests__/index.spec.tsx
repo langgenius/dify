@@ -1,5 +1,7 @@
 import type { Features } from '../../types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
 
@@ -15,13 +17,40 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
     return { data: null }
   },
   useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    modelList: [{ provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] }],
+    modelList: [
+      { provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] },
+    ],
     defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
     currentModel: true,
   }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
+  ConfigurationMethodEnum: {
+    predefinedModel: 'predefined-model',
+    customizableModel: 'customizable-model',
+    fetchFromRemote: 'fetch-from-remote',
+  },
+  ModelFeatureEnum: {
+    toolCall: 'tool-call',
+    multiToolCall: 'multi-tool-call',
+    agentThought: 'agent-thought',
+    streamToolCall: 'stream-tool-call',
+    vision: 'vision',
+    video: 'video',
+    document: 'document',
+    audio: 'audio',
+    polling: 'polling',
+    StructuredOutput: 'structured-output',
+  },
+  ModelStatusEnum: {
+    active: 'active',
+    noConfigure: 'no-configure',
+    quotaExceeded: 'quota-exceeded',
+    noPermission: 'no-permission',
+    disabled: 'disabled',
+    credentialRemoved: 'credential-removed',
+  },
   ModelTypeEnum: {
     speech2text: 'speech2text',
     tts: 'tts',
@@ -30,7 +59,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/declaration
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: () => <div data-testid="model-selector">Model Selector</div>,
+  ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -49,27 +78,34 @@ const defaultFeatures: Features = {
   annotationReply: { enabled: false },
 }
 
-const renderPanel = (props: Partial<{
-  show: boolean
-  isChatMode: boolean
-  disabled: boolean
-  onChange: () => void
-  onClose: () => void
-  inWorkflow: boolean
-  showFileUpload: boolean
-}> = {}) => {
-  return render(
-    <FeaturesProvider features={defaultFeatures}>
-      <NewFeaturePanel
-        show={props.show ?? true}
-        isChatMode={props.isChatMode ?? true}
-        disabled={props.disabled ?? false}
-        onChange={props.onChange}
-        onClose={props.onClose ?? vi.fn()}
-        inWorkflow={props.inWorkflow}
-        showFileUpload={props.showFileUpload}
-      />
-    </FeaturesProvider>,
+const renderPanel = (
+  props: Partial<{
+    show: boolean
+    isChatMode: boolean
+    disabled: boolean
+    onChange: () => void
+    onClose: () => void
+    inWorkflow: boolean
+    showFileUpload: boolean
+    showAnnotationReply: boolean
+  }> = {},
+  searchParams = '',
+) => {
+  return renderWithConsoleQuery(
+    <NuqsTestingAdapter searchParams={searchParams}>
+      <FeaturesProvider features={defaultFeatures}>
+        <NewFeaturePanel
+          show={props.show ?? true}
+          isChatMode={props.isChatMode ?? true}
+          disabled={props.disabled ?? false}
+          onChange={props.onChange}
+          onClose={props.onClose ?? vi.fn()}
+          inWorkflow={props.inWorkflow}
+          showFileUpload={props.showFileUpload}
+          showAnnotationReply={props.showAnnotationReply}
+        />
+      </FeaturesProvider>
+    </NuqsTestingAdapter>,
   )
 }
 
@@ -79,6 +115,11 @@ describe('NewFeaturePanel', () => {
   })
 
   describe('Rendering', () => {
+    it('hides the feature drawer while pricing is open', () => {
+      renderPanel({ show: true }, '?pricing=open')
+      expect(screen.queryByText(/common\.featuresDescription/)).not.toBeInTheDocument()
+    })
+
     it('should not render when show is false', () => {
       renderPanel({ show: false })
 
@@ -188,6 +229,12 @@ describe('NewFeaturePanel', () => {
 
     it('should not render AnnotationReply in workflow mode', () => {
       renderPanel({ isChatMode: true, inWorkflow: true })
+
+      expect(screen.queryByText(/feature\.annotation\.title/)).not.toBeInTheDocument()
+    })
+
+    it('should not render AnnotationReply when showAnnotationReply is false', () => {
+      renderPanel({ isChatMode: true, inWorkflow: false, showAnnotationReply: false })
 
       expect(screen.queryByText(/feature\.annotation\.title/)).not.toBeInTheDocument()
     })

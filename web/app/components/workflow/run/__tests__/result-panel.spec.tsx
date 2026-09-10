@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import ResultPanel from '../result-panel'
 
@@ -21,12 +22,7 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   __esModule: true,
-  default: (props: {
-    title: ReactNode
-    value: unknown
-    footer?: ReactNode
-    tip?: ReactNode
-  }) => {
+  default: (props: { title: ReactNode; value: unknown; footer?: ReactNode; tip?: ReactNode }) => {
     mockCodeEditor(props)
     return (
       <section data-testid="code-editor">
@@ -50,13 +46,15 @@ vi.mock('@/app/components/workflow/nodes/_base/components/error-handle/error-han
 vi.mock('@/app/components/workflow/run/iteration-log', () => ({
   IterationLogTrigger: (props: {
     onShowIterationResultList: (detail: unknown, durationMap: unknown) => void
-    nodeInfo: { details?: unknown, iterDurationMap?: unknown }
+    nodeInfo: { details?: unknown; iterDurationMap?: unknown }
   }) => {
     mockIterationLogTrigger(props)
     return (
       <button
         type="button"
-        onClick={() => props.onShowIterationResultList(props.nodeInfo.details, props.nodeInfo.iterDurationMap)}
+        onClick={() =>
+          props.onShowIterationResultList(props.nodeInfo.details, props.nodeInfo.iterDurationMap)
+        }
       >
         iteration-trigger
       </button>
@@ -67,13 +65,15 @@ vi.mock('@/app/components/workflow/run/iteration-log', () => ({
 vi.mock('@/app/components/workflow/run/loop-log', () => ({
   LoopLogTrigger: (props: {
     onShowLoopResultList: (detail: unknown, durationMap: unknown) => void
-    nodeInfo: { details?: unknown, loopDurationMap?: unknown }
+    nodeInfo: { details?: unknown; loopDurationMap?: unknown }
   }) => {
     mockLoopLogTrigger(props)
     return (
       <button
         type="button"
-        onClick={() => props.onShowLoopResultList(props.nodeInfo.details, props.nodeInfo.loopDurationMap)}
+        onClick={() =>
+          props.onShowLoopResultList(props.nodeInfo.details, props.nodeInfo.loopDurationMap)
+        }
       >
         loop-trigger
       </button>
@@ -88,27 +88,21 @@ vi.mock('@/app/components/workflow/run/retry-log', () => ({
   }) => {
     mockRetryLogTrigger(props)
     return (
-      <button
-        type="button"
-        onClick={() => props.onShowRetryResultList(props.nodeInfo.retryDetail)}
-      >
+      <button type="button" onClick={() => props.onShowRetryResultList(props.nodeInfo.retryDetail)}>
         retry-trigger
       </button>
     )
   },
 }))
 
-vi.mock('@/app/components/workflow/run/agent-log', () => ({
+vi.mock('@/app/components/workflow/run/agent-log/agent-log-trigger', () => ({
   AgentLogTrigger: (props: {
     onShowAgentOrToolLog: (detail: unknown) => void
     nodeInfo: { agentLog?: unknown }
   }) => {
     mockAgentLogTrigger(props)
     return (
-      <button
-        type="button"
-        onClick={() => props.onShowAgentOrToolLog(props.nodeInfo.agentLog)}
-      >
+      <button type="button" onClick={() => props.onShowAgentOrToolLog(props.nodeInfo.agentLog)}>
         agent-trigger
       </button>
     )
@@ -174,11 +168,12 @@ const createNodeInfo = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
   ...overrides,
 })
 
-const createLogDetail = (id: string): NodeTracing => createNodeInfo({
-  id: `trace-${id}`,
-  node_id: id,
-  title: id,
-})
+const createLogDetail = (id: string): NodeTracing =>
+  createNodeInfo({
+    id: `trace-${id}`,
+    node_id: id,
+    title: id,
+  })
 
 const createAgentLog = (label: string): AgentLogItemWithChildren => ({
   node_execution_id: `execution-${label}`,
@@ -196,7 +191,7 @@ describe('ResultPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
   })
 
@@ -234,27 +229,33 @@ describe('ResultPanel', () => {
     expect(screen.getAllByTestId('large-data-alert')).toHaveLength(3)
     expect(screen.getByTestId('error-handle-tip')).toHaveTextContent('continue-on-error')
     expect(screen.getByTestId('meta-data')).toBeInTheDocument()
-    expect(mockStatusPanel).toHaveBeenCalledWith(expect.objectContaining({
-      status: NodeRunningStatus.Succeeded,
-      time: 2.5,
-      tokens: 42,
-      error: 'boom',
-      exceptionCounts: 1,
-      isListening: true,
-      workflowRunId: 'run-1',
-    }))
-    expect(mockMetaData).toHaveBeenCalledWith(expect.objectContaining({
-      status: NodeRunningStatus.Succeeded,
-      executor: 'Alice',
-      startTime: 1710000000,
-      time: 2.5,
-      tokens: 42,
-      steps: 3,
-      showSteps: true,
-    }))
-    expect(mockLargeDataAlert).toHaveBeenLastCalledWith(expect.objectContaining({
-      downloadUrl: 'https://example.com/output.json',
-    }))
+    expect(mockStatusPanel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: NodeRunningStatus.Succeeded,
+        time: 2.5,
+        tokens: 42,
+        error: 'boom',
+        exceptionCounts: 1,
+        isListening: true,
+        workflowRunId: 'run-1',
+      }),
+    )
+    expect(mockMetaData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: NodeRunningStatus.Succeeded,
+        executor: 'Alice',
+        startTime: 1710000000,
+        time: 2.5,
+        tokens: 42,
+        steps: 3,
+        showSteps: true,
+      }),
+    )
+    expect(mockLargeDataAlert).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        downloadUrl: 'https://example.com/output.json',
+      }),
+    )
   })
 
   it('should render and invoke iteration and loop triggers only when their handlers are provided', () => {
@@ -330,6 +331,19 @@ describe('ResultPanel', () => {
     rerender(
       <ResultPanel
         nodeInfo={createNodeInfo({
+          node_type: BlockEnum.AgentV2,
+          agentLog,
+        })}
+        status={NodeRunningStatus.Succeeded}
+        handleShowAgentOrToolLog={handleShowAgentOrToolLog}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'agent-trigger' })).not.toBeInTheDocument()
+
+    rerender(
+      <ResultPanel
+        nodeInfo={createNodeInfo({
           node_type: BlockEnum.Tool,
           agentLog,
         })}
@@ -344,11 +358,7 @@ describe('ResultPanel', () => {
 
   it('should still render the output editor while the node is running even without outputs', () => {
     render(
-      <ResultPanel
-        nodeInfo={createNodeInfo()}
-        inputs="{}"
-        status={NodeRunningStatus.Running}
-      />,
+      <ResultPanel nodeInfo={createNodeInfo()} inputs="{}" status={NodeRunningStatus.Running} />,
     )
 
     expect(screen.getByText('COMMON.OUTPUT')).toBeInTheDocument()

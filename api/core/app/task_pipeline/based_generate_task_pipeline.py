@@ -4,6 +4,7 @@ import time
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend.errors import AgentBackendError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
@@ -54,7 +55,7 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         match e:
             case InvokeAuthorizationError():
                 err = InvokeAuthorizationError("Incorrect API key provided")
-            case InvokeError() | ValueError():
+            case InvokeError() | ValueError() | AgentBackendError():
                 err = e
             case _:
                 description = getattr(e, "description", None)

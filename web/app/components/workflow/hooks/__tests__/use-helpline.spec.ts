@@ -5,7 +5,8 @@ import { BlockEnum } from '../../types'
 import { useHelpline } from '../use-helpline'
 
 vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
+)
 
 function makeNode(overrides: Record<string, unknown> & { id: string }): Node {
   return {
@@ -24,8 +25,20 @@ describe('useHelpline', () => {
 
   it('should return empty arrays for nodes in iteration', () => {
     rfState.nodes = [
-      { id: 'n1', position: { x: 0, y: 0 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'n2', position: { x: 0, y: 0 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'n1',
+        position: { x: 0, y: 0 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'n2',
+        position: { x: 0, y: 0 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result } = renderWorkflowHook(() => useHelpline())
@@ -39,7 +52,13 @@ describe('useHelpline', () => {
 
   it('should return empty arrays for nodes in loop', () => {
     rfState.nodes = [
-      { id: 'n1', position: { x: 0, y: 0 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'n1',
+        position: { x: 0, y: 0 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result } = renderWorkflowHook(() => useHelpline())
@@ -53,9 +72,27 @@ describe('useHelpline', () => {
 
   it('should detect horizontally aligned nodes (same y ±5px)', () => {
     rfState.nodes = [
-      { id: 'n1', position: { x: 0, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'n2', position: { x: 300, y: 103 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'n3', position: { x: 600, y: 500 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'n1',
+        position: { x: 0, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'n2',
+        position: { x: 300, y: 103 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'n3',
+        position: { x: 600, y: 500 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result } = renderWorkflowHook(() => useHelpline())
@@ -70,9 +107,27 @@ describe('useHelpline', () => {
 
   it('should detect vertically aligned nodes (same x ±5px)', () => {
     rfState.nodes = [
-      { id: 'n1', position: { x: 100, y: 0 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'n2', position: { x: 102, y: 200 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'n3', position: { x: 500, y: 400 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'n1',
+        position: { x: 100, y: 0 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'n2',
+        position: { x: 102, y: 200 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'n3',
+        position: { x: 500, y: 400 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result } = renderWorkflowHook(() => useHelpline())
@@ -89,9 +144,27 @@ describe('useHelpline', () => {
     const ENTRY_OFFSET_Y = 21
 
     rfState.nodes = [
-      { id: 'start', position: { x: 100, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.Start } },
-      { id: 'n2', position: { x: 300, y: 100 + ENTRY_OFFSET_Y }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'far', position: { x: 300, y: 500 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'start',
+        position: { x: 100, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.Start },
+      },
+      {
+        id: 'n2',
+        position: { x: 300, y: 100 + ENTRY_OFFSET_Y },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'far',
+        position: { x: 300, y: 500 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result } = renderWorkflowHook(() => useHelpline())
@@ -114,8 +187,20 @@ describe('useHelpline', () => {
     const ENTRY_OFFSET_Y = 21
 
     rfState.nodes = [
-      { id: 'trigger', position: { x: 100, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.TriggerWebhook } },
-      { id: 'n2', position: { x: 300, y: 100 + ENTRY_OFFSET_Y }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'trigger',
+        position: { x: 100, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.TriggerWebhook },
+      },
+      {
+        id: 'n2',
+        position: { x: 300, y: 100 + ENTRY_OFFSET_Y },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result } = renderWorkflowHook(() => useHelpline())
@@ -135,9 +220,27 @@ describe('useHelpline', () => {
 
   it('should not detect alignment when positions differ by more than 5px', () => {
     rfState.nodes = [
-      { id: 'n1', position: { x: 100, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'n2', position: { x: 300, y: 106 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'n3', position: { x: 106, y: 300 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'n1',
+        position: { x: 100, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'n2',
+        position: { x: 300, y: 106 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'n3',
+        position: { x: 106, y: 300 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result } = renderWorkflowHook(() => useHelpline())
@@ -151,8 +254,20 @@ describe('useHelpline', () => {
 
   it('should exclude child nodes in iteration', () => {
     rfState.nodes = [
-      { id: 'n1', position: { x: 100, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'child', position: { x: 300, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM, isInIteration: true } },
+      {
+        id: 'n1',
+        position: { x: 100, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'child',
+        position: { x: 300, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM, isInIteration: true },
+      },
     ]
 
     const { result } = renderWorkflowHook(() => useHelpline())
@@ -166,8 +281,20 @@ describe('useHelpline', () => {
 
   it('should set helpLineHorizontal in store when aligned nodes found', () => {
     rfState.nodes = [
-      { id: 'n1', position: { x: 0, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'n2', position: { x: 300, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'n1',
+        position: { x: 0, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'n2',
+        position: { x: 300, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result, store } = renderWorkflowHook(() => useHelpline())
@@ -180,8 +307,20 @@ describe('useHelpline', () => {
 
   it('should clear helpLineHorizontal when no aligned nodes', () => {
     rfState.nodes = [
-      { id: 'n1', position: { x: 0, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'n2', position: { x: 300, y: 500 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'n1',
+        position: { x: 0, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'n2',
+        position: { x: 300, y: 500 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result, store } = renderWorkflowHook(() => useHelpline())
@@ -194,8 +333,20 @@ describe('useHelpline', () => {
 
   it('should extend horizontal helpline when dragging node is before the first aligned node', () => {
     rfState.nodes = [
-      { id: 'a', position: { x: 300, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'b', position: { x: 600, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'a',
+        position: { x: 300, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'b',
+        position: { x: 600, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result, store } = renderWorkflowHook(() => useHelpline())
@@ -211,8 +362,20 @@ describe('useHelpline', () => {
 
   it('should extend vertical helpline when dragging node is below the aligned nodes', () => {
     rfState.nodes = [
-      { id: 'a', position: { x: 120, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
-      { id: 'b', position: { x: 120, y: 260 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'a',
+        position: { x: 120, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
+      {
+        id: 'b',
+        position: { x: 120, y: 260 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result, store } = renderWorkflowHook(() => useHelpline())
@@ -228,18 +391,26 @@ describe('useHelpline', () => {
 
   it('should extend horizontal helpline using entry node width when a start node is after the aligned nodes', () => {
     rfState.nodes = [
-      { id: 'aligned', position: { x: 100, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      {
+        id: 'aligned',
+        position: { x: 100, y: 100 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.LLM },
+      },
     ]
 
     const { result, store } = renderWorkflowHook(() => useHelpline())
 
-    result.current.handleSetHelpline(makeNode({
-      id: 'start-node',
-      position: { x: 500, y: 79 },
-      width: 240,
-      height: 100,
-      data: { type: BlockEnum.Start },
-    }))
+    result.current.handleSetHelpline(
+      makeNode({
+        id: 'start-node',
+        position: { x: 500, y: 79 },
+        width: 240,
+        height: 100,
+        data: { type: BlockEnum.Start },
+      }),
+    )
 
     expect(store.getState().helpLineHorizontal).toEqual({
       top: 100,

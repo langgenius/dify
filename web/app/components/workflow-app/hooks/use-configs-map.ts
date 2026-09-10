@@ -4,8 +4,8 @@ import { useStore } from '@/app/components/workflow/store'
 import { FlowType } from '@/types/common'
 
 export const useConfigsMap = () => {
-  const appId = useStore(s => s.appId)
-  const fileSettings = useFeatures(s => s.features.file)
+  const appId = useStore((s) => s.appId)
+  const fileSettings = useFeatures((s) => s.features.file)
   return useMemo(() => {
     return {
       flowId: appId!,

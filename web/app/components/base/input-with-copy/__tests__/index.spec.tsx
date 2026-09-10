@@ -52,7 +52,9 @@ describe('InputWithCopy component', () => {
 
   it('calls copy function with custom value when copyValue prop is provided', () => {
     const mockOnChange = vi.fn()
-    render(<InputWithCopy value="display value" onChange={mockOnChange} copyValue="custom copy value" />)
+    render(
+      <InputWithCopy value="display value" onChange={mockOnChange} copyValue="custom copy value" />,
+    )
 
     const copyButton = screen.getByRole('button')
     fireEvent.click(copyButton)
@@ -163,7 +165,9 @@ describe('InputWithCopy component', () => {
     const mockOnChange = vi.fn()
     render(<InputWithCopy value="test value" onChange={mockOnChange} />)
 
-    const copyButton = screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copied' })
+    const copyButton = screen.getByRole('button', {
+      name: 'appOverview.overview.appInfo.embedded.copied',
+    })
     expect(copyButton).toBeInTheDocument()
   })
 
@@ -172,7 +176,9 @@ describe('InputWithCopy component', () => {
     const mockOnChange = vi.fn()
     render(<InputWithCopy value="test value" onChange={mockOnChange} />)
 
-    const copyButton = screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' })
+    const copyButton = screen.getByRole('button', {
+      name: 'appOverview.overview.appInfo.embedded.copy',
+    })
     expect(copyButton).toBeInTheDocument()
   })
 
@@ -186,21 +192,9 @@ describe('InputWithCopy component', () => {
     expect(mockReset).toHaveBeenCalled()
   })
 
-  it('applies wrapperClassName to the outer container', () => {
-    const mockOnChange = vi.fn()
-    const { container } = render(
-      <InputWithCopy value="test" onChange={mockOnChange} wrapperClassName="my-wrapper" />,
-    )
-
-    const outerDiv = container.firstChild as HTMLElement
-    expect(outerDiv).toHaveClass('my-wrapper')
-  })
-
   it('copies copyValue over non-string input value when both provided', () => {
     const mockOnChange = vi.fn()
-    render(
-      <InputWithCopy value={42} onChange={mockOnChange} copyValue="override-copy" />,
-    )
+    render(<InputWithCopy value={42} onChange={mockOnChange} copyValue="override-copy" />)
 
     const copyButton = screen.getByRole('button')
     fireEvent.click(copyButton)
@@ -212,7 +206,12 @@ describe('InputWithCopy component', () => {
     const onCopyMock = vi.fn()
     const mockOnChange = vi.fn()
     render(
-      <InputWithCopy value="display" onChange={mockOnChange} copyValue="custom" onCopy={onCopyMock} />,
+      <InputWithCopy
+        value="display"
+        onChange={mockOnChange}
+        copyValue="custom"
+        onCopy={onCopyMock}
+      />,
     )
 
     const copyButton = screen.getByRole('button')

@@ -20,11 +20,15 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-list', ()
     <div>
       <button
         type="button"
-        onClick={() => onChange([{
-          variable: 'updated_input',
-          value_selector: ['node-1', 'updated_input'],
-          value_type: VarType.string,
-        }])}
+        onClick={() =>
+          onChange([
+            {
+              variable: 'updated_input',
+              value_selector: ['node-1', 'updated_input'],
+              value_type: VarType.string,
+            },
+          ])
+        }
       >
         change-var-list
       </button>
@@ -35,39 +39,44 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-list', ()
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars', () => ({
-  __esModule: true,
-  default: ({
-    onAddVar,
-    headerRight,
-    value,
-    onChange,
-  }: {
-    onAddVar: (value: Variable) => void
-    headerRight?: ReactNode
-    value: string
-    onChange: (value: string) => void
-  }) => (
-    <div>
-      <div>{headerRight}</div>
-      <button
-        type="button"
-        onClick={() => onAddVar({
-          variable: 'result_text',
-          value_selector: ['node-2', 'result_text'],
-          value_type: VarType.string,
-        })}
-      >
-        add-var
-      </button>
-      <textarea
-        aria-label="template-editor"
-        value={value}
-        onChange={event => onChange(event.target.value)}
-      />
-    </div>
-  ),
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars',
+  () => ({
+    __esModule: true,
+    default: ({
+      onAddVar,
+      headerRight,
+      value,
+      onChange,
+    }: {
+      onAddVar: (value: Variable) => void
+      headerRight?: ReactNode
+      value: string
+      onChange: (value: string) => void
+    }) => (
+      <div>
+        <div>{headerRight}</div>
+        <button
+          type="button"
+          onClick={() =>
+            onAddVar({
+              variable: 'result_text',
+              value_selector: ['node-2', 'result_text'],
+              value_type: VarType.string,
+            })
+          }
+        >
+          add-var
+        </button>
+        <textarea
+          aria-label="template-editor"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </div>
+    ),
+  }),
+)
 
 vi.mock('../use-config', () => ({
   __esModule: true,
@@ -83,7 +92,9 @@ const createVariable = (overrides: Partial<Variable> = {}): Variable => ({
   ...overrides,
 })
 
-const createData = (overrides: Partial<TemplateTransformNodeType> = {}): TemplateTransformNodeType => ({
+const createData = (
+  overrides: Partial<TemplateTransformNodeType> = {},
+): TemplateTransformNodeType => ({
   title: 'Template Transform',
   desc: '',
   type: BlockEnum.TemplateTransform,
@@ -92,7 +103,9 @@ const createData = (overrides: Partial<TemplateTransformNodeType> = {}): Templat
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   availableVars: [],
@@ -128,27 +141,29 @@ describe('template-transform/panel', () => {
     const handleAddEmptyVariable = vi.fn()
     const handleCodeChange = vi.fn()
 
-    mockUseConfig.mockReturnValueOnce(createConfigResult({
-      handleVarListChange,
-      handleVarNameChange,
-      handleAddVariable,
-      handleAddEmptyVariable,
-      handleCodeChange,
-    }))
-
-    render(
-      <Panel
-        id="template-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
+    mockUseConfig.mockReturnValueOnce(
+      createConfigResult({
+        handleVarListChange,
+        handleVarNameChange,
+        handleAddVariable,
+        handleAddEmptyVariable,
+        handleCodeChange,
+      }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.templateTransform.inputVars' }))
+    render(<Panel id="template-node" data={createData()} panelProps={panelProps} />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.add workflow.nodes.templateTransform.inputVars',
+      }),
+    )
     await user.click(screen.getByRole('button', { name: 'change-var-list' }))
     await user.click(screen.getByRole('button', { name: 'rename-var' }))
     await user.click(screen.getByRole('button', { name: 'add-var' }))
-    fireEvent.change(screen.getByLabelText('template-editor'), { target: { value: '{{ renamed_input }}' } })
+    fireEvent.change(screen.getByLabelText('template-editor'), {
+      target: { value: '{{ renamed_input }}' },
+    })
 
     expect(handleAddEmptyVariable).toHaveBeenCalled()
     expect(handleVarListChange).toHaveBeenCalledWith([
@@ -166,25 +181,24 @@ describe('template-transform/panel', () => {
     })
     expect(handleCodeChange).toHaveBeenCalledWith('{{ renamed_input }}')
     expect(screen.getByText('workflow.nodes.common.outputVars')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /workflow.nodes.templateTransform.codeSupportTip/i })).toHaveAttribute(
-      'href',
-      'https://jinja.palletsprojects.com/en/3.1.x/templates/',
-    )
+    expect(
+      screen.getByRole('link', { name: /workflow.nodes.templateTransform.codeSupportTip/i }),
+    ).toHaveAttribute('href', 'https://jinja.palletsprojects.com/en/3.1.x/templates/')
   })
 
   it('hides the add-variable operation when the panel is read only', () => {
-    mockUseConfig.mockReturnValueOnce(createConfigResult({
-      readOnly: true,
-    }))
-
-    render(
-      <Panel
-        id="template-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
+    mockUseConfig.mockReturnValueOnce(
+      createConfigResult({
+        readOnly: true,
+      }),
     )
 
-    expect(screen.queryByRole('button', { name: 'common.operation.add workflow.nodes.templateTransform.inputVars' })).not.toBeInTheDocument()
+    render(<Panel id="template-node" data={createData()} panelProps={panelProps} />)
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'common.operation.add workflow.nodes.templateTransform.inputVars',
+      }),
+    ).not.toBeInTheDocument()
   })
 })

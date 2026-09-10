@@ -23,23 +23,21 @@ describe('ChunkStructureSelector', () => {
   it('should open the selector panel and close it after selecting an option', async () => {
     const onChange = vi.fn()
 
-    render(
-      <Selector
-        options={options}
-        value={ChunkStructureEnum.general}
-        onChange={onChange}
-      />,
-    )
+    render(<Selector options={options} value={ChunkStructureEnum.general} onChange={onChange} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.change' }))
 
-    expect(screen.getByText('workflow.nodes.knowledgeBase.changeChunkStructure')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.knowledgeBase.changeChunkStructure'),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Parent child'))
 
     expect(onChange).toHaveBeenCalledWith(ChunkStructureEnum.parent_child)
     await waitFor(() => {
-      expect(screen.queryByText('workflow.nodes.knowledgeBase.changeChunkStructure')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('workflow.nodes.knowledgeBase.changeChunkStructure'),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -56,6 +54,8 @@ describe('ChunkStructureSelector', () => {
     const trigger = screen.getByText('custom-trigger').closest('[role="button"]')
     fireEvent.click(trigger!)
 
-    expect(screen.queryByText('workflow.nodes.knowledgeBase.changeChunkStructure')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('workflow.nodes.knowledgeBase.changeChunkStructure'),
+    ).not.toBeInTheDocument()
   })
 })

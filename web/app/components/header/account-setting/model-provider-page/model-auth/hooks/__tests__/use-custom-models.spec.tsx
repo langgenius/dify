@@ -17,7 +17,9 @@ describe('useCustomModels and useCanAddedModels', () => {
     expect(result.current).toHaveLength(2)
     expect(result.current[0]!.model).toBe('gpt-4')
 
-    const { result: emptyRes } = renderHook(() => useCustomModels({ custom_configuration: {} } as unknown as ModelProvider))
+    const { result: emptyRes } = renderHook(() =>
+      useCustomModels({ custom_configuration: {} } as unknown as ModelProvider),
+    )
     expect(emptyRes.current).toEqual([])
   })
 
@@ -32,7 +34,9 @@ describe('useCustomModels and useCanAddedModels', () => {
     expect(result.current).toHaveLength(1)
     expect(result.current[0]!.model).toBe('gpt-4-turbo')
 
-    const { result: emptyRes } = renderHook(() => useCanAddedModels({ custom_configuration: {} } as unknown as ModelProvider))
+    const { result: emptyRes } = renderHook(() =>
+      useCanAddedModels({ custom_configuration: {} } as unknown as ModelProvider),
+    )
     expect(emptyRes.current).toEqual([])
   })
 })

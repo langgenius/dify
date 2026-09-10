@@ -1,6 +1,7 @@
 import type { FileItem } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import LocalFile from '../index'
 
 // Mock the hook
@@ -16,9 +17,6 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 // Mock theme types
-vi.mock('@/types/app', () => ({
-  Theme: { dark: 'dark', light: 'light' },
-}))
 
 // Mock DocumentFileIcon
 vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
@@ -29,10 +27,7 @@ vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
 vi.mock('@/next/dynamic', () => ({
   default: () => {
     const Component = ({ percentage }: { percentage: number }) => (
-      <div data-testid="pie-chart">
-        {percentage}
-        %
-      </div>
+      <div data-testid="pie-chart">{percentage}%</div>
     )
     return Component
   },
@@ -70,9 +65,7 @@ describe('LocalFile', () => {
 
   describe('rendering', () => {
     it('should render the component container', () => {
-      const { container } = render(
-        <LocalFile allowedExtensions={['pdf', 'docx']} />,
-      )
+      const { container } = render(<LocalFile allowedExtensions={['pdf', 'docx']} />)
 
       expect(container.firstChild).toHaveClass('flex', 'flex-col')
     })
@@ -129,12 +122,13 @@ describe('LocalFile', () => {
     })
 
     it('should render multiple file items', () => {
-      const createMockFile = (name: string) => ({
-        name,
-        size: 1024,
-        type: 'application/pdf',
-        lastModified: Date.now(),
-      }) as File
+      const createMockFile = (name: string) =>
+        ({
+          name,
+          size: 1024,
+          type: 'application/pdf',
+          lastModified: Date.now(),
+        }) as File
 
       mockUseLocalFileUpload.mockReturnValue({
         ...defaultHookReturn,
@@ -161,9 +155,7 @@ describe('LocalFile', () => {
 
       mockUseLocalFileUpload.mockReturnValue({
         ...defaultHookReturn,
-        localFileList: [
-          { fileID: 'unique-id-123', file: mockFile, progress: -1 },
-        ],
+        localFileList: [{ fileID: 'unique-id-123', file: mockFile, progress: -1 }],
       })
 
       render(<LocalFile allowedExtensions={['pdf']} />)
@@ -243,9 +235,7 @@ describe('LocalFile', () => {
         ...defaultHookReturn,
         handlePreview,
         removeFile,
-        localFileList: [
-          { fileID: 'test-id', file: mockFile, progress: 50 },
-        ],
+        localFileList: [{ fileID: 'test-id', file: mockFile, progress: 50 }],
       })
 
       render(<LocalFile allowedExtensions={['pdf']} />)
@@ -266,9 +256,7 @@ describe('LocalFile', () => {
       mockUseLocalFileUpload.mockReturnValue({
         ...defaultHookReturn,
         hideUpload: false,
-        localFileList: [
-          { fileID: 'file-1', file: mockFile, progress: -1 },
-        ],
+        localFileList: [{ fileID: 'file-1', file: mockFile, progress: -1 }],
       })
 
       render(<LocalFile allowedExtensions={['pdf']} />)
@@ -288,9 +276,7 @@ describe('LocalFile', () => {
       mockUseLocalFileUpload.mockReturnValue({
         ...defaultHookReturn,
         hideUpload: true,
-        localFileList: [
-          { fileID: 'file-1', file: mockFile, progress: -1 },
-        ],
+        localFileList: [{ fileID: 'file-1', file: mockFile, progress: -1 }],
       })
 
       render(<LocalFile allowedExtensions={['pdf']} />)
@@ -311,9 +297,7 @@ describe('LocalFile', () => {
 
       mockUseLocalFileUpload.mockReturnValue({
         ...defaultHookReturn,
-        localFileList: [
-          { fileID: 'file-1', file: mockFile, progress: -1 },
-        ],
+        localFileList: [{ fileID: 'file-1', file: mockFile, progress: -1 }],
       })
 
       const { container } = render(<LocalFile allowedExtensions={['pdf']} />)
@@ -369,9 +353,7 @@ describe('LocalFile', () => {
       mockUseLocalFileUpload.mockReturnValue({
         ...defaultHookReturn,
         hideUpload: false,
-        localFileList: [
-          { fileID: 'file-1', file: mockFile, progress: 50 },
-        ],
+        localFileList: [{ fileID: 'file-1', file: mockFile, progress: 50 }],
         dragging: false,
       })
 

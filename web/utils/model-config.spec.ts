@@ -1,5 +1,6 @@
 import type { PromptVariable } from '@/models/debug'
 import type { UserInputFormItem } from '@/types/app'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 /**
  * Test suite for model configuration transformation utilities
  *
@@ -17,6 +18,18 @@ import {
   promptVariablesToUserInputsForm,
   userInputsFormToPromptVariables,
 } from './model-config'
+
+const getTextInput = (item: UserInputFormItem | undefined) => {
+  if (!item || !('text-input' in item)) throw new Error('Expected text-input user input form item')
+
+  return item['text-input']
+}
+
+const getSelectInput = (item: UserInputFormItem | undefined) => {
+  if (!item || !('select' in item)) throw new Error('Expected select user input form item')
+
+  return item.select
+}
 
 describe('Model Config Utilities', () => {
   describe('userInputsFormToPromptVariables', () => {
@@ -110,7 +123,7 @@ describe('Model Config Utilities', () => {
             default: '',
             hide: false,
           },
-        } as any,
+        },
       ]
 
       const result = userInputsFormToPromptVariables(userInputs)
@@ -140,7 +153,7 @@ describe('Model Config Utilities', () => {
             default: '',
             hide: false,
           },
-        } as any,
+        },
       ]
 
       const result = userInputsFormToPromptVariables(userInputs)
@@ -199,13 +212,13 @@ describe('Model Config Utilities', () => {
             label: 'Profile Picture',
             variable: 'profile_pic',
             required: false,
-            allowed_file_types: ['image'],
+            allowed_file_types: [SupportUploadFileTypes.image],
             allowed_file_extensions: ['.jpg', '.png'],
             allowed_file_upload_methods: ['local_file', 'remote_url'],
             default: '',
             hide: false,
           },
-        } as any,
+        },
       ]
 
       const result = userInputsFormToPromptVariables(userInputs)
@@ -237,14 +250,14 @@ describe('Model Config Utilities', () => {
             label: 'Documents',
             variable: 'documents',
             required: true,
-            allowed_file_types: ['document'],
+            allowed_file_types: [SupportUploadFileTypes.document],
             allowed_file_extensions: ['.pdf', '.docx'],
             allowed_file_upload_methods: ['local_file'],
             max_length: 5,
             default: '',
             hide: false,
           },
-        } as any,
+        },
       ]
 
       const result = userInputsFormToPromptVariables(userInputs)
@@ -283,7 +296,7 @@ describe('Model Config Utilities', () => {
             icon_background: '#FF5733',
             hide: false,
           },
-        } as any,
+        },
       ]
 
       const result = userInputsFormToPromptVariables(userInputs)
@@ -349,7 +362,7 @@ describe('Model Config Utilities', () => {
             default: '',
             hide: false,
           },
-        } as any,
+        },
         {
           select: {
             label: 'Gender',
@@ -553,7 +566,7 @@ describe('Model Config Utilities', () => {
       const result = promptVariablesToUserInputsForm(promptVariables)
 
       expect(result).toHaveLength(1)
-      expect((result[0] as any)['text-input']?.variable).toBe('valid_key')
+      expect(getTextInput(result[0]).variable).toBe('valid_key')
     })
 
     /**
@@ -613,8 +626,8 @@ describe('Model Config Utilities', () => {
 
       const result = promptVariablesToUserInputsForm(promptVariables)
 
-      expect((result[0] as any)['text-input']?.required).toBe(true)
-      expect((result[1] as any)['text-input']?.required).toBe(false)
+      expect(getTextInput(result[0]).required).toBe(true)
+      expect(getTextInput(result[1]).required).toBe(false)
     })
   })
 
@@ -743,7 +756,7 @@ describe('Model Config Utilities', () => {
         bool1: 1,
         bool2: 0,
         bool3: 'yes',
-        bool4: null as any,
+        bool4: null,
       }
 
       const result = formatBooleanInputs(useInputs, inputs)
@@ -811,9 +824,9 @@ describe('Model Config Utilities', () => {
       const backToUserInputs = promptVariablesToUserInputsForm(promptVars)
 
       expect(backToUserInputs).toHaveLength(2)
-      expect((backToUserInputs[0] as any)['text-input']?.variable).toBe('name')
-      expect((backToUserInputs[1] as any).select?.variable).toBe('type')
-      expect((backToUserInputs[1] as any).select?.options).toEqual(['A', 'B', 'C'])
+      expect(getTextInput(backToUserInputs[0]).variable).toBe('name')
+      expect(getSelectInput(backToUserInputs[1]).variable).toBe('type')
+      expect(getSelectInput(backToUserInputs[1]).options).toEqual(['A', 'B', 'C'])
     })
   })
 })

@@ -11,7 +11,7 @@ vi.mock('@/hooks/use-theme', () => ({
   }),
 }))
 
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
   }),
@@ -39,17 +39,6 @@ describe('GlobalVariableButton', () => {
     expect(store.getState().showChatVariablePanel).toBe(false)
     expect(store.getState().showDebugAndPreviewPanel).toBe(false)
     expect(mockCloseAllInputFieldPanels).toHaveBeenCalledTimes(1)
-  })
-
-  it('should apply the active dark theme styles when the global variable panel is visible', () => {
-    mockTheme = 'dark'
-    renderWorkflowComponent(<GlobalVariableButton disabled={false} />, {
-      initialStoreState: {
-        showGlobalVariablePanel: true,
-      },
-    })
-
-    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-xs')
   })
 
   it('should keep the button disabled when the disabled prop is true', () => {

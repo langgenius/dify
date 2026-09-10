@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.plugin.entities.plugin import PluginDependency, PluginInstallationSource
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType, PluginInstallationSource
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 
 
@@ -44,7 +44,7 @@ class TestAnalyzeModelProviderDependency:
 
 
 class TestGetLeakedDependencies:
-    def _make_dependency(self, identifier: str, dep_type=PluginDependency.Type.Marketplace):
+    def _make_dependency(self, identifier: str, dep_type=PluginDependencyType.Marketplace):
         return PluginDependency(
             type=dep_type,
             value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier=identifier),
@@ -110,7 +110,7 @@ class TestGenerateDependencies:
         result = DependenciesAnalysisService.generate_dependencies("t1", ["p1"])
 
         assert len(result) == 1
-        assert result[0].type == PluginDependency.Type.Github
+        assert result[0].type == PluginDependencyType.Github
         assert result[0].value.repo == "org/repo"
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
@@ -120,7 +120,7 @@ class TestGenerateDependencies:
 
         result = DependenciesAnalysisService.generate_dependencies("t1", ["p1"])
 
-        assert result[0].type == PluginDependency.Type.Marketplace
+        assert result[0].type == PluginDependencyType.Marketplace
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
     def test_package_source(self, mock_installer_cls):
@@ -129,7 +129,7 @@ class TestGenerateDependencies:
 
         result = DependenciesAnalysisService.generate_dependencies("t1", ["p1"])
 
-        assert result[0].type == PluginDependency.Type.Package
+        assert result[0].type == PluginDependencyType.Package
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
     def test_remote_source_raises(self, mock_installer_cls):
@@ -150,18 +150,16 @@ class TestGenerateDependencies:
 
 
 class TestGenerateLatestDependencies:
-    @patch("services.plugin.dependencies_analysis.dify_config")
-    def test_returns_empty_when_marketplace_disabled(self, mock_config):
-        mock_config.MARKETPLACE_ENABLED = False
+    def test_returns_empty_when_marketplace_disabled(self, config_overrides):
+        config_overrides(MARKETPLACE_ENABLED=False)
 
         result = DependenciesAnalysisService.generate_latest_dependencies(["p1"])
 
         assert result == []
 
     @patch("services.plugin.dependencies_analysis.marketplace")
-    @patch("services.plugin.dependencies_analysis.dify_config")
-    def test_returns_marketplace_deps_when_enabled(self, mock_config, mock_marketplace):
-        mock_config.MARKETPLACE_ENABLED = True
+    def test_returns_marketplace_deps_when_enabled(self, mock_marketplace, config_overrides):
+        config_overrides(MARKETPLACE_ENABLED=True)
         manifest = MagicMock()
         manifest.latest_package_identifier = "org/plugin:2.0.0@newhash"
         mock_marketplace.batch_fetch_plugin_manifests.return_value = [manifest]
@@ -169,4 +167,4 @@ class TestGenerateLatestDependencies:
         result = DependenciesAnalysisService.generate_latest_dependencies(["p1"])
 
         assert len(result) == 1
-        assert result[0].type == PluginDependency.Type.Marketplace
+        assert result[0].type == PluginDependencyType.Marketplace

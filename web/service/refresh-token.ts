@@ -13,8 +13,7 @@ function waitUntilTokenRefreshed() {
         setTimeout(() => {
           _check()
         }, 1000)
-      }
-      else {
+      } else {
         resolve()
       }
     }
@@ -32,10 +31,12 @@ const isRefreshingSignAvailable = function (delta: number) {
 async function getNewAccessToken(timeout: number): Promise<void> {
   try {
     const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
-    if ((isRefreshingSign && isRefreshingSign === '1' && isRefreshingSignAvailable(timeout)) || isRefreshing) {
+    if (
+      (isRefreshingSign && isRefreshingSign === '1' && isRefreshingSignAvailable(timeout)) ||
+      isRefreshing
+    ) {
       await waitUntilTokenRefreshed()
-    }
-    else {
+    } else {
       isRefreshing = true
       globalThis.localStorage.setItem(LOCAL_STORAGE_KEY, '1')
       globalThis.localStorage.setItem('last_refresh_time', new Date().getTime().toString())
@@ -46,28 +47,26 @@ async function getNewAccessToken(timeout: number): Promise<void> {
       // it can lead to an infinite loop if the refresh attempt also returns 401.
       // To avoid this, handle token refresh separately in a dedicated function
       // that does not call baseFetch and uses a single retry mechanism.
-      const [error, ret] = await fetchWithRetry(globalThis.fetch(`${API_PREFIX}/refresh-token`, {
-        method: 'POST',
-        credentials: 'include', // Important: include cookies in the request
-        headers: {
-          'Content-Type': 'application/json;utf-8',
-        },
-        // No body needed - refresh token is in cookie
-      }))
+      const [error, ret] = await fetchWithRetry(
+        globalThis.fetch(`${API_PREFIX}/refresh-token`, {
+          method: 'POST',
+          credentials: 'include', // Important: include cookies in the request
+          headers: {
+            'Content-Type': 'application/json;utf-8',
+          },
+          // No body needed - refresh token is in cookie
+        }),
+      )
       if (error) {
         return Promise.reject(error)
-      }
-      else {
-        if (ret.status === 401)
-          return Promise.reject(ret)
+      } else {
+        if (ret.status === 401) return Promise.reject(ret)
       }
     }
-  }
-  catch (error) {
+  } catch (error) {
     console.error(error)
     return Promise.reject(error)
-  }
-  finally {
+  } finally {
     releaseRefreshLock()
   }
 }
@@ -82,11 +81,15 @@ function releaseRefreshLock() {
 }
 
 export async function refreshAccessTokenOrReLogin(timeout: number) {
-  if (!isClient)
-    return Promise.reject(new Error('refresh token is client-only'))
+  if (!isClient) return Promise.reject(new Error('refresh token is client-only'))
 
-  return Promise.race([new Promise<void>((resolve, reject) => setTimeout(() => {
-    releaseRefreshLock()
-    reject(new Error('request timeout'))
-  }, timeout)), getNewAccessToken(timeout)])
+  return Promise.race([
+    new Promise<void>((resolve, reject) =>
+      setTimeout(() => {
+        releaseRefreshLock()
+        reject(new Error('request timeout'))
+      }, timeout),
+    ),
+    getNewAccessToken(timeout),
+  ])
 }

@@ -1,6 +1,5 @@
 import json
 from base64 import b64decode
-from collections.abc import Mapping
 from typing import Any
 
 import pytest
@@ -44,7 +43,7 @@ def test_serialize_inputs_encodes_payload() -> None:
 def test_transform_response_parses_json_result_and_converts_scientific_notation() -> None:
     response = '<<RESULT>>{"value": "1e+3", "nested": {"x": "2E-2"}, "arr": ["3e+1"]}<<RESULT>>'
 
-    result: Mapping[str, Any] = _DummyTransformer.transform_response(response)
+    result: dict[str, Any] = _DummyTransformer.transform_response(response)
 
     assert result == {"value": 1000.0, "nested": {"x": 0.02}, "arr": [30.0]}
 

@@ -96,12 +96,13 @@ class JSONModelColumn[T: BaseModel](TypeDecorator[T | None]):
     def process_bind_param(self, value: T | dict[str, Any] | str | None, dialect: Dialect) -> str | None:
         if value is None:
             return None
-        if isinstance(value, self._model_class):
-            model = value
-        elif isinstance(value, str):
-            model = self._model_class.model_validate_json(value)
-        else:
-            model = self._model_class.model_validate(value)
+        match value:
+            case _ if isinstance(value, self._model_class):
+                model = value
+            case str():
+                model = self._model_class.model_validate_json(value)
+            case _:
+                model = self._model_class.model_validate(value)
         return json.dumps(model.model_dump(mode="json"), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
     @override

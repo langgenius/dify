@@ -22,7 +22,17 @@ vi.mock('@/app/components/workflow/note-node/types', () => ({
 }))
 
 vi.mock('@/app/components/workflow/utils', () => ({
-  generateNewNode: ({ id, type, data, position }: { id: string, type: string, data: object, position: { x: number, y: number } }) => ({
+  generateNewNode: ({
+    id,
+    type,
+    data,
+    position,
+  }: {
+    id: string
+    type: string
+    data: object
+    position: { x: number; y: number }
+  }) => ({
     newNode: { id, type, data, position },
   }),
 }))
@@ -57,16 +67,20 @@ describe('processNodesWithoutDataSource', () => {
 
     const result = processNodesWithoutDataSource(nodes, { x: 0, y: 0, zoom: 2 })
 
-    expect(result.nodes[0]).toEqual(expect.objectContaining({
-      id: 'data-source-empty',
-      type: 'data-source-empty',
-      position: { x: -100, y: 200 },
-    }))
-    expect(result.nodes[1]).toEqual(expect.objectContaining({
-      id: 'note',
-      type: 'note',
-      position: { x: -100, y: 300 },
-    }))
+    expect(result.nodes[0]).toEqual(
+      expect.objectContaining({
+        id: 'data-source-empty',
+        type: 'data-source-empty',
+        position: { x: -100, y: 200 },
+      }),
+    )
+    expect(result.nodes[1]).toEqual(
+      expect.objectContaining({
+        id: 'note',
+        type: 'note',
+        position: { x: -100, y: 300 },
+      }),
+    )
     expect(result.viewport).toEqual({
       x: 400,
       y: -200,

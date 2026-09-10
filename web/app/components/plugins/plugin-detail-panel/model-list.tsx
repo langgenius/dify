@@ -9,20 +9,21 @@ type Props = Readonly<{
   detail: PluginDetail
 }>
 
-const ModelList = ({
-  detail,
-}: Props) => {
+const ModelList = ({ detail }: Props) => {
   const { t } = useTranslation()
-  const { data: res } = useModelProviderModelList(`${detail.plugin_id}/${detail.declaration.model.provider}`)
+  const { data: res } = useModelProviderModelList(
+    `${detail.plugin_id}/${detail.declaration.model.provider}`,
+  )
 
-  if (!res)
-    return null
+  if (!res) return null
 
   return (
     <div className="px-4 py-2">
-      <div className="mb-1 flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">{t('detailPanel.modelNum', { ns: 'plugin', num: res.data.length })}</div>
+      <div className="mb-1 flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
+        {t(($) => $['detailPanel.modelNum'], { ns: 'plugin', num: res.data.length })}
+      </div>
       <div className="flex flex-col">
-        {res.data.map(model => (
+        {res.data.map((model) => (
           <div key={model.model} className="flex h-6 items-center py-1">
             <ModelIcon
               className="mr-2 shrink-0"

@@ -40,12 +40,7 @@ class TriggerSubscriptionOperatorService:
             return list(subscribers)
 
     @classmethod
-    def delete_plugin_trigger_by_subscription(
-        cls,
-        session: Session,
-        tenant_id: str,
-        subscription_id: str,
-    ) -> None:
+    def delete_plugin_trigger_by_subscription(cls, tenant_id: str, subscription_id: str, *, session: Session) -> None:
         """Delete a plugin trigger by tenant_id and subscription_id within an existing session
 
         Args:

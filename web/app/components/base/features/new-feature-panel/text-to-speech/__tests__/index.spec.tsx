@@ -24,7 +24,9 @@ vi.mock('../voice-settings', () => ({
     children: ReactNode
   }) => (
     <div data-testid="voice-settings" data-open={open ? 'true' : 'false'}>
-      <button data-testid="open-voice-settings" onClick={() => onOpen(true)}>open-voice-settings</button>
+      <button data-testid="open-voice-settings" onClick={() => onOpen(true)}>
+        open-voice-settings
+      </button>
       {children}
     </div>
   ),
@@ -43,7 +45,7 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (
-  props: { disabled?: boolean, onChange?: OnFeaturesChange } = {},
+  props: { disabled?: boolean; onChange?: OnFeaturesChange } = {},
   featureOverrides?: Partial<Features>,
 ) => {
   const features = { ...defaultFeatures, ...featureOverrides }
@@ -93,26 +95,35 @@ describe('TextToSpeech', () => {
   })
 
   it('should show language and voice info when enabled and not hovering', () => {
-    renderWithProvider({}, {
-      text2speech: { enabled: true, language: 'en-US', voice: 'alloy' },
-    })
+    renderWithProvider(
+      {},
+      {
+        text2speech: { enabled: true, language: 'en-US', voice: 'alloy' },
+      },
+    )
 
     expect(screen.getByText('English')).toBeInTheDocument()
     expect(screen.getByText('alloy')).toBeInTheDocument()
   })
 
   it('should show default display text when voice is not set', () => {
-    renderWithProvider({}, {
-      text2speech: { enabled: true, language: 'en-US' },
-    })
+    renderWithProvider(
+      {},
+      {
+        text2speech: { enabled: true, language: 'en-US' },
+      },
+    )
 
     expect(screen.getByText(/voice\.defaultDisplay/)).toBeInTheDocument()
   })
 
   it('should show voice settings button when hovering', () => {
-    renderWithProvider({}, {
-      text2speech: { enabled: true },
-    })
+    renderWithProvider(
+      {},
+      {
+        text2speech: { enabled: true },
+      },
+    )
 
     // Simulate mouse enter on the feature card
     const card = screen.getByText(/feature\.textToSpeech\.title/).closest('[class]')!
@@ -122,9 +133,12 @@ describe('TextToSpeech', () => {
   })
 
   it('should hide voice settings button after mouse leave', () => {
-    renderWithProvider({}, {
-      text2speech: { enabled: true },
-    })
+    renderWithProvider(
+      {},
+      {
+        text2speech: { enabled: true },
+      },
+    )
 
     const card = screen.getByText(/feature\.textToSpeech\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -135,25 +149,34 @@ describe('TextToSpeech', () => {
   })
 
   it('should show autoPlay enabled text when autoPlay is enabled', () => {
-    renderWithProvider({}, {
-      text2speech: { enabled: true, language: 'en-US', autoPlay: TtsAutoPlay.enabled },
-    })
+    renderWithProvider(
+      {},
+      {
+        text2speech: { enabled: true, language: 'en-US', autoPlay: TtsAutoPlay.enabled },
+      },
+    )
 
     expect(screen.getByText(/voice\.voiceSettings\.autoPlayEnabled/)).toBeInTheDocument()
   })
 
   it('should show autoPlay disabled text when autoPlay is not enabled', () => {
-    renderWithProvider({}, {
-      text2speech: { enabled: true, language: 'en-US' },
-    })
+    renderWithProvider(
+      {},
+      {
+        text2speech: { enabled: true, language: 'en-US' },
+      },
+    )
 
     expect(screen.getByText(/voice\.voiceSettings\.autoPlayDisabled/)).toBeInTheDocument()
   })
 
   it('should pass open false to voice settings when disabled and modal is opened', () => {
-    renderWithProvider({ disabled: true }, {
-      text2speech: { enabled: true },
-    })
+    renderWithProvider(
+      { disabled: true },
+      {
+        text2speech: { enabled: true },
+      },
+    )
 
     const card = screen.getByText(/feature\.textToSpeech\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)

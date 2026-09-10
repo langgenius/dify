@@ -14,12 +14,15 @@ export default class AuthList extends DifyCommand {
   ]
 
   static override flags = {
-    output: Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME], default: '' }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME],
+      default: '',
+    }),
   }
 
   async run(argv: string[]) {
     const { flags } = this.parse(AuthList, argv)
-    const reg = Registry.load()
+    const reg = await Registry.load()
     const result = runAuthList(reg)
     return table({ format: flags.output, data: result })
   }

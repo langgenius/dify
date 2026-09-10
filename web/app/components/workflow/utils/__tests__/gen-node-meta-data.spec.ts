@@ -1,4 +1,4 @@
-import { BlockClassificationEnum } from '../../block-selector/types'
+import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
 import { genNodeMetaData } from '../gen-node-meta-data'
 
@@ -11,7 +11,7 @@ describe('genNodeMetaData', () => {
     })
 
     expect(result).toEqual({
-      classification: BlockClassificationEnum.Default,
+      classification: BlockClassification.Default,
       sort: 1,
       type: BlockEnum.LLM,
       title: 'LLM Node',
@@ -27,7 +27,7 @@ describe('genNodeMetaData', () => {
 
   it('should use custom values when provided', () => {
     const result = genNodeMetaData({
-      classification: BlockClassificationEnum.Logic,
+      classification: BlockClassification.Logic,
       sort: 5,
       type: BlockEnum.Start,
       title: 'Start',
@@ -40,7 +40,7 @@ describe('genNodeMetaData', () => {
       isTypeFixed: true,
     })
 
-    expect(result.classification).toBe(BlockClassificationEnum.Logic)
+    expect(result.classification).toBe(BlockClassification.Logic)
     expect(result.author).toBe('Custom')
     expect(result.helpLinkUri).toBe('code')
     expect(result.isRequired).toBe(true)

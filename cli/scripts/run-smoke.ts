@@ -1,7 +1,7 @@
 #!/usr/bin/env -S bun
 import { execSync } from 'node:child_process'
 
-type Check = { name: string, run: () => void }
+type Check = { name: string; run: () => void }
 
 const baseUrlIdx = process.argv.indexOf('--base-url')
 const baseUrl = baseUrlIdx > -1 ? process.argv[baseUrlIdx + 1] : 'http://localhost:5001'
@@ -17,16 +17,30 @@ function cli(args: string): string {
 }
 
 const checks: Check[] = [
-  { name: 'config show', run: () => { cli('config show') } },
-  { name: 'get workspace', run: () => {
-    if (!cli('get workspace').includes('id'))
-      throw new Error('no workspace listed')
-  } },
-  { name: 'get apps', run: () => { cli('get apps') } },
-  { name: 'difyctl version prints compat', run: () => {
-    if (!cli('version').includes('compat:'))
-      throw new Error('no compat line')
-  } },
+  {
+    name: 'config show',
+    run: () => {
+      cli('config show')
+    },
+  },
+  {
+    name: 'get workspace',
+    run: () => {
+      if (!cli('get workspace').includes('id')) throw new Error('no workspace listed')
+    },
+  },
+  {
+    name: 'get apps',
+    run: () => {
+      cli('get apps')
+    },
+  },
+  {
+    name: 'difyctl version prints compat',
+    run: () => {
+      if (!cli('version').includes('compat:')) throw new Error('no compat line')
+    },
+  },
 ]
 
 let failed = 0
@@ -34,8 +48,7 @@ for (const c of checks) {
   try {
     c.run()
     console.log(`[x] ${c.name}`)
-  }
-  catch (err) {
+  } catch (err) {
     failed++
     console.log(`[ ] ${c.name} — ${(err as Error).message}`)
   }

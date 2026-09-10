@@ -226,3 +226,40 @@ class TestInitVectorEndpointSelection:
         qdrant_url = binding_endpoint or global_url or ""
 
         assert qdrant_url == "https://qdrant-global.tidb.com"
+
+
+class TestTidbCloudRequestTimeouts:
+    """The TiDB Cloud API calls must be bounded: a hanging endpoint must not
+    block cluster provisioning or password rotation forever."""
+
+    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.httpx.post")
+    def test_create_cluster_passes_bounded_timeout(self, mock_post):
+        from dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector import (
+            TidbConfig,
+            TidbOnQdrantVectorFactory,
+        )
+
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {}
+        factory = TidbOnQdrantVectorFactory()
+        config = TidbConfig(api_url="https://api.tidbcloud.test", public_key="pub", private_key="priv")
+
+        factory.create_tidb_serverless_cluster(config, "display", "us-east-1")
+
+        assert mock_post.call_args.kwargs["timeout"] is not None
+
+    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.httpx.put")
+    def test_change_password_passes_bounded_timeout(self, mock_put):
+        from dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector import (
+            TidbConfig,
+            TidbOnQdrantVectorFactory,
+        )
+
+        mock_put.return_value.status_code = 200
+        mock_put.return_value.json.return_value = {}
+        factory = TidbOnQdrantVectorFactory()
+        config = TidbConfig(api_url="https://api.tidbcloud.test", public_key="pub", private_key="priv")
+
+        factory.change_tidb_serverless_root_password(config, "c-1", "new-password")
+
+        assert mock_put.call_args.kwargs["timeout"] is not None

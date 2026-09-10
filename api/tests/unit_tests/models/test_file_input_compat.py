@@ -125,7 +125,9 @@ def test_rebuild_serialized_graph_files_without_lookup_preserves_scalar_values()
     assert rebuild_serialized_graph_files_without_lookup("plain-text") == "plain-text"
 
 
-def test_build_file_from_stored_mapping_rebuilds_remote_urls_without_record_lookup(monkeypatch) -> None:
+def test_build_file_from_stored_mapping_rebuilds_remote_urls_without_record_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     rebuilt_file = File(
         file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,

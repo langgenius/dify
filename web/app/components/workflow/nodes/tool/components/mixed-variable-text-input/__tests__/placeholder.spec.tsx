@@ -6,10 +6,12 @@ const mockDispatchCommand = vi.fn()
 const mockInsertNodes = vi.fn()
 
 vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => [{
-    update: mockUpdate,
-    dispatchCommand: mockDispatchCommand,
-  }],
+  useLexicalComposerContext: () => [
+    {
+      update: mockUpdate,
+      dispatchCommand: mockDispatchCommand,
+    },
+  ],
 }))
 
 vi.mock('lexical', () => ({
@@ -30,13 +32,15 @@ vi.mock('@/app/components/base/prompt-editor/plugins/custom-text/node', () => ({
 describe('tool/mixed-variable-text-input/placeholder', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUpdate.mockImplementation(callback => callback())
+    mockUpdate.mockImplementation((callback) => callback())
   })
 
   it('should insert text and focus the editor for click and slash actions', () => {
     render(<Placeholder />)
 
-    const root = screen.getByText('workflow.nodes.tool.insertPlaceholder1').closest('.cursor-text') as HTMLElement
+    const root = screen
+      .getByText('workflow.nodes.tool.insertPlaceholder1')
+      .closest('.cursor-text') as HTMLElement
 
     expect(screen.getByText('workflow.nodes.tool.insertPlaceholder1'))!.toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.tool.insertPlaceholder2'))!.toBeInTheDocument()
@@ -52,12 +56,7 @@ describe('tool/mixed-variable-text-input/placeholder', () => {
   })
 
   it('should hide variable insertion affordance and badge when disabled', () => {
-    const { container } = render(
-      <Placeholder
-        disableVariableInsertion
-        hideBadge
-      />,
-    )
+    const { container } = render(<Placeholder disableVariableInsertion hideBadge />)
 
     expect(screen.getByText('workflow.nodes.tool.insertPlaceholder1'))!.toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.tool.insertPlaceholder2')).not.toBeInTheDocument()

@@ -27,7 +27,7 @@ export type UseWorkspaceDeps = {
  * workspace list and let the caller pick one interactively (TTY only).
  *
  * The server-side switch is the source of truth: if POST
- * `/workspaces/<id>/switch` fails we abort before touching `hosts.yml`, so
+ * `/workspaces/<id>:switch` fails we abort before touching `hosts.yml`, so
  * local state never diverges from the server.
  */
 export async function runUseWorkspace(
@@ -41,9 +41,8 @@ export async function runUseWorkspace(
   const argId = opts.workspaceId?.trim() ?? ''
   const id = argId !== '' ? argId : await pickWorkspaceId(client, deps)
 
-  const detail = await runWithSpinner(
-    { io: deps.io, label: `Switching to ${id}` },
-    () => client.switch(id),
+  const detail = await runWithSpinner({ io: deps.io, label: `Switching to ${id}` }, () =>
+    client.switch(id),
   )
 
   const nextCtx = {
@@ -51,7 +50,7 @@ export async function runUseWorkspace(
     workspace: { id: detail.id, name: detail.name, role: detail.role },
   }
   deps.reg.upsert(deps.active.host, deps.active.email, nextCtx)
-  deps.reg.save()
+  await deps.reg.save()
   deps.io.out.write(`${cs.successIcon()} Switched to ${detail.name} (${detail.id})\n`)
   return deps.reg
 }
@@ -61,15 +60,14 @@ async function pickWorkspaceId(client: WorkspacesClient, deps: UseWorkspaceDeps)
     throw new BaseError({
       code: ErrorCode.UsageMissingArg,
       message: 'a workspace id is required (no TTY)',
-      hint: 'pass the id: \'difyctl use workspace <id>\'',
+      hint: "pass the id: 'difyctl use workspace <id>'",
     })
   }
 
-  const list = await runWithSpinner(
-    { io: deps.io, label: 'Loading workspaces' },
-    () => client.list(),
+  const list = await runWithSpinner({ io: deps.io, label: 'Loading workspaces' }, () =>
+    client.list(),
   )
-  const items = list.workspaces.map<Workspace>(w => ({ id: w.id, name: w.name, role: w.role }))
+  const items = list.workspaces.map<Workspace>((w) => ({ id: w.id, name: w.name, role: w.role }))
   if (items.length === 0) {
     throw new BaseError({
       code: ErrorCode.AccessDenied,
@@ -82,7 +80,7 @@ async function pickWorkspaceId(client: WorkspacesClient, deps: UseWorkspaceDeps)
     io: deps.io,
     items,
     header: 'Select a workspace',
-    render: w => `${w.id === activeId ? '* ' : '  '}${w.name} (${w.role})`,
+    render: (w) => `${w.id === activeId ? '* ' : '  '}${w.name} (${w.role})`,
   })
   return picked.id
 }

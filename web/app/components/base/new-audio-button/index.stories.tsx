@@ -14,7 +14,7 @@ const StoryWrapper = (props: ComponentProps<typeof AudioBtn>) => {
   return (
     <div className="flex items-center justify-center space-x-3">
       <AudioBtn {...props} />
-      <span className="text-xs text-gray-500">Audio toggle using ActionButton styling</span>
+      <span className="text-xs text-gray-500">Audio toggle using IconButton styling</span>
     </div>
   )
 }
@@ -27,7 +27,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Updated audio playback trigger styled with `ActionButton`. Behaves like the legacy audio button but adopts the new button design system.',
+        component:
+          'Audio playback trigger using the shared IconButton shape and a feature-owned active state.',
       },
     },
     nextjs: {
@@ -58,7 +59,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  render: args => <StoryWrapper {...args} />,
+  render: (args) => <StoryWrapper {...args} />,
   args: {
     id: 'message-1',
     value: 'Listen to the latest assistant message.',

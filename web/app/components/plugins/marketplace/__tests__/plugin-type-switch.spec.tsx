@@ -1,135 +1,84 @@
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ComponentProps, ReactNode } from 'react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import PluginTypeSwitch from '../plugin-type-switch'
+import styles from '../plugin-type-switch.module.css'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const map: Record<string, string> = {
-        'category.all': 'All',
-        'category.models': 'Models',
-        'category.tools': 'Tools',
-        'category.datasources': 'Data Sources',
-        'category.triggers': 'Triggers',
-        'category.agents': 'Agents',
-        'category.extensions': 'Extensions',
-        'category.bundles': 'Bundles',
-      }
-      return map[key] || key
-    },
-  }),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({ t: withSelectorKey((key: string) => key) }),
+  }
+})
 
-const createWrapper = (searchParams = '') => {
-  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
+const renderSwitch = (searchParams = '', props?: ComponentProps<typeof PluginTypeSwitch>) => {
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
-      <NuqsWrapper>
-        {children}
-      </NuqsWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
     </JotaiProvider>
   )
-  return { Wrapper }
+
+  return { ...render(<PluginTypeSwitch {...props} />, { wrapper: Wrapper }), onUrlUpdate }
 }
 
 describe('PluginTypeSwitch', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('renders every supported plugin category', () => {
+    renderSwitch()
+
+    expect(screen.getByRole('button', { name: 'category.all' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'category.models' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(screen.getByRole('button', { name: 'category.tools' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'category.datasources' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'category.agents' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'category.triggers' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'category.extensions' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'category.bundles' })).not.toBeInTheDocument()
   })
 
-  it('should render all category options', () => {
-    const { Wrapper } = createWrapper()
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+  it('updates the category in the URL when selected', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = renderSwitch('?category=all')
 
-    expect(screen.getByText('All')).toBeInTheDocument()
-    expect(screen.getByText('Models')).toBeInTheDocument()
-    expect(screen.getByText('Tools')).toBeInTheDocument()
-    expect(screen.getByText('Data Sources')).toBeInTheDocument()
-    expect(screen.getByText('Triggers')).toBeInTheDocument()
-    expect(screen.getByText('Agents')).toBeInTheDocument()
-    expect(screen.getByText('Extensions')).toBeInTheDocument()
-    expect(screen.getByText('Bundles')).toBeInTheDocument()
+    const modelsButton = screen.getByRole('button', { name: 'category.models' })
+    modelsButton.focus()
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('category')).toBe('model')
+    expect(modelsButton).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('should apply active styling to current category', () => {
-    const { Wrapper } = createWrapper('?category=all')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+  it('exposes the selected category and updates the URL in the home variant', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = renderSwitch('?category=all', { variant: 'home' })
+    const categoryGroup = screen.getByRole('group', { name: 'allCategories' })
 
-    const allButton = screen.getByText('All').closest('div')
-    expect(allButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
-  })
+    expect(categoryGroup).toHaveClass('w-full', 'justify-start', 'gap-1')
+    const activeCategory = screen.getByRole('button', { name: 'category.all' })
+    const inactiveCategory = screen.getByRole('button', { name: 'category.models' })
 
-  it('should apply custom className', () => {
-    const { Wrapper } = createWrapper()
-    const { container } = render(<PluginTypeSwitch className="custom-class" />, { wrapper: Wrapper })
+    expect(activeCategory).toHaveAttribute('aria-pressed', 'true')
+    expect(activeCategory).toHaveClass(styles.homeItem!, styles.homeItemActive!)
+    expect(inactiveCategory).toHaveClass(styles.homeItem!)
+    expect(inactiveCategory).not.toHaveClass(styles.homeItemActive!)
+    expect(screen.getByRole('button', { name: 'categorySingle.datasource' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'categorySingle.agent' })).toBeInTheDocument()
 
-    const outerDiv = container.firstChild as HTMLElement
-    expect(outerDiv.className).toContain('custom-class')
-  })
+    await user.click(screen.getByRole('button', { name: 'category.models' }))
 
-  it('should update category when option is clicked', () => {
-    const { Wrapper } = createWrapper('?category=all')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
-
-    fireEvent.click(screen.getByText('Models'))
-
-    const modelsButton = screen.getByText('Models').closest('div')
-    expect(modelsButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
-  })
-
-  it('should handle clicking on category with collections (Tools)', () => {
-    const { Wrapper } = createWrapper('?category=model')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
-
-    fireEvent.click(screen.getByText('Tools'))
-
-    const toolsButton = screen.getByText('Tools').closest('div')
-    expect(toolsButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
-  })
-
-  it('should handle clicking on category without collections (Models)', () => {
-    const { Wrapper } = createWrapper('?category=all')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
-
-    fireEvent.click(screen.getByText('Models'))
-
-    const modelsButton = screen.getByText('Models').closest('div')
-    expect(modelsButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
-  })
-
-  it('should handle clicking on bundles', () => {
-    const { Wrapper } = createWrapper('?category=all')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
-
-    fireEvent.click(screen.getByText('Bundles'))
-
-    const bundlesButton = screen.getByText('Bundles').closest('div')
-    expect(bundlesButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
-  })
-
-  it('should handle clicking on each category', () => {
-    const { Wrapper } = createWrapper('?category=all')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
-
-    const categories = ['All', 'Models', 'Tools', 'Data Sources', 'Triggers', 'Agents', 'Extensions', 'Bundles']
-    categories.forEach((category) => {
-      fireEvent.click(screen.getByText(category))
-
-      const button = screen.getByText(category).closest('div')
-      expect(button?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
-    })
-  })
-
-  it('should render icons for categories that have them', () => {
-    const { Wrapper } = createWrapper()
-    const { container } = render(<PluginTypeSwitch />, { wrapper: Wrapper })
-
-    // "All" has no icon (icon: null), others should have SVG icons
-    const svgs = container.querySelectorAll('svg')
-    // 7 categories with icons (all categories except "All")
-    expect(svgs.length).toBeGreaterThanOrEqual(7)
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    const update = onUrlUpdate.mock.calls.at(-1)?.[0]
+    expect(update?.searchParams.get('category')).toBe('model')
+    expect(update?.options.scroll).toBe(false)
   })
 })

@@ -13,7 +13,9 @@ vi.mock('../../utils', () => ({
   getNodesConnectedSourceOrTargetHandleIdsMap: vi.fn(),
 }))
 
-const mockGetNodesConnectedSourceOrTargetHandleIdsMap = vi.mocked(getNodesConnectedSourceOrTargetHandleIdsMap)
+const mockGetNodesConnectedSourceOrTargetHandleIdsMap = vi.mocked(
+  getNodesConnectedSourceOrTargetHandleIdsMap,
+)
 
 describe('use-edges-interactions.helpers', () => {
   beforeEach(() => {
@@ -31,10 +33,12 @@ describe('use-edges-interactions.helpers', () => {
       createNode({ id: 'node-1', data: { title: 'Source' } }),
       createNode({ id: 'node-2', data: { title: 'Target' } }),
     ]
-    const edgeChanges = [{
-      type: 'add',
-      edge: createEdge({ id: 'edge-1', source: 'node-1', target: 'node-2' }),
-    }]
+    const edgeChanges = [
+      {
+        type: 'add',
+        edge: createEdge({ id: 'edge-1', source: 'node-1', target: 'node-2' }),
+      },
+    ]
 
     const result = applyConnectedHandleNodeData(nodes, edgeChanges)
 
@@ -44,19 +48,25 @@ describe('use-edges-interactions.helpers', () => {
   })
 
   it('clearEdgeMenuIfNeeded should return true only when the open menu belongs to a removed edge', () => {
-    expect(clearEdgeMenuIfNeeded({
-      contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
-      edgeIds: ['edge-1', 'edge-2'],
-    })).toBe(true)
+    expect(
+      clearEdgeMenuIfNeeded({
+        contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
+        edgeIds: ['edge-1', 'edge-2'],
+      }),
+    ).toBe(true)
 
-    expect(clearEdgeMenuIfNeeded({
-      contextMenuTarget: { type: 'edge', edgeId: 'edge-3' },
-      edgeIds: ['edge-1', 'edge-2'],
-    })).toBe(false)
+    expect(
+      clearEdgeMenuIfNeeded({
+        contextMenuTarget: { type: 'edge', edgeId: 'edge-3' },
+        edgeIds: ['edge-1', 'edge-2'],
+      }),
+    ).toBe(false)
 
-    expect(clearEdgeMenuIfNeeded({
-      edgeIds: ['edge-1'],
-    })).toBe(false)
+    expect(
+      clearEdgeMenuIfNeeded({
+        edgeIds: ['edge-1'],
+      }),
+    ).toBe(false)
   })
 
   it('updateEdgeHoverState should toggle only the hovered edge flag', () => {
@@ -67,8 +77,8 @@ describe('use-edges-interactions.helpers', () => {
 
     const result = updateEdgeHoverState(edges, 'edge-2', true)
 
-    expect(result.find(edge => edge.id === 'edge-1')?.data._hovering).toBe(false)
-    expect(result.find(edge => edge.id === 'edge-2')?.data._hovering).toBe(true)
+    expect(result.find((edge) => edge.id === 'edge-1')?.data._hovering).toBe(false)
+    expect(result.find((edge) => edge.id === 'edge-2')?.data._hovering).toBe(true)
   })
 
   it('updateEdgeSelectionState should update selected flags for select changes only', () => {
@@ -82,8 +92,8 @@ describe('use-edges-interactions.helpers', () => {
       { type: 'remove', id: 'edge-2' },
     ])
 
-    expect(result.find(edge => edge.id === 'edge-1')?.selected).toBe(true)
-    expect(result.find(edge => edge.id === 'edge-2')?.selected).toBe(true)
+    expect(result.find((edge) => edge.id === 'edge-1')?.selected).toBe(true)
+    expect(result.find((edge) => edge.id === 'edge-2')?.selected).toBe(true)
   })
 
   it('buildContextMenuEdges should select the target edge and clear bundled markers', () => {
@@ -94,9 +104,9 @@ describe('use-edges-interactions.helpers', () => {
 
     const result = buildContextMenuEdges(edges, 'edge-2')
 
-    expect(result.find(edge => edge.id === 'edge-1')?.selected).toBe(false)
-    expect(result.find(edge => edge.id === 'edge-2')?.selected).toBe(true)
-    expect(result.every(edge => edge.data._isBundled === false)).toBe(true)
+    expect(result.find((edge) => edge.id === 'edge-1')?.selected).toBe(false)
+    expect(result.find((edge) => edge.id === 'edge-2')?.selected).toBe(true)
+    expect(result.every((edge) => edge.data._isBundled === false)).toBe(true)
   })
 
   it('clearNodeSelectionState should clear selected state and bundled markers on every node', () => {
@@ -107,8 +117,8 @@ describe('use-edges-interactions.helpers', () => {
 
     const result = clearNodeSelectionState(nodes)
 
-    expect(result.every(node => node.selected === false)).toBe(true)
-    expect(result.every(node => node.data.selected === false)).toBe(true)
-    expect(result.every(node => node.data._isBundled === false)).toBe(true)
+    expect(result.every((node) => node.selected === false)).toBe(true)
+    expect(result.every((node) => node.data.selected === false)).toBe(true)
+    expect(result.every((node) => node.data._isBundled === false)).toBe(true)
   })
 })

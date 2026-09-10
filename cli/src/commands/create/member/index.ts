@@ -17,17 +17,20 @@ export default class CreateMember extends DifyCommand {
   ]
 
   static override flags = {
-    'email': Flags.string({ description: 'invitee email address', required: true }),
-    'role': Flags.string({
+    email: Flags.string({ description: 'invitee email address', required: true }),
+    role: Flags.string({
       description: 'role to assign (normal|admin); owner is not assignable here',
       required: true,
     }),
-    'workspace': Flags.string({
+    workspace: Flags.string({
       char: 'w',
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
     'http-retry': httpRetryFlag,
-    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.TEXT], default: '' }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.TEXT],
+      default: '',
+    }),
   }
 
   async run(argv: string[]) {

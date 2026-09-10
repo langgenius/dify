@@ -39,11 +39,12 @@ test/e2e/
     │   ├── describe-app.e2e.ts           — describe app
     │   └── get-app-all-workspaces.e2e.ts — get app -A ([EE] multi-workspace cases)
     └── run/
-        ├── run-app-basic.e2e.ts     — basic run, -o json, --inputs, streaming,
-        │                              conversation, CI mode
-        ├── run-app-streaming.e2e.ts — Ctrl+C / error-event / chunk timing
-        ├── run-app-file.e2e.ts      — --file upload (local + remote URL)
-        └── run-app-hitl.e2e.ts      — HITL pause + resume
+        ├── run-app-basic.e2e.ts      — basic run, -o json, --inputs, streaming,
+        │                               conversation, CI mode
+        ├── run-app-streaming.e2e.ts  — Ctrl+C / error-event / chunk timing
+        ├── run-app-file.e2e.ts       — --file upload (local + remote URL)
+        ├── run-app-reasoning.e2e.ts  — separated-mode reasoning (--think); opt-in
+        └── run-app-hitl.e2e.ts       — HITL pause + resume
 ```
 
 ## Edition support
@@ -137,6 +138,24 @@ global-setup will:
 | `DIFY_E2E_HITL_SINGLE_ACTION_APP_ID` |                                                  |
 | `DIFY_E2E_HITL_MULTI_NODE_APP_ID`    |                                                  |
 | `DIFY_E2E_WS2_APP_ID`                | Override secondary workspace app ID (EE)         |
+| `DIFY_E2E_REASONING_APP_ID`          | separated-reasoning chatflow app ID (opt-in)     |
+| `DIFY_E2E_REASONING_PROVISION`       | `1` → auto-provision `reasoning-chat.yml`        |
+
+### Separated-mode reasoning suite (opt-in)
+
+`run-app-reasoning.e2e.ts` verifies the out-of-band `reasoning_chunk` channel
+(PR #37460): `--think` surfaces the chain-of-thought to stderr framed as
+`<think>…</think>`, the answer stays clean, and `-o json` persists it under
+`metadata.reasoning`. It is **skipped** unless `DIFY_E2E_REASONING_APP_ID`
+resolves, because it runs a real LLM node and needs:
+
+1. a chatflow whose LLM node uses `reasoning_format: separated`, and
+1. a workspace with a default chat model configured.
+
+Point `DIFY_E2E_REASONING_APP_ID` at such an app, or set
+`DIFY_E2E_REASONING_PROVISION=1` to import the `reasoning-chat.yml` fixture
+(its system prompt forces a `<think>` block, so any chat model triggers the
+separated path — no dedicated reasoning model required).
 
 ## Running tests
 

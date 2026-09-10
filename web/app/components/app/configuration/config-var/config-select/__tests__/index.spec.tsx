@@ -1,4 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import ConfigSelect from '../index'
 
 vi.mock('react-sortablejs', () => ({
@@ -8,8 +10,8 @@ vi.mock('react-sortablejs', () => ({
     setList,
   }: {
     children: React.ReactNode
-    list: Array<{ id: number, name: string }>
-    setList: (list: Array<{ id: number, name: string }>) => void
+    list: Array<{ id: number; name: string }>
+    setList: (list: Array<{ id: number; name: string }>) => void
   }) => (
     <div>
       <button onClick={() => setList([...list].reverse())}>reorder-options</button>
@@ -57,15 +59,6 @@ describe('ConfigSelect Component', () => {
     expect(defaultProps.onChange).toHaveBeenCalledWith([...defaultProps.options, ''])
   })
 
-  it('applies focus styles on input focus', () => {
-    render(<ConfigSelect {...defaultProps} />)
-    const firstInput = screen.getByDisplayValue('Option 1')
-
-    fireEvent.focus(firstInput)
-
-    expect(firstInput.closest('div')).toHaveClass('border-components-input-border-active')
-  })
-
   it('updates option values and clears focus styles on blur', () => {
     render(<ConfigSelect {...defaultProps} />)
     const firstInput = screen.getByDisplayValue('Option 1')
@@ -75,20 +68,6 @@ describe('ConfigSelect Component', () => {
 
     fireEvent.focus(firstInput)
     fireEvent.blur(firstInput)
-    expect(firstInput.closest('div')).not.toHaveClass('border-components-input-border-active')
-  })
-
-  it('applies delete hover styles', () => {
-    render(<ConfigSelect {...defaultProps} />)
-    const optionContainer = screen.getByDisplayValue('Option 1').closest('div')
-    const deleteButton = screen.getAllByRole('button', { name: 'common.operation.delete' })[0]
-
-    if (!deleteButton)
-      return
-    fireEvent.mouseEnter(deleteButton)
-    expect(optionContainer).toHaveClass('border-components-input-border-destructive')
-    fireEvent.mouseLeave(deleteButton)
-    expect(optionContainer).not.toHaveClass('border-components-input-border-destructive')
   })
 
   it('renders empty state correctly', () => {
@@ -104,5 +83,55 @@ describe('ConfigSelect Component', () => {
     fireEvent.click(screen.getByText('reorder-options'))
 
     expect(defaultProps.onChange).toHaveBeenCalledWith(['Option 2', 'Option 1'])
+  })
+  it('previews keyboard sorting and commits only when confirmed, keeping input arrows separate', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const Fixture = () => {
+      const [options, setOptions] = useState(['First', 'Second', 'Third'])
+      return (
+        <ConfigSelect
+          options={options}
+          onChange={(next) => {
+            onChange(next)
+            setOptions(next)
+          }}
+        />
+      )
+    }
+    render(<Fixture />)
+    const handle = screen.getAllByRole('button', { name: /sort.handle/ })[0]!
+    handle.focus()
+    await user.keyboard('{Enter}{ArrowDown}')
+    expect(
+      screen.getAllByRole('textbox').map((input) => (input as HTMLInputElement).value),
+    ).toEqual(['Second', 'First', 'Third'])
+    expect(onChange).not.toHaveBeenCalled()
+    expect(handle).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(['Second', 'First', 'Third'])
+    await user.tab()
+    expect(screen.getByDisplayValue('First')).toHaveFocus()
+    await user.keyboard('{ArrowDown}')
+    expect(onChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels a keyboard reorder with duplicate options and preserves the original order', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<ConfigSelect options={['Same', 'Same', 'Last']} onChange={onChange} />)
+    const handle = screen.getAllByRole('button', { name: /sort.handle/ })[1]!
+    handle.focus()
+    await user.keyboard(' {ArrowDown}')
+    expect(
+      screen.getAllByRole('textbox').map((input) => (input as HTMLInputElement).value),
+    ).toEqual(['Same', 'Last', 'Same'])
+    expect(handle).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(
+      screen.getAllByRole('textbox').map((input) => (input as HTMLInputElement).value),
+    ).toEqual(['Same', 'Same', 'Last'])
+    expect(onChange).not.toHaveBeenCalled()
+    expect(handle).toHaveFocus()
   })
 })

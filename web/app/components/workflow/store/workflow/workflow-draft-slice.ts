@@ -1,10 +1,6 @@
 import type { Viewport } from 'reactflow'
 import type { StateCreator } from 'zustand'
-import type {
-  Edge,
-  EnvironmentVariable,
-  Node,
-} from '@/app/components/workflow/types'
+import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
 import { debounce } from 'es-toolkit/compat'
 
 type DebouncedFunc = {
@@ -42,20 +38,19 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
 
   return {
     backupDraft: undefined,
-    setBackupDraft: backupDraft => set(() => ({ backupDraft })),
+    setBackupDraft: (backupDraft) => set(() => ({ backupDraft })),
     debouncedSyncWorkflowDraft: debouncedFn,
     syncWorkflowDraftHash: '',
-    setSyncWorkflowDraftHash: syncWorkflowDraftHash => set(() => ({ syncWorkflowDraftHash })),
+    setSyncWorkflowDraftHash: (syncWorkflowDraftHash) => set(() => ({ syncWorkflowDraftHash })),
     isSyncingWorkflowDraft: false,
-    setIsSyncingWorkflowDraft: isSyncingWorkflowDraft => set(() => ({ isSyncingWorkflowDraft })),
+    setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft) => set(() => ({ isSyncingWorkflowDraft })),
     isWorkflowDataLoaded: false,
-    setIsWorkflowDataLoaded: loaded => set(() => ({ isWorkflowDataLoaded: loaded })),
+    setIsWorkflowDataLoaded: (loaded) => set(() => ({ isWorkflowDataLoaded: loaded })),
     nodes: [],
-    setNodes: nodes => set(() => ({ nodes })),
+    setNodes: (nodes) => set(() => ({ nodes })),
     flushPendingSync: () => {
       // Flush any pending debounced sync operations
-      if (debouncedFn.flush)
-        debouncedFn.flush()
+      if (debouncedFn.flush) debouncedFn.flush()
     },
   }
 }

@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useIndexStatus } from '../hooks'
 
 // Explicit react-i18next mock so the test stays portable
@@ -14,7 +14,16 @@ describe('useIndexStatus', () => {
   it('should return all expected status keys', () => {
     const { result } = renderHook(() => useIndexStatus())
 
-    const expectedKeys = ['queuing', 'indexing', 'paused', 'error', 'available', 'enabled', 'disabled', 'archived']
+    const expectedKeys = [
+      'queuing',
+      'indexing',
+      'paused',
+      'error',
+      'available',
+      'enabled',
+      'disabled',
+      'archived',
+    ]
     const keys = Object.keys(result.current)
     expect(keys).toEqual(expect.arrayContaining(expectedKeys))
   })

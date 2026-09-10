@@ -12,7 +12,7 @@ const CardSkelton = React.memo(() => {
     <SkeletonContainer className="gap-y-0 p-1 pb-2">
       <SkeletonContainer className="gap-y-0.5 px-2 pt-1.5">
         <SkeletonRow className="py-0.5">
-          <SkeletonRectangle className="w-[72px] bg-text-quaternary" />
+          <SkeletonRectangle className="w-18 bg-text-quaternary" />
           <SkeletonPoint className="opacity-20" />
           <SkeletonRectangle className="w-24 bg-text-quaternary" />
           <SkeletonPoint className="opacity-20" />
@@ -35,7 +35,7 @@ const CardSkelton = React.memo(() => {
       <SkeletonContainer className="px-2 py-1.5">
         <SkeletonRow>
           <SkeletonRectangle className="w-14 bg-text-quaternary" />
-          <SkeletonRectangle className="w-[88px] bg-text-quaternary" />
+          <SkeletonRectangle className="w-22 bg-text-quaternary" />
           <SkeletonRectangle className="w-14 bg-text-quaternary" />
         </SkeletonRow>
       </SkeletonContainer>

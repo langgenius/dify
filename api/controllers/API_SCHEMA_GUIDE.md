@@ -12,6 +12,47 @@ parameters, response schemas, and Swagger documentation.
 - Do not add new Flask-RESTX `fields.*` dictionaries, `Namespace.model(...)` exports, or `@marshal_with(...)` for migrated or new endpoints.
 - Do not use `@ns.expect(...)` for GET query parameters. Flask-RESTX documents that as a request body.
 
+## Public System Features Contract
+
+The Console and Web `/system-features` endpoints share `SystemFeatureModel`. They are unauthenticated and may be
+requested during root SSR, so treat this response as a minimal public bootstrap allowlist. It is not a general
+configuration endpoint, a feature registry, or a mirror of environment and Enterprise settings. Existing fields are
+legacy inventory and do not establish precedent for new fields.
+
+A new field is eligible only when all of the following are true:
+
+1. Both Console and Web have named production consumers for the field.
+2. Both consumers need the value before authentication and tenant/workspace bootstrap to render initial state or
+   choose an authentication flow.
+3. The value varies at runtime or by deployment and cannot be safely derived from an existing public contract.
+4. The value is non-sensitive, safe to disclose without authentication, and has stable public API semantics.
+5. Sending the value on every root bootstrap is demonstrably clearer and cheaper than a consumer-owned query.
+
+Do not add:
+
+- Backend-only policy or enforcement inputs, including security decisions, upload limits, or integration toggles.
+- Console-only or Web-only configuration.
+- Tenant, workspace, account, permission, billing-detail, or other post-authentication state.
+- Provider payloads, operational diagnostics, large nested objects, or values without active consumers.
+- Speculative fields added for possible future use.
+
+Route excluded values to their actual owner:
+
+- Keep backend enforcement behind a narrow service method or domain policy.
+- Serve post-authentication state from an authenticated domain endpoint.
+- Serve surface-specific bootstrap state from a Console- or Web-specific endpoint and account for its SSR, caching,
+  and failure cost explicitly.
+- Load large, slow, or page-specific data lazily through a consumer-owned query.
+
+Every pull request that adds a System Features field must:
+
+- Name both production consumer paths and explain why they require the value before authentication.
+- Document the root SSR request, payload, caching, and failure-mode impact.
+- Update the Pydantic owner, regenerate OpenAPI Markdown and TypeScript/Zod contracts, and update shared fixtures.
+- Add Console and Web schema regression coverage. Do not hand-edit generated contracts or add compatibility defaults.
+
+Reviewers should reject a field when its owner, pre-authentication need, or consumers are unclear.
+
 ## Naming
 
 - Request body models: use a `Payload` suffix.
@@ -121,6 +162,9 @@ That documents a GET request body and is not the expected contract.
 
 ## Responses
 
+`204 No Content` responses must not serialize a response body. Return the status using the established controller pattern;
+do not return a dictionary, response model, or other payload.
+
 Response models should inherit from `ResponseModel`:
 
 ```python
@@ -195,12 +239,12 @@ to the legacy area and avoid importing RESTX model objects from controllers.
 
 ## Verifying Swagger
 
-For schema and documentation changes, run focused tests and generate Swagger JSON:
+For schema and documentation changes, run focused tests and generate Swagger JSON from the repository root:
 
 ```bash
-uv run --project . pytest tests/unit_tests/controllers/common/test_schema.py
-uv run --project . pytest tests/unit_tests/commands/test_generate_swagger_specs.py tests/unit_tests/controllers/test_swagger.py
-uv run --project . dev/generate_swagger_specs.py --output-dir /tmp/dify-openapi-check
+uv run --project api pytest api/tests/unit_tests/controllers/common/test_schema.py
+uv run --project api pytest api/tests/unit_tests/commands/test_generate_swagger_specs.py api/tests/unit_tests/controllers/test_swagger.py
+uv run --project api python api/dev/generate_swagger_specs.py --output-dir /tmp/dify-openapi-check
 ```
 
 Inspect affected endpoints with `jq`. Check that:
@@ -209,3 +253,17 @@ Inspect affected endpoints with `jq`. Check that:
 - Request bodies appear only where the endpoint has a body.
 - Responses reference the expected `*Response` schema.
 - Response schemas use public serialized names, not internal validation aliases like `inputs_dict`.
+
+## Service API Documentation Handoff
+
+The `dify-docs` repository imports `service-openapi.json` for the `/v1` API. It keeps a pinned export and adds
+descriptions, examples, translations, and existing page URLs through documentation annotations. Fields, constraints,
+references, response statuses, and security come from this repository's export.
+
+Verify the public schema against request validation and response serialization, including intentional schema overrides
+and excluded fields. Fix an inaccurate contract here and regenerate it before updating the documentation snapshot.
+Record the full source commit SHA when handing off the export. For coordinated changes that are not committed yet,
+also provide the source patch used to produce it; replace that patch with a clean committed export after merging.
+
+The manual import, annotation review, build, and validation commands live in `tools/api-pipeline/README.md` in
+`dify-docs`. Regenerate this repository's OpenAPI Markdown and TypeScript/Zod contracts whenever their inputs change.

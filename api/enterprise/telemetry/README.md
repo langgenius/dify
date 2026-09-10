@@ -32,14 +32,14 @@ The Enterprise OTEL exporter is configured via environment variables.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ENTERPRISE_ENABLED` | Master switch for all enterprise features. | `false` |
+| `DEPLOYMENT_EDITION` | Product edition; enterprise telemetry is only available in `ENTERPRISE`. | `COMMUNITY` |
 | `ENTERPRISE_TELEMETRY_ENABLED` | Master switch for enterprise telemetry. | `false` |
 | `ENTERPRISE_OTLP_ENDPOINT` | OTLP collector endpoint (e.g., `http://otel-collector:4318`). | - |
 | `ENTERPRISE_OTLP_HEADERS` | Custom headers for OTLP requests (e.g., `x-scope-orgid=tenant1`). | - |
 | `ENTERPRISE_OTLP_PROTOCOL` | OTLP transport protocol (`http` or `grpc`). | `http` |
 | `ENTERPRISE_OTLP_API_KEY` | Bearer token for authentication. | - |
 | `ENTERPRISE_INCLUDE_CONTENT` | Whether to include sensitive content (inputs/outputs) in logs. | `false` |
-| `ENTERPRISE_SERVICE_NAME` | Service name reported to OTEL. | `dify` |
+| `APPLICATION_NAME` | Service name reported to OTEL (shared with native OTel). | `langgenius/dify` |
 | `ENTERPRISE_OTEL_SAMPLING_RATE` | Sampling rate for traces (0.0 to 1.0). Metrics are always 100%. | `1.0` |
 
 ## Correlation Model

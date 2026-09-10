@@ -1,4 +1,9 @@
-import { compareVersion, getLatestVersion, isEarlierThanVersion, isEqualOrLaterThanVersion } from './semver'
+import {
+  compareVersion,
+  getLatestVersion,
+  isEarlierThanVersion,
+  isEqualOrLaterThanVersion,
+} from './semver'
 
 describe('semver utilities', () => {
   describe('getLatestVersion', () => {

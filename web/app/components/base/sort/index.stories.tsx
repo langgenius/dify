@@ -25,8 +25,7 @@ const SortPlayground = () => {
         <span>Sort control</span>
         <code className="rounded-md bg-background-default px-2 py-1 text-[11px] text-text-tertiary">
           sort_by="
-          {sortBy}
-          "
+          {sortBy}"
         </code>
       </div>
       <Sort
@@ -48,7 +47,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Sorting trigger used in log tables. Includes dropdown selection and quick toggle between ascending and descending.',
+        component:
+          'Sorting trigger used in log tables. Includes dropdown selection and quick toggle between ascending and descending.',
       },
     },
   },

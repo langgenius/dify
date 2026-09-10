@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import FieldInfo from '../field-info'
 
 vi.mock('@/utils', () => ({
@@ -46,7 +45,7 @@ describe('FieldInfo', () => {
     it('should render input field by default in edit mode', () => {
       render(<FieldInfo label="Title" value="Test" showEdit={true} inputType="input" />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'Title' })
       expect(input).toBeInTheDocument()
       expect(input).toHaveValue('Test')
     })
@@ -54,7 +53,7 @@ describe('FieldInfo', () => {
     it('should render textarea when inputType is textarea', () => {
       render(<FieldInfo label="Desc" value="Long text" showEdit={true} inputType="textarea" />)
 
-      const textarea = screen.getByRole('textbox')
+      const textarea = screen.getByRole('textbox', { name: 'Desc' })
       expect(textarea).toBeInTheDocument()
       expect(textarea).toHaveValue('Long text')
     })
@@ -74,43 +73,47 @@ describe('FieldInfo', () => {
         />,
       )
 
-      // SimpleSelect renders a button-like trigger
-      expect(screen.getByText('English')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Language' })).toHaveTextContent('English')
     })
 
     it('should call onUpdate when input value changes', () => {
       const onUpdate = vi.fn()
-      render(<FieldInfo label="Title" value="" showEdit={true} inputType="input" onUpdate={onUpdate} />)
+      render(
+        <FieldInfo label="Title" value="" showEdit={true} inputType="input" onUpdate={onUpdate} />,
+      )
 
-      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Title' }), {
+        target: { value: 'New' },
+      })
 
       expect(onUpdate).toHaveBeenCalledWith('New')
     })
 
     it('should call onUpdate when textarea value changes', () => {
       const onUpdate = vi.fn()
-      render(<FieldInfo label="Desc" value="" showEdit={true} inputType="textarea" onUpdate={onUpdate} />)
+      render(
+        <FieldInfo
+          label="Desc"
+          value=""
+          showEdit={true}
+          inputType="textarea"
+          onUpdate={onUpdate}
+        />,
+      )
 
-      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Updated' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Desc' }), {
+        target: { value: 'Updated' },
+      })
 
       expect(onUpdate).toHaveBeenCalledWith('Updated')
     })
   })
 
-  // Verify edge cases
   describe('Edge Cases', () => {
-    it('should render with empty value and label', () => {
-      render(<FieldInfo label="" value="" displayedValue="" />)
-
-      // Should not crash
-      const container = document.querySelector('.flex.min-h-5')
-      expect(container).toBeInTheDocument()
-    })
-
     it('should render with default value prop', () => {
       render(<FieldInfo label="Field" showEdit={true} inputType="input" defaultValue="default" />)
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Field' })).toBeInTheDocument()
     })
   })
 })

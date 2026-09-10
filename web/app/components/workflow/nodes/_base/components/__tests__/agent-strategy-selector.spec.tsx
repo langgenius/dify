@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { AgentStrategySelector } from '../agent-strategy-selector'
 
@@ -17,10 +17,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-query', () => ({
   useSuspenseQuery: mocks.useSuspenseQuery,
-}))
-
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({}),
 }))
 
 vi.mock('@/service/use-strategy', () => ({
@@ -52,21 +48,12 @@ vi.mock('@/app/components/base/search-input', () => ({
     placeholder?: string
     className?: string
   }) => (
-    <input
-      aria-label={placeholder}
-      value={value}
-      onChange={e => onValueChange(e.target.value)}
-    />
+    <input aria-label={placeholder} value={value} onChange={(e) => onValueChange(e.target.value)} />
   ),
 }))
 
 vi.mock('@/app/components/workflow/block-selector/view-type-select', () => ({
-  default: ({
-    onChange,
-  }: {
-    viewType: string
-    onChange: (value: string) => void
-  }) => (
+  default: ({ onChange }: { viewType: string; onChange: (value: string) => void }) => (
     <button type="button" onClick={() => onChange('grid')}>
       view-type
     </button>
@@ -92,31 +79,37 @@ vi.mock('@/app/components/workflow/block-selector/tools', () => ({
         output_schema?: Record<string, unknown>
       }>
     }>
-    onSelect: (value: unknown, tool: {
-      tool_name: string
-      provider_name: string
-      tool_label: string
-      output_schema?: Record<string, unknown>
-      provider_id: string
-      meta?: unknown
-    }) => void
+    onSelect: (
+      value: unknown,
+      tool: {
+        tool_name: string
+        provider_name: string
+        tool_label: string
+        output_schema?: Record<string, unknown>
+        provider_id: string
+        meta?: unknown
+      },
+    ) => void
   }) => (
     <div data-testid="tools-list">
-      {tools.map(tool => (
+      {tools.map((tool) => (
         <div key={tool.id}>
           <span>{tool.name}</span>
           <button
             type="button"
-            onClick={() => onSelect(undefined, {
-              tool_name: tool.tools[0]!.name,
-              provider_name: tool.id,
-              tool_label: typeof tool.tools[0]!.label === 'string'
-                ? tool.tools[0]!.label
-                : tool.tools[0]!.label.en_US || '',
-              output_schema: tool.tools[0]!.output_schema,
-              provider_id: tool.id,
-              meta: tool.meta,
-            })}
+            onClick={() =>
+              onSelect(undefined, {
+                tool_name: tool.tools[0]!.name,
+                provider_name: tool.id,
+                tool_label:
+                  typeof tool.tools[0]!.label === 'string'
+                    ? tool.tools[0]!.label
+                    : tool.tools[0]!.label.en_US || '',
+                output_schema: tool.tools[0]!.output_schema,
+                provider_id: tool.id,
+                meta: tool.meta,
+              })
+            }
           >
             {`select-${tool.name}`}
           </button>
@@ -126,16 +119,10 @@ vi.mock('@/app/components/workflow/block-selector/tools', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/block-selector/market-place-plugin/list', () => ({
-  default: ({
-    list,
-    searchText,
-  }: {
-    list: Array<{ plugin_id: string }>
-    searchText: string
-  }) => (
+vi.mock('@/app/components/workflow/block-selector/marketplace-plugin/list', () => ({
+  default: ({ list, searchText }: { list: Array<{ plugin_id: string }>; searchText: string }) => (
     <div data-testid="plugin-list">
-      {`${searchText}:${list.map(item => item.plugin_id).join(',')}`}
+      {`${searchText}:${list.map((item) => item.plugin_id).join(',')}`}
     </div>
   ),
 }))
@@ -166,11 +153,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version'
     uniqueIdentifier: string
     tooltip: ReactNode
   }) => (
-    <button
-      type="button"
-      data-testid="switch-plugin-version"
-      onClick={onChange}
-    >
+    <button type="button" data-testid="switch-plugin-version" onClick={onChange}>
       switch-plugin-version
     </button>
   ),
@@ -185,103 +168,45 @@ vi.mock('@/next/link', () => ({
     href: string
     children: ReactNode
     className?: string
-  }) => <a href={href} className={className}>{children}</a>,
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext({
-    open: false,
-    setOpen: (_open: boolean) => {},
-  })
-
-  const Popover = ({
-    children,
-    open: controlledOpen,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
-    const isControlled = controlledOpen !== undefined
-    const open = isControlled ? !!controlledOpen : uncontrolledOpen
-    const setOpen = (nextOpen: boolean) => {
-      if (!isControlled)
-        setUncontrolledOpen(nextOpen)
-      onOpenChange?.(nextOpen)
-    }
-
-    return (
-      <PopoverContext value={{ open, setOpen }}>
-        {children}
-      </PopoverContext>
-    )
-  }
-
-  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
-    const { open, setOpen } = React.use(PopoverContext)
-    return (
-      <div data-testid="agent-strategy-trigger" onClick={() => setOpen(!open)}>
-        {render}
-      </div>
-    )
-  }
-
-  const PopoverContent = ({ children }: { children: React.ReactNode }) => {
-    const { open } = React.use(PopoverContext)
-    return open ? <div data-testid="agent-strategy-popover">{children}</div> : null
-  }
-
-  return {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-  }
-})
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  TooltipTrigger: ({ render }: { render: ReactNode }) => <div>{render}</div>,
-  TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  }) => (
+    <a href={href} className={className}>
+      {children}
+    </a>
+  ),
 }))
 
 const createStrategyDetail = (
   name: string,
   strategyName: string,
   strategyLabel: string,
-): StrategyPluginDetail => ({
-  plugin_unique_identifier: `provider/${name}`,
-  plugin_id: `plugin-${name}`,
-  declaration: {
-    identity: {
-      author: 'Dify',
-      name,
-      description: { en_US: `${name} description` },
-      icon: `${name}.png`,
-      label: { en_US: `${name} label` },
-      tags: [],
-    },
-    strategies: [{
+): StrategyPluginDetail =>
+  ({
+    plugin_unique_identifier: `provider/${name}`,
+    plugin_id: `plugin-${name}`,
+    declaration: {
       identity: {
-        name: strategyName,
         author: 'Dify',
-        label: { en_US: strategyLabel },
+        name,
+        description: { en_US: `${name} description` },
+        icon: `${name}.png`,
+        label: { en_US: `${name} label` },
+        tags: [],
       },
-      description: { en_US: `${strategyLabel} description` },
-      parameters: [],
-      output_schema: { result: { type: 'string' } },
-    }],
-  },
-  meta: { version: '1.0.0' },
-} as unknown as StrategyPluginDetail)
+      strategies: [
+        {
+          identity: {
+            name: strategyName,
+            author: 'Dify',
+            label: { en_US: strategyLabel },
+          },
+          description: { en_US: `${strategyLabel} description` },
+          parameters: [],
+          output_schema: { result: { type: 'string' } },
+        },
+      ],
+    },
+    meta: { version: '1.0.0' },
+  }) as unknown as StrategyPluginDetail
 
 describe('AgentStrategySelector', () => {
   const alphaDetail = createStrategyDetail('alpha', 'alpha-strategy', 'Alpha Strategy')
@@ -305,20 +230,22 @@ describe('AgentStrategySelector', () => {
   it('filters strategies and queries marketplace when searching', async () => {
     const user = userEvent.setup()
 
-    render(
-      <AgentStrategySelector
-        onChange={vi.fn()}
-      />,
-    )
+    render(<AgentStrategySelector onChange={vi.fn()} />)
 
-    await user.click(screen.getByTestId('agent-strategy-trigger'))
+    await user.click(
+      screen
+        .getByText(/(?:^|\.)nodes\.agent\.strategy\.selectTip(?=$|:)/)
+        .closest('[aria-haspopup]')!,
+    )
 
     expect(screen.getByText('alpha')).toBeInTheDocument()
     expect(screen.getByText('beta')).toBeInTheDocument()
     expect(screen.getByTestId('plugin-list')).toHaveTextContent(':market-agent')
 
     await user.type(
-      screen.getByRole('textbox', { name: 'nodes.agent.strategy.searchPlaceholder' }),
+      screen.getByRole('textbox', {
+        name: /(?:^|\.)nodes\.agent\.strategy\.searchPlaceholder(?=$|:)/,
+      }),
       'alp',
     )
 
@@ -337,13 +264,13 @@ describe('AgentStrategySelector', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
-    render(
-      <AgentStrategySelector
-        onChange={onChange}
-      />,
-    )
+    render(<AgentStrategySelector onChange={onChange} />)
 
-    await user.click(screen.getByTestId('agent-strategy-trigger'))
+    await user.click(
+      screen
+        .getByText(/(?:^|\.)nodes\.agent\.strategy\.selectTip(?=$|:)/)
+        .closest('[aria-haspopup]')!,
+    )
     await user.click(screen.getByRole('button', { name: 'select-alpha' }))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -354,10 +281,11 @@ describe('AgentStrategySelector', () => {
       plugin_unique_identifier: 'provider/alpha',
       meta: { version: '1.0.0' },
     })
-    expect(screen.queryByTestId('agent-strategy-popover')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tools-list')).not.toBeInTheDocument()
   })
 
-  it('renders the plugin-not-installed warning for external strategies', () => {
+  it('renders the plugin-not-installed warning for external strategies', async () => {
+    const user = userEvent.setup()
     mocks.useStrategyInfo.mockReturnValue({
       strategyStatus: {
         plugin: {
@@ -382,8 +310,14 @@ describe('AgentStrategySelector', () => {
       />,
     )
 
-    expect(screen.getByText('nodes.agent.pluginNotInstalled')).toBeInTheDocument()
-    expect(screen.getByText('nodes.agent.pluginNotInstalledDesc')).toBeInTheDocument()
+    await user.hover(document.querySelector('[data-base-ui-tooltip-trigger]')!)
+
+    expect(
+      await screen.findByText(/(?:^|\.)nodes\.agent\.pluginNotInstalled(?=$|:)/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/(?:^|\.)nodes\.agent\.pluginNotInstalledDesc(?=$|:)/),
+    ).toBeInTheDocument()
   })
 
   it('renders install and switch-version actions for marketplace strategies', async () => {

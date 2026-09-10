@@ -1,12 +1,11 @@
-import type { NamedExoticComponent } from 'react'
+import type { ExtraProps } from 'streamdown'
 import type { ChatContextValue } from '@/app/components/base/chat/chat/context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 // markdown-button.spec.tsx
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
-
 import MarkdownButton from '../button'
 
 // Only mock the URL utility so behavior is deterministic
@@ -15,14 +14,15 @@ vi.mock('../utils', () => ({
   isValidUrl: (u: string) => isValidUrlSpy(u),
 })) // test subject
 
-type TestNode = {
-  properties?: {
-    dataVariant?: string
-    dataMessage?: string
-    dataLink?: string
-    dataSize?: string
+type TestNode = NonNullable<ExtraProps['node']>
+
+function createButtonNode(properties: TestNode['properties'], label?: string): TestNode {
+  return {
+    type: 'element',
+    tagName: 'button',
+    properties,
+    children: label === undefined ? [] : [{ type: 'text', value: label }],
   }
-  children?: Array<{ value?: string }>
 }
 
 describe('MarkdownButton (integration)', () => {
@@ -41,45 +41,37 @@ describe('MarkdownButton (integration)', () => {
 
     return render(
       <ChatContextProvider {...ctx}>
-        <MarkdownButton node={node as unknown as Record<string, unknown>} />
+        <MarkdownButton node={node} />
       </ChatContextProvider>,
     )
   }
 
   it('renders button text from node children', () => {
-    const node: TestNode = { children: [{ value: 'Click me' }], properties: {} }
+    const node = createButtonNode({}, 'Click me')
     renderWithCtx(node)
     expect(screen.getByRole('button')).toHaveTextContent('Click me')
   })
 
-  it('opens new tab when link is valid and does not call onSend', async () => {
+  it('renders a native link when the URL is valid', () => {
     isValidUrlSpy.mockReturnValue(true)
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-    const user = userEvent.setup()
 
-    const node: TestNode = {
-      properties: { dataLink: 'https://example.com' },
-      children: [{ value: 'Go' }],
-    }
+    const node = createButtonNode({ dataLink: 'https://example.com' }, 'Go')
 
     renderWithCtx(node)
-    await user.click(screen.getByRole('button'))
+    const link = screen.getByRole('link', { name: 'Go' })
 
     expect(isValidUrlSpy).toHaveBeenCalledWith('https://example.com')
-    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank')
+    expect(link).toHaveAttribute('href', 'https://example.com')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     expect(onSendSpy).not.toHaveBeenCalled()
-
-    openSpy.mockRestore()
   })
 
   it('calls onSend when link is invalid but message exists', async () => {
     isValidUrlSpy.mockReturnValue(false)
     const user = userEvent.setup()
 
-    const node: TestNode = {
-      properties: { dataLink: 'not-a-url', dataMessage: 'hello!' },
-      children: [{ value: 'Send' }],
-    }
+    const node = createButtonNode({ dataLink: 'not-a-url', dataMessage: 'hello!' }, 'Send')
 
     renderWithCtx(node)
     await user.click(screen.getByRole('button'))
@@ -93,7 +85,7 @@ describe('MarkdownButton (integration)', () => {
     isValidUrlSpy.mockReturnValue(false)
     const user = userEvent.setup()
 
-    const node: TestNode = { properties: {}, children: [{ value: 'Empty' }] }
+    const node = createButtonNode({}, 'Empty')
     renderWithCtx(node)
     await user.click(screen.getByRole('button'))
 
@@ -103,10 +95,7 @@ describe('MarkdownButton (integration)', () => {
 
   it('calls onSend when message present and no link', async () => {
     const user = userEvent.setup()
-    const node: TestNode = {
-      properties: { dataMessage: 'msg-only' },
-      children: [{ value: 'Msg' }],
-    }
+    const node = createButtonNode({ dataMessage: 'msg-only' }, 'Msg')
 
     renderWithCtx(node)
     await user.click(screen.getByRole('button'))
@@ -114,15 +103,18 @@ describe('MarkdownButton (integration)', () => {
     expect(onSendSpy).toHaveBeenCalledWith('msg-only')
   })
 
-  it('has displayName set to MarkdownButton', () => {
-    const comp = MarkdownButton as NamedExoticComponent<{ node: unknown }>
-    expect(comp.displayName).toBe('MarkdownButton')
-  })
-
   it('falls back to empty label when first child value is missing', () => {
-    const node: TestNode = { properties: {}, children: [{}] }
+    const node = createButtonNode({})
     renderWithCtx(node)
 
     expect(screen.getByRole('button')).toHaveTextContent('')
+  })
+
+  it('maps the legacy warning variant to a destructive primary button', () => {
+    renderWithCtx(createButtonNode({ dataVariant: 'warning' }, 'Delete'))
+
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass(
+      'bg-components-button-destructive-primary-bg',
+    )
   })
 })

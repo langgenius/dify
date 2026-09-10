@@ -41,9 +41,9 @@ describe('GithubStar', () => {
 
   // Covers the fetched star count shown after a successful request.
   it('should render fetched star count', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      createJsonResponse({ repo: { stars: 123456 } }),
-    )
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(createJsonResponse({ repo: { stars: 123456 } }))
 
     renderWithQueryClient()
 
@@ -53,9 +53,7 @@ describe('GithubStar', () => {
 
   // Covers the fallback star count shown when the request fails.
   it('should render default star count on error', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      createJsonResponse({}, 500),
-    )
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createJsonResponse({}, 500))
 
     renderWithQueryClient()
 

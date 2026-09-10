@@ -8,7 +8,9 @@ import click
 from celery import shared_task
 from sqlalchemy import or_, select
 
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
+from core.model_context import with_credit_usage_created_by
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
@@ -19,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset_summary")
+@with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
 def regenerate_summary_index_task(
     dataset_id: str,
     regenerate_reason: str = "summary_model_changed",
@@ -152,7 +155,7 @@ def regenerate_summary_index_task(
                                 try:
                                     from core.rag.datasource.vdb.vector_factory import Vector
 
-                                    vector = Vector(dataset)
+                                    vector = Vector(dataset, session=session)
                                     vector.delete_by_ids([summary_record.summary_index_node_id])
                                 except Exception as e:
                                     logger.warning(
@@ -162,7 +165,7 @@ def regenerate_summary_index_task(
                                     )
 
                             # Re-vectorize with new embedding model
-                            SummaryIndexService.vectorize_summary(summary_record, segment, dataset)
+                            SummaryIndexService.vectorize_summary(summary_record, segment, dataset, session=session)
                             session.commit()
                             total_segments_processed += 1
 
@@ -259,9 +262,8 @@ def regenerate_summary_index_task(
 
                                 # Regenerate both summary content and vectors (for summary_model change)
                                 SummaryIndexService.generate_and_vectorize_summary(
-                                    segment, dataset, summary_index_setting
+                                    segment, dataset, summary_index_setting, session=session
                                 )
-                                session.commit()
                                 total_segments_processed += 1
 
                             except Exception as e:

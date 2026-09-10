@@ -1,17 +1,5 @@
 import type { StateCreator } from 'zustand'
 
-const getStoredMaximizeCanvas = () => {
-  if (typeof window === 'undefined')
-    return false
-
-  try {
-    return window.localStorage.getItem('workflow-canvas-maximize') === 'true'
-  }
-  catch {
-    return false
-  }
-}
-
 export type LayoutSliceShape = {
   workflowCanvasWidth?: number
   workflowCanvasHeight?: number
@@ -32,39 +20,38 @@ export type LayoutSliceShape = {
   setBottomPanelHeight: (height: number) => void
   variableInspectPanelHeight: number // min-height = 120px; default-height = 320px;
   setVariableInspectPanelHeight: (height: number) => void
-  maximizeCanvas: boolean
-  setMaximizeCanvas: (maximize: boolean) => void
 }
 
-export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
+export const createLayoutSlice: StateCreator<LayoutSliceShape> = (set) => ({
   workflowCanvasWidth: undefined,
   workflowCanvasHeight: undefined,
-  setWorkflowCanvasWidth: width => set(state =>
-    state.workflowCanvasWidth === width ? state : ({ workflowCanvasWidth: width })),
-  setWorkflowCanvasHeight: height => set(state =>
-    state.workflowCanvasHeight === height ? state : ({ workflowCanvasHeight: height })),
+  setWorkflowCanvasWidth: (width) =>
+    set((state) => (state.workflowCanvasWidth === width ? state : { workflowCanvasWidth: width })),
+  setWorkflowCanvasHeight: (height) =>
+    set((state) =>
+      state.workflowCanvasHeight === height ? state : { workflowCanvasHeight: height },
+    ),
   rightPanelWidth: undefined,
-  setRightPanelWidth: width => set(state =>
-    state.rightPanelWidth === width ? state : ({ rightPanelWidth: width })),
+  setRightPanelWidth: (width) =>
+    set((state) => (state.rightPanelWidth === width ? state : { rightPanelWidth: width })),
   nodePanelWidth: 400,
-  setNodePanelWidth: width => set(state =>
-    state.nodePanelWidth === width ? state : ({ nodePanelWidth: width })),
+  setNodePanelWidth: (width) =>
+    set((state) => (state.nodePanelWidth === width ? state : { nodePanelWidth: width })),
   previewPanelWidth: 400,
-  setPreviewPanelWidth: width => set(state =>
-    state.previewPanelWidth === width ? state : ({ previewPanelWidth: width })),
+  setPreviewPanelWidth: (width) =>
+    set((state) => (state.previewPanelWidth === width ? state : { previewPanelWidth: width })),
   otherPanelWidth: 400,
-  setOtherPanelWidth: width => set(state =>
-    state.otherPanelWidth === width ? state : ({ otherPanelWidth: width })),
+  setOtherPanelWidth: (width) =>
+    set((state) => (state.otherPanelWidth === width ? state : { otherPanelWidth: width })),
   bottomPanelWidth: 480,
-  setBottomPanelWidth: width => set(state =>
-    state.bottomPanelWidth === width ? state : ({ bottomPanelWidth: width })),
+  setBottomPanelWidth: (width) =>
+    set((state) => (state.bottomPanelWidth === width ? state : { bottomPanelWidth: width })),
   bottomPanelHeight: 324,
-  setBottomPanelHeight: height => set(state =>
-    state.bottomPanelHeight === height ? state : ({ bottomPanelHeight: height })),
+  setBottomPanelHeight: (height) =>
+    set((state) => (state.bottomPanelHeight === height ? state : { bottomPanelHeight: height })),
   variableInspectPanelHeight: 320,
-  setVariableInspectPanelHeight: height => set(state =>
-    state.variableInspectPanelHeight === height ? state : ({ variableInspectPanelHeight: height })),
-  maximizeCanvas: getStoredMaximizeCanvas(),
-  setMaximizeCanvas: maximize => set(state =>
-    state.maximizeCanvas === maximize ? state : ({ maximizeCanvas: maximize })),
+  setVariableInspectPanelHeight: (height) =>
+    set((state) =>
+      state.variableInspectPanelHeight === height ? state : { variableInspectPanelHeight: height },
+    ),
 })

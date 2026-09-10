@@ -54,11 +54,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
       <div>{props.children}</div>
     </div>
   ),
-  VarItem: (props: {
-    name: string
-    type: string
-    description: string
-  }) => (
+  VarItem: (props: { name: string; type: string; description: string }) => (
     <div data-testid={`var-item-${props.name}`}>
       <span>{props.name}</span>
       <span>{props.type}</span>
@@ -76,7 +72,9 @@ vi.mock('../components/tool-form', () => ({
   }) => {
     mockToolForm(props)
     return (
-      <div data-testid={`tool-form-${props.schema.map(item => item.variable).join('-') || 'empty'}`}>
+      <div
+        data-testid={`tool-form-${props.schema.map((item) => item.variable).join('-') || 'empty'}`}
+      >
         {props.showManageInputField && props.onManageInputField && (
           <button type="button" onClick={props.onManageInputField}>
             Manage Input Field
@@ -87,13 +85,16 @@ vi.mock('../components/tool-form', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show', () => ({
-  __esModule: true,
-  default: (props: { payload: { id: string } }) => {
-    mockStructureOutputItem(props)
-    return <div data-testid="structured-output">{props.payload.id}</div>
-  },
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show',
+  () => ({
+    __esModule: true,
+    default: (props: { payload: { id: string } }) => {
+      mockStructureOutputItem(props)
+      return <div data-testid="structured-output">{props.payload.id}</div>
+    },
+  }),
+)
 
 vi.mock('../../_base/components/split', () => ({
   __esModule: true,
@@ -173,7 +174,7 @@ describe('ToolPanel', () => {
     vi.clearAllMocks()
     mockWorkflowStoreState.pipelineId = undefined
     mockWorkflowStoreState.setShowInputFieldPanel = vi.fn()
-    mockUseStore.mockImplementation(selector => selector(mockWorkflowStoreState))
+    mockUseStore.mockImplementation((selector) => selector(mockWorkflowStoreState))
     mockUseMatchSchemaType.mockReturnValue({
       schemaTypeDefinitions: [{ name: 'structured' }],
     })
@@ -186,9 +187,11 @@ describe('ToolPanel', () => {
 
   describe('Loading State', () => {
     it('should render loading when config data is still loading', () => {
-      mockUseConfig.mockReturnValue(createConfigResult({
-        isLoading: true,
-      }))
+      mockUseConfig.mockReturnValue(
+        createConfigResult({
+          isLoading: true,
+        }),
+      )
 
       renderPanel()
 
@@ -201,15 +204,17 @@ describe('ToolPanel', () => {
   describe('Form Rendering', () => {
     it('should render input and settings forms and forward the manage input field action', () => {
       mockWorkflowStoreState.pipelineId = 'pipeline-1'
-      mockUseConfig.mockReturnValue(createConfigResult({
-        inputs: {
-          tool_parameters: { query: { value: 'weather' } },
-          tool_configurations: {},
-        },
-        toolInputVarSchema: [createSchemaItem('query')],
-        toolSettingSchema: [createSchemaItem('region')],
-        toolSettingValue: { region: 'us' },
-      }))
+      mockUseConfig.mockReturnValue(
+        createConfigResult({
+          inputs: {
+            tool_parameters: { query: { value: 'weather' } },
+            tool_configurations: {},
+          },
+          toolInputVarSchema: [createSchemaItem('query')],
+          toolSettingSchema: [createSchemaItem('region')],
+          toolSettingValue: { region: 'us' },
+        }),
+      )
 
       renderPanel()
 
@@ -220,23 +225,29 @@ describe('ToolPanel', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Manage Input Field' }))
 
       expect(mockToolForm).toHaveBeenCalledTimes(2)
-      expect(mockToolForm.mock.calls[0]![0]).toEqual(expect.objectContaining({
-        nodeId: 'tool-node-1',
-        showManageInputField: true,
-      }))
-      expect(mockToolForm.mock.calls[1]![0]).toEqual(expect.objectContaining({
-        nodeId: 'tool-node-1',
-      }))
+      expect(mockToolForm.mock.calls[0]![0]).toEqual(
+        expect.objectContaining({
+          nodeId: 'tool-node-1',
+          showManageInputField: true,
+        }),
+      )
+      expect(mockToolForm.mock.calls[1]![0]).toEqual(
+        expect.objectContaining({
+          nodeId: 'tool-node-1',
+        }),
+      )
       expect(mockToolForm.mock.calls[1]![0]).not.toHaveProperty('showManageInputField')
       expect(mockWorkflowStoreState.setShowInputFieldPanel).toHaveBeenCalledWith(true)
     })
 
     it('should hide editable forms when the auth button is shown but keep output variables visible', () => {
-      mockUseConfig.mockReturnValue(createConfigResult({
-        isShowAuthBtn: true,
-        toolInputVarSchema: [createSchemaItem('query')],
-        toolSettingSchema: [createSchemaItem('region')],
-      }))
+      mockUseConfig.mockReturnValue(
+        createConfigResult({
+          isShowAuthBtn: true,
+          toolInputVarSchema: [createSchemaItem('query')],
+          toolSettingSchema: [createSchemaItem('region')],
+        }),
+      )
 
       renderPanel()
 
@@ -254,50 +265,61 @@ describe('ToolPanel', () => {
       mockGetMatchedSchemaType.mockImplementation((value: { type?: string }) => {
         return value?.type === 'string' ? 'qa_structured' : 'object_structured'
       })
-      mockUseConfig.mockReturnValue(createConfigResult({
-        hasObjectOutput: true,
-        outputSchema: [
-          {
-            name: 'summary',
-            type: 'String',
-            description: 'Summary field',
-            value: { type: 'string' },
-          },
-          {
-            name: 'details',
-            type: 'Object',
-            description: 'Details field',
-            value: { type: 'object', properties: {} },
-          },
-        ],
-      }))
+      mockUseConfig.mockReturnValue(
+        createConfigResult({
+          hasObjectOutput: true,
+          outputSchema: [
+            {
+              name: 'summary',
+              type: 'String',
+              description: 'Summary field',
+              value: { type: 'string' },
+            },
+            {
+              name: 'details',
+              type: 'Object',
+              description: 'Details field',
+              value: { type: 'object', properties: {} },
+            },
+          ],
+        }),
+      )
 
       renderPanel()
 
       expect(screen.getByText('summary'))!.toBeInTheDocument()
       expect(screen.getByText('string (qa_structured)'))!.toBeInTheDocument()
       expect(screen.getByText('Summary field'))!.toBeInTheDocument()
-      expect(screen.getByTestId('structured-output'))!.toHaveTextContent('details-object_structured')
-      expect(mockWrapStructuredVarItem).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'details',
-      }), 'object_structured')
-      expect(mockStructureOutputItem).toHaveBeenCalledWith(expect.objectContaining({
-        payload: { id: 'details-object_structured' },
-      }))
+      expect(screen.getByTestId('structured-output'))!.toHaveTextContent(
+        'details-object_structured',
+      )
+      expect(mockWrapStructuredVarItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'details',
+        }),
+        'object_structured',
+      )
+      expect(mockStructureOutputItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: { id: 'details-object_structured' },
+        }),
+      )
     })
 
     it('should render scalar outputs without a schema suffix when no schema type matches', () => {
       mockGetMatchedSchemaType.mockReturnValue('')
-      mockUseConfig.mockReturnValue(createConfigResult({
-        outputSchema: [
-          {
-            name: 'summary',
-            type: 'String',
-            description: 'Summary field',
-            value: { type: 'string' },
-          },
-        ],
-      }))
+      mockUseConfig.mockReturnValue(
+        createConfigResult({
+          outputSchema: [
+            {
+              name: 'summary',
+              type: 'String',
+              description: 'Summary field',
+              value: { type: 'string' },
+            },
+          ],
+        }),
+      )
 
       renderPanel()
 

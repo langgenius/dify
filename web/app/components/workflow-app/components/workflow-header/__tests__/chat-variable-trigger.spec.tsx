@@ -4,17 +4,17 @@ import ChatVariableTrigger from '../chat-variable-trigger'
 const mockUseNodesReadOnly = vi.fn()
 const mockUseIsChatMode = vi.fn()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnly: () => mockUseNodesReadOnly(),
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 
 vi.mock('@/app/components/workflow/header/chat-variable-button', () => ({
   default: ({ disabled }: { disabled: boolean }) => (
-    <button data-testid="chat-variable-button" type="button" disabled={disabled}>
+    <button type="button" disabled={disabled}>
       ChatVariableButton
     </button>
   ),

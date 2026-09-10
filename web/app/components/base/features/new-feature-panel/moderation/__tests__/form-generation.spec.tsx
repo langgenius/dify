@@ -91,13 +91,7 @@ describe('FormGeneration', () => {
 
   it('should display existing values', () => {
     const form = createForm()
-    render(
-      <FormGeneration
-        forms={[form]}
-        value={{ api_key: 'existing-key' }}
-        onChange={vi.fn()}
-      />,
-    )
+    render(<FormGeneration forms={[form]} value={{ api_key: 'existing-key' }} onChange={vi.fn()} />)
 
     expect(screen.getByDisplayValue('existing-key')).toBeInTheDocument()
   })

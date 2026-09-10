@@ -1,8 +1,6 @@
 import type { LLMNodeType } from '../types'
 import { render, screen } from '@testing-library/react'
-import {
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import Node from '../node'
@@ -12,9 +10,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
-    <div>{defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'no-model'}</div>
+  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
+    <div>{value ? `${value.provider}:${value.model}` : 'no-model'}</div>
   ),
 }))
 
@@ -49,13 +46,8 @@ describe('llm/node', () => {
     } as unknown as ReturnType<typeof useTextGenerationCurrentProviderAndModelAndModelList>)
   })
 
-  it('renders the readonly model selector when a model is configured', () => {
-    render(
-      <Node
-        id="llm-node"
-        data={createData()}
-      />,
-    )
+  it('renders the disabled model selector when a model is configured', () => {
+    render(<Node id="llm-node" data={createData()} />)
 
     expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()
   })
@@ -76,5 +68,21 @@ describe('llm/node', () => {
     )
 
     expect(screen.queryByText('openai:gpt-4o')).not.toBeInTheDocument()
+  })
+
+  it('renders a cached environment model without requiring workflow context', () => {
+    const data = createData({
+      model: {
+        provider: 'anthropic',
+        name: 'claude-sonnet',
+        mode: AppModeEnum.CHAT,
+        completion_params: {},
+      },
+      model_selector: ['env', 'for_summarize'],
+    })
+
+    render(<Node id="llm-node" data={data} />)
+
+    expect(screen.getByText('anthropic:claude-sonnet')).toBeInTheDocument()
   })
 })

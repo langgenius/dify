@@ -29,6 +29,7 @@ class TestCompletionAppConfigManager:
             app_model=app_model,
             app_model_config=app_model_config,
             override_config_dict=override_config,
+            annotation_reply=None,
         )
 
         assert result.app_model_config_from == EasyUIBasedAppModelConfigFrom.ARGS
@@ -41,6 +42,7 @@ class TestCompletionAppConfigManager:
         app_model = MagicMock(tenant_id="tenant", id="app1", mode=AppMode.COMPLETION)
         app_model_config = MagicMock(id="cfg1")
         app_model_config.to_dict.return_value = {"model": {"provider": "x"}}
+        annotation_reply = {"enabled": False}
 
         mocker.patch.object(module.ModelConfigManager, "convert", return_value="model")
         mocker.patch.object(module.PromptTemplateConfigManager, "convert", return_value="prompt")
@@ -50,10 +52,15 @@ class TestCompletionAppConfigManager:
         mocker.patch.object(module.BasicVariablesConfigManager, "convert", return_value=([], []))
         mocker.patch.object(module, "CompletionAppConfig", side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
 
-        result = CompletionAppConfigManager.get_app_config(app_model=app_model, app_model_config=app_model_config)
+        result = CompletionAppConfigManager.get_app_config(
+            app_model=app_model,
+            app_model_config=app_model_config,
+            annotation_reply=annotation_reply,
+        )
 
         assert result.app_model_config_from == EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
         assert result.app_model_config_dict == {"model": {"provider": "x"}}
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
     def test_config_validate_filters_related_keys(self, mocker: MockerFixture):
         config = {
@@ -109,7 +116,7 @@ class TestCompletionAppConfigManager:
             return_value=(config, ["moderation"]),
         )
 
-        filtered = CompletionAppConfigManager.config_validate("tenant", config)
+        filtered = CompletionAppConfigManager.config_validate("tenant", config, MagicMock())
 
         assert "extra" not in filtered
         assert set(filtered.keys()) == {

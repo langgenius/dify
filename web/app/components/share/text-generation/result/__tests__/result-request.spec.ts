@@ -1,10 +1,11 @@
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { Resolution, TransferMethod } from '@/types/app'
 import { buildResultRequestData, validateResultRequest } from '../result-request'
 
-const createTranslator = () => vi.fn((key: string) => key)
+const createTranslator = () => withSelectorKey(vi.fn((key: string) => key))
 
 const createFileEntity = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   id: 'file-1',
@@ -76,9 +77,7 @@ describe('result-request', () => {
       isCallBatchAPI: false,
       promptConfig: {
         prompt_template: 'template',
-        prompt_variables: [
-          { key: 'count', name: 'Count', type: 'number', required: true },
-        ],
+        prompt_variables: [{ key: 'count', name: 'Count', type: 'number', required: true }],
       },
       t: createTranslator(),
     })
@@ -95,9 +94,7 @@ describe('result-request', () => {
       isCallBatchAPI: false,
       promptConfig: {
         prompt_template: 'template',
-        prompt_variables: [
-          { key: 'name', name: 'Name', type: 'string', required: true },
-        ],
+        prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
       },
       t: createTranslator(),
     })
@@ -120,9 +117,7 @@ describe('result-request', () => {
       isCallBatchAPI: false,
       promptConfig: {
         prompt_template: 'template',
-        prompt_variables: [
-          { key: 'files', name: 'Files', type: 'file-list', required: true },
-        ],
+        prompt_variables: [{ key: 'files', name: 'Files', type: 'file-list', required: true }],
       },
       t: createTranslator(),
     })
@@ -145,9 +140,7 @@ describe('result-request', () => {
       isCallBatchAPI: false,
       promptConfig: {
         prompt_template: 'template',
-        prompt_variables: [
-          { key: 'file', name: 'File', type: 'file', required: true },
-        ],
+        prompt_variables: [{ key: 'file', name: 'File', type: 'file', required: true }],
       },
       t: createTranslator(),
     })
@@ -159,9 +152,7 @@ describe('result-request', () => {
     const t = createTranslator()
 
     const result = validateResultRequest({
-      completionFiles: [
-        createVisionFile({ upload_file_id: '' }),
-      ],
+      completionFiles: [createVisionFile({ upload_file_id: '' })],
       inputs: {
         name: 'Alice',
       },
@@ -183,9 +174,7 @@ describe('result-request', () => {
     const t = createTranslator()
 
     const blocked = validateResultRequest({
-      completionFiles: [
-        createVisionFile({ upload_file_id: '' }),
-      ],
+      completionFiles: [createVisionFile({ upload_file_id: '' })],
       inputs: {},
       isCallBatchAPI: false,
       promptConfig: null,
@@ -212,9 +201,7 @@ describe('result-request', () => {
 
   it('should skip validation in batch mode', () => {
     const result = validateResultRequest({
-      completionFiles: [
-        createVisionFile({ upload_file_id: '' }),
-      ],
+      completionFiles: [createVisionFile({ upload_file_id: '' })],
       inputs: {},
       isCallBatchAPI: true,
       promptConfig,

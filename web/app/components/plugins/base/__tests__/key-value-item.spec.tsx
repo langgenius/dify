@@ -1,19 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import KeyValueItem from '../key-value-item'
 
 vi.mock('../../../base/icons/src/vender/line/files', () => ({
-  CopyCheck: () => <span data-testid="copy-check-icon" />,
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({
-    children,
-    onClick,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button data-testid="action-button" onClick={onClick} {...props}>{children}</button>
-  ),
+  CopyCheck: () => <span />,
 }))
 
 const mockCopy = vi.fn()
@@ -44,14 +35,20 @@ describe('KeyValueItem', () => {
     expect(screen.queryByText('sk-secret')).not.toBeInTheDocument()
   })
 
-  it('copies actual value (not masked) when copy button is clicked', () => {
+  it('associates the label with the copy action and announces the result', async () => {
+    vi.useRealTimers()
+    const user = userEvent.setup()
     render(<KeyValueItem label="Key" value="sk-secret" maskedValue="sk-***" />)
-    fireEvent.click(screen.getByTestId('action-button'))
-    expect(mockCopy).toHaveBeenCalledWith('sk-secret')
-  })
 
-  it('renders copy tooltip', () => {
-    render(<KeyValueItem label="ID" value="123" />)
-    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
+    const keyGroup = screen.getByRole('group', { name: 'Key' })
+    const copyButton = within(keyGroup).getByRole('button', {
+      name: 'common.operation.copy: Key',
+    })
+
+    await user.click(copyButton)
+
+    expect(mockCopy).toHaveBeenCalledWith('sk-secret')
+    expect(copyButton).toHaveAccessibleName('common.operation.copy: Key')
+    expect(within(keyGroup).getByRole('status')).toHaveTextContent('common.operation.copied: Key')
   })
 })

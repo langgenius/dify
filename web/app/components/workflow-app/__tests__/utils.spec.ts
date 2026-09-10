@@ -1,18 +1,16 @@
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
-import {
-  buildInitialFeatures,
-  buildTriggerStatusMap,
-  coerceReplayUserInputs,
-} from '../utils'
+import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } from '../utils'
 
 describe('workflow-app utils', () => {
   it('should map trigger statuses to enabled and disabled states', () => {
-    expect(buildTriggerStatusMap([
-      { node_id: 'node-1', status: 'enabled' },
-      { node_id: 'node-2', status: 'disabled' },
-      { node_id: 'node-3', status: 'paused' },
-    ])).toEqual({
+    expect(
+      buildTriggerStatusMap([
+        { node_id: 'node-1', status: 'enabled' },
+        { node_id: 'node-2', status: 'disabled' },
+        { node_id: 'node-3', status: 'paused' },
+      ]),
+    ).toEqual({
       'node-1': 'enabled',
       'node-2': 'disabled',
       'node-3': 'disabled',
@@ -20,14 +18,16 @@ describe('workflow-app utils', () => {
   })
 
   it('should coerce replay run inputs, omit sys keys, and stringify complex values', () => {
-    expect(coerceReplayUserInputs({
-      'sys.query': 'hidden',
-      'query': 'hello',
-      'count': 3,
-      'enabled': true,
-      'nullable': null,
-      'metadata': { nested: true },
-    })).toEqual({
+    expect(
+      coerceReplayUserInputs({
+        'sys.query': 'hidden',
+        query: 'hello',
+        count: 3,
+        enabled: true,
+        nullable: null,
+        metadata: { nested: true },
+      }),
+    ).toEqual({
       query: 'hello',
       count: 3,
       enabled: true,
@@ -39,27 +39,30 @@ describe('workflow-app utils', () => {
   })
 
   it('should build initial features with file-upload and feature fallbacks', () => {
-    const result = buildInitialFeatures({
-      file_upload: {
-        enabled: true,
-        allowed_file_types: [SupportUploadFileTypes.image],
-        allowed_file_extensions: ['.png'],
-        allowed_file_upload_methods: [TransferMethod.local_file],
-        number_limits: 2,
-        image: {
+    const result = buildInitialFeatures(
+      {
+        file_upload: {
           enabled: true,
-          number_limits: 5,
-          transfer_methods: [TransferMethod.remote_url],
+          allowed_file_types: [SupportUploadFileTypes.image],
+          allowed_file_extensions: ['.png'],
+          allowed_file_upload_methods: [TransferMethod.local_file],
+          number_limits: 2,
+          image: {
+            enabled: true,
+            number_limits: 5,
+            transfer_methods: [TransferMethod.remote_url],
+          },
         },
+        opening_statement: 'hello',
+        suggested_questions: ['Q1'],
+        suggested_questions_after_answer: { enabled: true },
+        speech_to_text: { enabled: true },
+        text_to_speech: { enabled: true },
+        retriever_resource: { enabled: true },
+        sensitive_word_avoidance: { enabled: true },
       },
-      opening_statement: 'hello',
-      suggested_questions: ['Q1'],
-      suggested_questions_after_answer: { enabled: true },
-      speech_to_text: { enabled: true },
-      text_to_speech: { enabled: true },
-      retriever_resource: { enabled: true },
-      sensitive_word_avoidance: { enabled: true },
-    }, { enabled: true } as never)
+      { enabled: true } as never,
+    )
 
     expect(result).toMatchObject({
       file: {

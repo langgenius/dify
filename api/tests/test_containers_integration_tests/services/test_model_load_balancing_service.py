@@ -339,7 +339,11 @@ class TestModelLoadBalancingService:
         # Act: Execute the method under test
         service = ModelLoadBalancingService()
         is_enabled, configs = service.get_load_balancing_configs(
-            tenant_id=tenant.id, provider="openai", model="gpt-3.5-turbo", model_type="llm"
+            tenant_id=tenant.id,
+            provider="openai",
+            model="gpt-3.5-turbo",
+            model_type="llm",
+            session=db_session_with_containers,
         )
 
         # Assert: Verify the expected outcomes
@@ -381,7 +385,11 @@ class TestModelLoadBalancingService:
         service = ModelLoadBalancingService()
         with pytest.raises(ValueError) as exc_info:
             service.get_load_balancing_configs(
-                tenant_id=tenant.id, provider="nonexistent_provider", model="gpt-3.5-turbo", model_type="llm"
+                tenant_id=tenant.id,
+                provider="nonexistent_provider",
+                model="gpt-3.5-turbo",
+                model_type="llm",
+                session=db_session_with_containers,
             )
 
         # Verify correct error message
@@ -443,7 +451,11 @@ class TestModelLoadBalancingService:
         # Act: Execute the method under test
         service = ModelLoadBalancingService()
         is_enabled, configs = service.get_load_balancing_configs(
-            tenant_id=tenant.id, provider="openai", model="gpt-3.5-turbo", model_type="llm"
+            tenant_id=tenant.id,
+            provider="openai",
+            model="gpt-3.5-turbo",
+            model_type="llm",
+            session=db_session_with_containers,
         )
 
         # Assert: Verify the expected outcomes

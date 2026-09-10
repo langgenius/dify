@@ -1,20 +1,15 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import type { DataSourceAuth } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
-import type { AddApiKeyButtonProps, AddOAuthButtonProps, PluginPayload } from '@/app/components/plugins/plugin-auth/types'
+import type {
+  AddApiKeyButtonProps,
+  AddOAuthButtonProps,
+  PluginPayload,
+} from '@/app/components/plugins/plugin-auth/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import Configure from '../configure'
-
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { children?: ReactNode }) => (
-    <button {...props}>
-      {children}
-    </button>
-  ),
-}))
 
 /**
  * Configure Component Tests
@@ -23,12 +18,41 @@ vi.mock('@langgenius/dify-ui/button', () => ({
 
 // Mock plugin auth components to isolate the unit test for Configure.
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  AddApiKeyButton: vi.fn(({ onUpdate, disabled, buttonText }: AddApiKeyButtonProps & { onUpdate: () => void }) => (
-    <button data-testid="add-api-key" onClick={onUpdate} disabled={disabled}>{buttonText}</button>
-  )),
-  AddOAuthButton: vi.fn(({ onUpdate, disabled, buttonText }: AddOAuthButtonProps & { onUpdate: () => void }) => (
-    <button data-testid="add-oauth" onClick={onUpdate} disabled={disabled}>{buttonText}</button>
-  )),
+  AddApiKeyButton: vi.fn(
+    ({ onUpdate, disabled, buttonText }: AddApiKeyButtonProps & { onUpdate: () => void }) => (
+      <button data-testid="add-api-key" onClick={onUpdate} disabled={disabled}>
+        {buttonText}
+      </button>
+    ),
+  ),
+  AddOAuthButton: vi.fn(
+    ({ onUpdate, disabled, buttonText, renderTrigger }: AddOAuthButtonProps) => {
+      const [permissionOpen, setPermissionOpen] = React.useState(false)
+      const handleSaveAndAuthorize = () => {
+        onUpdate?.()
+        setPermissionOpen(true)
+      }
+      const trigger = (
+        <button data-testid="add-oauth" onClick={handleSaveAndAuthorize} disabled={disabled}>
+          {buttonText}
+        </button>
+      )
+
+      return (
+        <>
+          {renderTrigger
+            ? renderTrigger({
+                disabled,
+                isConfigured: false,
+                onClick: handleSaveAndAuthorize,
+                trigger,
+              })
+            : trigger}
+          {permissionOpen && <div role="dialog" aria-label="Who can use" />}
+        </>
+      )
+    },
+  ),
 }))
 
 describe('Configure Component', () => {
@@ -144,13 +168,42 @@ describe('Configure Component', () => {
   })
 
   describe('Update Handling', () => {
+    it('should keep the permission dialog mounted after the OAuth menu closes', () => {
+      const itemWithOAuth: DataSourceAuth = {
+        ...mockItemBase,
+        oauth_schema: {
+          client_schema: [mockFormSchema],
+        },
+      }
+      render(
+        <Configure
+          item={itemWithOAuth}
+          pluginPayload={mockPluginPayload}
+          onUpdate={mockOnUpdate}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      fireEvent.click(screen.getByTestId('add-oauth'))
+
+      expect(mockOnUpdate).toHaveBeenCalledOnce()
+      expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Who can use' })).toBeInTheDocument()
+    })
+
     it('should call onUpdate and close the portal when an update is triggered', () => {
       // Arrange
       const itemWithApiKey: DataSourceAuth = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
       }
-      render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} onUpdate={mockOnUpdate} />)
+      render(
+        <Configure
+          item={itemWithApiKey}
+          pluginPayload={mockPluginPayload}
+          onUpdate={mockOnUpdate}
+        />,
+      )
 
       // Act: Open and click update
       fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
@@ -205,7 +258,9 @@ describe('Configure Component', () => {
 
     it('should handle edge cases for missing, empty, or partial item data', () => {
       // Act & Assert (Missing schemas)
-      const { rerender } = render(<Configure item={mockItemBase} pluginPayload={mockPluginPayload} />)
+      const { rerender } = render(
+        <Configure item={mockItemBase} pluginPayload={mockPluginPayload} />,
+      )
       fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
       expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
       expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
@@ -244,8 +299,7 @@ describe('Configure Component', () => {
         oauth_schema: {
           get client_schema() {
             count++
-            if (count % 2 !== 0)
-              return [mockFormSchema]
+            if (count % 2 !== 0) return [mockFormSchema]
             return undefined
           },
           is_oauth_custom_client_enabled: false,

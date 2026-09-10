@@ -3,6 +3,8 @@ import time
 import uuid
 from unittest.mock import MagicMock
 
+import pytest
+
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.model_manager import ModelInstance
 from core.workflow.node_runtime import DifyPromptMessageSerializer
@@ -83,11 +85,11 @@ def init_parameter_extractor_node(config: dict, memory=None):
     return node
 
 
-def _mock_db_session_close(monkeypatch) -> None:
+def _mock_db_session_close(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(db.session, "close", MagicMock())
 
 
-def test_function_calling_parameter_extractor(setup_model_mock, monkeypatch):
+def test_function_calling_parameter_extractor(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
     """
     Test function calling for parameter extractor.
     """
@@ -128,7 +130,7 @@ def test_function_calling_parameter_extractor(setup_model_mock, monkeypatch):
     assert result.outputs.get("__reason") == None
 
 
-def test_instructions(setup_model_mock, monkeypatch):
+def test_instructions(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
     """
     Test chat parameter extractor.
     """
@@ -178,7 +180,7 @@ def test_instructions(setup_model_mock, monkeypatch):
             assert "what's the weather in SF" in prompt.get("text")
 
 
-def test_chat_parameter_extractor(setup_model_mock, monkeypatch):
+def test_chat_parameter_extractor(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
     """
     Test chat parameter extractor.
     """
@@ -229,7 +231,7 @@ def test_chat_parameter_extractor(setup_model_mock, monkeypatch):
                 assert '<structure>\n{"type": "object"' in prompt.get("text")
 
 
-def test_completion_parameter_extractor(setup_model_mock, monkeypatch):
+def test_completion_parameter_extractor(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
     """
     Test completion parameter extractor.
     """
@@ -354,7 +356,7 @@ def test_extract_json_from_tool_call():
     assert result["location"] == "kawaii"
 
 
-def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch):
+def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch: pytest.MonkeyPatch):
     """
     Test chat parameter extractor with memory.
     """

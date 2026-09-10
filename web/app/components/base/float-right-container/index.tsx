@@ -43,14 +43,18 @@ const FloatRightContainer = ({
           modal
           swipeDirection="right"
           onOpenChange={(open) => {
-            if (!open)
-              onClose()
+            if (!open) onClose()
           }}
         >
           <DrawerPortal>
             <DrawerBackdrop className={cn(!mask && 'bg-transparent')} />
             <DrawerViewport>
-              <DrawerPopup className={cn('data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm', panelClassName)}>
+              <DrawerPopup
+                className={cn(
+                  'data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm',
+                  panelClassName,
+                )}
+              >
                 <DrawerContent className="flex min-h-0 flex-1 flex-col">
                   {(title || showClose) && (
                     <div className="mb-4 flex shrink-0 items-center justify-between">
@@ -61,7 +65,7 @@ const FloatRightContainer = ({
                       )}
                       {showClose && (
                         <DrawerCloseButton
-                          aria-label={t('operation.close', { ns: 'common' })}
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                           className="size-6 rounded-md"
                         />
                       )}
@@ -74,9 +78,7 @@ const FloatRightContainer = ({
           </DrawerPortal>
         </Drawer>
       )}
-      {(!isMobile && isOpen) && (
-        <>{children}</>
-      )}
+      {!isMobile && isOpen && <>{children}</>}
     </>
   )
 }

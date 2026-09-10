@@ -10,8 +10,7 @@ const ANSI_RESET = '\x1B[0m'
 export type SpinnerStyle = 'dify' | 'dify-dim'
 
 function colorize(s: string, style: SpinnerStyle, truecolor: boolean): string {
-  if (style === 'dify-dim')
-    return `${DIM}${s}${ANSI_RESET}`
+  if (style === 'dify-dim') return `${DIM}${s}${ANSI_RESET}`
   return `${truecolor ? DIFY_BLUE_RGB : DIFY_BLUE_256}${s}${ANSI_RESET}`
 }
 
@@ -34,7 +33,7 @@ export type SpinnerOptions = {
 const DEFAULT_MIN_DISPLAY_MS = 600
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export type ActiveSpinner = { stop: () => void }
@@ -45,7 +44,7 @@ function buildOraSpinner(opts: SpinnerOptions) {
   const env = opts.env ?? process.env
   const truecolor = detectTruecolor(env)
   const style = opts.style ?? 'dify'
-  const frames = DIFY_FRAMES.map(f => colorize(f, style, truecolor))
+  const frames = DIFY_FRAMES.map((f) => colorize(f, style, truecolor))
   return oraImport({
     text: opts.label,
     stream: opts.io.err as NodeJS.WriteStream,
@@ -60,8 +59,7 @@ function isActive(opts: SpinnerOptions): boolean {
 }
 
 export function startSpinner(opts: SpinnerOptions): ActiveSpinner {
-  if (!isActive(opts))
-    return NOOP_SPINNER
+  if (!isActive(opts)) return NOOP_SPINNER
   const ora = buildOraSpinner(opts).start()
   let stopped = false
   return {
@@ -74,12 +72,8 @@ export function startSpinner(opts: SpinnerOptions): ActiveSpinner {
   }
 }
 
-export async function runWithSpinner<T>(
-  opts: SpinnerOptions,
-  fn: () => Promise<T>,
-): Promise<T> {
-  if (!isActive(opts))
-    return fn()
+export async function runWithSpinner<T>(opts: SpinnerOptions, fn: () => Promise<T>): Promise<T> {
+  if (!isActive(opts)) return fn()
 
   const minMs = opts.minDisplayMs ?? DEFAULT_MIN_DISPLAY_MS
   const start = Date.now()
@@ -87,8 +81,7 @@ export async function runWithSpinner<T>(
 
   const enforceMin = async () => {
     const remaining = minMs - (Date.now() - start)
-    if (remaining > 0)
-      await sleep(remaining)
+    if (remaining > 0) await sleep(remaining)
   }
 
   try {
@@ -96,8 +89,7 @@ export async function runWithSpinner<T>(
     await enforceMin()
     spinner.succeed(opts.label)
     return result
-  }
-  catch (err) {
+  } catch (err) {
     await enforceMin()
     spinner.fail(opts.label)
     throw err

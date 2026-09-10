@@ -57,14 +57,14 @@ vi.mock('../../hooks/use-nodes-interactions', () => ({
   }),
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodeSelect: mockHandleNodeSelect,
   }),
-  useToolIcon: () => '',
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-tool-icon', () => ({
+vi.mock('../../hooks/use-tool-icon', () => ({
+  useToolIcon: () => '',
   useGetToolIcon: () => () => '',
 }))
 
@@ -97,7 +97,9 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-const createEnvironmentVariable = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
+const createEnvironmentVariable = (
+  overrides: Partial<EnvironmentVariable> = {},
+): EnvironmentVariable => ({
   id: 'env-1',
   name: 'API_KEY',
   value: 'env-value',
@@ -107,18 +109,15 @@ const createEnvironmentVariable = (overrides: Partial<EnvironmentVariable> = {})
 })
 
 const renderPanel = (initialStoreState: Record<string, unknown> = {}) => {
-  return renderWorkflowFlowComponent(
-    <Panel />,
-    {
+  return renderWorkflowFlowComponent(<Panel />, {
+    nodes: [],
+    edges: [],
+    initialStoreState,
+    historyStore: {
       nodes: [],
       edges: [],
-      initialStoreState,
-      historyStore: {
-        nodes: [],
-        edges: [],
-      },
     },
-  )
+  })
 }
 
 describe('VariableInspect Panel', () => {
@@ -132,17 +131,23 @@ describe('VariableInspect Panel', () => {
   })
 
   it('should render the listening state and stop the workflow on demand', () => {
-    renderPanel({
+    const { store } = renderPanel({
       isListening: true,
       listeningTriggerType: BlockEnum.TriggerWebhook,
+      showVariableInspectPanel: true,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.listening.stopButton' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.listening.stopButton' }),
+    )
 
     expect(screen.getByText('workflow.debug.variableInspect.listening.title'))!.toBeInTheDocument()
     expect(mockEmit).toHaveBeenCalledWith({
       type: EVENT_WORKFLOW_STOP,
     })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(store.getState().showVariableInspectPanel).toBe(false)
   })
 
   it('should render the empty state and close the panel from the header action', () => {
@@ -150,7 +155,7 @@ describe('VariableInspect Panel', () => {
       showVariableInspectPanel: true,
     })
 
-    fireEvent.click(screen.getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(screen.getByText('workflow.debug.variableInspect.emptyTip'))!.toBeInTheDocument()
     expect(store.getState().showVariableInspectPanel).toBe(false)

@@ -13,7 +13,8 @@ import { formatErrorForCli } from '@/errors/format'
 import { createHttpClient } from '@/http/client'
 import { getTokenStore } from '@/store/manager'
 import { realStreams } from '@/sys/io/streams'
-import { hostWithScheme, openAPIBase } from '@/util/host'
+import { activeHostInfo, openAPIBase } from '@/util/host'
+import { enforceDifyVersion } from '@/version/enforce'
 import { versionInfo } from '@/version/info'
 import { maybeNudgeCompat } from '@/version/nudge'
 import { resolveRetryAttempts } from './global-flags.js'
@@ -39,36 +40,41 @@ export async function buildAuthedContext(
   opts: AuthedContextOptions,
 ): Promise<AuthedContext> {
   const io = realStreams(opts.format ?? '')
-  const reg = Registry.load()
+  const reg = await Registry.load()
   const active = reg.resolveActive()
-  if (active === undefined)
-    fail(cmd, opts, io)
+  if (active === undefined) fail(cmd, opts, io)
 
   const store = getTokenStore(reg.token_storage)
-  const bearer = store.read(active.host, active.email)
-  if (bearer === '')
-    fail(cmd, opts, io)
+  const bearer = await store.read(active.host, active.email)
+  if (bearer === '') fail(cmd, opts, io)
 
-  const host = hostWithScheme(active.host, active.scheme)
+  const { host, insecure } = activeHostInfo(active)
   const retryAttempts = resolveRetryAttempts({ flag: opts.retryFlag, env: getEnv })
-  const http = createHttpClient({ baseURL: openAPIBase(host), bearer, retryAttempts })
+  const http = createHttpClient({ baseURL: openAPIBase(host), bearer, retryAttempts, insecure })
 
   const cache = opts.withCache === true ? await loadAppInfoCache() : undefined
 
-  await runCompatNudge({ host, io })
+  // Hard gate: refuse a server too old for this difyctl (throws → exit 6).
+  // Cached per host (1h) so most commands don't re-probe. Then the soft nudge
+  // handles the "server too new" direction.
+  await enforceDifyVersion(host, { insecure })
+  await runCompatNudge({ host, insecure, io })
 
   return { reg, active, store, http, host, io, cache }
 }
 
 function fail(cmd: Pick<Command, 'error'>, opts: AuthedContextOptions, io: IOStreams): never {
   const err = notLoggedInError()
-  cmd.error(formatErrorForCli(err, { format: opts.format, isErrTTY: io.isErrTTY }), { exit: err.exit() })
+  cmd.error(formatErrorForCli(err, { format: opts.format, isErrTTY: io.isErrTTY }), {
+    exit: err.exit(),
+  })
 }
 
 // Best-effort nudge: never throws, never blocks. Lives here so every authed
 // command flows through it without per-command wiring.
 async function runCompatNudge(opts: {
   readonly host: string
+  readonly insecure: boolean
   readonly io: IOStreams
 }): Promise<void> {
   try {
@@ -76,17 +82,21 @@ async function runCompatNudge(opts: {
     await maybeNudgeCompat(opts.host, {
       store,
       probe: async (host) => {
-        const http = createHttpClient({ baseURL: openAPIBase(host), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
+        const http = createHttpClient({
+          baseURL: openAPIBase(host),
+          timeoutMs: META_PROBE_TIMEOUT_MS,
+          retryAttempts: 0,
+          insecure: opts.insecure,
+        })
         return new MetaClient(http).serverVersion()
       },
-      emit: line => opts.io.err.write(line),
+      emit: (line) => opts.io.err.write(line),
       isTty: opts.io.isOutTTY,
       format: opts.io.outputFormat,
       clientVersion: versionInfo.version,
       color: opts.io.isErrTTY,
     })
-  }
-  catch {
+  } catch {
     // already swallowed inside maybeNudgeCompat; this is belt-and-braces
   }
 }

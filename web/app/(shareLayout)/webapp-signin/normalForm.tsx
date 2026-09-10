@@ -1,4 +1,5 @@
 'use client'
+import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -6,9 +7,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { IS_CE_EDITION } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -19,40 +18,48 @@ const NormalForm = () => {
 
   const [isLoading, setIsLoading] = useState(true)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isNonCloudEdition =
+    systemFeatures.deployment_edition === 'COMMUNITY' ||
+    systemFeatures.deployment_edition === 'ENTERPRISE'
+  const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
+  const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
 
   const init = useCallback(async () => {
     try {
-      setAllMethodsAreDisabled(!systemFeatures.enable_social_oauth_login && !systemFeatures.enable_email_code_login && !systemFeatures.enable_email_password_login && !systemFeatures.sso_enforced_for_signin)
-      setShowORLine((systemFeatures.enable_social_oauth_login || systemFeatures.sso_enforced_for_signin) && (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login))
+      setAllMethodsAreDisabled(
+        !systemFeatures.enable_social_oauth_login &&
+          !systemFeatures.enable_email_code_login &&
+          !systemFeatures.enable_email_password_login &&
+          !hasSsoLogin,
+      )
+      setShowORLine(
+        (systemFeatures.enable_social_oauth_login || hasSsoLogin) &&
+          (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login),
+      )
       updateAuthType(systemFeatures.enable_email_password_login ? 'password' : 'code')
-    }
-    catch (error) {
+    } catch (error) {
       console.error(error)
       setAllMethodsAreDisabled(true)
+    } finally {
+      setIsLoading(false)
     }
-    finally { setIsLoading(false) }
-  }, [systemFeatures])
+  }, [hasSsoLogin, systemFeatures])
   useEffect(() => {
     init()
   }, [init])
   if (isLoading) {
     return (
-      <div className={
-        cn(
-          'flex w-full grow flex-col items-center justify-center',
-          'px-6',
-          'md:px-[108px]',
-        )
-      }
+      <div
+        className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
       >
         <Loading type="area" />
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.LOST) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.lost) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
@@ -61,14 +68,18 @@ const NormalForm = () => {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('licenseLost', { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">
+              {t(($) => $.licenseLost, { ns: 'login' })}
+            </p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t(($) => $.licenseLostTip, { ns: 'login' })}
+            </p>
           </div>
         </div>
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.EXPIRED) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.expired) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
@@ -77,14 +88,18 @@ const NormalForm = () => {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('licenseExpired', { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">
+              {t(($) => $.licenseExpired, { ns: 'login' })}
+            </p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t(($) => $.licenseExpiredTip, { ns: 'login' })}
+            </p>
           </div>
         </div>
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.INACTIVE) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.inactive) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
@@ -93,8 +108,12 @@ const NormalForm = () => {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('licenseInactive', { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">
+              {t(($) => $.licenseInactive, { ns: 'login' })}
+            </p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t(($) => $.licenseInactiveTip, { ns: 'login' })}
+            </p>
           </div>
         </div>
       </div>
@@ -105,14 +124,20 @@ const NormalForm = () => {
     <>
       <div className="mx-auto mt-8 w-full">
         <div className="mx-auto w-full">
-          <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t('pageTitleForE', { ns: 'login' }) : t('pageTitle', { ns: 'login' })}</h2>
-          <p className="mt-2 body-md-regular text-text-tertiary">{t('welcome', { ns: 'login' })}</p>
+          <h1 className="title-4xl-semi-bold text-text-primary">
+            {systemFeatures.branding.enabled
+              ? t(($) => $.pageTitleForE, { ns: 'login' })
+              : t(($) => $.pageTitle, { ns: 'login' })}
+          </h1>
+          <p className="mt-2 body-md-regular text-text-tertiary">
+            {t(($) => $.welcome, { ns: 'login' })}
+          </p>
         </div>
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
-            {systemFeatures.sso_enforced_for_signin && (
+            {hasSsoLogin && (
               <div className="w-full">
-                <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
+                <SSOAuth protocol={ssoProtocol} />
               </div>
             )}
           </div>
@@ -123,44 +148,63 @@ const NormalForm = () => {
                 <div className="h-px w-full bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
               </div>
               <div className="relative flex justify-center">
-                <span className="px-2 system-xs-medium-uppercase text-text-tertiary">{t('or', { ns: 'login' })}</span>
+                <span className="px-2 system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $.or, { ns: 'login' })}
+                </span>
               </div>
             </div>
           )}
-          {
-            (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login) && (
-              <>
-                {systemFeatures.enable_email_code_login && authType === 'code' && (
-                  <>
-                    <MailAndCodeAuth />
-                    {systemFeatures.enable_email_password_login && (
-                      <div className="cursor-pointer py-1 text-center" onClick={() => { updateAuthType('password') }}>
-                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('usePassword', { ns: 'login' })}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-                {systemFeatures.enable_email_password_login && authType === 'password' && (
-                  <>
-                    <MailAndPasswordAuth isEmailSetup={systemFeatures.is_email_setup} />
-                    {systemFeatures.enable_email_code_login && (
-                      <div className="cursor-pointer py-1 text-center" onClick={() => { updateAuthType('code') }}>
-                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('useVerificationCode', { ns: 'login' })}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            )
-          }
+          {(systemFeatures.enable_email_code_login ||
+            systemFeatures.enable_email_password_login) && (
+            <>
+              {systemFeatures.enable_email_code_login && authType === 'code' && (
+                <>
+                  <MailAndCodeAuth />
+                  {systemFeatures.enable_email_password_login && (
+                    <div
+                      className="cursor-pointer py-1 text-center"
+                      onClick={() => {
+                        updateAuthType('password')
+                      }}
+                    >
+                      <span className="system-xs-medium text-components-button-secondary-accent-text">
+                        {t(($) => $.usePassword, { ns: 'login' })}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+              {systemFeatures.enable_email_password_login && authType === 'password' && (
+                <>
+                  <MailAndPasswordAuth isEmailSetup={systemFeatures.is_email_setup} />
+                  {systemFeatures.enable_email_code_login && (
+                    <div
+                      className="cursor-pointer py-1 text-center"
+                      onClick={() => {
+                        updateAuthType('code')
+                      }}
+                    >
+                      <span className="system-xs-medium text-components-button-secondary-accent-text">
+                        {t(($) => $.useVerificationCode, { ns: 'login' })}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
           {allMethodsAreDisabled && (
             <>
               <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
                 <div className="shadows-shadow-lg mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
                   <RiDoorLockLine className="size-5" />
                 </div>
-                <p className="system-sm-medium text-text-primary">{t('noLoginMethod', { ns: 'login' })}</p>
-                <p className="mt-1 system-xs-regular text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>
+                <p className="system-sm-medium text-text-primary">
+                  {t(($) => $.noLoginMethod, { ns: 'login' })}
+                </p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">
+                  {t(($) => $.noLoginMethodTip, { ns: 'login' })}
+                </p>
               </div>
               <div className="relative my-2 py-2">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -172,41 +216,40 @@ const NormalForm = () => {
           {!systemFeatures.branding.enabled && (
             <>
               <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
-                {t('tosDesc', { ns: 'login' })}
-              &nbsp;
+                {t(($) => $.tosDesc, { ns: 'login' })}
+                &nbsp;
                 <Link
                   className="system-xs-medium text-text-secondary hover:underline"
                   target="_blank"
                   rel="noopener noreferrer"
                   href="https://dify.ai/terms"
                 >
-                  {t('tos', { ns: 'login' })}
+                  {t(($) => $.tos, { ns: 'login' })}
                 </Link>
-              &nbsp;&&nbsp;
+                &nbsp;&&nbsp;
                 <Link
                   className="system-xs-medium text-text-secondary hover:underline"
                   target="_blank"
                   rel="noopener noreferrer"
                   href="https://dify.ai/privacy"
                 >
-                  {t('pp', { ns: 'login' })}
+                  {t(($) => $.pp, { ns: 'login' })}
                 </Link>
               </div>
-              {IS_CE_EDITION && (
-                <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
-                  {t('goToInit', { ns: 'login' })}
-              &nbsp;
+              {isNonCloudEdition && (
+                <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
+                  {t(($) => $.goToInit, { ns: 'login' })}
+                  &nbsp;
                   <Link
                     className="system-xs-medium text-text-secondary hover:underline"
                     href="/install"
                   >
-                    {t('setAdminAccount', { ns: 'login' })}
+                    {t(($) => $.setAdminAccount, { ns: 'login' })}
                   </Link>
                 </div>
               )}
             </>
           )}
-
         </div>
       </div>
     </>

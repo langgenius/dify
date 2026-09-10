@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useInspectVarsCrud } from '../use-inspect-vars-crud'
 
 const mockApis = {
@@ -20,8 +20,9 @@ const mockApis = {
 }
 
 const mockUseInspectVarsCrudCommon = vi.fn(() => mockApis)
-vi.mock('../../../workflow/hooks/use-inspect-vars-crud-common', () => ({
-  useInspectVarsCrudCommon: (...args: Parameters<typeof mockUseInspectVarsCrudCommon>) => mockUseInspectVarsCrudCommon(...args),
+vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud-common', () => ({
+  useInspectVarsCrudCommon: (...args: Parameters<typeof mockUseInspectVarsCrudCommon>) =>
+    mockUseInspectVarsCrudCommon(...args),
 }))
 
 const mockConfigsMap = {
@@ -88,8 +89,7 @@ describe('useInspectVarsCrud', () => {
         'invalidateConversationVarValues',
       ]
 
-      for (const key of expectedKeys)
-        expect(result.current).toHaveProperty(key)
+      for (const key of expectedKeys) expect(result.current).toHaveProperty(key)
     })
   })
 })

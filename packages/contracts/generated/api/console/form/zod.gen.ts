@@ -3,6 +3,11 @@
 import * as z from 'zod'
 
 /**
+ * ConsoleHumanInputFormDefinitionResponse
+ */
+export const zConsoleHumanInputFormDefinitionResponse = z.record(z.string(), z.unknown())
+
+/**
  * HumanInputFormSubmitPayload
  */
 export const zHumanInputFormSubmitPayload = z.object({
@@ -11,6 +16,11 @@ export const zHumanInputFormSubmitPayload = z.object({
   inputs: z.record(z.string(), z.unknown()),
 })
 
+/**
+ * ConsoleHumanInputFormSubmitResponse
+ */
+export const zConsoleHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
+
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),
 })
@@ -18,7 +28,7 @@ export const zGetFormHumanInputByFormTokenPath = z.object({
 /**
  * Success
  */
-export const zGetFormHumanInputByFormTokenResponse = z.record(z.string(), z.unknown())
+export const zGetFormHumanInputByFormTokenResponse = zConsoleHumanInputFormDefinitionResponse
 
 export const zPostFormHumanInputByFormTokenBody = zHumanInputFormSubmitPayload
 
@@ -29,4 +39,4 @@ export const zPostFormHumanInputByFormTokenPath = z.object({
 /**
  * Success
  */
-export const zPostFormHumanInputByFormTokenResponse = z.record(z.string(), z.unknown())
+export const zPostFormHumanInputByFormTokenResponse = zConsoleHumanInputFormSubmitResponse

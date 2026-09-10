@@ -1,6 +1,7 @@
 import datetime
 from unittest.mock import MagicMock, patch
 
+from enums import DeploymentEdition
 from services.retention.conversation.messages_clean_policy import (
     BillingDisabledPolicy,
     BillingSandboxPolicy,
@@ -115,19 +116,15 @@ class TestBillingSandboxPolicy:
 
 
 class TestCreateMessageCleanPolicy:
-    def test_billing_disabled_returns_disabled_policy(self):
-        with patch(f"{MODULE}.dify_config") as cfg:
-            cfg.BILLING_ENABLED = False
-            policy = create_message_clean_policy()
+    def test_non_cloud_edition_returns_disabled_policy(self, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        policy = create_message_clean_policy()
 
         assert isinstance(policy, BillingDisabledPolicy)
 
-    def test_billing_enabled_returns_sandbox_policy(self):
-        with (
-            patch(f"{MODULE}.dify_config") as cfg,
-            patch(f"{MODULE}.BillingService") as bs,
-        ):
-            cfg.BILLING_ENABLED = True
+    def test_cloud_edition_returns_sandbox_policy(self, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        with patch(f"{MODULE}.BillingService") as bs:
             bs.get_expired_subscription_cleanup_whitelist.return_value = ["wl1"]
             bs.get_plan_bulk_with_cache = MagicMock()
             policy = create_message_clean_policy(graceful_period_days=30)

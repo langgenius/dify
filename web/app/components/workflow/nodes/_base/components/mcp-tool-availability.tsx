@@ -6,7 +6,9 @@ type MCPToolAvailabilityContextValue = {
   versionSupported?: boolean
 }
 
-const MCPToolAvailabilityContext = createContext<MCPToolAvailabilityContextValue | undefined>(undefined)
+const MCPToolAvailabilityContext = createContext<MCPToolAvailabilityContextValue | undefined>(
+  undefined,
+)
 
 type MCPToolAvailability = {
   allowed: boolean
@@ -27,8 +29,7 @@ export const MCPToolAvailabilityProvider = ({
 
 export const useMCPToolAvailability = (): MCPToolAvailability => {
   const context = use(MCPToolAvailabilityContext)
-  if (context === undefined)
-    return { allowed: true }
+  if (context === undefined) return { allowed: true }
 
   const { versionSupported } = context
   return {

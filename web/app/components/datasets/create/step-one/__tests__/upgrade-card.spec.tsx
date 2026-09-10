@@ -1,89 +1,36 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import UpgradeCard from '../upgrade-card'
 
-const mockSetShowPricingModal = vi.fn()
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowPricingModal: mockSetShowPricingModal,
-  }),
-}))
+const renderWithoutPricing = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 vi.mock('@/app/components/billing/upgrade-btn', () => ({
-  default: ({ onClick, className }: { onClick?: () => void, className?: string }) => (
-    <button type="button" className={className} onClick={onClick} data-testid="upgrade-btn">
+  default: ({ onClick }: { onClick?: () => void }) => (
+    <button type="button" onClick={onClick}>
       upgrade
     </button>
   ),
 }))
 
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
+
 describe('UpgradeCard', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+  it('opens pricing from the upgrade action', async () => {
+    const user = userEvent.setup()
+    render(<UpgradeCard />)
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<UpgradeCard />)
+    await user.click(screen.getByRole('button', { name: 'upgrade' }))
 
-      // Assert - title and description i18n keys are rendered
-      expect(screen.getByText(/uploadMultipleFiles\.title/i)).toBeInTheDocument()
-    })
-
-    it('should render the upgrade title text', () => {
-      render(<UpgradeCard />)
-
-      expect(screen.getByText(/uploadMultipleFiles\.title/i)).toBeInTheDocument()
-    })
-
-    it('should render the upgrade description text', () => {
-      render(<UpgradeCard />)
-
-      expect(screen.getByText(/uploadMultipleFiles\.description/i)).toBeInTheDocument()
-    })
-
-    it('should render the upgrade button', () => {
-      render(<UpgradeCard />)
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call setShowPricingModal when upgrade button is clicked', () => {
-      render(<UpgradeCard />)
-
-      fireEvent.click(screen.getByRole('button'))
-
-      expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not call setShowPricingModal without user interaction', () => {
-      render(<UpgradeCard />)
-
-      expect(mockSetShowPricingModal).not.toHaveBeenCalled()
-    })
-
-    it('should call setShowPricingModal on each button click', () => {
-      render(<UpgradeCard />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-      fireEvent.click(button)
-
-      expect(mockSetShowPricingModal).toHaveBeenCalledTimes(2)
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should maintain rendering after rerender with same props', () => {
-      const { rerender } = render(<UpgradeCard />)
-
-      rerender(<UpgradeCard />)
-
-      expect(screen.getByText(/uploadMultipleFiles\.title/i)).toBeInTheDocument()
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 })

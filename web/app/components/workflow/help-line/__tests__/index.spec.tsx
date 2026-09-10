@@ -9,15 +9,17 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: {
-    helpLineHorizontal?: { top: number, left: number, width: number }
-    helpLineVertical?: { top: number, left: number, height: number }
-  }) => unknown) => mockUseStore(selector),
+  useStore: (
+    selector: (state: {
+      helpLineHorizontal?: { top: number; left: number; width: number }
+      helpLineVertical?: { top: number; left: number; height: number }
+    }) => unknown,
+  ) => mockUseStore(selector),
 }))
 
 describe('HelpLine', () => {
-  let helpLineHorizontal: { top: number, left: number, width: number } | undefined
-  let helpLineVertical: { top: number, left: number, height: number } | undefined
+  let helpLineHorizontal: { top: number; left: number; width: number } | undefined
+  let helpLineVertical: { top: number; left: number; height: number } | undefined
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -25,13 +27,18 @@ describe('HelpLine', () => {
     helpLineVertical = undefined
 
     mockUseViewport.mockReturnValue({ x: 10, y: 20, zoom: 2 })
-    mockUseStore.mockImplementation((selector: (state: {
-      helpLineHorizontal?: { top: number, left: number, width: number }
-      helpLineVertical?: { top: number, left: number, height: number }
-    }) => unknown) => selector({
-      helpLineHorizontal,
-      helpLineVertical,
-    }))
+    mockUseStore.mockImplementation(
+      (
+        selector: (state: {
+          helpLineHorizontal?: { top: number; left: number; width: number }
+          helpLineVertical?: { top: number; left: number; height: number }
+        }) => unknown,
+      ) =>
+        selector({
+          helpLineHorizontal,
+          helpLineVertical,
+        }),
+    )
   })
 
   it('should render nothing when both help lines are absent', () => {

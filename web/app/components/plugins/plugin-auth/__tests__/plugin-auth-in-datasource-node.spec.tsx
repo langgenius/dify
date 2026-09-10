@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import PluginAuthInDataSourceNode from '../plugin-auth-in-datasource-node'
 
 describe('PluginAuthInDataSourceNode', () => {
@@ -20,7 +20,9 @@ describe('PluginAuthInDataSourceNode', () => {
 
   it('renders connect button', () => {
     render(<PluginAuthInDataSourceNode onJumpToDataSourcePage={mockOnJump} />)
-    expect(screen.getByRole('button', { name: /common\.integrations\.connect/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /common\.integrations\.connect/ }),
+    ).toBeInTheDocument()
   })
 
   it('calls onJumpToDataSourcePage when connect button is clicked', () => {

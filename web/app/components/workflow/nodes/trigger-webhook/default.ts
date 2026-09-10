@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { WebhookTriggerNodeType } from './types'
 import { BlockEnum } from '../../types'
@@ -26,27 +27,26 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     response_body: '',
     variables: [createWebhookRawVariable()],
   },
-  checkValid(payload: WebhookTriggerNodeType, t: any) {
+  checkValid(payload: WebhookTriggerNodeType, t: TFunction<'workflow'>) {
     // Require webhook_url to be configured
     if (!payload.webhook_url || payload.webhook_url.trim() === '') {
       return {
         isValid: false,
-        errorMessage: t('nodes.triggerWebhook.validation.webhookUrlRequired', { ns: 'workflow' }),
+        errorMessage: t(($) => $['nodes.triggerWebhook.validation.webhookUrlRequired'], {
+          ns: 'workflow',
+        }),
       }
     }
 
     // Validate parameter types for params and body
-    const parametersWithTypes = [
-      ...(payload.params || []),
-      ...(payload.body || []),
-    ]
+    const parametersWithTypes = [...(payload.params || []), ...(payload.body || [])]
 
     for (const param of parametersWithTypes) {
       // Validate parameter type is valid
       if (!isValidParameterType(param.type)) {
         return {
           isValid: false,
-          errorMessage: t('nodes.triggerWebhook.validation.invalidParameterType', {
+          errorMessage: t(($) => $['nodes.triggerWebhook.validation.invalidParameterType'], {
             ns: 'workflow',
             name: param.name,
             type: param.type,

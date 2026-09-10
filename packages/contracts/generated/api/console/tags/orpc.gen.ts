@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteTagsByTagIdPath,
   zDeleteTagsByTagIdResponse,
@@ -51,7 +50,7 @@ export const get = oc
     path: '/tags',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetTagsQuery.optional() }))
+  .input(z.object({ query: zGetTagsQuery }))
   .output(zGetTagsResponse)
 
 export const post = oc

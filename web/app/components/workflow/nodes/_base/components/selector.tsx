@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useBoolean, useClickAway } from 'ahooks'
+import { useClickAway } from 'ahooks'
 import * as React from 'react'
+import { useState } from 'react'
 import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 
@@ -46,46 +47,72 @@ const TypeSelector: FC<Props> = ({
   showChecked,
 }) => {
   const noValue = value === '' || value === undefined || value === null
-  const item = allOptions ? allOptions.find(item => item.value === value) : list.find(item => item.value === value)
-  const [showOption, { setFalse: setHide, toggle: toggleShow }] = useBoolean(false)
+  const item = allOptions
+    ? allOptions.find((item) => item.value === value)
+    : list.find((item) => item.value === value)
+  const [showOption, setShowOption] = useState(false)
   const ref = React.useRef(null)
   useClickAway(() => {
-    setHide()
+    setShowOption(false)
   }, ref)
   return (
-    <div className={cn(!trigger && !noLeft && 'left-[-8px]', 'relative select-none', className)} ref={ref}>
-      {trigger
-        ? (
-            <div
-              onClick={toggleShow}
-              className={cn(!readonly && 'cursor-pointer')}
-            >
-              {trigger}
-            </div>
-          )
-        : (
-            <div
-              onClick={toggleShow}
-              className={cn(showOption && 'bg-state-base-hover', 'flex h-5 cursor-pointer items-center rounded-md pr-0.5 pl-1 text-xs font-semibold text-text-secondary hover:bg-state-base-hover')}
-            >
-              <div className={cn('text-sm font-semibold', uppercase && 'uppercase', noValue && 'text-text-tertiary', triggerClassName)}>{!noValue ? item?.label : placeholder}</div>
-              {!readonly && <DropDownIcon className="size-3" />}
-            </div>
+    <div
+      className={cn(!trigger && !noLeft && '-left-2', 'relative select-none', className)}
+      ref={ref}
+    >
+      {trigger ? (
+        <div
+          onClick={() => setShowOption((isShown) => !isShown)}
+          className={cn(!readonly && 'cursor-pointer')}
+        >
+          {trigger}
+        </div>
+      ) : (
+        <div
+          onClick={() => setShowOption((isShown) => !isShown)}
+          className={cn(
+            showOption && 'bg-state-base-hover',
+            'flex h-5 cursor-pointer items-center rounded-md pr-0.5 pl-1 text-xs font-semibold text-text-secondary hover:bg-state-base-hover',
           )}
+        >
+          <div
+            className={cn(
+              'text-sm font-semibold',
+              uppercase && 'uppercase',
+              noValue && 'text-text-tertiary',
+              triggerClassName,
+            )}
+          >
+            {!noValue ? item?.label : placeholder}
+          </div>
+          {!readonly && <DropDownIcon className="size-3" />}
+        </div>
+      )}
 
-      {(showOption && !readonly) && (
-        <div className={cn('absolute top-[24px] z-10 w-[120px] rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg select-none', popupClassName)}>
-          {list.map(item => (
+      {showOption && !readonly && (
+        <div
+          className={cn(
+            'absolute top-6 z-10 w-30 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg select-none',
+            popupClassName,
+          )}
+        >
+          {list.map((item) => (
             <div
               key={item.value}
               onClick={() => {
-                setHide()
+                setShowOption(false)
                 onChange(item.value)
               }}
-              className={cn(itemClassName, uppercase && 'uppercase', 'flex h-[30px] min-w-[44px] cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover')}
+              className={cn(
+                itemClassName,
+                uppercase && 'uppercase',
+                'flex h-7.5 min-w-11 cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover',
+              )}
             >
               <div>{item.label}</div>
-              {showChecked && item.value === value && <Check className="size-4 text-text-primary" />}
+              {showChecked && item.value === value && (
+                <Check className="size-4 text-text-primary" />
+              )}
             </div>
           ))}
         </div>

@@ -23,10 +23,8 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
-import AnnotationFull from '@/app/components/billing/annotation-full'
-import { useProviderContext } from '@/context/provider-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import { addAnnotation, editAnnotation } from '@/service/annotation'
+import { editAnnotation } from '@/service/annotation'
 import EditItem, { EditItemType } from './edit-item'
 
 type Props = Readonly<{
@@ -34,11 +32,10 @@ type Props = Readonly<{
   onHide: () => void
   appId: string
   messageId?: string
-  annotationId?: string
+  annotationId: string
   query: string
   answer: string
   onEdited: (editedQuery: string, editedAnswer: string) => void
-  onAdded: (annotationId: string, authorName: string, editedQuery: string, editedAnswer: string) => void
   createdAt?: number
   onRemove: () => void
   onlyEditResponse?: boolean
@@ -50,7 +47,6 @@ const EditAnnotationModal: FC<Props> = ({
   query,
   answer,
   onEdited,
-  onAdded,
   appId,
   messageId,
   annotationId,
@@ -60,38 +56,22 @@ const EditAnnotationModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { plan, enableBilling } = useProviderContext()
-  const isAdd = !annotationId
-  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
   const handleSave = async (type: EditItemType, editedContent: string) => {
     let postQuery = query
     let postAnswer = answer
-    if (type === EditItemType.Query)
-      postQuery = editedContent
-    else
-      postAnswer = editedContent
+    if (type === EditItemType.Query) postQuery = editedContent
+    else postAnswer = editedContent
     try {
-      if (!isAdd) {
-        await editAnnotation(appId, annotationId, {
-          message_id: messageId,
-          question: postQuery,
-          answer: postAnswer,
-        })
-        onEdited(postQuery, postAnswer)
-      }
-      else {
-        const res = await addAnnotation(appId, {
-          question: postQuery,
-          answer: postAnswer,
-          message_id: messageId,
-        })
-        onAdded(res.id, res.account?.name ?? '', postQuery, postAnswer)
-      }
+      await editAnnotation(appId, annotationId, {
+        message_id: messageId,
+        question: postQuery,
+        answer: postAnswer,
+      })
+      onEdited(postQuery, postAnswer)
 
-      toast.success(t('api.actionSuccess', { ns: 'common' }) as string)
-    }
-    catch (error) {
-      const fallbackMessage = t('api.actionFailed', { ns: 'common' }) as string
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
+    } catch (error) {
+      const fallbackMessage = t(($) => $['api.actionFailed'], { ns: 'common' }) as string
       const message = error instanceof Error && error.message ? error.message : fallbackMessage
       toast.error(message)
       // Re-throw to preserve edit mode behavior for UI components
@@ -99,8 +79,7 @@ const EditAnnotationModal: FC<Props> = ({
     }
   }
   const [showModal, setShowModal] = useState(false)
-  if (!isShow)
-    return null
+  if (!isShow) return null
 
   return (
     <div>
@@ -110,8 +89,7 @@ const EditAnnotationModal: FC<Props> = ({
         disablePointerDismissal
         swipeDirection="right"
         onOpenChange={(open) => {
-          if (!open)
-            onHide()
+          if (!open) onHide()
         }}
       >
         <DrawerPortal>
@@ -122,10 +100,10 @@ const EditAnnotationModal: FC<Props> = ({
                 <div className="shrink-0 border-b border-divider-subtle py-4">
                   <div className="flex h-6 items-center justify-between pr-5 pl-6">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
-                      {t('editModal.title', { ns: 'appAnnotation' })}
+                      {t(($) => $['editModal.title'], { ns: 'appAnnotation' })}
                     </DrawerTitle>
                     <DrawerCloseButton
-                      aria-label={t('operation.close', { ns: 'common' })}
+                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                       className="size-6 rounded-md"
                     />
                   </div>
@@ -135,28 +113,32 @@ const EditAnnotationModal: FC<Props> = ({
                     <EditItem
                       type={EditItemType.Query}
                       content={query}
-                      readonly={(isAdd && isAnnotationFull) || onlyEditResponse}
-                      onSave={editedContent => handleSave(EditItemType.Query, editedContent)}
+                      readonly={onlyEditResponse}
+                      onSave={(editedContent) => handleSave(EditItemType.Query, editedContent)}
                     />
                     <EditItem
                       type={EditItemType.Answer}
                       content={answer}
-                      readonly={isAdd && isAnnotationFull}
-                      onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
+                      onSave={(editedContent) => handleSave(EditItemType.Answer, editedContent)}
                     />
-                    <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
+                    <AlertDialog
+                      open={showModal}
+                      onOpenChange={(open) => !open && setShowModal(false)}
+                    >
                       <AlertDialogContent>
                         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                           <AlertDialogTitle
-                            title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                            title={t(($) => $['feature.annotation.removeConfirm'], {
+                              ns: 'appDebug',
+                            })}
                             className="w-full truncate title-2xl-semi-bold text-text-primary"
                           >
-                            {t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                            {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           </AlertDialogTitle>
                         </div>
                         <AlertDialogActions>
                           <AlertDialogCancelButton>
-                            {t('operation.cancel', { ns: 'common' })}
+                            {t(($) => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
                           <AlertDialogConfirmButton
                             tone="destructive"
@@ -166,7 +148,7 @@ const EditAnnotationModal: FC<Props> = ({
                               onHide()
                             }}
                           >
-                            {t('operation.confirm', { ns: 'common' })}
+                            {t(($) => $['operation.confirm'], { ns: 'common' })}
                           </AlertDialogConfirmButton>
                         </AlertDialogActions>
                       </AlertDialogContent>
@@ -174,34 +156,25 @@ const EditAnnotationModal: FC<Props> = ({
                   </div>
                 </div>
                 <div className="shrink-0">
-                  {isAnnotationFull && (
-                    <div className="mt-6 mb-4 px-6">
-                      <AnnotationFull />
+                  <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
+                    <div
+                      className="flex cursor-pointer items-center space-x-2 pl-3"
+                      onClick={() => setShowModal(true)}
+                    >
+                      <MessageCheckRemove />
+                      <div>{t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}</div>
                     </div>
-                  )}
-
-                  {
-                    annotationId
-                      ? (
-                          <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
-                            <div
-                              className="flex cursor-pointer items-center space-x-2 pl-3"
-                              onClick={() => setShowModal(true)}
-                            >
-                              <MessageCheckRemove />
-                              <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
-                            </div>
-                            {!!createdAt && (
-                              <div>
-                                {t('editModal.createdAt', { ns: 'appAnnotation' })}
-&nbsp;
-                                {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      : undefined
-                  }
+                    {!!createdAt && (
+                      <div>
+                        {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}
+                        &nbsp;
+                        {formatTime(
+                          createdAt,
+                          t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </DrawerContent>
             </DrawerPopup>
@@ -209,7 +182,6 @@ const EditAnnotationModal: FC<Props> = ({
         </DrawerPortal>
       </Drawer>
     </div>
-
   )
 }
 export default React.memo(EditAnnotationModal)

@@ -1,50 +1,64 @@
-import type { MockedFunction, MockInstance } from 'vitest'
+import type { MockedFunction, MockInstance } from 'vite-plus/test'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import type { RetrievalConfig } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/components/app/configuration/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
+import {
+  ChunkingMode,
+  DatasetPermission,
+  DataSourceType,
+  RerankingModeEnum,
+  WeightedScoreEnum,
+} from '@/models/datasets'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import ConfigContent from '../config-content'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
   type Props = {
-    defaultModel?: { provider: string, model: string }
-    onSelect?: (model: { provider: string, model: string }) => void
+    value?: { provider: string; model: string }
+    onValueChange?: (model: { provider: string; model: string }) => void
   }
 
-  const MockModelSelector = ({ defaultModel, onSelect }: Props) => (
+  const MockModelSelector = ({ value, onValueChange }: Props) => (
     <button
       type="button"
-      onClick={() => onSelect?.(defaultModel ?? { provider: 'mock-provider', model: 'mock-model' })}
+      onClick={() => onValueChange?.(value ?? { provider: 'mock-provider', model: 'mock-model' })}
     >
       Mock ModelSelector
     </button>
   )
 
   return {
-    default: MockModelSelector,
+    ModelSelector: MockModelSelector,
   }
 })
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  default: () => <div data-testid="model-parameter-modal" />,
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    default: () => <div data-testid="model-parameter-modal" />,
+  }),
+)
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
   useCurrentProviderAndModel: vi.fn(),
 }))
 
-const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
-const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<typeof useCurrentProviderAndModel>
+const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel =
+  useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<
+    typeof useModelListAndDefaultModelAndCurrentProviderAndModel
+  >
+const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<
+  typeof useCurrentProviderAndModel
+>
 
 let toastErrorSpy: MockInstance
 
@@ -63,12 +77,7 @@ const baseRetrievalConfig: RetrievalConfig = {
 const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
-  const {
-    retrieval_model,
-    retrieval_model_dict,
-    icon_info,
-    ...restOverrides
-  } = overrides
+  const { retrieval_model, retrieval_model_dict, icon_info, ...restOverrides } = overrides
 
   const resolvedRetrievalModelDict = {
     ...baseRetrievalConfig,
@@ -86,9 +95,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     icon_url: '',
   }
 
-  const resolvedIconInfo = ('icon_info' in overrides)
-    ? icon_info
-    : defaultIconInfo
+  const resolvedIconInfo = 'icon_info' in overrides ? icon_info : defaultIconInfo
 
   return {
     id: 'dataset-id',
@@ -203,8 +210,8 @@ describe('ConfigContent', () => {
       await waitFor(() => {
         expect(onChange).toHaveBeenCalled()
       })
-      const [nextConfigs] = (onChange.mock.calls[0] ?? []) as [any]
-      expect(nextConfigs.retrieval_model).toBe(RETRIEVE_TYPE.multiWay)
+      const nextConfigs = onChange.mock.calls[0]?.[0]
+      expect(nextConfigs?.retrieval_model).toBe(RETRIEVE_TYPE.multiWay)
     })
   })
 
@@ -239,11 +246,10 @@ describe('ConfigContent', () => {
       )
 
       // Assert
-      // Assert
       expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
-      expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
-      expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()
+      expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
+      expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
     })
   })
 
@@ -289,7 +295,9 @@ describe('ConfigContent', () => {
         />,
       )
 
-      const weightedScoreSlider = screen.getByLabelText('dataset.weightedScore.semantic')
+      const weightedScoreSlider = screen.getByRole('slider', {
+        name: 'dataset.weightedScore.semantic',
+      })
       weightedScoreSlider.focus()
       const callsBefore = onChange.mock.calls.length
       await user.keyboard('{ArrowRight}')

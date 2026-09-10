@@ -7,15 +7,20 @@ describe('AudioPreview', () => {
   })
 
   it('should render audio element with correct source', () => {
-    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
+    render(
+      <AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />,
+    )
 
     const audio = document.querySelector('audio')
     expect(audio).toBeInTheDocument()
     expect(audio).toHaveAttribute('title', 'Test Audio')
+    expect(audio?.parentElement).not.toHaveAttribute('aria-label')
   })
 
   it('should render source element with correct src and type', () => {
-    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
+    render(
+      <AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />,
+    )
 
     const source = document.querySelector('source')
     expect(source).toHaveAttribute('src', 'https://example.com/audio.mp3')
@@ -23,26 +28,33 @@ describe('AudioPreview', () => {
   })
 
   it('should render close button with icon', () => {
-    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
+    render(
+      <AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />,
+    )
 
     expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
   })
 
   it('should call onCancel when close button is clicked', () => {
     const onCancel = vi.fn()
-    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />)
+    render(
+      <AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('should not close when backdrop is clicked', () => {
+  it('should not close when audio content is clicked', () => {
     const onCancel = vi.fn()
-    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />)
+    render(
+      <AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />,
+    )
 
-    const dialog = screen.getByRole('dialog')
-    fireEvent.click(dialog)
+    const audio = document.querySelector('audio')
+    expect(audio).toBeInTheDocument()
+    fireEvent.click(audio!)
 
     expect(onCancel).not.toHaveBeenCalled()
   })
@@ -50,7 +62,9 @@ describe('AudioPreview', () => {
   it('should call onCancel when Escape key is pressed', () => {
     const onCancel = vi.fn()
 
-    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />)
+    render(
+      <AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />,
+    )
 
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
@@ -58,7 +72,9 @@ describe('AudioPreview', () => {
   })
 
   it('should render in a portal attached to document.body', () => {
-    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
+    render(
+      <AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />,
+    )
 
     const audio = document.querySelector('audio')
     expect(audio?.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)

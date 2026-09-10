@@ -1,6 +1,6 @@
 import type { DocumentListQuery } from '../use-document-list-query-state'
 import { act, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderHookWithNuqs } from '@/test/nuqs-testing'
 import { useDocumentListQueryState } from '../use-document-list-query-state'
 
@@ -134,15 +134,13 @@ describe('useDocumentListQueryState', () => {
       expect(result.current.query.sort).toBe('-created_at')
     })
 
-    it.each([
-      '-created_at',
-      'created_at',
-      '-hit_count',
-      'hit_count',
-    ] as const)('should accept valid sort value %s', (sortValue) => {
-      const { result } = renderWithAdapter(`?sort=${sortValue}`)
-      expect(result.current.query.sort).toBe(sortValue)
-    })
+    it.each(['-created_at', 'created_at', '-hit_count', 'hit_count'] as const)(
+      'should accept valid sort value %s',
+      (sortValue) => {
+        const { result } = renderWithAdapter(`?sort=${sortValue}`)
+        expect(result.current.query.sort).toBe(sortValue)
+      },
+    )
   })
 
   describe('updateQuery', () => {

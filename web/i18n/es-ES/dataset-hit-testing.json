@@ -10,7 +10,6 @@
   "imageUploader.tip": "Sube o arrastra imágenes (Máx. {{batchCount}}, {{size}}MB cada una)",
   "imageUploader.tooltip": "Sube imágenes (Máx. {{batchCount}}, {{size}} MB cada una)",
   "input.countWarning": "Hasta 200 caracteres.",
-  "input.indexWarning": "Solo conocimiento de alta calidad.",
   "input.placeholder": "Por favor ingrese un texto, se recomienda una oración declarativa corta.",
   "input.testing": "Prueba",
   "input.title": "Texto fuente",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "Contenido de la consulta",
   "table.header.source": "Fuente",
   "table.header.time": "Tiempo",
-  "title": "Prueba de recuperación",
-  "viewChart": "Ver GRÁFICO VECTORIAL",
-  "viewDetail": "Ver Detalle"
+  "title": "Prueba de recuperación"
 }

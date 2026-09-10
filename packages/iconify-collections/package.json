@@ -23,6 +23,7 @@
     "./custom-vender/chars.json": "./custom-vender/chars.json"
   },
   "scripts": {
+    "check:dimensions": "tsx ./scripts/check-icon-dimensions.ts",
     "generate": "tsx ./scripts/generate-collections.ts"
   },
   "devDependencies": {

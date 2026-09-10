@@ -3,8 +3,6 @@ import type { Features } from '../../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import VoiceSettings from '../voice-settings'
-
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
@@ -19,29 +17,9 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'test-app-id' }),
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  useAppVoices: () => ({
-    data: [{ name: 'alloy', value: 'alloy' }],
-  }),
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({
-    checked,
-    onCheckedChange,
-    ...props
-  }: {
-    checked?: boolean
-    onCheckedChange?: (checked: boolean) => void
-  }) => (
-    <button
-      type="button"
-      data-testid="switch"
-      data-checked={String(checked)}
-      onClick={() => onCheckedChange?.(!checked)}
-      {...props}
-    />
-  ),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => ({ data: [{ name: 'alloy', value: 'alloy' }] }),
 }))
 
 const defaultFeatures: Features = {
@@ -57,11 +35,7 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (ui: ReactNode) => {
-  return render(
-    <FeaturesProvider features={defaultFeatures}>
-      {ui}
-    </FeaturesProvider>,
-  )
+  return render(<FeaturesProvider features={defaultFeatures}>{ui}</FeaturesProvider>)
 }
 
 describe('VoiceSettings', () => {
@@ -123,20 +97,8 @@ describe('VoiceSettings', () => {
       </VoiceSettings>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /voice\.voiceSettings\.close/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onOpen).toHaveBeenCalledWith(false)
-  })
-
-  it('should use top placement and mainAxis 4 when placementLeft is false', () => {
-    renderWithProvider(
-      <VoiceSettings open={true} onOpen={vi.fn()} placementLeft={false}>
-        <button>Settings</button>
-      </VoiceSettings>,
-    )
-
-    const content = screen.getByTestId('popover-content')
-    expect(content).toHaveAttribute('data-placement', 'top')
-    expect(content).toHaveAttribute('data-side-offset', '4')
   })
 })

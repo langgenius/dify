@@ -2,21 +2,14 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import { zGetAppPromptTemplatesQuery, zGetAppPromptTemplatesResponse } from './zod.gen'
 
 /**
  * Get advanced prompt templates based on app mode and model configuration
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Get advanced prompt templates based on app mode and model configuration\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get advanced prompt templates based on app mode and model configuration',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppPromptTemplates',

@@ -1,4 +1,9 @@
-import type { NotionPageRow, NotionPageSelectionMode, NotionPageTreeItem, NotionPageTreeMap } from './types'
+import type {
+  NotionPageRow,
+  NotionPageSelectionMode,
+  NotionPageTreeItem,
+  NotionPageTreeMap,
+} from './types'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 
 export const recursivePushInParentDescendants = (
@@ -10,8 +15,7 @@ export const recursivePushInParentDescendants = (
   const parentId = current.parent_id
   const pageId = current.page_id
 
-  if (!parentId || !pageId)
-    return
+  if (!parentId || !pageId) return
 
   if (parentId !== 'root' && pagesMap[parentId]) {
     if (!listTreeMap[parentId]) {
@@ -24,8 +28,7 @@ export const recursivePushInParentDescendants = (
         depth: 0,
         ancestors: [],
       }
-    }
-    else {
+    } else {
       listTreeMap[parentId].children.add(pageId)
       listTreeMap[parentId].descendants.add(pageId)
       listTreeMap[parentId].descendants.add(leafItem.page_id)
@@ -46,20 +49,23 @@ export const buildNotionPageTree = (
   return list.reduce((prev: NotionPageTreeMap, next) => {
     const pageId = next.page_id
     if (!prev[pageId])
-      prev[pageId] = { ...next, children: new Set(), descendants: new Set(), depth: 0, ancestors: [] }
+      prev[pageId] = {
+        ...next,
+        children: new Set(),
+        descendants: new Set(),
+        depth: 0,
+        ancestors: [],
+      }
 
     recursivePushInParentDescendants(pagesMap, prev, prev[pageId], prev[pageId])
     return prev
   }, {})
 }
 
-export const getRootPageIds = (
-  list: DataSourceNotionPage[],
-  pagesMap: DataSourceNotionPageMap,
-) => {
+export const getRootPageIds = (list: DataSourceNotionPage[], pagesMap: DataSourceNotionPageMap) => {
   return list
-    .filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id])
-    .map(item => item.page_id)
+    .filter((item) => item.parent_id === 'root' || !pagesMap[item.parent_id])
+    .map((item) => item.page_id)
 }
 
 export const getVisiblePageRows = ({
@@ -79,8 +85,8 @@ export const getVisiblePageRows = ({
 }): NotionPageRow[] => {
   if (searchValue) {
     return list
-      .filter(item => item.page_name.includes(searchValue))
-      .map(item => ({
+      .filter((item) => item.page_name.includes(searchValue))
+      .map((item) => ({
         page: item,
         parentExists: item.parent_id !== 'root' && Boolean(pagesMap[item.parent_id]),
         depth: treeMap[item.page_id]?.depth ?? 0,
@@ -94,8 +100,7 @@ export const getVisiblePageRows = ({
 
   const visit = (pageId: string) => {
     const current = treeMap[pageId]
-    if (!current)
-      return
+    if (!current) return
 
     const expand = expandedIds.has(pageId)
     rows.push({
@@ -107,8 +112,7 @@ export const getVisiblePageRows = ({
       ancestors: current.ancestors,
     })
 
-    if (!expand)
-      return
+    if (!expand) return
 
     current.children.forEach(visit)
   }
@@ -137,8 +141,7 @@ export const getNextSelectedPageIds = ({
   if (selectionMode === 'single') {
     if (nextCheckedIds.has(pageId)) {
       nextCheckedIds.delete(pageId)
-    }
-    else {
+    } else {
       nextCheckedIds.clear()
       nextCheckedIds.add(pageId)
     }
@@ -147,15 +150,13 @@ export const getNextSelectedPageIds = ({
   }
 
   if (nextCheckedIds.has(pageId)) {
-    if (!searchValue)
-      descendants.forEach(item => nextCheckedIds.delete(item))
+    if (!searchValue) descendants.forEach((item) => nextCheckedIds.delete(item))
 
     nextCheckedIds.delete(pageId)
     return nextCheckedIds
   }
 
-  if (!searchValue)
-    descendants.forEach(item => nextCheckedIds.add(item))
+  if (!searchValue) descendants.forEach((item) => nextCheckedIds.add(item))
 
   nextCheckedIds.add(pageId)
 

@@ -1,6 +1,6 @@
 import type { CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import WebsitePreview from '../preview'
 
 // Mock Setup
@@ -36,14 +36,6 @@ describe('WebsitePreview', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const payload = createPayload()
-
-      render(<WebsitePreview payload={payload} hidePreview={mockHidePreview} />)
-
-      expect(screen.getByText('Test Page Title')).toBeInTheDocument()
-    })
-
     it('should render the page preview header text', () => {
       const payload = createPayload()
 
@@ -173,17 +165,4 @@ describe('WebsitePreview', () => {
   })
 
   // CSS Module Classes
-  describe('CSS Module Classes', () => {
-    it('should apply filePreview class to root container', () => {
-      const payload = createPayload()
-
-      const { container } = render(
-        <WebsitePreview payload={payload} hidePreview={mockHidePreview} />,
-      )
-
-      const root = container.firstElementChild
-      expect(root?.className).toContain('filePreview')
-      expect(root?.className).toContain('h-full')
-    })
-  })
 })

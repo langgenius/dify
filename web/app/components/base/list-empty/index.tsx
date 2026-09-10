@@ -10,17 +10,11 @@ type ListEmptyProps = {
   icon?: ReactNode
 }
 
-const ListEmpty = ({
-  title,
-  description,
-  icon,
-}: ListEmptyProps) => {
+const ListEmpty = ({ title, description, icon }: ListEmptyProps) => {
   return (
     <div className="flex w-[320px] flex-col items-start gap-2 rounded-[10px] bg-workflow-process-bg p-4">
       <div className="flex h-10 w-10 items-center justify-center gap-2 rounded-[10px]">
-        <div className="relative flex grow items-center justify-center gap-2 self-stretch rounded-[10px] border-[0.5px]
-          border-components-card-border bg-components-card-bg p-1 shadow-lg"
-        >
+        <div className="relative flex grow items-center justify-center gap-2 self-stretch rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg">
           {icon || <Variable02 className="size-5 shrink-0 text-text-accent" />}
           <VerticalLine className="absolute top-1/2 -right-px -translate-y-1/4" />
           <VerticalLine className="absolute top-1/2 -left-px -translate-y-1/4" />

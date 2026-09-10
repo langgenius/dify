@@ -14,9 +14,9 @@ export default class DevicesList extends DifyCommand {
 
   static override flags = {
     'http-retry': httpRetryFlag,
-    'json': Flags.boolean({ description: 'emit JSON', default: false }),
-    'page': Flags.integer({ description: 'page number', default: 1 }),
-    'limit': Flags.string({ description: 'page size [1..200]' }),
+    json: Flags.boolean({ description: 'emit JSON', default: false }),
+    page: Flags.integer({ description: 'page number', default: 1 }),
+    limit: Flags.string({ description: 'page size [1..200]' }),
   }
 
   async run(argv: string[]): Promise<void> {

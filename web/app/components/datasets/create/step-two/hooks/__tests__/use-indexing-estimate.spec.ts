@@ -2,7 +2,7 @@ import type { IndexingType } from '../use-indexing-config'
 import type { NotionPage } from '@/models/common'
 import type { ChunkingMode, CrawlResultItem, CustomFile, ProcessRule } from '@/models/datasets'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 
 // Hoisted mocks
@@ -65,18 +65,22 @@ describe('useIndexingEstimate', () => {
     })
 
     it('should select notion mutation for NOTION type', () => {
-      const { result } = renderHook(() => useIndexingEstimate({
-        ...defaultOptions,
-        dataSourceType: DataSourceType.NOTION,
-      }))
+      const { result } = renderHook(() =>
+        useIndexingEstimate({
+          ...defaultOptions,
+          dataSourceType: DataSourceType.NOTION,
+        }),
+      )
       expect(result.current.estimate).toBeNull()
     })
 
     it('should select web mutation for WEB type', () => {
-      const { result } = renderHook(() => useIndexingEstimate({
-        ...defaultOptions,
-        dataSourceType: DataSourceType.WEB,
-      }))
+      const { result } = renderHook(() =>
+        useIndexingEstimate({
+          ...defaultOptions,
+          dataSourceType: DataSourceType.WEB,
+        }),
+      )
       expect(result.current.estimate).toBeNull()
     })
   })
@@ -89,19 +93,23 @@ describe('useIndexingEstimate', () => {
     })
 
     it('should call notion mutate for NOTION type', () => {
-      const { result } = renderHook(() => useIndexingEstimate({
-        ...defaultOptions,
-        dataSourceType: DataSourceType.NOTION,
-      }))
+      const { result } = renderHook(() =>
+        useIndexingEstimate({
+          ...defaultOptions,
+          dataSourceType: DataSourceType.NOTION,
+        }),
+      )
       result.current.fetchEstimate()
       expect(mocks.notionMutate).toHaveBeenCalledOnce()
     })
 
     it('should call web mutate for WEB type', () => {
-      const { result } = renderHook(() => useIndexingEstimate({
-        ...defaultOptions,
-        dataSourceType: DataSourceType.WEB,
-      }))
+      const { result } = renderHook(() =>
+        useIndexingEstimate({
+          ...defaultOptions,
+          dataSourceType: DataSourceType.WEB,
+        }),
+      )
       result.current.fetchEstimate()
       expect(mocks.webMutate).toHaveBeenCalledOnce()
     })

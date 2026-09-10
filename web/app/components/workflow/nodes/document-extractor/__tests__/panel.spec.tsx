@@ -12,7 +12,7 @@ let mockLocale = 'en-US'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
   __esModule: true,
-  default: ({ title, children }: { title: ReactNode, children: ReactNode }) => (
+  default: ({ title, children }: { title: ReactNode; children: ReactNode }) => (
     <div>
       <div>{title}</div>
       {children}
@@ -23,7 +23,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
   __esModule: true,
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string, type: string }) => <div>{`${name}:${type}`}</div>,
+  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
@@ -33,11 +33,11 @@ vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   __esModule: true,
-  default: ({
-    onChange,
-  }: {
-    onChange: (value: string[]) => void
-  }) => <button type="button" onClick={() => onChange(['node-1', 'files'])}>pick-file-var</button>,
+  default: ({ onChange }: { onChange: (value: string[]) => void }) => (
+    <button type="button" onClick={() => onChange(['node-1', 'files'])}>
+      pick-file-var
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-help-link', () => ({
@@ -72,7 +72,9 @@ const createData = (overrides: Partial<DocExtractorNodeType> = {}): DocExtractor
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   handleVarChanges: vi.fn(),
@@ -100,45 +102,46 @@ describe('document-extractor/panel', () => {
     const user = userEvent.setup()
     const handleVarChanges = vi.fn()
 
-    mockUseConfig.mockReturnValueOnce(createConfigResult({
-      inputs: createData({ is_array_file: false }),
-      handleVarChanges,
-    }))
-
-    render(
-      <Panel
-        id="doc-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
+    mockUseConfig.mockReturnValueOnce(
+      createConfigResult({
+        inputs: createData({ is_array_file: false }),
+        handleVarChanges,
+      }),
     )
+
+    render(<Panel id="doc-node" data={createData()} panelProps={panelProps} />)
 
     await user.click(screen.getByRole('button', { name: 'pick-file-var' }))
 
     expect(handleVarChanges).toHaveBeenCalledWith(['node-1', 'files'])
-    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf, markdown, docx"}'))!.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'workflow.nodes.docExtractor.learnMore' }))!.toHaveAttribute(
-      'href',
-      'https://docs.example.com/document-extractor',
-    )
+    expect(
+      screen.getByText(
+        'workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf, markdown, docx"}',
+      ),
+    )!.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'workflow.nodes.docExtractor.learnMore' }),
+    )!.toHaveAttribute('href', 'https://docs.example.com/document-extractor')
     expect(screen.getByText('text:string'))!.toBeInTheDocument()
   })
 
   it('uses chinese separators and array output types when the input is an array of files', () => {
     mockLocale = LanguagesSupported[1]!
-    mockUseConfig.mockReturnValueOnce(createConfigResult({
-      inputs: createData({ is_array_file: true }),
-    }))
-
-    render(
-      <Panel
-        id="doc-node"
-        data={createData({ is_array_file: true })}
-        panelProps={panelProps}
-      />,
+    mockUseConfig.mockReturnValueOnce(
+      createConfigResult({
+        inputs: createData({ is_array_file: true }),
+      }),
     )
 
-    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf、 markdown、 docx"}'))!.toBeInTheDocument()
+    render(
+      <Panel id="doc-node" data={createData({ is_array_file: true })} panelProps={panelProps} />,
+    )
+
+    expect(
+      screen.getByText(
+        'workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf、 markdown、 docx"}',
+      ),
+    )!.toBeInTheDocument()
     expect(screen.getByText('text:array[string]'))!.toBeInTheDocument()
   })
 })

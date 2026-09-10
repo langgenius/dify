@@ -1,70 +1,60 @@
-import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-/**
- * Test suite for useDocumentTitle hook
- *
- * This hook manages the browser document title with support for:
- * - Custom branding (when enabled in system features)
- * - Default "Dify" branding
- * - Pending state handling (prevents title flicker during loading)
- * - Page-specific titles with automatic suffix
- *
- * Title format: "[Page Title] - [Brand Name]"
- * If no page title: "[Brand Name]"
- */
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useDocumentTitle from './use-document-title'
 
-/**
- * Test behavior when system features are still loading
- * Title should remain empty to prevent flicker
- */
-describe('title should be empty if systemFeatures is pending', () => {
-  it('document title should be empty if set title', () => {
-    renderHookWithSystemFeatures(() => useDocumentTitle('test'), { systemFeatures: null })
+describe('useDocumentTitle', () => {
+  afterEach(() => {
+    document.head.querySelectorAll('link').forEach((link) => link.remove())
+  })
+
+  it('keeps the title empty while system features are pending', () => {
+    renderHookWithConsoleQuery(() => useDocumentTitle('Settings'), { systemFeatures: null })
     expect(document.title).toBe('')
   })
 
-  it('document title should be empty if not set title', () => {
-    renderHookWithSystemFeatures(() => useDocumentTitle(''), { systemFeatures: null })
-    expect(document.title).toBe('')
-  })
-})
-
-/**
- * Test default Dify branding behavior
- * When custom branding is disabled, should use "Dify" as the brand name
- */
-describe('use default branding', () => {
-  it('document title should be test-Dify if set title', () => {
-    renderHookWithSystemFeatures(() => useDocumentTitle('test'), {
+  it('uses the default product name', () => {
+    renderHookWithConsoleQuery(() => useDocumentTitle('Settings'), {
       systemFeatures: { branding: { enabled: false } },
     })
-    expect(document.title).toBe('test - Dify')
+    expect(document.title).toBe('Settings - Dify')
   })
 
-  it('document title should be Dify if not set title', () => {
-    renderHookWithSystemFeatures(() => useDocumentTitle(''), {
-      systemFeatures: { branding: { enabled: false } },
+  it('uses the configured product name with or without a page title', () => {
+    const { rerender } = renderHookWithConsoleQuery(({ title }) => useDocumentTitle(title), {
+      initialProps: { title: 'Settings' },
+      systemFeatures: { branding: { enabled: true, application_title: 'Acme' } },
     })
-    expect(document.title).toBe('Dify')
-  })
-})
 
-/**
- * Test custom branding behavior
- * When custom branding is enabled, should use the configured application_title
- */
-describe('use specific branding', () => {
-  it('document title should be test-Test if set title', () => {
-    renderHookWithSystemFeatures(() => useDocumentTitle('test'), {
-      systemFeatures: { branding: { enabled: true, application_title: 'Test' } },
-    })
-    expect(document.title).toBe('test - Test')
+    expect(document.title).toBe('Settings - Acme')
+    rerender({ title: '' })
+    expect(document.title).toBe('Acme')
   })
 
-  it('document title should be Test if not set title', () => {
-    renderHookWithSystemFeatures(() => useDocumentTitle(''), {
-      systemFeatures: { branding: { enabled: true, application_title: 'Test' } },
+  it('preserves route metadata when no client title is provided', () => {
+    document.title = 'Route title - Dify'
+
+    renderHookWithConsoleQuery(() => useDocumentTitle(null))
+
+    expect(document.title).toBe('Route title - Dify')
+  })
+
+  it('does not mutate framework-owned favicon metadata', () => {
+    const favicon = document.createElement('link')
+    favicon.rel = 'icon'
+    favicon.href = '/favicon.ico'
+    document.head.appendChild(favicon)
+
+    renderHookWithConsoleQuery(() => useDocumentTitle('Settings'), {
+      systemFeatures: {
+        branding: {
+          application_title: 'Acme',
+          enabled: true,
+          favicon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>',
+        },
+      },
     })
-    expect(document.title).toBe('Test')
+
+    expect(favicon.isConnected).toBe(true)
+    expect(favicon).toHaveAttribute('rel', 'icon')
+    expect(favicon).toHaveAttribute('href', '/favicon.ico')
   })
 })

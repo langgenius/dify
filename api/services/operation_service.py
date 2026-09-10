@@ -3,6 +3,8 @@ from typing import TypedDict
 
 import httpx
 
+OPERATION_REQUEST_TIMEOUT = httpx.Timeout(10.0, connect=3.0)
+
 
 class UtmInfo(TypedDict, total=False):
     """Expected shape of the utm_info dict passed to record_utm.
@@ -26,7 +28,9 @@ class OperationService:
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
-        response = httpx.request(method, url, json=json, params=params, headers=headers)
+        response = httpx.request(
+            method, url, json=json, params=params, headers=headers, timeout=OPERATION_REQUEST_TIMEOUT
+        )
 
         return response.json()
 

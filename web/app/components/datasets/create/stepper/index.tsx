@@ -16,11 +16,7 @@ export const Stepper: FC<StepperProps> = (props) => {
         const isLast = index === steps.length - 1
         return (
           <Fragment key={index}>
-            <StepperStep
-              {...step}
-              activeIndex={activeIndex}
-              index={index}
-            />
+            <StepperStep {...step} activeIndex={activeIndex} index={index} />
             {!isLast && <div className="h-px w-4 bg-divider-deep" />}
           </Fragment>
         )

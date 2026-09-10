@@ -4,7 +4,6 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import { $nodesOfType } from 'lexical'
 import { HISTORY_PLACEHOLDER_TEXT } from '../../../constants'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   readEditorStateValue,
@@ -12,13 +11,13 @@ import {
   renderLexicalEditor,
   selectRootEnd,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import {
   DELETE_HISTORY_BLOCK_COMMAND,
   HistoryBlock,
   HistoryBlockNode,
   INSERT_HISTORY_BLOCK_COMMAND,
-
 } from '../index'
 
 const createRoleName = (overrides?: Partial<RoleName>): RoleName => ({

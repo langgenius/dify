@@ -2,9 +2,9 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetTrialAppsByAppIdDatasetsPath,
+  zGetTrialAppsByAppIdDatasetsQuery,
   zGetTrialAppsByAppIdDatasetsResponse,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse,
@@ -24,6 +24,12 @@ import {
   zPostTrialAppsByAppIdCompletionMessagesBody,
   zPostTrialAppsByAppIdCompletionMessagesPath,
   zPostTrialAppsByAppIdCompletionMessagesResponse,
+  zPostTrialAppsByAppIdFilesUploadBody,
+  zPostTrialAppsByAppIdFilesUploadPath,
+  zPostTrialAppsByAppIdFilesUploadResponse,
+  zPostTrialAppsByAppIdRemoteFilesUploadBody,
+  zPostTrialAppsByAppIdRemoteFilesUploadPath,
+  zPostTrialAppsByAppIdRemoteFilesUploadResponse,
   zPostTrialAppsByAppIdTextToAudioBody,
   zPostTrialAppsByAppIdTextToAudioPath,
   zPostTrialAppsByAppIdTextToAudioResponse,
@@ -34,16 +40,8 @@ import {
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse,
 } from './zod.gen'
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdAudioToText',
@@ -57,16 +55,8 @@ export const audioToText = {
   post,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdChatMessages',
@@ -85,16 +75,8 @@ export const chatMessages = {
   post: post2,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdCompletionMessages',
@@ -113,23 +95,20 @@ export const completionMessages = {
   post: post3,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppIdDatasets',
     path: '/trial-apps/{app_id}/datasets',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetTrialAppsByAppIdDatasetsPath }))
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdDatasetsPath,
+      query: zGetTrialAppsByAppIdDatasetsQuery.optional(),
+    }),
+  )
   .output(zGetTrialAppsByAppIdDatasetsResponse)
 
 export const datasets = {
@@ -137,15 +116,36 @@ export const datasets = {
 }
 
 /**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
+ * Upload a file into the tenant that owns the trial app
  */
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdFilesUpload',
+    path: '/trial-apps/{app_id}/files/upload',
+    successStatus: 201,
+    summary: 'Upload a file into the tenant that owns the trial app',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdFilesUploadBody,
+      params: zPostTrialAppsByAppIdFilesUploadPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdFilesUploadResponse)
+
+export const upload = {
+  post: post4,
+}
+
+export const files = {
+  upload,
+}
+
 export const get2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppIdMessagesByMessageIdSuggestedQuestions',
@@ -169,16 +169,9 @@ export const messages = {
 
 /**
  * Retrieve app parameters
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppIdParameters',
@@ -194,19 +187,43 @@ export const parameters = {
 }
 
 /**
+ * Upload a remote file into the tenant that owns the trial app
+ */
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdRemoteFilesUpload',
+    path: '/trial-apps/{app_id}/remote-files/upload',
+    successStatus: 201,
+    summary: 'Upload a remote file into the tenant that owns the trial app',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdRemoteFilesUploadBody,
+      params: zPostTrialAppsByAppIdRemoteFilesUploadPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdRemoteFilesUploadResponse)
+
+export const upload2 = {
+  post: post5,
+}
+
+export const remoteFiles = {
+  upload: upload2,
+}
+
+/**
  * Retrieve app site info
  *
  * Returns the site configuration for the application including theme, icons, and text.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get4 = oc
   .route({
-    deprecated: true,
     description:
-      'Returns the site configuration for the application including theme, icons, and text.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Returns the site configuration for the application including theme, icons, and text.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppIdSite',
@@ -221,16 +238,8 @@ export const site = {
   get: get4,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post4 = oc
+export const post6 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdTextToAudio',
@@ -246,21 +255,14 @@ export const post4 = oc
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
 
 export const textToAudio = {
-  post: post4,
+  post: post6,
 }
 
 /**
  * Run workflow
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post5 = oc
+export const post7 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdWorkflowsRun',
@@ -277,21 +279,14 @@ export const post5 = oc
   .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
 
 export const run = {
-  post: post5,
+  post: post7,
 }
 
 /**
  * Stop workflow task
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post6 = oc
+export const post8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdWorkflowsTasksByTaskIdStop',
@@ -303,7 +298,7 @@ export const post6 = oc
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
 
 export const stop = {
-  post: post6,
+  post: post8,
 }
 
 export const byTaskId = {
@@ -316,16 +311,9 @@ export const tasks = {
 
 /**
  * Get workflow detail
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppIdWorkflows',
@@ -344,16 +332,9 @@ export const workflows = {
 
 /**
  * Get app detail
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get6 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppId',
@@ -370,8 +351,10 @@ export const byAppId = {
   chatMessages,
   completionMessages,
   datasets,
+  files,
   messages,
   parameters,
+  remoteFiles,
   site,
   textToAudio,
   workflows,

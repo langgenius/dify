@@ -29,14 +29,14 @@ const Header: FC<DatePickerHeaderProps> = ({
         onClick={onClickPrevMonth}
         className="rounded-lg p-1.5 hover:bg-state-base-hover"
       >
-        <RiArrowUpSLine className="h-[18px] w-[18px] text-text-secondary" />
+        <RiArrowUpSLine className="h-4.5 w-4.5 text-text-secondary" />
       </button>
       <button
         type="button"
         onClick={onClickNextMonth}
         className="rounded-lg p-1.5 hover:bg-state-base-hover"
       >
-        <RiArrowDownSLine className="h-[18px] w-[18px] text-text-secondary" />
+        <RiArrowDownSLine className="h-4.5 w-4.5 text-text-secondary" />
       </button>
     </div>
   )

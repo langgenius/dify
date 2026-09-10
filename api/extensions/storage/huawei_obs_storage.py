@@ -27,12 +27,14 @@ class HuaweiObsStorage(BaseStorage):
 
     @override
     def load_once(self, filename: str) -> bytes:
-        data: bytes = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)["body"].response.read()
+        # TODO: Huawei SDK lacks proper typing
+        data: bytes = self.client.getObject(bucketName=self.bucket_name, objectKey=filename).body.response.read()  # type: ignore
         return data
 
     @override
     def load_stream(self, filename: str) -> Generator:
-        response = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)["body"].response
+        # TODO: Huawei SDK lacks proper typing
+        response = self.client.getObject(bucketName=self.bucket_name, objectKey=filename).body.response  # type: ignore
         while chunk := response.read(4096):
             yield chunk
 

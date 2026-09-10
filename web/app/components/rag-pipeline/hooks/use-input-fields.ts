@@ -4,22 +4,26 @@ import { useMemo } from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import { VAR_TYPE_MAP } from '@/models/pipeline'
 
-export const useInitialData = (variables: RAGPipelineVariables, lastRunInputData?: Record<string, any>) => {
+export const useInitialData = (
+  variables: RAGPipelineVariables,
+  lastRunInputData?: Record<string, any>,
+) => {
   const initialData = useMemo(() => {
-    return variables.reduce((acc, item) => {
-      const type = VAR_TYPE_MAP[item.type]
-      const variableName = item.variable
-      const defaultValue = lastRunInputData?.[variableName] || item.default_value
-      if ([BaseFieldType.textInput, BaseFieldType.paragraph, BaseFieldType.select].includes(type))
-        acc[variableName] = defaultValue ?? ''
-      if (type === BaseFieldType.numberInput)
-        acc[variableName] = defaultValue ?? 0
-      if (type === BaseFieldType.checkbox)
-        acc[variableName] = defaultValue ?? false
-      if ([BaseFieldType.file, BaseFieldType.fileList].includes(type))
-        acc[variableName] = defaultValue ?? []
-      return acc
-    }, {} as Record<string, any>)
+    return variables.reduce(
+      (acc, item) => {
+        const type = VAR_TYPE_MAP[item.type]
+        const variableName = item.variable
+        const defaultValue = lastRunInputData?.[variableName] || item.default_value
+        if ([BaseFieldType.textInput, BaseFieldType.paragraph, BaseFieldType.select].includes(type))
+          acc[variableName] = defaultValue ?? ''
+        if (type === BaseFieldType.numberInput) acc[variableName] = defaultValue ?? 0
+        if (type === BaseFieldType.checkbox) acc[variableName] = defaultValue ?? false
+        if ([BaseFieldType.file, BaseFieldType.fileList].includes(type))
+          acc[variableName] = defaultValue ?? []
+        return acc
+      },
+      {} as Record<string, any>,
+    )
   }, [lastRunInputData, variables])
 
   return initialData
@@ -35,7 +39,7 @@ export const useConfigurations = (variables: RAGPipelineVariables) => {
         label: item.label,
         required: item.required,
         maxLength: item.max_length,
-        options: item.options?.map(option => ({
+        options: item.options?.map((option) => ({
           label: option,
           value: option,
         })),

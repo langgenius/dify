@@ -1,10 +1,6 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
 import { IndexingType } from '../../create/step-two'
@@ -39,10 +35,10 @@ const IndexMethod = ({
         id={IndexingType.QUALIFIED}
         isActive={value === IndexingType.QUALIFIED}
         onClick={onChange}
-        icon={<HighQuality className="size-[18px]" />}
+        icon={<HighQuality className="size-4.5" />}
         iconActiveColor="text-util-colors-orange-orange-500"
-        title={t('stepTwo.qualified', { ns: 'datasetCreation' })}
-        description={t('form.indexMethodHighQualityTip', { ns: 'datasetSettings' })}
+        title={t(($) => $['stepTwo.qualified'], { ns: 'datasetCreation' })}
+        description={t(($) => $['form.indexMethodHighQualityTip'], { ns: 'datasetSettings' })}
         disabled={disabled}
         isRecommended
         effectColor={EffectColor.orange}
@@ -51,19 +47,18 @@ const IndexMethod = ({
       />
       {/* Economy */}
       <Popover>
-        <PopoverTrigger
-          nativeButton={false}
-          openOnHover={isEconomyDisabled}
-          render={<div />}
-        >
+        <PopoverTrigger nativeButton={false} openOnHover={isEconomyDisabled} render={<div />}>
           <OptionCard
             id={IndexingType.ECONOMICAL}
             isActive={value === IndexingType.ECONOMICAL}
             onClick={onChange}
-            icon={<Economic className="size-[18px]" />}
+            icon={<Economic className="size-4.5" />}
             iconActiveColor="text-util-colors-indigo-indigo-600"
-            title={t('form.indexMethodEconomy', { ns: 'datasetSettings' })}
-            description={t('form.indexMethodEconomyTip', { ns: 'datasetSettings', count: keywordNumber })}
+            title={t(($) => $['form.indexMethodEconomy'], { ns: 'datasetSettings' })}
+            description={t(($) => $['form.indexMethodEconomyTip'], {
+              ns: 'datasetSettings',
+              count: keywordNumber,
+            })}
             disabled={disabled || isEconomyDisabled}
             effectColor={EffectColor.indigo}
             showEffectColor
@@ -80,9 +75,9 @@ const IndexMethod = ({
           <PopoverContent
             placement="right"
             sideOffset={4}
-            popupClassName="rounded-lg border-0 bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg"
+            className="rounded-lg border-0 bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg"
           >
-            {t('form.indexMethodChangeToEconomyDisabledTip', { ns: 'datasetSettings' })}
+            {t(($) => $['form.indexMethodChangeToEconomyDisabledTip'], { ns: 'datasetSettings' })}
           </PopoverContent>
         )}
       </Popover>

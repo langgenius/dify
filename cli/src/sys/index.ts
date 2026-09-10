@@ -68,8 +68,7 @@ function posixAtomicReplace(src: string, dst: string): void {
 function win32AtomicReplace(src: string, dst: string): void {
   try {
     fs.unlinkSync(dst)
-  }
-  catch { }
+  } catch {}
   fs.renameSync(src, dst)
 }
 
@@ -78,11 +77,13 @@ const platformImpls: Partial<Record<NodeJS.Platform, PlatformFactory>> = {
     id: () => 'linux',
     configDir: () => {
       const xdg = getEnv(ENV_XDG_CONFIG_HOME)
-      return (xdg !== undefined && xdg !== '') ? join(xdg, SUBDIR) : join(homedir(), '.config', SUBDIR)
+      return xdg !== undefined && xdg !== ''
+        ? join(xdg, SUBDIR)
+        : join(homedir(), '.config', SUBDIR)
     },
     cacheDir: () => {
       const xdg = getEnv(ENV_XDG_CACHE_HOME)
-      return (xdg !== undefined && xdg !== '') ? join(xdg, SUBDIR) : join(homedir(), '.cache', SUBDIR)
+      return xdg !== undefined && xdg !== '' ? join(xdg, SUBDIR) : join(homedir(), '.cache', SUBDIR)
     },
     atomicReplace: posixAtomicReplace,
   }),

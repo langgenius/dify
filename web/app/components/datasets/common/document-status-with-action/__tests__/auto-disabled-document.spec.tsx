@@ -1,8 +1,10 @@
 import { toast } from '@langgenius/dify-ui/toast'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { queryOptions, useQuery } from '@tanstack/react-query'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useAutoDisabledDocuments } from '@/service/knowledge/use-document'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import AutoDisabledDocument from '../auto-disabled-document'
 
 const { mockToastSuccess } = vi.hoisted(() => ({
@@ -14,10 +16,11 @@ type AutoDisabledDocumentsResponse = { document_ids: string[] }
 const createMockQueryResult = (
   data: AutoDisabledDocumentsResponse | undefined,
   isLoading: boolean,
-) => ({
-  data,
-  isLoading,
-}) as ReturnType<typeof useAutoDisabledDocuments>
+) =>
+  ({
+    data,
+    isLoading,
+  }) as ReturnType<typeof useAutoDisabledDocuments>
 
 const mockMutateAsync = vi.fn()
 const mockInvalidDisabledDocument = vi.fn()
@@ -46,9 +49,7 @@ describe('AutoDisabledDocument', () => {
 
   describe('Rendering', () => {
     it('should render nothing when loading', () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(
-        createMockQueryResult(undefined, true),
-      )
+      mockUseAutoDisabledDocuments.mockReturnValue(createMockQueryResult(undefined, true))
 
       const { container } = render(<AutoDisabledDocument datasetId="test-dataset" />)
       expect(container.firstChild).toBeNull()
@@ -64,9 +65,7 @@ describe('AutoDisabledDocument', () => {
     })
 
     it('should render nothing when document_ids is undefined', () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(
-        createMockQueryResult(undefined, false),
-      )
+      mockUseAutoDisabledDocuments.mockReturnValue(createMockQueryResult(undefined, false))
 
       const { container } = render(<AutoDisabledDocument datasetId="test-dataset" />)
       expect(container.firstChild).toBeNull()
@@ -90,6 +89,29 @@ describe('AutoDisabledDocument', () => {
 
       render(<AutoDisabledDocument datasetId="my-dataset-id" />)
       expect(mockUseAutoDisabledDocuments).toHaveBeenCalledWith('my-dataset-id')
+    })
+  })
+
+  it('enables the current document IDs after the initial query completes', async () => {
+    const user = userEvent.setup()
+    mockUseAutoDisabledDocuments.mockImplementation(() =>
+      useQuery(
+        queryOptions({
+          queryKey: ['disabled-documents'],
+          queryFn: () => new Promise<AutoDisabledDocumentsResponse>(() => {}),
+        }),
+      ),
+    )
+    const { wrapper, queryClient } = createConsoleQueryWrapper()
+    render(<AutoDisabledDocument datasetId="dataset" />, { wrapper })
+    expect(screen.queryByRole('button', { name: /enable/i })).not.toBeInTheDocument()
+    await act(async () => {
+      queryClient.setQueryData(['disabled-documents'], { document_ids: ['returned-document'] })
+    })
+    await user.click(await screen.findByRole('button', { name: /enable/i }))
+    expect(mockMutateAsync).toHaveBeenCalledWith({
+      datasetId: 'dataset',
+      documentIds: ['returned-document'],
     })
   })
 

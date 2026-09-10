@@ -1,7 +1,7 @@
 import type { StubServer } from '@test/fixtures/stub-server'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { isHttpClientError } from '@/errors/base'
 import { WorkspacesClient } from './workspaces.js'
 
@@ -22,12 +22,17 @@ describe('WorkspacesClient.list', () => {
   })
 
   it('GETs /workspaces and returns the parsed list', async () => {
-    stub = await startStubServer(cap =>
-      jsonResponder(200, {
-        workspaces: [
-          { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
-        ],
-      }, cap))
+    stub = await startStubServer((cap) =>
+      jsonResponder(
+        200,
+        {
+          workspaces: [
+            { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
+          ],
+        },
+        cap,
+      ),
+    )
 
     const res = await makeClient(stub.url).list()
 
@@ -37,10 +42,10 @@ describe('WorkspacesClient.list', () => {
   })
 
   it('maps 401 to a classified BaseError', async () => {
-    stub = await startStubServer(cap => jsonResponder(401, { error: 'expired' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(401, { error: 'expired' }, cap))
 
     await expect(makeClient(stub.url).list()).rejects.toSatisfy(
-      err => isHttpClientError(err) && err.httpStatus === 401,
+      (err) => isHttpClientError(err) && err.httpStatus === 401,
     )
   })
 })

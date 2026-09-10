@@ -34,37 +34,45 @@ vi.mock('@/app/components/workflow/block-selector/all-start-blocks', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAutoGenerateWebhookUrl: () => mocks.autoGenerateWebhookUrl,
-}))
+vi.mock('../../../hooks/use-auto-generate-webhook-url', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../hooks/use-auto-generate-webhook-url')>()
+
+  return {
+    ...actual,
+    useAutoGenerateWebhookUrl: () => mocks.autoGenerateWebhookUrl,
+  }
+})
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: unknown) => unknown) => selector({
-    availableNodesMetaData: {
-      nodesMap: {
-        [BlockEnum.Start]: {
-          defaultValue: {
-            title: 'User Input',
-            desc: '',
-            variables: [],
+  useHooksStore: (selector: (state: unknown) => unknown) =>
+    selector({
+      availableNodesMetaData: {
+        nodesMap: {
+          [BlockEnum.Start]: {
+            defaultValue: {
+              title: 'User Input',
+              desc: '',
+              variables: [],
+            },
           },
         },
       },
-    },
-  }),
+    }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
+vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mocks.handleSyncWorkflowDraft,
   }),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: unknown) => unknown) => selector({
-    setHasSelectedStartNode: mocks.setHasSelectedStartNode,
-    setShouldAutoOpenStartNodeSelector: mocks.setShouldAutoOpenStartNodeSelector,
-  }),
+  useStore: (selector: (state: unknown) => unknown) =>
+    selector({
+      setHasSelectedStartNode: mocks.setHasSelectedStartNode,
+      setShouldAutoOpenStartNodeSelector: mocks.setShouldAutoOpenStartNodeSelector,
+    }),
 }))
 
 const createPlaceholderNode = (): Node => ({
@@ -104,11 +112,7 @@ describe('StartPlaceholderPanel', () => {
   describe('Start node selection', () => {
     it('should replace the placeholder with user input and auto-open the next node selector', () => {
       render(
-        <Panel
-          id="placeholder-1"
-          data={createPlaceholderNode().data}
-          panelProps={{} as never}
-        />,
+        <Panel id="placeholder-1" data={createPlaceholderNode().data} panelProps={{} as never} />,
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'Select User Input' }))
@@ -126,9 +130,13 @@ describe('StartPlaceholderPanel', () => {
       expect(currentNodes[1]?.data.selected).toBe(false)
       expect(mocks.setHasSelectedStartNode).toHaveBeenCalledWith(true)
       expect(mocks.setShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(true)
-      expect(mocks.handleSyncWorkflowDraft).toHaveBeenCalledWith(true, false, expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }))
+      expect(mocks.handleSyncWorkflowDraft).toHaveBeenCalledWith(
+        true,
+        false,
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+        }),
+      )
 
       const callback = mocks.handleSyncWorkflowDraft.mock.calls[0]?.[2] as { onSuccess: () => void }
       callback.onSuccess()

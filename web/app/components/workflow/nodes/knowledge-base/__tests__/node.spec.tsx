@@ -9,32 +9,25 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
-import {
-  ChunkStructureEnum,
-  IndexMethodEnum,
-  RetrievalSearchMethodEnum,
-} from '../types'
+import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
-const mockUseModelList = vi.hoisted(() => vi.fn())
+const mockModelListQuery = vi.hoisted(() => vi.fn())
 const mockUseSettingsDisplay = vi.hoisted(() => vi.fn())
 const mockUseEmbeddingModelStatus = vi.hoisted(() => vi.fn())
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: () => ({ data: undefined }),
-  }
-})
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/header/account-setting/model-provider-page/hooks')>()
-  return {
-    ...actual,
-    useLanguage: () => 'en_US',
-    useModelList: mockUseModelList,
-  }
-})
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/hooks',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
+      >()
+    return {
+      ...actual,
+      useLanguage: () => 'en_US',
+    }
+  },
+)
 
 vi.mock('../hooks/use-settings-display', () => ({
   useSettingsDisplay: mockUseSettingsDisplay,
@@ -55,7 +48,9 @@ const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const createNodeData = (overrides: Partial<CommonNodeType<KnowledgeBaseNodeType>> = {}): CommonNodeType<KnowledgeBaseNodeType> => ({
+const createNodeData = (
+  overrides: Partial<CommonNodeType<KnowledgeBaseNodeType>> = {},
+): CommonNodeType<KnowledgeBaseNodeType> => ({
   title: 'Knowledge Base',
   desc: '',
   type: BlockEnum.KnowledgeBase,
@@ -77,7 +72,7 @@ const createNodeData = (overrides: Partial<CommonNodeType<KnowledgeBaseNodeType>
 describe('KnowledgeBaseNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseModelList.mockReturnValue({ data: [] })
+    mockModelListQuery.mockReturnValue({ data: [] })
     mockUseSettingsDisplay.mockReturnValue({
       [IndexMethodEnum.QUALIFIED]: 'High Quality',
       [RetrievalSearchMethodEnum.semantic]: 'Vector Search',
@@ -108,7 +103,9 @@ describe('KnowledgeBaseNode', () => {
 
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
-      expect(screen.getByText('common.modelProvider.selector.configureRequired')).toBeInTheDocument()
+      expect(
+        screen.getByText('common.modelProvider.selector.configureRequired'),
+      ).toBeInTheDocument()
     })
 
     it('should render disabled when embedding model status is disabled', () => {
@@ -187,17 +184,22 @@ describe('KnowledgeBaseNode', () => {
     })
 
     it('should render a warning value for retrieval settings when reranking is incomplete', () => {
-      mockUseModelList.mockImplementation((modelType: ModelTypeEnum) => {
-        if (modelType === ModelTypeEnum.textEmbedding) {
-          return {
-            data: [{
-              provider: 'openai',
-              models: [createModelItem()],
-            }],
+      mockModelListQuery.mockImplementation(
+        ({ input }: { input: { params: { model_type: string } } }) => {
+          const modelType = input.params.model_type
+          if (modelType === ModelTypeEnum.textEmbedding) {
+            return {
+              data: [
+                {
+                  provider: 'openai',
+                  models: [createModelItem()],
+                },
+              ],
+            }
           }
-        }
-        return { data: [] }
-      })
+          return { data: [] }
+        },
+      )
 
       render(
         <Node
@@ -230,4 +232,15 @@ describe('KnowledgeBaseNode', () => {
       expect(screen.queryByText('Text Embedding 3 Large')).not.toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: { queryKey?: readonly [readonly string[], unknown] }) =>
+      options.queryKey?.[0].includes('modelTypes')
+        ? mockModelListQuery(options)
+        : { data: undefined },
+  }
 })

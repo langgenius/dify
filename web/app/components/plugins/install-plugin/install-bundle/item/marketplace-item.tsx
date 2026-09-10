@@ -21,8 +21,7 @@ const MarketPlaceItem: FC<Props> = ({
   version,
   versionInfo,
 }) => {
-  if (!payload)
-    return <Loading />
+  if (!payload) return <Loading />
   return (
     <LoadedItem
       checked={checked}

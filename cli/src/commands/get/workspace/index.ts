@@ -15,16 +15,21 @@ export default class GetWorkspace extends DifyCommand {
 
   static override flags = {
     'http-retry': httpRetryFlag,
-    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE], default: '' }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE],
+      default: '',
+    }),
   }
 
   async run(argv: string[]) {
     const { flags } = this.parse(GetWorkspace, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
-    const result = await runGetWorkspace({ format }, { active: ctx.active, http: ctx.http, io: ctx.io })
-    if (result.kind === 'empty')
-      return raw(result.message)
+    const result = await runGetWorkspace(
+      { format },
+      { active: ctx.active, http: ctx.http, io: ctx.io },
+    )
+    if (result.kind === 'empty') return raw(result.message)
     return table({
       format,
       data: result.data,

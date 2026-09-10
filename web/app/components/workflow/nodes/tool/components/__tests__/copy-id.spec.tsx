@@ -20,7 +20,9 @@ describe('tool/copy-id', () => {
   it('should copy content and reset copied state when mouse leaves', () => {
     const { container } = render(<CopyId content="tool-123" />)
 
-    const trigger = screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' })
+    const trigger = screen.getByRole('button', {
+      name: 'appOverview.overview.appInfo.embedded.copy',
+    })
     const wrapper = container.querySelector('.inline-flex') as HTMLElement
 
     act(() => {
@@ -37,15 +39,20 @@ describe('tool/copy-id', () => {
     expect(trigger).toHaveAccessibleName('appOverview.overview.appInfo.embedded.copy')
   })
 
-  it('should stop click propagation from the outer wrapper', () => {
+  it('should stop click propagation from the copy button', () => {
     const handleParentClick = vi.fn()
-    const { container } = render(
-      <div onClick={handleParentClick}>
-        <CopyId content="tool-123" />
-      </div>,
-    )
+    render(<CopyId content="tool-123" />)
+    document.body.addEventListener('click', handleParentClick)
 
-    fireEvent.click(container.querySelector('.inline-flex') as HTMLElement)
+    act(() => {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'appOverview.overview.appInfo.embedded.copy',
+        }),
+      )
+      vi.advanceTimersByTime(100)
+    })
+    document.body.removeEventListener('click', handleParentClick)
 
     expect(handleParentClick).not.toHaveBeenCalled()
   })

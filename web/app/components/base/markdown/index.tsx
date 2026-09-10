@@ -24,7 +24,12 @@ export type MarkdownProps = {
   pluginInfo?: SimplePluginInfo
 } & Pick<
   StreamdownWrapperProps,
-  'customComponents' | 'customDisallowedElements' | 'remarkPlugins' | 'rehypePlugins' | 'isAnimating' | 'mode'
+  | 'customComponents'
+  | 'customDisallowedElements'
+  | 'remarkPlugins'
+  | 'rehypePlugins'
+  | 'isAnimating'
+  | 'mode'
 >
 
 export const Markdown = memo((props: MarkdownProps) => {
@@ -42,7 +47,10 @@ export const Markdown = memo((props: MarkdownProps) => {
   const latexContent = useMemo(() => preprocess(content), [content])
 
   return (
-    <div className={cn('markdown-body', 'text-text-primary!', className)} data-testid="markdown-body">
+    <div
+      className={cn('markdown-body', 'text-text-primary!', className)}
+      data-testid="markdown-body"
+    >
       <StreamdownWrapper
         pluginInfo={pluginInfo}
         latexContent={latexContent}

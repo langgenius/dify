@@ -10,7 +10,7 @@ export type LocalFileSliceShape = {
 }
 
 export const createLocalFileSlice: StateCreator<LocalFileSliceShape> = (set, get) => {
-  return ({
+  return {
     localFileList: [],
     setLocalFileList: (fileList: FileItem[]) => {
       set(() => ({
@@ -20,9 +20,10 @@ export const createLocalFileSlice: StateCreator<LocalFileSliceShape> = (set, get
       previewLocalFileRef.current = fileList[0]?.file as DocumentItem
     },
     currentLocalFile: undefined,
-    setCurrentLocalFile: (file: File | undefined) => set(() => ({
-      currentLocalFile: file,
-    })),
+    setCurrentLocalFile: (file: File | undefined) =>
+      set(() => ({
+        currentLocalFile: file,
+      })),
     previewLocalFileRef: { current: undefined },
-  })
+  }
 }

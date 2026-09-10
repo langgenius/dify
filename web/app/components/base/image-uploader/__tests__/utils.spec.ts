@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import { waitFor } from '@testing-library/react'
 import { upload } from '@/service/base'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { getImageUploadErrorMessage, imageUpload } from '../utils'
 
 vi.mock('@/service/base', () => ({
@@ -14,7 +15,8 @@ describe('image-uploader utils', () => {
 
   describe('getImageUploadErrorMessage', () => {
     it('should return backend message when error code is forbidden', () => {
-      const t = vi.fn() as unknown as TFunction
+      const translate = vi.fn((key: string, _options?: Record<string, unknown>) => key)
+      const t = withSelectorKey(translate) as unknown as TFunction
 
       const result = getImageUploadErrorMessage(
         { response: { code: 'forbidden', message: 'Forbidden by policy' } },
@@ -23,11 +25,12 @@ describe('image-uploader utils', () => {
       )
 
       expect(result).toBe('Forbidden by policy')
-      expect(t).not.toHaveBeenCalled()
+      expect(translate).not.toHaveBeenCalled()
     })
 
     it('should return translated message when error code is file_extension_blocked', () => {
-      const t = vi.fn(() => 'common.fileUploader.fileExtensionBlocked') as unknown as TFunction
+      const translate = vi.fn(() => 'common.fileUploader.fileExtensionBlocked')
+      const t = withSelectorKey(translate) as unknown as TFunction
 
       const result = getImageUploadErrorMessage(
         { response: { code: 'file_extension_blocked' } },
@@ -36,11 +39,12 @@ describe('image-uploader utils', () => {
       )
 
       expect(result).toBe('common.fileUploader.fileExtensionBlocked')
-      expect(t).toHaveBeenCalledWith('fileUploader.fileExtensionBlocked', { ns: 'common' })
+      expect(translate).toHaveBeenCalledWith('fileUploader.fileExtensionBlocked', { ns: 'common' })
     })
 
     it('should return default message when error code is unknown', () => {
-      const t = vi.fn() as unknown as TFunction
+      const translate = vi.fn((key: string, _options?: Record<string, unknown>) => key)
+      const t = withSelectorKey(translate) as unknown as TFunction
 
       const result = getImageUploadErrorMessage(
         { response: { code: 'unexpected_error' } },
@@ -49,16 +53,17 @@ describe('image-uploader utils', () => {
       )
 
       expect(result).toBe('Default error')
-      expect(t).not.toHaveBeenCalled()
+      expect(translate).not.toHaveBeenCalled()
     })
 
     it('should return default message when error is missing response code', () => {
-      const t = vi.fn() as unknown as TFunction
+      const translate = vi.fn((key: string, _options?: Record<string, unknown>) => key)
+      const t = withSelectorKey(translate) as unknown as TFunction
 
       const result = getImageUploadErrorMessage(undefined, 'Default error', t)
 
       expect(result).toBe('Default error')
-      expect(t).not.toHaveBeenCalled()
+      expect(translate).not.toHaveBeenCalled()
     })
   })
 
@@ -108,10 +113,12 @@ describe('image-uploader utils', () => {
     it('should report progress percentage when progress is computable', () => {
       const file = new File(['hello'], 'image.png', { type: 'image/png' })
       const callbacks = createCallbacks()
-      vi.mocked(upload).mockImplementation((options: { onprogress?: (e: ProgressEvent) => void }) => {
-        options.onprogress?.({ lengthComputable: true, loaded: 5, total: 8 } as ProgressEvent)
-        return Promise.resolve({ id: 'uploaded-id' })
-      })
+      vi.mocked(upload).mockImplementation(
+        (options: { onprogress?: (e: ProgressEvent) => void }) => {
+          options.onprogress?.({ lengthComputable: true, loaded: 5, total: 8 } as ProgressEvent)
+          return Promise.resolve({ id: 'uploaded-id' })
+        },
+      )
 
       imageUpload({ file, ...callbacks })
 
@@ -121,10 +128,12 @@ describe('image-uploader utils', () => {
     it('should not report progress when length is not computable', () => {
       const file = new File(['hello'], 'image.png', { type: 'image/png' })
       const callbacks = createCallbacks()
-      vi.mocked(upload).mockImplementation((options: { onprogress?: (e: ProgressEvent) => void }) => {
-        options.onprogress?.({ lengthComputable: false, loaded: 5, total: 8 } as ProgressEvent)
-        return Promise.resolve({ id: 'uploaded-id' })
-      })
+      vi.mocked(upload).mockImplementation(
+        (options: { onprogress?: (e: ProgressEvent) => void }) => {
+          options.onprogress?.({ lengthComputable: false, loaded: 5, total: 8 } as ProgressEvent)
+          return Promise.resolve({ id: 'uploaded-id' })
+        },
+      )
 
       imageUpload({ file, ...callbacks })
 

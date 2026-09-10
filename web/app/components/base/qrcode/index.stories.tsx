@@ -1,11 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import ShareQRCode from '.'
 
-const QRDemo = ({
-  content = 'https://dify.ai',
-}: {
-  content?: string
-}) => {
+const QRDemo = ({ content = 'https://dify.ai' }: { content?: string }) => {
   return (
     <div className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
       <p className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Share QR</p>
@@ -25,7 +21,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Toggleable QR code generator for sharing app URLs. Clicking the trigger reveals the code with a download CTA.',
+        component:
+          'Toggleable QR code generator for sharing app URLs. Clicking the trigger reveals the code with a download CTA.',
       },
     },
   },

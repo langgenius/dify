@@ -1,35 +1,46 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
-import { useCallback, useEffect } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects } from '@/service/access-control'
-import useAccessControlStore from '../../../../context/access-control-store'
 import { Infotip } from '../../base/infotip'
 import Loading from '../../base/loading'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
 
-export default function SpecificGroupsOrMembers() {
-  const currentMenu = useAccessControlStore(s => s.currentMenu)
-  const appId = useAccessControlStore(s => s.appId)
-  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
-  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
+export type AccessControlSubjects = {
+  groups: AccessControlGroup[]
+  members: AccessControlAccount[]
+}
+
+export type AccessControlSubjectsStatus = 'loading' | 'error' | 'success'
+
+type SpecificGroupsOrMembersProps = {
+  accessMode: AccessMode
+  subjects: AccessControlSubjects
+  subjectsStatus: AccessControlSubjectsStatus
+  onSubjectsChange: (subjects: AccessControlSubjects) => void
+  onRetrySubjects?: () => void
+}
+
+export default function SpecificGroupsOrMembers({
+  accessMode,
+  subjects,
+  subjectsStatus,
+  onSubjectsChange,
+  onRetrySubjects,
+}: SpecificGroupsOrMembersProps) {
   const { t } = useTranslation()
 
-  const { isPending, data } = useAppWhiteListSubjects(appId, Boolean(appId) && currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS)
-  useEffect(() => {
-    setSpecificGroups(data?.groups ?? [])
-    setSpecificMembers(data?.members ?? [])
-  }, [data, setSpecificGroups, setSpecificMembers])
-
-  if (currentMenu !== AccessMode.SPECIFIC_GROUPS_MEMBERS) {
+  if (accessMode !== AccessMode.SPECIFIC_GROUPS_MEMBERS) {
     return (
       <div className="flex items-center p-3">
         <div className="flex grow items-center gap-x-2">
-          <RiLockLine className="size-4 text-text-primary" />
-          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+          <span aria-hidden="true" className="i-ri-lock-line size-4 text-text-primary" />
+          <p className="system-sm-medium text-text-primary">
+            {t(($) => $['accessControlDialog.accessItems.specific'], { ns: 'app' })}
+          </p>
         </div>
       </div>
     )
@@ -39,37 +50,101 @@ export default function SpecificGroupsOrMembers() {
     <div>
       <div className="flex items-center gap-x-1 p-3">
         <div className="flex grow items-center gap-x-1">
-          <RiLockLine className="size-4 text-text-primary" />
-          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+          <span aria-hidden="true" className="i-ri-lock-line size-4 text-text-primary" />
+          <p className="system-sm-medium text-text-primary">
+            {t(($) => $['accessControlDialog.accessItems.specific'], { ns: 'app' })}
+          </p>
         </div>
-        <div className="flex items-center gap-x-1">
-          <AddMemberOrGroupDialog />
-        </div>
+        {subjectsStatus === 'success' && (
+          <div className="flex items-center gap-x-1">
+            <AddMemberOrGroupDialog subjects={subjects} onChange={onSubjectsChange} />
+          </div>
+        )}
       </div>
       <div className="px-1 pb-1">
-        <div className="flex max-h-[400px] flex-col gap-y-2 overflow-y-auto rounded-lg bg-background-section p-2">
-          {isPending ? <Loading /> : <RenderGroupsAndMembers />}
+        <div className="flex max-h-100 flex-col gap-y-2 overflow-y-auto rounded-lg bg-background-section p-2">
+          {subjectsStatus === 'loading' && <Loading />}
+          {subjectsStatus === 'error' && (
+            <div role="alert" className="flex flex-col items-center gap-2 px-2 py-5">
+              <p className="system-xs-regular text-text-tertiary">
+                {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
+              </p>
+              {onRetrySubjects && (
+                <Button size="small" onClick={onRetrySubjects}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              )}
+            </div>
+          )}
+          {subjectsStatus === 'success' && (
+            <RenderGroupsAndMembers subjects={subjects} onChange={onSubjectsChange} />
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-function RenderGroupsAndMembers() {
+type RenderGroupsAndMembersProps = {
+  subjects: AccessControlSubjects
+  onChange: (subjects: AccessControlSubjects) => void
+}
+
+function RenderGroupsAndMembers({ subjects, onChange }: RenderGroupsAndMembersProps) {
   const { t } = useTranslation()
-  const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const specificMembers = useAccessControlStore(s => s.specificMembers)
-  if (specificGroups.length <= 0 && specificMembers.length <= 0)
-    return <div className="px-2 pt-5 pb-1.5"><p className="text-center system-xs-regular text-text-tertiary">{t('accessControlDialog.noGroupsOrMembers', { ns: 'app' })}</p></div>
+  const { groups, members } = subjects
+
+  if (groups.length <= 0 && members.length <= 0) {
+    return (
+      <div className="px-2 pt-5 pb-1.5">
+        <p className="text-center system-xs-regular text-text-tertiary">
+          {t(($) => $['accessControlDialog.noGroupsOrMembers'], { ns: 'app' })}
+        </p>
+      </div>
+    )
+  }
+
   return (
     <>
-      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">{t('accessControlDialog.groups', { ns: 'app', count: specificGroups.length ?? 0 })}</p>
+      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">
+        {t(($) => $['accessControlDialog.groups'], {
+          ns: 'app',
+          count: groups.length,
+        })}
+      </p>
       <div className="flex flex-row flex-wrap gap-1">
-        {specificGroups.map((group, index) => <GroupItem key={index} group={group} />)}
+        {groups.map((group) => (
+          <GroupItem
+            key={group.id}
+            group={group}
+            onRemove={() =>
+              onChange({
+                groups: groups.filter((candidate) => candidate.id !== group.id),
+                members,
+              })
+            }
+          />
+        ))}
       </div>
-      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">{t('accessControlDialog.members', { ns: 'app', count: specificMembers.length ?? 0 })}</p>
+      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">
+        {t(($) => $['accessControlDialog.members'], {
+          ns: 'app',
+          count: members.length,
+        })}
+      </p>
       <div className="flex flex-row flex-wrap gap-1">
-        {specificMembers.map((member, index) => <MemberItem key={index} member={member} />)}
+        {members.map((member) => (
+          <MemberItem
+            key={member.id}
+            member={member}
+            onRemove={() =>
+              onChange({
+                groups,
+                members: members.filter((candidate) => candidate.id !== member.id),
+              })
+            }
+          />
+        ))}
       </div>
     </>
   )
@@ -77,17 +152,19 @@ function RenderGroupsAndMembers() {
 
 type GroupItemProps = {
   group: AccessControlGroup
+  onRemove: () => void
 }
-function GroupItem({ group }: GroupItemProps) {
-  const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
-  const handleRemoveGroup = useCallback(() => {
-    setSpecificGroups(specificGroups.filter(g => g.id !== group.id))
-  }, [group, setSpecificGroups, specificGroups])
+
+function GroupItem({ group, onRemove }: GroupItemProps) {
   return (
     <BaseItem
-      icon={<RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />}
-      onRemove={handleRemoveGroup}
+      icon={
+        <span
+          aria-hidden="true"
+          className="i-ri-organization-chart h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
+        />
+      }
+      onRemove={onRemove}
     >
       <p className="system-xs-regular text-text-primary">{group.name}</p>
       <p className="system-xs-regular text-text-tertiary">{group.groupSize}</p>
@@ -97,18 +174,12 @@ function GroupItem({ group }: GroupItemProps) {
 
 type MemberItemProps = {
   member: AccessControlAccount
+  onRemove: () => void
 }
-function MemberItem({ member }: MemberItemProps) {
-  const specificMembers = useAccessControlStore(s => s.specificMembers)
-  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
-  const handleRemoveMember = useCallback(() => {
-    setSpecificMembers(specificMembers.filter(m => m.id !== member.id))
-  }, [member, setSpecificMembers, specificMembers])
+
+function MemberItem({ member, onRemove }: MemberItemProps) {
   return (
-    <BaseItem
-      icon={<Avatar size="xxs" avatar={null} name={member.name} />}
-      onRemove={handleRemoveMember}
-    >
+    <BaseItem icon={<Avatar size="xxs" avatar={null} name={member.name} />} onRemove={onRemove}>
       <p className="system-xs-regular text-text-primary">{member.name}</p>
     </BaseItem>
   )
@@ -117,8 +188,9 @@ function MemberItem({ member }: MemberItemProps) {
 type BaseItemProps = {
   icon: React.ReactNode
   children: React.ReactNode
-  onRemove?: () => void
+  onRemove: () => void
 }
+
 function BaseItem({ icon, onRemove, children }: BaseItemProps) {
   const { t } = useTranslation()
 
@@ -130,26 +202,30 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
         </div>
       </div>
       {children}
-      <button
-        type="button"
-        className="flex size-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        aria-label={t('operation.remove', { ns: 'common' })}
+      <IconButton
+        size="xs"
+        className="shrink-0"
+        aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
         onClick={onRemove}
       >
-        <RiCloseCircleFill className="h-[14px] w-[14px] text-text-quaternary" aria-hidden="true" />
-      </button>
+        <span
+          aria-hidden="true"
+          className="i-ri-close-circle-fill h-3.5 w-3.5 text-text-quaternary"
+        />
+      </IconButton>
     </div>
   )
 }
 
 export function WebAppSSONotEnabledTip() {
   const { t } = useTranslation()
-  const tip = t('accessControlDialog.webAppSSONotEnabledTip', { ns: 'app' })
+  const tip = t(($) => $['accessControlDialog.webAppSSONotEnabledTip'], { ns: 'app' })
 
   return (
     <Infotip
       aria-label={tip}
-      iconClassName="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+      className="text-text-warning-secondary hover:text-text-warning-secondary"
+      iconSize="large"
     >
       {tip}
     </Infotip>

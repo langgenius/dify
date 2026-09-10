@@ -8,7 +8,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Call-to-action card inviting users to connect a Notion workspace. Shows the product icon, copy, and primary button.',
+        component:
+          'Call-to-action card inviting users to connect a Notion workspace. Shows the product icon, copy, and primary button.',
       },
     },
   },

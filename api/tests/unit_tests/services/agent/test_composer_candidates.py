@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from unittest.mock import Mock
 
 from fields.agent_fields import AgentComposerCandidatesResponse
 from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, DeclaredOutputType
+from models.dataset import Dataset
 from services.agent.composer_candidates import (
     MAX_CANDIDATES_PER_LIST,
     previous_node_output_candidates,
@@ -23,8 +24,24 @@ _GRAPH = {
             },
         },
         {"id": "llm-1", "data": {"type": "llm", "title": "LLM"}},
-        {"id": "agent-up", "data": {"type": "agent", "version": "2", "title": "Upstream Agent"}},
-        {"id": "agent-target", "data": {"type": "agent", "version": "2", "title": "Target Agent"}},
+        {
+            "id": "agent-up",
+            "data": {
+                "type": "agent",
+                "version": "2",
+                "agent_node_kind": "dify_agent",
+                "title": "Upstream Agent",
+            },
+        },
+        {
+            "id": "agent-target",
+            "data": {
+                "type": "agent",
+                "version": "2",
+                "agent_node_kind": "dify_agent",
+                "title": "Target Agent",
+            },
+        },
         {"id": "end", "data": {"type": "end", "title": "END"}},
     ],
     "edges": [
@@ -98,6 +115,31 @@ def test_results_differ_per_node_id():
     assert {e["node_id"] for e in entries_llm} == {"start-1"}
 
 
+def test_historical_agent_version_two_uses_inferred_outputs() -> None:
+    graph = {
+        "nodes": [
+            {"id": "legacy", "data": {"type": "agent", "version": "2", "title": "Legacy"}},
+            {
+                "id": "target",
+                "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+            },
+        ],
+        "edges": [{"source": "legacy", "target": "target"}],
+    }
+    declared_loader = Mock(return_value=[DeclaredOutputConfig(name="declared", type=DeclaredOutputType.STRING)])
+
+    entries, _ = previous_node_output_candidates(
+        graph=graph,
+        node_id="target",
+        declared_outputs_loader=declared_loader,
+        draft_variables_loader=lambda node_id: [("legacy_output", "string")] if node_id == "legacy" else [],
+        system_variables_loader=lambda: [],
+    )
+
+    assert [entry["output"] for entry in entries] == ["legacy_output"]
+    declared_loader.assert_not_called()
+
+
 def test_previous_outputs_capped_and_flagged():
     graph = {
         "nodes": [{"id": "start-1", "data": {"type": "start", "title": "S", "variables": []}}, {"id": "t"}],
@@ -118,75 +160,76 @@ def test_previous_outputs_capped_and_flagged():
 def _soul() -> AgentSoulConfig:
     return AgentSoulConfig.model_validate(
         {
-            "skills_files": {
-                "skills": [{"id": "sk-1", "name": "tender-analyzer"}],
-                "files": [{"id": "f-1", "name": "qna_report.pdf"}],
-            },
             "tools": {
                 "cli_tools": [
                     {"id": "ct-1", "name": "ffmpeg"},
                     {"id": "ct-2", "name": "disabled-one", "enabled": False},
                 ],
             },
-            "knowledge": {"datasets": [{"id": "ds-1", "name": "旧名"}, {"id": "ds-gone", "name": "已删"}]},
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "kb-1",
+                        "name": "产品知识",
+                        "description": "knowledge set",
+                        "datasets": [{"id": "ds-1", "name": "旧名"}, {"id": "ds-gone", "name": "已删"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ]
+            },
             "human": {"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
         }
     )
 
 
 def test_soul_candidates_lists_configured_items_only():
+    dataset = Dataset(
+        id="ds-1",
+        tenant_id="tenant-1",
+        name="产品手册",
+        description="desc",
+        created_by="account-1",
+    )
     lists, truncated = soul_candidates(
         agent_soul=_soul(),
-        dataset_lookup=lambda ids: {"ds-1": SimpleNamespace(name="产品手册", description="desc")},
+        dataset_lookup=lambda ids: {"ds-1": dataset},
         workspace_tools_loader=lambda: [
             {"id": "tavily/tavily_search", "name": "tavily_search", "provider": "tavily", "plugin_id": "lg/tavily"}
         ],
     )
 
     assert truncated is False
-    assert [item["kind"] for item in lists["skills_files"]] == ["skill", "file"]
     assert [item["name"] for item in lists["cli_tools"]] == ["ffmpeg"]
     # the stable mention id flows through so the frontend can mint [§cli_tool:<id>§]
     assert [item["id"] for item in lists["cli_tools"]] == ["ct-1"]
-    # enriched from DB; dangling dataset kept with missing flag (placeholder, 0522)
-    knowledge = {item["id"]: item for item in lists["knowledge_datasets"]}
-    assert knowledge["ds-1"]["name"] == "产品手册"
-    assert knowledge["ds-1"]["missing"] is False
-    assert knowledge["ds-gone"]["missing"] is True
-    assert knowledge["ds-gone"]["name"] == "已删"
+    # Knowledge mentions point at set ids; nested datasets are hydrated for context.
+    knowledge_set = lists["knowledge_sets"][0]
+    assert knowledge_set["id"] == "kb-1"
+    assert knowledge_set["name"] == "产品知识"
+    assert knowledge_set["missing_dataset_ids"] == ["ds-gone"]
+    datasets = {item["id"]: item for item in knowledge_set["datasets"]}
+    assert datasets["ds-1"]["name"] == "产品手册"
+    assert datasets["ds-1"]["missing"] is False
+    assert datasets["ds-gone"]["missing"] is True
+    assert datasets["ds-gone"]["name"] == "已删"
     assert lists["human_contacts"][0]["id"] == "c-1"
     assert lists["dify_tools"][0]["id"] == "tavily/tavily_search"
 
 
-def test_candidates_response_preserves_skill_and_file_candidate_shapes():
+def test_candidates_response_omits_legacy_skill_file_candidates():
     response = AgentComposerCandidatesResponse.model_validate(
         {
             "variant": "agent_app",
             "allowed_node_job_candidates": {},
             "allowed_soul_candidates": {
-                "skills_files": [
-                    {"kind": "skill", "id": "sk-1", "name": "tender-analyzer", "path": "skills/tender.md"},
-                    {
-                        "kind": "file",
-                        "id": "f-1",
-                        "name": "qna_report.pdf",
-                        "transfer_method": "local_file",
-                        "reference": "upload-1",
-                        "url": "https://files.example/qna_report.pdf",
-                    },
-                ]
+                "cli_tools": [],
             },
             "capabilities": {"human_roster_available": False},
         }
     ).model_dump(mode="json")
 
-    skill, file = response["allowed_soul_candidates"]["skills_files"]
-    assert skill["kind"] == "skill"
-    assert skill["path"] == "skills/tender.md"
-    assert file["kind"] == "file"
-    assert file["transfer_method"] == "local_file"
-    assert file["reference"] == "upload-1"
-    assert file["url"] == "https://files.example/qna_report.pdf"
+    assert "skills_files" not in response["allowed_soul_candidates"]
 
 
 def test_soul_candidates_empty_config_yields_empty_lists():

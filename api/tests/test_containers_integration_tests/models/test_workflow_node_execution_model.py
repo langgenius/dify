@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.account import Account
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, EndUserType
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
@@ -44,7 +44,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         end_user = EndUser(
             tenant_id=tenant_id,
             app_id=app_id,
-            type="service_api",
+            type=EndUserType.SERVICE_API,
             external_user_id=f"ext-{uuid4()}",
             name="End User",
             session_id=f"session-{uuid4()}",
@@ -109,7 +109,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             created_by=account.id,
         )
 
-        result = execution.created_by_account
+        result = execution.created_by_account(session=db_session_with_containers)
 
         assert result is not None
         assert result.id == account.id
@@ -126,7 +126,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             created_by=account.id,
         )
 
-        result = execution.created_by_account
+        result = execution.created_by_account(session=db_session_with_containers)
 
         assert result is None
 
@@ -146,7 +146,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             created_by=end_user.id,
         )
 
-        result = execution.created_by_end_user
+        result = execution.created_by_end_user(session=db_session_with_containers)
 
         assert result is not None
         assert result.id == end_user.id
@@ -165,6 +165,6 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             created_by=end_user.id,
         )
 
-        result = execution.created_by_end_user
+        result = execution.created_by_end_user(session=db_session_with_containers)
 
         assert result is None

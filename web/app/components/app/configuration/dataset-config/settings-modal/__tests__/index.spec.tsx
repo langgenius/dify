@@ -1,15 +1,28 @@
-import type { MockedFunction } from 'vitest'
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
+import type { MockedFunction } from 'vite-plus/test'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } from '@/models/datasets'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import {
+  ChunkingMode,
+  DatasetPermission,
+  DataSourceType,
+  RerankingModeEnum,
+} from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
 
 const toastMocks = vi.hoisted(() => ({
@@ -19,12 +32,20 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -32,12 +53,11 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
-let mockIsWorkspaceDatasetOperator = false
+const mockSetSettingsDestination = vi.fn()
 
-const mockUseModelList = vi.fn()
-const mockUseModelListAndDefaultModel = vi.fn()
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.fn()
+const mockModelListQuery = vi.fn()
+const mockModelListQueryAndDefaultModel = vi.fn()
+const mockModelListQueryAndDefaultModelAndCurrentProviderAndModel = vi.fn()
 const mockUseCurrentProviderAndModel = vi.fn()
 const mockCheckShowMultiModalTip = vi.fn()
 
@@ -64,53 +84,26 @@ vi.mock('@/service/use-common', async () => ({
   useMembers: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({ isCurrentWorkspaceDatasetOperator: mockIsWorkspaceDatasetOperator }),
-  useSelector: <T,>(selector: (value: { userProfile: { id: string, name: string, email: string, avatar_url: string } }) => T) => selector({
-    userProfile: {
-      id: 'user-1',
-      name: 'User One',
-      email: 'user@example.com',
-      avatar_url: 'avatar.png',
-    },
-  }),
-}))
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs${path}`,
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: [],
-    textGenerationModelList: [],
-    supportRetrievalMethods: [
-      RETRIEVE_METHOD.semantic,
-      RETRIEVE_METHOD.fullText,
-      RETRIEVE_METHOD.hybrid,
-      RETRIEVE_METHOD.keywordSearch,
-    ],
-  }),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: (...args: unknown[]) => mockUseModelList(...args),
-  useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
+  useModelListAndDefaultModel: (...args: unknown[]) => mockModelListQueryAndDefaultModel(...args),
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel(...args),
+    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel(...args),
   useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
     <div data-testid="model-selector">
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
+      {value ? `${value.provider}/${value.model}` : 'no-model'}
     </div>
   ),
 }))
@@ -136,7 +129,10 @@ const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Retrie
   ...overrides,
 })
 
-const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Partial<RetrievalConfig> = {}): DataSet => {
+const createDataset = (
+  overrides: Partial<DataSet> = {},
+  retrievalOverrides: Partial<RetrievalConfig> = {},
+): DataSet => {
   const retrievalConfig = createRetrievalConfig(retrievalOverrides)
   return {
     id: 'dataset-id',
@@ -185,6 +181,7 @@ const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Par
     runtime_mode: 'general',
     enable_api: true,
     is_multimodal: false,
+    permission_keys: [DatasetACLPermission.Edit],
     ...overrides,
     retrieval_model_dict: {
       ...retrievalConfig,
@@ -198,19 +195,23 @@ const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Par
 }
 
 const renderWithProviders = (dataset: DataSet) => {
-  return render(
-    <SettingsModal
-      currentDataset={dataset}
-      onCancel={mockOnCancel}
-      onSave={mockOnSave}
-    />,
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
+  })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, createSystemFeaturesFixture())
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
+    retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],
+  })
 
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <SettingsModal currentDataset={dataset} onCancel={mockOnCancel} onSave={mockOnSave} />
+    </QueryClientProvider>,
   )
 }
 
-const createMemberList = (): DataSet['partial_member_list'] => ([
-  'member-2',
-])
+const createMemberList = (): DataSet['partial_member_list'] => ['member-2']
 
 const renderSettingsModal = async (dataset: DataSet) => {
   renderWithProviders(dataset)
@@ -220,7 +221,6 @@ const renderSettingsModal = async (dataset: DataSet) => {
 describe('SettingsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsWorkspaceDatasetOperator = false
     mockUseMembers.mockReturnValue({
       data: {
         accounts: [
@@ -245,7 +245,7 @@ describe('SettingsModal', () => {
         ],
       },
     } as ReturnType<typeof useMembers>)
-    mockUseModelList.mockImplementation((type: ModelTypeEnum) => {
+    mockModelListQuery.mockImplementation((type: ModelTypeEnum) => {
       if (type === ModelTypeEnum.rerank) {
         return {
           data: [
@@ -258,8 +258,11 @@ describe('SettingsModal', () => {
       }
       return { data: [{ provider: 'embed-provider', models: [{ model: 'embed-model' }] }] }
     })
-    mockUseModelListAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({ defaultModel: null, currentModel: null })
+    mockModelListQueryAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
+    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
+      defaultModel: null,
+      currentModel: null,
+    })
     mockUseCurrentProviderAndModel.mockReturnValue({ currentProvider: null, currentModel: null })
     mockCheckShowMultiModalTip.mockReturnValue(false)
     mockUpdateDatasetSetting.mockResolvedValue(createDataset())
@@ -275,8 +278,12 @@ describe('SettingsModal', () => {
       await renderSettingsModal(dataset)
 
       // Assert
-      expect(screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')).toHaveValue('Test Dataset')
-      expect(screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')).toHaveValue('Description')
+      expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toHaveValue(
+        'Test Dataset',
+      )
+      expect(screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')).toHaveValue(
+        'Description',
+      )
     })
 
     it('should show external knowledge info when dataset is external', async () => {
@@ -320,7 +327,7 @@ describe('SettingsModal', () => {
       const user = userEvent.setup()
       await renderSettingsModal(createDataset())
 
-      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
 
       // Act
       await user.clear(nameInput)
@@ -355,14 +362,18 @@ describe('SettingsModal', () => {
       await user.click(screen.getByText('datasetCreation.stepTwo.qualified'))
 
       // Assert
-      expect(await screen.findByText('appDebug.datasetConfig.retrieveChangeTip')).toBeInTheDocument()
+      expect(
+        await screen.findByText('appDebug.datasetConfig.retrieveChangeTip'),
+      ).toBeInTheDocument()
 
       // Act
       await user.click(screen.getByLabelText('close-retrieval-change-tip'))
 
       // Assert
       await waitFor(() => {
-        expect(screen.queryByText('appDebug.datasetConfig.retrieveChangeTip')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('appDebug.datasetConfig.retrieveChangeTip'),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -372,10 +383,24 @@ describe('SettingsModal', () => {
 
       // Act
       await renderSettingsModal(createDataset())
-      await user.click(screen.getByRole('button', { name: 'datasetSettings.form.embeddingModelTipLink' }))
+      await user.click(
+        screen.getByRole('button', { name: 'datasetSettings.form.embeddingModelTipLink' }),
+      )
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
+    })
+  })
+
+  // Dataset ACL permissions control whether the legacy dataset permission selector is editable.
+  describe('Permission Handling', () => {
+    it('should disable permission selector when dataset lacks edit ACL permission', async () => {
+      const dataset = createDataset({ permission_keys: [DatasetACLPermission.Readonly] })
+
+      const { container } = renderWithProviders(dataset)
+      await waitFor(() => expect(mockUseMembers).toHaveBeenCalled())
+
+      expect(container.querySelector('[class*="cursor-not-allowed"]')).toBeInTheDocument()
     })
   })
 
@@ -386,41 +411,48 @@ describe('SettingsModal', () => {
       const user = userEvent.setup()
       await renderSettingsModal(createDataset())
 
-      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
 
       // Act
       await user.clear(nameInput)
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: 'datasetSettings.form.nameError',
-      }))
+      expect(toastMocks.call).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: 'datasetSettings.form.nameError',
+        }),
+      )
       expect(mockUpdateDatasetSetting).not.toHaveBeenCalled()
     })
 
     it('should block save when reranking is enabled without model', async () => {
       // Arrange
       const user = userEvent.setup()
-      mockUseModelList.mockReturnValue({ data: [] })
-      const dataset = createDataset({}, createRetrievalConfig({
-        reranking_enable: true,
-        reranking_model: {
-          reranking_provider_name: '',
-          reranking_model_name: '',
-        },
-      }))
+      mockModelListQuery.mockReturnValue({ data: [] })
+      const dataset = createDataset(
+        {},
+        createRetrievalConfig({
+          reranking_enable: true,
+          reranking_model: {
+            reranking_provider_name: '',
+            reranking_model_name: '',
+          },
+        }),
+      )
 
       // Act
       await renderSettingsModal(dataset)
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: 'appDebug.datasetConfig.rerankModelRequired',
-      }))
+      expect(toastMocks.call).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: 'appDebug.datasetConfig.rerankModelRequired',
+        }),
+      )
       expect(mockUpdateDatasetSetting).not.toHaveBeenCalled()
     })
   })
@@ -445,7 +477,7 @@ describe('SettingsModal', () => {
       // Act
       await renderSettingsModal(dataset)
 
-      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
       await user.clear(nameInput)
       await user.type(nameInput, 'Updated Internal Dataset')
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -453,40 +485,49 @@ describe('SettingsModal', () => {
       // Assert
       await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalled())
 
-      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(expect.objectContaining({
-        body: expect.objectContaining({
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            name: 'Updated Internal Dataset',
+            permission: DatasetPermission.allTeamMembers,
+          }),
+        }),
+      )
+      expect(toastMocks.call).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'success',
+          message: 'common.actionMsg.modifiedSuccessfully',
+        }),
+      )
+      expect(mockOnSave).toHaveBeenCalledWith(
+        expect.objectContaining({
           name: 'Updated Internal Dataset',
-          permission: DatasetPermission.allTeamMembers,
+          retrieval_model_dict: expect.objectContaining({
+            reranking_enable: true,
+          }),
         }),
-      }))
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      }))
-      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'Updated Internal Dataset',
-        retrieval_model_dict: expect.objectContaining({
-          reranking_enable: true,
-        }),
-      }))
+      )
     })
 
     it('should save external dataset changes when partial members configured', async () => {
       // Arrange
       const user = userEvent.setup()
-      const dataset = createDataset({
-        provider: 'external',
-        permission: DatasetPermission.partialMembers,
-        partial_member_list: createMemberList(),
-        external_retrieval_model: {
-          top_k: 5,
-          score_threshold: 0.3,
-          score_threshold_enabled: true,
+      const dataset = createDataset(
+        {
+          provider: 'external',
+          permission: DatasetPermission.partialMembers,
+          partial_member_list: createMemberList(),
+          external_retrieval_model: {
+            top_k: 5,
+            score_threshold: 0.3,
+            score_threshold_enabled: true,
+          },
         },
-      }, {
-        score_threshold_enabled: true,
-        score_threshold: 0.8,
-      })
+        {
+          score_threshold_enabled: true,
+          score_threshold: 0.8,
+        },
+      )
 
       // Act
       await renderSettingsModal(dataset)
@@ -495,32 +536,38 @@ describe('SettingsModal', () => {
       // Assert
       await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalled())
 
-      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(expect.objectContaining({
-        body: expect.objectContaining({
-          permission: DatasetPermission.partialMembers,
-          external_retrieval_model: expect.objectContaining({
-            top_k: 5,
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            permission: DatasetPermission.partialMembers,
+            external_retrieval_model: expect.objectContaining({
+              top_k: 5,
+            }),
+            partial_member_list: [
+              {
+                user_id: 'member-2',
+                role: 'editor',
+              },
+            ],
           }),
-          partial_member_list: [
-            {
-              user_id: 'member-2',
-              role: 'editor',
-            },
-          ],
         }),
-      }))
-      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
-        retrieval_model_dict: expect.objectContaining({
-          score_threshold_enabled: true,
-          score_threshold: 0.8,
+      )
+      expect(mockOnSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          retrieval_model_dict: expect.objectContaining({
+            score_threshold_enabled: true,
+            score_threshold: 0.8,
+          }),
         }),
-      }))
+      )
     })
 
     it('should disable save button while saving', async () => {
       // Arrange
       const user = userEvent.setup()
-      mockUpdateDatasetSetting.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+      mockUpdateDatasetSetting.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
+      )
 
       // Act
       await renderSettingsModal(createDataset())
@@ -547,4 +594,23 @@ describe('SettingsModal', () => {
       })
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+
+      const args = options.queryKey[1].input?.params?.model_type
+      if (!args) throw new Error('Missing model type in query')
+      return mockModelListQuery(args)
+    },
+  }
 })

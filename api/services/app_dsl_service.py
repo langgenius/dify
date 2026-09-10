@@ -11,7 +11,7 @@ import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging.version import parse as parse_version
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -19,10 +19,17 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
+from core.rbac import RBACPermission, RBACResourceScope
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
+)
+from core.workflow.llm_environment_variable import (
+    LLMEnvironmentVariable,
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
 )
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
@@ -31,18 +38,38 @@ from extensions.ext_redis import redis_client
 from factories import variable_factory
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
-from models.model import AppModelConfig, AppModelConfigDict, IconType
+from models.agent import AgentScope
+from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
+from services.agent.dsl_service import AgentDslService, AgentPackage
+from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
-from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.enterprise.enterprise_service import EnterpriseService
+from services.enterprise.rbac_service import RBACService
+from services.entities.dsl_entities import (
+    CheckDependenciesResult,
+    DslImportWarning,
+    ImportMode,
+    ImportStatus,
+    PendingImportOwner,
+)
+from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.icon_configuration import (
+    DEFAULT_ICON,
+    DEFAULT_ICON_TYPE,
+    is_valid_image_icon,
+)
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.system_feature_service import SystemFeatureService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -51,7 +78,6 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
 
 
@@ -60,12 +86,14 @@ class Import(BaseModel):
     status: ImportStatus
     app_id: str | None = None
     app_mode: str | None = None
+    permission_keys: list[str] = Field(default_factory=list)
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
+    warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
-class PendingData(BaseModel):
+class PendingData(PendingImportOwner):
     import_mode: str
     yaml_content: str
     name: str | None = None
@@ -82,8 +110,60 @@ class CheckDependenciesPendingData(BaseModel):
 
 
 class AppDslService:
+    _warnings: list[DslImportWarning]
+
     def __init__(self, session: Session):
         self._session = session
+        self._warnings = []
+
+    def copy_app(
+        self,
+        *,
+        app_model: App,
+        account: Account,
+        tenant_id: str,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+    ) -> tuple[Import, App | None]:
+        """Copy an app, finalizing the import before inheriting external access settings.
+
+        Failed and pending imports roll back the current transaction. Completed
+        imports commit before external I/O, then load the copy in the caller's tenant.
+        """
+        if app_model.tenant_id != tenant_id or account.current_tenant_id != tenant_id:
+            raise NoPermissionError("App does not belong to the current workspace")
+
+        original_app_id = app_model.id
+        yaml_content = self.export_dsl(app_model=app_model, session=self._session, include_secret=True)
+        result = self.import_app(
+            account=account,
+            import_mode=ImportMode.YAML_CONTENT,
+            yaml_content=yaml_content,
+            name=name,
+            description=description,
+            icon_type=icon_type,
+            icon=icon,
+            icon_background=icon_background,
+        )
+        if result.status in {ImportStatus.FAILED, ImportStatus.PENDING}:
+            self._session.rollback()
+            return result, None
+        self._session.commit()
+
+        if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
+            try:
+                original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(original_app_id)
+                access_mode = original_settings.access_mode
+            except Exception:
+                # Old apps without settings default to public, matching the access fallback.
+                access_mode = "public"
+            EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
+
+        app = self._session.scalar(select(App).where(App.id == result.app_id, App.tenant_id == tenant_id))
+        return result, app
 
     def import_app(
         self,
@@ -101,6 +181,7 @@ class AppDslService:
         import_app_id: str | None = None,
     ) -> Import:
         """Import an app from YAML content or URL."""
+        self._warnings = []
         import_id = str(uuid.uuid4())
 
         # Validate import mode
@@ -130,15 +211,16 @@ class AppDslService:
                     yaml_url = yaml_url.replace("/blob/", "/")
                 response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
-                content = response.content.decode()
+                raw_content = response.content
 
-                if len(content) > DSL_MAX_SIZE:
+                if dsl_content_size(raw_content) > DSL_MAX_SIZE:
                     return Import(
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error="File size exceeds the limit of 10MB",
                     )
 
+                content = raw_content.decode("utf-8")
                 if not content:
                     return Import(
                         id=import_id,
@@ -159,6 +241,12 @@ class AppDslService:
                     error="yaml_content is required when import_mode is yaml-content",
                 )
             content = yaml_content
+            if dsl_content_size(content) > DSL_MAX_SIZE:
+                return Import(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="File size exceeds the limit of 10MB",
+                )
 
         # Process YAML content
         try:
@@ -195,9 +283,7 @@ class AppDslService:
             # If app_id is provided, check if it exists
             app = None
             if app_id:
-                stmt = select(App).where(App.id == app_id, App.tenant_id == account.current_tenant_id)
-                app = self._session.scalar(stmt)
-
+                app = self._load_app_for_overwrite(account, app_id)
                 if not app:
                     return Import(
                         id=import_id,
@@ -214,7 +300,12 @@ class AppDslService:
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
                 pending_data = PendingData(
+                    tenant_id=tenant_id,
+                    account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
                     name=name,
@@ -269,12 +360,14 @@ class AppDslService:
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
             draft_var_srv.delete_app_workflow_variables(app_id=app.id)
+            result_status = self._status_with_warnings(status)
             return Import(
                 id=import_id,
-                status=status,
+                status=result_status,
                 app_id=app.id,
                 app_mode=app.mode,
                 imported_dsl_version=imported_version,
+                warnings=self._warnings,
             )
 
         except yaml.YAMLError as e:
@@ -283,6 +376,9 @@ class AppDslService:
                 status=ImportStatus.FAILED,
                 error=f"Invalid YAML format: {str(e)}",
             )
+
+        except NoPermissionError:
+            raise
 
         except Exception as e:
             logger.exception("Failed to import app")
@@ -296,6 +392,7 @@ class AppDslService:
         """
         Confirm an import that requires confirmation
         """
+        self._warnings = []
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
         pending_data = redis_client.get(redis_key)
 
@@ -314,12 +411,26 @@ class AppDslService:
                     error="Invalid import information",
                 )
             pending_data = PendingData.model_validate_json(pending_data)
+            if not pending_data.is_accessible_by(
+                tenant_id=account.current_tenant_id,
+                account_id=account.id,
+            ):
+                return Import(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="Import information expired or does not exist",
+                )
             data = yaml.safe_load(pending_data.yaml_content)
 
             app = None
             if pending_data.app_id:
-                stmt = select(App).where(App.id == pending_data.app_id, App.tenant_id == account.current_tenant_id)
-                app = self._session.scalar(stmt)
+                app = self._load_app_for_overwrite(account, pending_data.app_id)
+                if not app:
+                    return Import(
+                        id=import_id,
+                        status=ImportStatus.FAILED,
+                        error="App not found",
+                    )
 
             # Create or update app
             app = self._create_or_update_app(
@@ -338,12 +449,16 @@ class AppDslService:
 
             return Import(
                 id=import_id,
-                status=ImportStatus.COMPLETED,
+                status=self._status_with_warnings(ImportStatus.COMPLETED),
                 app_id=app.id,
                 app_mode=app.mode,
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),
+                warnings=self._warnings,
             )
+
+        except NoPermissionError:
+            raise
 
         except Exception as e:
             logger.exception("Error confirming import")
@@ -376,6 +491,53 @@ class AppDslService:
             leaked_dependencies=leaked_dependencies,
         )
 
+    def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
+        if account.current_tenant_id is None:
+            raise ValueError("Current tenant is not set")
+        if dify_config.RBAC_ENABLED and self._session.in_transaction():
+            raise RuntimeError("App overwrite authorization requires a session without an active transaction")
+        rbac_allowed = not dify_config.RBAC_ENABLED or RBACService.CheckAccess.check(
+            account.current_tenant_id,
+            account.id,
+            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+            resource_type=RBACResourceScope.APP,
+            resource_id=app_id,
+        )
+        app = self._session.scalar(
+            select(App)
+            .where(
+                App.id == app_id,
+                App.tenant_id == account.current_tenant_id,
+                App.status == "normal",
+            )
+            .execution_options(populate_existing=True)
+        )
+        if app is not None and not rbac_allowed and app.maintainer != account.id:
+            raise NoPermissionError("You do not have permission to overwrite this app")
+        return app
+
+    def _ensure_agent_import_permission(self, account: Account, *, app: App | None) -> None:
+        if not dify_config.RBAC_ENABLED:
+            return
+        if account.current_tenant_id is None:
+            raise ValueError("Current tenant is not set")
+        binding = (
+            app.agent_app_binding_with_session(session=self._session, include_archived=True)
+            if app is not None
+            else None
+        )
+        if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
+        allowed = RBACService.CheckAccess.check(
+            account.current_tenant_id,
+            account.id,
+            scene=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
+            resource_type=RBACResourceScope.AGENT if binding is not None else None,
+            resource_id=str(binding.id) if binding is not None else None,
+        )
+        if not allowed:
+            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
+
     def _create_or_update_app(
         self,
         *,
@@ -396,6 +558,12 @@ class AppDslService:
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
+        if app_mode == AppMode.AGENT:
+            self._ensure_agent_import_permission(account, app=app)
+
+        target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
+        if target_tenant_id is None:
+            raise ValueError("Current tenant is not set")
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
@@ -405,6 +573,14 @@ class AppDslService:
         else:
             resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
+        if not is_valid_image_icon(
+            session=self._session,
+            tenant_id=target_tenant_id,
+            icon_type=resolved_icon_type,
+            icon=icon,
+        ):
+            resolved_icon_type = DEFAULT_ICON_TYPE
+            icon = DEFAULT_ICON
 
         if app:
             # Update existing app
@@ -416,28 +592,26 @@ class AppDslService:
             app.updated_by = account.id
             app.updated_at = naive_utc_now()
         else:
-            if account.current_tenant_id is None:
-                raise ValueError("Current tenant is not set")
-
             # Create new app
             app = App()
             app.id = import_app_id or str(uuid4())
-            app.tenant_id = account.current_tenant_id
+            app.tenant_id = target_tenant_id
             app.mode = app_mode
             app.name = name or app_data.get("name", "")
             app.description = description or app_data.get("description", "")
             app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", "#FFFFFF")
-            app.enable_site = True
-            app.enable_api = True
+            app.enable_site = app_mode != AppMode.AGENT
+            app.enable_api = app_mode != AppMode.AGENT
             app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
             app.created_by = account.id
+            app.maintainer = account.id
             app.updated_by = account.id
 
             self._session.add(app)
             self._session.flush()
-            app_was_created.send(app, account=account)
+            app_was_created.send(app, account=account, session=self._session)
 
         # save dependencies
         if dependencies:
@@ -465,12 +639,17 @@ class AppDslService:
                 ]
 
                 workflow_service = WorkflowService()
-                current_draft_workflow = workflow_service.get_draft_workflow(app_model=app)
+                current_draft_workflow = workflow_service.get_draft_workflow(app_model=app, session=self._session)
                 if current_draft_workflow:
                     unique_hash = current_draft_workflow.unique_hash
                 else:
                     unique_hash = None
                 graph = workflow_data.get("graph", {})
+                if not isinstance(graph, dict):
+                    raise ValueError("Workflow graph must be a mapping")
+                # The source canvas position should not determine the imported app's initial view.
+                graph = graph.copy()
+                graph.pop("viewport", None)
                 for node in graph.get("nodes", []):
                     if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         dataset_ids = node["data"].get("dataset_ids", [])
@@ -483,22 +662,50 @@ class AppDslService:
                                 )
                             )
                         ]
-                workflow_service.sync_draft_workflow(
+                raw_agent_packages = data.get("agent_packages") or {}
+                if not isinstance(raw_agent_packages, Mapping):
+                    raise ValueError("agent_packages must be a mapping")
+                graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
+                draft_workflow = workflow_service.sync_draft_workflow(
                     app_model=app,
-                    graph=workflow_data.get("graph", {}),
+                    graph=graph_for_sync,
                     features=workflow_data.get("features", {}),
                     unique_hash=unique_hash,
                     account=account,
                     environment_variables=environment_variables,
                     conversation_variables=conversation_variables,
+                    session=self._session,
+                    commit=not raw_agent_packages,
+                    sync_agent_bindings=not raw_agent_packages,
                 )
+                if raw_agent_packages:
+                    _, warnings, retirement_candidates = AgentDslService(self._session).import_workflow_packages(
+                        workflow=draft_workflow,
+                        portable_graph=graph,
+                        raw_packages=raw_agent_packages,
+                        account=account,
+                    )
+                    self._warnings.extend(warnings)
+                    WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                        session=self._session,
+                        draft_workflow=draft_workflow,
+                    )
+                    self._session.commit()
+                    WorkflowAgentRetirementService.retire_unowned(
+                        tenant_id=app.tenant_id,
+                        agent_ids=retirement_candidates,
+                        account_id=account.id,
+                    )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
                 model_config = data.get("model_config")
                 if not model_config or not isinstance(model_config, dict):
                     raise ValueError("Missing model_config for chat/agent-chat/completion app")
                 # Initialize or update model config
-                if not app.app_model_config:
+                app_model_config = (
+                    self._session.get(AppModelConfig, app.app_model_config_id) if app.app_model_config_id else None
+                )
+                if not app_model_config:
                     app_model_config = AppModelConfig(
                         app_id=app.id, created_by=account.id, updated_by=account.id
                     ).from_model_config_dict(cast(AppModelConfigDict, model_config))
@@ -506,22 +713,56 @@ class AppDslService:
                     app.app_model_config_id = app_model_config.id
 
                     self._session.add(app_model_config)
-                    app_model_config_was_updated.send(app, app_model_config=app_model_config)
+                    # Persist the config and app FK before receivers query them in this transaction.
+                    self._session.flush()
+                    app_model_config_was_updated.send(
+                        app,
+                        app_model_config=app_model_config,
+                        session=self._session,
+                    )
+            case AppMode.AGENT:
+                if app.app_model_config_with_session(session=self._session) is not None:
+                    raise ValueError("Agent DSL import only supports creating a new Agent App")
+                agent_data = data.get("agent")
+                raw_agent_packages = data.get("agent_packages")
+                if not isinstance(agent_data, Mapping) or not isinstance(raw_agent_packages, Mapping):
+                    raise ValueError("Missing Agent package data")
+                package_ref = agent_data.get("package_ref")
+                if not isinstance(package_ref, str) or package_ref not in raw_agent_packages:
+                    raise ValueError("Agent package_ref is missing or invalid")
+                package = AgentPackage.model_validate(raw_agent_packages[package_ref])
+                imported = AgentDslService(self._session).import_agent_app_package(
+                    app=app,
+                    account=account,
+                    package=package,
+                )
+                self._warnings.extend(imported.warnings)
             case _:
                 raise ValueError("Invalid app mode")
         return app
 
     @classmethod
-    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: str | None = None) -> str:
+    def export_dsl(
+        cls,
+        app_model: App,
+        *,
+        session: Session,
+        include_secret: bool = False,
+        workflow_id: str | None = None,
+    ) -> str:
         """
         Export app
         :param app_model: App instance
+        :param session: Database session used to load export data
         :param include_secret: Whether include secret variable
+        :param workflow_id: Optional published workflow version to export
+        :raises WorkflowNotFoundError: If the selected workflow version does not exist
+        :raises IsDraftWorkflowError: If the selected workflow is a draft
         :return:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        export_data = {
+        export_data: dict[str, Any] = {
             "version": CURRENT_DSL_VERSION,
             "kind": "app",
             "app": {
@@ -539,28 +780,58 @@ class AppDslService:
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             cls._append_workflow_export_data(
-                export_data=export_data, app_model=app_model, include_secret=include_secret, workflow_id=workflow_id
+                export_data=export_data,
+                app_model=app_model,
+                include_secret=include_secret,
+                workflow_id=workflow_id,
+                session=session,
             )
+        elif app_mode == AppMode.AGENT:
+            package_ref, packages = AgentDslService(session).export_agent_app(app=app_model)
+            export_data["agent"] = {"package_ref": package_ref}
+            export_data["agent_packages"] = {key: package.model_dump(mode="json") for key, package in packages.items()}
+            dependencies = AgentDslService(session).extract_package_dependencies(packages)
+            export_data["dependencies"] = [
+                jsonable_encoder(item.model_dump())
+                for item in DependenciesAnalysisService.generate_dependencies(
+                    tenant_id=app_model.tenant_id,
+                    dependencies=dependencies,
+                )
+            ]
         else:
-            cls._append_model_config_export_data(export_data, app_model)
+            cls._append_model_config_export_data(export_data, app_model, session=session)
 
         return yaml.dump(export_data, allow_unicode=True)
 
     @classmethod
     def _append_workflow_export_data(
-        cls, *, export_data: dict[str, Any], app_model: App, include_secret: bool, workflow_id: str | None = None
+        cls,
+        *,
+        export_data: dict[str, Any],
+        app_model: App,
+        include_secret: bool,
+        session: Session,
+        workflow_id: str | None = None,
     ):
         """
         Append workflow export data
         :param export_data: export data
         :param app_model: App instance
+        :param workflow_id: Optional published workflow version to export
         """
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model, workflow_id)
+        workflow = workflow_service.get_draft_workflow(app_model, workflow_id, session=session)
         if not workflow:
+            if workflow_id:
+                raise WorkflowNotFoundError(f"Workflow version not found. Workflow ID: {workflow_id}.")
             raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
+        graph, agent_packages = AgentDslService(session).export_workflow_packages(
+            workflow=workflow,
+            graph=workflow_dict.get("graph", {}),
+        )
+        workflow_dict["graph"] = graph
         # TODO: refactor: we need a better way to filter workspace related data from nodes
         for node in workflow_dict.get("graph", {}).get("nodes", []):
             node_data = node.get("data", {})
@@ -593,6 +864,11 @@ class AppDslService:
 
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)
+        dependencies.extend(AgentDslService(session).extract_package_dependencies(agent_packages))
+        if agent_packages:
+            export_data["agent_packages"] = {
+                key: package.model_dump(mode="json") for key, package in agent_packages.items()
+            }
         export_data["dependencies"] = [
             jsonable_encoder(d.model_dump())
             for d in DependenciesAnalysisService.generate_dependencies(
@@ -600,18 +876,27 @@ class AppDslService:
             )
         ]
 
+    def _status_with_warnings(self, status: ImportStatus) -> ImportStatus:
+        if status == ImportStatus.COMPLETED and self._warnings:
+            return ImportStatus.COMPLETED_WITH_WARNINGS
+        return status
+
     @classmethod
-    def _append_model_config_export_data(cls, export_data: dict[str, Any], app_model: App):
+    def _append_model_config_export_data(cls, export_data: dict[str, Any], app_model: App, *, session: Session) -> None:
         """
         Append model config export data
         :param export_data: export data
         :param app_model: App instance
+        :param session: Database session used to load the model config and annotation reply
         """
-        app_model_config = app_model.app_model_config
+        app_model_config = (
+            session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
+        )
         if not app_model_config:
             raise ValueError("Missing app configuration, please check.")
 
-        model_config = app_model_config.to_dict()
+        annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
+        model_config = app_model_config.to_dict(annotation_reply=annotation_reply)
 
         # TODO: refactor: we need a better way to filter workspace related data from model config
         # filter credential id from model config
@@ -620,7 +905,7 @@ class AppDslService:
 
         export_data["model_config"] = model_config
 
-        dependencies = cls._extract_dependencies_from_model_config(app_model_config.to_dict())
+        dependencies = cls._extract_dependencies_from_model_config(model_config)
         export_data["dependencies"] = [
             jsonable_encoder(d.model_dump())
             for d in DependenciesAnalysisService.generate_dependencies(
@@ -636,6 +921,34 @@ class AppDslService:
         :return: dependencies list format like ["langgenius/google"]
         """
         graph = workflow.graph_dict
+        referenced_llm_nodes = [
+            node.get("data", {})
+            for node in graph.get("nodes", [])
+            if node.get("data", {}).get("type") == BuiltinNodeTypes.LLM
+            and should_resolve_llm_model_selector(node.get("data", {}).get("model_selector"))
+        ]
+        environment_variables = (
+            {variable.name: variable for variable in workflow.environment_variables} if referenced_llm_nodes else {}
+        )
+        for node_data in referenced_llm_nodes:
+            try:
+                selector = parse_llm_model_selector(node_data["model_selector"])
+                variable = environment_variables.get(selector[1])
+                if not isinstance(variable, LLMEnvironmentVariable):
+                    raise ValueError(
+                        f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                    )
+                node_data["model"] = resolve_llm_model_config(
+                    node_model=ModelConfig.model_validate(node_data.get("model", {})),
+                    variable_name=selector[1],
+                    variable_value=variable.value,
+                ).model_dump(mode="json")
+            except ValueError as exc:
+                logger.warning(
+                    "Skipping unresolved LLM environment model while extracting dependencies for selector %r: %s",
+                    node_data.get("model_selector"),
+                    exc,
+                )
         dependencies = cls._extract_dependencies_from_workflow_graph(graph)
         return dependencies
 

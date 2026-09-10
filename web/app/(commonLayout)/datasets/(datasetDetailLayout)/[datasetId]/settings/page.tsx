@@ -7,8 +7,8 @@ const Settings = () => {
   return (
     <div className="h-full overflow-y-auto">
       <div className="flex flex-col gap-y-0.5 px-6 pt-3 pb-2">
-        <div className="system-xl-semibold text-text-primary">{t('title')}</div>
-        <div className="system-sm-regular text-text-tertiary">{t('desc')}</div>
+        <div className="system-xl-semibold text-text-primary">{t(($) => $.title)}</div>
+        <div className="system-sm-regular text-text-tertiary">{t(($) => $.desc)}</div>
       </div>
       <Form />
     </div>

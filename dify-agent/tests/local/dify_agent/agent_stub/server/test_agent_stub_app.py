@@ -29,7 +29,7 @@ def _execution_context() -> DifyExecutionContextLayerConfig:
 def test_create_agent_stub_app_exposes_same_stub_routes_as_module_app() -> None:
     stub_app_module = importlib.import_module("dify_agent.agent_stub.server.app")
     settings = ServerSettings(
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
     )
 
@@ -58,10 +58,11 @@ def test_create_agent_stub_app_can_serve_requests() -> None:
 
 def test_create_agent_stub_app_wires_configured_file_handler_for_upload_requests(monkeypatch) -> None:
     settings = ServerSettings(
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
+        sandbox_files_base_url="https://files.example.com",
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
@@ -70,9 +71,9 @@ def test_create_agent_stub_app_wires_configured_file_handler_for_upload_requests
     original_async_client = httpx.AsyncClient
 
     def handler(request: httpx.Request) -> httpx.Response:
-        assert str(request.url) == "https://api.example.com/inner/api/upload/file/request"
+        assert str(request.url) == "https://api.example.com/inner/api/agent/files/upload-request"
         assert request.headers["X-Inner-Api-Key"] == "inner-secret"
-        return httpx.Response(200, json={"data": {"url": "https://files.example.com/upload"}})
+        return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=1"})
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.server.agent_stub_files.httpx.AsyncClient",
@@ -87,4 +88,4 @@ def test_create_agent_stub_app_wires_configured_file_handler_for_upload_requests
     )
 
     assert response.status_code == 200
-    assert response.json() == {"upload_url": "https://files.example.com/upload"}
+    assert response.json() == {"upload_url": "https://files.example.com/files/upload/for-plugin?sign=1"}

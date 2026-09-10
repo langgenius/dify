@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -36,7 +35,6 @@ class TestListOperatorNode:
         """Create mock GraphRuntimeState."""
         mock_state = MagicMock(spec=GraphRuntimeState)
         mock_variable_pool = MagicMock()
-        mock_variable_pool.convert_template.side_effect = lambda value: SimpleNamespace(text=value)
         mock_state.variable_pool = mock_variable_pool
         return mock_state
 

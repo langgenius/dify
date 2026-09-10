@@ -102,28 +102,24 @@ const useMessageLogMocks = () => {
     const originalFetch = globalThis.fetch?.bind(globalThis) ?? null
 
     const handle = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
 
       if (url.includes('/workflow-runs/run-demo-1/') && url.endsWith('/node-executions')) {
-        return new Response(
-          JSON.stringify(mockTracingList),
-          { headers: { 'Content-Type': 'application/json' }, status: 200 },
-        )
+        return new Response(JSON.stringify(mockTracingList), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        })
       }
 
       if (url.endsWith('/workflow-runs/run-demo-1')) {
-        return new Response(
-          JSON.stringify(mockRunDetail),
-          { headers: { 'Content-Type': 'application/json' }, status: 200 },
-        )
+        return new Response(JSON.stringify(mockRunDetail), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        })
       }
 
-      if (originalFetch)
-        return originalFetch(input, init)
+      if (originalFetch) return originalFetch(input, init)
 
       throw new Error(`Unmocked fetch call for ${url}`)
     }
@@ -143,12 +139,9 @@ const MessageLogPreview = (props: MessageLogModalProps) => {
   useMessageLogMocks()
 
   return (
-    <div className="relative min-h-[640px] w-full bg-background-default-subtle p-6">
+    <div className="relative min-h-160 w-full bg-background-default-subtle p-6">
       <WorkflowContextProvider>
-        <MessageLogModal
-          {...props}
-          currentLogItem={mockCurrentLogItem}
-        />
+        <MessageLogModal {...props} currentLogItem={mockCurrentLogItem} />
       </WorkflowContextProvider>
     </div>
   )
@@ -161,7 +154,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Workflow run inspector presented alongside chat transcripts. This Storybook mock provides canned run details and tracing metadata.',
+        component:
+          'Workflow run inspector presented alongside chat transcripts. This Storybook mock provides canned run details and tracing metadata.',
       },
     },
   },

@@ -1,11 +1,10 @@
 'use client'
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FC } from 'react'
 import type { FormInputItem, UserAction } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { Markdown } from '@/app/components/base/markdown'
@@ -30,39 +29,49 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation()
-  const panelWidth = useStore(state => state.panelWidth)
+  const panelWidth = useStore((state) => state.panelWidth)
   const nodes = useNodes()
 
-  const nodeName = React.useCallback((nodeId: string) => {
-    const node = nodes.find(n => n.id === nodeId)
-    return node?.data.title || nodeId
-  }, [nodes])
+  const nodeName = React.useCallback(
+    (nodeId: string) => {
+      const node = nodes.find((n) => n.id === nodeId)
+      return node?.data.title || nodeId
+    },
+    [nodes],
+  )
 
-  const renderInputPreview = React.useCallback(({ node }: { node?: { properties?: Record<string, unknown> } }) => {
-    const name = String(node?.properties?.dataName ?? '')
-    const input = formInputs.find(i => i.output_variable_name === name)
-    if (!input) {
-      return (
-        <div>
-          Can't find note:
-          {name}
-        </div>
-      )
-    }
+  const renderInputPreview = React.useCallback(
+    ({ node }: { node?: { properties?: Record<string, unknown> } }) => {
+      const name = String(node?.properties?.dataName ?? '')
+      const input = formInputs.find((i) => i.output_variable_name === name)
+      if (!input) {
+        return (
+          <div>
+            Can't find note:
+            {name}
+          </div>
+        )
+      }
 
-    return <Note input={input} nodeName={nodeName} />
-  }, [formInputs, nodeName])
+      return <Note input={input} nodeName={nodeName} />
+    },
+    [formInputs, nodeName],
+  )
 
   return (
     <div
-      className="fixed top-[112px] z-10 max-h-[calc(100vh-116px)] w-[600px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl"
+      className="fixed top-28 z-10 max-h-[calc(100vh-116px)] w-150 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl"
       style={{
         right: panelWidth + 8,
       }}
     >
-      <div className="flex h-[26px] items-center justify-between px-4">
-        <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">{t(`${i18nPrefix}.formContent.preview`, { ns: 'workflow' })}</Badge>
-        <ActionButton onClick={onClose}><span className="i-ri-close-line size-5 text-text-tertiary" /></ActionButton>
+      <div className="flex h-6.5 items-center justify-between px-4">
+        <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">
+          {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}
+        </Badge>
+        <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} onClick={onClose}>
+          <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
+        </IconButton>
       </div>
       <div className="max-h-[calc(100vh-167px)] overflow-y-auto px-4">
         <Markdown
@@ -84,15 +93,14 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
         />
         <div className="mt-3 flex flex-wrap gap-1 py-1">
           {userActions.map((action: UserAction) => (
-            <Button
-              key={action.id}
-              variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
-            >
+            <Button key={action.id} variant={getButtonStyle(action.button_style)}>
               {action.title}
             </Button>
           ))}
         </div>
-        <div className="mt-1 system-xs-regular text-text-tertiary">{t('nodes.humanInput.editor.previewTip', { ns: 'workflow' })}</div>
+        <div className="mt-1 system-xs-regular text-text-tertiary">
+          {t(($) => $['nodes.humanInput.editor.previewTip'], { ns: 'workflow' })}
+        </div>
       </div>
     </div>
   )

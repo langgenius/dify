@@ -4,10 +4,7 @@ import type {
   CustomModelCredential,
   ModelProvider,
 } from '../../declarations'
-import {
-  memo,
-  useCallback,
-} from 'react'
+import { memo, useCallback } from 'react'
 import ModelIcon from '../../model-icon'
 import CredentialItem from './credential-item'
 
@@ -27,6 +24,8 @@ type AuthorizedItemProps = {
   showModelTitle?: boolean
   disableDeleteButShowAction?: boolean
   disableDeleteTip?: string
+  disableEdit?: boolean
+  disableDelete?: boolean
 }
 export const AuthorizedItem = ({
   provider,
@@ -42,58 +41,63 @@ export const AuthorizedItem = ({
   showModelTitle,
   disableDeleteButShowAction,
   disableDeleteTip,
+  disableEdit,
+  disableDelete,
 }: AuthorizedItemProps) => {
-  const handleEdit = useCallback((credential?: Credential) => {
-    onEdit?.(credential, model)
-  }, [onEdit, model])
-  const handleDelete = useCallback((credential?: Credential) => {
-    onDelete?.(credential, model)
-  }, [onDelete, model])
-  const handleItemClick = useCallback((credential: Credential) => {
-    onItemClick?.(credential, model)
-  }, [onItemClick, model])
+  const handleEdit = useCallback(
+    (credential?: Credential) => {
+      onEdit?.(credential, model)
+    },
+    [onEdit, model],
+  )
+  const handleDelete = useCallback(
+    (credential?: Credential) => {
+      onDelete?.(credential, model)
+    },
+    [onDelete, model],
+  )
+  const handleItemClick = useCallback(
+    (credential: Credential) => {
+      onItemClick?.(credential, model)
+    },
+    [onItemClick, model],
+  )
 
   return (
     <div className="p-1">
-      {
-        showModelTitle && (
+      {showModelTitle && (
+        <div className="flex h-9 items-center px-2">
+          {model?.model && (
+            <ModelIcon
+              className="mr-1 size-5 shrink-0"
+              provider={provider}
+              modelName={model.model}
+            />
+          )}
           <div
-            className="flex h-9 items-center px-2"
+            className="mx-1 grow truncate system-md-medium text-text-primary"
+            title={title ?? model?.model}
           >
-            {
-              model?.model && (
-                <ModelIcon
-                  className="mr-1 size-5 shrink-0"
-                  provider={provider}
-                  modelName={model.model}
-                />
-              )
-            }
-            <div
-              className="mx-1 grow truncate system-md-medium text-text-primary"
-              title={title ?? model?.model}
-            >
-              {title ?? model?.model}
-            </div>
+            {title ?? model?.model}
           </div>
-        )
-      }
-      {
-        credentials.map(credential => (
-          <CredentialItem
-            key={credential.credential_id}
-            credential={credential}
-            disabled={disabled}
-            onDelete={handleDelete}
-            onEdit={handleEdit}
-            showSelectedIcon={showItemSelectedIcon}
-            selectedCredentialId={selectedCredentialId}
-            onItemClick={handleItemClick}
-            disableDeleteButShowAction={disableDeleteButShowAction}
-            disableDeleteTip={disableDeleteTip}
-          />
-        ))
-      }
+        </div>
+      )}
+      {credentials.map((credential) => (
+        <CredentialItem
+          key={credential.credential_id}
+          credential={credential}
+          disabled={disabled}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+          disableEdit={disableEdit}
+          disableDelete={disableDelete}
+          showSelectedIcon={showItemSelectedIcon}
+          selectedCredentialId={selectedCredentialId}
+          onItemClick={handleItemClick}
+          disableDeleteButShowAction={disableDeleteButShowAction}
+          disableDeleteTip={disableDeleteTip}
+        />
+      ))}
     </div>
   )
 }

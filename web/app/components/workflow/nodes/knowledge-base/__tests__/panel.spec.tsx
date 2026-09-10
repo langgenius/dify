@@ -5,35 +5,55 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import Panel from '../panel'
 import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
-const mockUseModelList = vi.hoisted(() => vi.fn())
+const mockModelListQuery = vi.hoisted(() => vi.fn())
 const mockUseQuery = vi.hoisted(() => vi.fn())
 const mockUseEmbeddingModelStatus = vi.hoisted(() => vi.fn())
 const mockChunkStructure = vi.hoisted(() => vi.fn(() => <div data-testid="chunk-structure" />))
 const mockEmbeddingModel = vi.hoisted(() => vi.fn(() => <div data-testid="embedding-model" />))
-const mockSummaryIndexSetting = vi.hoisted(() => vi.fn(() => <div data-testid="summary-index-setting" />))
+const mockSummaryIndexSetting = vi.hoisted(() =>
+  vi.fn(() => <div data-testid="summary-index-setting" />),
+)
 const mockQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: mockUseQuery,
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    modelProviders: {
-      models: {
-        queryOptions: mockQueryOptions,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    consoleQuery: {
+      systemFeatures: {
+        get: {
+          queryKey: () => ['console', 'systemFeatures', 'get'],
+          queryOptions: (options?: Record<string, unknown>) => ({
+            queryKey: ['console', 'systemFeatures', 'get'],
+            ...options,
+          }),
+        },
+      },
+      workspaces: {
+        current: {
+          models: actual.consoleQuery.workspaces.current.models,
+          modelProviders: {
+            byProvider: {
+              models: {
+                get: {
+                  queryOptions: mockQueryOptions,
+                },
+              },
+            },
+          },
+        },
       },
     },
-  },
-}))
+  }
+})
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: mockUseModelList,
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-}))
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  }
+})
 
 vi.mock('../hooks/use-config', () => ({
   useConfig: () => ({
@@ -62,19 +82,22 @@ vi.mock('@/app/components/datasets/settings/utils', () => ({
   checkShowMultiModalTip: () => false,
 }))
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CE_EDITION: true,
-  }
-})
-
 vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
   Group: ({ children }: { children: ReactNode }) => <div data-testid="group">{children}</div>,
-  BoxGroup: ({ children }: { children: ReactNode }) => <div data-testid="box-group">{children}</div>,
-  BoxGroupField: ({ children, fieldProps }: { children: ReactNode, fieldProps: { fieldTitleProps: { warningDot?: boolean } } }) => (
-    <div data-testid="box-group-field" data-warning-dot={String(!!fieldProps.fieldTitleProps.warningDot)}>
+  BoxGroup: ({ children }: { children: ReactNode }) => (
+    <div data-testid="box-group">{children}</div>
+  ),
+  BoxGroupField: ({
+    children,
+    fieldProps,
+  }: {
+    children: ReactNode
+    fieldProps: { fieldTitleProps: { warningDot?: boolean } }
+  }) => (
+    <div
+      data-testid="box-group-field"
+      data-warning-dot={String(!!fieldProps.fieldTitleProps.warningDot)}
+    >
       {children}
     </div>
   ),
@@ -138,45 +161,73 @@ describe('KnowledgeBasePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseQuery.mockReturnValue({ data: undefined })
-    mockUseModelList.mockImplementation((modelType: ModelTypeEnum) => {
-      if (modelType === ModelTypeEnum.textEmbedding) {
-        return {
-          data: [{
-            provider: 'openai',
-            models: [{ model: 'text-embedding-3-large' }],
-          }],
+    mockModelListQuery.mockImplementation(
+      ({ input }: { input: { params: { model_type: string } } }) => {
+        const type = input.params.model_type
+        const modelType = type
+        if (modelType === ModelTypeEnum.textEmbedding) {
+          return {
+            data: [
+              {
+                provider: 'openai',
+                models: [{ model: 'text-embedding-3-large' }],
+              },
+            ],
+          }
         }
-      }
-      return { data: [] }
-    })
+        return { data: [] }
+      },
+    )
     mockUseEmbeddingModelStatus.mockReturnValue({ status: 'active' })
   })
 
   it('should show a warning dot on chunk structure and skip nested sections when chunk structure is missing', () => {
-    render(<Panel id="knowledge-base-1" data={createData({ chunk_structure: undefined }) as never} panelProps={panelProps} />)
+    render(
+      <Panel
+        id="knowledge-base-1"
+        data={createData({ chunk_structure: undefined }) as never}
+        panelProps={panelProps}
+      />,
+    )
 
-    expect(mockChunkStructure).toHaveBeenCalledWith(expect.objectContaining({
-      warningDot: true,
-    }), undefined)
+    expect(mockChunkStructure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        warningDot: true,
+      }),
+      undefined,
+    )
     expect(screen.queryByTestId('box-group-field')).not.toBeInTheDocument()
-    expect(mockQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-      enabled: true,
-    }))
+    expect(mockQueryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+      }),
+    )
   })
 
   it('should pass warning dots and render summary settings when the qualified configuration needs attention', () => {
     mockUseEmbeddingModelStatus.mockReturnValue({ status: 'disabled' })
 
-    render(<Panel id="knowledge-base-1" data={createData({ index_chunk_variable_selector: [] }) as never} panelProps={panelProps} />)
+    render(
+      <Panel
+        id="knowledge-base-1"
+        data={createData({ index_chunk_variable_selector: [] }) as never}
+        panelProps={panelProps}
+      />,
+    )
 
     expect(screen.getByTestId('box-group-field')).toHaveAttribute('data-warning-dot', 'true')
-    expect(mockEmbeddingModel).toHaveBeenCalledWith(expect.objectContaining({
-      warningDot: true,
-    }), undefined)
-    expect(mockQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-      input: { params: { provider: 'openai' } },
-      enabled: true,
-    }))
+    expect(mockEmbeddingModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        warningDot: true,
+      }),
+      undefined,
+    )
+    expect(mockQueryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: { params: { provider: 'openai' } },
+        enabled: true,
+      }),
+    )
     expect(screen.getByTestId('summary-index-setting')).toBeInTheDocument()
   })
 
@@ -191,8 +242,24 @@ describe('KnowledgeBasePanel', () => {
 
     expect(screen.queryByTestId('embedding-model')).not.toBeInTheDocument()
     expect(screen.queryByTestId('summary-index-setting')).not.toBeInTheDocument()
-    expect(mockQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-      enabled: false,
-    }))
+    expect(mockQueryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: false,
+      }),
+    )
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: ({ select }: { select: (value: unknown) => unknown }) => ({
+      data: select({ deployment_edition: 'COMMUNITY' }),
+    }),
+    useQuery: (options: { queryKey?: readonly [readonly string[], unknown] }) =>
+      options.queryKey?.[0].includes('modelTypes')
+        ? mockModelListQuery(options)
+        : mockUseQuery(options),
+  }
 })

@@ -1,9 +1,11 @@
 import re
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from decimal import Decimal
 
 import pytest
+from sqlalchemy.orm import Session
 
+import core.ops.utils as utils_module
 from core.ops.utils import (
     filter_none_values,
     generate_dotted_order,
@@ -15,6 +17,42 @@ from core.ops.utils import (
     validate_url,
     validate_url_with_path,
 )
+from models.enums import ConversationFromSource
+from models.model import Message
+
+
+class _DatabaseBinding:
+    """Expose the real SQLite session used by the message lookup helper."""
+
+    session: Session
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+
+@pytest.fixture
+def message_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
+    """Bind the message lookup helper to the shared SQLite test session."""
+
+    monkeypatch.setattr(utils_module, "db", _DatabaseBinding(sqlite_session))
+    return sqlite_session
+
+
+def _message(message_id: str) -> Message:
+    message = Message(
+        id=message_id,
+        app_id="app-id",
+        conversation_id="conversation-id",
+        query="question",
+        message={"role": "user", "content": "question"},
+        answer="answer",
+        message_unit_price=Decimal("0.0001"),
+        answer_unit_price=Decimal("0.0001"),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+    )
+    message._inputs = {}
+    return message
 
 
 class TestValidateUrl:
@@ -116,6 +154,30 @@ class TestValidateUrlWithPath:
         """Test URL without scheme raises ValueError"""
         with pytest.raises(ValueError, match="URL must start with https:// or http://"):
             validate_url_with_path("example.com", "https://default.com")
+
+    def test_restricted_scheme_accepts_allowed_scheme(self):
+        """Test https-only validation keeps the path of an https URL"""
+        result = validate_url_with_path(
+            "https://langsmith.internal/api", "https://default.com", allowed_schemes=("https",)
+        )
+        assert result == "https://langsmith.internal/api"
+
+    def test_restricted_scheme_rejects_http(self):
+        """Test https-only validation rejects http and names only https in the error"""
+        with pytest.raises(ValueError) as excinfo:
+            validate_url_with_path("http://langsmith.internal/api", "https://default.com", allowed_schemes=("https",))
+        assert str(excinfo.value) == "URL must start with https://"
+
+    def test_default_schemes_keep_original_error_message(self):
+        """Test the two-scheme default keeps the exact message existing providers assert on"""
+        with pytest.raises(ValueError) as excinfo:
+            validate_url_with_path("ftp://example.com", "https://default.com")
+        assert str(excinfo.value) == "URL must start with https:// or http://"
+
+    def test_surrounding_whitespace_is_stripped(self):
+        """Test surrounding whitespace is removed while the path is preserved"""
+        result = validate_url_with_path("  https://example.com/api/v1  ", "https://default.com")
+        assert result == "https://example.com/api/v1"
 
 
 class TestValidateProjectName:
@@ -220,22 +282,20 @@ class TestFilterNoneValues:
         assert filter_none_values({}) == {}
 
 
+@pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
 class TestGetMessageData:
     """Test cases for get_message_data function"""
 
-    @patch("core.ops.utils.db")
-    @patch("core.ops.utils.Message")
-    @patch("core.ops.utils.select")
-    def test_get_message_data(self, mock_select, mock_message, mock_db):
-        mock_scalar = mock_db.session.scalar
-        mock_msg_instance = MagicMock()
-        mock_scalar.return_value = mock_msg_instance
+    def test_get_message_data(self, message_session: Session):
+        target = _message("message-id")
+        unrelated = _message("other-message-id")
+        message_session.add_all((target, unrelated))
+        message_session.commit()
 
         result = get_message_data("message-id")
 
-        assert result == mock_msg_instance
-        mock_select.assert_called_once()
-        mock_scalar.assert_called_once()
+        assert result is target
+        assert result.id == "message-id"
 
 
 class TestMeasureTime:

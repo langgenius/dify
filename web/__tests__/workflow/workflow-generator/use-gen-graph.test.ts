@@ -8,7 +8,14 @@ describe('useGenGraph', () => {
 
   const makeResponse = (label: string) => ({
     graph: {
-      nodes: [{ id: label, type: 'custom', position: { x: 0, y: 0 }, data: { type: 'start', title: label } }],
+      nodes: [
+        {
+          id: label,
+          type: 'custom',
+          position: { x: 0, y: 0 },
+          data: { type: 'start', title: label },
+        },
+      ],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
     },

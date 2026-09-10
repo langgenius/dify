@@ -12,7 +12,11 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
+import {
+  useDocumentDelete,
+  useDocumentDisable,
+  useDocumentEnable,
+} from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import s from '../style.module.css'
 import { useIndexStatus } from './hooks'
@@ -37,8 +41,19 @@ type StatusItemProps = {
   }
   datasetId?: string
   onUpdate?: (operationName?: string) => void
+  canEdit?: boolean
 }
-const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', errorMessage, datasetId = '', detail, onUpdate }: StatusItemProps) => {
+const StatusItem = ({
+  status,
+  reverse = false,
+  scene = 'list',
+  textCls = '',
+  errorMessage,
+  datasetId = '',
+  detail,
+  onUpdate,
+  canEdit = false,
+}: StatusItemProps) => {
   const { t } = useTranslation()
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
@@ -48,6 +63,8 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
   const onOperate = async (operationName: OperationName) => {
+    if (!canEdit) return
+
     let opApi = deleteDocument
     switch (operationName) {
       case 'enable':
@@ -57,27 +74,36 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
         opApi = disableDocument
         break
     }
-    const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
+    const [e] = await asyncRunSafe<CommonResponse>(
+      opApi({ datasetId, documentId: id }) as Promise<CommonResponse>,
+    )
     if (!e) {
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onUpdate?.(operationName)
-    }
-    else {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+    } else {
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
   }
-  const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
-    if (operationName === 'enable' && enabled)
-      return
-    if (operationName === 'disable' && !enabled)
-      return
-    onOperate(operationName)
-  }, { wait: 500 })
+  const { run: handleSwitch } = useDebounceFn(
+    (operationName: OperationName) => {
+      if (!canEdit) return
+      if (operationName === 'enable' && enabled) return
+      if (operationName === 'disable' && !enabled) return
+      onOperate(operationName)
+    },
+    { wait: 500 },
+  )
   const embedding = useMemo(() => {
     return ['queuing', 'indexing', 'paused'].includes(localStatus)
   }, [localStatus])
   return (
-    <div className={cn('flex items-center', reverse ? 'flex-row-reverse' : '', scene === 'detail' ? s.statusItemDetail : '')}>
+    <div
+      className={cn(
+        'flex items-center',
+        reverse ? 'flex-row-reverse' : '',
+        scene === 'detail' ? s.statusItemDetail : '',
+      )}
+    >
       <StatusDot status={statusItem.status} className={reverse ? 'ml-2' : 'mr-2'} />
       <span className={cn(`${STATUS_TEXT_COLOR_MAP[statusItem.status]} text-sm`, textCls)}>
         {statusItem.text}
@@ -95,19 +121,21 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
         <div className="ml-1.5 flex items-center justify-between">
           <Tooltip disabled={!archived}>
             <TooltipTrigger
-              render={(
+              render={
                 <span className="flex">
                   <Switch
                     checked={archived ? false : enabled}
-                    onCheckedChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
-                    disabled={embedding || archived}
+                    onCheckedChange={(v) =>
+                      !archived && canEdit && handleSwitch(v ? 'enable' : 'disable')
+                    }
+                    disabled={embedding || archived || !canEdit}
                     size="md"
                   />
                 </span>
-              )}
+              }
             />
             <TooltipContent className="system-xs-medium text-text-secondary">
-              {t('list.action.enableWarning', { ns: 'datasetDocuments' })}
+              {t(($) => $['list.action.enableWarning'], { ns: 'datasetDocuments' })}
             </TooltipContent>
           </Tooltip>
         </div>

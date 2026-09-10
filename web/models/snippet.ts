@@ -1,6 +1,6 @@
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { Viewport } from 'reactflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import type { Tag } from '@/contract/console/tags'
 import type { InputVar } from '@/models/pipeline'
 
 export type SnippetSection = 'orchestrate'
@@ -8,7 +8,7 @@ export type SnippetSection = 'orchestrate'
 export type SnippetListItem = {
   id: string
   name: string
-  description: string
+  description: string | null
   updatedAt: string
   usage: string
   tags: Tag[]
@@ -19,7 +19,7 @@ export type SnippetListItem = {
 export type SnippetDetail = {
   id: string
   name: string
-  description: string
+  description: string | null
   updatedAt: string
   usage: string
   tags: Tag[]

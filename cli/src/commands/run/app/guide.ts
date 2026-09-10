@@ -9,14 +9,14 @@ WORKFLOW
        difyctl run app <id> --inputs '{"key":"value"}' -o json
 
 APP MODES
-  chat / advanced-chat   Conversational. Accepts --conversation <id> to
-                         resume an existing thread.
+  chat / agent-chat /    Conversational. Accept --conversation <id> to
+  advanced-chat          resume an existing thread. agent-chat adds
+                         autonomous tool use.
   completion             Single-turn. Ignores --conversation.
   workflow               Multi-step graph. Pass all input variables as a
                          JSON object via --inputs.
-  agent-chat             Conversational with autonomous tool use.
 
-HITL PAUSE (exit code 2)
+HITL PAUSE (exit code 0 — success-with-pending)
   When a workflow pauses for human input, stdout receives a JSON object
   with status "paused", form_token, workflow_run_id, and resolved_default_values.
   Resume with:

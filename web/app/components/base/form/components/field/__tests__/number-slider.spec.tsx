@@ -22,11 +22,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-number-with-slid
     label: string
     value: number
     onChange: (value: number) => void
-  }) => (
-    <button onClick={() => onChange(value + 1)}>
-      {`${label}-slider-value-${value}`}
-    </button>
-  ),
+  }) => <button onClick={() => onChange(value + 1)}>{`${label}-slider-value-${value}`}</button>,
 }))
 
 describe('NumberSliderField', () => {

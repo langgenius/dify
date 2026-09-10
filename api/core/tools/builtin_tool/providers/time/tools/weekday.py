@@ -3,6 +3,8 @@ from collections.abc import Generator
 from datetime import datetime
 from typing import Any, override
 
+from sqlalchemy.orm import Session
+
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
@@ -11,6 +13,7 @@ class WeekdayTool(BuiltinTool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -32,20 +35,23 @@ class WeekdayTool(BuiltinTool):
             return
 
         weekday_name = calendar.day_name[date_obj.weekday()]
-        month_name = calendar.month_name[month]
+        month_name = calendar.month_name[date_obj.month]
         readable_date = f"{month_name} {date_obj.day}, {date_obj.year}"
         yield self.create_text_message(f"{readable_date} is {weekday_name}.")
 
     @staticmethod
     def convert_datetime(year, month, day) -> datetime | None:
         try:
-            # allowed range in datetime module
-            if not (year >= 1 and 1 <= month <= 12 and 1 <= day <= 31):
+            if year is None or month is None or day is None:
                 return None
 
             year = int(year)
             month = int(month)
             day = int(day)
+            # allowed range in datetime module
+            if not (year >= 1 and 1 <= month <= 12 and 1 <= day <= 31):
+                return None
+
             return datetime(year, month, day)
-        except ValueError:
+        except (TypeError, ValueError):
             return None

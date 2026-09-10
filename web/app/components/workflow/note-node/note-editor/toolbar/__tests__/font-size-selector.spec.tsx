@@ -1,12 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import FontSizeSelector from '../font-size-selector'
 
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-
-const {
-  mockHandleFontSize,
-  mockHandleOpenFontSizeSelector,
-} = vi.hoisted(() => ({
+const { mockHandleFontSize, mockHandleOpenFontSizeSelector } = vi.hoisted(() => ({
   mockHandleFontSize: vi.fn(),
   mockHandleOpenFontSizeSelector: vi.fn(),
 }))
@@ -39,7 +34,7 @@ describe('NoteEditor FontSizeSelector', () => {
 
     fireEvent.click(screen.getByText('workflow.nodes.note.editor.small'))
 
-    expect(mockHandleOpenFontSizeSelector).toHaveBeenCalledWith(true)
+    expect(mockHandleOpenFontSizeSelector.mock.calls[0]?.[0]).toBe(true)
   })
 
   it('should select a new font size and close the popup', () => {

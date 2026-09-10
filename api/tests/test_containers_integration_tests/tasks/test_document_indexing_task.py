@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.entities.document_task import DocumentTask
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
@@ -18,6 +18,7 @@ from tasks.document_indexing_task import (
     normal_document_indexing_task,  # New normal task
     priority_document_indexing_task,  # New priority task
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class TestDocumentIndexingTasks:
@@ -41,7 +42,6 @@ class TestDocumentIndexingTasks:
             # Setup mock indexing runner
             mock_runner_instance = mock_indexing_runner.return_value  # Setup mock feature service
             mock_features = MagicMock()
-            mock_features.billing.enabled = False
             mock_feature_service.get_features.return_value = mock_features
 
             yield {
@@ -50,6 +50,19 @@ class TestDocumentIndexingTasks:
                 "feature_service": mock_feature_service,
                 "features": mock_features,
             }
+
+    def _runner_documents_arg(self, mock_external_service_dependencies) -> list[Document]:
+        """Return the document batch passed to the runner."""
+        return mock_external_service_dependencies["indexing_runner_instance"].run.call_args.args[0]
+
+    def _assert_documents_parsing(self, db_session_with_containers: Session, document_ids: list[str]) -> None:
+        """Assert the short status transaction remains committed when the runner exits early."""
+        db_session_with_containers.expire_all()
+        for doc_id in document_ids:
+            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            assert updated_document is not None
+            assert updated_document.indexing_status == IndexingStatus.PARSING
+            assert updated_document.processing_started_at is not None
 
     def _create_test_dataset_and_documents(
         self, db_session_with_containers: Session, mock_external_service_dependencies, document_count=3
@@ -134,7 +147,9 @@ class TestDocumentIndexingTasks:
         return dataset, documents
 
     def _create_test_dataset_with_billing_features(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, billing_enabled=True
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
     ):
         """
         Helper method to create a test dataset with billing features configured.
@@ -142,7 +157,6 @@ class TestDocumentIndexingTasks:
         Args:
             db_session_with_containers: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
-            billing_enabled: Whether billing is enabled
 
         Returns:
             tuple: (dataset, documents) - Created dataset and document instances
@@ -211,11 +225,9 @@ class TestDocumentIndexingTasks:
         db_session_with_containers.commit()
 
         # Configure billing features
-        mock_external_service_dependencies["features"].billing.enabled = billing_enabled
-        if billing_enabled:
-            mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.SANDBOX
-            mock_external_service_dependencies["features"].vector_space.limit = 100
-            mock_external_service_dependencies["features"].vector_space.size = 50
+        mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.SANDBOX
+        mock_external_service_dependencies["features"].vector_space.limit = 100
+        mock_external_service_dependencies["features"].vector_space.size = 50
 
         # Refresh dataset to ensure it's properly loaded
         db_session_with_containers.refresh(dataset)
@@ -261,7 +273,7 @@ class TestDocumentIndexingTasks:
         # Verify the run method was called with correct documents
         call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
         assert call_args is not None
-        processed_documents = call_args[0][0]  # First argument should be documents list
+        processed_documents = self._runner_documents_arg(mock_external_service_dependencies)
         assert len(processed_documents) == 3
 
     def test_document_indexing_task_dataset_not_found(
@@ -331,7 +343,7 @@ class TestDocumentIndexingTasks:
         # Verify the run method was called with only existing documents
         call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
         assert call_args is not None
-        processed_documents = call_args[0][0]  # First argument should be documents list
+        processed_documents = self._runner_documents_arg(mock_external_service_dependencies)
         assert len(processed_documents) == 2  # Only existing documents
 
     def test_document_indexing_task_indexing_runner_exception(
@@ -368,12 +380,8 @@ class TestDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
-        # Verify documents were still updated to parsing status before the exception
-        # Re-query documents from database since _document_indexing close the session
-        for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == IndexingStatus.PARSING
-            assert updated_document.processing_started_at is not None
+        # Parsing status is committed before the runner starts, so runner failure cannot roll it back.
+        self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     def test_document_indexing_task_mixed_document_states(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -455,9 +463,10 @@ class TestDocumentIndexingTasks:
         # Verify the run method was called with all documents
         call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
         assert call_args is not None
-        processed_documents = call_args[0][0]  # First argument should be documents list
+        processed_documents = self._runner_documents_arg(mock_external_service_dependencies)
         assert len(processed_documents) == 4
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_document_indexing_task_billing_sandbox_plan_batch_limit(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -472,7 +481,8 @@ class TestDocumentIndexingTasks:
         """
         # Arrange: Create test data with billing enabled
         dataset, documents = self._create_test_dataset_with_billing_features(
-            db_session_with_containers, mock_external_service_dependencies, billing_enabled=True
+            db_session_with_containers,
+            mock_external_service_dependencies,
         )
 
         # Configure sandbox plan with batch limit
@@ -520,21 +530,23 @@ class TestDocumentIndexingTasks:
         # Verify no indexing runner was called
         mock_external_service_dependencies["indexing_runner"].assert_not_called()
 
-    def test_document_indexing_task_billing_disabled_success(
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    def test_document_indexing_task_community_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test successful processing when billing is disabled.
+        Test successful processing outside Cloud.
 
         This test verifies:
-        - Processing continues normally when billing is disabled
+        - Processing continues normally outside Cloud
         - No billing validation occurs
         - Documents are processed successfully
         - IndexingRunner is called correctly
         """
         # Arrange: Create test data with billing disabled
         dataset, documents = self._create_test_dataset_with_billing_features(
-            db_session_with_containers, mock_external_service_dependencies, billing_enabled=False
+            db_session_with_containers,
+            mock_external_service_dependencies,
         )
 
         document_ids = [doc.id for doc in documents]
@@ -592,12 +604,8 @@ class TestDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
-        # Verify documents were still updated to parsing status before the exception
-        # Re-query documents from database since _document_indexing uses a different session
-        for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == IndexingStatus.PARSING
-            assert updated_document.processing_started_at is not None
+        # The pause stops the runner but does not undo the earlier parsing-status transaction.
+        self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     # ==================== NEW TESTS FOR REFACTORED FUNCTIONS ====================
     def test_old_document_indexing_task_success(
@@ -715,7 +723,7 @@ class TestDocumentIndexingTasks:
         # Verify the run method was called with correct documents
         call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
         assert call_args is not None
-        processed_documents = call_args[0][0]
+        processed_documents = self._runner_documents_arg(mock_external_service_dependencies)
         assert len(processed_documents) == 2
 
         # Verify task function was not called (no waiting tasks)
@@ -830,12 +838,8 @@ class TestDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
-        # Verify documents were still updated to parsing status before the exception
-        # Re-query documents from database since _document_indexing uses a different session
-        for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == IndexingStatus.PARSING
-            assert updated_document.processing_started_at is not None
+        # The core indexing error does not undo the earlier parsing status, and the tenant queue still advances.
+        self._assert_documents_parsing(db_session_with_containers, document_ids)
 
         # Verify waiting task was still processed despite core processing error
         mock_task_func.apply_async.assert_called_once()

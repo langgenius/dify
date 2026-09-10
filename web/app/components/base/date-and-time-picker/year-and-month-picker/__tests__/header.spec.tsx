@@ -3,7 +3,9 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import Header from '../header'
 
 // Factory for Header props
-const createHeaderProps = (overrides: Partial<YearAndMonthPickerHeaderProps> = {}): YearAndMonthPickerHeaderProps => ({
+const createHeaderProps = (
+  overrides: Partial<YearAndMonthPickerHeaderProps> = {},
+): YearAndMonthPickerHeaderProps => ({
   selectedYear: 2024,
   selectedMonth: 5, // June (0-indexed)
   onClick: vi.fn(),

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import AuthenticationSection from '../authentication-section'
 
 describe('AuthenticationSection', () => {
@@ -13,11 +13,6 @@ describe('AuthenticationSection', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<AuthenticationSection {...defaultProps} />)
-      expect(screen.getByText('tools.mcp.modal.useDynamicClientRegistration'))!.toBeInTheDocument()
-    })
-
     it('should render switch for dynamic registration', () => {
       render(<AuthenticationSection {...defaultProps} />)
       expect(screen.getByRole('switch'))!.toBeInTheDocument()

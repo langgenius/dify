@@ -49,14 +49,7 @@ describe('Tab', () => {
   })
 
   it('should disable the tab when workflow run data is unavailable', () => {
-    render(
-      <Tab
-        isActive={false}
-        label="Trace"
-        value="trace"
-        onClick={vi.fn()}
-      />,
-    )
+    render(<Tab isActive={false} label="Trace" value="trace" onClick={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: 'Trace' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Trace' })).toHaveClass('opacity-30')

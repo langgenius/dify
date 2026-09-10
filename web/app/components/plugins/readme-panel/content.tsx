@@ -15,16 +15,16 @@ type ReadmePanelContentProps = {
   closeButton: ReactNode
 }
 
-export function ReadmePanelContent({
-  detail,
-  title,
-  closeButton,
-}: ReadmePanelContentProps) {
+export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelContentProps) {
   const { t } = useTranslation()
   const language = useLanguage()
   const pluginUniqueIdentifier = detail.plugin_unique_identifier || ''
 
-  const { data: readmeData, isLoading, error } = usePluginReadme({
+  const {
+    data: readmeData,
+    isLoading,
+    error,
+  } = usePluginReadme({
     plugin_unique_identifier: pluginUniqueIdentifier,
     language: language === 'zh-Hans' ? undefined : language,
   })
@@ -36,26 +36,23 @@ export function ReadmePanelContent({
         <Loading type="area" />
       </div>
     )
-  }
-  else if (error) {
+  } else if (error) {
     readmeContent = (
       <div className="py-8 text-center text-text-tertiary">
-        <p>{t('readmeInfo.failedToFetch', { ns: 'plugin' })}</p>
+        <p>{t(($) => $['readmeInfo.failedToFetch'], { ns: 'plugin' })}</p>
       </div>
     )
-  }
-  else if (readmeData?.readme) {
+  } else if (readmeData?.readme) {
     readmeContent = (
       <Markdown
         content={readmeData.readme}
         pluginInfo={{ pluginUniqueIdentifier, pluginId: detail.plugin_id }}
       />
     )
-  }
-  else {
+  } else {
     readmeContent = (
       <div className="py-8 text-center text-text-tertiary">
-        <p>{t('readmeInfo.noReadmeAvailable', { ns: 'plugin' })}</p>
+        <p>{t(($) => $['readmeInfo.noReadmeAvailable'], { ns: 'plugin' })}</p>
       </div>
     )
   }
@@ -65,7 +62,10 @@ export function ReadmePanelContent({
       <div className="shrink-0 rounded-t-xl bg-background-body p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-1">
-            <span aria-hidden="true" className="i-ri-book-read-line size-3 shrink-0 text-text-tertiary" />
+            <span
+              aria-hidden="true"
+              className="i-ri-book-read-line size-3 shrink-0 text-text-tertiary"
+            />
             {title}
           </div>
           {closeButton}

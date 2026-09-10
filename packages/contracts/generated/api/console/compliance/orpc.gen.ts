@@ -2,21 +2,14 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import { zGetComplianceDownloadQuery, zGetComplianceDownloadResponse } from './zod.gen'
 
 /**
  * Get compliance document download link
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Get compliance document download link\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get compliance document download link',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getComplianceDownload',

@@ -3,7 +3,9 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import CredentialItem from '../credential-item'
 
 vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: () => <div data-testid="indicator" />,
+  StatusDot: ({ status }: { status?: string }) => (
+    <div data-testid="indicator" data-status={status} />
+  ),
 }))
 
 describe('CredentialItem', () => {
@@ -42,11 +44,29 @@ describe('CredentialItem', () => {
   it('should not call onItemClick when credential is unavailable', () => {
     const onItemClick = vi.fn()
 
-    render(<CredentialItem credential={{ ...credential, not_allowed_to_use: true }} onItemClick={onItemClick} />)
+    render(
+      <CredentialItem
+        credential={{ ...credential, not_allowed_to_use: true }}
+        onItemClick={onItemClick}
+      />,
+    )
 
     fireEvent.click(screen.getByText('Test API Key'))
 
     expect(onItemClick).not.toHaveBeenCalled()
+  })
+
+  it('should render unavailable credential with error indicator and unavailable label', () => {
+    render(<CredentialItem credential={{ ...credential, not_allowed_to_use: true }} />)
+
+    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'error')
+    expect(screen.getByText('common.modelProvider.card.unavailable')).toBeInTheDocument()
+  })
+
+  it('should render available credential with success indicator', () => {
+    render(<CredentialItem credential={credential} />)
+
+    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
   })
 
   it('should call onEdit and onDelete from action buttons', () => {
@@ -56,8 +76,8 @@ describe('CredentialItem', () => {
     render(<CredentialItem credential={credential} onEdit={onEdit} onDelete={onDelete} />)
 
     const buttons = screen.getAllByRole('button')
-    const editButton = buttons.find(b => b.querySelector('.i-ri-equalizer-2-line'))!
-    const deleteButton = buttons.find(b => b.querySelector('.i-ri-delete-bin-line'))!
+    const editButton = buttons.find((b) => b.querySelector('.i-ri-equalizer-2-line'))!
+    const deleteButton = buttons.find((b) => b.querySelector('.i-ri-delete-bin-line'))!
 
     fireEvent.click(editButton)
     fireEvent.click(deleteButton)
@@ -79,8 +99,9 @@ describe('CredentialItem', () => {
       />,
     )
 
-    const deleteButton = screen.getAllByRole('button')
-      .find(b => b.querySelector('.i-ri-delete-bin-line'))!
+    const deleteButton = screen
+      .getAllByRole('button')
+      .find((b) => b.querySelector('.i-ri-delete-bin-line'))!
 
     fireEvent.click(deleteButton)
 
@@ -122,8 +143,9 @@ describe('CredentialItem', () => {
 
     render(<CredentialItem credential={credential} disabled onDelete={onDelete} />)
 
-    const deleteButton = screen.getAllByRole('button')
-      .find(b => b.querySelector('.i-ri-delete-bin-line'))!
+    const deleteButton = screen
+      .getAllByRole('button')
+      .find((b) => b.querySelector('.i-ri-delete-bin-line'))!
     fireEvent.click(deleteButton)
 
     expect(onDelete).not.toHaveBeenCalled()
@@ -132,11 +154,7 @@ describe('CredentialItem', () => {
   // showSelectedIcon=true: check icon area is always rendered; check icon only appears when IDs match
   it('should render check icon area when showSelectedIcon=true and selectedCredentialId matches', () => {
     const { container } = render(
-      <CredentialItem
-        credential={credential}
-        showSelectedIcon
-        selectedCredentialId="cred-1"
-      />,
+      <CredentialItem credential={credential} showSelectedIcon selectedCredentialId="cred-1" />,
     )
 
     expect(container.querySelector('.i-ri-check-line')).toBeInTheDocument()
@@ -144,11 +162,7 @@ describe('CredentialItem', () => {
 
   it('should not render check icon when showSelectedIcon=true but selectedCredentialId does not match', () => {
     render(
-      <CredentialItem
-        credential={credential}
-        showSelectedIcon
-        selectedCredentialId="other-cred"
-      />,
+      <CredentialItem credential={credential} showSelectedIcon selectedCredentialId="other-cred" />,
     )
 
     expect(screen.queryByTestId('check-icon')).not.toBeInTheDocument()

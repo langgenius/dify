@@ -1,5 +1,6 @@
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import EmptyDatasetCreationModal from '../index'
@@ -43,10 +44,12 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 // Type cast mocked functions
 const mockCreateEmptyDataset = createEmptyDataset as MockedFunction<typeof createEmptyDataset>
 const mockInvalidDatasetList = vi.fn()
-const mockUseInvalidDatasetList = useInvalidDatasetList as MockedFunction<typeof useInvalidDatasetList>
+const mockUseInvalidDatasetList = useInvalidDatasetList as MockedFunction<
+  typeof useInvalidDatasetList
+>
 
 // Test data builder for props
-const createDefaultProps = (overrides?: Partial<{ show: boolean, onHide: () => void }>) => ({
+const createDefaultProps = (overrides?: Partial<{ show: boolean; onHide: () => void }>) => ({
   show: true,
   onHide: vi.fn(),
   ...overrides,
@@ -64,15 +67,6 @@ describe('EmptyDatasetCreationModal', () => {
 
   // Rendering Tests - Verify component renders correctly
   describe('Rendering', () => {
-    it('should render without crashing when show is true', () => {
-      const props = createDefaultProps()
-
-      render(<EmptyDatasetCreationModal {...props} />)
-
-      // Assert - Check modal title is rendered
-      expect(screen.getByText('datasetCreation.stepOne.modal.title')).toBeInTheDocument()
-    })
-
     it('should render modal with correct elements', () => {
       const props = createDefaultProps()
 
@@ -80,8 +74,9 @@ describe('EmptyDatasetCreationModal', () => {
 
       expect(screen.getByText('datasetCreation.stepOne.modal.title')).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepOne.modal.tip')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepOne.modal.input')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'datasetCreation.stepOne.modal.input' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepOne.modal.confirmButton')).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepOne.modal.cancelButton')).toBeInTheDocument()
     })
@@ -91,7 +86,9 @@ describe('EmptyDatasetCreationModal', () => {
 
       render(<EmptyDatasetCreationModal {...props} />)
 
-      const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
+      const input = screen.getByPlaceholderText(
+        'datasetCreation.stepOne.modal.placeholder',
+      ) as HTMLInputElement
       expect(input.value).toBe('')
     })
 
@@ -161,7 +158,9 @@ describe('EmptyDatasetCreationModal', () => {
     it('should update input value when user types', () => {
       const props = createDefaultProps()
       render(<EmptyDatasetCreationModal {...props} />)
-      const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
+      const input = screen.getByPlaceholderText(
+        'datasetCreation.stepOne.modal.placeholder',
+      ) as HTMLInputElement
 
       fireEvent.change(input, { target: { value: 'My Dataset' } })
 
@@ -171,7 +170,9 @@ describe('EmptyDatasetCreationModal', () => {
     it('should persist input value when modal is hidden and shown again via rerender', () => {
       const onHide = vi.fn()
       const { rerender } = render(<EmptyDatasetCreationModal show={true} onHide={onHide} />)
-      const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
+      const input = screen.getByPlaceholderText(
+        'datasetCreation.stepOne.modal.placeholder',
+      ) as HTMLInputElement
 
       // Act - Type in input
       fireEvent.change(input, { target: { value: 'Test Dataset' } })
@@ -182,14 +183,18 @@ describe('EmptyDatasetCreationModal', () => {
       rerender(<EmptyDatasetCreationModal show={true} onHide={onHide} />)
 
       // Assert - Input value persists because component state is preserved during rerender
-      const newInput = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
+      const newInput = screen.getByPlaceholderText(
+        'datasetCreation.stepOne.modal.placeholder',
+      ) as HTMLInputElement
       expect(newInput.value).toBe('Test Dataset')
     })
 
     it('should handle consecutive input changes', () => {
       const props = createDefaultProps()
       render(<EmptyDatasetCreationModal {...props} />)
-      const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
+      const input = screen.getByPlaceholderText(
+        'datasetCreation.stepOne.modal.placeholder',
+      ) as HTMLInputElement
 
       fireEvent.change(input, { target: { value: 'A' } })
       expect(input.value).toBe('A')
@@ -284,17 +289,46 @@ describe('EmptyDatasetCreationModal', () => {
 
   // API Calls - Test API interactions
   describe('API Calls', () => {
-    it('should call createEmptyDataset with correct parameters', async () => {
+    it('should submit from the dataset name input with Enter', async () => {
       const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
-      const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
-      const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
+      const user = userEvent.setup()
+      const input = screen.getByRole('textbox', { name: 'datasetCreation.stepOne.modal.input' })
 
-      fireEvent.change(input, { target: { value: 'New Dataset' } })
-      fireEvent.click(confirmButton)
+      await user.type(input, 'New Dataset{Enter}')
 
       await waitFor(() => {
         expect(mockCreateEmptyDataset).toHaveBeenCalledWith({ name: 'New Dataset' })
+      })
+    })
+
+    it('should not submit again while dataset creation is pending', async () => {
+      let resolveRequest:
+        | ((value: Awaited<ReturnType<typeof createEmptyDataset>>) => void)
+        | undefined
+      mockCreateEmptyDataset.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRequest = resolve
+        }),
+      )
+      const onHide = vi.fn()
+      render(<EmptyDatasetCreationModal show={true} onHide={onHide} />)
+      const user = userEvent.setup()
+      const input = screen.getByRole('textbox', { name: 'datasetCreation.stepOne.modal.input' })
+
+      await user.type(input, 'New Dataset{Enter}')
+      await waitFor(() => {
+        expect(mockCreateEmptyDataset).toHaveBeenCalledTimes(1)
+      })
+      await user.keyboard('{Enter}')
+      expect(mockCreateEmptyDataset).toHaveBeenCalledTimes(1)
+
+      resolveRequest?.({
+        id: 'dataset-123',
+        name: 'New Dataset',
+      } as Awaited<ReturnType<typeof createEmptyDataset>>)
+      await waitFor(() => {
+        expect(onHide).toHaveBeenCalledTimes(1)
       })
     })
 

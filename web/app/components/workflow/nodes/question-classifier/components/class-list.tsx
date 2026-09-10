@@ -3,23 +3,22 @@ import type { FC } from 'react'
 import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiDraggable } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { noop } from 'es-toolkit/function'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { useEdgesInteractions } from '../../../hooks'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
+import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
 import AddButton from '../../_base/components/add-button'
+import { useInlineLabelHintDismissed } from '../storage'
 import Item from './class-item'
 import { getDefaultClassLabel, isDefaultClassLabel } from './class-label-utils'
 
 const i18nPrefix = 'nodes.questionClassifiers'
-const INLINE_LABEL_HINT_STORAGE_KEY = 'question-classifier-inline-label-hint-dismissed'
-
 type Props = Readonly<{
   nodeId: string
   list: Topic[]
@@ -43,17 +42,20 @@ const ClassList: FC<Props> = ({
   const [shouldScrollToEnd, setShouldScrollToEnd] = useState(false)
   const prevListLength = useRef(list.length)
   const [collapsed, setCollapsed] = useState(false)
-  const [storedRenameHintDismissed, setIsRenameHintDismissed] = useLocalStorage<boolean>(INLINE_LABEL_HINT_STORAGE_KEY)
+  const [storedRenameHintDismissed, setIsRenameHintDismissed] = useInlineLabelHintDismissed()
   const isRenameHintDismissed = storedRenameHintDismissed ?? false
 
-  const handleClassChange = useCallback((index: number) => {
-    return (value: Topic) => {
-      const newList = produce(list, (draft) => {
-        draft[index] = value
-      })
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleClassChange = useCallback(
+    (index: number) => {
+      return (value: Topic) => {
+        const newList = produce(list, (draft) => {
+          draft[index] = value
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
   const handleAddClass = useCallback(() => {
     const newList = produce(list, (draft) => {
@@ -65,25 +67,37 @@ const ClassList: FC<Props> = ({
     })
     onChange(newList)
     setShouldScrollToEnd(true)
-    if (collapsed)
-      setCollapsed(false)
+    if (collapsed) setCollapsed(false)
   }, [collapsed, list, onChange, t])
 
-  const handleRemoveClass = useCallback((index: number) => {
-    return () => {
-      handleEdgeDeleteByDeleteBranch(nodeId, list[index]!.id)
-      const newList = produce(list, (draft) => {
-        draft.splice(index, 1)
-      })
-      onChange(newList)
-    }
-  }, [list, onChange, handleEdgeDeleteByDeleteBranch, nodeId])
+  const handleRemoveClass = useCallback(
+    (index: number) => {
+      return () => {
+        handleEdgeDeleteByDeleteBranch(nodeId, list[index]!.id)
+        const newList = produce(list, (draft) => {
+          draft.splice(index, 1)
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange, handleEdgeDeleteByDeleteBranch, nodeId],
+  )
+
+  const keyboardSort = useKeyboardSortable({
+    items: list,
+    onChange: handleSortTopic,
+    disabled: readonly,
+    getItemLabel: (item) => item.label || item.name,
+  })
+  const sortableTopics = useMemo(
+    () => keyboardSort.items.map((item) => ({ ...item })),
+    [keyboardSort.items],
+  )
 
   const topicCount = list.length
 
   useEffect(() => {
-    if (shouldScrollToEnd && list.length > prevListLength.current)
-      setShouldScrollToEnd(false)
+    if (shouldScrollToEnd && list.length > prevListLength.current) setShouldScrollToEnd(false)
     prevListLength.current = list.length
   }, [list.length, shouldScrollToEnd])
 
@@ -92,26 +106,28 @@ const ClassList: FC<Props> = ({
   }, [collapsed])
 
   const dismissRenameHint = useCallback(() => {
-    if (isRenameHintDismissed)
-      return
+    if (isRenameHintDismissed) return
 
     setIsRenameHintDismissed(true)
   }, [isRenameHintDismissed, setIsRenameHintDismissed])
 
-  const shouldShowRenameHint = !readonly && !isRenameHintDismissed && list.some((item, index) => {
-    return isDefaultClassLabel(item.label, index + 1, t)
-  })
+  const shouldShowRenameHint =
+    !readonly &&
+    !isRenameHintDismissed &&
+    list.some((item, index) => {
+      return isDefaultClassLabel(item.label, index + 1, t)
+    })
 
   return (
     <>
+      {keyboardSort.announcement}
       <div className="mb-2 flex items-center justify-between">
         <button
           type="button"
           className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left text-xs font-semibold text-text-secondary uppercase focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={handleCollapse}
         >
-          {t(`${i18nPrefix}.class`, { ns: 'workflow' })}
-          {' '}
+          {t(($) => $[`${i18nPrefix}.class`], { ns: 'workflow' })}{' '}
           <span className="text-text-destructive">*</span>
           {list.length > 0 && (
             <ArrowDownRoundFill
@@ -126,64 +142,68 @@ const ClassList: FC<Props> = ({
       </div>
       {shouldShowRenameHint && (
         <div className="mb-2 rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-xs text-text-tertiary">
-          {t(`${i18nPrefix}.renameHint`, { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.renameHint`], { ns: 'workflow' })}
         </div>
       )}
 
       {!collapsed && (
-        <div
-          ref={listContainerRef}
-          className="overflow-y-visible pl-3"
-        >
+        <div ref={listContainerRef} className="overflow-y-visible pl-3">
           <ReactSortable
-            list={list.map(item => ({ ...item }))}
-            setList={handleSortTopic}
+            list={sortableTopics}
+            setList={(items) => {
+              if (
+                !keyboardSort.isSorting &&
+                items.some((item, index) => item.id !== sortableTopics[index]?.id)
+              )
+                handleSortTopic(items)
+            }}
             handle=".handle"
             ghostClass="bg-components-panel-bg"
             animation={150}
-            disabled={readonly}
+            disabled={readonly || keyboardSort.isSorting}
             className="space-y-2"
           >
-            {
-              list.map((item, index) => {
-                const canDrag = !readonly && topicCount >= 2
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      'group relative -ml-3 min-h-[40px] rounded-[10px] bg-components-panel-bg px-0 py-0',
+            {keyboardSort.items.map((item, index) => {
+              const canDrag = !readonly && topicCount >= 2
+              return (
+                <div
+                  key={item.id}
+                  className={cn(
+                    'group relative -ml-3 min-h-10 rounded-[10px] bg-components-panel-bg px-0 py-0',
+                  )}
+                  style={{
+                    // Performance hint for browser
+                    contain: 'layout style paint',
+                  }}
+                >
+                  <div>
+                    {canDrag && (
+                      <IconButton
+                        {...keyboardSort.getHandleProps(index)}
+                        className="handle pointer-events-none absolute top-1.5 left-0.5 z-10 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                      >
+                        <span aria-hidden="true" className="i-ri-draggable size-3" />
+                      </IconButton>
                     )}
-                    style={{
-                      // Performance hint for browser
-                      contain: 'layout style paint',
-                    }}
-                  >
-                    <div>
-                      {canDrag && (
-                        <RiDraggable className={cn(
-                          'handle absolute top-3 left-2 hidden size-3 cursor-pointer text-text-tertiary',
-                          'group-hover:block',
-                        )}
-                        />
+                    <Item
+                      className={cn(canDrag && 'handle')}
+                      headerClassName={cn(
+                        canDrag && 'cursor-grab group-focus-within:pl-5 group-hover:pl-5',
                       )}
-                      <Item
-                        className={cn(canDrag && 'handle')}
-                        headerClassName={cn(canDrag && 'cursor-grab group-hover:pl-5')}
-                        nodeId={nodeId}
-                        key={list[index]!.id}
-                        payload={item}
-                        onChange={handleClassChange(index)}
-                        onRemove={handleRemoveClass(index)}
-                        index={index + 1}
-                        readonly={readonly}
-                        filterVar={filterVar}
-                        onLabelEditStart={dismissRenameHint}
-                      />
-                    </div>
+                      nodeId={nodeId}
+                      key={item.id}
+                      payload={item}
+                      onChange={handleClassChange(keyboardSort.getItemKey(index))}
+                      onRemove={handleRemoveClass(keyboardSort.getItemKey(index))}
+                      index={index + 1}
+                      readonly={readonly}
+                      filterVar={filterVar}
+                      onLabelEditStart={dismissRenameHint}
+                    />
                   </div>
-                )
-              })
-            }
+                </div>
+              )
+            })}
           </ReactSortable>
         </div>
       )}
@@ -191,7 +211,7 @@ const ClassList: FC<Props> = ({
         <div className="mt-2">
           <AddButton
             onClick={handleAddClass}
-            text={t(`${i18nPrefix}.addClass`, { ns: 'workflow' })}
+            text={t(($) => $[`${i18nPrefix}.addClass`], { ns: 'workflow' })}
           />
         </div>
       )}

@@ -12,29 +12,30 @@ type Params = {
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
-const useSingleRunFormParams = ({
-  payload,
-  runInputData,
-  setRunInputData,
-}: Params) => {
+const useSingleRunFormParams = ({ payload, runInputData, setRunInputData }: Params) => {
   const { t } = useTranslation()
   const query = runInputData.query
-  const setQuery = useCallback((newQuery: string) => {
-    setRunInputData({
-      ...runInputData,
-      query: newQuery,
-    })
-  }, [runInputData, setRunInputData])
+  const setQuery = useCallback(
+    (newQuery: string) => {
+      setRunInputData({
+        ...runInputData,
+        query: newQuery,
+      })
+    },
+    [runInputData, setRunInputData],
+  )
 
   const forms = useMemo(() => {
     return [
       {
-        inputs: [{
-          label: t('nodes.common.inputVars', { ns: 'workflow' }),
-          variable: 'query',
-          type: InputVarType.paragraph,
-          required: true,
-        }],
+        inputs: [
+          {
+            label: t(($) => $['nodes.common.inputVars'], { ns: 'workflow' }),
+            variable: 'query',
+            type: InputVarType.paragraph,
+            required: true,
+          },
+        ],
         values: { query },
         onChange: (keyValue: Record<string, any>) => setQuery(keyValue.query),
       },
@@ -45,8 +46,7 @@ const useSingleRunFormParams = ({
     return [payload.index_chunk_variable_selector]
   }
   const getDependentVar = (variable: string) => {
-    if (variable === 'query')
-      return payload.index_chunk_variable_selector
+    if (variable === 'query') return payload.index_chunk_variable_selector
   }
 
   return {

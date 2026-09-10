@@ -20,6 +20,7 @@
 # ===================================================================
 
 from hashlib import sha1
+from typing import TYPE_CHECKING, cast
 
 import Crypto.Hash.SHA1
 import Crypto.Util.number
@@ -29,6 +30,9 @@ from Crypto.Signature.pss import MGF1
 from Crypto.Util.number import bytes_to_long, ceil_div, long_to_bytes
 from Crypto.Util.py3compat import bord
 from Crypto.Util.strxor import strxor
+
+if TYPE_CHECKING:
+    from Crypto.Signature.pss import HashModule
 
 
 class PKCS1OAepCipher:
@@ -70,7 +74,7 @@ class PKCS1OAepCipher:
         if mgfunc:
             self._mgf = mgfunc
         else:
-            self._mgf = lambda x, y: MGF1(x, y, self._hashObj)
+            self._mgf = lambda x, y: MGF1(x, y, cast("HashModule", self._hashObj))
 
         self._label = bytes(label)
         self._randfunc = randfunc

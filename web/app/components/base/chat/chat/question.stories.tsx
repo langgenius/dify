@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-
 import type { ChatItem } from '../types'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import Question from './question'

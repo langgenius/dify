@@ -1,10 +1,5 @@
 import type { FileUploadConfigResponse } from '@/models/common'
-import type {
-  Model,
-  Resolution,
-  TransferMethod,
-  TtsAutoPlay,
-} from '@/types/app'
+import type { Model, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 
 type EnabledOrDisabled = {
   enabled?: boolean
@@ -22,17 +17,17 @@ export type SuggestedQuestionsAfterAnswer = EnabledOrDisabled & {
   prompt?: string
 }
 
-export type TextToSpeech = EnabledOrDisabled & {
+type TextToSpeech = EnabledOrDisabled & {
   language?: string
   voice?: string
   autoPlay?: TtsAutoPlay
 }
 
-export type SpeechToText = EnabledOrDisabled
+type SpeechToText = EnabledOrDisabled
 
-export type RetrieverResource = EnabledOrDisabled
+type RetrieverResource = EnabledOrDisabled
 
-export type SensitiveWordAvoidance = EnabledOrDisabled & {
+type SensitiveWordAvoidance = EnabledOrDisabled & {
   type?: string
   config?: any
 }

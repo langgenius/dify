@@ -1,9 +1,14 @@
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  useDefaultModel,
+  useModelListAndDefaultModelAndCurrentProviderAndModel,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { consoleQuery } from '@/service/console'
 import { RETRIEVE_METHOD } from '@/types/app'
 
 export enum IndexingType {
@@ -48,13 +53,17 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   // Embedding model list
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
   const { data: defaultEmbeddingModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 
   // Index type state
   const [indexType, setIndexType] = useState<IndexingType>(() => {
-    if (initialIndexType)
-      return initialIndexType
+    if (initialIndexType) return initialIndexType
     return isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL
   })
 
@@ -73,15 +82,16 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
 
   // Sync retrieval config with rerank model when available
   useEffect(() => {
-    if (initialRetrievalConfig)
-      return
+    if (initialRetrievalConfig) return
 
     setRetrievalConfig({
       search_method: RETRIEVE_METHOD.semantic,
       reranking_enable: !!isRerankDefaultModelValid,
       reranking_model: {
-        reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider.provider ?? '' : '',
-        reranking_model_name: isRerankDefaultModelValid ? rerankDefaultModel?.model ?? '' : '',
+        reranking_provider_name: isRerankDefaultModelValid
+          ? (rerankDefaultModel?.provider.provider ?? '')
+          : '',
+        reranking_model_name: isRerankDefaultModelValid ? (rerankDefaultModel?.model ?? '') : '',
       },
       top_k: 3,
       score_threshold_enabled: false,
@@ -91,10 +101,8 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
 
   // Sync index type with props
   useEffect(() => {
-    if (initialIndexType)
-      setIndexType(initialIndexType)
-    else
-      setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
+    if (initialIndexType) setIndexType(initialIndexType)
+    else setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
   }, [isAPIKeySet, initialIndexType])
 
   // Show multimodal tip

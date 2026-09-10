@@ -119,9 +119,8 @@ class MatrixoneVector(BaseVector):
         assert self.client is not None
         ids = []
         for doc in documents:
-            if doc.metadata is not None:
-                doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
-                ids.append(doc_id)
+            doc_id = doc.metadata.get("doc_id") if doc.metadata else None
+            ids.append(str(doc_id or uuid.uuid4()))
         self.client.insert(
             texts=[doc.page_content for doc in documents],
             embeddings=embeddings,
@@ -167,6 +166,7 @@ class MatrixoneVector(BaseVector):
         filter = None
         if document_ids_filter:
             filter = {"document_id": {"$in": document_ids_filter}}
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
         results = self.client.query(
             query_vector=query_vector,
@@ -175,15 +175,17 @@ class MatrixoneVector(BaseVector):
         )
 
         docs = []
-        # TODO: add the score threshold to the query
         for result in results:
-            metadata = result.metadata
-            docs.append(
-                Document(
-                    page_content=result.document,
-                    metadata=metadata,
+            metadata = parse_metadata_json(result.metadata)
+            score = 1.0 / (1.0 + float(result.distance))
+            if score >= score_threshold:
+                metadata["score"] = score
+                docs.append(
+                    Document(
+                        page_content=result.document,
+                        metadata=metadata,
+                    )
                 )
-            )
         return docs
 
     @ensure_client

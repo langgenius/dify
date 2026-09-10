@@ -17,28 +17,27 @@ type Props = Readonly<{
   onRemove: () => void
 }>
 
-const RemoveAnnotationConfirmModal: FC<Props> = ({
-  isShow,
-  onHide,
-  onRemove,
-}) => {
+const RemoveAnnotationConfirmModal: FC<Props> = ({ isShow, onHide, onRemove }) => {
   const { t } = useTranslation()
-  const title = t('feature.annotation.removeConfirm', { ns: 'appDebug' })
+  const title = t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })
 
   return (
-    <AlertDialog open={isShow} onOpenChange={open => !open && onHide()}>
+    <AlertDialog open={isShow} onOpenChange={(open) => !open && onHide()}>
       <AlertDialogContent>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogTitle
+            className="w-full truncate title-2xl-semi-bold text-text-primary"
+            title={title}
+          >
             {title}
           </AlertDialogTitle>
         </div>
         <AlertDialogActions>
           <AlertDialogCancelButton>
-            {t('operation.cancel', { ns: 'common' })}
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton tone="destructive" onClick={onRemove}>
-            {t('operation.confirm', { ns: 'common' })}
+            {t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

@@ -22,14 +22,19 @@ const AppUnavailable: FC<IAppUnavailableProps> = ({
   return (
     <div className={cn('flex h-screen w-screen items-center justify-center', className)}>
       <h1
-        className="mr-5 h-[50px] shrink-0 pr-5 text-[24px] leading-[50px] font-medium"
+        className="mr-5 h-12.5 shrink-0 pr-5 text-[24px] leading-12.5 font-medium"
         style={{
           borderRight: '1px solid rgba(0,0,0,.3)',
         }}
       >
         {code}
       </h1>
-      <div className="text-sm">{unknownReason || (isUnknownReason ? t('common.appUnknownError', { ns: 'share' }) : t('common.appUnavailable', { ns: 'share' }))}</div>
+      <div className="text-sm">
+        {unknownReason ||
+          (isUnknownReason
+            ? t(($) => $['common.appUnknownError'], { ns: 'share' })
+            : t(($) => $['common.appUnavailable'], { ns: 'share' }))}
+      </div>
     </div>
   )
 }

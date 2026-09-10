@@ -15,11 +15,7 @@ const themeCss = readFileSync(
   'utf8',
 )
 
-const EditorProbe = ({
-  onReady,
-}: {
-  onReady?: (editor: LexicalEditor) => void
-}) => {
+const EditorProbe = ({ onReady }: { onReady?: (editor: LexicalEditor) => void }) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -36,10 +32,7 @@ const renderEditor = (
   return render(
     <NoteEditorContextProvider value={emptyValue}>
       <>
-        <Editor
-          containerElement={document.createElement('div')}
-          {...props}
-        />
+        <Editor containerElement={document.createElement('div')} {...props} />
         <EditorProbe onReady={onEditorReady} />
       </>
     </NoteEditorContextProvider>,
@@ -63,22 +56,25 @@ describe('Editor', () => {
     it('should render linked text with distinct link styling', async () => {
       let editor: LexicalEditor | null = null
 
-      renderEditor({}, instance => (editor = instance))
+      renderEditor({}, (instance) => (editor = instance))
 
       await waitFor(() => {
         expect(editor).not.toBeNull()
       })
 
       act(() => {
-        editor!.update(() => {
-          const root = $getRoot()
-          root.clear()
-          const paragraph = $createParagraphNode()
-          const link = $createLinkNode('https://example.com/docs')
-          link.append($createTextNode('Linked docs'))
-          paragraph.append(link)
-          root.append(paragraph)
-        }, { discrete: true })
+        editor!.update(
+          () => {
+            const root = $getRoot()
+            root.clear()
+            const paragraph = $createParagraphNode()
+            const link = $createLinkNode('https://example.com/docs')
+            link.append($createTextNode('Linked docs'))
+            paragraph.append(link)
+            root.append(paragraph)
+          },
+          { discrete: true },
+        )
       })
 
       const link = await screen.findByRole('link', { name: 'Linked docs' })
@@ -118,34 +114,40 @@ describe('Editor', () => {
         })
       }
 
-      renderEditor({ onChange: handleChange }, instance => (editor = instance))
+      renderEditor({ onChange: handleChange }, (instance) => (editor = instance))
 
       await waitFor(() => {
         expect(editor).not.toBeNull()
       })
 
       await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await new Promise((resolve) => setTimeout(resolve, 0))
       })
 
       act(() => {
-        editor!.update(() => {
-          const root = $getRoot()
-          root.clear()
-          const paragraph = $createParagraphNode()
-          paragraph.append($createTextNode('hello'))
-          root.append(paragraph)
-        }, { discrete: true })
+        editor!.update(
+          () => {
+            const root = $getRoot()
+            root.clear()
+            const paragraph = $createParagraphNode()
+            paragraph.append($createTextNode('hello'))
+            root.append(paragraph)
+          },
+          { discrete: true },
+        )
       })
 
       act(() => {
-        editor!.update(() => {
-          const root = $getRoot()
-          root.clear()
-          const paragraph = $createParagraphNode()
-          paragraph.append($createTextNode('hello world'))
-          root.append(paragraph)
-        }, { discrete: true })
+        editor!.update(
+          () => {
+            const root = $getRoot()
+            root.clear()
+            const paragraph = $createParagraphNode()
+            paragraph.append($createTextNode('hello world'))
+            root.append(paragraph)
+          },
+          { discrete: true },
+        )
       })
 
       await waitFor(() => {

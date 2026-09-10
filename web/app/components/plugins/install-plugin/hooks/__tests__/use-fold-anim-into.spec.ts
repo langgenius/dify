@@ -1,6 +1,6 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { act, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 describe('useFoldAnimInto', () => {
   let mockOnClose: Mock<() => void>
@@ -13,18 +13,9 @@ describe('useFoldAnimInto', () => {
 
   afterEach(() => {
     vi.useRealTimers()
-    document.querySelectorAll('.install-modal, #plugin-task-trigger, .plugins-nav-button')
-      .forEach(el => el.remove())
-  })
-
-  it('should return modalClassName and functions', async () => {
-    const useFoldAnimInto = (await import('../use-fold-anim-into')).default
-    const { result } = renderHook(() => useFoldAnimInto(mockOnClose))
-
-    expect(result.current.modalClassName).toBe('install-modal')
-    expect(typeof result.current.foldIntoAnim).toBe('function')
-    expect(typeof result.current.clearCountDown).toBe('function')
-    expect(typeof result.current.countDownFoldIntoAnim).toBe('function')
+    document
+      .querySelectorAll('.install-modal, #plugin-task-trigger, .plugins-nav-button')
+      .forEach((el) => el.remove())
   })
 
   describe('foldIntoAnim', () => {

@@ -1,16 +1,9 @@
-import type {
-  HelpLineHorizontalPosition,
-  HelpLineVerticalPosition,
-} from './types'
+import type { HelpLineHorizontalPosition, HelpLineVerticalPosition } from './types'
 import { memo } from 'react'
 import { useViewport } from 'reactflow'
 import { useStore } from '../store'
 
-const HelpLineHorizontal = memo(({
-  top,
-  left,
-  width,
-}: HelpLineHorizontalPosition) => {
+const HelpLineHorizontal = memo(({ top, left, width }: HelpLineHorizontalPosition) => {
   const { x, y, zoom } = useViewport()
 
   return (
@@ -26,11 +19,7 @@ const HelpLineHorizontal = memo(({
 })
 HelpLineHorizontal.displayName = 'HelpLineBase'
 
-const HelpLineVertical = memo(({
-  top,
-  left,
-  height,
-}: HelpLineVerticalPosition) => {
+const HelpLineVertical = memo(({ top, left, height }: HelpLineVerticalPosition) => {
   const { x, y, zoom } = useViewport()
 
   return (
@@ -47,24 +36,15 @@ const HelpLineVertical = memo(({
 HelpLineVertical.displayName = 'HelpLineVertical'
 
 const HelpLine = () => {
-  const helpLineHorizontal = useStore(s => s.helpLineHorizontal)
-  const helpLineVertical = useStore(s => s.helpLineVertical)
+  const helpLineHorizontal = useStore((s) => s.helpLineHorizontal)
+  const helpLineVertical = useStore((s) => s.helpLineVertical)
 
-  if (!helpLineHorizontal && !helpLineVertical)
-    return null
+  if (!helpLineHorizontal && !helpLineVertical) return null
 
   return (
     <>
-      {
-        helpLineHorizontal && (
-          <HelpLineHorizontal {...helpLineHorizontal} />
-        )
-      }
-      {
-        helpLineVertical && (
-          <HelpLineVertical {...helpLineVertical} />
-        )
-      }
+      {helpLineHorizontal && <HelpLineHorizontal {...helpLineHorizontal} />}
+      {helpLineVertical && <HelpLineVertical {...helpLineVertical} />}
     </>
   )
 }

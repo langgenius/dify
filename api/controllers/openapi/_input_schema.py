@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from sqlalchemy.orm import Session
+
 from controllers.service_api.app.error import AppUnavailableError
 from models import App
-from models.model import AppMode
+from models.model import AppMode, load_annotation_reply_config
 
 JSON_SCHEMA_DRAFT = "https://json-schema.org/draft/2020-12/schema"
 
@@ -89,13 +91,13 @@ def _form_to_jsonschema(form: list[dict[str, Any]]) -> tuple[dict[str, Any], lis
     return properties, required
 
 
-def resolve_app_config(app: App) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def resolve_app_config(app: App, *, session: Session) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Resolve `(features_dict, user_input_form)` for parameters / schema derivation.
 
     Raises `AppUnavailableError` on misconfigured apps.
     """
     if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-        workflow = app.workflow
+        workflow = app.workflow_with_session(session=session)
         if workflow is None:
             raise AppUnavailableError()
         return (
@@ -103,21 +105,22 @@ def resolve_app_config(app: App) -> tuple[dict[str, Any], list[dict[str, Any]]]:
             cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
         )
 
-    app_model_config = app.app_model_config
+    app_model_config = app.app_model_config_with_session(session=session)
     if app_model_config is None:
         raise AppUnavailableError()
-    features_dict = cast(dict[str, Any], app_model_config.to_dict())
+    annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
+    features_dict = cast(dict[str, Any], app_model_config.to_dict(annotation_reply=annotation_reply))
     return features_dict, cast(list[dict[str, Any]], features_dict.get("user_input_form", []))
 
 
-def build_input_schema(app: App) -> dict[str, Any]:
+def build_input_schema(app: App, *, session: Session) -> dict[str, Any]:
     """Derive Draft 2020-12 JSON Schema from `user_input_form` + app mode.
 
     chat / agent-chat / advanced-chat: top-level `query` (required, minLength=1) + `inputs` object.
     completion / workflow: `inputs` object only.
     Raises `AppUnavailableError` on misconfigured apps.
     """
-    _, user_input_form = resolve_app_config(app)
+    _, user_input_form = resolve_app_config(app, session=session)
     inputs_props, inputs_required = _form_to_jsonschema(user_input_form)
 
     properties: dict[str, Any] = {}

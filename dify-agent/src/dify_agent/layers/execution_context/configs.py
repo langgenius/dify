@@ -4,9 +4,11 @@ This layer carries both Dify product execution context (tenant, user, workflow,
 invoke source) and Agent backend runtime mode. The product-facing fields are
 used by trusted server-side boundaries such as the Agent Stub when they
 need to reconstruct Dify API file-access scope without granting the sandbox any
-direct inner-API credentials. Server-only plugin-daemon settings are injected
-by the runtime provider factory and therefore do not appear in this public
-schema.
+direct inner-API credentials. Knowledge-base layers also read ``user_from`` from
+this shared config so the inner Dify API can distinguish platform-user and
+end-user searches without making that caller identity model-controlled.
+Server-only plugin-daemon settings are injected by the runtime provider factory
+and therefore do not appear in this public schema.
 """
 
 from typing import ClassVar, Final, Literal, TypeAlias
@@ -24,6 +26,7 @@ DifyExecutionContextAgentMode: TypeAlias = Literal[
     "babysit",
     "fasten",
 ]
+DifyExecutionContextAgentConfigVersionKind: TypeAlias = Literal["snapshot", "draft", "build_draft"]
 DifyExecutionContextUserFrom: TypeAlias = Literal["account", "end-user"]
 DifyExecutionContextInvokeFrom: TypeAlias = Literal[
     "service-api",
@@ -42,7 +45,7 @@ class DifyExecutionContextLayerConfig(LayerConfig):
 
     tenant_id: str
     user_id: str | None = None
-    user_from: DifyExecutionContextUserFrom
+    user_from: DifyExecutionContextUserFrom | None = None
     app_id: str | None = None
     workflow_id: str | None = None
     workflow_run_id: str | None = None
@@ -51,6 +54,7 @@ class DifyExecutionContextLayerConfig(LayerConfig):
     conversation_id: str | None = None
     agent_id: str | None = None
     agent_config_version_id: str | None = None
+    agent_config_version_kind: DifyExecutionContextAgentConfigVersionKind | None = None
     agent_mode: DifyExecutionContextAgentMode
     invoke_from: DifyExecutionContextInvokeFrom
     trace_id: str | None = None
@@ -60,6 +64,7 @@ class DifyExecutionContextLayerConfig(LayerConfig):
 
 __all__ = [
     "DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID",
+    "DifyExecutionContextAgentConfigVersionKind",
     "DifyExecutionContextAgentMode",
     "DifyExecutionContextInvokeFrom",
     "DifyExecutionContextUserFrom",

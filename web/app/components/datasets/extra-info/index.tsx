@@ -10,26 +10,15 @@ type IExtraInfoProps = {
   expand: boolean
 }
 
-const ExtraInfo = ({
-  relatedApps,
-  documentCount,
-  expand,
-}: IExtraInfoProps) => {
-  const apiEnabled = useDatasetDetailContextWithSelector(state => state.dataset?.enable_api)
+const ExtraInfo = ({ relatedApps, documentCount, expand }: IExtraInfoProps) => {
+  const apiEnabled = useDatasetDetailContextWithSelector((state) => state.dataset?.enable_api)
 
   return (
     <>
       {expand && (
-        <Statistics
-          expand={expand}
-          documentCount={documentCount}
-          relatedApps={relatedApps}
-        />
+        <Statistics expand={expand} documentCount={documentCount} relatedApps={relatedApps} />
       )}
-      <ApiAccess
-        expand={expand}
-        apiEnabled={apiEnabled ?? false}
-      />
+      <ApiAccess expand={expand} apiEnabled={apiEnabled ?? false} />
     </>
   )
 }

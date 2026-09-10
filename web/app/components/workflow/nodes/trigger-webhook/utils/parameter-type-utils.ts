@@ -1,14 +1,22 @@
 import { VarType } from '@/app/components/workflow/types'
 
 // Constants for better maintainability and reusability
-const BASIC_TYPES = [VarType.string, VarType.number, VarType.boolean, VarType.object, VarType.file] as const
-const ARRAY_ELEMENT_TYPES = [VarType.arrayString, VarType.arrayNumber, VarType.arrayBoolean, VarType.arrayObject] as const
+const BASIC_TYPES = [
+  VarType.string,
+  VarType.number,
+  VarType.boolean,
+  VarType.object,
+  VarType.file,
+] as const
+const ARRAY_ELEMENT_TYPES = [
+  VarType.arrayString,
+  VarType.arrayNumber,
+  VarType.arrayBoolean,
+  VarType.arrayObject,
+] as const
 
 // Generate all valid parameter types programmatically
-const VALID_PARAMETER_TYPES: readonly VarType[] = [
-  ...BASIC_TYPES,
-  ...ARRAY_ELEMENT_TYPES,
-] as const
+const VALID_PARAMETER_TYPES: readonly VarType[] = [...BASIC_TYPES, ...ARRAY_ELEMENT_TYPES] as const
 
 // Type display name mappings
 const TYPE_DISPLAY_NAMES: Record<VarType, string> = {
@@ -32,7 +40,7 @@ const TYPE_DISPLAY_NAMES: Record<VarType, string> = {
 // Content type configurations
 const CONTENT_TYPE_CONFIGS = {
   'application/json': {
-    supportedTypes: [...BASIC_TYPES.filter(t => t !== 'file'), ...ARRAY_ELEMENT_TYPES],
+    supportedTypes: [...BASIC_TYPES.filter((t) => t !== 'file'), ...ARRAY_ELEMENT_TYPES],
     description: 'JSON supports all types including arrays',
   },
   'text/plain': {
@@ -61,29 +69,20 @@ export const isValidParameterType = (type: string): type is VarType => {
 }
 
 export const normalizeParameterType = (input: string | undefined | null): VarType => {
-  if (!input || typeof input !== 'string')
-    return VarType.string
+  if (!input || typeof input !== 'string') return VarType.string
 
   const trimmed = input.trim().toLowerCase()
-  if (trimmed === 'array[string]')
-    return VarType.arrayString
-  else if (trimmed === 'array[number]')
-    return VarType.arrayNumber
-  else if (trimmed === 'array[boolean]')
-    return VarType.arrayBoolean
-  else if (trimmed === 'array[object]')
-    return VarType.arrayObject
+  if (trimmed === 'array[string]') return VarType.arrayString
+  else if (trimmed === 'array[number]') return VarType.arrayNumber
+  else if (trimmed === 'array[boolean]') return VarType.arrayBoolean
+  else if (trimmed === 'array[object]') return VarType.arrayObject
   else if (trimmed === 'array')
     // Migrate legacy 'array' type to 'array[string]'
     return VarType.arrayString
-  else if (trimmed === 'number')
-    return VarType.number
-  else if (trimmed === 'boolean')
-    return VarType.boolean
-  else if (trimmed === 'object')
-    return VarType.object
-  else if (trimmed === 'file')
-    return VarType.file
+  else if (trimmed === 'number') return VarType.number
+  else if (trimmed === 'boolean') return VarType.boolean
+  else if (trimmed === 'object') return VarType.object
+  else if (trimmed === 'file') return VarType.file
 
   return VarType.string
 }
@@ -100,13 +99,13 @@ const getParameterTypeDisplayName = (type: VarType): string => {
  * Provides context-aware type filtering for different webhook content types
  */
 const getAvailableParameterTypes = (contentType?: string): VarType[] => {
-  if (!contentType)
-    return [VarType.string, VarType.number, VarType.boolean]
+  if (!contentType) return [VarType.string, VarType.number, VarType.boolean]
 
   const normalizedContentType = (contentType || '').toLowerCase()
-  const configKey = normalizedContentType in CONTENT_TYPE_CONFIGS
-    ? normalizedContentType as keyof typeof CONTENT_TYPE_CONFIGS
-    : 'application/json'
+  const configKey =
+    normalizedContentType in CONTENT_TYPE_CONFIGS
+      ? (normalizedContentType as keyof typeof CONTENT_TYPE_CONFIGS)
+      : 'application/json'
 
   const config = CONTENT_TYPE_CONFIGS[configKey]
   return [...config.supportedTypes]
@@ -118,7 +117,7 @@ const getAvailableParameterTypes = (contentType?: string): VarType[] => {
 export const createParameterTypeOptions = (contentType?: string) => {
   const availableTypes = getAvailableParameterTypes(contentType)
 
-  return availableTypes.map(type => ({
+  return availableTypes.map((type) => ({
     name: getParameterTypeDisplayName(type),
     value: type,
   }))

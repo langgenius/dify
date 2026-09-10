@@ -11,43 +11,43 @@
   max-width: 200px;
 }
 .actionIconWrapperList {
-  @apply !h-6 !w-6 !border-none !p-1 rounded-md hover:!bg-state-base-hover;
+  @apply !h-6 !w-6 rounded-md !border-none !p-1 hover:!bg-state-base-hover;
 }
 .actionIconWrapperDetail {
-  @apply !p-2 !border-[0.5px] !border-components-button-secondary-border !bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 hover:!border-components-button-secondary-border-hover hover:!bg-components-button-secondary-bg-hover;
+  @apply !border-[0.5px] !border-components-button-secondary-border !bg-components-button-secondary-bg !p-2 shadow-xs shadow-shadow-shadow-3 hover:!border-components-button-secondary-border-hover hover:!bg-components-button-secondary-bg-hover;
 }
 .actionItem {
-  @apply h-9 w-[calc(100%-8px)] py-2 px-3 mx-1 flex items-center gap-2 rounded-lg border-none bg-transparent text-left hover:bg-state-base-hover cursor-pointer;
+  @apply mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center gap-2 rounded-lg border-none bg-transparent px-3 py-2 text-left hover:bg-state-base-hover;
 }
 .deleteActionItem {
   @apply hover:!bg-state-destructive-hover;
 }
 .actionName {
-  @apply text-text-secondary text-sm;
+  @apply text-sm text-text-secondary;
 }
 .addFileBtn {
-  @apply mt-4 w-fit !text-[13px] font-medium border-[0.5px] border-components-button-secondary-border;
+  @apply mt-4 w-fit border-[0.5px] border-components-button-secondary-border !text-[13px] font-medium;
 }
 .plusIcon {
-  @apply w-4 h-4 mr-2 stroke-current stroke-[1.5px];
+  @apply mr-2 h-4 w-4 stroke-current stroke-[1.5px];
 }
 .emptyWrapper {
-  @apply flex items-center justify-center h-full;
+  @apply flex h-full items-center justify-center;
 }
 .emptyElement {
-  @apply bg-components-panel-on-panel-item-bg border-divider-subtle w-[560px] h-fit box-border px-5 py-4 rounded-2xl;
+  @apply box-border h-fit w-[560px] rounded-2xl border-divider-subtle bg-components-panel-on-panel-item-bg px-5 py-4;
 }
 .emptyTitle {
-  @apply text-text-secondary font-semibold;
+  @apply font-semibold text-text-secondary;
 }
 .emptyTip {
-  @apply mt-2 text-text-primary text-sm font-normal;
+  @apply mt-2 text-sm font-normal text-text-primary;
 }
 .emptySymbolIconWrapper {
-  @apply w-[44px] h-[44px] border border-solid border-components-button-secondary-border rounded-lg flex items-center justify-center mb-2;
+  @apply mb-2 flex h-[44px] w-[44px] items-center justify-center rounded-lg border border-solid border-components-button-secondary-border;
 }
 .commonIcon {
-  @apply w-4 h-4 inline-block align-middle;
+  @apply inline-block h-4 w-4 align-middle;
   background-repeat: no-repeat;
   background-position: center center;
   background-size: contain;
@@ -90,29 +90,26 @@
   background-image: url(~@/assets/docx.svg);
 }
 .statusItemDetail {
-  @apply border-[0.5px] border-components-button-secondary-border inline-flex items-center
-  rounded-lg pl-2.5 pr-2 py-2 mr-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px];
+  @apply mr-2 inline-flex items-center rounded-lg border-[0.5px] border-components-button-secondary-border py-2 pr-2 pl-2.5 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px];
 }
 .tdValue {
-  @apply text-sm overflow-hidden text-ellipsis whitespace-nowrap;
+  @apply overflow-hidden text-sm text-ellipsis whitespace-nowrap;
 }
 .delModal {
-  background: linear-gradient(
-      180deg,
-      rgba(217, 45, 32, 0.05) 0%,
-      rgba(217, 45, 32, 0) 24.02%
-    ),
-    #f9fafb;
-  box-shadow: 0px 20px 24px -4px rgba(16, 24, 40, 0.08),
+  background:
+    linear-gradient(180deg, rgba(217, 45, 32, 0.05) 0%, rgba(217, 45, 32, 0) 24.02%), #f9fafb;
+  box-shadow:
+    0px 20px 24px -4px rgba(16, 24, 40, 0.08),
     0px 8px 8px -4px rgba(16, 24, 40, 0.03);
   @apply rounded-2xl p-8;
 }
 .warningWrapper {
-  box-shadow: 0px 20px 24px -4px rgba(16, 24, 40, 0.08),
+  box-shadow:
+    0px 20px 24px -4px rgba(16, 24, 40, 0.08),
     0px 8px 8px -4px rgba(16, 24, 40, 0.03);
   background: rgba(255, 255, 255, 0.9);
-  @apply h-12 w-12 border-[0.5px] border-gray-100 rounded-xl mb-3 flex items-center justify-center;
+  @apply mb-3 flex h-12 w-12 items-center justify-center rounded-xl border-[0.5px] border-gray-100;
 }
 .warningIcon {
-  @apply w-[22px] h-[22px] fill-current text-red-600;
+  @apply h-[22px] w-[22px] fill-current text-red-600;
 }

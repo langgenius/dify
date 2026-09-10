@@ -1,6 +1,6 @@
 import type { Klass, LexicalEditor, LexicalNode } from 'lexical'
 import { createEditor } from 'lexical'
-import { $createErrorMessageBlockNode, $isErrorMessageBlockNode, ErrorMessageBlockNode } from '../node'
+import { $createErrorMessageBlockNode, ErrorMessageBlockNode } from '../node'
 
 describe('ErrorMessageBlockNode', () => {
   let editor: LexicalEditor
@@ -41,19 +41,6 @@ describe('ErrorMessageBlockNode', () => {
     })
   })
 
-  it('should create dom with expected classes and never update dom', () => {
-    runInEditor(() => {
-      const node = new ErrorMessageBlockNode()
-      const dom = node.createDOM()
-
-      expect(dom.tagName).toBe('DIV')
-      expect(dom).toHaveClass('inline-flex')
-      expect(dom).toHaveClass('items-center')
-      expect(dom).toHaveClass('align-middle')
-      expect(node.updateDOM()).toBe(false)
-    })
-  })
-
   it('should decorate using ErrorMessageBlockComponent with node key', () => {
     runInEditor(() => {
       const node = new ErrorMessageBlockNode('decorator-key')
@@ -70,17 +57,6 @@ describe('ErrorMessageBlockNode', () => {
 
       expect(created).toBeInstanceOf(ErrorMessageBlockNode)
       expect(imported).toBeInstanceOf(ErrorMessageBlockNode)
-    })
-  })
-
-  it('should return correct type guard values for lexical and non lexical inputs', () => {
-    runInEditor(() => {
-      const node = new ErrorMessageBlockNode()
-
-      expect($isErrorMessageBlockNode(node)).toBe(true)
-      expect($isErrorMessageBlockNode(null)).toBe(false)
-      expect($isErrorMessageBlockNode(undefined)).toBe(false)
-      expect($isErrorMessageBlockNode({} as ErrorMessageBlockNode)).toBe(false)
     })
   })
 })

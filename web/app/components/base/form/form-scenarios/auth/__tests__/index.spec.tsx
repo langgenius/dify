@@ -3,12 +3,14 @@ import { render, screen } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import AuthForm from '../index'
 
-const formSchemas = [{
-  type: FormTypeEnum.textInput,
-  name: 'apiKey',
-  label: 'API Key',
-  required: true,
-}] as const
+const formSchemas = [
+  {
+    type: FormTypeEnum.textInput,
+    name: 'apiKey',
+    label: 'API Key',
+    required: true,
+  },
+] as const
 
 const renderWithQueryClient = (ui: Parameters<typeof render>[0]) => {
   const queryClient = new QueryClient({
@@ -19,11 +21,7 @@ const renderWithQueryClient = (ui: Parameters<typeof render>[0]) => {
     },
   })
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 describe('AuthForm', () => {
@@ -35,7 +33,9 @@ describe('AuthForm', () => {
   })
 
   it('should use provided default values', () => {
-    renderWithQueryClient(<AuthForm formSchemas={[...formSchemas]} defaultValues={{ apiKey: 'value-123' }} />)
+    renderWithQueryClient(
+      <AuthForm formSchemas={[...formSchemas]} defaultValues={{ apiKey: 'value-123' }} />,
+    )
 
     expect(screen.getByDisplayValue('value-123')).toBeInTheDocument()
   })

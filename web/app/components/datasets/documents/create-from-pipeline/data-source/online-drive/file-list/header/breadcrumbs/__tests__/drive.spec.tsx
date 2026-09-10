@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Drive from '../drive'
 
 describe('Drive', () => {
@@ -17,7 +17,9 @@ describe('Drive', () => {
     it('should render "All Files" button text', () => {
       render(<Drive {...defaultProps} />)
 
-      expect(screen.getByRole('button')).toHaveTextContent('datasetPipeline.onlineDrive.breadcrumbs.allFiles')
+      expect(screen.getByRole('button')).toHaveTextContent(
+        'datasetPipeline.onlineDrive.breadcrumbs.allFiles',
+      )
     })
 
     it('should show separator "/" when breadcrumbs has items', () => {

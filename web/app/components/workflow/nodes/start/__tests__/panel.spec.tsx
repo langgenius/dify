@@ -22,31 +22,27 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal', () => ({
     onConfirm: (payload: InputVar) => void
   }) => {
     mockConfigVarModal(props)
-    return props.isShow
-      ? (
-          <button
-            type="button"
-            onClick={() => props.onConfirm({
-              label: 'Locale',
-              variable: 'locale',
-              type: InputVarType.textInput,
-              required: false,
-            })}
-          >
-            confirm-add-var
-          </button>
-        )
-      : null
+    return props.isShow ? (
+      <button
+        type="button"
+        onClick={() =>
+          props.onConfirm({
+            label: 'Locale',
+            variable: 'locale',
+            type: InputVarType.textInput,
+            required: false,
+          })
+        }
+      >
+        confirm-add-var
+      </button>
+    ) : null
   },
 }))
 
 vi.mock('../../_base/components/remove-effect-var-confirm', () => ({
   __esModule: true,
-  default: (props: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-  }) => {
+  default: (props: { isShow: boolean; onConfirm: () => void; onCancel: () => void }) => {
     mockRemoveEffectVarConfirm(props)
     return props.isShow ? <div>remove-confirm</div> : null
   },
@@ -93,7 +89,9 @@ describe('StartPanel', () => {
     expect(screen.getByText('userinput.files')).toBeInTheDocument()
     expect(screen.queryByText('LEGACY')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.start.inputField' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'common.operation.add workflow.nodes.start.inputField' }),
+    )
 
     expect(showAddVarModal).toHaveBeenCalledTimes(1)
   })
@@ -121,9 +119,11 @@ describe('StartPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'confirm-add-var' }))
 
-    expect(handleAddVariable).toHaveBeenCalledWith(expect.objectContaining({
-      variable: 'locale',
-    }))
+    expect(handleAddVariable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variable: 'locale',
+      }),
+    )
     expect(hideAddVarModal).toHaveBeenCalledTimes(1)
   })
 
@@ -133,12 +133,14 @@ describe('StartPanel', () => {
       readOnly: false,
       isChatMode: false,
       inputs: createData({
-        variables: [{
-          label: 'Locale',
-          variable: 'locale',
-          type: InputVarType.textInput,
-          required: false,
-        }],
+        variables: [
+          {
+            label: 'Locale',
+            variable: 'locale',
+            type: InputVarType.textInput,
+            required: false,
+          },
+        ],
       }),
       isShowAddVarModal: true,
       showAddVarModal,
@@ -154,9 +156,11 @@ describe('StartPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'confirm-add-var' }))
 
-    expect(mockConfigVarModal).toHaveBeenCalledWith(expect.objectContaining({
-      varKeys: ['locale'],
-    }))
+    expect(mockConfigVarModal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        varKeys: ['locale'],
+      }),
+    )
     expect(hideAddVarModal).not.toHaveBeenCalled()
   })
 })

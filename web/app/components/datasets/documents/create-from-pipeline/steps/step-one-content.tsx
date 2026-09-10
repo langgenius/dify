@@ -5,6 +5,7 @@ import type { Node } from '@/app/components/workflow/types'
 import { memo } from 'react'
 import Divider from '@/app/components/base/divider'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
+import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
 import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
 import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
 import OnlineDrive from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive'
@@ -19,8 +20,10 @@ type StepOneContentProps = {
   datasourceType: string | undefined
   pipelineNodes: Node<DataSourceNodeType>[]
   supportBatchUpload: boolean
-  localFileListLength: number
+  showBatchUploadUpgrade: boolean
   isShowVectorSpaceFull: boolean
+  isShowVectorSpaceUnavailable: boolean
+  isRetryingVectorSpace: boolean
   showSelect: boolean
   totalOptions: number | undefined
   selectedOptions: number | undefined
@@ -29,6 +32,7 @@ type StepOneContentProps = {
   onSelectDataSource: (dataSource: Datasource) => void
   onCredentialChange: (credentialId: string) => void
   onSelectAll: (checked: boolean) => void
+  onRetryVectorSpace: () => void
   onNextStep: () => void
 }
 
@@ -37,8 +41,10 @@ const StepOneContent = ({
   datasourceType,
   pipelineNodes,
   supportBatchUpload,
-  localFileListLength,
+  showBatchUploadUpgrade,
   isShowVectorSpaceFull,
+  isShowVectorSpaceUnavailable,
+  isRetryingVectorSpace,
   showSelect,
   totalOptions,
   selectedOptions,
@@ -47,11 +53,10 @@ const StepOneContent = ({
   onSelectDataSource,
   onCredentialChange,
   onSelectAll,
+  onRetryVectorSpace,
   onNextStep,
 }: StepOneContentProps) => {
-  const showUpgradeCard = !supportBatchUpload
-    && datasourceType === DatasourceType.localFile
-    && localFileListLength > 0
+  const showUpgradeCard = showBatchUploadUpgrade && datasourceType === DatasourceType.localFile
 
   return (
     <div className="flex flex-col gap-y-5 pt-4">
@@ -88,6 +93,9 @@ const StepOneContent = ({
         />
       )}
       {isShowVectorSpaceFull && <VectorSpaceFull />}
+      {isShowVectorSpaceUnavailable && (
+        <VectorSpaceUnavailable isRetrying={isRetryingVectorSpace} onRetry={onRetryVectorSpace} />
+      )}
       <Actions
         showSelect={showSelect}
         totalOptions={totalOptions}

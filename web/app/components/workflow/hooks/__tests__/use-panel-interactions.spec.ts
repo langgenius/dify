@@ -61,12 +61,14 @@ describe('usePanelInteractions', () => {
       source: clipboardNode.id,
       target: 'target-node',
     })
-    readTextMock.mockResolvedValue(JSON.stringify({
-      kind: 'dify-workflow-clipboard',
-      version: '0.6.0',
-      nodes: [clipboardNode],
-      edges: [clipboardEdge],
-    }))
+    readTextMock.mockResolvedValue(
+      JSON.stringify({
+        kind: 'dify-workflow-clipboard',
+        version: '0.6.0',
+        nodes: [clipboardNode],
+        edges: [clipboardEdge],
+      }),
+    )
 
     const { result, store } = renderWorkflowHook(() => usePanelInteractions())
 

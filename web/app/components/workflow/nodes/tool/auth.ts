@@ -8,7 +8,9 @@ export const isToolAuthorizationRequired = (
   providerType: ToolNodeType['provider_type'],
   collection?: ToolAuthorizationCollection,
 ) => {
-  return providerType === CollectionType.builtIn
-    && !!collection?.allow_delete
-    && collection?.is_team_authorization === false
+  return (
+    providerType === CollectionType.builtIn &&
+    !!collection?.allow_delete &&
+    collection?.is_team_authorization === false
+  )
 }

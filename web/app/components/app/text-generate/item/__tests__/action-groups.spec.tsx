@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
 import GenerationActionGroups from '../action-groups'
 
@@ -9,13 +10,6 @@ const mockOnMoreLikeThis = vi.fn()
 const mockOnOpenLogModal = vi.fn()
 const mockOnRetry = vi.fn()
 const mockOnSave = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),
 }))
@@ -50,10 +44,12 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.copy' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
 
     expect(mockCopy).toHaveBeenCalledWith('hello world')
-    expect(mockSuccess).toHaveBeenCalledWith('actionMsg.copySuccessfully')
+    expect(mockSuccess).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)actionMsg\.copySuccessfully(?=$|:)/),
+    )
   })
 
   it('should handle more-like-this and feedback actions', () => {
@@ -77,9 +73,11 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'feature.moreLikeThis.title' }))
-    fireEvent.click(screen.getByRole('button', { name: 'operation.agree' }))
-    fireEvent.click(screen.getByRole('button', { name: 'operation.save' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.agree(?=$|:)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.save(?=$|:)/ }))
 
     expect(mockOnMoreLikeThis).toHaveBeenCalledTimes(1)
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: 'like' })
@@ -103,7 +101,31 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'feature.moreLikeThis.title' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+    ).toBeDisabled()
+  })
+
+  it('should hide the log action when requested by the owning surface', () => {
+    render(
+      <GenerationActionGroups
+        appSourceType={AppSourceType.webApp}
+        content="hello world"
+        currentTab="DETAIL"
+        depth={1}
+        hideLogAction
+        isError={false}
+        isInWebApp={false}
+        messageId="msg-1"
+        onMoreLikeThis={mockOnMoreLikeThis}
+        onOpenLogModal={mockOnOpenLogModal}
+        onRetry={mockOnRetry}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: /(?:^|\.)operation\.log(?=$|:)/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('should stringify non-string content before copying', () => {
@@ -122,7 +144,7 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.copy' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
 
     expect(mockCopy).toHaveBeenCalledWith(JSON.stringify({ result: 'hello world' }))
   })
@@ -145,12 +167,16 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'generation.batchFailed.retry' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /(?:^|\.)generation\.batchFailed\.retry(?=$|:)/ }),
+    )
 
     expect(mockOnRetry).toHaveBeenCalledTimes(1)
   })
 
-  it('should support disagree and cancel feedback actions', () => {
+  it('should support disagree and cancel feedback actions', async () => {
+    const user = userEvent.setup()
+
     const { rerender } = render(
       <GenerationActionGroups
         appSourceType={AppSourceType.webApp}
@@ -168,7 +194,11 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.disagree' }))
+    const disagreeButton = screen.getByRole('button', {
+      name: /(?:^|\.)operation\.disagree(?=$|:)/,
+    })
+    expect(disagreeButton).toHaveAttribute('aria-pressed', 'false')
+    await user.click(disagreeButton)
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: 'dislike' })
 
     rerender(
@@ -188,7 +218,11 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.cancelAgree' }))
+    const agreeButton = screen.getByRole('button', {
+      name: /(?:^|\.)operation\.agree(?=$|:)/,
+    })
+    expect(agreeButton).toHaveAttribute('aria-pressed', 'true')
+    await user.click(agreeButton)
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: null })
 
     rerender(
@@ -208,7 +242,11 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.cancelDisagree' }))
+    const selectedDisagreeButton = screen.getByRole('button', {
+      name: /(?:^|\.)operation\.disagree(?=$|:)/,
+    })
+    expect(selectedDisagreeButton).toHaveAttribute('aria-pressed', 'true')
+    await user.click(selectedDisagreeButton)
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: null })
   })
 })

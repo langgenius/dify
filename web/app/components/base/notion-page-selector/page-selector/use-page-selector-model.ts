@@ -1,7 +1,12 @@
 import type { NotionPageSelectionMode } from './types'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { startTransition, useCallback, useDeferredValue, useMemo, useState } from 'react'
-import { buildNotionPageTree, getNextSelectedPageIds, getRootPageIds, getVisiblePageRows } from './utils'
+import {
+  buildNotionPageTree,
+  getNextSelectedPageIds,
+  getRootPageIds,
+  getVisiblePageRows,
+} from './utils'
 
 type UsePageSelectorModelProps = {
   checkedIds: Set<string>
@@ -44,38 +49,50 @@ export const usePageSelectorModel = ({
 
   const currentPreviewPageId = previewPageId ?? localPreviewPageId
 
-  const handleToggle = useCallback((pageId: string) => {
-    startTransition(() => {
-      setExpandedIds((currentExpandedIds) => {
-        const nextExpandedIds = new Set(currentExpandedIds)
+  const handleToggle = useCallback(
+    (pageId: string) => {
+      startTransition(() => {
+        setExpandedIds((currentExpandedIds) => {
+          const nextExpandedIds = new Set(currentExpandedIds)
 
-        if (nextExpandedIds.has(pageId)) {
-          nextExpandedIds.delete(pageId)
-          treeMap[pageId]?.descendants.forEach(descendantId => nextExpandedIds.delete(descendantId))
-        }
-        else {
-          nextExpandedIds.add(pageId)
-        }
+          if (nextExpandedIds.has(pageId)) {
+            nextExpandedIds.delete(pageId)
+            treeMap[pageId]?.descendants.forEach((descendantId) =>
+              nextExpandedIds.delete(descendantId),
+            )
+          } else {
+            nextExpandedIds.add(pageId)
+          }
 
-        return nextExpandedIds
+          return nextExpandedIds
+        })
       })
-    })
-  }, [treeMap])
+    },
+    [treeMap],
+  )
 
-  const handleSelect = useCallback((pageId: string) => {
-    onSelect(getNextSelectedPageIds({
-      checkedIds,
-      pageId,
-      searchValue: deferredSearchValue,
-      selectionMode,
-      treeMap,
-    }))
-  }, [checkedIds, deferredSearchValue, onSelect, selectionMode, treeMap])
+  const handleSelect = useCallback(
+    (pageId: string) => {
+      onSelect(
+        getNextSelectedPageIds({
+          checkedIds,
+          pageId,
+          searchValue: deferredSearchValue,
+          selectionMode,
+          treeMap,
+        }),
+      )
+    },
+    [checkedIds, deferredSearchValue, onSelect, selectionMode, treeMap],
+  )
 
-  const handlePreview = useCallback((pageId: string) => {
-    setLocalPreviewPageId(pageId)
-    onPreview?.(pageId)
-  }, [onPreview])
+  const handlePreview = useCallback(
+    (pageId: string) => {
+      setLocalPreviewPageId(pageId)
+      onPreview?.(pageId)
+    },
+    [onPreview],
+  )
 
   return {
     currentPreviewPageId,

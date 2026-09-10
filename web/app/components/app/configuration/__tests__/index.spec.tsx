@@ -1,32 +1,48 @@
-import { render } from '@testing-library/react'
-import * as React from 'react'
-import { useConfiguration } from '../hooks/use-configuration'
+import { ToastHost } from '@langgenius/dify-ui/toast'
+import { act, render, screen } from '@testing-library/react'
 import Configuration from '../index'
-
-const mockView = vi.fn((_: unknown) => <div data-testid="configuration-view" />)
+import { toast } from '../toast'
 
 vi.mock('../configuration-view', () => ({
-  default: (props: unknown) => mockView(props),
+  default: () => <div>Configuration view</div>,
 }))
 
 vi.mock('../hooks/use-configuration', () => ({
-  useConfiguration: vi.fn(),
+  useConfiguration: () => ({}),
 }))
 
-describe('Configuration entry', () => {
+describe('Configuration', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    toast.dismiss()
   })
 
-  it('should pass the hook view model into ConfigurationView', () => {
-    const viewModel = {
-      showLoading: true,
-    }
-    vi.mocked(useConfiguration).mockReturnValue(viewModel as never)
+  afterEach(() => {
+    toast.dismiss()
+  })
 
-    render(<Configuration />)
+  it('should render configuration notifications in its offset viewport', async () => {
+    render(
+      <>
+        <ToastHost />
+        <Configuration />
+      </>,
+    )
 
-    expect(useConfiguration).toHaveBeenCalledTimes(1)
-    expect(mockView).toHaveBeenCalledWith(viewModel)
+    act(() => {
+      toast.error('Configuration error')
+    })
+
+    const toastItem = await screen.findByText('Configuration error')
+    const configurationViewport = toastItem.closest<HTMLElement>('[role="region"]')
+    if (!configurationViewport) throw new Error('Configuration toast viewport was not rendered')
+
+    expect(configurationViewport).toHaveStyle({ top: '60px' })
+
+    const globalViewport = screen
+      .getAllByRole('region', { name: 'Notifications' })
+      .find((viewport) => viewport !== configurationViewport)
+    if (!globalViewport) throw new Error('Global toast viewport was not rendered')
+
+    expect(globalViewport).not.toHaveTextContent('Configuration error')
   })
 })

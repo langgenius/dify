@@ -12,14 +12,18 @@ vi.mock('../../../hooks', () => ({
   }),
 }))
 
-const availableVars: NodeOutPutVar[] = [{
-  nodeId: 'node-source',
-  title: 'Source Node',
-  vars: [{
-    variable: 'answer',
-    type: VarType.string,
-  }],
-}]
+const availableVars: NodeOutPutVar[] = [
+  {
+    nodeId: 'node-source',
+    title: 'Source Node',
+    vars: [
+      {
+        variable: 'answer',
+        type: VarType.string,
+      },
+    ],
+  },
+]
 
 const nodeData: VariableAssignerNodeType = {
   title: 'Variable Assigner',
@@ -48,10 +52,18 @@ describe('variable-assigner/add-variable', () => {
       />,
     )
 
-    const trigger = container.querySelector('div[class*="group/addvariable"]')
-    fireEvent.click(trigger as HTMLElement)
+    const triggerButton = container.querySelector('button')!
+    const triggerVisual = triggerButton.firstElementChild!
+    expect(triggerButton).not.toHaveAttribute('data-popup-open')
 
-    expect(screen.getByText('workflow.nodes.variableAssigner.setAssignVariable')).toBeInTheDocument()
+    fireEvent.click(triggerButton)
+
+    expect(triggerButton).toHaveAttribute('data-popup-open', '')
+    expect(triggerVisual).toHaveClass('bg-primary-600!')
+
+    expect(
+      screen.getByText('workflow.nodes.variableAssigner.setAssignVariable'),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('answer'))
 

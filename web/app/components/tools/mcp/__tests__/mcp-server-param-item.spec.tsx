@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import MCPServerParamItem from '../mcp-server-param-item'
 
 describe('MCPServerParamItem', () => {
@@ -14,11 +14,6 @@ describe('MCPServerParamItem', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<MCPServerParamItem {...defaultProps} />)
-      expect(screen.getByText('Test Label')).toBeInTheDocument()
-    })
-
     it('should display label', () => {
       render(<MCPServerParamItem {...defaultProps} />)
       expect(screen.getByText('Test Label')).toBeInTheDocument()
@@ -148,7 +143,6 @@ describe('MCPServerParamItem', () => {
         data: { label: '', variable: '', type: '' },
       }
       render(<MCPServerParamItem {...props} />)
-      // Should render without crashing
       expect(screen.getByText('·')).toBeInTheDocument()
     })
 

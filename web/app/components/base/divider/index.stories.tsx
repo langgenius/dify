@@ -7,7 +7,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Lightweight separator supporting horizontal and vertical orientations with gradient or solid backgrounds.',
+        component:
+          'Lightweight separator supporting horizontal and vertical orientations with gradient or solid backgrounds.',
       },
       source: {
         language: 'tsx',
@@ -26,7 +27,7 @@ type Story = StoryObj<typeof meta>
 export const Horizontal: Story = {}
 
 export const Vertical: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex h-20 items-center gap-4 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
       <span className="text-sm text-text-secondary">Filters</span>
       <Divider {...args} type="vertical" />

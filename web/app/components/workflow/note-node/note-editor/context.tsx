@@ -1,19 +1,11 @@
 'use client'
 
 import { LinkNode } from '@lexical/link'
-import {
-  ListItemNode,
-  ListNode,
-} from '@lexical/list'
+import { ListItemNode, ListNode } from '@lexical/list'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getRoot } from 'lexical'
-import {
-  createContext,
-  memo,
-  useEffect,
-  useRef,
-} from 'react'
+import { createContext, memo, useEffect, useRef } from 'react'
 import { createNoteEditorStore } from './store'
 import theme from './theme'
 
@@ -23,8 +15,7 @@ const NoteEditorContentSynchronizer = ({ value }: { value?: string }) => {
 
   useEffect(() => {
     const normalizedValue = normalizeEditorState(value)
-    if (normalizedValue === lastSyncedValueRef.current)
-      return
+    if (normalizedValue === lastSyncedValueRef.current) return
 
     const currentSerializedState = JSON.stringify(editor.getEditorState().toJSON())
     if (normalizedValue === currentSerializedState) {
@@ -56,8 +47,7 @@ const NoteEditorContentSynchronizer = ({ value }: { value?: string }) => {
       const nextState = editor.parseEditorState(normalizedValue)
       editor.setEditorState(nextState)
       lastSyncedValueRef.current = normalizedValue
-    }
-    catch {
+    } catch {
       lastSyncedValueRef.current = ''
     }
   }, [editor, value])
@@ -73,65 +63,51 @@ type NoteEditorContextProviderProps = {
   children: React.JSX.Element | string | (React.JSX.Element | string)[]
   editable?: boolean
 }
-export const NoteEditorContextProvider = memo(({
-  value,
-  children,
-  editable = true,
-}: NoteEditorContextProviderProps) => {
-  const storeRef = useRef<NoteEditorStore | undefined>(undefined)
+export const NoteEditorContextProvider = memo(
+  ({ value, children, editable = true }: NoteEditorContextProviderProps) => {
+    const storeRef = useRef<NoteEditorStore | undefined>(undefined)
 
-  if (!storeRef.current)
-    storeRef.current = createNoteEditorStore()
+    if (!storeRef.current) storeRef.current = createNoteEditorStore()
 
-  let initialValue = null
-  try {
-    if (value)
-      initialValue = JSON.parse(value)
-  }
-  catch {
+    let initialValue = null
+    try {
+      if (value) initialValue = JSON.parse(value)
+    } catch {}
 
-  }
+    const initialConfig = {
+      namespace: 'note-editor',
+      nodes: [LinkNode, ListNode, ListItemNode],
+      editorState: !initialValue?.root.children.length ? null : JSON.stringify(initialValue),
+      onError: (error: Error) => {
+        throw error
+      },
+      theme,
+      editable,
+    }
 
-  const initialConfig = {
-    namespace: 'note-editor',
-    nodes: [
-      LinkNode,
-      ListNode,
-      ListItemNode,
-    ],
-    editorState: !initialValue?.root.children.length ? null : JSON.stringify(initialValue),
-    onError: (error: Error) => {
-      throw error
-    },
-    theme,
-    editable,
-  }
-
-  return (
-    <NoteEditorContext.Provider value={storeRef.current}>
-      <LexicalComposer initialConfig={{ ...initialConfig }}>
-        <NoteEditorContentSynchronizer value={value} />
-        {children}
-      </LexicalComposer>
-    </NoteEditorContext.Provider>
-  )
-})
+    return (
+      <NoteEditorContext.Provider value={storeRef.current}>
+        <LexicalComposer initialConfig={{ ...initialConfig }}>
+          <NoteEditorContentSynchronizer value={value} />
+          {children}
+        </LexicalComposer>
+      </NoteEditorContext.Provider>
+    )
+  },
+)
 NoteEditorContextProvider.displayName = 'NoteEditorContextProvider'
 
 export default NoteEditorContext
 
 function normalizeEditorState(value?: string): string {
-  if (!value)
-    return ''
+  if (!value) return ''
 
   try {
     const parsed = JSON.parse(value)
-    if (!parsed || typeof parsed !== 'object' || !parsed.root)
-      return ''
+    if (!parsed || typeof parsed !== 'object' || !parsed.root) return ''
 
     return JSON.stringify(parsed)
-  }
-  catch {
+  } catch {
     return ''
   }
 }

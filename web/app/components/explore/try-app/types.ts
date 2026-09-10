@@ -3,4 +3,4 @@ export const TypeEnum = {
   DETAIL: 'detail',
 } as const
 
-export type TypeEnum = typeof TypeEnum[keyof typeof TypeEnum]
+export type TypeEnum = (typeof TypeEnum)[keyof typeof TypeEnum]
