@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import time
 from dataclasses import dataclass
 from uuid import uuid4
@@ -29,7 +30,10 @@ from dify_agent.protocol.knowledge_fs import (
     KnowledgeFsCitation,
     KnowledgeFsError,
 )
+from dify_agent.protocol.knowledge_investigation import KnowledgeAttempt
 from dify_agent.storage.redis_keys import run_cancel_intent_key, run_record_key
+
+logger = logging.getLogger(__name__)
 
 _RESERVE = """
 if redis.call('EXISTS', KEYS[1]) == 0 or redis.call('EXISTS', KEYS[2]) == 0 then return 'expired' end
@@ -229,7 +233,58 @@ class RedisKnowledgeSessionStore:
 
     async def drain(self, session: KnowledgeFsSession) -> list[KnowledgeFsDelivery]:
         raw = await self.redis.execute_command("LPOP", self._key("deliveries", session.id), 2)
-        return [KnowledgeFsDelivery.model_validate_json(item) for item in raw or []]
+        deliveries = [KnowledgeFsDelivery.model_validate_json(item) for item in raw or []]
+        if deliveries:
+            try:
+                # Separate from the destructive delivery queue and retained through HITL.
+                key = self._key("investigation-delivered", session.budget_id)
+                async with self.redis.pipeline(transaction=True) as pipe:
+                    pipe.sadd(key, *[str(item.result.command_id) for item in deliveries])
+                    pipe.expire(key, KNOWLEDGE_FS_RUN_BUDGET_TTL)
+                    await pipe.execute()
+            except Exception:
+                logger.warning("Knowledge quality delivery marker could not be saved", exc_info=True)
+        return deliveries
+
+    async def begin_investigation(self, session: KnowledgeFsSession, query: str) -> None:
+        await self.redis.set(
+            self._key("investigation-query", session.budget_id),
+            query[:8000],
+            nx=True,
+            ex=KNOWLEDGE_FS_RUN_BUDGET_TTL,
+        )
+
+    async def record_attempt(self, session: KnowledgeFsSession, attempt: KnowledgeAttempt) -> None:
+        # At most the 64 admitted commands; keep first outcome on redelivery.
+        key = self._key("investigation-attempts", session.budget_id)
+        await self.redis.execute_command(
+            "EVAL",
+            """
+            if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end
+            if redis.call('HLEN', KEYS[2]) >= 64 then return 0 end
+            redis.call('HSETNX', KEYS[2], ARGV[1], ARGV[2])
+            redis.call('EXPIRE', KEYS[2], redis.call('TTL', KEYS[1]))
+            return 1
+            """,
+            2,
+            self._key("budget", session.budget_id),
+            key,
+            str(attempt.command_id),
+            attempt.model_dump_json(),
+        )
+
+    async def investigation(self, session: KnowledgeFsSession) -> tuple[str, list[KnowledgeAttempt]]:
+        query = await self.redis.get(self._key("investigation-query", session.budget_id))
+        raw = await self.redis.execute_command("HGETALL", self._key("investigation-attempts", session.budget_id))
+        delivered = await self.redis.execute_command(
+            "SMEMBERS", self._key("investigation-delivered", session.budget_id)
+        )
+        delivered_ids = {value.decode() if isinstance(value, bytes) else value for value in (delivered or [])}
+        attempts = [KnowledgeAttempt.model_validate_json(value) for value in (raw or {}).values()]
+        for attempt in attempts:
+            attempt.delivered = str(attempt.command_id) in delivered_ids
+        text = query.decode() if isinstance(query, bytes) else str(query or "")
+        return text, sorted(attempts, key=lambda attempt: (attempt.started_at_ms, str(attempt.command_id)))
 
     async def citation(self, session: KnowledgeFsSession, receipt_id: str) -> KnowledgeFsCitation:
         raw = await self.redis.execute_command("HGET", self._key("citations", session.budget_id), receipt_id)

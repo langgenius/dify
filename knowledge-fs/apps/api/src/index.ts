@@ -100,6 +100,7 @@ import { createApiQueryImageExpansionProvider } from "./query-image-expansion-op
 import { createApiQueryImageResolver } from "./query-image-options";
 import { createApiDeploymentReadinessChecks } from "./readiness-options";
 import {
+  createApiAgentKnowledgeInvestigationTriage,
   createApiRelevanceTriageOptions,
   createApiTriageCorpusLoader,
   createApiWorkflowFailedRetrievalTriage,
@@ -523,6 +524,20 @@ const workflowFailedRetrievalTriage = createApiWorkflowFailedRetrievalTriage({
   }),
   manifests: knowledgeSpaceManifests,
   maxOutputTokens: Math.min(profileReasoningCapability.maxOutputTokens, 32),
+  providerFactory: profileReasoningCapability.providerFactory,
+});
+const agentKnowledgeInvestigationTriage = createApiAgentKnowledgeInvestigationTriage({
+  loadCorpus: createApiTriageCorpusLoader({
+    ...(repositoryOptions.documentAssets
+      ? { documentAssets: repositoryOptions.documentAssets }
+      : {}),
+    ...(repositoryOptions.documentOutlines
+      ? { documentOutlines: repositoryOptions.documentOutlines }
+      : {}),
+    ...(repositoryOptions.graphIndex ? { graphIndex: repositoryOptions.graphIndex } : {}),
+  }),
+  manifests: knowledgeSpaceManifests,
+  maxOutputTokens: Math.min(profileReasoningCapability.maxOutputTokens, 1600),
   providerFactory: profileReasoningCapability.providerFactory,
 });
 const publishedPageIndex =
@@ -1150,6 +1165,7 @@ const app = createKnowledgeGateway({
   ...sourceCredentialTesterOptions,
   ...relevanceTriageOptions,
   workflowFailedRetrievalTriage,
+  agentKnowledgeInvestigationTriage,
   ...(tracingOptions ?? {}),
 });
 

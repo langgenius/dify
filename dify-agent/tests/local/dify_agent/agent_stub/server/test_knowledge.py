@@ -515,3 +515,108 @@ def test_layer_preflight_rejects_incompatible_deployments_and_closes_lease(
         await redis.aclose()
 
     asyncio.run(scenario())
+
+
+def test_investigation_ledger_survives_delivery_cleanup_and_hitl_resume():
+    from dify_agent.protocol.knowledge_investigation import KnowledgeAttempt
+
+    async def scenario():
+        redis, store, session = await session_fixture()
+        await store.begin_investigation(session, "Original user question")
+        cmd = command("search", space="docs", query="first rewrite")
+        attempt = KnowledgeAttempt(
+            command_id=cmd.command_id,
+            control_space_id=SPACE,
+            command="search",
+            query=cmd.query,
+            outcome="empty",
+            started_at_ms=1,
+            elapsed_ms=5,
+        )
+        await store.record_attempt(session, attempt)
+        await store.record_attempt(session, attempt.model_copy(update={"outcome": "error"}))
+        await store.deliver(session, delivery(cmd))
+        await store.drain(session)
+        await store.close(session)
+        resumed = await store.create(
+            run_id="run",
+            execution_context=CONTEXT,
+            bindings=[BINDING],
+            agent_supports_vision=True,
+            resume_budget_id=session.budget_id,
+        )
+        await store.begin_investigation(resumed, "")
+        query, attempts = await store.investigation(resumed)
+        assert query == "Original user question"
+        assert len(attempts) == 1 and attempts[0].outcome == "empty" and attempts[0].delivered
+        fresh = await store.create(
+            run_id="run", execution_context=CONTEXT, bindings=[BINDING], agent_supports_vision=True
+        )
+        assert await store.investigation(fresh) == ("", [])
+        await redis.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_knowledge_handler_records_errors_without_turning_them_into_delivered_evidence():
+    async def scenario():
+        redis, store, session = await session_fixture()
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(503))) as client:
+            handler = AgentStubKnowledgeHandler(lambda: store, lambda: client, "http://api", "secret")
+            with pytest.raises(KnowledgeFsError):
+                await handler.execute(
+                    AgentStubPrincipal(CONTEXT, session.id, [], "token"),
+                    command("search", space="docs", query="refund"),
+                )
+        _, attempts = await store.investigation(session)
+        assert len(attempts) == 1
+        assert attempts[0].outcome == "error" and not attempts[0].delivered
+        assert attempts[0].evidence == "" and attempts[0].code
+        await redis.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_final_report_retries_with_stable_identity_after_session_close():
+    from dify_agent.layers.knowledge_fs.configs import DifyKnowledgeFsLayerConfig
+    from dify_agent.layers.knowledge_fs.layer import DifyKnowledgeFsLayer
+    from dify_agent.protocol.knowledge_investigation import KnowledgeAttempt
+
+    async def scenario():
+        redis, store, session = await session_fixture()
+        await store.begin_investigation(session, "refund")
+        await store.record_attempt(
+            session,
+            KnowledgeAttempt(
+                command_id=uuid4(),
+                control_space_id=SPACE,
+                command="search",
+                query="refund",
+                outcome="empty",
+                started_at_ms=1,
+                elapsed_ms=5,
+            ),
+        )
+        await store.close(session)
+        requests = []
+
+        def respond(request):
+            requests.append(json.loads(request.content))
+            assert request.headers["X-Inner-Api-Key"] == "private"
+            return httpx.Response(503 if len(requests) == 1 else 202)
+
+        layer = DifyKnowledgeFsLayer(
+            config=DifyKnowledgeFsLayerConfig(spaces=[BINDING]),
+            get_store=lambda: store,
+            inner_api_url="http://api",
+            inner_api_key="private",
+        )
+        layer._investigation_session = session
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+            await layer.publish_investigation(client, status="completed", answer="No answer found")
+        assert len(requests) == 2 and requests[0] == requests[1]
+        assert requests[0]["query"] == "refund"
+        assert "private" not in json.dumps(requests)
+        await redis.aclose()
+
+    asyncio.run(scenario())

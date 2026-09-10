@@ -1129,3 +1129,22 @@ deployment must schedule the bounded retention workers for a configured cutoff t
 **Responses**:
 - `200`: `AgentWorkspaceReplay` `{ id, snapshotId, tenantId, knowledgeSpaceId, startedAt, completedAt, traceId?, summary: { total, matched, changed, failed }, commands: [{ commandIndex, command, status: enum(matched|changed|failed), input, startedAt, completedAt, originalOutputSummary?, replayedOutputSummary?, error? }] }`.
 - `404`; `409` replay failed; `401`/`403`.
+
+### `POST /knowledge-spaces/{id}/agent-investigations`
+
+Private Agent-runtime quality ingestion, authorized with Capability v2 action
+`queries.agent_investigation.capture` for `agent`, `workflow`, or `interactive` callers.
+The Dify API validates the execution owner, configuration and unchanged authorization
+fingerprint before issuing this capability; the sandbox cannot invoke it as a knowledge CLI
+command. Body: `investigationId` (stable UUID), `query` (original question), `answer`,
+`status` (`completed|interrupted`), and up to 64 bounded `attempts` carrying command IDs,
+queries/paths, delivery state, outcomes, snippets and receipt references. See the generated
+OpenAPI for exact bounds. Each request contains observations for one knowledge space.
+
+Returns `traceId`, assessment `outcome`, and `records` with failed-query IDs, verdicts and
+optional bad-case IDs. Investigations are assessed as a whole. Later relevant evidence can
+resolve earlier misses; unrelated subquestions are retained separately. Only unresolved
+retrieval misses create quality bad cases. An interrupted or unclassifiable investigation
+retains a trace without automatic cases. Committed assessments and deterministic issue IDs
+make uncertain delivery safe to retry. Reusing an investigation ID with changed content or
+actor returns 409. Missing/invalid authority returns 403; unavailable capture returns 503.

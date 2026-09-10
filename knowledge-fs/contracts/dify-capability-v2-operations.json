@@ -192,6 +192,22 @@
       "resourceType": "job"
     },
     {
+      "action": "queries.agent_investigation.capture",
+      "allowedCallerKinds": [
+        "agent",
+        "workflow",
+        "interactive"
+      ],
+      "method": "POST",
+      "operationId": "captureAgentKnowledgeInvestigation",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/agent-investigations",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "queries.failed_retrieval.capture",
       "allowedCallerKinds": [
         "workflow"

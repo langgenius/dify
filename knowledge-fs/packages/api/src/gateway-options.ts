@@ -3,6 +3,7 @@ import type { PlatformAdapter } from "@knowledge/core";
 import type { EmbeddingProvider } from "@knowledge/embeddings";
 import type { ParserAdapter } from "@knowledge/parsers";
 
+import type { AgentKnowledgeInvestigationTriage } from "./agent-knowledge-investigation";
 import type {
   AgentWorkspaceReplayService,
   AgentWorkspaceSnapshotRepository,
@@ -381,6 +382,7 @@ export interface KnowledgeGatewayOptions {
   visualEmbeddingModel?: string;
   visualEmbeddingProvider?: VisualEmbeddingProvider;
   websiteCrawlConnector?: WebsiteCrawlConnector;
+  agentKnowledgeInvestigationTriage?: AgentKnowledgeInvestigationTriage;
   workflowFailedRetrievalTriage?: WorkflowFailedRetrievalTriage;
   /** Process-shared admission before OpenAPI buffers direct multipart document request bodies. */
   bufferedDocumentUploadAdmission?: BufferedDocumentUploadAdmission;

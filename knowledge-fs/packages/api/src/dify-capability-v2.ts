@@ -1400,6 +1400,15 @@ export const DIFY_CAPABILITY_V2_OPERATIONS: readonly DifyCapabilityV2Operation[]
     resourceType: "knowledge_space",
   },
   {
+    action: "queries.agent_investigation.capture",
+    allowedCallerKinds: ["agent", "workflow", "interactive"],
+    method: "POST",
+    operationId: "captureAgentKnowledgeInvestigation",
+    pathTemplate: "/knowledge-spaces/{id}/agent-investigations",
+    resource: { pathParameter: "id" },
+    resourceType: "knowledge_space",
+  },
+  {
     action: "queries.failed_retrieval.capture",
     allowedCallerKinds: ["workflow"],
     method: "POST",

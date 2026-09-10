@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.protocol.knowledge_fs import KnowledgeFsBinding, KnowledgeFsCitation, KnowledgeFsCommandResult
+from dify_agent.protocol.knowledge_investigation import KnowledgeAttempt
 
 
 class KnowledgeFsSession(BaseModel):
@@ -21,6 +22,7 @@ class KnowledgeFsSession(BaseModel):
 class KnowledgeFsDelivery(BaseModel):
     model_config = ConfigDict(extra="forbid")
     result: KnowledgeFsCommandResult
+    authorization_fingerprint: str | None = None
     image_base64: str | None = None
     image_media_type: str | None = None
 
@@ -42,4 +44,7 @@ class KnowledgeFsSessionStore(Protocol):
     async def release(self, session: KnowledgeFsSession, command_id: str) -> None: ...
     async def deliver(self, session: KnowledgeFsSession, delivery: KnowledgeFsDelivery) -> None: ...
     async def drain(self, session: KnowledgeFsSession) -> list[KnowledgeFsDelivery]: ...
+    async def begin_investigation(self, session: KnowledgeFsSession, query: str) -> None: ...
+    async def record_attempt(self, session: KnowledgeFsSession, attempt: KnowledgeAttempt) -> None: ...
+    async def investigation(self, session: KnowledgeFsSession) -> tuple[str, list[KnowledgeAttempt]]: ...
     async def citation(self, session: KnowledgeFsSession, receipt_id: str) -> KnowledgeFsCitation: ...

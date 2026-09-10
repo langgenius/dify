@@ -9,13 +9,16 @@ from __future__ import annotations
 
 from typing import Literal, cast
 from urllib.parse import quote, urlsplit
+from uuid import uuid4, uuid5
 
 from dify_agent.protocol.knowledge_fs import (
     KnowledgeFsBinding,
+    KnowledgeFsCommand,
     KnowledgeFsError,
     KnowledgeFsPreparedRequest,
     KnowledgeFsPrepareRequest,
 )
+from dify_agent.protocol.knowledge_investigation import KnowledgeInvestigationPayload
 from pydantic import JsonValue
 from sqlalchemy import select
 
@@ -61,7 +64,7 @@ class AgentKnowledgeGateway:
     def __init__(self, runtime: KnowledgeFSRuntime | None = None) -> None:
         self._runtime = runtime
 
-    def prepare(self, request: KnowledgeFsPrepareRequest) -> KnowledgeFsPreparedRequest:
+    def _authorized_bindings(self, request: KnowledgeFsPrepareRequest) -> list[KnowledgeFsBinding]:
         soul = self._authorize_context(request)
         expected = [
             KnowledgeFsBinding.model_validate(space.model_dump(exclude={"is_missing"}))
@@ -73,6 +76,48 @@ class AgentKnowledgeGateway:
                 "KNOWLEDGE_CONFIG_CHANGED", "Knowledge bindings changed; start a new Agent turn.", 409
             )
 
+        return expected
+
+    def authorize_investigation(self, report: KnowledgeInvestigationPayload) -> KnowledgeFsPrepareRequest:
+        request = KnowledgeFsPrepareRequest(
+            execution_context=report.execution_context,
+            bindings=report.bindings,
+            command=KnowledgeFsCommand(command_id=uuid4(), command="spaces"),
+        )
+        expected = self._authorized_bindings(request)
+        if not {str(a.control_space_id) for a in report.attempts}.issubset({b.control_space_id for b in expected}):
+            raise KnowledgeFsError("KNOWLEDGE_SCOPE_MISMATCH", "Investigation contains an unbound space.", 403)
+        return request
+
+    def capture_investigation(self, report: KnowledgeInvestigationPayload, control_space_id: str) -> JsonValue:
+        request = self.authorize_investigation(report)
+        binding = next((b for b in request.bindings if b.control_space_id == control_space_id), None)
+        if binding is None:
+            raise KnowledgeFsError("KNOWLEDGE_SCOPE_MISMATCH", "Investigation space is not bound.", 403)
+        runtime = self._runtime or get_knowledge_fs_runtime(session_factory.get_session_maker())
+        issued = self._issue(runtime, request, binding, "captureAgentKnowledgeInvestigation")
+        scoped_attempts = [a for a in report.attempts if str(a.control_space_id) == control_space_id]
+        if any(
+            a.outcome != "error"
+            and (not a.authorization_fingerprint or a.authorization_fingerprint != issued.authorization_fingerprint)
+            for a in scoped_attempts
+        ):
+            raise KnowledgeFsError("KNOWLEDGE_SCOPE_CHANGED", "Investigation authorization changed.", 403)
+        attempts = [a.model_dump(mode="json") for a in scoped_attempts]
+        return runtime.app_capabilities.capture_agent_investigation(
+            issued=issued,
+            tenant_id=report.execution_context.tenant_id,
+            payload={
+                "investigationId": str(uuid5(report.investigation_id, control_space_id)),
+                "query": report.query,
+                "answer": report.answer,
+                "status": report.status,
+                "attempts": cast(list[JsonValue], attempts),
+            },
+        )
+
+    def prepare(self, request: KnowledgeFsPrepareRequest) -> KnowledgeFsPreparedRequest:
+        expected = self._authorized_bindings(request)
         runtime = self._runtime or get_knowledge_fs_runtime(session_factory.get_session_maker())
         command = request.command
         if command.command == "spaces":
@@ -180,6 +225,7 @@ class AgentKnowledgeGateway:
                 query["expectedArtifactHash"] = citation.artifact_hash
         return KnowledgeFsPreparedRequest(
             operation=operation_id,
+            authorization_fingerprint=issued.authorization_fingerprint,
             url=f"{base.rstrip('/')}{path}",
             method=cast(Literal["GET", "POST"], operation.method),
             headers=headers,

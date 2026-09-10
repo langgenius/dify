@@ -60,7 +60,10 @@ export interface FailedQueryReadScope {
 
 export const WORKFLOW_FAILED_RETRIEVAL_CAPTURE_ACTION = "queries.failed_retrieval.capture" as const;
 
-export interface CaptureWorkflowFailedQueryInput {
+export const AGENT_INVESTIGATION_CAPTURE_ACTION = "queries.agent_investigation.capture" as const;
+
+export interface CaptureFailedRetrievalInput {
+  readonly source?: "workflow" | "agent" | undefined;
   readonly actorSubjectId: string;
   readonly answerTraceId: string;
   readonly candidateGrants: readonly string[];
@@ -76,7 +79,8 @@ export interface CaptureWorkflowFailedQueryInput {
   readonly traceCapabilityGrantId: string;
 }
 
-export interface CompleteWorkflowFailedQueryTriageInput extends FailedQueryLookupInput {
+export interface CompleteFailedRetrievalTriageInput extends FailedQueryLookupInput {
+  readonly source?: "workflow" | "agent" | undefined;
   readonly actorSubjectId: string;
   readonly capabilityGrantId: string;
   readonly triagedAt: string;
@@ -124,9 +128,9 @@ export interface ListFailedQueriesResult {
 }
 
 export interface FailedQueryRepository {
-  captureWorkflowFailedRetrieval(input: CaptureWorkflowFailedQueryInput): Promise<FailedQuery>;
-  completeWorkflowFailedRetrievalTriage(
-    input: CompleteWorkflowFailedQueryTriageInput,
+  captureFailedRetrieval(input: CaptureFailedRetrievalInput): Promise<FailedQuery>;
+  completeFailedRetrievalTriage(
+    input: CompleteFailedRetrievalTriageInput,
   ): Promise<FailedQuery | null>;
   countByStatus(
     input: FailedQueryReadScope & { readonly knowledgeSpaceId: string },
@@ -164,10 +168,10 @@ export class FailedQueryPromotionConflictError extends Error {
   }
 }
 
-export class FailedQueryWorkflowReplayConflictError extends Error {
+export class FailedRetrievalReplayConflictError extends Error {
   constructor(id: string) {
-    super(`Workflow failed-query event id=${id} was reused with a different payload`);
-    this.name = "FailedQueryWorkflowReplayConflictError";
+    super(`Failed-retrieval event id=${id} was reused with a different payload`);
+    this.name = "FailedRetrievalReplayConflictError";
   }
 }
 
@@ -212,14 +216,14 @@ export function createInMemoryFailedQueryRepository({
         readonly actorSubjectId: string;
         readonly candidateGrants: readonly string[];
         readonly capabilityGrantId: string;
-        readonly kind: "workflow-capability";
+        readonly kind: "execution-capability";
         readonly tenantId: string;
       }
   >();
 
   return {
-    captureWorkflowFailedRetrieval: async (input) => {
-      assertWorkflowFailedQueryAuthorization(input);
+    captureFailedRetrieval: async (input) => {
+      assertFailedRetrievalAuthorization(input);
       const existing = failedQueries.get(input.id);
       if (existing) {
         const existingProvenance = provenance.get(input.id);
@@ -232,10 +236,10 @@ export function createInMemoryFailedQueryRepository({
         ) {
           throw new KnowledgeSpaceAccessError(
             "space_access_permission_snapshot_invalid",
-            "Workflow failed query is outside the current capability scope",
+            "Captured failed query is outside the current capability scope",
           );
         }
-        assertWorkflowFailedQueryReplay(existing, input);
+        assertFailedRetrievalReplay(existing, input);
         return cloneFailedQuery(existing);
       }
       if (failedQueries.size >= maxFailedQueries) {
@@ -246,9 +250,9 @@ export function createInMemoryFailedQueryRepository({
           answerTraceId: input.answerTraceId,
           id: input.id,
           knowledgeSpaceId: input.knowledgeSpaceId,
-          metadata: workflowFailedQueryMetadata(input),
+          metadata: capturedFailedRetrievalMetadata(input),
           mode: input.mode,
-          permission: inMemoryWorkflowPlaceholderPermission(input),
+          permission: inMemoryCapturePlaceholderPermission(input),
           query: input.query,
           trigger: "no-retrieval-evidence",
           tenantId: input.tenantId,
@@ -261,13 +265,13 @@ export function createInMemoryFailedQueryRepository({
         actorSubjectId: input.actorSubjectId,
         candidateGrants: [...input.candidateGrants],
         capabilityGrantId: input.traceCapabilityGrantId,
-        kind: "workflow-capability",
+        kind: "execution-capability",
         tenantId: input.tenantId,
       });
       return cloneFailedQuery(failedQuery);
     },
-    completeWorkflowFailedRetrievalTriage: async (input) => {
-      assertWorkflowFailedQueryAuthorization(input);
+    completeFailedRetrievalTriage: async (input) => {
+      assertFailedRetrievalAuthorization(input);
       const existing = failedQueries.get(input.id);
       if (
         !existing ||
@@ -276,14 +280,17 @@ export function createInMemoryFailedQueryRepository({
       ) {
         return null;
       }
-      const existingVerdict = workflowFailedQueryVerdict(existing);
+      if (existing.metadata.source !== (input.source ?? "workflow")) {
+        throw new FailedRetrievalReplayConflictError(input.id);
+      }
+      const existingVerdict = failedRetrievalVerdict(existing);
       if (existingVerdict) {
         if (existingVerdict !== input.verdict) {
-          throw new FailedQueryWorkflowReplayConflictError(input.id);
+          throw new FailedRetrievalReplayConflictError(input.id);
         }
         return cloneFailedQuery(existing);
       }
-      const updated = triagedWorkflowFailedQuery(existing, input.verdict, input.triagedAt);
+      const updated = triagedFailedRetrieval(existing, input.verdict, input.triagedAt);
       failedQueries.set(input.id, cloneFailedQuery(updated));
       return cloneFailedQuery(updated);
     },
@@ -456,11 +463,11 @@ export function createDatabaseFailedQueryRepository({
   const tableName = "failed_queries";
 
   return {
-    captureWorkflowFailedRetrieval: async (input) =>
+    captureFailedRetrieval: async (input) =>
       database.transaction(async (transaction) => {
         const timestamp = now();
         await lockFailedQuerySpace(database, transaction, input.tenantId, input.knowledgeSpaceId);
-        const authorization = await resolveWorkflowFailedQueryAuthorization(
+        const authorization = await resolveFailedRetrievalAuthorization(
           database,
           transaction,
           input,
@@ -483,10 +490,10 @@ export function createDatabaseFailedQueryRepository({
           ) {
             throw new KnowledgeSpaceAccessError(
               "space_access_permission_snapshot_invalid",
-              "Workflow failed query is outside the current capability scope",
+              "Captured failed query is outside the current capability scope",
             );
           }
-          assertWorkflowFailedQueryReplay(existing, input);
+          assertFailedRetrievalReplay(existing, input);
           return existing;
         }
 
@@ -495,9 +502,9 @@ export function createDatabaseFailedQueryRepository({
             answerTraceId: input.answerTraceId,
             id: input.id,
             knowledgeSpaceId: input.knowledgeSpaceId,
-            metadata: workflowFailedQueryMetadata(input),
+            metadata: capturedFailedRetrievalMetadata(input),
             mode: input.mode,
-            permission: inMemoryWorkflowPlaceholderPermission(input),
+            permission: inMemoryCapturePlaceholderPermission(input),
             query: input.query,
             trigger: "no-retrieval-evidence",
             tenantId: input.tenantId,
@@ -557,14 +564,14 @@ export function createDatabaseFailedQueryRepository({
           tableName,
         });
         if (result.rowsAffected !== 1) {
-          throw new Error("Workflow failed query requires its same-space capability answer trace");
+          throw new Error("Captured failed query requires its same-space capability answer trace");
         }
         return result.rows[0] ? mapFailedQueryRow(result.rows[0]) : failedQuery;
       }),
-    completeWorkflowFailedRetrievalTriage: async (input) =>
+    completeFailedRetrievalTriage: async (input) =>
       database.transaction(async (transaction) => {
         await lockFailedQuerySpace(database, transaction, input.tenantId, input.knowledgeSpaceId);
-        const authorization = await resolveWorkflowFailedQueryAuthorization(
+        const authorization = await resolveFailedRetrievalAuthorization(
           database,
           transaction,
           input,
@@ -587,14 +594,17 @@ export function createDatabaseFailedQueryRepository({
           return null;
         }
         const existing = mapFailedQueryRow(row);
-        const existingVerdict = workflowFailedQueryVerdict(existing);
+        if (existing.metadata.source !== (input.source ?? "workflow")) {
+          throw new FailedRetrievalReplayConflictError(input.id);
+        }
+        const existingVerdict = failedRetrievalVerdict(existing);
         if (existingVerdict) {
           if (existingVerdict !== input.verdict) {
-            throw new FailedQueryWorkflowReplayConflictError(input.id);
+            throw new FailedRetrievalReplayConflictError(input.id);
           }
           return existing;
         }
-        const updated = triagedWorkflowFailedQuery(existing, input.verdict, input.triagedAt);
+        const updated = triagedFailedRetrieval(existing, input.verdict, input.triagedAt);
         const result = await transaction.execute({
           maxRows: 0,
           operation: "update",
@@ -611,7 +621,7 @@ export function createDatabaseFailedQueryRepository({
           tableName,
         });
         if (result.rowsAffected !== 1)
-          throw new Error("Workflow failed-query triage lost its revision fence");
+          throw new Error("Failed-retrieval triage lost its revision fence");
         return updated;
       }),
     countByStatus: async (input) => {
@@ -1375,7 +1385,7 @@ function inMemoryFailedQueryVisible(
         readonly actorSubjectId: string;
         readonly candidateGrants: readonly string[];
         readonly capabilityGrantId: string;
-        readonly kind: "workflow-capability";
+        readonly kind: "execution-capability";
         readonly tenantId: string;
       }
     | undefined,
@@ -1384,7 +1394,7 @@ function inMemoryFailedQueryVisible(
   return Boolean(
     provenance &&
       provenance.tenantId === scope.tenantId &&
-      (provenance.kind === "workflow-capability" ||
+      (provenance.kind === "execution-capability" ||
         provenance.permission.requestedBySubjectId === scope.subjectId) &&
       permissionScopeAllows(inMemoryFailedQueryRequiredScope(provenance), scope.candidateGrants),
   );
@@ -1393,7 +1403,7 @@ function inMemoryFailedQueryVisible(
 function inMemoryFailedQueryRequiredScope(
   provenance:
     | { readonly kind: "permission"; readonly permission: FailedQueryPermissionBinding }
-    | { readonly candidateGrants: readonly string[]; readonly kind: "workflow-capability" }
+    | { readonly candidateGrants: readonly string[]; readonly kind: "execution-capability" }
     | undefined,
 ): readonly string[] {
   if (!provenance) return [];
@@ -1402,12 +1412,12 @@ function inMemoryFailedQueryRequiredScope(
     : provenance.candidateGrants;
 }
 
-function workflowFailedQueryMetadata(
-  input: CaptureWorkflowFailedQueryInput,
+function capturedFailedRetrievalMetadata(
+  input: CaptureFailedRetrievalInput,
 ): Readonly<Record<string, unknown>> {
   return {
-    source: "workflow",
-    workflowCapture: {
+    source: input.source ?? "workflow",
+    [input.source === "agent" ? "agentCapture" : "workflowCapture"]: {
       actorSubjectId: input.actorSubjectId,
       eventId: input.id,
       retrievalTraceId: input.retrievalTraceId,
@@ -1415,16 +1425,21 @@ function workflowFailedQueryMetadata(
   };
 }
 
-function workflowCaptureRecord(failedQuery: FailedQuery): Readonly<Record<string, unknown>> | null {
-  const value = failedQuery.metadata.workflowCapture;
+function failedRetrievalCaptureRecord(
+  failedQuery: FailedQuery,
+): Readonly<Record<string, unknown>> | null {
+  const value =
+    failedQuery.metadata.source === "agent"
+      ? failedQuery.metadata.agentCapture
+      : failedQuery.metadata.workflowCapture;
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Readonly<Record<string, unknown>>)
     : null;
 }
 
-function workflowFailedQueryVerdict(
+function failedRetrievalVerdict(
   failedQuery: FailedQuery,
-): CompleteWorkflowFailedQueryTriageInput["verdict"] | null {
+): CompleteFailedRetrievalTriageInput["verdict"] | null {
   const triage = failedQuery.metadata.triage;
   if (!triage || typeof triage !== "object" || Array.isArray(triage)) return null;
   const verdict = (triage as Readonly<Record<string, unknown>>).verdict;
@@ -1436,13 +1451,14 @@ function workflowFailedQueryVerdict(
     : null;
 }
 
-function assertWorkflowFailedQueryReplay(
+function assertFailedRetrievalReplay(
   existing: FailedQuery,
-  input: CaptureWorkflowFailedQueryInput,
+  input: CaptureFailedRetrievalInput,
 ): void {
-  const capture = workflowCaptureRecord(existing);
+  const capture = failedRetrievalCaptureRecord(existing);
   if (
     existing.id !== input.id ||
+    existing.metadata.source !== (input.source ?? "workflow") ||
     existing.knowledgeSpaceId !== input.knowledgeSpaceId ||
     existing.answerTraceId !== input.answerTraceId ||
     existing.query !== input.query ||
@@ -1452,13 +1468,13 @@ function assertWorkflowFailedQueryReplay(
     capture?.eventId !== input.id ||
     capture.retrievalTraceId !== input.retrievalTraceId
   ) {
-    throw new FailedQueryWorkflowReplayConflictError(input.id);
+    throw new FailedRetrievalReplayConflictError(input.id);
   }
 }
 
-function triagedWorkflowFailedQuery(
+function triagedFailedRetrieval(
   existing: FailedQuery,
-  verdict: CompleteWorkflowFailedQueryTriageInput["verdict"],
+  verdict: CompleteFailedRetrievalTriageInput["verdict"],
   triagedAt: string,
 ): FailedQuery {
   return FailedQuerySchema.parse({
@@ -1472,8 +1488,8 @@ function triagedWorkflowFailedQuery(
   });
 }
 
-function inMemoryWorkflowPlaceholderPermission(
-  input: CaptureWorkflowFailedQueryInput,
+function inMemoryCapturePlaceholderPermission(
+  input: CaptureFailedRetrievalInput,
 ): FailedQueryPermissionBinding {
   return {
     accessChannel: "agent",
@@ -1484,9 +1500,9 @@ function inMemoryWorkflowPlaceholderPermission(
   };
 }
 
-function assertWorkflowFailedQueryAuthorization(
+function assertFailedRetrievalAuthorization(
   input: Pick<
-    CompleteWorkflowFailedQueryTriageInput,
+    CompleteFailedRetrievalTriageInput,
     "actorSubjectId" | "candidateGrants" | "capabilityGrantId" | "subjectId"
   >,
 ): void {
@@ -1497,16 +1513,17 @@ function assertWorkflowFailedQueryAuthorization(
   ) {
     throw new KnowledgeSpaceAccessError(
       "space_access_permission_snapshot_invalid",
-      "Workflow failed-query capability binding is invalid",
+      "Failed-retrieval capability binding is invalid",
     );
   }
 }
 
-async function resolveWorkflowFailedQueryAuthorization(
+async function resolveFailedRetrievalAuthorization(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
   input: Pick<
-    CompleteWorkflowFailedQueryTriageInput,
+    CompleteFailedRetrievalTriageInput,
+    | "source"
     | "actorSubjectId"
     | "candidateGrants"
     | "capabilityGrantId"
@@ -1515,11 +1532,14 @@ async function resolveWorkflowFailedQueryAuthorization(
     | "tenantId"
   >,
 ): Promise<{ readonly candidateGrants: readonly string[] }> {
-  assertWorkflowFailedQueryAuthorization(input);
+  assertFailedRetrievalAuthorization(input);
   const grant = await resolveCapabilityJobPublicationGrant(database, executor, {
     capabilityGrantId: input.capabilityGrantId,
     expectedBinding: {
-      action: WORKFLOW_FAILED_RETRIEVAL_CAPTURE_ACTION,
+      action:
+        input.source === "agent"
+          ? AGENT_INVESTIGATION_CAPTURE_ACTION
+          : WORKFLOW_FAILED_RETRIEVAL_CAPTURE_ACTION,
       resource: { id: input.knowledgeSpaceId, parentId: null, type: "knowledge_space" },
     },
     knowledgeSpaceId: input.knowledgeSpaceId,
@@ -1531,7 +1551,7 @@ async function resolveWorkflowFailedQueryAuthorization(
   ) {
     throw new KnowledgeSpaceAccessError(
       "space_access_permission_snapshot_invalid",
-      "Workflow failed-query capability does not match the current actor and grants",
+      "Failed-retrieval capability does not match the current actor and grants",
     );
   }
   return { candidateGrants: [...grant.contentScopeIds] };

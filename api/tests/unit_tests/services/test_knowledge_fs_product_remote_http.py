@@ -63,8 +63,12 @@ def test_remote_client_builds_capability_only_headers(monkeypatch: pytest.Monkey
     assert captured["follow_redirects"] is False
 
 
-def test_remote_client_uses_a_dedicated_research_retrieval_timeout(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize(
+    ("operation_id", "endpoint"),
+    [("retrieveEvidence", "retrieval-tests"), ("captureAgentKnowledgeInvestigation", "agent-investigations")],
+)
+def test_remote_client_uses_a_dedicated_model_operation_timeout(
+    monkeypatch: pytest.MonkeyPatch, operation_id: str, endpoint: str
 ) -> None:
     captured_timeouts: list[object] = []
     response = httpx.Response(
@@ -87,9 +91,9 @@ def test_remote_client_uses_a_dedicated_research_retrieval_timeout(
 
     client.execute_json(
         KnowledgeFSRemoteJSONRequest(
-            operation_id="retrieveEvidence",
+            operation_id=operation_id,
             method="POST",
-            path="/knowledge-spaces/space-1/retrieval-tests",
+            path=f"/knowledge-spaces/space-1/{endpoint}",
             namespace_id="tenant-1",
             knowledge_space_id="space-1",
             capability_token="capability-token",

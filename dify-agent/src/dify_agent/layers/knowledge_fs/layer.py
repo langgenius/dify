@@ -10,8 +10,10 @@ import logging
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import ClassVar, Literal
+from uuid import UUID
 
+import httpx
 from pydantic_ai.messages import BinaryContent, ToolReturn
 from typing_extensions import Self, override
 
@@ -22,10 +24,11 @@ from dify_agent.layers.knowledge_fs.configs import (
     DifyKnowledgeFsLayerConfig,
     DifyKnowledgeFsRuntimeState,
 )
-from dify_agent.layers.knowledge_fs.session import KnowledgeFsSession, KnowledgeFsSessionStore
 from dify_agent.layers.knowledge_fs.history import IMAGE_MARKER
+from dify_agent.layers.knowledge_fs.session import KnowledgeFsSession, KnowledgeFsSessionStore
 from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.protocol.knowledge_fs import KnowledgeFsCommandResult, KnowledgeFsError
+from dify_agent.protocol.knowledge_investigation import KnowledgeInvestigationPayload
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,9 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
     type_id: ClassVar[str | None] = DIFY_KNOWLEDGE_FS_LAYER_TYPE_ID
     config: DifyKnowledgeFsLayerConfig
     get_store: Callable[[], KnowledgeFsSessionStore]
+    inner_api_url: str = ""
+    inner_api_key: str = field(default="", repr=False)
+    _investigation_session: KnowledgeFsSession | None = field(default=None, init=False, repr=False)
     _session: KnowledgeFsSession | None = field(default=None, init=False, repr=False)
     _heartbeat: asyncio.Task | None = field(default=None, init=False, repr=False)
 
@@ -92,7 +98,7 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
             self.deps.shell.knowledge_observation = None
             self.deps.shell.knowledge_lease_lost = None
 
-    async def start(self, *, run_id: str, resume: bool) -> None:
+    async def start(self, *, run_id: str, resume: bool, query: str = "") -> None:
         shell = self.deps.shell
         if shell.agent_stub_token_factory is None or not shell.agent_stub_api_base_url:
             raise KnowledgeFsError(
@@ -105,6 +111,11 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
             agent_supports_vision=self.config.agent_supports_vision,
             resume_budget_id=self.runtime_state.budget_id if resume else None,
         )
+        self._investigation_session = self._session
+        try:
+            await self.get_store().begin_investigation(self._session, query)
+        except Exception:
+            logger.warning("Knowledge investigation could not be initialized", exc_info=True)
         self.runtime_state.budget_id = self._session.budget_id
         shell.agent_stub_session_id = self._session.id
         shell.knowledge_observation = self.observe
@@ -157,6 +168,54 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
                         owner.cancel()
 
         self._heartbeat = asyncio.create_task(heartbeat())
+
+    async def publish_investigation(
+        self,
+        client: httpx.AsyncClient,
+        *,
+        status: Literal["completed", "interrupted"],
+        answer: str = "",
+    ) -> None:
+        """Called after the authoritative final run event; never on an HITL pause.
+
+        The ledger survives close/drain, so run cleanup cannot erase the report.
+        The inner API acknowledges queue admission, not LLM classification.
+        """
+        session = self._investigation_session
+        if session is None or not self.inner_api_url or not self.inner_api_key:
+            return
+        try:
+            query, attempts = await self.get_store().investigation(session)
+            if not attempts:
+                return
+            payload = KnowledgeInvestigationPayload(
+                investigation_id=UUID(session.budget_id),
+                execution_context=session.execution_context,
+                bindings=session.bindings,
+                query=query,
+                answer=answer[:12000],
+                status=status,
+                attempts=attempts,
+            )
+            for attempt in range(3):
+                response = None
+                try:
+                    response = await client.post(
+                        f"{self.inner_api_url.rstrip('/')}/inner/api/agent/knowledge/investigations",
+                        headers={"X-Inner-Api-Key": self.inner_api_key},
+                        json=payload.model_dump(mode="json"),
+                        timeout=5,
+                    )
+                    response.raise_for_status()
+                    return
+                except (httpx.TransportError, httpx.HTTPStatusError):
+                    if attempt == 2 or (
+                        response is not None and 400 <= response.status_code < 500 and response.status_code != 429
+                    ):
+                        raise
+                    await asyncio.sleep(0.2 * (attempt + 1))
+        except Exception:
+            logger.warning("Knowledge investigation dispatch failed; retained in the run ledger", exc_info=True)
 
     async def invalidate(self) -> None:
         self.deps.shell.agent_stub_session_id = None

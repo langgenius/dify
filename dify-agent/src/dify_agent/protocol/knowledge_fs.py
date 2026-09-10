@@ -177,6 +177,7 @@ class KnowledgeFsPreparedRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     operation: str
+    authorization_fingerprint: str | None = None
     url: str | None = None
     method: Literal["GET", "POST"] = "GET"
     headers: dict[str, str] = Field(default_factory=dict, repr=False)

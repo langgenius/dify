@@ -20,7 +20,7 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 124);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 125);
     assert.deepEqual(
       document.operations.find(
         (operation) => operation.operationId === "getDocumentMultimodalManifest",
@@ -47,6 +47,21 @@ test("Capability v2 operation export is deterministic and includes internal life
         operationId: "captureWorkflowFailedRetrieval",
         parentResourceBinding: null,
         path: "/knowledge-spaces/{id}/failed-queries/workflow-retrieval-misses",
+        resourceBinding: { pathParameter: "id" },
+        resourceType: "knowledge_space",
+      },
+    );
+    assert.deepEqual(
+      document.operations.find(
+        (operation) => operation.operationId === "captureAgentKnowledgeInvestigation",
+      ),
+      {
+        action: "queries.agent_investigation.capture",
+        allowedCallerKinds: ["agent", "workflow", "interactive"],
+        method: "POST",
+        operationId: "captureAgentKnowledgeInvestigation",
+        parentResourceBinding: null,
+        path: "/knowledge-spaces/{id}/agent-investigations",
         resourceBinding: { pathParameter: "id" },
         resourceType: "knowledge_space",
       },
