@@ -108,8 +108,12 @@ class Env:
     # from observable execution progress.
     emit_reasoning: Callable[[ReasoningEventData], None] | None = None
     # Detects the user's input language (BCP-47) for a turn's user text. None -> no detection.
+    # MUST NOT raise: the engine does not guard this call, so the service-layer
+    # implementation is responsible for swallowing its own errors and returning a safe fallback.
     detect_language: Callable[[str], str] | None = None
     # Localizes an about-to-be-committed item list into the given language. None -> no-op.
+    # MUST NOT raise: the engine does not guard this call, so the service-layer
+    # implementation is responsible for swallowing its own errors and returning a safe fallback.
     localize_items: Callable[[list["ConversationItem"], str], list["ConversationItem"]] | None = None
     # Correlation metadata for the handler transition currently running.
     # The runner resets it before every independently committed step.
