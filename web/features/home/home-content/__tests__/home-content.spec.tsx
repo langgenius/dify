@@ -59,6 +59,7 @@ let mockExploreData: { categories: string[]; allList: RecommendedAppResponse[] }
 let mockLearnDifyApps: RecommendedAppResponse[] = []
 let mockLearnDifyLoading = false
 let mockWorkspaceApps: RecentAppResponse[] = []
+let mockRecentAppsRequest: Promise<{ data: RecentAppResponse[] }> | undefined
 let mockBanners: BannerResponse[] = []
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
@@ -282,8 +283,8 @@ vi.mock('@/service/console', () => ({
             }
             return {
               queryKey: ['console', 'apps', 'recent', 'get', options],
-              queryFn: () => Promise.resolve(response),
-              initialData: response,
+              queryFn: () => mockRecentAppsRequest ?? Promise.resolve(response),
+              initialData: mockRecentAppsRequest ? undefined : response,
               select: options.select,
             }
           },
@@ -633,6 +634,7 @@ describe('HomeContent', () => {
     ]
     mockLearnDifyLoading = false
     mockWorkspaceApps = []
+    mockRecentAppsRequest = undefined
     mockBanners = []
     mockStepByStepTour.reset()
   })
@@ -807,6 +809,43 @@ describe('HomeContent', () => {
         message: 'app.noAccessResourcePermission',
       })
     })
+
+    it.each([false, true])(
+      'should keep templates visible while recent apps load (has apps: %s)',
+      async (hasApps) => {
+        vi.useRealTimers()
+        let resolveRecentApps!: (response: { data: RecentAppResponse[] }) => void
+        mockRecentAppsRequest = new Promise((resolve) => {
+          resolveRecentApps = resolve
+        })
+        mockExploreData = { categories: ['Writing'], allList: [createApp()] }
+
+        renderHomeContent({ hasEditPermission: true, enableLearnApp: false })
+
+        expect(screen.getByRole('button', { name: 'Alpha' })).toBeVisible()
+        expect(
+          screen.queryByRole('heading', { name: 'explore.continueWork.title' }),
+        ).not.toBeInTheDocument()
+
+        await act(async () => {
+          resolveRecentApps({ data: hasApps ? [createWorkspaceApp()] : [] })
+          await mockRecentAppsRequest
+        })
+
+        if (hasApps) {
+          expect(
+            await screen.findByRole('heading', { name: 'explore.continueWork.title' }),
+          ).toBeVisible()
+        } else {
+          await waitFor(() => {
+            expect(
+              screen.queryByRole('heading', { name: 'explore.continueWork.title' }),
+            ).not.toBeInTheDocument()
+          })
+        }
+        expect(screen.getByRole('button', { name: 'Alpha' })).toBeVisible()
+      },
+    )
 
     it('should hide continue work when there are no workspace apps', () => {
       mockExploreData = {

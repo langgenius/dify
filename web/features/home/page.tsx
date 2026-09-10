@@ -45,7 +45,7 @@ export async function HomePage() {
       <Suspense
         fallback={
           <HomeShell>
-            <div className="flex flex-1 flex-col overflow-y-auto">
+            <div className="flex flex-1 [scrollbar-gutter:stable] flex-col overflow-y-auto">
               <HomeSkeleton showBanner={enableExploreBanner} />
             </div>
           </HomeShell>

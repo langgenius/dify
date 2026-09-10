@@ -1,29 +1,35 @@
 'use client'
 
-import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
+import { useQuery } from '@tanstack/react-query'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import dynamic from '@/next/dynamic'
+import { consoleQuery } from '@/service/console'
 import { ContinueWork } from '../continue-work/continue-work'
 
 const LearnDify = dynamic(() => import('@/app/components/explore/learn-dify'), { ssr: false })
 
 export function HomeRecommendations({
   canCreate,
-  continueWorkApps,
   forceShowLearnDify,
   onCreate,
   onTry,
 }: {
   canCreate: boolean
-  continueWorkApps: RecentAppResponse[]
   forceShowLearnDify?: boolean
   onCreate: (app: RecommendedAppResponse) => void
   onTry: (app: RecommendedAppResponse) => void
 }) {
+  const { data: recentApps } = useQuery({
+    ...consoleQuery.apps.recent.get.queryOptions({
+      input: { query: { limit: 8 } },
+    }),
+    throwOnError: (_error, query) => query.state.data === undefined,
+  })
+
   return (
     <>
-      <ContinueWork apps={continueWorkApps} />
+      {recentApps && <ContinueWork apps={recentApps.data} />}
       <LearnDify
         canCreate={canCreate}
         className="pb-0"

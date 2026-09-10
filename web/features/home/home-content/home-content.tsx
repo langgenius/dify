@@ -5,7 +5,7 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueryClient, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -58,18 +58,11 @@ export function HomeContent() {
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const [templatesQuery, recentAppsQuery] = useSuspenseQueries({
-    queries: [
-      consoleQuery.explore.apps.get.queryOptions({
-        input: { query: { language: locale } },
-      }),
-      consoleQuery.apps.recent.get.queryOptions({
-        input: { query: { limit: 8 } },
-      }),
-    ],
-  })
-  const templatesData = templatesQuery.data
-  const continueWorkApps = recentAppsQuery.data.data
+  const { data: templatesData } = useSuspenseQuery(
+    consoleQuery.explore.apps.get.queryOptions({
+      input: { query: { language: locale } },
+    }),
+  )
   const allCategoriesEn = t(($) => $['apps.allCategories'], { ns: 'explore', lng: 'en' })
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
@@ -406,12 +399,11 @@ export function HomeContent() {
 
   return (
     <HomeShell>
-      <div className="flex flex-1 flex-col overflow-y-auto">
+      <div className="flex flex-1 [scrollbar-gutter:stable] flex-col overflow-y-auto">
         <HomeIntro />
         {systemFeatures.enable_explore_banner && <HomeBanner />}
         <HomeRecommendations
           canCreate={canCreateApp}
-          continueWorkApps={continueWorkApps}
           forceShowLearnDify={shouldForceShowLearnDifyForTour}
           onCreate={handleCreateFromLearnDify}
           onTry={handleTryAppFromLearnDify}
