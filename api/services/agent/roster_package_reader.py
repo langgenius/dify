@@ -41,6 +41,7 @@ class RosterAgentPackageReader:
         self._skill_packages = skill_package_service or SkillPackageService()
 
     def read(self, source: BinaryIO) -> PreparedRosterAgentPackage:
+        """Validate the container and record unusable Skill payloads for import warnings."""
         # Ownership is transferred to PreparedRosterAgentPackage.
         spool = cast(
             BinaryIO,
@@ -49,15 +50,41 @@ class RosterAgentPackageReader:
         try:
             self._copy_bounded(source, spool)
             spool.seek(0)
-            manifest, app, members = self._validate_archive(spool)
+            invalid_skills: dict[str, str] = {}
+            manifest, app, members = self._validate_archive(spool, invalid_skills=invalid_skills)
             spool.seek(0)
-            return PreparedRosterAgentPackage(archive=spool, manifest=manifest, app=app, members=members)
+            return PreparedRosterAgentPackage(
+                archive=spool, manifest=manifest, app=app, members=members, invalid_skills=invalid_skills
+            )
         except Exception:
             spool.close()
             raise
 
+    def read_member_bytes(self, package: PreparedRosterAgentPackage, path: str, *, max_bytes: int) -> bytes:
+        """Read one already-validated member while rechecking its size and digest."""
+
+        member = package.members.get(path)
+        if member is None:
+            raise InvalidRosterAgentPackageError("Roster Agent package member is unavailable")
+        try:
+            package.archive.seek(0)
+            with zipfile.ZipFile(package.archive) as archive:
+                info = archive.getinfo(path)
+                payload, digest, _ = self._read_member(
+                    archive,
+                    info,
+                    collect=True,
+                    max_bytes=max_bytes,
+                    expected_size=member.size,
+                )
+        except (KeyError, OSError, zipfile.BadZipFile, EOFError, RuntimeError, ValueError, zlib.error) as exc:
+            raise InvalidRosterAgentPackageError("Roster Agent package member is unavailable") from exc
+        if digest != member.sha256:
+            raise InvalidRosterAgentPackageError("Roster Agent package member failed integrity checks")
+        return payload
+
     def _validate_archive(
-        self, archive_file: BinaryIO
+        self, archive_file: BinaryIO, *, invalid_skills: dict[str, str]
     ) -> tuple[RosterAgentPackageManifest, AgentAppDsl, dict[str, RosterAgentPackageMember]]:
         try:
             with zipfile.ZipFile(archive_file) as archive:
@@ -137,13 +164,18 @@ class RosterAgentPackageReader:
                             raise RosterAgentPackageTooLargeError(
                                 f"Roster Agent package Skill {resource.name!r} exceeds the size limit"
                             )
-                        payload, digest, actual_size = self._read_member(
-                            archive,
-                            info,
-                            collect=True,
-                            max_bytes=min(max_skill_bytes, remaining_package_bytes),
-                            expected_size=resource.size,
-                        )
+                        try:
+                            payload, digest, actual_size = self._read_member(
+                                archive,
+                                info,
+                                collect=True,
+                                max_bytes=min(max_skill_bytes, remaining_package_bytes),
+                                expected_size=resource.size,
+                            )
+                        except (InvalidRosterAgentPackageError, zipfile.BadZipFile, EOFError, zlib.error):
+                            invalid_skills[resource.id] = "archive_integrity_failed"
+                            streamed_size += info.file_size
+                            continue
                     else:
                         _, digest, actual_size = self._read_member(
                             archive,
@@ -154,6 +186,9 @@ class RosterAgentPackageReader:
                         )
                     streamed_size += actual_size
                     if digest != resource.sha256:
+                        if isinstance(resource, RosterAgentPackageSkill):
+                            invalid_skills[resource.id] = "checksum_mismatch"
+                            continue
                         raise InvalidRosterAgentPackageError(
                             f"Roster Agent package resource {resource.path!r} failed integrity checks",
                         )
@@ -166,18 +201,15 @@ class RosterAgentPackageReader:
                         try:
                             inspection = self._skill_packages.inspect(content=payload, filename=resource.path)
                         except SkillPackageError as exc:
-                            raise InvalidRosterAgentPackageError(
-                                f"Roster Agent package Skill {resource.name!r} is invalid"
-                            ) from exc
+                            invalid_skills[resource.id] = exc.code
+                            continue
                         nested_uncompressed_size += inspection.uncompressed_size
                         if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                             raise RosterAgentPackageTooLargeError(
                                 "Roster Agent package nested Skill contents exceed the size limit"
                             )
                         if inspection.name != resource.name:
-                            raise InvalidRosterAgentPackageError(
-                                f"Roster Agent package Skill {resource.name!r} does not match SKILL.md",
-                            )
+                            invalid_skills[resource.id] = "skill_name_mismatch"
                 return manifest, app, members
         except (InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError):
             raise
