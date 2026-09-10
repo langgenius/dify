@@ -77,9 +77,7 @@ class MessageResponseSource(_SessionResponseSource[MessageModel]):
             return None
         from models.workflow import WorkflowRun
 
-        elapsed_time = self._session.scalar(
-            select(WorkflowRun.elapsed_time).where(WorkflowRun.id == workflow_run_id)
-        )
+        elapsed_time = self._session.scalar(select(WorkflowRun.elapsed_time).where(WorkflowRun.id == workflow_run_id))
         return float(elapsed_time) if elapsed_time is not None else None
 
     @property
