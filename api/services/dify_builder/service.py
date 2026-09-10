@@ -1102,7 +1102,18 @@ class DifyBuilderService:
                 at_version=s.version + 1,
             )
             fc.next_seq += 1
-            self._repo.compare_and_advance(session_id, s.version, s.current_state, fc, [item])
+            items = [item]
+            # This notice is committed directly (not via Runner._commit), so the
+            # engine's reply-language localization hook never sees it. Localize it
+            # here so it matches the session's detected language like every other
+            # card. No-op when reply_language is unset (English fallback).
+            if fc.reply_language:
+                from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+                from services.dify_builder.agent.localize import Localizer
+
+                localizer = Localizer(LlmBuilderAgent(actor.tenant_id, fc.model_config).model_or_none)
+                items = localizer.localize_items(items, fc.reply_language)
+            self._repo.compare_and_advance(session_id, s.version, s.current_state, fc, items)
             return self.get_session_view(session_id, actor), False
         return self._build_session_view(s, fc), True
 
