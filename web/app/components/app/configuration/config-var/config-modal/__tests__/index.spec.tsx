@@ -5,10 +5,20 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
 import { useStore } from '@/app/components/app/store'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
+import { AppModeEnum, TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
+
+vi.mock('next/navigation', async () => ({
+  ...(await vi.importActual<typeof import('next/navigation')>('next/navigation')),
+  useParams: () => ({}),
+}))
+
+vi.mock('@/service/use-common', async () => ({
+  ...(await vi.importActual<typeof import('@/service/use-common')>('@/service/use-common')),
+  useFileUploadConfig: () => ({ data: undefined }),
+}))
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
@@ -107,6 +117,53 @@ describe('ConfigModal', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1)
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ default: 'hello' }), undefined)
   })
+
+  it.each([InputVarType.singleFile, InputVarType.multiFiles])(
+    'should keep the %s configuration open when Enter adds custom extensions',
+    async (type) => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn()
+      const onClose = vi.fn()
+      render(
+        <ConfigModal
+          isShow
+          supportFile
+          payload={createPayload({
+            type,
+            label: 'Attachment',
+            default: undefined,
+            max_length: 2,
+            allowed_file_types: [SupportUploadFileTypes.custom],
+            allowed_file_extensions: ['.txt'],
+            allowed_file_upload_methods: [TransferMethod.local_file],
+          })}
+          onClose={onClose}
+          onConfirm={onConfirm}
+        />,
+      )
+
+      const extensionInput = screen.getByPlaceholderText(
+        'appDebug.variableConfig.file.custom.createPlaceholder',
+      )
+      await user.type(extensionInput, '.csv{Enter}')
+
+      expect(screen.getByRole('button', { name: 'common.operation.remove .csv' })).toBeVisible()
+      expect(extensionInput).toHaveFocus()
+      expect(onConfirm).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
+      expect(screen.getByRole('dialog')).toBeVisible()
+
+      await user.type(extensionInput, '.json{Enter}')
+      expect(screen.getByRole('button', { name: 'common.operation.remove .json' })).toBeVisible()
+      expect(onConfirm).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ allowed_file_extensions: ['.txt', '.csv', '.json'] }),
+        undefined,
+      )
+    },
+  )
 
   it.each([InputVarType.checkbox, InputVarType.select])(
     'should associate the default selector label for %s',

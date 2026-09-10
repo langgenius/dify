@@ -1,6 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { UploadFileSetting } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { FieldItem, FieldLabel, Field as FormField } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -13,7 +17,6 @@ import { formatFileSize } from '@/utils/format'
 import { SupportUploadFileTypes } from '../../../types'
 import FileTypeItem from './file-type-item'
 import InputNumberWithSlider from './input-number-with-slider'
-import OptionCard from './option-card'
 
 type Props = Readonly<{
   payload: UploadFileSetting
@@ -64,21 +67,34 @@ const FileUploadSetting: FC<Props> = ({
   )
 
   const handleUploadMethodChange = useCallback(
-    (method: TransferMethod) => {
-      return () => {
-        const newPayload = produce(payload, (draft) => {
-          if (method === TransferMethod.all)
-            draft.allowed_file_upload_methods = [
-              TransferMethod.local_file,
-              TransferMethod.remote_url,
-            ]
-          else draft.allowed_file_upload_methods = [method]
-        })
-        onChange(newPayload)
-      }
+    (method: TransferMethod | null) => {
+      if (method === null) return
+      const newPayload = produce(payload, (draft) => {
+        draft.allowed_file_upload_methods =
+          method === TransferMethod.all
+            ? [TransferMethod.local_file, TransferMethod.remote_url]
+            : [method]
+      })
+      onChange(newPayload)
     },
     [onChange, payload],
   )
+
+  const selectedMethod = allowed_file_upload_methods.includes(TransferMethod.local_file)
+    ? allowed_file_upload_methods.includes(TransferMethod.remote_url)
+      ? TransferMethod.all
+      : TransferMethod.local_file
+    : allowed_file_upload_methods.includes(TransferMethod.remote_url)
+      ? TransferMethod.remote_url
+      : null
+  const uploadMethods = [
+    {
+      value: TransferMethod.local_file,
+      label: t(($) => $['variableConfig.localUpload'], { ns: 'appDebug' }),
+    },
+    { value: TransferMethod.remote_url, label: 'URL' },
+    { value: TransferMethod.all, label: t(($) => $['variableConfig.both'], { ns: 'appDebug' }) },
+  ]
 
   const handleCustomFileTypesChange = useCallback(
     (customFileTypes: string[]) => {
@@ -139,37 +155,39 @@ const FileUploadSetting: FC<Props> = ({
           </div>
         </Field>
       )}
-      <Field
-        title={t(($) => $['variableConfig.uploadFileTypes'], { ns: 'appDebug' })}
-        className="mt-4"
-      >
-        <div className="grid grid-cols-3 gap-2">
-          <OptionCard
-            title={t(($) => $['variableConfig.localUpload'], { ns: 'appDebug' })}
-            selected={
-              allowed_file_upload_methods.length === 1 &&
-              allowed_file_upload_methods.includes(TransferMethod.local_file)
-            }
-            onSelect={handleUploadMethodChange(TransferMethod.local_file)}
-          />
-          <OptionCard
-            title="URL"
-            selected={
-              allowed_file_upload_methods.length === 1 &&
-              allowed_file_upload_methods.includes(TransferMethod.remote_url)
-            }
-            onSelect={handleUploadMethodChange(TransferMethod.remote_url)}
-          />
-          <OptionCard
-            title={t(($) => $['variableConfig.both'], { ns: 'appDebug' })}
-            selected={
-              allowed_file_upload_methods.includes(TransferMethod.local_file) &&
-              allowed_file_upload_methods.includes(TransferMethod.remote_url)
-            }
-            onSelect={handleUploadMethodChange(TransferMethod.all)}
-          />
-        </div>
-      </Field>
+      <FormField className="mt-4">
+        <Fieldset
+          className="flex flex-col items-stretch gap-0"
+          render={
+            <RadioGroup<TransferMethod | null>
+              value={selectedMethod}
+              onValueChange={handleUploadMethodChange}
+            />
+          }
+        >
+          <FieldsetLegend className="mb-0 py-0 system-sm-semibold leading-8!">
+            {t(($) => $['variableConfig.uploadFileTypes'], { ns: 'appDebug' })}
+          </FieldsetLegend>
+          <div className="grid grid-cols-3 gap-2">
+            {uploadMethods.map((method) => (
+              <FieldItem key={method.value}>
+                <FieldLabel className="block w-full min-w-0 py-0">
+                  <RadioItem<TransferMethod>
+                    value={method.value}
+                    className={cn(
+                      'flex h-8 w-full cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-xs',
+                      selectedMethod !== method.value &&
+                        'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                    )}
+                  >
+                    <span>{method.label}</span>
+                  </RadioItem>
+                </FieldLabel>
+              </FieldItem>
+            ))}
+          </div>
+        </Fieldset>
+      </FormField>
       {isMultiple && (
         <Field
           className="mt-4"

@@ -91,6 +91,90 @@ describe('File upload support components', () => {
   })
 
   describe('FileUploadSetting', () => {
+    it('should let keyboard users change upload methods while preserving the rest of the settings', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      const initialPayload = createPayload()
+      const StatefulFileUploadSetting = () => {
+        const [payload, setPayload] = useState(initialPayload)
+
+        return (
+          <>
+            <FileUploadSetting
+              payload={payload}
+              isMultiple={false}
+              inFeaturePanel
+              hideSupportFileType
+              onChange={(nextPayload) => {
+                setPayload(nextPayload)
+                onChange(nextPayload)
+              }}
+            />
+            <button type="button">Done</button>
+          </>
+        )
+      }
+
+      render(<StatefulFileUploadSetting />)
+
+      expect(
+        screen.getByRole('radiogroup', { name: 'appDebug.variableConfig.uploadFileTypes' }),
+      ).toBeInTheDocument()
+      await user.tab()
+      expect(
+        screen.getByRole('radio', { name: 'appDebug.variableConfig.localUpload' }),
+      ).toHaveFocus()
+      await user.keyboard('{ArrowRight}')
+      expect(screen.getByRole('radio', { name: 'URL' })).toBeChecked()
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...initialPayload,
+        allowed_file_upload_methods: [TransferMethod.remote_url],
+      })
+
+      await user.keyboard('{ArrowRight}')
+      expect(screen.getByRole('radio', { name: 'appDebug.variableConfig.both' })).toBeChecked()
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...initialPayload,
+        allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+      })
+
+      await user.keyboard('{ArrowRight}')
+      expect(
+        screen.getByRole('radio', { name: 'appDebug.variableConfig.localUpload' }),
+      ).toBeChecked()
+      expect(onChange).toHaveBeenLastCalledWith(initialPayload)
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Done' })).toHaveFocus()
+    })
+
+    it('should keep empty and updated upload method selections controlled by the payload', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      const payload = createPayload({ allowed_file_upload_methods: [] })
+      const { rerender } = render(
+        <FileUploadSetting payload={payload} isMultiple={false} onChange={onChange} />,
+      )
+
+      expect(screen.queryByRole('radio', { checked: true })).not.toBeInTheDocument()
+      await user.click(screen.getByText('URL'))
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...payload,
+        allowed_file_upload_methods: [TransferMethod.remote_url],
+      })
+
+      rerender(
+        <FileUploadSetting
+          payload={{ ...payload, allowed_file_upload_methods: [TransferMethod.remote_url] }}
+          isMultiple={false}
+          onChange={onChange}
+        />,
+      )
+      expect(screen.getByRole('radio', { name: 'URL' })).toBeChecked()
+
+      rerender(<FileUploadSetting payload={payload} isMultiple={false} onChange={onChange} />)
+      expect(screen.queryByRole('radio', { checked: true })).not.toBeInTheDocument()
+    })
+
     it('should update file types, upload methods, and upload limits', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
@@ -121,7 +205,7 @@ describe('File upload support components', () => {
 
     it('should keep upload limits within the configured range', () => {
       const StatefulFileUploadSetting = () => {
-        const [payload, setPayload] = useState(createPayload())
+        const [payload, setPayload] = useState(createPayload)
 
         return <FileUploadSetting payload={payload} isMultiple onChange={setPayload} />
       }

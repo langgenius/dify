@@ -66,7 +66,7 @@ const TagInput = ({
   const handleKeyDown = (e: KeyboardEvent) => {
     if (isSpecialMode && e.key === 'Enter') setValue(`${value}↵`)
     if (e.key === customizedConfirmKey) {
-      if (isSpecialMode) e.preventDefault()
+      e.preventDefault()
       handleNewTag(value)
     }
   }

@@ -10,6 +10,7 @@ import {
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectLabel,
   SelectList,
   SelectPopup,
   SelectPortal,
@@ -87,17 +88,14 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
 
   return (
     <div className="space-y-2">
-      <Field
-        titleId={`${fieldId}-type-label`}
-        title={t(($) => $['variableConfig.fieldType'], { ns: 'appDebug' })}
-      >
+      <div>
         <TypeSelector
-          aria-labelledby={`${fieldId}-type-label`}
+          label={t(($) => $['variableConfig.fieldType'], { ns: 'appDebug' })}
           value={type}
           items={selectOptions}
           onSelect={onTypeChange}
         />
-      </Field>
+      </div>
 
       <Field
         htmlFor={`${fieldId}-variable`}
@@ -186,21 +184,17 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       {type === InputVarType.checkbox && (
-        <Field
-          titleId={`${fieldId}-default-label`}
-          title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
-        >
+        <div>
           <Select
             value={checkboxDefaultSelectValue}
             onValueChange={(value) =>
               onPayloadChange('default')(value === CHECKBOX_DEFAULT_TRUE_VALUE)
             }
           >
-            <SelectTrigger
-              aria-labelledby={`${fieldId}-default-label`}
-              size="large"
-              className="w-full"
-            >
+            <SelectLabel className="block w-full py-0 system-sm-semibold leading-8! text-text-secondary">
+              {t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
+            </SelectLabel>
+            <SelectTrigger size="large" className="w-full">
               <SelectValue
                 placeholder={t(($) => $['variableConfig.selectDefaultValue'], { ns: 'appDebug' })}
               />
@@ -226,7 +220,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               </SelectPositioner>
             </SelectPortal>
           </Select>
-        </Field>
+        </div>
       )}
 
       {type === InputVarType.select && (
@@ -235,10 +229,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             <ConfigSelect options={options || []} onChange={onPayloadChange('options')} />
           </Field>
           {options && options.length > 0 && (
-            <Field
-              titleId={`${fieldId}-default-label`}
-              title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
-            >
+            <div>
               <Select<string>
                 key={`default-select-${options.join('-')}`}
                 value={
@@ -249,11 +240,10 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                   onPayloadChange('default')(value === EMPTY_SELECT_VALUE ? undefined : value)
                 }}
               >
-                <SelectTrigger
-                  aria-labelledby={`${fieldId}-default-label`}
-                  size="large"
-                  className="w-full"
-                >
+                <SelectLabel className="block w-full py-0 system-sm-semibold leading-8! text-text-secondary">
+                  {t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
+                </SelectLabel>
+                <SelectTrigger size="large" className="w-full">
                   <SelectValue
                     placeholder={t(($) => $['variableConfig.selectDefaultValue'], {
                       ns: 'appDebug',
@@ -283,7 +273,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                   </SelectPositioner>
                 </SelectPortal>
               </Select>
-            </Field>
+            </div>
           )}
         </>
       )}

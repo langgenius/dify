@@ -7,6 +7,7 @@ import {
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectLabel,
   SelectList,
   SelectPopup,
   SelectPortal,
@@ -24,7 +25,8 @@ export type Item = {
 }
 
 type Props = Readonly<{
-  'aria-labelledby'?: string
+  label: string
+  labelClassName?: string
   value: string | number
   onSelect: (value: Item) => void
   items: Item[]
@@ -39,7 +41,8 @@ const TypeSelector: FC<Props> = ({
   items,
   popupInnerClassName,
   readonly,
-  'aria-labelledby': labelledBy,
+  label,
+  labelClassName = 'system-sm-semibold leading-8!',
 }) => {
   const selectedItem = value ? items.find((item) => item.value === value) : undefined
 
@@ -52,8 +55,10 @@ const TypeSelector: FC<Props> = ({
         if (selected) onSelect(selected)
       }}
     >
+      <SelectLabel className={cn('block w-full py-0 text-text-secondary', labelClassName)}>
+        {label}
+      </SelectLabel>
       <SelectTrigger
-        aria-labelledby={labelledBy}
         className={cn(
           'h-9 rounded-lg px-2 text-sm',
           readonly ? 'cursor-not-allowed' : 'cursor-pointer',
