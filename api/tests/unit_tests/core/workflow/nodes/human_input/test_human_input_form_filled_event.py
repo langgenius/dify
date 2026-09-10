@@ -69,9 +69,6 @@ from graphon.graph_events import (
     GraphEdgeSkippedEvent,
     GraphEdgeTakenEvent,
     GraphEngineEvent,
-    GraphRunAbortedEvent,
-    NodeRunExceptionEvent,
-    NodeRunHumanInputFormFilledEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
@@ -154,6 +151,7 @@ def _build_node(
     ),
     *,
     with_inputs: bool = True,
+    node_id: str = "node-1",
 ) -> HumanInputNode:
     system_variables = build_system_variables(app_id="app", workflow_execution_id="run-1")
     graph_runtime_state = GraphRuntimeState(
@@ -180,7 +178,7 @@ def _build_node(
     )
 
     config = {
-        "id": "node-1",
+        "id": node_id,
         "type": BuiltinNodeTypes.HUMAN_INPUT,
         "data": {
             "title": "Human Input",
@@ -243,7 +241,10 @@ def _build_node(
 
 
 def _build_timeout_node(
-    expiration_time: datetime.datetime | None = None, *, status: HumanInputFormStatus = HumanInputFormStatus.TIMEOUT
+    expiration_time: datetime.datetime | None = None,
+    *,
+    status: HumanInputFormStatus = HumanInputFormStatus.TIMEOUT,
+    node_id: str = "node-1",
 ) -> HumanInputNode:
     system_variables = build_system_variables(app_id="app", workflow_execution_id="run-1")
     graph_runtime_state = GraphRuntimeState(
@@ -270,7 +271,7 @@ def _build_timeout_node(
     )
 
     config = {
-        "id": "node-1",
+        "id": node_id,
         "type": BuiltinNodeTypes.HUMAN_INPUT,
         "data": {
             "title": "Human Input",
@@ -354,81 +355,15 @@ def _filter_human_input_events(events: Iterable[GraphEngineEvent], *, node: Huma
     )
 
 
-def test_human_input_edge_deferral_does_not_block_other_branches():
-    started, succeeded = list(_build_node().run())
-    human_edge = GraphEdgeTakenEvent(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
-    # Container-start results are hidden by Graphon, but their edges are visible.
-    loop_edge = GraphEdgeTakenEvent(edge_id="loop-body", source_node_id="loop-start", target_node_id="loop-body")
-    skipped = GraphEdgeSkippedEvent(edge_id="human-skipped", source_node_id="node-1", target_node_id="skipped")
-    parallel_edge = GraphEdgeTakenEvent(edge_id="parallel-answer", source_node_id="parallel", target_node_id="answer-2")
-    events = iter([started, loop_edge, human_edge, skipped, parallel_edge, succeeded])
-    adapted = _filter_human_input_events(events)
-
-    assert next(adapted) == started
-    assert next(adapted) == loop_edge
-    assert next(adapted) == skipped
-    assert next(adapted) == parallel_edge
-    assert isinstance(next(adapted), NodeRunHumanInputFormFilledEvent)
-    assert next(adapted) == succeeded
-    assert list(adapted) == [human_edge]
-
-
-def test_human_input_edges_follow_their_own_completion_across_repeated_executions():
-    started, succeeded = list(_build_node().run())
-    other_started = started.model_copy(update={"id": "other", "node_id": "other-human"})
-    other_succeeded = succeeded.model_copy(update={"id": "other", "node_id": "other-human"})
-    repeated_started = started.model_copy(update={"id": "repeated"})
-    repeated_succeeded = succeeded.model_copy(update={"id": "repeated"})
-    edge = GraphEdgeTakenEvent(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
-    other_edge = edge.model_copy(update={"edge_id": "other-answer", "source_node_id": "other-human"})
-    events = [
-        started,
-        other_started,
-        other_edge,
-        other_succeeded,
-        edge,
-        succeeded,
-        repeated_started,
-        edge,
-        repeated_succeeded,
-    ]
-
-    adapted = list(_filter_human_input_events(events))
-    for index, event in enumerate(adapted):
-        if isinstance(event, NodeRunHumanInputFormFilledEvent):
-            assert isinstance(adapted[index + 1], NodeRunSucceededEvent)
-            assert adapted[index + 1].id == event.id
-    assert [event for event in adapted if not isinstance(event, NodeRunHumanInputFormFilledEvent)] == [
-        started,
-        other_started,
-        other_succeeded,
-        other_edge,
-        succeeded,
-        edge,
-        repeated_started,
-        repeated_succeeded,
-        edge,
-    ]
-
-
-def test_human_input_error_branch_follows_exception_completion():
-    started, succeeded = list(_build_node().run())
-    failed = NodeRunExceptionEvent(**succeeded.model_dump(), error="Form unavailable")
-    edge = GraphEdgeTakenEvent(edge_id="human-error", source_node_id="node-1", target_node_id="error-answer")
-
-    assert list(_filter_human_input_events([started, edge, failed])) == [started, failed, edge]
-
-
-@pytest.mark.parametrize("aborted", [False, True])
-def test_interrupted_human_input_does_not_activate_downstream_response(aborted: bool):
+@pytest.mark.parametrize("event_type", [GraphEdgeTakenEvent, GraphEdgeSkippedEvent])
+def test_human_input_filter_forwards_traversals_without_waiting_for_completion(event_type):
     started, _ = list(_build_node().run())
-    edge = GraphEdgeTakenEvent(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
-    terminal_events = [GraphRunAbortedEvent()] if aborted else []
+    edge = event_type(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
+    events = iter(_filter_human_input_events([started, edge]))
 
-    assert list(_filter_human_input_events([started, edge, *terminal_events])) == [
-        started,
-        *terminal_events,
-    ]
+    assert next(events) == started
+    assert next(events) == edge
+    assert list(events) == []
 
 
 def test_form_events_keep_titles_for_interleaved_executions_of_one_node():
@@ -649,11 +584,15 @@ def test_timed_out_human_input_reaches_response_stream(
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
 @pytest.mark.parametrize("timed_out", [False, True])
 @pytest.mark.parametrize("terminal", ["end", "answer"])
-def test_human_input_completion_precedes_downstream_and_workflow_finish(
+def test_human_input_completion_and_referenced_answer_reach_response_stream(
     timed_out: bool, terminal: str, invoke_from: InvokeFrom, monkeypatch: pytest.MonkeyPatch, app: Flask
 ):
     expiration_time = datetime.datetime(2025, 1, 1)
-    node = _build_timeout_node(expiration_time) if timed_out else _build_node("Approve?", with_inputs=False)
+    node = (
+        _build_timeout_node(expiration_time, node_id="human")
+        if timed_out
+        else _build_node("Approve?", with_inputs=False, node_id="human")
+    )
     runtime_state = node.graph_runtime_state
     runtime_state.variable_pool.add(["sys", "workflow_execution_id"], StringSegment(value="run-1"))
     init_params = GraphInitParams(workflow_id="workflow", graph_config={}, run_context={}, call_depth=0)
@@ -666,7 +605,7 @@ def test_human_input_completion_precedes_downstream_and_workflow_finish(
     if terminal == "answer":
         terminal_node = AnswerNode(
             node_id="answer",
-            data=AnswerNodeData(title="Answer", answer="Approved"),
+            data=AnswerNodeData(title="Answer", answer="Action: {{#human.__action_id#}}"),
             graph_init_params=init_params,
             graph_runtime_state=runtime_state,
         )
@@ -703,28 +642,22 @@ def test_human_input_completion_precedes_downstream_and_workflow_finish(
     payloads = _sse_payloads(events, invoke_from, app, runtime_state)
 
     form_event = "human_input_form_timeout" if timed_out else "human_input_form_filled"
-    # A dependent Answer must not stream before Human Input has finished.
-    human_finished = next(
-        index
-        for index, payload in enumerate(payloads)
-        if payload["event"] == "node_finished" and payload["data"]["node_id"] == node.id
-    )
-    assert all(index > human_finished for index, payload in enumerate(payloads) if payload["event"] == "message")
     lifecycle_events = [payload for payload in payloads if payload["event"] != "message"]
     assert [(payload["event"], payload.get("data", {}).get("node_id")) for payload in lifecycle_events] == [
         ("workflow_started", None),
         ("node_started", "start"),
         ("node_finished", "start"),
-        ("node_started", "node-1"),
-        (form_event, "node-1"),
-        ("node_finished", "node-1"),
+        ("node_started", node.id),
+        (form_event, node.id),
+        ("node_finished", node.id),
         ("node_started", terminal),
         ("node_finished", terminal),
         ("message_end", None),
         ("workflow_finished", None),
     ]
     answer = "".join(payload["answer"] for payload in payloads if payload["event"] == "message")
-    assert answer == ("Approved" if terminal == "answer" else "")
+    expected_answer = "Action: " + ("" if timed_out else "Accept")
+    assert answer == (expected_answer if terminal == "answer" else "")
     assert payloads[-1]["data"]["status"] == "succeeded"
 
 

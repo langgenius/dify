@@ -9,9 +9,7 @@ from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes
 from graphon.filters import GraphEventFilterContext
 from graphon.graph_events import (
-    GraphEdgeTakenEvent,
     GraphEngineEvent,
-    NodeRunExceptionEvent,
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
@@ -34,8 +32,6 @@ class HumanInputFormEventFilter:
     def __init__(self, *, form_repository: HumanInputFormSubmissionRepository) -> None:
         self._form_repository = form_repository
         self._node_titles: dict[str, str] = {}
-        self._human_input_nodes: set[str] = set()
-        self._pending_edges: dict[str, list[GraphEdgeTakenEvent]] = {}
         self._app_id: str | None = None
 
     @property
@@ -44,33 +40,17 @@ class HumanInputFormEventFilter:
 
     def initialize(self, context: GraphEventFilterContext) -> None:
         self._node_titles.clear()
-        self._human_input_nodes.clear()
-        self._pending_edges.clear()
         self._app_id = get_system_text(context.runtime_state.variable_pool, SystemVariableKey.APP_ID)
 
     def on_event(self, event: GraphEngineEvent) -> Iterable[GraphEngineEvent]:
-        if isinstance(event, GraphEdgeTakenEvent) and event.source_node_id in self._human_input_nodes:
-            # Graphon collects taken edges before their source node's result.
-            # Delay only Human Input's edges so dependent Answers cannot stream
-            # until both the form notification and node completion are emitted.
-            # The dispatcher processes each result and its edges serially, so
-            # source node IDs identify batches even across repeated executions.
-            self._pending_edges.setdefault(event.source_node_id, []).append(event)
-            return
-
         if isinstance(event, NodeRunStartedEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
-            self._human_input_nodes.add(event.node_id)
             self._node_titles[event.id] = event.node_title
         elif isinstance(event, NodeRunSucceededEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
             yield self._completion_event(event)
 
         yield event
-        if isinstance(event, NodeRunSucceededEvent | NodeRunExceptionEvent):
-            yield from self._pending_edges.pop(event.node_id, [])
 
     def flush(self) -> Iterable[GraphEngineEvent]:
-        # An interrupted batch must not activate responses without completion.
-        self._pending_edges.clear()
         return ()
 
     def _completion_event(
