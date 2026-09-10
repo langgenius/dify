@@ -198,7 +198,7 @@ class AgentDslService:
     ) -> AgentPackageImportResult:
         """Create the imported backing Agent and its editable unpublished draft."""
 
-        soul, warnings = self._resolve_package_soul(
+        soul, warnings = self.resolve_package_soul(
             tenant_id=app.tenant_id,
             package=package,
             package_path="agent",
@@ -483,7 +483,7 @@ class AgentDslService:
         package: AgentPackage,
         package_path: str,
     ) -> AgentPackageImportResult:
-        soul, warnings = self._resolve_package_soul(
+        soul, warnings = self.resolve_package_soul(
             tenant_id=workflow.tenant_id,
             package=package,
             package_path=package_path,
@@ -561,7 +561,7 @@ class AgentDslService:
         self.session.flush()
         return agent, snapshot
 
-    def _resolve_package_soul(
+    def resolve_package_soul(
         self,
         *,
         tenant_id: str,
@@ -640,21 +640,6 @@ class AgentDslService:
                     )
                 )
         return AgentSoulConfig.model_validate(soul_data), warnings
-
-    def resolve_package_soul(
-        self,
-        *,
-        tenant_id: str,
-        package: AgentPackage,
-        package_path: str,
-    ) -> tuple[AgentSoulConfig, list[DslImportWarning]]:
-        """Resolve target-workspace references for any portable Agent package."""
-
-        return self._resolve_package_soul(
-            tenant_id=tenant_id,
-            package=package,
-            package_path=package_path,
-        )
 
     def _create_snapshot(
         self,

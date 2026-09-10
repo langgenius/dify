@@ -106,7 +106,7 @@ class RosterAgentPackageImporter:
         tenant_id: str,
         account: Account,
     ) -> RosterAgentPackageImportResult:
-        with self._reader.read(source, allow_invalid_skills=True) as package:
+        with self._reader.read(source) as package:
             package.manifest = package.manifest.model_copy(
                 update={"soul": make_portable_agent_soul(package.manifest.soul)}
             )
@@ -135,10 +135,6 @@ class RosterAgentPackageImporter:
                     soul=soul,
                 )
                 warnings = [*skill_warnings, *warnings]
-                try:
-                    ComposerConfigValidator.validate_importable_agent_soul(resolved_soul)
-                except (InvalidComposerConfigError, PlaintextSecretNotAllowedError) as exc:
-                    raise InvalidRosterAgentPackageError("Roster Agent package Soul is invalid") from exc
                 app_id, agent_id = self._persist_import(
                     app_id=app_id,
                     tenant_id=tenant_id,
