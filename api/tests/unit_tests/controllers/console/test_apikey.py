@@ -18,6 +18,7 @@ from controllers.console.apikey import (
     BaseApiKeyListResource,
     BaseApiKeyResource,
     DatasetApiKeyListResource,
+    mask_api_token,
 )
 from controllers.console.datasets.datasets import DatasetApiKeyApi
 from core.rbac import RBACPermission, RBACResourceScope
@@ -105,7 +106,40 @@ def test_list_api_keys_uses_injected_session_and_tenant_id(sqlite_session: Sessi
     result = raw_get(resource, session, "app-1", "tenant-1")
     data = cast(list[dict[str, object]], result["data"])
 
-    assert {item["token"] for item in data} == {"app-token", "legacy-app-token"}
+    assert {item["token"] for item in data} == {"app-t...oken", "legac...oken"}
+
+
+def test_list_api_keys_masks_secrets_while_create_reveals_once(sqlite_session: Session) -> None:
+    """List responses must never disclose full secrets (reveal-once).
+
+    Any workspace member with edit permission (e.g. EDITOR, non-admin) can reach
+    the key list endpoints, so returning full bearer secrets there discloses
+    long-lived credentials beyond their need-to-know. The full secret is only
+    returned by the create endpoint.
+    """
+    resource = _make_list_resource()
+    session = sqlite_session
+    _persist_app(session)
+    secret = "app-abcdefghijklmnopqrstuvwxyz123456"
+    session.add(
+        ApiToken(
+            type=ApiTokenType.APP,
+            token=secret,
+            app_id="app-1",
+            tenant_id="tenant-1",
+        )
+    )
+    session.commit()
+
+    listed = resource._get_api_key_list("app-1", "tenant-1", session=session)
+    assert len(listed.data) == 1
+    assert listed.data[0].token == mask_api_token(secret)
+    assert listed.data[0].token != secret
+
+    created = resource._create_api_key("app-1", "tenant-1", session=session)
+    assert created.token.startswith("app-")
+    stored = session.scalar(select(ApiToken).where(ApiToken.token == created.token))
+    assert stored is not None
 
 
 def test_create_api_key_uses_injected_session_and_tenant_id(sqlite_session: Session) -> None:
