@@ -214,11 +214,9 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                     progress.operation_id,
                 )
 
-        # `agent` is typed via the DifyBuilderAgent Protocol (core.dify_builder.ports),
-        # which doesn't include `_model_or_none` -- it's private to LlmBuilderAgent.
-        # getattr keeps production wiring identical (the real agent always has it)
-        # while tolerating protocol-conforming test doubles that don't.
-        localizer = Localizer(getattr(agent, "_model_or_none", lambda: None))
+        # `model_or_none` is part of the DifyBuilderAgent protocol; the Localizer
+        # uses it as its model provider (None -> reply-language localization is a no-op).
+        localizer = Localizer(agent.model_or_none)
         env = Env(
             dify=dify,
             agent=agent,

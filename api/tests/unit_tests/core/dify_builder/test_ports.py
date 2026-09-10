@@ -146,6 +146,9 @@ class _StubAgent:
             on_delta(reply)
         return reply
 
+    def model_or_none(self):
+        return None
+
 
 class _StubDifyPort:
     """A trivial conforming DifyPort. Takes `actor`, never ForwardAuth."""
