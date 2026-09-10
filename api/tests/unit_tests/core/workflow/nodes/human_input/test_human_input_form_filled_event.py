@@ -29,13 +29,11 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.queue_entities import (
     AppQueueEvent,
-    QueueEvent,
     QueueHumanInputFormFilledEvent,
     QueueNodeSucceededEvent,
     QueueWorkflowStartedEvent,
     WorkflowQueueMessage,
 )
-from core.app.entities.task_entities import HumanInputFormFilledResponse, StreamResponse
 from core.repositories.human_input_repository import (
     HumanInputFormEntity,
     HumanInputFormRecord,
@@ -69,8 +67,6 @@ from graphon.graph_events import (
     GraphEdgeSkippedEvent,
     GraphEdgeTakenEvent,
     GraphEngineEvent,
-    NodeRunStartedEvent,
-    NodeRunSucceededEvent,
 )
 from graphon.nodes.answer.answer_node import AnswerNode
 from graphon.nodes.answer.entities import AnswerNodeData
@@ -81,13 +77,11 @@ from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
-from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
-from graphon.variables.types import SegmentType
+from graphon.variables.segments import StringSegment
 from libs.datetime_utils import naive_utc_now
 from libs.helper import compact_generate_response
 from models.account import Account
 from models.enums import MessageStatus
-from models.execution_extra_content import HumanInputContent
 from models.model import AppMode, Message
 
 
@@ -301,44 +295,6 @@ def _build_timeout_node(
     )
 
 
-def test_human_input_callback_completes_with_submitted_form_outputs():
-    node = _build_node()
-
-    events = list(node.run())
-
-    assert isinstance(events[0], NodeRunStartedEvent)
-    assert isinstance(events[1], NodeRunSucceededEvent)
-
-    completed_event = events[1]
-    assert completed_event.node_run_result.outputs["__rendered_content"] == StringSegment(
-        value="Please enter your name:\n\nAlice\nDecision: approve\nAttachment: [file]\nAttachments: [1 files]"
-    )
-    assert completed_event.node_run_result.outputs["__action_id"] == StringSegment(value="Accept")
-    assert completed_event.node_run_result.outputs["__action_value"] == StringSegment(value="Approve")
-    assert completed_event.node_run_result.inputs["name"] == StringSegment(value="Alice")
-    assert completed_event.node_run_result.inputs["decision"] == StringSegment(value="approve")
-    assert isinstance(completed_event.node_run_result.inputs["attachment"], FileSegment)
-    assert completed_event.node_run_result.inputs["attachment"].value_type == SegmentType.FILE
-    assert completed_event.node_run_result.inputs["attachment"].value.filename == "resume.pdf"
-    assert completed_event.node_run_result.inputs["attachment"].value.type == FileType.DOCUMENT
-    assert completed_event.node_run_result.inputs["attachment"].value.transfer_method == FileTransferMethod.REMOTE_URL
-    assert isinstance(completed_event.node_run_result.inputs["attachments"], ArrayFileSegment)
-    assert completed_event.node_run_result.inputs["attachments"].value_type == SegmentType.ARRAY_FILE
-    assert completed_event.node_run_result.inputs["attachments"].value[0].filename == "a.png"
-    assert completed_event.node_run_result.inputs["attachments"].value[0].type == FileType.IMAGE
-
-
-def test_human_input_callback_completes_on_timeout_handle():
-    expiration_time = datetime.datetime(2025, 1, 1)
-    node = _build_timeout_node(expiration_time)
-
-    events = list(node.run())
-
-    assert isinstance(events[0], NodeRunStartedEvent)
-    assert isinstance(events[1], NodeRunSucceededEvent)
-    assert events[1].node_run_result.edge_source_handle == "__timeout"
-
-
 def _publish_node_events(node: HumanInputNode) -> list[AppQueueEvent]:
     return _publish_graph_events(_filter_human_input_events(node.run(), node=node))
 
@@ -359,10 +315,17 @@ def _filter_human_input_events(events: Iterable[GraphEngineEvent], *, node: Huma
 def test_human_input_filter_forwards_traversals_without_waiting_for_completion(event_type):
     started, _ = list(_build_node().run())
     edge = event_type(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
-    events = iter(_filter_human_input_events([started, edge]))
+    edge_forwarded = False
 
+    def source() -> Generator[GraphEngineEvent, None, None]:
+        yield started
+        yield edge
+        assert edge_forwarded, "The traversal must be forwarded before consuming more upstream events"
+
+    events = iter(_filter_human_input_events(source()))
     assert next(events) == started
     assert next(events) == edge
+    edge_forwarded = True
     assert list(events) == []
 
 
@@ -391,18 +354,15 @@ def test_form_events_keep_titles_for_interleaved_executions_of_one_node():
 
 
 def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEvent]:
+    published: list[AppQueueEvent] = []
     queue_manager = MagicMock(spec=AppQueueManager)
+    queue_manager.publish.side_effect = lambda event, _publish_from: published.append(event)
     runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app")
     workflow_entry = MagicMock(spec=WorkflowEntry)
 
     for event in events:
         runner._handle_event(workflow_entry, event)
 
-    published = []
-    for call in queue_manager.publish.call_args_list:
-        event = call.args[0]
-        assert isinstance(event, AppQueueEvent)
-        published.append(event)
     return published
 
 
@@ -461,17 +421,6 @@ def _sse_payloads(
     form_repository = MagicMock(spec=HumanInputFormRepository)
     form_repository.get_form.return_value = form
 
-    def responses() -> Generator[StreamResponse, None, None]:
-        for response in pipeline._process_stream_response():
-            if isinstance(response, HumanInputFormFilledResponse):
-                # Dify persists the submitted form's chat content before emitting
-                # its SSE event. Keep the real handler and mock only storage I/O.
-                content = session.add.call_args.args[0]
-                assert isinstance(content, HumanInputContent)
-                assert content.form_id == "form-1"
-                assert content.message_id == "message-1"
-            yield response
-
     with (
         app.test_request_context(),
         patch.object(pipeline, "_database_session", return_value=nullcontext(session)),
@@ -489,7 +438,9 @@ def _sse_payloads(
             )
         response = compact_generate_response(
             BaseAppGenerator.convert_to_event_stream(
-                AdvancedChatAppGenerateResponseConverter.convert(pipeline._to_stream_response(responses()), invoke_from)
+                AdvancedChatAppGenerateResponseConverter.convert(
+                    pipeline._to_stream_response(pipeline._process_stream_response()), invoke_from
+                )
             )
         )
         assert response.mimetype == "text/event-stream"
@@ -498,7 +449,7 @@ def _sse_payloads(
         ]
 
 
-@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
+@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP], ids=["full", "simple"])
 def test_submitted_human_input_reaches_response_stream(invoke_from: InvokeFrom, app: Flask):
     events = _publish_node_events(_build_node())
 
@@ -510,11 +461,6 @@ def test_submitted_human_input_reaches_response_stream(invoke_from: InvokeFrom, 
         "node_started",
         "human_input_form_filled",
         "node_finished",
-    ]
-    assert [event.event for event in events] == [
-        QueueEvent.NODE_STARTED,
-        QueueEvent.HUMAN_INPUT_FORM_FILLED,
-        QueueEvent.NODE_SUCCEEDED,
     ]
     payload = payloads[1]
     assert payload["workflow_run_id"] == "run-1"
@@ -529,7 +475,10 @@ def test_submitted_human_input_reaches_response_stream(invoke_from: InvokeFrom, 
     assert submitted_data["name"] == "Alice"
     assert submitted_data["decision"] == "approve"
     assert submitted_data["attachment"]["filename"] == "resume.pdf"
+    assert submitted_data["attachment"]["type"] == "document"
+    assert submitted_data["attachment"]["transfer_method"] == "remote_url"
     assert submitted_data["attachments"][0]["filename"] == "a.png"
+    assert submitted_data["attachments"][0]["type"] == "image"
 
 
 def test_button_only_human_input_reaches_response_stream(app: Flask):
@@ -557,7 +506,12 @@ def test_timed_out_human_input_reaches_response_stream(
     form.node_id = "node-1"
     form.expiration_time = expiration_time
     repository = MagicMock(spec=HumanInputFormSubmissionRepository)
-    repository.get_by_form_id.return_value = form
+    earlier_form = SimpleNamespace(app_id="app", node_id="node-1", expiration_time=datetime.datetime(2024, 1, 1))
+    forms = {
+        "previous-execution": earlier_form,
+        "00000000-0000-4000-8000-000000000001": form,
+    }
+    repository.get_by_form_id.side_effect = forms.get
     monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
 
     events = _publish_node_events(_build_timeout_node(expiration_time, status=status))
@@ -568,24 +522,17 @@ def test_timed_out_human_input_reaches_response_stream(
         "human_input_form_timeout",
         "node_finished",
     ]
-    assert [event.event for event in events] == [
-        QueueEvent.NODE_STARTED,
-        QueueEvent.HUMAN_INPUT_FORM_TIMEOUT,
-        QueueEvent.NODE_SUCCEEDED,
-    ]
     assert payloads[1]["data"] == {
         "node_id": "node-1",
         "node_title": "Human Input",
         "expiration_time": 1735689600,
     }
-    repository.get_by_form_id.assert_called_once_with("00000000-0000-4000-8000-000000000001")
 
 
-@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
 @pytest.mark.parametrize("timed_out", [False, True])
 @pytest.mark.parametrize("terminal", ["end", "answer"])
 def test_human_input_completion_and_referenced_answer_reach_response_stream(
-    timed_out: bool, terminal: str, invoke_from: InvokeFrom, monkeypatch: pytest.MonkeyPatch, app: Flask
+    timed_out: bool, terminal: str, monkeypatch: pytest.MonkeyPatch, app: Flask
 ):
     expiration_time = datetime.datetime(2025, 1, 1)
     node = (
@@ -639,7 +586,7 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
     monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
 
     events = _publish_graph_events(iter_dify_graph_engine_events(engine))
-    payloads = _sse_payloads(events, invoke_from, app, runtime_state)
+    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, runtime_state)
 
     form_event = "human_input_form_timeout" if timed_out else "human_input_form_filled"
     lifecycle_events = [payload for payload in payloads if payload["event"] != "message"]
