@@ -10,7 +10,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { InstallStepFromGitHub } from '../../types'
@@ -42,6 +42,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const repoUrlInputRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation()
   const { getIconUrl } = useGetIcon()
   const { refreshPluginList } = useRefreshPluginList()
@@ -178,6 +179,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
       }}
     >
       <DialogContent
+        initialFocus={repoUrlInputRef}
         backdropProps={{ forceRender: true }}
         className={cn(
           'w-140 overflow-hidden! text-left align-middle',
@@ -245,8 +247,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
                     </span>
                   </FieldLabel>
                   <Input
-                    // oxlint-disable-next-line jsx-a11y/no-autofocus -- The dialog opens from an explicit install command, and the repository URL is its primary field.
-                    autoFocus
+                    ref={repoUrlInputRef}
                     type="text"
                     inputMode="url"
                     autoComplete="off"
