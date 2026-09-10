@@ -47,6 +47,7 @@ from core.dify_builder.state import PcState, is_terminal
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from services.dify_builder import progress_bus, session_lock
+from services.dify_builder.agent.localize import Localizer
 from services.dify_builder.agent_factory import build_dify_builder_agent
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError
@@ -213,6 +214,11 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                     progress.operation_id,
                 )
 
+        # `agent` is typed via the DifyBuilderAgent Protocol (core.dify_builder.ports),
+        # which doesn't include `_model_or_none` -- it's private to LlmBuilderAgent.
+        # getattr keeps production wiring identical (the real agent always has it)
+        # while tolerating protocol-conforming test doubles that don't.
+        localizer = Localizer(getattr(agent, "_model_or_none", lambda: None))
         env = Env(
             dify=dify,
             agent=agent,
@@ -224,6 +230,8 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             emit_message=emit_message,
             emit_progress=emit_progress,
             emit_reasoning=emit_reasoning,
+            detect_language=localizer.detect_language,
+            localize_items=localizer.localize_items,
         )
         runner = Runner(env, fix_registry() | build_registry() | edit_registry())
         env.begin_operation(loaded_session)
