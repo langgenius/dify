@@ -133,14 +133,16 @@ describe('DifyBuilderPanel', () => {
     }
   })
 
-  it('keeps actions above a text-only composer and sends chat during an active waiting flow', async () => {
+  it('keeps actions below the conversation and above a text-only composer', async () => {
     const user = userEvent.setup()
     renderPanel()
 
     const action = screen.getByRole('button', { name: 'Approve plan' })
+    const message = screen.getByText('Fix the workflow')
     const composer = screen.getByRole('textbox', {
       name: 'workflow.difyBuilder.messagePlaceholder',
     })
+    expect(message.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(action.compareDocumentPosition(composer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Model selector' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /attach/i })).not.toBeInTheDocument()
@@ -311,7 +313,7 @@ describe('DifyBuilderPanel', () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled()
   })
 
-  it('submits server actions from the fixed action bar', async () => {
+  it('submits server actions from the conversation action bar', async () => {
     const user = userEvent.setup()
     renderPanel()
 
