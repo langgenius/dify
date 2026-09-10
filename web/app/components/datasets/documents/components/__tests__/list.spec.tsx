@@ -3,11 +3,9 @@ import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
-import { useDocumentSort } from '../document-list/hooks'
 import DocumentList from '../list'
 
 // Mock hooks used by DocumentList
-const mockHandleSort = vi.fn()
 const mockClearSelection = vi.fn()
 const mockHandleAction = vi.fn(() => vi.fn())
 const mockHandleBatchReIndex = vi.fn()
@@ -23,12 +21,8 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('../document-list/hooks', () => ({
-  useDocumentSort: vi.fn(() => ({
-    sortField: null,
-    sortOrder: 'desc',
-    handleSort: mockHandleSort,
-  })),
+vi.mock('../document-list/hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../document-list/hooks')>()),
   useDocumentSelection: vi.fn(() => ({
     hasErrorDocumentsSelected: false,
     downloadableSelectedIds: [],
@@ -175,12 +169,6 @@ describe('DocumentList', () => {
 
     it('should render document rows from sortedDocuments', () => {
       const docs = [createDoc({ id: 'a', name: 'Doc A' }), createDoc({ id: 'b', name: 'Doc B' })]
-      vi.mocked(useDocumentSort).mockReturnValue({
-        sortField: 'created_at',
-        sortOrder: 'desc',
-        handleSort: mockHandleSort,
-      } as unknown as ReturnType<typeof useDocumentSort>)
-
       render(<DocumentList {...defaultProps} documents={docs} />)
 
       expect(screen.getByTestId('doc-row-a')).toBeInTheDocument()
@@ -203,11 +191,6 @@ describe('DocumentList', () => {
 
   it('exposes sorting only on the current column and supports keyboard activation', async () => {
     const user = userEvent.setup()
-    vi.mocked(useDocumentSort).mockReturnValue({
-      sortField: 'created_at',
-      sortOrder: 'desc',
-      handleSort: mockHandleSort,
-    })
     const { rerender } = render(<DocumentList {...defaultProps} embeddingAvailable={false} />)
     const uploadedHeader = screen.getByRole('columnheader', {
       name: 'datasetDocuments.list.table.header.uploadTime',
@@ -223,29 +206,42 @@ describe('DocumentList', () => {
       screen.getByRole('button', { name: 'datasetDocuments.list.table.header.hitCount' }),
     ).toHaveFocus()
     await user.keyboard('{Enter}')
-    expect(mockHandleSort).toHaveBeenCalledWith('hit_count')
+    expect(defaultProps.onSortChange).toHaveBeenLastCalledWith('-hit_count')
 
-    vi.mocked(useDocumentSort).mockReturnValue({
-      sortField: 'hit_count',
-      sortOrder: 'asc',
-      handleSort: mockHandleSort,
-    })
-    rerender(<DocumentList {...defaultProps} embeddingAvailable={false} />)
+    rerender(
+      <DocumentList {...defaultProps} embeddingAvailable={false} remoteSortValue="-hit_count" />,
+    )
+    expect(hitsHeader).toHaveAttribute('aria-sort', 'descending')
+    expect(uploadedHeader).not.toHaveAttribute('aria-sort')
+
+    await user.keyboard(' ')
+    expect(defaultProps.onSortChange).toHaveBeenLastCalledWith('hit_count')
+
+    rerender(
+      <DocumentList {...defaultProps} embeddingAvailable={false} remoteSortValue="hit_count" />,
+    )
     expect(hitsHeader).toHaveAttribute('aria-sort', 'ascending')
     expect(uploadedHeader).not.toHaveAttribute('aria-sort')
-  })
 
-  // Verify sort headers trigger sort handler
-  describe('Sorting', () => {
-    it('should call handleSort when sort header is clicked', () => {
-      render(<DocumentList {...defaultProps} />)
+    await user.click(
+      screen.getByRole('button', { name: 'datasetDocuments.list.table.header.uploadTime' }),
+    )
+    expect(defaultProps.onSortChange).toHaveBeenLastCalledWith('-created_at')
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'datasetDocuments.list.table.header.uploadTime' }),
-      )
+    rerender(
+      <DocumentList {...defaultProps} embeddingAvailable={false} remoteSortValue="-created_at" />,
+    )
+    expect(uploadedHeader).toHaveAttribute('aria-sort', 'descending')
+    expect(hitsHeader).not.toHaveAttribute('aria-sort')
 
-      expect(mockHandleSort).toHaveBeenCalledWith('created_at')
-    })
+    await user.keyboard('{Enter}')
+    expect(defaultProps.onSortChange).toHaveBeenLastCalledWith('created_at')
+
+    rerender(
+      <DocumentList {...defaultProps} embeddingAvailable={false} remoteSortValue="created_at" />,
+    )
+    expect(uploadedHeader).toHaveAttribute('aria-sort', 'ascending')
+    expect(hitsHeader).not.toHaveAttribute('aria-sort')
   })
 
   // Verify batch action bar appears when items selected
@@ -284,13 +280,6 @@ describe('DocumentList', () => {
   // Verify empty state
   describe('Edge Cases', () => {
     it('should render table with no document rows when sortedDocuments is empty', () => {
-      // Reset sort mock to return empty sorted list
-      vi.mocked(useDocumentSort).mockReturnValue({
-        sortField: null,
-        sortOrder: 'desc',
-        handleSort: mockHandleSort,
-      } as unknown as ReturnType<typeof useDocumentSort>)
-
       render(<DocumentList {...defaultProps} documents={[]} />)
 
       expect(screen.queryByTestId(/^doc-row-/)).not.toBeInTheDocument()
