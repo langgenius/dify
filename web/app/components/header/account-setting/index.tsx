@@ -225,6 +225,10 @@ export default function AccountSetting({
           </div>
         </div>
         <div className="relative flex min-h-0 min-w-0 flex-1">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-full w-screen bg-components-panel-bg"
+          />
           <ScrollArea className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg">
             <ScrollAreaViewport
               ref={scrollContainerRef}
