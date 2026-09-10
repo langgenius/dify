@@ -125,8 +125,9 @@ def test_validate_and_normalize_accepts_crlf_skill_md():
 
     assert package.manifest.name == "pdf-toolkit"
     assert package.manifest.description == "Tools for working with PDF files."
-    assert b"\r" not in package.skill_md_bytes
-    assert package.skill_md_bytes.decode() == _SKILL_MD
+    with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
+        assert b"\r" not in archive.read("SKILL.md")
+        assert archive.read("SKILL.md").decode() == _SKILL_MD
 
 
 def test_inspect_reports_uncompressed_size_without_rebuilding(monkeypatch: pytest.MonkeyPatch):
@@ -181,8 +182,8 @@ def test_validate_and_normalize_keeps_root_skill_unchanged():
 
     assert package.manifest.entry_path == "SKILL.md"
     assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
-    assert package.skill_md_bytes == _SKILL_MD.encode()
-    assert package.strip_prefix is None
+    with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
+        assert archive.read("SKILL.md") == _SKILL_MD.encode()
     assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
     assert len(package.manifest.hash) == 64
 
@@ -197,8 +198,8 @@ def test_validate_and_normalize_strips_single_top_level_folder():
 
     assert package.manifest.entry_path == "SKILL.md"
     assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
-    assert package.skill_md_bytes == _SKILL_MD.encode()
-    assert package.strip_prefix == "pdf-toolkit/"
+    with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
+        assert archive.read("SKILL.md") == _SKILL_MD.encode()
     assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
 
 
@@ -213,8 +214,8 @@ def test_validate_and_normalize_strips_single_top_level_folder_ignoring_other_ro
 
     assert package.manifest.entry_path == "SKILL.md"
     assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
-    assert package.skill_md_bytes == _SKILL_MD.encode()
-    assert package.strip_prefix == "pdf-toolkit/"
+    with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
+        assert archive.read("SKILL.md") == _SKILL_MD.encode()
     assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
 
 
@@ -229,8 +230,8 @@ def test_validate_and_normalize_strips_single_top_level_folder_dropping_nested_f
 
     assert package.manifest.entry_path == "SKILL.md"
     assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
-    assert package.skill_md_bytes == _SKILL_MD.encode()
-    assert package.strip_prefix == "pdf-toolkit/"
+    with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
+        assert archive.read("SKILL.md") == _SKILL_MD.encode()
     assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
 
 
@@ -256,7 +257,6 @@ def test_validate_and_normalize_strips_deeper_selected_skill_root():
 
     assert package.manifest.entry_path == "SKILL.md"
     assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
-    assert package.strip_prefix == "bundle/pdf-toolkit/"
     assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
     assert package.manifest.hash == hashlib.sha256(package.archive_bytes).hexdigest()
     assert package.manifest.hash != hashlib.sha256(original_upload_bytes).hexdigest()

@@ -78,8 +78,6 @@ class NormalizedSkillPackage(BaseModel):
 
     manifest: SkillManifest
     archive_bytes: bytes
-    skill_md_bytes: bytes
-    strip_prefix: str | None
 
 
 @dataclass(frozen=True)
@@ -87,7 +85,6 @@ class _InspectedSkillArchive:
     metadata: SkillPackageInspection
     normalized_members: dict[str, zipfile.ZipInfo]
     skill_md_bytes: bytes
-    strip_prefix: str | None
 
 
 class SkillPackageService:
@@ -141,8 +138,6 @@ class SkillPackageService:
         return NormalizedSkillPackage(
             manifest=manifest,
             archive_bytes=normalized_archive_bytes,
-            skill_md_bytes=inspection.skill_md_bytes,
-            strip_prefix=inspection.strip_prefix,
         )
 
     def _inspect_archive(self, archive: zipfile.ZipFile) -> _InspectedSkillArchive:
@@ -175,7 +170,6 @@ class SkillPackageService:
             metadata=metadata,
             normalized_members=normalized_members,
             skill_md_bytes=skill_md_bytes,
-            strip_prefix=strip_prefix,
         )
 
     @staticmethod
