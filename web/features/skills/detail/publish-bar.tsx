@@ -58,7 +58,7 @@ export function SkillPublishBar({
 
   useHotkey(PUBLISH_SKILL_HOTKEY, onPublish, {
     enabled: canPublish,
-    ignoreInputs: false,
+    ignoreInputs: true,
   })
 
   const stateMeta = {
