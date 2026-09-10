@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import BinaryIO, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -159,6 +159,7 @@ class PreparedRosterAgentPackage:
     manifest: RosterAgentPackageManifest
     app: AgentAppDsl
     members: dict[str, RosterAgentPackageMember]
+    invalid_skills: dict[str, str] = field(default_factory=dict)
 
     def close(self) -> None:
         self.archive.close()

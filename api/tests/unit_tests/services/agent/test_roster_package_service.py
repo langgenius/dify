@@ -546,14 +546,14 @@ def test_reader_rejects_cross_document_reference_mismatch() -> None:
         RosterAgentPackageReader().read(io.BytesIO(package))
 
 
-def test_preflight_rejects_invalid_skill_payload() -> None:
+def test_preflight_records_invalid_skill_payload() -> None:
     skill_payload = _zip({"README.md": b"missing skill manifest"})
     file_payload = b"pdf-content"
     manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
     package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
 
-    with pytest.raises(InvalidRosterAgentPackageError, match="package Skill 'research' is invalid"):
-        RosterAgentPackageReader().read(io.BytesIO(package))
+    with RosterAgentPackageReader().read(io.BytesIO(package)) as prepared:
+        assert prepared.invalid_skills == {"s_000001": "missing_skill_md"}
 
 
 def test_preflight_rejects_oversized_skill_before_materializing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -622,6 +622,56 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
 
     with pytest.raises(RosterAgentPackageTooLargeError, match="nested Skill contents"):
         RosterAgentPackageReader().read(io.BytesIO(package))
+
+
+@pytest.mark.parametrize("failure", ["checksum", "size", "name", "crc"])
+def test_reader_records_unusable_skills_and_preserves_other_members(failure: str) -> None:
+    skill_payload = _skill_archive("different" if failure == "name" else "research")
+    file_payload = b"pdf-content"
+    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
+    if failure == "checksum":
+        manifest.skills[0].sha256 = "0" * 64
+    elif failure == "size":
+        manifest.skills[0].size += 1
+    package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
+    if failure == "crc":
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED) as archive:
+            archive.writestr("manifest.yaml", _yaml_bytes(manifest))
+            archive.writestr("app.yaml", _yaml_bytes(_package_app()))
+            archive.writestr("s_000001.zip", skill_payload)
+            archive.writestr("f_000001.pdf", file_payload)
+        package = output.getvalue().replace(skill_payload, b"X" + skill_payload[1:])
+    reader = RosterAgentPackageReader()
+    with reader.read(io.BytesIO(package)) as prepared:
+        expected = {
+            "checksum": "checksum_mismatch",
+            "size": "archive_integrity_failed",
+            "name": "skill_name_mismatch",
+            "crc": "archive_integrity_failed",
+        }
+        assert prepared.invalid_skills == {"s_000001": expected[failure]}
+        assert reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload)) == file_payload
+
+
+def test_member_read_rechecks_limit_and_integrity_after_preflight() -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
+    package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
+    reader = RosterAgentPackageReader()
+    with reader.read(io.BytesIO(package)) as prepared:
+        assert reader.read_member_bytes(prepared, "s_000001.zip", max_bytes=len(skill_payload)) == skill_payload
+        with pytest.raises(RosterAgentPackageTooLargeError):
+            reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload) - 1)
+        with pytest.raises(InvalidRosterAgentPackageError, match="unavailable"):
+            reader.read_member_bytes(prepared, "unknown", max_bytes=100)
+        modified = _package_bytes(manifest, skill_payload=skill_payload, file_payload=b"bad-content")
+        prepared.archive.seek(0)
+        prepared.archive.truncate()
+        prepared.archive.write(modified)
+        with pytest.raises(InvalidRosterAgentPackageError, match="integrity checks"):
+            reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload))
 
 
 def test_read_member_enforces_actual_output_limit() -> None:
