@@ -14,7 +14,15 @@ import {
 } from '@/app/components/billing/pricing/query-params'
 import { consoleQuery } from '@/service/console'
 import { IpPolicyDialog } from './policy-dialog'
-import { PolicyItem } from './policy-item'
+import {
+  policyActionsColClassName,
+  policyEnforcingColClassName,
+  policyIpEntriesColClassName,
+  PolicyItem,
+  policyNameColClassName,
+  policyRowClassName,
+  policyUpdatedColClassName,
+} from './policy-item'
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; group: NetworkAccessGroupResponse } | null
 
@@ -22,20 +30,18 @@ function IpPoliciesListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
       {Array.from({ length: 2 }, (_, index) => (
-        <div
-          key={index}
-          className="rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
-        >
-          <SkeletonContainer className="h-14">
+        <div key={index} className={`${policyRowClassName} border-b border-divider-subtle py-3`}>
+          <SkeletonContainer className="h-4 min-w-0 flex-1">
             <SkeletonRow>
-              <div className="flex flex-1 flex-col gap-1">
-                <SkeletonRectangle className="h-4 w-1/3 animate-pulse" />
-                <SkeletonRectangle className="h-3 w-1/2 animate-pulse" />
-              </div>
+              <SkeletonRectangle className="h-4 w-1/2 animate-pulse" />
             </SkeletonRow>
           </SkeletonContainer>
+          <SkeletonRectangle className={`${policyIpEntriesColClassName} h-4 animate-pulse`} />
+          <SkeletonRectangle className={`${policyEnforcingColClassName} h-4 animate-pulse`} />
+          <SkeletonRectangle className={`${policyUpdatedColClassName} h-4 animate-pulse`} />
+          <div className={policyActionsColClassName} />
         </div>
       ))}
     </div>
@@ -90,6 +96,7 @@ export default function IpPoliciesPage() {
           </p>
         </div>
         <Button variant="primary" size="small" onClick={handleOpenCreate}>
+          <span aria-hidden className="i-ri-add-line size-4" />
           {t(($) => $['settings.ipPolicyAddEntry'], { ns: 'common' })}
         </Button>
       </div>
@@ -113,7 +120,24 @@ export default function IpPoliciesPage() {
       )}
 
       {!isPending && groups.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="min-w-0">
+          <div
+            className={`${policyRowClassName} border-b border-divider-subtle py-2 system-xs-medium-uppercase text-text-tertiary`}
+          >
+            <div className={policyNameColClassName}>
+              {t(($) => $['settings.ipPolicyColumnName'], { ns: 'common' })}
+            </div>
+            <div className={policyIpEntriesColClassName}>
+              {t(($) => $['settings.ipPolicyColumnIpEntries'], { ns: 'common' })}
+            </div>
+            <div className={policyEnforcingColClassName}>
+              {t(($) => $['settings.ipPolicyColumnEnforcing'], { ns: 'common' })}
+            </div>
+            <div className={policyUpdatedColClassName}>
+              {t(($) => $['settings.ipPolicyColumnUpdatedAt'], { ns: 'common' })}
+            </div>
+            <div className={policyActionsColClassName} />
+          </div>
           {groups.map((group) => (
             <PolicyItem
               key={group.id}
