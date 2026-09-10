@@ -229,15 +229,8 @@ class SkillPackageService:
         for info in infos:
             members.append((info, self._safe_member_path(info.filename)))
             total_uncompressed += max(info.file_size, 0)
-            if info.file_size and (
-                info.compress_size == 0
-                or info.file_size / info.compress_size > dify_config.SKILL_PACKAGE_MAX_COMPRESSION_RATIO
-            ):
-                raise SkillPackageError(
-                    "invalid_archive",
-                    "skill package compression ratio exceeds the allowed limit",
-                    status_code=400,
-                )
+            if info.file_size < 0 or info.compress_size < 0 or (info.file_size and info.compress_size == 0):
+                raise SkillPackageError("invalid_archive", "skill package has invalid ZIP metadata", status_code=400)
         if total_uncompressed > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
             raise SkillPackageError(
                 "archive_too_large",

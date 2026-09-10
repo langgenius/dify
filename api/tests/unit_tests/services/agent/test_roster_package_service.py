@@ -439,12 +439,17 @@ def test_preflight_rejects_unsafe_member_path() -> None:
         RosterAgentPackageReader().read(io.BytesIO(package))
 
 
-def test_preflight_applies_configured_compression_ratio(monkeypatch: pytest.MonkeyPatch) -> None:
-    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_COMPRESSION_RATIO=1)
-    package = _zip({"manifest.yaml": b"x" * 1024})
-
-    with pytest.raises(InvalidRosterAgentPackageError, match="compression ratio is too high"):
-        RosterAgentPackageReader().read(io.BytesIO(package))
+def test_high_compression_ratio_uses_absolute_package_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"x" * (1024 * 1024)
+    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
+    package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
+    reader = RosterAgentPackageReader()
+    with reader.read(io.BytesIO(package)) as prepared:
+        assert prepared.members["f_000001.pdf"].size == len(file_payload)
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_BYTES=128 * 1024)
+    with pytest.raises(RosterAgentPackageTooLargeError, match="uncompressed size"):
+        reader.read(io.BytesIO(package))
 
 
 @pytest.mark.parametrize("path", ["manifest.yaml", "app.yaml"])

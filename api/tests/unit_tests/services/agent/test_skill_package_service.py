@@ -96,6 +96,18 @@ def test_replacement_names_do_not_hide_local_header_mismatch() -> None:
     assert error.value.code == "invalid_archive"
 
 
+def test_normalized_highly_compressible_skill_passes_reinspection() -> None:
+    payload = b"x" * (1024 * 1024)
+    content = _zip({"SKILL.md": _SKILL_MD.encode(), "data.bin": payload}, compression=zipfile.ZIP_STORED)
+    service = SkillPackageService()
+    normalized = service.validate_and_normalize(content=content, filename="skill.zip")
+    inspection = service.inspect(content=normalized.archive_bytes, filename="skill.zip")
+    assert inspection.name == normalized.manifest.name
+    with zipfile.ZipFile(io.BytesIO(normalized.archive_bytes)) as archive:
+        assert archive.getinfo("data.bin").compress_type == zipfile.ZIP_DEFLATED
+        assert archive.read("data.bin") == payload
+
+
 def test_valid_skill_normalizes_manifest():
     manifest = _normalize({"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('hi')\n"}).manifest
 
@@ -308,12 +320,14 @@ def test_validate_and_normalize_rejects_archive_too_large_uploaded_bytes(monkeyp
     assert exc_info.value.code == "archive_too_large"
 
 
-def test_validate_and_normalize_applies_configured_compression_ratio(monkeypatch: pytest.MonkeyPatch):
-    apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_COMPRESSION_RATIO=1)
-
+def test_high_compression_ratio_uses_absolute_expansion_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = _zip({"SKILL.md": _SKILL_MD.encode(), "data.bin": b"x" * (1024 * 1024)})
+    service = SkillPackageService()
+    assert service.inspect(content=content, filename="skill.zip").name == "pdf-toolkit"
+    apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=1024)
     with pytest.raises(SkillPackageError) as exc_info:
-        _normalize({"SKILL.md": _SKILL_MD.encode(), "data.bin": b"x" * 1024})
-    assert exc_info.value.code == "invalid_archive"
+        service.inspect(content=content, filename="skill.zip")
+    assert exc_info.value.code == "archive_too_large"
 
 
 def test_bad_frontmatter_yaml_rejected():

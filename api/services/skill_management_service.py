@@ -3954,14 +3954,8 @@ class SkillManagementService:
 
             if info.is_dir() or info.file_size == 0:
                 continue
-            if (
-                info.compress_size == 0
-                or info.file_size / info.compress_size > dify_config.SKILL_PACKAGE_MAX_COMPRESSION_RATIO
-            ):
-                raise SkillManagementServiceError(
-                    "invalid_skill_package",
-                    "skill package compression ratio exceeds the allowed limit",
-                )
+            if info.compress_size == 0:
+                raise SkillManagementServiceError("invalid_skill_package", "skill package has invalid ZIP metadata")
         return infos
 
     def _draft_rows_from_archive_bytes(
