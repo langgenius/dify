@@ -81,8 +81,6 @@ class _FileSource:
     path: str
     storage_key: str
     id: str
-    original_name: str
-    mime_type: str
     audit_ref: str
 
 
@@ -260,8 +258,6 @@ class RosterAgentPackageExporter:
                             RosterAgentPackageFile(
                                 id=source.id,
                                 path=source.path,
-                                original_name=source.original_name,
-                                mime_type=source.mime_type,
                                 size=member_size,
                                 sha256=member_digest,
                                 audit=RosterAgentPackageAudit(ref=source.audit_ref),
@@ -367,13 +363,12 @@ class RosterAgentPackageExporter:
                 audit_ref = upload_file.id
             portable_file_ref["file_id"] = resource_id
             portable_file_ref["is_missing"] = False
+            portable_file_ref["mime_type"] = mime_type or "application/octet-stream"
             file_sources.append(
                 _FileSource(
                     path=path,
                     storage_key=storage_key,
                     id=resource_id,
-                    original_name=file_ref.name,
-                    mime_type=mime_type or "application/octet-stream",
                     audit_ref=audit_ref,
                 )
             )
