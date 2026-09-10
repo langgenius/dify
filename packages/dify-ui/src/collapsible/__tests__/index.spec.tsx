@@ -36,10 +36,11 @@ it('preserves IconButton appearance and keyboard focus when used as a disclosure
     }
   }
 
-  expect(appearance(trigger.element())).toEqual(appearance(reference.element()))
   await reference.hover()
+  const idle = appearance(trigger.element())
   const hovered = appearance(reference.element())
   await trigger.hover()
+  expect(appearance(reference.element())).toEqual(idle)
   expect(appearance(trigger.element())).toEqual(hovered)
 
   await reference.hover()
