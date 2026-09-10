@@ -4,17 +4,20 @@ from __future__ import annotations
 
 import hashlib
 import io
-import json
 import posixpath
 import stat
 import tempfile
 import zipfile
 import zlib
-from typing import Any, BinaryIO, cast
+from collections.abc import Hashable
+from typing import Any, BinaryIO, cast, override
 
+import yaml
 from pydantic import ValidationError
 
 from configs import dify_config
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from services.agent.dsl_entities import AgentAppDsl
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES,
@@ -24,6 +27,8 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageSkill,
 )
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
+from services.dsl_version import check_version_compatibility
+from services.entities.dsl_entities import ImportStatus
 
 _COPY_CHUNK_SIZE = 1024 * 1024
 _ALLOWED_COMPRESSIONS = {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}
@@ -44,16 +49,16 @@ class RosterAgentPackageReader:
         try:
             self._copy_bounded(source, spool)
             spool.seek(0)
-            manifest, members = self._validate_archive(spool)
+            manifest, app, members = self._validate_archive(spool)
             spool.seek(0)
-            return PreparedRosterAgentPackage(archive=spool, manifest=manifest, members=members)
+            return PreparedRosterAgentPackage(archive=spool, manifest=manifest, app=app, members=members)
         except Exception:
             spool.close()
             raise
 
     def _validate_archive(
         self, archive_file: BinaryIO
-    ) -> tuple[RosterAgentPackageManifest, dict[str, RosterAgentPackageMember]]:
+    ) -> tuple[RosterAgentPackageManifest, AgentAppDsl, dict[str, RosterAgentPackageMember]]:
         try:
             with zipfile.ZipFile(archive_file) as archive:
                 infos = archive.infolist()
@@ -75,26 +80,26 @@ class RosterAgentPackageReader:
                 if total_uncompressed > dify_config.AGENT_PACKAGE_MAX_BYTES:
                     raise RosterAgentPackageTooLargeError("Roster Agent package uncompressed size exceeds the limit")
 
-                manifest_info = info_by_path.get("manifest.json")
-                if manifest_info is None:
-                    raise InvalidRosterAgentPackageError("Roster Agent package is missing manifest.json")
-                if manifest_info.file_size > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
-                    raise RosterAgentPackageTooLargeError("Roster Agent package manifest exceeds the size limit")
-                manifest_bytes, _, manifest_size = self._read_member(
-                    archive,
-                    manifest_info,
-                    collect=True,
-                    max_bytes=dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES,
-                    expected_size=manifest_info.file_size,
-                )
+                manifest_data, manifest_size = self._read_yaml_document(archive, info_by_path, "manifest.yaml")
                 try:
-                    manifest_data = json.loads(manifest_bytes, object_pairs_hook=self._reject_duplicate_json_keys)
                     manifest = RosterAgentPackageManifest.model_validate(manifest_data)
-                except (UnicodeDecodeError, json.JSONDecodeError, ValidationError, ValueError) as exc:
+                except ValidationError as exc:
                     raise InvalidRosterAgentPackageError("Roster Agent package manifest is invalid") from exc
+                app_data, app_size = self._read_yaml_document(archive, info_by_path, "app.yaml")
+                try:
+                    app = AgentAppDsl.model_validate(app_data)
+                    if check_version_compatibility(app.version, CURRENT_APP_DSL_VERSION) in {
+                        ImportStatus.FAILED,
+                        ImportStatus.PENDING,
+                    }:
+                        raise ValueError("unsupported App DSL version")
+                    manifest.validate_app(app)
+                except ValueError as exc:
+                    raise InvalidRosterAgentPackageError("Roster Agent package app is invalid") from exc
 
                 expected_paths = {
-                    "manifest.json",
+                    "manifest.yaml",
+                    "app.yaml",
                     *(item.path for item in manifest.skills),
                     *(item.path for item in manifest.files),
                 }
@@ -107,7 +112,7 @@ class RosterAgentPackageReader:
                     raise InvalidRosterAgentPackageError("Roster Agent package members do not match the manifest")
 
                 members: dict[str, RosterAgentPackageMember] = {}
-                streamed_size = manifest_size
+                streamed_size = manifest_size + app_size
                 nested_uncompressed_size = 0
                 signature_info = info_by_path.get("signature.sig")
                 if signature_info is not None:
@@ -173,7 +178,7 @@ class RosterAgentPackageReader:
                             raise InvalidRosterAgentPackageError(
                                 f"Roster Agent package Skill {resource.name!r} does not match SKILL.md",
                             )
-                return manifest, members
+                return manifest, app, members
         except (InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError):
             raise
         except (OSError, zipfile.BadZipFile, EOFError, RuntimeError, ValueError, zlib.error) as exc:
@@ -244,13 +249,49 @@ class RosterAgentPackageReader:
             raise InvalidRosterAgentPackageError("Roster Agent package member failed integrity checks")
         return output.getvalue() if output is not None else b"", digest.hexdigest(), size
 
-    @staticmethod
-    def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        for key, value in pairs:
+    def _read_yaml_document(
+        self, archive: zipfile.ZipFile, infos: dict[str, zipfile.ZipInfo], path: str
+    ) -> tuple[Any, int]:
+        info = infos.get(path)
+        if info is None:
+            raise InvalidRosterAgentPackageError(f"Roster Agent package is missing {path}")
+        if info.file_size > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
+            raise RosterAgentPackageTooLargeError(f"Roster Agent package {path} exceeds the size limit")
+        payload, _, size = self._read_member(
+            archive,
+            info,
+            collect=True,
+            max_bytes=dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES,
+            expected_size=info.file_size,
+        )
+        try:
+            # The custom SafeLoader also rejects duplicate keys and aliases.
+            return yaml.load(payload, Loader=_PackageYamlLoader), size  # noqa: S506
+        except (UnicodeDecodeError, yaml.YAMLError, ValueError, RecursionError) as exc:
+            raise InvalidRosterAgentPackageError(
+                f"Roster Agent package {path.removesuffix('.yaml')} is invalid"
+            ) from exc
+
+
+class _PackageYamlLoader(yaml.SafeLoader):
+    """Reject ambiguous mappings and aliases in untrusted package documents."""
+
+    @override
+    def compose_node(self, parent: yaml.Node | None, index: Any) -> yaml.Node | None:
+        if self.check_event(yaml.AliasEvent):
+            raise ValueError("YAML aliases are not supported")
+        return super().compose_node(parent, index)
+
+    @override
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[Hashable, Any]:
+        result: dict[Hashable, Any] = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if not isinstance(key, str):
+                raise ValueError("YAML mapping keys must be strings")
             if key in result:
-                raise ValueError(f"duplicate JSON key: {key}")
-            result[key] = value
+                raise ValueError(f"duplicate YAML key: {key}")
+            result[key] = self.construct_object(value_node, deep=deep)
         return result
 
 

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import io
-import json
 import zipfile
 from collections.abc import Callable, Generator
 
 import pytest
+import yaml
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -27,6 +27,7 @@ from models.model import App, AppMode, IconType
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from services.agent import roster_package_exporter as roster_package_exporter_module
+from services.agent.dsl_entities import AgentAppDsl, AgentPackage, AgentPackageMetadata, make_agent_app_dsl
 from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageExportFailedError,
@@ -37,11 +38,12 @@ from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
     RosterAgentPackageFile,
     RosterAgentPackageManifest,
-    RosterAgentPackageMetadata,
     RosterAgentPackageSkill,
 )
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_reader import RosterAgentPackageReader
+from services.app_dsl_service import AppDslService
+from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -80,8 +82,8 @@ def _skill_archive(name: str = "research") -> bytes:
     )
 
 
-def _manifest(*, skill_payload: bytes, file_payload: bytes) -> RosterAgentPackageManifest:
-    soul = AgentSoulConfig.model_validate(
+def _package_app(soul: AgentSoulConfig | None = None) -> AgentAppDsl:
+    soul = soul or AgentSoulConfig.model_validate(
         {
             "config_skills": [{"name": "research", "file_id": "s_000001"}],
             "config_files": [
@@ -93,11 +95,22 @@ def _manifest(*, skill_payload: bytes, file_payload: bytes) -> RosterAgentPackag
             ],
         }
     )
+    return make_agent_app_dsl(
+        _app("app-1"),
+        package_ref="agent_1",
+        packages={"agent_1": AgentPackage(metadata=AgentPackageMetadata(name="Research Agent"), soul=soul)},
+        dependencies=[],
+    )
+
+
+def _yaml_bytes(document: RosterAgentPackageManifest | AgentAppDsl) -> bytes:
+    return yaml.safe_dump(document.model_dump(mode="json", exclude_none=True)).encode()
+
+
+def _manifest(*, skill_payload: bytes, file_payload: bytes) -> RosterAgentPackageManifest:
     return RosterAgentPackageManifest(
         format=ROSTER_AGENT_PACKAGE_FORMAT,
         format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
-        metadata=RosterAgentPackageMetadata(name="Research Agent"),
-        soul=soul,
         skills=[
             RosterAgentPackageSkill(
                 id="s_000001",
@@ -147,10 +160,12 @@ def _package_bytes(
     skill_payload: bytes,
     file_payload: bytes,
     extra_members: dict[str, bytes] | None = None,
+    app: AgentAppDsl | None = None,
 ) -> bytes:
     return _zip(
         {
-            "manifest.json": manifest.model_dump_json(exclude_none=True).encode(),
+            "manifest.yaml": _yaml_bytes(manifest),
+            "app.yaml": _yaml_bytes(app or _package_app()),
             "s_000001.zip": skill_payload,
             "f_000001.pdf": file_payload,
             **(extra_members or {}),
@@ -159,13 +174,12 @@ def _package_bytes(
 
 
 def test_manifest_rejects_dangling_resource_references() -> None:
-    with pytest.raises(ValidationError, match="config skill reference must resolve"):
-        RosterAgentPackageManifest(
-            format=ROSTER_AGENT_PACKAGE_FORMAT,
-            format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
-            metadata=RosterAgentPackageMetadata(name="Research Agent"),
-            soul=AgentSoulConfig.model_validate({"config_skills": [{"name": "research", "file_id": "s_000001"}]}),
-        )
+    manifest = RosterAgentPackageManifest(
+        format=ROSTER_AGENT_PACKAGE_FORMAT,
+        format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
+    )
+    with pytest.raises(ValueError, match="config skill reference must resolve"):
+        manifest.validate_app(_package_app())
 
 
 @pytest.mark.parametrize(
@@ -217,13 +231,9 @@ def test_file_resource_rejects_invalid_metadata(overrides: dict[str, object], me
 
 
 def test_manifest_rejects_unsupported_soul_version() -> None:
-    with pytest.raises(ValidationError, match="unsupported Agent Soul schema version"):
-        RosterAgentPackageManifest(
-            format=ROSTER_AGENT_PACKAGE_FORMAT,
-            format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
-            metadata=RosterAgentPackageMetadata(name="Research Agent"),
-            soul=AgentSoulConfig(schema_version=2),
-        )
+    manifest = _manifest(skill_payload=_skill_archive(), file_payload=b"pdf-content")
+    with pytest.raises(ValueError, match="unsupported Agent Soul schema version"):
+        manifest.validate_app(_package_app(AgentSoulConfig(schema_version=2)))
 
 
 def test_manifest_rejects_duplicate_resource_ids() -> None:
@@ -268,19 +278,20 @@ def test_manifest_rejects_inconsistent_resource_index(mutation: str, message: st
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
     values = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
+    app = _package_app()
     if mutation == "skill_name":
         values["skills"][0]["name"] = "renamed"
     elif mutation == "unreferenced_skill":
-        values["soul"]["config_skills"] = list[dict[str, object]]()
+        app.package.soul.config_skills = []
     elif mutation == "missing_file":
         values["files"] = list[dict[str, object]]()
     elif mutation == "file_name":
         values["files"][0]["original_name"] = "renamed.pdf"
     else:
-        values["soul"]["config_files"] = list[dict[str, object]]()
+        app.package.soul.config_files = []
 
-    with pytest.raises(ValidationError, match=message):
-        RosterAgentPackageManifest.model_validate(values)
+    with pytest.raises(ValueError, match=message):
+        RosterAgentPackageManifest.model_validate(values).validate_app(app)
 
 
 @pytest.mark.parametrize("missing_field", ["format", "format_version"])
@@ -291,7 +302,8 @@ def test_reader_rejects_manifest_without_format_discriminator(missing_field: str
     manifest.pop(missing_field)
     package = _zip(
         {
-            "manifest.json": json.dumps(manifest).encode(),
+            "manifest.yaml": yaml.safe_dump(manifest).encode(),
+            "app.yaml": _yaml_bytes(_package_app()),
             "s_000001.zip": skill_payload,
             "f_000001.pdf": file_payload,
         }
@@ -350,28 +362,33 @@ def test_preflight_validates_resources_and_accepts_ignored_signature() -> None:
         assert prepared.members["f_000001.pdf"].size == len(file_payload)
 
 
-def test_reader_accepts_manifest_larger_than_legacy_limit() -> None:
+def test_reader_accepts_app_larger_than_legacy_limit() -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
-    manifest_data = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
-    manifest_data["soul"]["prompt"]["system_prompt"] = "x" * (1024 * 1024)
-    manifest = RosterAgentPackageManifest.model_validate(manifest_data)
-    package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
+    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
+    app = _package_app()
+    app.package.soul.prompt.system_prompt = "x" * (1024 * 1024)
+    package = _package_bytes(manifest, app=app, skill_payload=skill_payload, file_payload=file_payload)
 
-    assert len(manifest.model_dump_json().encode()) > 1024 * 1024
+    assert len(_yaml_bytes(app)) > 1024 * 1024
     with RosterAgentPackageReader().read(io.BytesIO(package)) as prepared:
-        assert prepared.manifest.soul.prompt.system_prompt == manifest.soul.prompt.system_prompt
+        assert prepared.app == app
 
 
-def test_reader_rejects_manifest_larger_than_five_mib() -> None:
+@pytest.mark.parametrize("path", ["manifest.yaml", "app.yaml"])
+def test_reader_rejects_oversized_documents(path: str, monkeypatch: pytest.MonkeyPatch) -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
-    manifest_data = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
-    manifest_data["soul"]["prompt"]["system_prompt"] = "x" * dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES
-    manifest = RosterAgentPackageManifest.model_validate(manifest_data)
-    package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
-
-    with pytest.raises(RosterAgentPackageTooLargeError):
+    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
+    limit = 4096
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_MANIFEST_BYTES=limit)
+    package = _package_bytes(
+        manifest,
+        skill_payload=skill_payload,
+        file_payload=file_payload,
+        extra_members={path: b"x" * (limit + 1)},
+    )
+    with pytest.raises(RosterAgentPackageTooLargeError, match=path):
         RosterAgentPackageReader().read(io.BytesIO(package))
 
 
@@ -416,7 +433,7 @@ def test_preflight_rejects_members_not_declared_by_manifest() -> None:
 
 
 def test_preflight_rejects_unsafe_member_path() -> None:
-    package = _zip({"../manifest.json": b"{}"})
+    package = _zip({"../manifest.yaml": b"{}"})
 
     with pytest.raises(InvalidRosterAgentPackageError, match="unsafe path"):
         RosterAgentPackageReader().read(io.BytesIO(package))
@@ -424,16 +441,108 @@ def test_preflight_rejects_unsafe_member_path() -> None:
 
 def test_preflight_applies_configured_compression_ratio(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_COMPRESSION_RATIO=1)
-    package = _zip({"manifest.json": b"x" * 1024})
+    package = _zip({"manifest.yaml": b"x" * 1024})
 
     with pytest.raises(InvalidRosterAgentPackageError, match="compression ratio is too high"):
         RosterAgentPackageReader().read(io.BytesIO(package))
 
 
-def test_preflight_rejects_duplicate_manifest_keys() -> None:
-    package = _zip({"manifest.json": b'{"format":"dify.roster-agent","format":"dify.roster-agent"}'})
+@pytest.mark.parametrize("path", ["manifest.yaml", "app.yaml"])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b"format: dify.roster-agent\nformat: dify.roster-agent\n",
+        b"metadata:\n  name: first\n  name: second\n",
+        b"value: &value [1]\ncopy: *value\n",
+        b"value: !!python/object/apply:os.system ['false']\n",
+        b"[invalid",
+        b"\xff",
+        b"null",
+        b"[]",
+        b"1: value",
+        b"---\n{}\n---\n{}",
+    ],
+)
+def test_preflight_rejects_invalid_yaml_documents(path: str, payload: bytes) -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    package = _package_bytes(
+        _manifest(skill_payload=skill_payload, file_payload=file_payload),
+        skill_payload=skill_payload,
+        file_payload=file_payload,
+        extra_members={path: payload},
+    )
+    with pytest.raises(InvalidRosterAgentPackageError, match=f"{path.removesuffix('.yaml')} is invalid"):
+        RosterAgentPackageReader().read(io.BytesIO(package))
 
-    with pytest.raises(InvalidRosterAgentPackageError, match="manifest is invalid"):
+
+@pytest.mark.parametrize("missing_path", ["manifest.yaml", "app.yaml"])
+def test_reader_requires_both_yaml_documents(missing_path: str) -> None:
+    documents = {
+        "manifest.yaml": _yaml_bytes(_manifest(skill_payload=_skill_archive(), file_payload=b"pdf-content")),
+        "app.yaml": _yaml_bytes(_package_app()),
+    }
+    del documents[missing_path]
+    with pytest.raises(InvalidRosterAgentPackageError, match=f"missing {missing_path}"):
+        RosterAgentPackageReader().read(io.BytesIO(_zip(documents)))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "legacy_app",
+        "wrong_kind",
+        "wrong_mode",
+        "missing_ref",
+        "dangling_ref",
+        "extra_package",
+        "invalid_version",
+        "future_version",
+    ],
+)
+def test_reader_rejects_invalid_agent_app_dsl(mutation: str) -> None:
+    app = _package_app().model_dump(mode="json")
+    if mutation == "legacy_app":
+        app = {
+            "metadata": app["agent_packages"]["agent_1"]["metadata"],
+            "soul": app["agent_packages"]["agent_1"]["soul"],
+        }
+    elif mutation == "wrong_kind":
+        app["kind"] = "workflow"
+    elif mutation == "wrong_mode":
+        app["app"]["mode"] = "workflow"
+    elif mutation == "missing_ref":
+        app["agent"] = dict[str, str]()
+    elif mutation == "dangling_ref":
+        app["agent"]["package_ref"] = "agent_2"
+    elif mutation == "extra_package":
+        app["agent_packages"]["agent_2"] = app["agent_packages"]["agent_1"]
+    else:
+        app["version"] = "invalid" if mutation == "invalid_version" else "999.0.0"
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    package = _package_bytes(
+        _manifest(skill_payload=skill_payload, file_payload=file_payload),
+        skill_payload=skill_payload,
+        file_payload=file_payload,
+        extra_members={"app.yaml": yaml.safe_dump(app).encode()},
+    )
+    with pytest.raises(InvalidRosterAgentPackageError, match="app is invalid"):
+        RosterAgentPackageReader().read(io.BytesIO(package))
+
+
+def test_reader_rejects_cross_document_reference_mismatch() -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    app = _package_app()
+    app.package.soul.config_skills[0].file_id = "s_000002"
+    package = _package_bytes(
+        _manifest(skill_payload=skill_payload, file_payload=file_payload),
+        app=app,
+        skill_payload=skill_payload,
+        file_payload=file_payload,
+    )
+    with pytest.raises(InvalidRosterAgentPackageError, match="app is invalid"):
         RosterAgentPackageReader().read(io.BytesIO(package))
 
 
@@ -487,8 +596,6 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
     manifest = RosterAgentPackageManifest(
         format=ROSTER_AGENT_PACKAGE_FORMAT,
         format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
-        metadata=RosterAgentPackageMetadata(name="Research Agent"),
-        soul=soul,
         skills=[
             RosterAgentPackageSkill(
                 id=path.removesuffix(".zip"),
@@ -504,7 +611,8 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
     )
     package = _zip(
         {
-            "manifest.json": manifest.model_dump_json(exclude_none=True).encode(),
+            "manifest.yaml": _yaml_bytes(manifest),
+            "app.yaml": _yaml_bytes(_package_app(soul)),
             **skill_payloads,
         }
     )
@@ -664,37 +772,65 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
         storage_backend=storage,
         dependency_provider=lambda _tenant_id, _dependencies: [],
     )
+    monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
+    app_model = sqlite_session.get(App, agent.app_id)
+    assert app_model is not None
+    standalone_dsl = yaml.safe_load(AppDslService.export_dsl(app_model, session=sqlite_session))
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
         archive_bytes = exported.archive.read()
         assert exported.filename == "research-agent.ifpkg"
-        assert exported.manifest.soul.prompt.system_prompt == "draft"
-        assert exported.manifest.soul.config_skills[0].file_id == "s_000001"
-        assert exported.manifest.soul.config_files[0].file_id == "f_000001"
-        assert exported.manifest.soul.config_skills[1].is_missing is True
-        assert exported.manifest.soul.config_skills[1].file_id == ""
-        assert exported.manifest.soul.config_files[1].is_missing is True
-        assert exported.manifest.soul.config_files[1].file_id == ""
+        assert exported.app.package.soul.prompt.system_prompt == "draft"
+        assert exported.app.package.soul.config_skills[0].file_id == "s_000001"
+        assert exported.app.package.soul.config_files[0].file_id == "f_000001"
+        assert exported.app.package.soul.config_skills[1].is_missing is True
+        assert exported.app.package.soul.config_skills[1].file_id == ""
+        assert exported.app.package.soul.config_files[1].is_missing is True
+        assert exported.app.package.soul.config_files[1].file_id == ""
         with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
-            assert set(archive.namelist()) == {"manifest.json", "s_000001.zip", "f_000001.pdf"}
+            assert set(archive.namelist()) == {"manifest.yaml", "app.yaml", "s_000001.zip", "f_000001.pdf"}
+            manifest_data = yaml.safe_load(archive.read("manifest.yaml"))
+            app_data = yaml.safe_load(archive.read("app.yaml"))
+            assert set(manifest_data) == {"format", "format_version", "audit", "skills", "files"}
+            assert set(app_data) == {"version", "kind", "app", "agent", "agent_packages", "dependencies"}
+            assert app_data["kind"] == "app"
+            assert app_data["app"]["mode"] == "agent"
+            assert app_data["app"]["icon"] == "R"
+            assert app_data["agent"]["package_ref"] == "agent_1"
+            assert "audit" not in app_data["agent_packages"]["agent_1"]["metadata"]
+            assert AgentAppDsl.model_validate(app_data) == exported.app
+            for key in ("version", "kind", "app", "agent", "dependencies"):
+                assert app_data[key] == standalone_dsl[key]
+            standalone_package = AgentPackage.model_validate(standalone_dsl["agent_packages"]["agent_1"])
+            assert exported.app.package.metadata == standalone_package.metadata
+            assert standalone_package.soul.config_skills[0].is_missing is True
+            assert standalone_package.soul.config_skills[0].file_id == ""
+            assert standalone_package.soul.config_files[0].is_missing is True
+            assert {item.name for item in exported.app.package.omitted_assets} == {"missing-skill", "missing.txt"}
+            assert {item.name for item in standalone_package.omitted_assets} == {
+                "research",
+                "guide.pdf",
+                "missing-skill",
+                "missing.txt",
+            }
             assert archive.read("s_000001.zip") == skill_payload
             assert all(info.compress_type == zipfile.ZIP_STORED for info in archive.infolist())
             assert "signature.sig" not in archive.namelist()
 
         with RosterAgentPackageReader().read(io.BytesIO(archive_bytes)) as prepared:
-            assert prepared.manifest.soul.prompt.system_prompt == "draft"
+            assert prepared.app.package.soul.prompt.system_prompt == "draft"
 
     assert sqlite_session.in_transaction()
     assert sqlite_session.get(ToolFile, caller_owned_file.id) is caller_owned_file
 
     max_entries = dify_config.AGENT_PACKAGE_MAX_ENTRIES
     max_manifest_bytes = dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES
-    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=3)
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=4)
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
         with zipfile.ZipFile(exported.archive) as archive:
-            assert len(archive.infolist()) == 3
+            assert len(archive.infolist()) == 4
 
     reads_before_limit_check = storage.read_count
-    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=2)
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=3)
     with pytest.raises(RosterAgentPackageTooLargeError):
         exporter.export(tenant_id="tenant-1", agent_id=agent.id)
     assert storage.read_count == reads_before_limit_check
@@ -810,7 +946,7 @@ def test_export_uses_current_workspace_skill_bindings(
         assert exported.manifest.skills[0].name == "legacy-published"
         assert exported.manifest.skills[0].display_name == "Legacy Published"
         assert exported.manifest.skills[0].description == "Research skill."
-        assert exported.manifest.soul.config_skills[0].is_missing is True
+        assert exported.app.package.soul.config_skills[0].is_missing is True
         with RosterAgentPackageReader().read(exported.archive) as prepared:
             assert prepared.manifest.skills[0].sha256 == hashlib.sha256(workspace_payload).hexdigest()
 
@@ -829,15 +965,15 @@ def test_export_uses_current_workspace_skill_bindings(
     sqlite_session.commit()
 
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
-        assert exported.manifest.soul.prompt.system_prompt == "current draft"
+        assert exported.app.package.soul.prompt.system_prompt == "current draft"
         assert exported.manifest.skills == []
 
 
-def test_manifest_json_is_strict() -> None:
+def test_manifest_yaml_is_strict() -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
     manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
     manifest["unexpected"] = True
 
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        RosterAgentPackageManifest.model_validate(json.loads(json.dumps(manifest)))
+        RosterAgentPackageManifest.model_validate(yaml.safe_load(yaml.safe_dump(manifest)))

@@ -507,7 +507,7 @@ class FileUploadConfig(BaseSettings):
     )
 
     AGENT_PACKAGE_MAX_MANIFEST_BYTES: PositiveInt = Field(
-        description="Maximum allowed Agent package manifest size in bytes",
+        description="Maximum allowed size of each Agent package YAML document in bytes",
         default=5 * 1024 * 1024,
     )
 
