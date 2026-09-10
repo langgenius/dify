@@ -354,6 +354,16 @@ const DifyBuilderPanel = () => {
                 retryableTurnId={retryableMessage?.turnId}
                 retryingTurnId={retryingTurnId}
               />
+              <DifyBuilderActionBar
+                actionValidity={actionValidity}
+                actions={actions}
+                busy={interactionBusy}
+                formActionId={activeFormActionId}
+                formId={activeFormId}
+                pendingActionId={pendingActionId}
+                recheckReady={recheckReady}
+                onAction={(action) => void handleAction(action)}
+              />
             </>
           ) : (
             <div className="flex min-h-full flex-col items-center justify-center px-8 pb-8 text-center">
@@ -398,16 +408,6 @@ const DifyBuilderPanel = () => {
               </Button>
             </div>
           )}
-          <DifyBuilderActionBar
-            actionValidity={actionValidity}
-            actions={actions}
-            busy={interactionBusy}
-            formActionId={activeFormActionId}
-            formId={activeFormId}
-            pendingActionId={pendingActionId}
-            recheckReady={recheckReady}
-            onAction={(action) => void handleAction(action)}
-          />
           <DifyBuilderComposer />
         </footer>
       </div>
