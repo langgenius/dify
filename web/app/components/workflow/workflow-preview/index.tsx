@@ -94,6 +94,7 @@ const WorkflowPreview = ({
         onEdgesChange={onEdgesChange}
         connectionLineComponent={CustomConnectionLine}
         defaultViewport={viewport}
+        fitView
         multiSelectionKeyCode={null}
         deleteKeyCode={null}
         nodesDraggable={false}
