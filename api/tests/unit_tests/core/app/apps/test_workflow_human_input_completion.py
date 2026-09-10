@@ -100,6 +100,7 @@ def _make_paused_workflow(
 ) -> WorkflowEntry:
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=perf_counter())
     state.variable_pool.add(("sys", "workflow_run_id"), "run-1")
+    state.variable_pool.add(("sys", "app_id"), "app")
     graph = runner._init_graph(
         graph_config={
             "nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}],
@@ -140,6 +141,10 @@ def _make_paused_workflow(
             )
             .build()
         )
+        # A resumed Human Input node keeps the execution identity used to create its form.
+        state.graph_execution.get_or_create_node_execution(
+            frame_id=ROOT_FRAME_ID, node_id=human_input_form.node_id
+        ).execution_id = human_input_form.id
     state.graph_execution.start()
     for form in forms:
         state.graph_execution.pause(HitlRequired(session_id=form.id, node_id=form.node_id, node_title="Approval"))
@@ -162,8 +167,9 @@ def _make_paused_workflow(
 
 
 @pytest.mark.parametrize("status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
+@pytest.mark.parametrize("runs_human_input_node", [False, True], ids=["hidden-form", "direct-completion"])
 def test_resume_publishes_only_the_completed_form_among_repeated_node_invocations(
-    sqlite_session: Session, status: HumanInputFormStatus
+    sqlite_session: Session, status: HumanInputFormStatus, runs_human_input_node: bool
 ) -> None:
     selected = _save_form(sqlite_session, status=status)
     waiting = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
@@ -171,7 +177,9 @@ def test_resume_publishes_only_the_completed_form_among_repeated_node_invocation
     _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     queue = MagicMock(spec=AppQueueManager)
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
-    entry = _make_paused_workflow(runner, [selected, waiting, selected, expired])
+    entry = _make_paused_workflow(
+        runner, [selected, waiting, selected, expired], human_input_form=selected if runs_human_input_node else None
+    )
     original_reasons = tuple(entry.graph_engine.runtime_state.graph_execution.pause_reasons)
 
     for event in runner._run_workflow(entry):
