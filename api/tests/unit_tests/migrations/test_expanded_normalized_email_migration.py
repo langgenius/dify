@@ -72,7 +72,7 @@ def test_upgrade_matches_runtime_preserves_accounts_and_downgrade_restores_value
                 for index, email in enumerate(emails)
             ],
         )
-        module.op = Operations(MigrationContext.configure(connection))
+        module.__dict__["op"] = Operations(MigrationContext.configure(connection))
         module.upgrade()
         rows = connection.execute(sa.select(accounts).order_by(accounts.c.id)).all()
         assert [row.email for row in rows] == emails
@@ -92,7 +92,7 @@ def test_upgrade_matches_runtime_preserves_accounts_and_downgrade_restores_value
 def test_migration_supports_offline_sql(dialect: str, restore: bool) -> None:
     output = StringIO()
     module = _load_migration()
-    module.op = Operations(
+    module.__dict__["op"] = Operations(
         MigrationContext.configure(
             dialect_name=dialect,
             opts={"as_sql": True, "output_buffer": output},
