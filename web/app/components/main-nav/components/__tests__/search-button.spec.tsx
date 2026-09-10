@@ -1,7 +1,7 @@
 import { act, waitFor, within } from '@testing-library/react'
 import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
-import { getPlatformFromUserAgent } from '../../platform'
+import { getPlatformFromUserAgent } from '@/utils/platform'
 import { MainNavSearchButton } from '../search-button'
 
 describe('MainNavSearchButton', () => {

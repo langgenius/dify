@@ -1,4 +1,4 @@
-import type { ShortcutPlatform } from './platform'
+import type { ShortcutPlatform } from '@/utils/platform'
 
 export type MainNavProps = {
   className?: string

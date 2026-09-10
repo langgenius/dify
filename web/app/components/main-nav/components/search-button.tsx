@@ -1,6 +1,6 @@
 'use client'
 
-import type { ShortcutPlatform } from '../platform'
+import type { ShortcutPlatform } from '@/utils/platform'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { detectPlatform, formatForDisplay } from '@tanstack/react-hotkeys'
