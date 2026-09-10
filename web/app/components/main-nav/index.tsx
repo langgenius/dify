@@ -4,7 +4,7 @@ import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo, useRef } from 'react'
+import { lazy, Suspense, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
@@ -15,7 +15,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -26,7 +25,7 @@ import { MainNavSearchButton } from './components/search-button'
 import { WorkspaceCard } from './components/workspace-card'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 
-const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
+const WebAppsSection = lazy(() => import('./components/web-apps-section'))
 
 export function MainNav({ className, initialPlatform }: MainNavProps) {
   const { t } = useTranslation()
@@ -131,7 +130,11 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
             </MainNavLink>
           ))}
         </nav>
-        {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+        {!isCurrentWorkspaceDatasetOperator && (
+          <Suspense fallback={null}>
+            <WebAppsSection />
+          </Suspense>
+        )}
         {showEnvTag && (
           <div className="mt-auto shrink-0 px-3 pb-2">
             <EnvNav />
