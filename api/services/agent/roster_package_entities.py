@@ -8,8 +8,7 @@ from typing import BinaryIO, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from core.plugin.entities.plugin import PluginDependency
-from models.agent_config_entities import AgentSoulConfig
+from services.agent.dsl_entities import AgentAppDsl
 
 ROSTER_AGENT_PACKAGE_FORMAT: Final[Literal["dify.roster-agent"]] = "dify.roster-agent"
 ROSTER_AGENT_PACKAGE_FORMAT_VERSION: Final[Literal[1]] = 1
@@ -29,15 +28,6 @@ class RosterAgentPackageAudit(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ref: str = Field(min_length=1, max_length=255)
-
-
-class RosterAgentPackageMetadata(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str = Field(min_length=1, max_length=255)
-    description: str = ""
-    role: str = Field(default="", max_length=255)
-    audit: RosterAgentPackageAudit | None = None
 
 
 class _RosterAgentPackageResource(BaseModel):
@@ -99,22 +89,18 @@ class RosterAgentPackageFile(_RosterAgentPackageResource):
 
 
 class RosterAgentPackageManifest(BaseModel):
-    """Versioned manifest stored as ``manifest.json`` in a Roster package."""
+    """Package metadata and resource index stored in ``manifest.yaml``."""
 
     model_config = ConfigDict(extra="forbid")
 
     format: Literal["dify.roster-agent"]
     format_version: Literal[1]
-    metadata: RosterAgentPackageMetadata
-    soul: AgentSoulConfig
+    audit: RosterAgentPackageAudit | None = None
     skills: list[RosterAgentPackageSkill] = Field(default_factory=list)
     files: list[RosterAgentPackageFile] = Field(default_factory=list)
-    dependencies: list[PluginDependency] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_resource_index(self) -> Self:
-        if self.soul.schema_version != 1:
-            raise ValueError("unsupported Agent Soul schema version")
         resources = [*self.skills, *self.files]
         ids = [item.id for item in resources]
         if len(ids) != len(set(ids)):
@@ -123,9 +109,16 @@ class RosterAgentPackageManifest(BaseModel):
         if len(skill_names) != len(set(skill_names)):
             raise ValueError("skill names must be unique after workspace Skills are localized")
 
+        return self
+
+    def validate_app(self, app: AgentAppDsl) -> None:
+        """Resolve application references against the package resource index."""
+
+        if app.package.soul.schema_version != 1:
+            raise ValueError("unsupported Agent Soul schema version")
         skill_by_id = {item.id: item for item in self.skills}
         referenced_skill_ids: set[str] = set()
-        for skill_ref in self.soul.config_skills:
+        for skill_ref in app.package.soul.config_skills:
             if skill_ref.is_missing:
                 continue
             skill_resource = skill_by_id.get(skill_ref.file_id)
@@ -142,7 +135,7 @@ class RosterAgentPackageManifest(BaseModel):
 
         file_by_id = {item.id: item for item in self.files}
         referenced_file_ids: set[str] = set()
-        for file_ref in self.soul.config_files:
+        for file_ref in app.package.soul.config_files:
             if file_ref.is_missing:
                 continue
             file_resource = file_by_id.get(file_ref.file_id)
@@ -156,7 +149,6 @@ class RosterAgentPackageManifest(BaseModel):
         }
         if unreferenced_files:
             raise ValueError("agent_config_file resources must be referenced by the Agent Soul")
-        return self
 
 
 @dataclass
@@ -165,6 +157,7 @@ class PreparedRosterAgentPackage:
 
     archive: BinaryIO
     manifest: RosterAgentPackageManifest
+    app: AgentAppDsl
     members: dict[str, RosterAgentPackageMember]
 
     def close(self) -> None:
@@ -183,6 +176,7 @@ class RosterAgentPackageExport:
     filename: str
     size: int
     manifest: RosterAgentPackageManifest
+    app: AgentAppDsl
 
     def close(self) -> None:
         self.archive.close()
@@ -204,6 +198,5 @@ __all__ = [
     "RosterAgentPackageFile",
     "RosterAgentPackageManifest",
     "RosterAgentPackageMember",
-    "RosterAgentPackageMetadata",
     "RosterAgentPackageSkill",
 ]

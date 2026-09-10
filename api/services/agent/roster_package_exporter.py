@@ -11,6 +11,7 @@ from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
 from typing import BinaryIO, Literal, Protocol, cast
 
+import yaml
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -32,7 +33,13 @@ from models.enums import AppStatus
 from models.model import App, AppMode, UploadFile
 from models.tools import ToolFile
 from services.agent.dependency_service import extract_agent_soul_dependencies
-from services.agent.dsl_entities import make_portable_agent_soul
+from services.agent.dsl_entities import (
+    AgentAppDsl,
+    AgentPackageWorkspaceSkill,
+    make_agent_app_dsl,
+    make_portable_agent_package,
+    make_portable_agent_soul,
+)
 from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionNotFoundError,
@@ -47,7 +54,6 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageFile,
     RosterAgentPackageManifest,
     RosterAgentPackageMember,
-    RosterAgentPackageMetadata,
     RosterAgentPackageSkill,
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
@@ -99,8 +105,8 @@ class RosterAgentPackageExporter:
 
     def export(self, *, tenant_id: str, agent_id: str) -> RosterAgentPackageExport:
         with session_factory.create_session() as session:
-            agent = session.scalar(
-                select(Agent)
+            row = session.execute(
+                select(Agent, App)
                 .join(
                     App,
                     (App.id == Agent.app_id) & (App.tenant_id == Agent.tenant_id),
@@ -117,9 +123,10 @@ class RosterAgentPackageExporter:
                     App.status == AppStatus.NORMAL,
                 )
                 .limit(1)
-            )
-            if agent is None:
+            ).one_or_none()
+            if row is None:
                 raise AgentNotFoundError()
+            agent, app_model = row
 
             draft = session.scalar(
                 select(AgentConfigDraft)
@@ -152,12 +159,9 @@ class RosterAgentPackageExporter:
                 tenant_id=tenant_id,
                 soul=soul,
             )
-            metadata = RosterAgentPackageMetadata(
-                name=agent.name,
-                description=agent.description or "",
-                role=agent.role or "",
-                audit=RosterAgentPackageAudit(ref=agent.id),
-            )
+            package = make_portable_agent_package(agent, portable_soul, include_assets=True)
+            app = make_agent_app_dsl(app_model, package_ref="agent_1", packages={"agent_1": package}, dependencies=[])
+            audit = RosterAgentPackageAudit(ref=agent.id)
             dependency_ids = extract_agent_soul_dependencies(portable_soul)
 
         workspace_skills = SkillManagementService().list_runtime_agent_skill_archives(
@@ -172,25 +176,33 @@ class RosterAgentPackageExporter:
                 start_index=len(skill_sources),
             )
         )
-        dependencies = self._dependency_provider(tenant_id, dependency_ids)
+        package.workspace_skills = [
+            AgentPackageWorkspaceSkill(
+                name=item.name,
+                display_name=item.display_name or "",
+                description=item.description,
+                priority=item.priority,
+            )
+            for item in skill_sources
+            if item.scope == "workspace" and item.priority is not None
+        ]
+        app.dependencies = self._dependency_provider(tenant_id, dependency_ids)
         return self._build_archive(
-            metadata=metadata,
-            soul=portable_soul,
+            app=app,
+            audit=audit,
             skill_sources=skill_sources,
             file_sources=file_sources,
-            dependencies=dependencies,
         )
 
     def _build_archive(
         self,
         *,
-        metadata: RosterAgentPackageMetadata,
-        soul: AgentSoulConfig,
+        app: AgentAppDsl,
         skill_sources: Sequence[_SkillSource],
         file_sources: Sequence[_FileSource],
-        dependencies: list[PluginDependency],
+        audit: RosterAgentPackageAudit | None = None,
     ) -> RosterAgentPackageExport:
-        required_entries = len(skill_sources) + len(file_sources) + 1
+        required_entries = len(skill_sources) + len(file_sources) + 2
         if required_entries > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
             raise RosterAgentPackageTooLargeError("Roster Agent package has too many members")
 
@@ -217,8 +229,7 @@ class RosterAgentPackageExporter:
                 manifest = RosterAgentPackageManifest(
                     format=ROSTER_AGENT_PACKAGE_FORMAT,
                     format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
-                    metadata=metadata,
-                    soul=soul,
+                    audit=audit,
                     skills=[
                         RosterAgentPackageSkill(
                             id=item.id,
@@ -247,14 +258,18 @@ class RosterAgentPackageExporter:
                         )
                         for item in file_sources
                     ],
-                    dependencies=dependencies,
                 )
-                manifest_bytes = manifest.model_dump_json(indent=2, exclude_none=True).encode("utf-8")
-                if len(manifest_bytes) > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
-                    raise RosterAgentPackageTooLargeError("Roster Agent package manifest exceeds the size limit")
-                if total_size + len(manifest_bytes) > dify_config.AGENT_PACKAGE_MAX_BYTES:
-                    raise RosterAgentPackageTooLargeError("Roster Agent package exceeds the size limit")
-                archive.writestr("manifest.json", manifest_bytes)
+                manifest.validate_app(app)
+                for path, document in (("manifest.yaml", manifest), ("app.yaml", app)):
+                    payload = yaml.safe_dump(
+                        document.model_dump(mode="json", exclude_none=True), allow_unicode=True, sort_keys=False
+                    ).encode("utf-8")
+                    if len(payload) > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
+                        raise RosterAgentPackageTooLargeError(f"Roster Agent package {path} exceeds the size limit")
+                    total_size += len(payload)
+                    if total_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
+                        raise RosterAgentPackageTooLargeError("Roster Agent package exceeds the size limit")
+                    archive.writestr(path, payload)
 
             size = output.tell()
             if size > dify_config.AGENT_PACKAGE_MAX_BYTES:
@@ -262,9 +277,10 @@ class RosterAgentPackageExporter:
             output.seek(0)
             return RosterAgentPackageExport(
                 archive=output,
-                filename=f"{self._safe_slug(metadata.name)}.ifpkg",
+                filename=f"{self._safe_slug(app.package.metadata.name)}.ifpkg",
                 size=size,
                 manifest=manifest,
+                app=app,
             )
         except Exception:
             output.close()

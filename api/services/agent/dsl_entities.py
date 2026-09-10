@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from core.plugin.entities.plugin import PluginDependency
 from models.agent import Agent
 from models.agent_config_entities import AgentSoulConfig
+from models.model import App
+from services.entities.dsl_entities import make_app_dsl
 
 AGENT_PACKAGE_SCHEMA_VERSION = 1
 AGENT_PACKAGE_REF_KEY = "package_ref"
@@ -57,6 +60,54 @@ class AgentPackage(BaseModel):
     soul: AgentSoulConfig
     omitted_assets: list[AgentPackageOmittedAsset] = Field(default_factory=list)
     workspace_skills: list[AgentPackageWorkspaceSkill] = Field(default_factory=list)
+
+
+class AgentAppReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    package_ref: str = Field(min_length=1)
+
+
+class AgentAppDsl(BaseModel):
+    """The existing standalone Agent App DSL, also stored as archive app.yaml."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    version: str = Field(min_length=1)
+    kind: Literal["app"]
+    app: dict[str, Any]
+    agent: AgentAppReference
+    agent_packages: dict[str, AgentPackage]
+    dependencies: list[PluginDependency] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_agent_app(self) -> Self:
+        if self.app.get("mode") != "agent":
+            raise ValueError("Agent App DSL requires app.mode=agent")
+        if not isinstance(self.app.get("name"), str) or not self.app["name"]:
+            raise ValueError("Agent App DSL requires an app name")
+        if set(self.agent_packages) != {self.agent.package_ref}:
+            raise ValueError("Agent App DSL must contain exactly the referenced Agent package")
+        return self
+
+    @property
+    def package(self) -> AgentPackage:
+        return self.agent_packages[self.agent.package_ref]
+
+
+def make_agent_app_dsl(
+    app: App,
+    *,
+    package_ref: str,
+    packages: dict[str, AgentPackage],
+    dependencies: list[PluginDependency],
+) -> AgentAppDsl:
+    return AgentAppDsl(
+        **make_app_dsl(app),
+        agent=AgentAppReference(package_ref=package_ref),
+        agent_packages=packages,
+        dependencies=dependencies,
+    )
 
 
 def portable_ref(prefix: str, value: str) -> str:
@@ -137,8 +188,14 @@ def make_portable_agent_package(
     agent: Agent,
     agent_soul: AgentSoulConfig,
     workspace_skills: list[AgentPackageWorkspaceSkill] | None = None,
+    *,
+    include_assets: bool = False,
 ) -> AgentPackage:
-    """Return a package safe to place in YAML or the system clipboard."""
+    """Return a portable package for YAML, clipboard, or an asset-bearing archive.
+
+    Archives preserve package-local references to included assets; standalone
+    YAML and clipboard exports mark resources missing because they omit payloads.
+    """
 
     soul_data = make_portable_agent_soul(agent_soul).model_dump(mode="json")
     omitted_assets = [
@@ -150,6 +207,7 @@ def make_portable_agent_package(
             mime_type=item.mime_type,
         )
         for item in agent_soul.config_skills
+        if not include_assets or item.is_missing
     ]
     omitted_assets.extend(
         AgentPackageOmittedAsset(
@@ -160,13 +218,16 @@ def make_portable_agent_package(
             mime_type=item.mime_type,
         )
         for item in agent_soul.config_files
+        if not include_assets or item.is_missing
     )
     for item in soul_data.get("config_skills", []):
-        item["file_id"] = ""
-        item["is_missing"] = True
+        if not include_assets or item["is_missing"]:
+            item["file_id"] = ""
+            item["is_missing"] = True
     for item in soul_data.get("config_files", []):
-        item["file_id"] = ""
-        item["is_missing"] = True
+        if not include_assets or item["is_missing"]:
+            item["file_id"] = ""
+            item["is_missing"] = True
 
     portable_soul = AgentSoulConfig.model_validate(soul_data)
     icon_type = agent.icon_type.value if agent.icon_type is not None else None
