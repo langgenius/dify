@@ -22,7 +22,7 @@ def test_context_has_reply_language_default():
     assert DifyBuilderContext().reply_language == ""
 
 
-def test_localize_items_called_on_commit_with_reply_language():
+def test_localize_items_mutates_persisted_items_on_message_commit():
     seen = {}
 
     def localize(items, language):
@@ -38,8 +38,21 @@ def test_localize_items_called_on_commit_with_reply_language():
                 entry_mode=EntryMode.FIX, current_state=PcState.FIX_AWAIT_DECISION)
     fc = DifyBuilderContext(reply_language="zh-Hans")
     repo.create_session(s, fc, [])
-    # a stop action produces a settled commit with no items -> localize still invoked
-    runner.advance(s.id, Turn(action=Action(kind="stop", base_version=1), actor=Actor(account_id="a", tenant_id="t")))
+    # A "message" action's first commit persists a non-empty items list (the
+    # user bubble) through _commit -> compare_and_advance -- unlike a "stop"
+    # action's empty-items commit, this proves the *reassigned* (localized)
+    # items list is what actually reaches the repository, not just that the
+    # callback was invoked.
+    runner.advance(
+        s.id,
+        Turn(action=Action(kind="message", payload={"text": "PING", "client_turn_id": "t1"}, base_version=1),
+             actor=Actor(account_id="a", tenant_id="t")),
+    )
+    items = repo.list_conversation(s.id)
+    user_items = [it for it in items if it.kind == "user"]
+    assert len(user_items) == 1
+    assert user_items[0].payload["text"] == "PONG"
+    assert user_items[0].payload["text"] != "PING"
     assert seen.get("language") == "zh-Hans"
 
 
