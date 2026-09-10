@@ -15,7 +15,14 @@ from dataclasses import dataclass
 class Template:
     pattern: re.Pattern
     template: str
-    translate_fields: frozenset[str]  # capture-group names that are prose (kept); others re-inserted verbatim
+    # Capture-group names that are prose vs. re-inserted verbatim -- advisory/
+    # documentation only. The Localizer (services.dify_builder.agent.localize)
+    # does not read this field: it re-inserts ALL captured groups verbatim via
+    # `.format(**groups)` regardless of what's listed here. It exists so a
+    # reader can see, per group, whether the value is expected to already be
+    # localized prose (kept as-is) or a raw technical value (also kept as-is,
+    # but for a different reason) -- it does not change behavior.
+    translate_fields: frozenset[str]
 
 
 # Non-interpolated static strings (reply_text microcopy, card chrome, decision

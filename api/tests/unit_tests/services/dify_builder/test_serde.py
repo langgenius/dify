@@ -205,3 +205,13 @@ def test_form_fields_round_trips():
 def test_form_fields_defaults_empty_when_absent():
     from services.dify_builder.serde import context_from_dict
     assert context_from_dict({}).form_fields == []
+
+
+def test_reply_language_round_trips():
+    fc = DifyBuilderContext(reply_language="ja")
+    result = context_from_dict(context_to_dict(fc))
+    assert result.reply_language == "ja"
+
+
+def test_reply_language_defaults_empty_when_absent():
+    assert context_from_dict({}).reply_language == ""
