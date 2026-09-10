@@ -196,9 +196,15 @@ def _with_first_token_budget(
 class DifyPreparedLLM(LLMProtocol):
     """Workflow-layer adapter that hides the full `ModelInstance` API from `graphon` nodes."""
 
-    def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
+    def __init__(
+        self,
+        model_instance: ModelInstance,
+        request_metadata: Mapping[str, object] | None = None,
+        first_token_timeout: float | None = None,
+    ) -> None:
         self._model_instance = model_instance
         self._request_metadata = request_metadata
+        self._first_token_timeout = first_token_timeout
 
     @property
     @override
@@ -279,7 +285,7 @@ class DifyPreparedLLM(LLMProtocol):
             stream=stream,
             request_metadata=_with_first_token_budget(
                 self._request_metadata,
-                self._model_instance.first_token_timeout,
+                self._first_token_timeout,
                 stream,
             ),
         )
@@ -327,7 +333,7 @@ class DifyPreparedLLM(LLMProtocol):
             stream=stream,
             request_metadata=_with_first_token_budget(
                 self._request_metadata,
-                self._model_instance.first_token_timeout,
+                self._first_token_timeout,
                 stream,
             ),
         )
@@ -343,8 +349,13 @@ class DifyPreparedLLM(LLMProtocol):
 class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
     """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
 
-    def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
-        super().__init__(model_instance, request_metadata=request_metadata)
+    def __init__(
+        self,
+        model_instance: ModelInstance,
+        request_metadata: Mapping[str, object] | None = None,
+        first_token_timeout: float | None = None,
+    ) -> None:
+        super().__init__(model_instance, request_metadata=request_metadata, first_token_timeout=first_token_timeout)
         model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
         self._polling_runtime = cast(PollingLLMRuntimeProtocol, model_type_instance.model_runtime)
         self._polling_quota_reservation = None

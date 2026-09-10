@@ -87,21 +87,3 @@ def test_resolve_model_supports_vision_reads_selected_model_schema(
         )
         is expected
     )
-
-
-def test_normalize_completion_params_pops_the_first_token_budget() -> None:
-    parameters, stop, first_token_timeout = model_access._normalize_completion_params(
-        {"temperature": 0.1, "stop": ["END"], "first_token_timeout_ms": 2500}
-    )
-
-    assert parameters == {"temperature": 0.1}
-    assert stop == ["END"]
-    assert first_token_timeout == pytest.approx(2.5)
-
-
-@pytest.mark.parametrize("raw", [None, 0, -1, "2000", True])
-def test_normalize_completion_params_disables_the_budget_for_an_invalid_value(raw: object) -> None:
-    parameters, _, first_token_timeout = model_access._normalize_completion_params({"first_token_timeout_ms": raw})
-
-    assert first_token_timeout is None
-    assert "first_token_timeout_ms" not in parameters

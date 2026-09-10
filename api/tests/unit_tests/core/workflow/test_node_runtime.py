@@ -141,7 +141,6 @@ class _ModelInstanceStub:
         self.model_name = "gpt-4o-mini"
         self.parameters = {"temperature": 0.2}
         self.stop = ("stop",)
-        self.first_token_timeout: float | None = None
         self.credentials = {"api_key": "secret"}
         self.model_type_instance = _ModelTypeInstanceStub(
             model_schema=model_schema,
@@ -1146,8 +1145,7 @@ class TestFirstTokenBudgetMetadata:
 
     def test_prepared_llm_puts_the_budget_on_the_request(self):
         model_instance = MagicMock()
-        model_instance.first_token_timeout = 2.0
-        prepared = DifyPreparedLLM(model_instance, {"app_id": "app-1"})
+        prepared = DifyPreparedLLM(model_instance, {"app_id": "app-1"}, first_token_timeout=2.0)
 
         prepared.invoke_llm(
             prompt_messages=[],
@@ -1162,10 +1160,23 @@ class TestFirstTokenBudgetMetadata:
             "first_token_timeout": 2.0,
         }
 
+    def test_prepared_llm_carries_no_budget_when_the_node_configured_none(self):
+        model_instance = MagicMock()
+        prepared = DifyPreparedLLM(model_instance, {"app_id": "app-1"})
+
+        prepared.invoke_llm(
+            prompt_messages=[],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            stream=True,
+        )
+
+        assert model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app-1"}
+
     def test_prepared_llm_leaves_a_non_streaming_request_alone(self):
         model_instance = MagicMock()
-        model_instance.first_token_timeout = 2.0
-        prepared = DifyPreparedLLM(model_instance, {"app_id": "app-1"})
+        prepared = DifyPreparedLLM(model_instance, {"app_id": "app-1"}, first_token_timeout=2.0)
 
         prepared.invoke_llm(
             prompt_messages=[],
