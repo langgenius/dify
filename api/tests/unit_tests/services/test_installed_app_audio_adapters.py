@@ -12,17 +12,19 @@ from flask import Flask
 from sqlalchemy import Connection, event, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
-import services.audio_service as audio_module
+import services.audio_provider_gateway as audio_module
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.entities.plugin_daemon import TTSAudioChunk
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from models import App, AppMode, AppModelConfig, InstalledApp, Message
-from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource
+from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource, MessageStatus
 from models.workflow import Workflow, WorkflowType
+from services.agent.errors import AgentVersionNotFoundError
+from services.audio_types import AudioOutput, AudioUpload
 from services.errors.audio import (
     NoAudioUploadedServiceError,
     SpeechToTextDisabledServiceError,
@@ -30,7 +32,6 @@ from services.errors.audio import (
 )
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_audio_adapters import InstalledAppAudioRuntime
-from services.installed_app_audio_service import AudioOutput, AudioUpload
 
 _ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 
@@ -312,6 +313,37 @@ def test_tts_explicit_voice_bypasses_config_and_empty_voice_uses_provider_defaul
         assert harness.model.get_tts_voices.call_count == (0 if voice else 1)
 
 
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize("voice", [None, "explicit", ""])
+def test_tts_disabled_config_rejects_implicit_voice_and_preserves_explicit_bypass(
+    harness: _Harness,
+    sqlite_session_factory: sessionmaker[Session],
+    mode: AppMode,
+    voice: str | None,
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, harness.installation.app_id)
+        assert app is not None
+        app.mode = mode
+        config = session.get(AppModelConfig, harness.config_id)
+        assert config is not None
+        config.text_to_speech = '{"enabled":false,"voice":"disabled-config-voice"}'
+
+    if voice is None:
+        with pytest.raises(ValueError, match="^TTS is not enabled$"):
+            harness.tts(voice=voice)
+        assert harness.provider_calls == []
+        harness.model.invoke_tts.assert_not_called()
+        harness.model.get_tts_voices.assert_not_called()
+    else:
+        output = harness.tts(voice=voice)
+        assert output is not None
+        assert output.data == b"audio-bytes"
+        harness.model.invoke_tts.assert_called_once_with(content_text="Text input", voice=voice or "provider-default")
+        assert harness.model.get_tts_voices.call_count == (0 if voice else 1)
+    harness.assert_database_closed()
+
+
 @pytest.mark.parametrize("mismatch", ["id", "tenant_id", "app_id", "deleted_app", "deleted_installation"])
 def test_both_audio_methods_revalidate_complete_installation_reference(
     harness: _Harness, sqlite_session_factory: sessionmaker[Session], mismatch: str
@@ -427,3 +459,76 @@ def test_asr_uses_real_published_agent_soul_over_legacy_config(
         with pytest.raises(SpeechToTextDisabledServiceError):
             harness.runtime.transcript_asr(installed_app=harness.installation, audio=audio)
         assert harness.provider_calls == []
+
+
+@pytest.mark.parametrize("mismatch", ["tenant_id", "app_id", "scope", "source", "status"])
+def test_asr_agent_lookup_preserves_all_published_roster_predicates(
+    harness: _Harness, sqlite_session_factory: sessionmaker[Session], mismatch: str
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, harness.installation.app_id)
+        assert app is not None
+        app.mode = AppMode.AGENT
+        agent = Agent(
+            tenant_id=app.tenant_id,
+            name="Out-of-scope Agent",
+            app_id=app.id,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+        )
+        if mismatch == "tenant_id":
+            agent.tenant_id = str(uuid4())
+        elif mismatch == "app_id":
+            agent.app_id = str(uuid4())
+        elif mismatch == "scope":
+            agent.scope = AgentScope.WORKFLOW_ONLY
+        elif mismatch == "source":
+            agent.source = AgentSource.ROSTER
+        else:
+            agent.status = AgentStatus.ARCHIVED
+        session.add(agent)
+    # An unowned Agent with no snapshot must not block the legacy config fallback.
+    harness.model.invoke_speech2text.return_value = "Fallback transcription"
+    assert harness.runtime.transcript_asr(
+        installed_app=harness.installation,
+        audio=AudioUpload(stream=io.BytesIO(b"audio"), mime_type="audio/mp3"),
+    ) == {"text": "Fallback transcription"}
+    harness.assert_database_closed()
+
+
+@pytest.mark.parametrize("mismatch", ["unset", "missing", "tenant_id", "agent_id"])
+def test_published_agent_snapshot_must_exist_and_match_its_owner(
+    harness: _Harness, sqlite_session_factory: sessionmaker[Session], mismatch: str
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, harness.installation.app_id)
+        assert app is not None
+        app.mode = AppMode.AGENT
+        agent = Agent(
+            tenant_id=app.tenant_id,
+            name="Owned Agent",
+            app_id=app.id,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+        )
+        session.add(agent)
+        session.flush()
+        if mismatch == "missing":
+            agent.active_config_snapshot_id = str(uuid4())
+        elif mismatch != "unset":
+            snapshot = AgentConfigSnapshot(
+                tenant_id=str(uuid4()) if mismatch == "tenant_id" else app.tenant_id,
+                agent_id=str(uuid4()) if mismatch == "agent_id" else agent.id,
+                version=1,
+                config_snapshot=AgentSoulConfig(),
+            )
+            session.add(snapshot)
+            session.flush()
+            agent.active_config_snapshot_id = snapshot.id
+    with pytest.raises(AgentVersionNotFoundError):
+        harness.runtime.transcript_asr(
+            installed_app=harness.installation,
+            audio=AudioUpload(stream=io.BytesIO(b"audio"), mime_type="audio/mp3"),
+        )
+    harness.assert_database_closed()
+    assert harness.provider_calls == []

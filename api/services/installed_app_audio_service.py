@@ -1,22 +1,9 @@
 """Audio operations for an admitted installation, independent of HTTP and ORM."""
 
-from collections.abc import Iterable
-from dataclasses import dataclass
-from typing import IO, Protocol
+from typing import Protocol
 
+from services.audio_types import AudioOutput, AudioUpload
 from services.installed_app_access_service import InstalledAppRef
-
-
-@dataclass(frozen=True, slots=True)
-class AudioUpload:
-    stream: IO[bytes]
-    mime_type: str
-
-
-@dataclass(frozen=True, slots=True)
-class AudioOutput:
-    data: Iterable[bytes] | bytes | bytearray | memoryview
-    mime_type: str | None
 
 
 class InstalledAppAudio(Protocol):

@@ -1,4 +1,11 @@
-import io
+"""Shared audio policy and compatibility entry points for existing callers.
+
+TODO: Migrate configuration reads with the Agent/Workflow query owners before
+replacing these entry points. Keep feature precedence and message eligibility
+here so the InstalledApp runtime and legacy callers share one implementation.
+Provider SDK calls use the plain values in audio_types.
+"""
+
 import logging
 import uuid
 from collections.abc import Iterable
@@ -12,21 +19,18 @@ from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
-from core.app.entities.app_invoke_entities import get_credit_usage_app_type
-from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream, resolve_audio_mime_type
-from core.credit_usage import CreditUsageCreatedBy
-from core.model_manager import ModelManager
-from graphon.model_runtime.entities.model_entities import ModelType
+from core.base.tts.audio_mime import inspect_audio_stream, resolve_audio_mime_type
+from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message, load_annotation_reply_config
+from services import audio_provider_gateway
 from services.agent.roster_service import AgentRosterService
 from services.app_ref_service import MessageRef
+from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
-    ProviderNotSupportSpeechToTextServiceError,
-    ProviderNotSupportTextToSpeechServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
@@ -95,7 +99,11 @@ class AudioService:
             SpeechToTextDisabledServiceError: If the effective feature configuration disables STT.
         """
         cls.prepare_asr(app_model, session=session)
-        return cls.invoke_speech_to_text(app_model=app_model, file=file, end_user=end_user)
+        return cls.invoke_speech_to_text(
+            app_model=app_model,
+            audio=AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None,
+            end_user=end_user,
+        )
 
     @classmethod
     def prepare_asr(cls, app_model: App, *, session: Session) -> None:
@@ -145,7 +153,11 @@ class AudioService:
             SpeechToTextDisabledServiceError: If the merged Agent feature configuration disables STT.
         """
         cls._prepare_agent_asr(app_model=app_model, agent_soul=agent_soul, session=session)
-        return cls.invoke_speech_to_text(app_model=app_model, file=file, end_user=end_user)
+        return cls.invoke_speech_to_text(
+            app_model=app_model,
+            audio=AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None,
+            end_user=end_user,
+        )
 
     @staticmethod
     def _prepare_agent_asr(app_model: App, agent_soul: AgentSoulConfig, *, session: Session) -> None:
@@ -161,41 +173,25 @@ class AudioService:
 
     @classmethod
     def invoke_speech_to_text(
-        cls, app_model: App, file: FileStorage | None, *, end_user: str | None = None
+        cls, app_model: App, audio: AudioUpload | None, *, end_user: str | None = None
     ) -> dict[str, str]:
         """Validate the upload and invoke ASR after application configuration is resolved."""
-        if file is None:
+        if audio is None:
             raise NoAudioUploadedServiceError()
 
-        mimetype = _ASR_MIME_TYPE_ALIASES.get(file.mimetype, file.mimetype)
+        mimetype = _ASR_MIME_TYPE_ALIASES.get(audio.mime_type, audio.mime_type)
         if mimetype not in [f"audio/{ext}" for ext in AUDIO_EXTENSIONS]:
             raise UnsupportedAudioTypeServiceError()
 
-        file_content = file.stream.read()
+        file_content = audio.stream.read()
         file_size = len(file_content)
 
         if file_size > FILE_SIZE_LIMIT:
             message = f"Audio size larger than {FILE_SIZE} mb"
             raise AudioTooLargeServiceError(message)
 
-        model_manager = ModelManager.for_tenant(
-            tenant_id=app_model.tenant_id,
-            user_id=end_user,
-            request_metadata={
-                "app_type": get_credit_usage_app_type(app_model.mode),
-                "created_by": CreditUsageCreatedBy.AUDIO,
-            },
-        )
-        model_instance = model_manager.get_default_model_instance(
-            tenant_id=app_model.tenant_id, model_type=ModelType.SPEECH2TEXT
-        )
-        if model_instance is None:
-            raise ProviderNotSupportSpeechToTextServiceError()
-
-        buffer = io.BytesIO(file_content)
-        buffer.name = "temp.mp3"
-
-        return {"text": model_instance.invoke_speech2text(file=buffer)}
+        app_ref = AudioAppRef(app_id=app_model.id, tenant_id=app_model.tenant_id, app_mode=app_model.mode.value)
+        return {"text": audio_provider_gateway.speech_to_text(app=app_ref, content=file_content, end_user=end_user)}
 
     @classmethod
     def transcript_tts(
@@ -219,10 +215,8 @@ class AudioService:
         )
         if prepared is None:
             return None
-        response, declared_mime_type = cls.invoke_tts(
-            app_model, text=prepared.text, voice=prepared.voice, end_user=end_user
-        )
-        return _create_tts_response(response, declared_mime_type)
+        output = cls.invoke_tts(app_model, text=prepared.text, voice=prepared.voice, end_user=end_user)
+        return _create_tts_response(output.data, output.mime_type)
 
     @classmethod
     def prepare_tts(
@@ -285,44 +279,11 @@ class AudioService:
         text: str,
         voice: str | None,
         end_user: str | None = None,
-    ) -> tuple[Iterable[bytes] | bytes | bytearray | memoryview, str | None]:
-        """Invoke the configured provider using text and voice resolved by preparation."""
-        model_manager = ModelManager.for_tenant(
-            tenant_id=app_model.tenant_id,
-            user_id=end_user,
-            request_metadata={
-                "app_type": get_credit_usage_app_type(app_model.mode),
-                "created_by": CreditUsageCreatedBy.AUDIO,
-            },
-        )
-        model_instance = model_manager.get_default_model_instance(
-            tenant_id=app_model.tenant_id, model_type=ModelType.TTS
-        )
-        if not voice:
-            voices = model_instance.get_tts_voices()
-            if voices:
-                voice = voices[0].get("value")
-                if not voice:
-                    raise ValueError("Sorry, no voice available.")
-            else:
-                raise ValueError("Sorry, no voice available.")
-
-        return (
-            model_instance.invoke_tts(content_text=text.strip(), voice=voice),
-            get_model_audio_mime_type(model_instance),
-        )
+    ) -> AudioOutput:
+        """Invoke the provider using text and voice resolved by preparation."""
+        app_ref = AudioAppRef(app_id=app_model.id, tenant_id=app_model.tenant_id, app_mode=app_model.mode.value)
+        return audio_provider_gateway.text_to_speech(app=app_ref, text=text.strip(), voice=voice, end_user=end_user)
 
     @classmethod
-    def transcript_tts_voices(cls, tenant_id: str, language: str):
-        model_manager = ModelManager.for_tenant(
-            tenant_id=tenant_id,
-            request_metadata={"created_by": CreditUsageCreatedBy.AUDIO},
-        )
-        model_instance = model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.TTS)
-        if model_instance is None:
-            raise ProviderNotSupportTextToSpeechServiceError()
-
-        try:
-            return model_instance.get_tts_voices(language)
-        except Exception as e:
-            raise e
+    def transcript_tts_voices(cls, tenant_id: str, language: str) -> list[TTSModelVoice]:
+        return audio_provider_gateway.get_voices(tenant_id=tenant_id, language=language)

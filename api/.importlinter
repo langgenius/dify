@@ -232,6 +232,7 @@ name = Installed app audio contract is framework and persistence neutral
 type = forbidden
 source_modules =
     services.installed_app_audio_service
+    services.audio_types
 forbidden_modules =
     controllers
     extensions

@@ -1,10 +1,14 @@
-"""Prepare installed-app audio in a session, then invoke the shared provider runtime."""
+"""Prepare installed-app audio in a session, then invoke the shared provider runtime.
+
+TODO: Retire this bridge when audio configuration reads can use shared
+Agent/Workflow query boundaries. Until then, reuse AudioService's existing
+policy and release the configuration session before provider calls.
+"""
 
 from typing import override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.datastructures import FileStorage
 
 from models import App, InstalledApp
 from services.app_ref_service import AppRefService
@@ -26,8 +30,7 @@ class InstalledAppAudioRuntime(InstalledAppAudio):
         # Provider internals retain their existing scoped-session behavior.
         # The app/configuration session above is released before those lookups
         # and external calls; migrating provider persistence is a separate step.
-        file = FileStorage(stream=audio.stream, content_type=audio.mime_type) if audio is not None else None
-        return AudioService.invoke_speech_to_text(app, file, end_user=None)
+        return AudioService.invoke_speech_to_text(app, audio, end_user=None)
 
     @override
     def transcript_tts(
@@ -49,8 +52,7 @@ class InstalledAppAudioRuntime(InstalledAppAudio):
             prepared = AudioService.prepare_tts(app, session=session, text=text, voice=voice, message_ref=message_ref)
         if prepared is None:
             return None
-        data, mime_type = AudioService.invoke_tts(app, text=prepared.text, voice=prepared.voice, end_user=None)
-        return AudioOutput(data=data, mime_type=mime_type)
+        return AudioService.invoke_tts(app, text=prepared.text, voice=prepared.voice, end_user=None)
 
     @staticmethod
     def _get_app(*, session: Session, installed_app: InstalledAppRef) -> App:
