@@ -44,12 +44,13 @@ from core.app.apps.agent_app.session_store import (
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import DifyRunContext
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueAgentMessageEvent,
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueMessageFileEvent,
 )
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
@@ -67,8 +68,10 @@ from graphon.model_runtime.errors.invoke import (
 )
 from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import CreatorUserRole
-from models.model import Message, MessageAgentThought
+from graphon.file import FileTransferMethod, FileType
+from models.enums import CreatorUserRole, MessageFileBelongsTo
+from models.model import Message, MessageAgentThought, MessageFile
+from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +90,28 @@ _AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
     "InvokeRateLimitError": InvokeRateLimitError,
     "InvokeServerUnavailableError": InvokeServerUnavailableError,
 }
+
+
+def _resolve_tool_file_type(tool_file_payload: dict[str, Any], tool_file: ToolFile) -> FileType:
+    payload_type = tool_file_payload.get("type")
+    if isinstance(payload_type, str):
+        try:
+            return FileType(payload_type)
+        except ValueError:
+            pass
+    mime_type = tool_file_payload.get("mime_type")
+    if not isinstance(mime_type, str) or not mime_type:
+        mime_type = tool_file.mimetype
+    if isinstance(mime_type, str):
+        if "image" in mime_type:
+            return FileType.IMAGE
+        if "video" in mime_type:
+            return FileType.VIDEO
+        if "audio" in mime_type:
+            return FileType.AUDIO
+        if "text" in mime_type or "pdf" in mime_type:
+            return FileType.DOCUMENT
+    return FileType.CUSTOM
 
 
 def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
@@ -436,6 +461,62 @@ class _AgentProcessRecorder:
         if content is None:
             content = part
         self._record_tool_observation(tool_call_id=tool_call_id, tool_name=tool_name, observation=content)
+        self._persist_tool_files_from_metadata(part.get("metadata"))
+
+    def _persist_tool_files_from_metadata(self, metadata: Any) -> None:
+        if not isinstance(metadata, dict):
+            return
+        tool_files = metadata.get("tool_files")
+        if not isinstance(tool_files, list) or not tool_files:
+            return
+
+        message = db.session.get(Message, self._message_id)
+        if message is None:
+            return
+
+        created_role = (
+            CreatorUserRole.ACCOUNT
+            if self._dify_context.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+            else CreatorUserRole.END_USER
+        )
+        for tool_file_payload in tool_files:
+            if not isinstance(tool_file_payload, dict):
+                continue
+            tool_file_id = tool_file_payload.get("tool_file_id")
+            if not isinstance(tool_file_id, str) or not tool_file_id:
+                continue
+            tool_file = db.session.get(ToolFile, tool_file_id)
+            if tool_file is None or tool_file.tenant_id != self._dify_context.tenant_id:
+                continue
+            if message.conversation_id and tool_file.conversation_id not in {None, message.conversation_id}:
+                continue
+            if tool_file.user_id != self._dify_context.user_id:
+                continue
+
+            url = tool_file_payload.get("url")
+            if not isinstance(url, str) or not url:
+                extension = tool_file_payload.get("extension")
+                if isinstance(extension, str) and extension and not extension.startswith("."):
+                    extension = f".{extension}"
+                url = f"/files/tools/{tool_file_id}{extension if isinstance(extension, str) else '.bin'}"
+
+            file_type = _resolve_tool_file_type(tool_file_payload, tool_file)
+            message_file = MessageFile(
+                message_id=self._message_id,
+                type=file_type,
+                transfer_method=FileTransferMethod.TOOL_FILE,
+                belongs_to=MessageFileBelongsTo.ASSISTANT,
+                url=url,
+                upload_file_id=tool_file_id,
+                created_by_role=created_role,
+                created_by=self._dify_context.user_id,
+            )
+            db.session.add(message_file)
+            db.session.commit()
+            self._queue_manager.publish(
+                QueueMessageFileEvent(message_file_id=message_file.id),
+                PublishFrom.APPLICATION_MANAGER,
+            )
 
     def _record_tool_observation(self, *, tool_call_id: str | None, tool_name: str | None, observation: Any) -> None:
         self._close_thinking_segments()

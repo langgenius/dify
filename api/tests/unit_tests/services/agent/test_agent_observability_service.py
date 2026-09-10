@@ -658,6 +658,7 @@ def test_serialize_log_message_returns_frontend_log_shape() -> None:
             {"rating": "like", "content": "Useful", "from_source": "user"},
             {"rating": "dislike", "content": "Needs more detail", "from_source": "admin"},
         ],
+        "message_files": [],
         "message_tokens": 3,
         "answer_tokens": 4,
         "total_tokens": 7,

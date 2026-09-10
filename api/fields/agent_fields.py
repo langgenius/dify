@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import Field, field_validator
 
 from fields.base import ResponseModel
+from fields.conversation_fields import MessageFile
 from libs.helper import to_timestamp
 from models.agent import (
     AgentConfigDraftType,
@@ -189,6 +190,7 @@ class AgentLogMessageItemResponse(ResponseModel):
     from_account_id: str | None = None
     feedback_enabled: bool = False
     feedbacks: list[AgentLogFeedbackResponse] = Field(default_factory=list)
+    message_files: list[MessageFile] = Field(default_factory=list)
     message_tokens: int
     answer_tokens: int
     total_tokens: int
