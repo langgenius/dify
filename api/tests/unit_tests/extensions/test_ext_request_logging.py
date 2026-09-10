@@ -21,6 +21,8 @@ def test_is_content_type_json():
     assert _is_content_type_json("application/json; charset=utf-8") is True
     # content type header with charset option, in uppercase.
     assert _is_content_type_json("APPLICATION/JSON; CHARSET=UTF-8") is True
+    assert _is_content_type_json("application/problem+json") is True
+    assert _is_content_type_json("application/vnd.api+json; charset=utf-8") is True
     assert _is_content_type_json("text/html") is False
     assert _is_content_type_json("") is False
 

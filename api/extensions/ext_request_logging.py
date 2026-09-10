@@ -17,7 +17,8 @@ def _is_content_type_json(content_type: str) -> bool:
     if not content_type:
         return False
     content_type_no_option, _ = werkzeug.http.parse_options_header(content_type)
-    return content_type_no_option.lower() == "application/json"
+    media_type = content_type_no_option.lower()
+    return media_type == "application/json" or (media_type.startswith("application/") and media_type.endswith("+json"))
 
 
 def _log_request_started(_sender, **_extra):
