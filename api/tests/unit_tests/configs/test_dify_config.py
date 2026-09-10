@@ -68,6 +68,10 @@ def _make_config(**values: object) -> DifyConfig:
     return _IsolatedDifyConfig(**values)  # pyrefly: ignore[bad-argument-type]
 
 
+def test_skill_package_default_limit_matches_documentation() -> None:
+    assert _make_config().UPLOAD_SKILL_FILE_SIZE_LIMIT == 50
+
+
 def test_dify_config_keeps_secret_key_empty_when_missing(tmp_path) -> None:
     config = _make_config(OPENDAL_FS_ROOT=str(tmp_path))
 
