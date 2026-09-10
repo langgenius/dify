@@ -791,7 +791,6 @@ describe('HomeTrending', () => {
         click_target: 'recommendation',
         item_id: 'langgenius/dropbox',
         item_type: 'plugin',
-        item_name: 'Dropbox',
       }),
     )
   })
@@ -838,7 +837,6 @@ describe('HomeTrending', () => {
         click_target: 'recommendation',
         item_id: 'tpl-1',
         item_type: 'template',
-        item_name: 'Support Bot',
       }),
     )
   })
@@ -872,7 +870,7 @@ describe('HomeTrending', () => {
     expect(screen.getByRole('dialog', { name: 'plugin-detail' })).toHaveTextContent('baserow')
   })
 
-  it('shows the served author on recommend template cards the same way as plugins', () => {
+  it('links recommend template cards by ID with the served author or template fallback', () => {
     const banner: PluginBanner = {
       id: 'recommend-templates',
       style_type: 'recommend',
@@ -906,6 +904,8 @@ describe('HomeTrending', () => {
     const authored = screen.getByRole('link', { name: 'Go-to-Market' })
     const anonymous = screen.getByRole('link', { name: 'Untitled Flow' })
 
+    expect(authored).toHaveAttribute('href', '/template/aisa-team/tpl-authored')
+    expect(anonymous).toHaveAttribute('href', '/template/template/tpl-anonymous')
     expect(
       within(authored).getByText('plugin.marketplace.home.trendingByCreator'),
     ).toBeInTheDocument()
@@ -978,7 +978,6 @@ describe('HomeTrending', () => {
         click_target: 'recommendation',
         item_id: 'langgenius/dropbox',
         item_type: 'plugin',
-        item_name: 'Dropbox',
       }),
     )
   })
