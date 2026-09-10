@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -72,7 +73,7 @@ def test_all_hitl_forms_submitted_requires_every_form(
 
 
 def test_maybe_enqueue_resume_for_submitted_hitl_pause_skips_waiting_form(
-    mocker: pytest.MonkeyPatch,
+    mocker: MockerFixture,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     _persist_form(sqlite_session_factory, form_id="form-1", submitted=True)
@@ -89,7 +90,7 @@ def test_maybe_enqueue_resume_for_submitted_hitl_pause_skips_waiting_form(
 
 
 def test_maybe_enqueue_resume_for_submitted_hitl_pause_enqueues_when_all_submitted(
-    mocker: pytest.MonkeyPatch,
+    mocker: MockerFixture,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     _persist_form(sqlite_session_factory, form_id="form-1", submitted=True)
