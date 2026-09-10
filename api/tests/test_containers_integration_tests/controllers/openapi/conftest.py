@@ -10,6 +10,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import PathParam, load_app
 from controllers.openapi.auth.requirements import ResolveCaller
 from controllers.openapi.auth.subjects import subject_from_auth
 from libs.oauth_bearer import AuthContext, TokenType
@@ -105,10 +106,15 @@ def context_for(
 
     It runs ``ResolveCaller`` itself — the requirement every pipeline fixes
     last — rather than the wider set a route's own requirements would ask for,
-    so a handler sees exactly what the thinnest pipeline would give it. Running
-    the real requirement is what keeps this CI-only helper from drifting away
-    from the pipeline it stands in for.
+    so a handler sees exactly what the thinnest pipeline would give it. On a
+    route carrying ``<app_id>`` that thinnest pipeline is ``CheckAppApiEnabled``,
+    which loads the app; handlers read ``ctx.app`` and never load it themselves,
+    so the helper loads it through the same loader. Running the real pieces is
+    what keeps this CI-only helper from drifting away from the pipeline it
+    stands in for.
     """
     ctx = Context(subject_from_auth(_account_auth(account, token_id=token_id)), session, view_args or {})
+    if PathParam.APP_ID in ctx.view_args:
+        load_app(ctx)
     ResolveCaller().run(ctx.subject, ctx, session)
     return ctx
