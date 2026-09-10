@@ -50,7 +50,6 @@ class RosterAgentPackageSkill(_RosterAgentPackageResource):
     id: str = Field(pattern=r"^s_[0-9]{6}$")
     scope: Literal["agent_config", "workspace"]
     name: str = Field(min_length=1, max_length=64)
-    mime_type: Literal["application/zip"] = "application/zip"
 
     @model_validator(mode="after")
     def validate_skill_path(self) -> Self:
