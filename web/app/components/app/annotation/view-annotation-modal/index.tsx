@@ -147,24 +147,24 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
         <table className={cn('w-full min-w-110 border-collapse border-0')}>
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
-              <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap">
+              <th className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['hitHistoryTable.query'], { ns: 'appAnnotation' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['hitHistoryTable.match'], { ns: 'appAnnotation' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['hitHistoryTable.response'], { ns: 'appAnnotation' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['hitHistoryTable.source'], { ns: 'appAnnotation' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['hitHistoryTable.score'], { ns: 'appAnnotation' })}
-              </td>
-              <td className="w-40 rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="w-40 rounded-r-lg bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['hitHistoryTable.time'], { ns: 'appAnnotation' })}
-              </td>
+              </th>
             </tr>
           </thead>
           <tbody className="system-sm-regular text-text-secondary">

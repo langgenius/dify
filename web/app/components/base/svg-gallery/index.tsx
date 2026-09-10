@@ -8,27 +8,13 @@ const SVGRenderer = ({ content }: { content: string }) => {
   const { t } = useTranslation('common')
   const svgRef = useRef<HTMLDivElement>(null)
   const [imagePreview, setImagePreview] = useState('')
-  const [windowSize, setWindowSize] = useState({
-    /* v8 ignore start -- this client component can still be evaluated in non-browser contexts (SSR/type tooling); window fallback prevents reference errors. @preserve */
-    width: typeof window !== 'undefined' ? window.innerWidth : 0,
-    height: typeof window !== 'undefined' ? window.innerHeight : 0,
-    /* v8 ignore stop */
-  })
 
   const svgToDataURL = (svgElement: Element): string => {
     const svgString = new XMLSerializer().serializeToString(svgElement)
-    const base64String = Buffer.from(svgString).toString('base64')
+    const bytes = new TextEncoder().encode(svgString)
+    const base64String = btoa(Array.from(bytes, (byte) => String.fromCodePoint(byte)).join(''))
     return `data:image/svg+xml;base64,${base64String}`
   }
-
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight })
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
 
   useEffect(() => {
     /* v8 ignore next 2 -- ref is expected after mount, but null can occur during rapid mount/unmount timing in React lifecycle edges. @preserve */
@@ -63,7 +49,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
       generatingMessage.textContent = t(($) => $['svgRenderer.generatingImage'])
       svgRef.current.replaceChildren(generatingMessage)
     }
-  }, [content, t, windowSize])
+  }, [content, t])
 
   return (
     <>

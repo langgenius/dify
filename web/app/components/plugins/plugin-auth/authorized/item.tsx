@@ -156,7 +156,7 @@ const Item = ({
         <Badge className="shrink-0">{t(($) => $['auth.enterprise'], { ns: 'plugin' })}</Badge>
       )}
       {showAction && !renaming && (
-        <div className="ml-2 hidden shrink-0 items-center group-hover:flex">
+        <div className="ml-2 flex shrink-0 items-center">
           {!credential.is_default &&
             !disableSetDefault &&
             !credential.not_allowed_to_use &&

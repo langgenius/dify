@@ -5,13 +5,14 @@ import { useEffect } from 'react'
 import Input from '@/app/components/base/input'
 
 export type IConfigStringProps = {
+  id?: string
   value: number | undefined
   maxLength: number
   modelId: string
   onChange: (value: number | undefined) => void
 }
 
-const ConfigString: FC<IConfigStringProps> = ({ value, onChange, maxLength }) => {
+const ConfigString: FC<IConfigStringProps> = ({ id, value, onChange, maxLength }) => {
   useEffect(() => {
     if (value && value > maxLength) onChange(maxLength)
   }, [value, maxLength, onChange])
@@ -19,6 +20,7 @@ const ConfigString: FC<IConfigStringProps> = ({ value, onChange, maxLength }) =>
   return (
     <div>
       <Input
+        id={id}
         type="number"
         max={maxLength}
         min={1}
