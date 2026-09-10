@@ -10,6 +10,7 @@ vi.mock('../hooks', () => ({
   useLink: () => ({
     handleSaveLink: mockHandleSaveLink,
     handleUnlink: mockHandleUnlink,
+    restoreEditorFocus: vi.fn(),
   }),
 }))
 

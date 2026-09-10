@@ -321,10 +321,12 @@ const Operations = ({
       </span>
     </button>
   )
+  const enabledLabel = `${t(($) => $['list.status.enabled'], { ns: 'datasetDocuments' })}: ${name}`
   const renderListSwitch = () => {
     if (!canEdit)
       return (
         <Switch
+          aria-label={enabledLabel}
           checked={archived ? false : enabled}
           onCheckedChange={noop}
           disabled={true}
@@ -340,7 +342,13 @@ const Operations = ({
             openOnHover
             render={
               <div>
-                <Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />
+                <Switch
+                  aria-label={enabledLabel}
+                  checked={false}
+                  onCheckedChange={noop}
+                  disabled={true}
+                  size="md"
+                />
               </div>
             }
           />
@@ -353,6 +361,7 @@ const Operations = ({
 
     return (
       <Switch
+        aria-label={enabledLabel}
         checked={enabled}
         onCheckedChange={(v) => handleSwitch(v ? 'enable' : 'disable')}
         size="md"
@@ -361,14 +370,16 @@ const Operations = ({
   }
 
   return (
-    <div
-      className="flex items-center"
-      role="presentation"
-      onClick={stopPropagation}
-      onKeyDown={stopPropagation}
-    >
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Only stops child control events from reaching row navigation.
+    <div className="flex items-center" onClick={stopPropagation} onKeyDown={stopPropagation}>
       {isListScene && !embeddingAvailable && (
-        <Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />
+        <Switch
+          aria-label={enabledLabel}
+          checked={false}
+          onCheckedChange={noop}
+          disabled={true}
+          size="md"
+        />
       )}
       {isListScene && embeddingAvailable && (
         <>
@@ -554,11 +565,7 @@ const Operations = ({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={deleting}
-              disabled={deleting}
-              onClick={() => onOperate('delete')}
-            >
+            <AlertDialogConfirmButton loading={deleting} onClick={() => onOperate('delete')}>
               {t(($) => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

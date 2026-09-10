@@ -16,7 +16,6 @@ export const emptyWorkspacePermissionKeys: string[] = []
 export type WorkspaceRoleFlags = {
   isCurrentWorkspaceManager: boolean
   isCurrentWorkspaceOwner: boolean
-  isCurrentWorkspaceEditor: boolean
   isCurrentWorkspaceDatasetOperator: boolean
 }
 
@@ -55,7 +54,6 @@ export function getWorkspaceRoleFlags(
   return {
     isCurrentWorkspaceManager: ['owner', 'admin'].includes(currentWorkspace.role),
     isCurrentWorkspaceOwner: currentWorkspace.role === 'owner',
-    isCurrentWorkspaceEditor: ['owner', 'admin', 'editor'].includes(currentWorkspace.role),
     isCurrentWorkspaceDatasetOperator: currentWorkspace.role === 'dataset_operator',
   }
 }

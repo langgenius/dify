@@ -27,7 +27,7 @@ const queryOptionsMocks = vi.hoisted(() => ({
   versions: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       byAppId: {

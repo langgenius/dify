@@ -15,19 +15,21 @@ import {
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
-type ComboboxProps<Value, Multiple extends boolean | undefined = false> = BaseCombobox.Root.Props<
+type ComboboxProps<
   Value,
-  Multiple
-> &
+  Multiple extends boolean | undefined = false,
+  Item = Value,
+> = BaseCombobox.Root.Props<Value, Multiple, Item> &
   ([Multiple] extends [true] ? { multiple: true } : unknown)
 type ComboboxChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
 
-function Combobox<Value, Multiple extends boolean | undefined = false>(
-  props: ComboboxProps<Value, Multiple>,
+function Combobox<Value, Multiple extends boolean | undefined = false, Item = Value>(
+  props: ComboboxProps<Value, Multiple, Item>,
 ): React.JSX.Element {
   return <BaseCombobox.Root {...props} />
 }
 
+const createComboboxItems = BaseCombobox.createItems
 const ComboboxRow = BaseCombobox.Row
 const useComboboxFilter = BaseCombobox.useFilter
 const useComboboxFilteredItems = BaseCombobox.useFilteredItems
@@ -51,19 +53,19 @@ function ComboboxValue(props: BaseCombobox.Value.Props): React.JSX.Element {
   return <BaseCombobox.Value {...props} />
 }
 
-type ComboboxGroupProps<Value = unknown> = Omit<BaseCombobox.Group.Props, 'items'> & {
-  items?: readonly Value[]
+type ComboboxGroupProps<Item = unknown> = Omit<BaseCombobox.Group.Props, 'items'> & {
+  items?: readonly Item[]
 }
 
-function ComboboxGroup<Value = unknown>(props: ComboboxGroupProps<Value>) {
+function ComboboxGroup<Item = unknown>(props: ComboboxGroupProps<Item>) {
   return <BaseCombobox.Group {...props} />
 }
 
-type ComboboxCollectionProps<Value = unknown> = Omit<BaseCombobox.Collection.Props, 'children'> & {
-  children: (item: Value, index: number) => React.ReactNode
+type ComboboxCollectionProps<Item = unknown> = Omit<BaseCombobox.Collection.Props, 'children'> & {
+  children: (item: Item, index: number) => React.ReactNode
 }
 
-function ComboboxCollection<Value = unknown>(props: ComboboxCollectionProps<Value>) {
+function ComboboxCollection<Item = unknown>(props: ComboboxCollectionProps<Item>) {
   return <BaseCombobox.Collection {...props} />
 }
 
@@ -143,7 +145,7 @@ function ComboboxTrigger({
 
 const comboboxInputGroupVariants = cva(
   [
-    'group/combobox flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
+    'group/combobox flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
     textControlCompoundInputFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
@@ -350,15 +352,12 @@ function ComboboxPopup({ className, ...props }: ComboboxPopupProps) {
   )
 }
 
-type ComboboxListProps<Value = unknown> = Omit<
-  BaseCombobox.List.Props,
-  'children' | 'className'
-> & {
+type ComboboxListProps<Item = unknown> = Omit<BaseCombobox.List.Props, 'children' | 'className'> & {
   className?: string
-  children?: React.ReactNode | ((item: Value, index: number) => React.ReactNode)
+  children?: React.ReactNode | ((item: Item, index: number) => React.ReactNode)
 }
 
-function ComboboxList<Value = unknown>({ className, ...props }: ComboboxListProps<Value>) {
+function ComboboxList<Item = unknown>({ className, ...props }: ComboboxListProps<Item>) {
   return <BaseCombobox.List className={cn(comboboxListClassName, className)} {...props} />
 }
 
@@ -536,6 +535,7 @@ export {
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
+  createComboboxItems,
   useComboboxFilter,
   useComboboxFilteredItems,
 }

@@ -1,10 +1,14 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactElement } from 'react'
 import type { Shape } from '../../../store'
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useEffect, useRef } from 'react'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
+import { AppModeEnum } from '@/types/app'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
@@ -26,7 +30,7 @@ const mockToast = vi.hoisted(() => ({
   success: vi.fn(),
 }))
 let mockPlanType: CloudPlan = 'professional'
-let mockEnableBilling = true
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
 let mockPublishedEnvironments: VersionHistory['environments']
 let mockHasNextPage = false
 let mockIsFetching = false
@@ -76,13 +80,6 @@ type MockVersionHistoryItemProps = {
   onClick: (item: VersionHistory) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: { type: mockPlanType },
-    enableBilling: mockEnableBilling,
-  }),
-}))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: mockToast }))
 
@@ -285,7 +282,7 @@ describe('VersionHistoryPanel', () => {
     mockUpdateWorkflow.mockResolvedValue(undefined)
     mockCurrentVersion = null
     mockPlanType = 'professional'
-    mockEnableBilling = true
+    deploymentEdition = 'CLOUD'
     mockPublishedEnvironments = undefined
     mockHasNextPage = false
     mockIsFetching = false
@@ -508,6 +505,7 @@ describe('VersionHistoryPanel', () => {
 
     render(
       <VersionHistoryPanel
+        appMode={AppModeEnum.WORKFLOW}
         latestVersionId="published-version-id"
         restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
         updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
@@ -518,7 +516,31 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'submit version info' }))
 
     await waitFor(() => {
+      expect(mockUpdateWorkflow).toHaveBeenCalledWith(
+        {
+          appId: 'app-1',
+          appMode: AppModeEnum.WORKFLOW,
+          releaseNotes: 'Updated notes',
+          title: 'Updated release',
+          url: '/apps/app-1/workflows/published-version-id',
+        },
+        expect.any(Object),
+      )
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
     })
   })
 })
+
+function render(ui: ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { billing: { subscription: { plan: mockPlanType } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}

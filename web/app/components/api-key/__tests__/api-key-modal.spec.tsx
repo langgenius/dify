@@ -25,7 +25,7 @@ const apiMocks = vi.hoisted(() => ({
   deleteEnvironment: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       byResourceId: {
@@ -70,7 +70,7 @@ vi.mock('@/service/client', () => ({
         },
         post: {
           mutationOptions: () => ({
-            mutationFn: () => apiMocks.createDataset(),
+            mutationFn: (variables: unknown) => apiMocks.createDataset(variables),
           }),
         },
         byApiKeyId: {
@@ -123,7 +123,6 @@ vi.mock('@/context/workspace-state', async () => {
   return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: mockCurrentWorkspace(),
     isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
   }))
 })
 
@@ -231,6 +230,12 @@ describe('ApiKeyModal', () => {
 
     expect(await screen.findByText('dat...cret-token-123456789')).toBeInTheDocument()
     expect(apiMocks.listDataset).toHaveBeenCalled()
+    // Dataset keys surface their knowledge-base scope; a key without dataset_ids reads
+    // as scoped to all knowledge bases.
+    expect(
+      screen.getByRole('columnheader', { name: 'appApi.apiKeyModal.scope' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('appApi.apiKeyModal.scopeAllDatasets')).toBeInTheDocument()
   })
 
   it('creates an app API key through the generated mutation input', async () => {
@@ -249,14 +254,18 @@ describe('ApiKeyModal', () => {
     ).toHaveValue('new-app-token-123')
   })
 
-  it('creates a dataset API key through the generated mutation', async () => {
+  it('creates a workspace dataset API key scoped to all knowledge bases', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     await renderModal(datasetScope)
 
     await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
 
+    // Dataset creation first opens the scope dialog; the default "all" scope creates a
+    // key with an empty dataset_ids list.
+    await user.click(await screen.findByRole('button', { name: 'common.operation.create' }))
+
     await waitFor(() => {
-      expect(apiMocks.createDataset).toHaveBeenCalledWith()
+      expect(apiMocks.createDataset).toHaveBeenCalledWith({ body: { dataset_ids: [] } })
     })
     expect(
       await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),

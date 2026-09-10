@@ -134,13 +134,48 @@ class TestSavedMessageListApi(_UsesSQLiteSession):
                 return_value=pagination,
             ) as pagination_mock,
         ):
-            result = method(api, self.account, installed_app)
+            result = method(api, module.SavedMessageListQuery.model_validate({}), self.account, installed_app)
 
         pagination_mock.assert_called_once()
         assert pagination_mock.call_args.args[1] is self.account
         assert result["limit"] == 20
         assert result["has_more"] is False
         assert len(result["data"]) == 2
+
+    def test_get_with_query_params(self, app: Flask):
+        api = module.SavedMessageListApi()
+        method = unwrap(api.get)
+
+        installed_app = make_installed_app(self.sqlite_session, mode=AppMode.COMPLETION)
+
+        pagination = MagicMock(
+            limit=50,
+            has_more=True,
+            data=[
+                make_message(self.sqlite_session, app_id=installed_app.app_id, account_id=self.account.id),
+            ],
+        )
+        self.sqlite_session.commit()
+
+        last_id = str(uuid4())
+        query = module.SavedMessageListQuery.model_validate({"last_id": last_id, "limit": 50})
+
+        with (
+            app.test_request_context("/", query_string={"last_id": last_id, "limit": "50"}),
+            patch.object(
+                module.SavedMessageService,
+                "pagination_by_last_id",
+                return_value=pagination,
+            ) as pagination_mock,
+        ):
+            result = method(api, query, self.account, installed_app)
+
+        pagination_mock.assert_called_once()
+        assert pagination_mock.call_args.args[1] is self.account
+        assert pagination_mock.call_args.args[2] == last_id
+        assert pagination_mock.call_args.args[3] == 50
+        assert result["limit"] == 50
+        assert result["has_more"] is True
 
     def test_get_not_completion_app(self):
         api = module.SavedMessageListApi()
@@ -149,7 +184,7 @@ class TestSavedMessageListApi(_UsesSQLiteSession):
         installed_app = make_installed_app(self.sqlite_session, mode=AppMode.CHAT)
 
         with pytest.raises(NotCompletionAppError):
-            method(api, self.account, installed_app)
+            method(api, module.SavedMessageListQuery.model_validate({}), self.account, installed_app)
 
     def test_post_success(self, app: Flask, payload_patch):
         api = module.SavedMessageListApi()

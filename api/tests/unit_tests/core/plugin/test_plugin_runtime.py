@@ -172,6 +172,12 @@ class TestPluginRuntimeExecution:
         assert scoped_timeout.read == 30.0
         assert default_timeout.read == 600.0
 
+    @pytest.mark.parametrize("timeout_seconds", [0.0, -1.0])
+    def test_request_timeout_override_rejects_non_positive_values(self, timeout_seconds):
+        with pytest.raises(ValueError, match="greater than zero"):
+            with use_plugin_daemon_request_timeout(timeout_seconds):
+                pass
+
     def test_request_connection_error(self, plugin_client, mock_config):
         """Test handling of connection errors during request."""
         # Arrange

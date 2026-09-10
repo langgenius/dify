@@ -31,9 +31,12 @@ const CSVDownload: FC<ICSVDownloadProps> = ({ vars }) => {
           <thead className="text-text-tertiary">
             <tr>
               {addQueryContentVars.map((item, i) => (
-                <td key={i} className="h-9 border-b border-divider-regular pr-2 pl-3">
+                <th
+                  key={i}
+                  className="h-9 border-b border-divider-regular pr-2 pl-3 text-left font-[weight:inherit]"
+                >
                   {item.name}
-                </td>
+                </th>
               ))}
             </tr>
           </thead>

@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import {
   BoxGroup,
@@ -16,7 +15,7 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import Split from '../_base/components/split'
 import ChunkStructure from './components/chunk-structure'
@@ -36,8 +35,18 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({ id, data }) => {
   })
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const { nodesReadOnly } = useNodesReadOnly()
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const chunkStructure = data.chunk_structure
   const indexChunkVariableSelector = data.index_chunk_variable_selector
   const indexingTechnique = data.indexing_technique

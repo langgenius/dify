@@ -989,7 +989,10 @@ class SnippetService:
             workflow_run_id=workflow_run.id,
         )
 
-        return assemble_workflow_node_execution_traces(node_executions, self._node_execution_service_repo)
+        with self._session_scope() as session:
+            return assemble_workflow_node_execution_traces(
+                node_executions, self._node_execution_service_repo, session=session
+            )
 
     # --- Node Execution Operations ---
 

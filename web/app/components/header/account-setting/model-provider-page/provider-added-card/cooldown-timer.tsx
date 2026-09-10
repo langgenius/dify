@@ -1,6 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useLatest } from 'ahooks'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 
@@ -9,47 +8,35 @@ type CooldownTimerProps = {
   onFinish?: () => void
 }
 
-const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
+const CooldownTimer = ({ secondsRemaining = 0, onFinish }: CooldownTimerProps) => {
   const { t } = useTranslation()
 
-  const targetTime = useRef<number>(Date.now())
-  const [currentTime, setCurrentTime] = useState(targetTime.current)
-  const displayTime = useMemo(
-    () => Math.ceil((targetTime.current - currentTime) / 1000),
-    [currentTime],
-  )
+  const [countdown, setCountdown] = useState({ secondsRemaining, displayTime: secondsRemaining })
+  if (countdown.secondsRemaining !== secondsRemaining) {
+    setCountdown({ secondsRemaining, displayTime: secondsRemaining })
+  }
 
-  const countdownTimeout = useRef<number>(undefined)
-  const clearCountdown = useCallback(() => {
-    if (countdownTimeout.current) {
-      window.clearTimeout(countdownTimeout.current)
-      countdownTimeout.current = undefined
-    }
-  }, [])
-
-  const onFinishRef = useLatest(onFinish)
-
-  const countdown = useCallback(() => {
-    clearCountdown()
-    countdownTimeout.current = window.setTimeout(() => {
-      const now = Date.now()
-      if (now <= targetTime.current) {
-        setCurrentTime(Date.now())
-        countdown()
-      } else {
-        onFinishRef.current?.()
-        clearCountdown()
-      }
-    }, 1000)
-  }, [clearCountdown, onFinishRef])
+  const onCountdownFinish = useEffectEvent(() => {
+    onFinish?.()
+  })
 
   useEffect(() => {
-    const now = Date.now()
-    targetTime.current = now + (secondsRemaining ?? 0) * 1000
-    setCurrentTime(now)
-    countdown()
-    return clearCountdown
-  }, [clearCountdown, countdown, secondsRemaining])
+    if (secondsRemaining <= 0) return
+
+    const targetTime = Date.now() + secondsRemaining * 1000
+    const interval = window.setInterval(() => {
+      const displayTime = Math.max(0, Math.ceil((targetTime - Date.now()) / 1000))
+      setCountdown({ secondsRemaining, displayTime })
+      if (displayTime === 0) {
+        window.clearInterval(interval)
+        onCountdownFinish()
+      }
+    }, 1000)
+
+    return () => window.clearInterval(interval)
+  }, [secondsRemaining])
+
+  const { displayTime } = countdown
 
   return displayTime ? (
     <Tooltip>
@@ -65,4 +52,4 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
   ) : null
 }
 
-export default memo(CooldownTimer)
+export default CooldownTimer

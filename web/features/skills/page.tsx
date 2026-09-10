@@ -46,7 +46,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillArchiveBlob } from './client'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
@@ -274,8 +274,7 @@ function DeleteSkillDialog({
   })
   const references = referencesQuery.data?.data ?? []
   const referenceCount = Math.max(skill.reference_count ?? 0, references.length)
-  const isDeleteDisabled =
-    deleteMutation.isPending ||
+  const isDeleteUnavailable =
     (open && (referencesQuery.isFetching || !referencesQuery.isSuccess)) ||
     (referenceCount > 0 && confirmDeleteInput !== skill.display_name)
   const description =
@@ -290,7 +289,7 @@ function DeleteSkillDialog({
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
-    if (isDeleteDisabled) return
+    if (deleteMutation.isPending || isDeleteUnavailable) return
 
     deleteMutation.mutate(
       {
@@ -388,7 +387,7 @@ function DeleteSkillDialog({
           <AlertDialogConfirmButton
             tone="destructive"
             loading={deleteMutation.isPending}
-            disabled={isDeleteDisabled}
+            disabled={isDeleteUnavailable}
             onClick={handleDelete}
           >
             {tCommon(($) => $['operation.delete'])}
@@ -467,7 +466,7 @@ function SkillCard({
   return (
     <li
       aria-labelledby={nameId}
-      className="group relative isolate col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt"
+      className="group relative isolate col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 hover:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-data-popup-open:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt [@media(hover:none)]:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)]"
     >
       <Link
         href={`/skills/${skill.id}`}
@@ -674,8 +673,6 @@ function SkillsToolbar({
 }) {
   const { t } = useTranslation('skill')
   const [keyword, setKeyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
-  const isMutating = creating || importing
-
   return (
     <div className="flex min-w-0 items-center gap-2">
       <SkillTagFilter onOpenTagManagement={onOpenTagManagement} />
@@ -692,7 +689,7 @@ function SkillsToolbar({
         {canEdit && (
           <Button
             className="h-8 gap-1 px-3"
-            disabled={isMutating}
+            disabled={creating}
             loading={importing}
             onClick={onImport}
           >
@@ -704,7 +701,7 @@ function SkillsToolbar({
           <Button
             variant="primary"
             className="h-8 gap-0.5 px-3"
-            disabled={isMutating}
+            disabled={importing}
             loading={creating}
             onClick={onCreate}
           >
@@ -889,7 +886,7 @@ export default function SkillsPage() {
   useDocumentTitle(t(($) => $['skillManagement.title']))
 
   const handleCreate = () => {
-    if (createMutation.isPending) return
+    if (createMutation.isPending || importMutation.isPending) return
 
     createMutation.mutate(
       {
@@ -914,7 +911,7 @@ export default function SkillsPage() {
   }
 
   const handleFileChange = (file: File | undefined) => {
-    if (!file || importMutation.isPending) return
+    if (!file || importMutation.isPending || createMutation.isPending) return
 
     importMutation.mutate(
       {

@@ -80,12 +80,19 @@ def _conversation_participant(
 
 
 @pytest.mark.parametrize("sqlite_session", [CHATFLOW_MODELS], indirect=True)
-def test_chatflow_keeps_participant_config_and_home_after_roster_publish(
+@pytest.mark.parametrize("binding_type", [WorkflowAgentBindingType.ROSTER_AGENT, WorkflowAgentBindingType.INLINE_AGENT])
+def test_chatflow_keeps_participant_config_and_home_after_agent_update(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
+    binding_type: WorkflowAgentBindingType,
 ) -> None:
     ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
-    agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
+    is_roster = binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+    agent = _agent(
+        tenant_id=ids["tenant_id"],
+        scope=AgentScope.ROSTER if is_roster else AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.ROSTER if is_roster else AgentSource.WORKFLOW,
+    )
     sqlite_session.add(agent)
     sqlite_session.flush()
     original = _snapshot(tenant_id=ids["tenant_id"], agent_id=agent.id)
@@ -93,9 +100,7 @@ def test_chatflow_keeps_participant_config_and_home_after_roster_publish(
     sqlite_session.add(original)
     sqlite_session.flush()
     agent.active_config_snapshot_id = original.id
-    binding = _binding(
-        ids=ids, agent_id=agent.id, snapshot_id=original.id, binding_type=WorkflowAgentBindingType.ROSTER_AGENT
-    )
+    binding = _binding(ids=ids, agent_id=agent.id, snapshot_id=original.id, binding_type=binding_type)
     sqlite_session.add(binding)
     sqlite_session.flush()
     participant = _conversation_participant(sqlite_session, ids=ids, binding=binding, snapshot=original)
@@ -109,13 +114,23 @@ def test_chatflow_keeps_participant_config_and_home_after_roster_publish(
     sqlite_session.add(published)
     sqlite_session.flush()
     agent.active_config_snapshot_id = published.id
+    if not is_roster:
+        binding.current_snapshot_id = published.id
     sqlite_session.commit()
 
     continuing = resolver.resolve(**ids)
     assert continuing.snapshot.id == original.id
     assert continuing.snapshot.home_snapshot_id == original.home_snapshot_id
     assert resolver.resolve(**{**ids, "conversation_id": str(uuid4())}).snapshot.id == published.id
-    assert resolver.resolve(**{**ids, "conversation_id": None}).snapshot.id == published.id
+    assert (
+        resolver.resolve(
+            tenant_id=ids["tenant_id"],
+            app_id=ids["app_id"],
+            workflow_id=ids["workflow_id"],
+            node_id=ids["node_id"],
+        ).snapshot.id
+        == published.id
+    )
 
     execution = WorkflowNodeExecutionModel(
         tenant_id=ids["tenant_id"],

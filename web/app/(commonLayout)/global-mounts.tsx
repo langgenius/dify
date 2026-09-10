@@ -1,5 +1,6 @@
 'use client'
 
+import { Pricing } from '@/app/components/billing/pricing'
 import { SettingsModal } from '@/app/components/header/account-setting/settings-modal'
 import dynamic from '@/next/dynamic'
 
@@ -27,6 +28,7 @@ export function CommonLayoutGlobalMounts() {
       <GotoAnything />
       <WorkflowGeneratorMount />
       <SettingsModal />
+      <Pricing />
     </>
   )
 }

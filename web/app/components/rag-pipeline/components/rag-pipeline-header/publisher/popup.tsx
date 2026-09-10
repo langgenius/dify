@@ -14,30 +14,34 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useModalContextSelector } from '@/context/modal-context'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
@@ -84,10 +88,12 @@ export function Popup({
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   const workflowStore = useWorkflowStore()
-  const isAllowPublishAsCustomKnowledgePipelineTemplate = useProviderContextSelector(
-    (s) => s.isAllowPublishAsCustomKnowledgePipelineTemplate,
+  const { data: isAllowPublishAsCustomKnowledgePipelineTemplate } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.knowledge_pipeline.publish_enabled,
+    }),
   )
-  const setShowPricingModal = useModalContextSelector((s) => s.setShowPricingModal)
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const apiReferenceUrl = useDatasetApiAccessUrl()
   const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
@@ -195,9 +201,11 @@ export function Popup({
     preventDefault: true,
   })
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
+    if (isAllowPublishAsCustomKnowledgePipelineTemplate === undefined) return
+
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {
-      if (deploymentEdition === 'CLOUD') setShowPricingModal()
+      if (deploymentEdition === 'CLOUD') setPricing('open')
     } else {
       onShowPublishAsKnowledgePipelineModal?.()
     }
@@ -206,7 +214,7 @@ export function Popup({
     deploymentEdition,
     onRequestClose,
     onShowPublishAsKnowledgePipelineModal,
-    setShowPricingModal,
+    setPricing,
   ])
   return (
     <div
@@ -318,7 +326,11 @@ export function Popup({
           className="w-full hover:bg-state-accent-hover hover:text-text-accent"
           variant="tertiary"
           onClick={handleClickPublishAsKnowledgePipeline}
-          disabled={!publishedAt || isPublishingAsCustomizedPipeline}
+          disabled={
+            isAllowPublishAsCustomKnowledgePipelineTemplate === undefined ||
+            !publishedAt ||
+            isPublishingAsCustomizedPipeline
+          }
         >
           <div className="flex grow items-center gap-x-2 overflow-hidden">
             <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0" />
@@ -328,17 +340,18 @@ export function Popup({
             >
               {t(($) => $['common.publishAs'], { ns: 'pipeline' })}
             </span>
-            {deploymentEdition === 'CLOUD' && !isAllowPublishAsCustomKnowledgePipelineTemplate && (
-              <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
-                <SparklesSoft
-                  aria-hidden="true"
-                  className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0"
-                />
-                <span className="p-0.5 system-2xs-medium">
-                  {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
-                </span>
-              </PremiumBadge>
-            )}
+            {deploymentEdition === 'CLOUD' &&
+              isAllowPublishAsCustomKnowledgePipelineTemplate === false && (
+                <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
+                  <SparklesSoft
+                    aria-hidden="true"
+                    className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0"
+                  />
+                  <span className="p-0.5 system-2xs-medium">
+                    {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
+                  </span>
+                </PremiumBadge>
+              )}
           </div>
         </Button>
       </div>

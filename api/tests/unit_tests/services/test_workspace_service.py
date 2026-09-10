@@ -2,13 +2,14 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.model_billing_profile import (
     ModelBillingSource,
     TenantModelBillingResolution,
 )
 from enums import CloudPlan, DeploymentEdition
-from models.account import Tenant
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.tokener import TenantTokenerIntegrationStatus
 from services.credit_pool_service import CreditPoolBalance
 from services.errors.billing import BillingUpstreamUnavailableError
@@ -41,11 +42,22 @@ def _tokener_metering() -> dict[str, object]:
     }
 
 
-def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
+def _persist_membership(session: Session, *, role: TenantAccountRole) -> Tenant:
     tenant = Tenant(name="Workspace")
-    membership = SimpleNamespace(role="owner")
-    session = MagicMock()
-    session.scalar.return_value = membership
+    session.add_all(
+        [
+            tenant,
+            TenantAccountJoin(tenant_id=tenant.id, account_id="account-1", role=role),
+            TenantAccountJoin(tenant_id=tenant.id, account_id="decoy-account", role=TenantAccountRole.NORMAL),
+            TenantAccountJoin(tenant_id="decoy-tenant", account_id="account-1", role=TenantAccountRole.NORMAL),
+        ]
+    )
+    session.commit()
+    return tenant
+
+
+def test_get_current_workspace_summary_sandbox_uses_trial_only(sqlite_session: Session) -> None:
+    tenant = _persist_membership(sqlite_session, role=TenantAccountRole.OWNER)
     trial_pool = CreditPoolBalance(
         tenant_id=tenant.id,
         pool_type="trial",
@@ -53,7 +65,6 @@ def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
         quota_used=20,
     )
     billing_info = {
-        "enabled": True,
         "subscription": {"plan": CloudPlan.SANDBOX},
     }
     config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -64,7 +75,7 @@ def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
         patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=trial_pool) as get_pool,
         patch("services.workspace_service.FeatureService.get_features") as get_features,
     ):
-        result = WorkspaceService.get_current_workspace_summary(tenant, "account-1", session=session)
+        result = WorkspaceService.get_current_workspace_summary(tenant, "account-1", session=sqlite_session)
 
     assert result == {
         "id": tenant.id,
@@ -76,14 +87,12 @@ def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
         "tokener_bootstrap_status": None,
     }
     get_info.assert_called_once_with(tenant.id, exclude_vector_space=True)
-    get_pool.assert_called_once_with(tenant_id=tenant.id, pool_type="trial", session=session)
+    get_pool.assert_called_once_with(tenant_id=tenant.id, pool_type="trial", session=sqlite_session)
     get_features.assert_not_called()
 
 
-def test_get_current_workspace_summary_falls_back_from_exhausted_paid_pool() -> None:
-    tenant = Tenant(name="Workspace")
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(role="admin")
+def test_get_current_workspace_summary_falls_back_from_exhausted_paid_pool(sqlite_session: Session) -> None:
+    tenant = _persist_membership(sqlite_session, role=TenantAccountRole.ADMIN)
     paid_pool = CreditPoolBalance(
         tenant_id=tenant.id,
         pool_type="paid",
@@ -97,7 +106,6 @@ def test_get_current_workspace_summary_falls_back_from_exhausted_paid_pool() -> 
         quota_used=40,
     )
     billing_info = {
-        "enabled": True,
         "subscription": {"plan": CloudPlan.TEAM},
     }
     config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -110,20 +118,18 @@ def test_get_current_workspace_summary_falls_back_from_exhausted_paid_pool() -> 
             side_effect=[paid_pool, trial_pool],
         ) as get_pool,
     ):
-        result = WorkspaceService.get_current_workspace_summary(tenant, "account-1", session=session)
+        result = WorkspaceService.get_current_workspace_summary(tenant, "account-1", session=sqlite_session)
 
     assert result["plan"] == CloudPlan.TEAM
     assert result["credits"] == 60
     assert get_pool.call_args_list == [
-        call(tenant_id=tenant.id, pool_type="paid", session=session),
-        call(tenant_id=tenant.id, pool_type="trial", session=session),
+        call(tenant_id=tenant.id, pool_type="paid", session=sqlite_session),
+        call(tenant_id=tenant.id, pool_type="trial", session=sqlite_session),
     ]
 
 
-def test_get_current_workspace_summary_non_cloud_skips_billing_and_credits() -> None:
-    tenant = Tenant(name="Workspace")
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(role="editor")
+def test_get_current_workspace_summary_non_cloud_skips_billing_and_credits(sqlite_session: Session) -> None:
+    tenant = _persist_membership(sqlite_session, role=TenantAccountRole.EDITOR)
     config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
     with (
@@ -131,7 +137,7 @@ def test_get_current_workspace_summary_non_cloud_skips_billing_and_credits() -> 
         patch("services.workspace_service.BillingService.get_info") as get_info,
         patch("services.credit_pool_service.CreditPoolService.get_pool") as get_pool,
     ):
-        result = WorkspaceService.get_current_workspace_summary(tenant, "account-1", session=session)
+        result = WorkspaceService.get_current_workspace_summary(tenant, "account-1", session=sqlite_session)
 
     assert result == {
         "id": tenant.id,
@@ -161,7 +167,6 @@ def test_tokener_workspace_summary_never_reads_legacy_credit_pool(
     session = MagicMock()
     session.scalar.return_value = SimpleNamespace(role="owner")
     billing_info = {
-        "enabled": True,
         "subscription": {"plan": CloudPlan.SANDBOX},
     }
     config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -263,7 +268,6 @@ def test_get_tenant_info_uses_authoritative_legacy_profile_for_cloud_credits() -
     session.scalar.return_value = SimpleNamespace(role="owner")
     feature = SimpleNamespace(
         billing=SimpleNamespace(
-            enabled=True,
             subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL),
         ),
         can_replace_logo=False,
@@ -308,7 +312,6 @@ def test_get_tenant_info_tokener_profile_skips_legacy_credit_pool() -> None:
     session.scalar.return_value = SimpleNamespace(role="owner")
     feature = SimpleNamespace(
         billing=SimpleNamespace(
-            enabled=True,
             subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL),
         ),
         can_replace_logo=False,

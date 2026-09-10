@@ -4,19 +4,21 @@ Vite+ provides the primary static check through `vp check`, which combines Oxfmt
 
 ## Check
 
-Run the complete repository check from the root:
+Run the complete repository check from the root before committing or pushing:
 
 ```sh
-pnpm check
+vp run -w check
 ```
 
 Apply safe fixes before running the same checks:
 
 ```sh
-pnpm check:fix
+vp run -w check:fix
 ```
 
 CI and local development use the same root `vite.config.ts` configuration.
+
+Reuse successful checks for the same final changes. Repeat or expand checks only when subsequent edits, failures, or unresolved concerns require it.
 
 To narrow formatting and linting, pass paths directly to Vite+. Type checking remains repository-wide:
 
@@ -29,14 +31,14 @@ Run only the Web JSX accessibility rules for selected files or directories with
 `lint:a11y`. Quote paths that contain shell metacharacters such as parentheses:
 
 ```sh
-pnpm --dir web lint:a11y 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
+vp run dify-web#lint:a11y 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
 ```
 
 Use dependency mode to resolve an entry file's transitive local imports, including path aliases,
 re-exports, and dynamic imports, and then lint the resulting JSX and TSX files:
 
 ```sh
-pnpm --dir web lint:a11y --deps 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
+vp run dify-web#lint:a11y --deps 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
 ```
 
 This is a local page-scoped diagnostic. The repository-wide accessibility rule baseline remains
@@ -45,38 +47,26 @@ owned by `lint.config.ts` and is also enforced by the normal `vp check` path.
 Run the ESLint fallback separately when targeting JSON, JSONC, JSON5, YAML, TOML, or Markdown:
 
 ```sh
-pnpm lint:eslint package.json pnpm-workspace.yaml web/docs
-pnpm lint:eslint:fix package.json pnpm-workspace.yaml web/docs
+vp run -w lint:eslint package.json pnpm-workspace.yaml web/docs
+vp run -w lint:eslint:fix package.json pnpm-workspace.yaml web/docs
 ```
 
 Oxlint and Vite+ type-check scope is defined by `lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `eslint.config.mjs` global ignores.
 
 The primary rule baseline lives in `lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
-Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `pnpm check` command does not load it. Run `pnpm lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `pnpm lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
+Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `vp run -w check` command does not load it. Run `vp run -w lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `vp run -w lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
 
 The non-code baseline and its repository-wide file scope live in `eslint.config.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, TOML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
 
-### Auto-fix Workflow
-
-Configure the Oxc and ESLint editor extensions to apply their respective fixes on save. The commit hook runs `vp staged`, which delegates staged files to `vp check --fix` and adds the ESLint fallback for non-code files. The autofix workflow uses the same combined Vite+ check.
-
-Always review automatic fixes before committing. JS plugins are allowed to provide fixes, and their behavior is not necessarily identical to a native Oxlint rule.
-
 ### Type-aware Linting
 
-The root configuration enables both `typeAware` and `typeCheck`, so `vp check` runs type-aware rules and full diagnostics through the TypeScript 7 native compiler.
+The root configuration enables both `typeAware` and `typeCheck`, so `vp check` runs type-aware rules and full diagnostics through the repository's `@typescript/native` compiler.
 
 The web package still runs its existing TSSLint rule separately:
 
 ```sh
-pnpm --dir web lint:tss
-```
-
-Run the complete static check before committing or pushing:
-
-```sh
-pnpm check
+vp run dify-web#lint:tss
 ```
 
 ### Bulk Suppressions
@@ -86,8 +76,8 @@ Existing Oxlint error diagnostics are tracked in the root `oxlint-suppressions.j
 The bulk-suppression flags are available in the bundled Oxlint version but are currently hidden from `vp lint --help`. Run them from the repository root so every package uses the same baseline:
 
 ```sh
-pnpm lint:oxlint --suppress-all
-pnpm lint:oxlint --prune-suppressions
+vp run -w lint:oxlint --suppress-all
+vp run -w lint:oxlint --prune-suppressions
 ```
 
 The Oxc editor extension does not yet apply the bulk-suppression baseline, so the editor may still display findings that the CLI suppresses.
@@ -104,22 +94,29 @@ ESLint is intentionally limited to non-code files. The remaining limitations and
 | Non-JavaScript formats   | Oxlint plugins cannot provide custom parsers or file languages. ESLint covers JSON, JSONC, YAML, TOML, and Markdown semantic rules, while Oxfmt remains responsible for their formatting.                        |
 | Markdown code blocks     | ESLint validates the Markdown document, but fenced JavaScript and TypeScript blocks are not passed through the former overlapping preset. This remains deferred rather than duplicating the Oxlint rule set.     |
 | Override-scoped settings | The three Dify UI Tailwind rules are disabled with the rest of ESLint's code path. Oxlint still applies the web `react-x.additionalStateHooks` setting globally because it cannot scope settings to an override. |
-| Oxlint disable severity  | Oxlint only accepts `reportUnusedDisableDirectives` at the root, where it remains `warn`; the former Dify UI-specific ESLint `error` severity is no longer applied to code files.                                |
 
 Suppression comments belong to exactly one linter. Use `oxlint-disable` for code rules from `lint.config.ts`, and use `eslint-disable` only for non-code rules from `eslint.config.mjs`. Oxlint deliberately sets `respectEslintDisableDirectives` to `false`, so an ESLint comment cannot hide an Oxlint finding.
+
+### Inline Disable Comments
+
+Prefer fixing the finding. When an exception is necessary, name the specific rule and use `oxlint-disable-next-line` at the affected statement. For a shared exception spanning several statements, use a bounded disable/enable pair. File-wide disable comments are forbidden, including in tests. `dify/no-file-wide-disable` reports an error when a block disable has any rules left disabled at the end of the file; a matching enable must restore every disabled rule. The native `unicorn/no-abusive-eslint-disable` rule also rejects disables without rule names, which would otherwise suppress the custom check itself.
+
+For existing violations that cannot be fixed in the current change, remove the file-wide comment and record a scoped bulk-suppression baseline instead of turning the rule off for the file:
+
+```sh
+vp run -w lint:oxlint path/to/file.spec.tsx --suppress-all
+```
+
+Review the `oxlint-suppressions.json` diff and retain only the intended file/rule counts. The rule remains active and findings beyond the recorded count are reported; this is a count baseline, not a list of specific suppressed lines. Avoid repository-wide `--suppress-all` for a scoped cleanup. After fixing violations, use `--prune-suppressions` as described above.
+
+Use `lint.config.ts` overrides only when a rule is intentionally inapplicable to a file, and `ignorePatterns` only when the entire file must be excluded, such as generated output. Explain the reason next to the configuration. Do not migrate existing violations to a blanket rule-off override or broaden exceptions to future files with a directory glob.
+
+Explain the concrete reason after `--`: which external contract, lifecycle, or rule limitation makes the exception necessary. A description that merely repeats the rule or says "fix lint" is insufficient. New or modified disables must include this explanation; existing test typing exceptions can be addressed incrementally.
+
+`dify/require-disable-directive-description` uses Oxlint's parsed directives to report missing explanations, including JSX comments. It runs at `error`; existing undescribed exceptions are tracked in the bulk-suppression baseline for incremental cleanup. Enable comments do not need a repeated explanation. This rule does not assess whether a reason is valid and does not replace review. Do not add generic descriptions just to silence it.
+
+`reportUnusedDisableDirectives` runs at `error` repository-wide. Remove an exception when the finding no longer exists. Keep both checks active: a described disable may still be unused, and a used disable may still lack a reason.
 
 ### Introducing New Plugins or Rules
 
 Prefer a native Oxlint rule. If none exists, verify that the rule works through an Oxlint JS plugin on representative files. Record unsupported code rules as migration gaps instead of adding them to ESLint; reserve the ESLint configuration for non-code languages that Oxlint cannot parse. Do not add the Antfu ESLint config as a dependency or enable rules already covered by Oxlint.
-
-## Type Checking
-
-You should be able to see suggestions from TypeScript in your editor for all open files.
-
-Type checking is part of the repository check:
-
-```sh
-pnpm check
-```
-
-Type checking is powered by the repository's `@typescript/native` dependency.

@@ -5,7 +5,7 @@ import { RiGroupLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
-import { memo } from 'react'
+import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -22,6 +22,7 @@ type Props = Readonly<{
 
 const Recipient = ({ data, onChange }: Props) => {
   const { t } = useTranslation()
+  const wholeWorkspaceId = useId()
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
@@ -99,13 +100,17 @@ const Recipient = ({ data, onChange }: Props) => {
             {currentWorkspace?.name[0]?.toLocaleUpperCase()}
           </span>
         </div>
-        <div className={cn('grow system-sm-medium text-text-secondary')}>
+        <label
+          htmlFor={wholeWorkspaceId}
+          className={cn('grow system-sm-medium text-text-secondary')}
+        >
           {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`], {
             workspaceName: currentWorkspace.name.replace(/'/g, '’'),
             ns: 'workflow',
           })}
-        </div>
+        </label>
         <Switch
+          id={wholeWorkspaceId}
           checked={data.whole_workspace}
           onCheckedChange={(checked) => onChange({ ...data, whole_workspace: checked })}
         />

@@ -6,7 +6,10 @@ from sqlalchemy import select
 
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.db.session_factory import session_factory
-from core.workflow.nodes.agent_v2.session_store import resolve_workflow_agent_workspace_owner_scope
+from core.workflow.nodes.agent_v2.session_store import (
+    WorkflowAgentWorkspaceStore,
+    resolve_workflow_agent_workspace_owner_scope,
+)
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
@@ -16,7 +19,6 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from services.agent.workspace_service import AgentWorkspaceService
 
 
 class WorkflowAgentBindingError(Exception):
@@ -93,7 +95,7 @@ class WorkflowAgentBindingResolver:
             # A new node execution in the same conversation must keep its participant's
             # config/Home generation even after the roster Agent publishes a new version.
             if snapshot_id is None and conversation_id:
-                participant = AgentWorkspaceService.resolve_active_binding_for_scope(
+                participant = WorkflowAgentWorkspaceStore.load_active_participant(
                     session=session,
                     scope=resolve_workflow_agent_workspace_owner_scope(
                         tenant_id=tenant_id,

@@ -1,8 +1,9 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import { PublisherActionsSection } from '../built-in-publisher/actions-section'
 import { PublisherSummarySection } from '../built-in-publisher/summary-section'
@@ -594,7 +595,9 @@ describe('app-publisher sections', () => {
 
     await user.hover(screen.getByRole('button', { name: /common\.openWebApp\b/ }))
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Open web app unavailable')
+    expect(
+      await screen.findByText('Open web app unavailable', { selector: '[data-open]' }),
+    ).toBeVisible()
   })
 
   it('should keep an unavailable action with a tooltip keyboard focusable', async () => {
@@ -622,6 +625,19 @@ describe('app-publisher sections', () => {
     expect(action).toHaveFocus()
     expect(action).toHaveAttribute('aria-disabled', 'true')
     expect(action).toHaveAccessibleDescription('Open web app unavailable')
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Open web app unavailable')
+    expect(
+      await screen.findByText('Open web app unavailable', { selector: '[data-open]' }),
+    ).toBeVisible()
   })
 })
+
+function render(ui: React.ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}

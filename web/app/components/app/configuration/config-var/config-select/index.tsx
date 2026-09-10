@@ -1,43 +1,53 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
 import * as React from 'react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 
 export type Options = string[]
 type IConfigSelectProps = {
   options: Options
   onChange: (options: Options) => void
+  errorMessage?: string
+  errorId?: string
 }
 
-const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
+const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange, errorMessage, errorId }) => {
   const { t } = useTranslation()
   const [focusID, setFocusID] = useState<number | null>(null)
   const [deletingID, setDeletingID] = useState<number | null>(null)
 
-  const optionList = options.map((content, index) => {
-    return {
-      id: index,
-      name: content,
-    }
+  const { items, getHandleProps, getItemKey, isSorting, announcement } = useKeyboardSortable({
+    items: options,
+    onChange,
+    getItemLabel: (item) => item,
   })
+  const optionList = useMemo(() => items.map((name, index) => ({ id: index, name })), [items])
 
   return (
     <div>
+      {announcement}
       {options.length > 0 && (
         <div className="mb-1">
           <ReactSortable
             className="space-y-1"
             list={optionList}
-            setList={(list) => onChange(list.map((item) => item.name))}
+            setList={(list) => {
+              if (!isSorting && list.some((item, index) => item.name !== options[index]))
+                onChange(list.map((item) => item.name))
+            }}
+            disabled={isSorting}
             handle=".handle"
             ghostClass="opacity-50"
             animation={150}
           >
-            {options.map((o, index) => (
+            {items.map((o, index) => (
               <div
                 className={cn(
                   'group relative flex items-center rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2.5 hover:bg-components-panel-on-panel-item-bg-hover',
@@ -46,18 +56,26 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
                   deletingID === index &&
                     'border-components-input-border-destructive bg-state-destructive-hover hover:border-components-input-border-destructive hover:bg-state-destructive-hover',
                 )}
-                key={index}
+                key={getItemKey(index)}
               >
-                <RiDraggable className="handle size-4 cursor-grab text-text-quaternary" />
+                <IconButton
+                  {...getHandleProps(index)}
+                  className="handle size-6 shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
+                >
+                  <RiDraggable aria-hidden="true" className="size-4 text-text-quaternary" />
+                </IconButton>
                 <input
-                  key={index}
+                  key={getItemKey(index)}
                   type="input"
+                  aria-label={`${t(($) => $['variableConfig.options'], { ns: 'appDebug' })} ${index + 1}`}
+                  aria-invalid={!!errorMessage || undefined}
+                  aria-describedby={errorMessage ? errorId : undefined}
                   value={o || ''}
                   onChange={(e) => {
                     const value = e.target.value
                     onChange(
                       options.map((item, i) => {
-                        if (index === i) return value
+                        if (getItemKey(index) === i) return value
 
                         return item
                       }),
@@ -72,7 +90,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
                   aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
                   className="absolute top-1/2 right-1.5 block translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
                   onClick={() => {
-                    onChange(options.filter((_, i) => index !== i))
+                    onChange(options.filter((_, i) => getItemKey(index) !== i))
                     setDeletingID(null)
                   }}
                   onMouseEnter={() => setDeletingID(index)}
@@ -86,17 +104,21 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
         </div>
       )}
 
-      <div
+      <Button
+        type="button"
+        variant="tertiary"
+        aria-invalid={(options.length === 0 && !!errorMessage) || undefined}
+        aria-describedby={options.length === 0 && errorMessage ? errorId : undefined}
         onClick={() => {
           onChange([...options, ''])
         }}
-        className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
+        className="mt-1 flex h-9 w-full justify-start gap-2 px-3"
       >
-        <RiAddLine className="size-4" />
-        <div className="system-sm-medium text-[13px]">
+        <RiAddLine aria-hidden="true" className="size-4" />
+        <span className="system-sm-medium text-[13px]">
           {t(($) => $['variableConfig.addOption'], { ns: 'appDebug' })}
-        </div>
-      </div>
+        </span>
+      </Button>
     </div>
   )
 }
