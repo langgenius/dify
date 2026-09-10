@@ -691,3 +691,65 @@ def test_init_uses_real_session_for_count_and_dependencies(
     assert initialized.agent_thought_count == 2
     assert initialized.history_prompt_messages == []
     assert get_dataset_tools.call_args.kwargs["session"] is sqlite_session
+
+
+def test_init_filters_files_by_type_not_vision(sqlite_session: Session, mocker: MockerFixture) -> None:
+    """Regression test for https://github.com/langgenius/dify/issues/39431
+
+    Documents should be kept when the model supports DOCUMENT, even if it
+    does not support VISION. The old code gated all files on VISION alone.
+    """
+    from graphon.file.enums import FileTransferMethod, FileType
+    from graphon.file.models import File
+
+    caller_session = mocker.MagicMock()
+    caller_session.scalar.return_value = 0
+    global_session = mocker.MagicMock()
+    mocker.patch.object(module.db, "session", global_session)
+    mocker.patch.object(BaseAgentRunner, "organize_agent_history", return_value=[])
+    mocker.patch.object(module.DatasetRetrieverTool, "get_dataset_tools", return_value=[])
+
+    llm = mocker.MagicMock()
+    # Model supports DOCUMENT but NOT VISION
+    llm.get_model_schema.return_value = mocker.MagicMock(features=[module.ModelFeature.DOCUMENT])
+    model_instance = mocker.MagicMock(model_type_instance=llm, model="m", credentials="c")
+
+    app_config = mocker.MagicMock()
+    app_config.app_id = "app1"
+    app_config.agent = None
+    app_config.dataset = mocker.MagicMock(dataset_ids=[], retrieve_config={"k": "v"})
+    app_config.additional_features = mocker.MagicMock(show_retrieve_source=False)
+
+    doc_file = File(
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        upload_file_id="doc1",
+        url="http://x",
+    )
+    image_file = File(
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        upload_file_id="img1",
+        url="http://y",
+    )
+
+    app_generate = mocker.MagicMock(invoke_from="test", inputs={}, files=[doc_file, image_file])
+
+    runner = BaseAgentRunner(
+        session=sqlite_session,
+        tenant_id="tenant",
+        application_generate_entity=app_generate,
+        conversation=mocker.MagicMock(),
+        app_config=app_config,
+        model_config=ModelConfigWithCredentialsEntity.model_construct(),
+        config=_agent(),
+        queue_manager=mocker.Mock(spec=AppQueueManager),
+        message=_message(message_id="msg1"),
+        user_id="user",
+        model_instance=model_instance,
+    )
+
+    # Document file should be kept; image file should be filtered out
+    assert doc_file in runner.files
+    assert image_file not in runner.files
+    assert len(runner.files) == 1
