@@ -239,6 +239,96 @@ def _count(session: Session, model) -> int:
     return session.scalar(select(func.count()).select_from(model)) or 0
 
 
+@pytest.mark.parametrize("skill_index", [0, 1], ids=["uploaded", "workspace"])
+@pytest.mark.parametrize(
+    "damage", ["invalid_zip", "missing_skill_md", "member_crc", "checksum", "size", "name_mismatch"]
+)
+def test_damaged_skill_becomes_missing_with_warning(monkeypatch, sqlite_session_factory, skill_index, damage):
+    with zipfile.ZipFile(io.BytesIO(_package())) as archive:
+        members = {name: archive.read(name) for name in archive.namelist()}
+    manifest = json.loads(members["manifest.json"])
+    skill = manifest["skills"][skill_index]
+    path = skill["path"]
+    if damage == "invalid_zip":
+        members[path] = b"not a zip archive"
+    elif damage == "missing_skill_md":
+        members[path] = _zip({"README.md": b"no entrypoint"})
+    elif damage == "member_crc":
+        members[path] = members[path].replace(b"print('ok')", b"print('NO')", 1)
+    elif damage == "name_mismatch":
+        members[path] = _skill_archive("different-name")
+    skill["size"] = len(members[path]) + (1 if damage == "size" else 0)
+    skill["sha256"] = "0" * 64 if damage == "checksum" else hashlib.sha256(members[path]).hexdigest()
+    members["manifest.json"] = json.dumps(manifest).encode()
+    storage = _MemoryStorage()
+    monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
+    result = RosterAgentPackageImporter(storage_backend=storage).import_package(
+        source=io.BytesIO(_zip(members)), tenant_id="tenant-1", account=_account()
+    )
+    assert len(result.warnings) == 1
+    warning = result.warnings[0]
+    assert warning.code == "agent_skill_missing"
+    assert warning.details["name"] == skill["name"]
+    assert warning.details["path"] == path
+    assert warning.details["reason"]
+    assert storage.save_count == 3
+    with sqlite_session_factory() as session:
+        draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == result.agent_id))
+        soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        damaged = soul.config_skills[skill_index]
+        assert damaged.name == skill["name"]
+        assert damaged.is_missing is True
+        assert damaged.file_id == ""
+        assert soul.config_skills[1 - skill_index].is_missing is False
+        assert all(not ref.is_missing for ref in soul.config_files)
+        assert _count(session, ToolFile) == 2
+
+
+def test_damaged_ordinary_file_still_rejects_package():
+    with zipfile.ZipFile(io.BytesIO(_package())) as archive:
+        members = {name: archive.read(name) for name in archive.namelist()}
+    members["f_000001.pdf"] = b"damaged"
+    storage = _MemoryStorage()
+    with pytest.raises(InvalidRosterAgentPackageError):
+        RosterAgentPackageImporter(storage_backend=storage).import_package(
+            source=io.BytesIO(_zip(members)), tenant_id="tenant-1", account=_account()
+        )
+    assert storage.save_count == 0
+
+
+@pytest.mark.parametrize("use_zip64", [False, True])
+def test_invalid_utf8_skill_filename_is_recovered(monkeypatch, sqlite_session_factory, use_zip64):
+    with zipfile.ZipFile(io.BytesIO(_package())) as archive:
+        members = {name: archive.read(name) for name in archive.namelist()}
+    with monkeypatch.context() as scoped:
+        if use_zip64:
+            scoped.setattr(zipfile, "ZIP64_LIMIT", 0)
+        skill = _zip(
+            {
+                "SKILL.md": b"---\nname: config-skill\ndescription: Recoverable skill.\n---\n",
+                "scripts/\u00e9.py": b"print('ok')\n",
+            }
+        ).replace(b"\xc3\xa9.py", b"\xffa.py")
+    members["s_000001.zip"] = skill
+    manifest = json.loads(members["manifest.json"])
+    manifest["skills"][0]["size"] = len(skill)
+    manifest["skills"][0]["sha256"] = hashlib.sha256(skill).hexdigest()
+    members["manifest.json"] = json.dumps(manifest).encode()
+    storage = _MemoryStorage()
+    monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
+    result = RosterAgentPackageImporter(storage_backend=storage).import_package(
+        source=io.BytesIO(_zip(members)), tenant_id="tenant-1", account=_account()
+    )
+    assert result.warnings == []
+    with sqlite_session_factory() as session:
+        draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == result.agent_id))
+        soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        assert soul.config_skills[0].is_missing is False
+        tool_file = session.get(ToolFile, soul.config_skills[0].file_id)
+        with zipfile.ZipFile(io.BytesIO(storage.files[tool_file.file_key])) as archive:
+            assert archive.read("scripts/\ufffda.py") == b"print('ok')\n"
+
+
 def test_import_clears_source_credentials(monkeypatch, sqlite_session_factory):
     with zipfile.ZipFile(io.BytesIO(_package())) as archive:
         members = {name: archive.read(name) for name in archive.namelist()}

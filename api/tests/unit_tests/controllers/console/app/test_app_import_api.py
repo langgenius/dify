@@ -146,7 +146,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = unwrap(api.post)
+        method = unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         app_id = _install_persisting_service_result(
@@ -172,7 +172,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = unwrap(api.post)
+        method = unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         app_id = _install_persisting_service_result(
@@ -198,7 +198,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = unwrap(api.post)
+        method = unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=True)
         app_id = _install_persisting_service_result(
@@ -227,7 +227,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = _unwrap(api.post)
+        method = _unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -263,7 +263,7 @@ class TestAppImportApi:
         sqlite_app_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
-        method = _unwrap(api.post)
+        method = _unwrap(api._import_dsl)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
