@@ -2,11 +2,14 @@ import type { FC } from 'react'
 import type { CalendarItemProps } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
 import dayjs from '../utils/dayjs'
 
 const Item: FC<CalendarItemProps> = ({ day, selectedDate, onClick, isDisabled }) => {
   const locale = useLocale()
+  const { t } = useTranslation('common')
+  const selectedDescriptionId = React.useId()
   const { date, isCurrentMonth } = day
   const isSelected = selectedDate?.isSame(date, 'date')
   const isToday = date.isSame(dayjs(), 'date')
@@ -20,7 +23,7 @@ const Item: FC<CalendarItemProps> = ({ day, selectedDate, onClick, isDisabled })
     <button
       type="button"
       aria-label={dateLabel}
-      aria-pressed={!!isSelected}
+      aria-describedby={isSelected ? selectedDescriptionId : undefined}
       aria-current={isToday ? 'date' : undefined}
       disabled={isDisabled}
       onClick={() => !isDisabled && onClick(date)}
@@ -34,6 +37,11 @@ const Item: FC<CalendarItemProps> = ({ day, selectedDate, onClick, isDisabled })
       )}
     >
       {date.date()}
+      {isSelected && (
+        <span id={selectedDescriptionId} className="sr-only">
+          {t(($) => $['calendar.selectedDate'])}
+        </span>
+      )}
       {isToday && (
         <div
           aria-hidden

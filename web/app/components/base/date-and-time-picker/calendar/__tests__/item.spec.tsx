@@ -4,7 +4,15 @@ import userEvent from '@testing-library/user-event'
 import dayjs from '../../utils/dayjs'
 import Item from '../item'
 
-const locale = vi.hoisted(() => ({ value: 'en-US' }))
+const { locale, translations } = vi.hoisted(() => ({
+  locale: { value: 'en-US' },
+  translations: { 'common.calendar.selectedDate': 'Selected' },
+}))
+
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock(translations)
+})
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => locale.value,
@@ -28,6 +36,7 @@ describe('CalendarItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     locale.value = 'en-US'
+    translations['common.calendar.selectedDate'] = 'Selected'
   })
 
   describe('Rendering', () => {
@@ -43,13 +52,18 @@ describe('CalendarItem', () => {
 
     it('should localize the full date without changing the calendar date across time zones', () => {
       locale.value = 'zh-Hans'
+      translations['common.calendar.selectedDate'] = '已选中'
       const props = createItemProps({
         day: createMockDay({ date: dayjs.tz('2024-06-15 00:00', 'Pacific/Kiritimati') }),
+        selectedDate: dayjs.tz('2024-06-15 00:00', 'Pacific/Kiritimati'),
       })
 
       render(<Item {...props} />)
 
       expect(screen.getByRole('button', { name: '2024年6月15日星期六' })).toHaveTextContent('15')
+      expect(
+        screen.getByRole('button', { name: '2024年6月15日星期六' }),
+      ).toHaveAccessibleDescription('已选中')
     })
 
     it.each([
@@ -62,19 +76,19 @@ describe('CalendarItem', () => {
       expect(screen.getByRole('button', { name })).toHaveTextContent('15')
     })
 
-    it('should expose selection and update it when another date is selected', () => {
+    it('should describe selection without toggle semantics and clear it when another date is selected', () => {
       const props = createItemProps({ selectedDate: dayjs('2024-06-15') })
       const { rerender } = render(<Item {...props} />)
 
-      expect(screen.getByRole('button', { pressed: true })).toHaveAccessibleName(
-        'Saturday, June 15, 2024',
-      )
+      const button = screen.getByRole('button', { name: 'Saturday, June 15, 2024' })
+      expect(button).toHaveAccessibleDescription('Selected')
+      expect(button).not.toHaveAttribute('aria-pressed')
 
       rerender(<Item {...props} selectedDate={dayjs('2024-06-16')} />)
 
-      expect(screen.getByRole('button', { pressed: false })).toHaveAccessibleName(
-        'Saturday, June 15, 2024',
-      )
+      expect(button).toHaveAccessibleName('Saturday, June 15, 2024')
+      expect(button).not.toHaveAccessibleDescription()
+      expect(button).not.toHaveAttribute('aria-pressed')
     })
   })
 
@@ -132,12 +146,13 @@ describe('CalendarItem', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle undefined selectedDate', () => {
+    it('should leave an unselected date without a selection description or toggle state', () => {
       const props = createItemProps({ selectedDate: undefined })
 
       render(<Item {...props} />)
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button')).not.toHaveAccessibleDescription()
+      expect(screen.getByRole('button')).not.toHaveAttribute('aria-pressed')
     })
   })
 })
