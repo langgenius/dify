@@ -190,7 +190,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
                 snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
-                conversation_id=conversation_id,
+                conversation_id=conversation_id if dify_ctx.workflow_tool_invocation_id is None else None,
             )
         except WorkflowAgentBindingError as error:
             yield self._failure_event(
