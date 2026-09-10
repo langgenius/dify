@@ -194,4 +194,41 @@ describe('use-fetch-workflow-inspect-vars', () => {
       })
     })
   })
+
+  it('registers a first human-input node from persisted variables when no cache entry exists', async () => {
+    rfState.nodes = [
+      createNode({
+        id: 'human-input-node',
+        data: { type: BlockEnum.HumanInput, title: 'Human Input', desc: '' },
+      }),
+    ]
+    mockFetchAllInspectVars.mockResolvedValue([
+      createInspectVar({
+        id: 'action-result',
+        name: '__action_id',
+        selector: ['human-input-node', '__action_id'],
+        value: 'approve',
+      }),
+    ])
+    const { result, store } = renderWorkflowHook(() =>
+      useSetWorkflowVarsWithValue({
+        flowType: FlowType.appFlow,
+        flowId: 'flow-id',
+      }),
+    )
+    expect(store.getState().nodesWithInspectVars).toEqual([])
+    await act(async () => {
+      await result.current.fetchInspectVars({})
+    })
+    expect(mockFetchAllInspectVars).toHaveBeenCalledWith(FlowType.appFlow, 'flow-id')
+    expect(store.getState().nodesWithInspectVars).toEqual([
+      expect.objectContaining({
+        nodeId: 'human-input-node',
+        nodeType: BlockEnum.HumanInput,
+        vars: [
+          expect.objectContaining({ id: 'action-result', name: '__action_id', value: 'approve' }),
+        ],
+      }),
+    ])
+  })
 })

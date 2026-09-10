@@ -1,8 +1,6 @@
-import type { FormInputConfig } from '@dify/contracts/api/web/types.gen'
 import type { HumanInputV2FormTransport } from './types'
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { zHumanInputV2FormSubmitRequest } from '@dify/contracts/api/web/zod.gen'
-import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { normalizeHumanInputFormInput } from '@/app/components/workflow/nodes/human-input/shared/types'
 import { humanInputV2FormClient } from '@/service/client'
 import { createHumanInputV2Error } from './errors'
 
@@ -21,44 +19,6 @@ const unavailable = async (): Promise<never> => {
   throw createHumanInputV2Error('unavailable', 'human_input_v2_unavailable', 501)
 }
 
-const toFormInput = (input: FormInputConfig): FormInputItem => {
-  if (input.type === 'paragraph') {
-    return {
-      type: InputVarType.paragraph,
-      output_variable_name: input.output_variable_name,
-      default: {
-        type: input.default?.type ?? 'constant',
-        value: input.default?.value ?? '',
-        selector: input.default?.selector ?? [],
-      },
-    }
-  }
-  if (input.type === 'select') {
-    return {
-      type: InputVarType.select,
-      output_variable_name: input.output_variable_name,
-      option_source: {
-        type: input.option_source.type,
-        value: input.option_source.value ?? [],
-        selector: input.option_source.selector ?? [],
-      },
-    }
-  }
-  const fileSettings = {
-    output_variable_name: input.output_variable_name,
-    allowed_file_types: (input.allowed_file_types ?? []).map(
-      (type) => SupportUploadFileTypes[type],
-    ),
-    allowed_file_extensions: input.allowed_file_extensions ?? [],
-    allowed_file_upload_methods: (input.allowed_file_upload_methods ?? []).filter(
-      (method) => method === 'local_file' || method === 'remote_url',
-    ),
-  }
-  return input.type === 'file-list'
-    ? { ...fileSettings, type: InputVarType.multiFiles, number_limits: input.number_limits }
-    : { ...fileSettings, type: InputVarType.singleFile }
-}
-
 export const realHumanInputV2FormTransport: HumanInputV2FormTransport = {
   async getForm(token, options) {
     const response = await humanInputV2FormClient.getForm(
@@ -67,7 +27,7 @@ export const realHumanInputV2FormTransport: HumanInputV2FormTransport = {
     )
     return {
       formContent: response.form_content ?? '',
-      inputs: (response.inputs ?? []).map(toFormInput),
+      inputs: (response.inputs ?? []).map(normalizeHumanInputFormInput),
       resolvedDefaultValues: response.resolved_default_values ?? {},
       actions: (response.user_actions ?? []).map((action) => ({
         ...action,

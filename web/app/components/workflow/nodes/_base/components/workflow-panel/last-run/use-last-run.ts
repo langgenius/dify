@@ -33,6 +33,7 @@ import { useInvalidLastRun } from '@/service/use-workflow'
 import { useWorkflowRunValidation } from '../../../../../hooks/use-checklist'
 import useInspectVarsCrud from '../../../../../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../../../../../hooks/use-nodes-sync-draft'
+import { useSetWorkflowVarsWithValue } from '../../../../../hooks/use-set-workflow-vars-with-value'
 import { TabType } from '../types'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
@@ -63,7 +64,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
   [BlockEnum.HumanInput]: useHumanInputSingleRunFormParams,
-  [BlockEnum.HumanInputV2]: undefined,
+  [BlockEnum.HumanInputV2]: useHumanInputSingleRunFormParams,
   [BlockEnum.DataSource]: undefined,
   [BlockEnum.DataSourceEmpty]: undefined,
   [BlockEnum.TriggerWebhook]: undefined,
@@ -136,7 +137,8 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   const isLoopNode = blockType === BlockEnum.Loop
   const isAggregatorNode = blockType === BlockEnum.VariableAggregator
   const isCustomRunNode = isSupportCustomRunForm(blockType)
-  const isHumanInputNode = blockType === BlockEnum.HumanInput
+  const isHumanInputNode =
+    blockType === BlockEnum.HumanInput || blockType === BlockEnum.HumanInputV2
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getData: getDataForCheckMore } = useGetDataForCheckMoreHooks<T>(blockType)(
     oneStepRunParams.id,
@@ -224,6 +226,7 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
     })
   }
   const workflowStore = useWorkflowStore()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const { setInitShowLastRunTab, setShowVariableInspectPanel } = workflowStore.getState()
   const initShowLastRunTab = useStore((s) => s.initShowLastRunTab)
   const [tabType, setTabType] = useState<TabType>(
@@ -325,7 +328,15 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
     })
   }
 
-  const handleAfterCustomSingleRun = () => {
+  const handleAfterCustomSingleRun = async () => {
+    if (blockType === BlockEnum.HumanInputV2) {
+      await fetchInspectVars({})
+      workflowStore.getState().setCurrentFocusNodeId(null)
+      setTabType(TabType.settings)
+      setShowVariableInspectPanel(true)
+      hideSingleRun()
+      return
+    }
     invalidLastRun()
     setTabType(TabType.lastRun)
     hideSingleRun()

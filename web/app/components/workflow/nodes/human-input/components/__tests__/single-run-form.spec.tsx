@@ -7,6 +7,9 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { UserActionButtonType } from '../../types'
 import SingleRunForm from '../single-run-form'
 
+const mockToastError = vi.hoisted(() => vi.fn())
+vi.mock('@langgenius/dify-ui/toast', () => ({ toast: { error: mockToastError } }))
+
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item', () => ({
   __esModule: true,
   default: ({
@@ -218,6 +221,25 @@ describe('SingleRunForm', () => {
         inputs: { choice: 'approve' },
         action: 'approve',
       })
+    })
+  })
+  it('restores the submit action and keeps entered values after a server failure', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Submission unavailable'))
+      .mockResolvedValue(undefined)
+    render(<SingleRunForm nodeName="Review" data={createFormData()} onSubmit={onSubmit} />)
+    await user.clear(screen.getByRole('textbox', { name: 'review' }))
+    await user.type(screen.getByRole('textbox', { name: 'review' }), 'Keep this answer')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Approve' })).toBeEnabled())
+    expect(mockToastError).toHaveBeenCalledWith('Submission unavailable')
+    expect(screen.getByRole('textbox', { name: 'review' })).toHaveValue('Keep this answer')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(onSubmit).toHaveBeenLastCalledWith({
+      action: 'approve',
+      inputs: { review: 'Keep this answer' },
     })
   })
 })

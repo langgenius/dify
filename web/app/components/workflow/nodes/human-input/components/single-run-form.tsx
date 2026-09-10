@@ -3,6 +3,7 @@ import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answe
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
@@ -49,8 +50,13 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
 
   const submit = async (actionID: string) => {
     setIsSubmitting(true)
-    await onSubmit?.({ inputs, action: actionID })
-    setIsSubmitting(false)
+    try {
+      await onSubmit?.({ inputs, action: actionID })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t(($) => $.error, { ns: 'common' }))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

@@ -14,6 +14,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { useStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
+import { isHumanInputV2NodeData } from '../../human-input-v2/types'
 import FormContent from '../components/form-content'
 import FormContentPreview from '../components/form-content-preview'
 import TimeoutInput from '../components/timeout'
@@ -267,6 +268,8 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
           formInputs={inputs.inputs}
           userActions={inputs.user_actions}
           onClose={hidePreview}
+          nodeId={isHumanInputV2NodeData(inputs) ? id : undefined}
+          readOnly={readOnly}
         />
       )}
     </>

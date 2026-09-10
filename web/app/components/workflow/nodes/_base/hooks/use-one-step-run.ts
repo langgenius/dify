@@ -28,6 +28,7 @@ import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import CodeDefault from '@/app/components/workflow/nodes/code/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
+import HumanInputV2Default from '@/app/components/workflow/nodes/human-input-v2/default'
 import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
@@ -47,6 +48,7 @@ import {
   VarType,
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
+import { getNodeCatalogType } from '@/app/components/workflow/utils'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { post, ssePost } from '@/service/base'
@@ -101,6 +103,7 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
   [BlockEnum.HumanInput]: checkHumanInputValid,
+  [BlockEnum.HumanInputV2]: HumanInputV2Default.checkValid,
 }
 
 type RequestError = {
@@ -228,7 +231,7 @@ const useOneStepRun = <T>({
     return undefined
   }
 
-  const checkValid = checkValidFns[data.type]
+  const checkValid = checkValidFns[getNodeCatalogType(data)]
 
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
   const runInputDataRef = useRef(runInputData)

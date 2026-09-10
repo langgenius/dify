@@ -239,4 +239,31 @@ describe('useOneStepRun single-run input vars', () => {
       },
     ])
   })
+  it('validates a V2 human-input step without reading V1 delivery methods', () => {
+    const { result } = renderHook(() =>
+      useOneStepRun({
+        id: 'human-v2',
+        flowId: 'app-id',
+        flowType: FlowType.appFlow,
+        data: {
+          type: BlockEnum.HumanInput,
+          title: 'Review',
+          desc: '',
+          version: '2',
+          recipients_spec: [{ type: 'initiator' }],
+          message_template: { subject: 'Review request', body: 'Please review' },
+          debug_mode: { enabled: false, channels: [] },
+          form_content: 'Please approve',
+          inputs: [],
+          user_actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+          timeout: 36,
+          timeout_unit: 'hour',
+        },
+        defaultRunInputData: {},
+        isRunAfterSingleRun: false,
+        isPaused: false,
+      }),
+    )
+    expect(result.current.checkValid()).toEqual({ isValid: true, errorMessage: '' })
+  })
 })
