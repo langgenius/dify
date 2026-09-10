@@ -372,6 +372,9 @@ class TestDatasetServiceUpdateDataset:
 
         with patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task:
             result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            # The re-index task is dispatched on after_commit, not inline.
+            mock_task.delay.assert_not_called()
+            db_session_with_containers.commit()
             mock_task.delay.assert_called_once_with(dataset.id, "remove")
 
         db_session_with_containers.refresh(dataset)
@@ -427,6 +430,9 @@ class TestDatasetServiceUpdateDataset:
                 model="text-embedding-ada-002",
             )
             mock_get_binding.assert_called_once_with("openai", "text-embedding-ada-002", db_session_with_containers)
+            # The re-index task is dispatched on after_commit, not inline.
+            mock_task.delay.assert_not_called()
+            db_session_with_containers.commit()
             mock_task.delay.assert_called_once_with(dataset.id, "add")
 
         db_session_with_containers.refresh(dataset)
@@ -523,6 +529,10 @@ class TestDatasetServiceUpdateDataset:
                 model="text-embedding-3-small",
             )
             mock_get_binding.assert_called_once_with("openai", "text-embedding-3-small", db_session_with_containers)
+            # The re-index tasks are dispatched on after_commit, not inline.
+            mock_task.delay.assert_not_called()
+            mock_regenerate_task.delay.assert_not_called()
+            db_session_with_containers.commit()
             mock_task.delay.assert_called_once_with(dataset.id, "update")
             mock_regenerate_task.delay.assert_called_once_with(
                 dataset.id,
