@@ -248,11 +248,8 @@ class RosterAgentPackageReader:
             raise InvalidRosterAgentPackageError("Roster Agent package uses unsupported compression")
         if info.file_size < 0 or info.compress_size < 0:
             raise InvalidRosterAgentPackageError("Roster Agent package contains invalid ZIP metadata")
-        if info.file_size and (
-            info.compress_size == 0
-            or info.file_size / info.compress_size > dify_config.AGENT_PACKAGE_MAX_COMPRESSION_RATIO
-        ):
-            raise InvalidRosterAgentPackageError("Roster Agent package compression ratio is too high")
+        if info.file_size and info.compress_size == 0:
+            raise InvalidRosterAgentPackageError("Roster Agent package contains invalid ZIP metadata")
         return normalized
 
     @staticmethod

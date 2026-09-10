@@ -491,11 +491,6 @@ class FileUploadConfig(BaseSettings):
         default=5000,
     )
 
-    SKILL_PACKAGE_MAX_COMPRESSION_RATIO: PositiveInt = Field(
-        description="Maximum compression ratio allowed for a Skill package entry",
-        default=1000,
-    )
-
     SKILL_PACKAGE_MAX_SKILL_MD_BYTES: PositiveInt = Field(
         description="Maximum allowed SKILL.md size in bytes",
         default=1 * 1024 * 1024,
@@ -514,11 +509,6 @@ class FileUploadConfig(BaseSettings):
     AGENT_PACKAGE_MAX_ENTRIES: PositiveInt = Field(
         description="Maximum number of entries in an Agent package",
         default=5000,
-    )
-
-    AGENT_PACKAGE_MAX_COMPRESSION_RATIO: PositiveInt = Field(
-        description="Maximum compression ratio allowed for an Agent package entry",
-        default=1000,
     )
 
     BATCH_UPLOAD_LIMIT: NonNegativeInt = Field(
