@@ -440,7 +440,7 @@ def _serialize_agent_app_detail(
         agent_id=agent.id,
         session=session,
     )
-    payload["permission_keys"] = permissions.agent.permission_keys_by_resource_ids([agent.id]).get(agent.id, [])
+    payload["permission_keys"] = permissions.agent.permission_keys_by_resource_ids([agent.id]).get(str(agent.id), [])
     return AgentAppDetailWithSite.model_validate(payload).model_dump(mode="json", exclude={"bound_agent_id"})
 
 
