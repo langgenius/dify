@@ -106,7 +106,7 @@ class RosterAgentPackageImporter:
         tenant_id: str,
         account: Account,
     ) -> RosterAgentPackageImportResult:
-        with self._reader.read(source) as package:
+        with self._reader.read(source, allow_invalid_skills=True) as package:
             package.manifest = package.manifest.model_copy(
                 update={"soul": make_portable_agent_soul(package.manifest.soul)}
             )
@@ -119,6 +119,7 @@ class RosterAgentPackageImporter:
             check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=package.manifest.dependencies)
             app_id = str(uuid4())
             staged: list[_StagedResource] = []
+            skill_warnings: list[DslImportWarning] = []
             try:
                 self._ensure_name_available(tenant_id=tenant_id, name=package.manifest.metadata.name)
                 soul = self._stage_resources(
@@ -126,12 +127,14 @@ class RosterAgentPackageImporter:
                     tenant_id=tenant_id,
                     account_id=account.id,
                     staged=staged,
+                    warnings=skill_warnings,
                 )
                 resolved_soul, warnings = self._resolve_target_soul(
                     tenant_id=tenant_id,
                     metadata=package.manifest.metadata,
                     soul=soul,
                 )
+                warnings = [*skill_warnings, *warnings]
                 try:
                     ComposerConfigValidator.validate_importable_agent_soul(resolved_soul)
                 except (InvalidComposerConfigError, PlaintextSecretNotAllowedError) as exc:
@@ -220,6 +223,7 @@ class RosterAgentPackageImporter:
         tenant_id: str,
         account_id: str,
         staged: list[_StagedResource],
+        warnings: list[DslImportWarning],
     ) -> AgentSoulConfig:
         soul_data = package.manifest.soul.model_dump(mode="json")
         skill_refs_by_package_id = {
@@ -230,20 +234,47 @@ class RosterAgentPackageImporter:
         }
 
         for skill_resource in package.manifest.skills:
-            payload = self._reader.read_member_bytes(
-                package,
-                skill_resource.path,
-                max_bytes=dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024,
-            )
+            missing_ref = {
+                "name": skill_resource.name,
+                "description": skill_resource.description,
+                "file_kind": "tool_file",
+                "file_id": "",
+                "is_missing": True,
+                "size": skill_resource.size,
+                "hash": skill_resource.sha256,
+                "mime_type": "application/zip",
+            }
+            target_ref = skill_refs_by_package_id.get(skill_resource.id)
+            if target_ref is None:
+                target_ref = missing_ref
+                soul_data["config_skills"].append(target_ref)
+            reason = package.invalid_skills.get(skill_resource.id)
+            normalized = None
             try:
-                normalized = self._skill_packages.validate_and_normalize(
-                    content=payload,
-                    filename=skill_resource.path,
-                )
+                if reason is None:
+                    payload = self._reader.read_member_bytes(
+                        package,
+                        skill_resource.path,
+                        max_bytes=dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024,
+                    )
+                    normalized = self._skill_packages.validate_and_normalize(
+                        content=payload, filename=skill_resource.path
+                    )
             except SkillPackageError as exc:
-                raise InvalidRosterAgentPackageError(
-                    f"Roster Agent package Skill {skill_resource.name!r} is invalid"
-                ) from exc
+                reason = exc.code
+            except InvalidRosterAgentPackageError:
+                reason = "archive_integrity_failed"
+            if normalized is None:
+                target_ref.update(missing_ref)
+                warnings.append(
+                    DslImportWarning(
+                        code="agent_skill_missing",
+                        path=f"skills.{skill_resource.id}",
+                        message=f"Skill {skill_resource.name!r} is damaged and must be uploaded again.",
+                        details={"name": skill_resource.name, "reason": reason, "path": skill_resource.path},
+                    )
+                )
+                continue
             storage_key = f"tools/{tenant_id}/{uuid4().hex}.zip"
             tool_file = ToolFile(
                 user_id=account_id,
@@ -266,10 +297,7 @@ class RosterAgentPackageImporter:
                 "hash": normalized.manifest.hash,
                 "mime_type": tool_file.mimetype,
             }
-            if skill_resource.scope == "agent_config":
-                skill_refs_by_package_id[skill_resource.id].update(localized_ref)
-            else:
-                soul_data["config_skills"].append(localized_ref)
+            target_ref.update(localized_ref)
 
         for file_resource in package.manifest.files:
             package_ref = file_refs_by_package_id[file_resource.id]

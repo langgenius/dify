@@ -687,12 +687,23 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert file_upload_schema["properties"]["file"]["type"] == "string"
     assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
 
-    package_import = paths["/agent/import"]["post"]
+    assert "/agent/import" not in paths
+    assert "/agent/{agent_id}/export" not in paths
+    package_import = paths["/apps/imports"]["post"]
     assert _request_schema(package_import, "multipart/form-data")["required"] == ["file"]
+    assert "mode" in _request_schema(package_import, "application/json")["required"]
     conflict = package_import["responses"]["409"]["content"]["application/json"]["schema"]
     assert conflict["$ref"] == "#/components/schemas/RosterAgentPackageConflictResponse"
     assert "leaked_dependencies" in schemas["RosterAgentPackageConflictResponse"]["properties"]
     assert "403" in package_import["responses"]
+    export = paths["/apps/{app_id}/export"]["get"]
+    assert export["responses"]["200"]["content"]["application/zip"]["schema"] == {"type": "string", "format": "binary"}
+    assert export["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/AppExportResponse"
+    )
+    export_format = next(param for param in export["parameters"] if param["name"] == "format")
+    assert set(export_format["schema"]["enum"]) == {"yaml", "ifpkg"}
+    assert export_format["schema"]["default"] == "yaml"
 
     api_key_auth_binding_schema = _request_schema(paths["/api-key-auth/data-source/binding"]["post"])
     assert api_key_auth_binding_schema["$ref"] == "#/components/schemas/ApiKeyAuthBindingPayload"
