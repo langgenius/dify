@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import {
@@ -61,6 +61,52 @@ describe('IpPoliciesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Add' }))
     expect(screen.getByRole('heading', { name: 'New IP Policy' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
+  })
+
+  it('posts a new policy when Create is clicked', async () => {
+    const user = userEvent.setup()
+    const created = createNetworkAccessGroupFixture({ name: 'Office' })
+    const posted: Array<{ method: string; url: string; body: unknown }> = []
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(String(input), init)
+      const bodyText =
+        request.method === 'GET' || request.method === 'HEAD' ? '' : await request.text()
+      posted.push({
+        method: request.method,
+        url: request.url,
+        body: bodyText ? JSON.parse(bodyText) : null,
+      })
+      return new Response(JSON.stringify({ group: created, entitled: true }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, { entitled: true, groups: [] })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      { queryClient },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await user.type(screen.getByPlaceholderText('e.g. Internal Network'), 'Office')
+    await user.type(screen.getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
+    expect(screen.getByRole('button', { name: 'Create' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => {
+      expect(posted).toContainEqual({
+        method: 'POST',
+        url: 'http://localhost:5001/console/api/workspaces/current/network-access-groups',
+        body: {
+          name: 'Office',
+          description: '',
+          allowed_cidrs: ['10.0.0.0/8'],
+        },
+      })
+    })
   })
 
   it('lists existing policies and opens edit from the row', async () => {
