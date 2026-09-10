@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import TemplateCard from '../template-card'
+import { TemplateDetailRouteProvider } from '../template-detail-route'
 
 const { mockPush } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -103,5 +104,24 @@ describe('TemplateCard', () => {
     expect(screen.getByText('dify')).toBeInTheDocument()
     expect(screen.getByText('1.2k')).toBeInTheDocument()
     expect(screen.getByLabelText('Verified by a Dify partner')).toBeInTheDocument()
+  })
+
+  it('syncs /templates/{publisher}/{uuid} while the routed detail dialog is open', async () => {
+    window.history.replaceState(window.history.state, '', '/templates')
+    const user = userEvent.setup()
+    const routedTemplate = {
+      ...template,
+      id: 'c558a1fb-bb8c-4a5e-9404-d681c6659cf2',
+    }
+    render(
+      <TemplateDetailRouteProvider>
+        <TemplateCard partnerText="Verified by a Dify partner" template={routedTemplate} />
+      </TemplateDetailRouteProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Campaign planner' }))
+
+    expect(window.location.pathname).toBe(`/templates/dify/${routedTemplate.id}`)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })

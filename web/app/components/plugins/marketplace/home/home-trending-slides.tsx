@@ -29,6 +29,7 @@ import {
 } from '@/utils/marketplace-site-track'
 import MarketplaceDetailDialog from '../detail-dialog'
 import TemplateDetailDialog from '../templates/template-detail-dialog'
+import { useOptionalTemplateDetailRoute } from '../templates/use-optional-template-detail-route'
 import {
   getPluginLinkInMarketplace,
   getTemplateDetailLinkInMarketplace,
@@ -401,6 +402,7 @@ function EmbeddedRecommendTemplateCard({
 }) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
+  const templateDetailRoute = useOptionalTemplateDetailRoute()
   const href = getTemplateLinkInMarketplace(template)
 
   return (
@@ -411,20 +413,23 @@ function EmbeddedRecommendTemplateCard({
         className={cn(recommendCardClassName, 'cursor-pointer border-0 text-left')}
         onClick={() => {
           trackRecommendCardClick(banner, card, page, href)
-          setOpen(true)
+          if (templateDetailRoute) templateDetailRoute.open(template)
+          else setOpen(true)
         }}
       >
         <RecommendCardFace card={card} />
       </button>
-      <TemplateDetailDialog
-        open={open}
-        template={template}
-        onInstall={() => {
-          setOpen(false)
-          router.push(`/apps?template-id=${encodeURIComponent(template.id)}`)
-        }}
-        onOpenChange={setOpen}
-      />
+      {!templateDetailRoute && (
+        <TemplateDetailDialog
+          open={open}
+          template={template}
+          onInstall={() => {
+            setOpen(false)
+            router.push(`/apps?template-id=${encodeURIComponent(template.id)}`)
+          }}
+          onOpenChange={setOpen}
+        />
+      )}
     </>
   )
 }
