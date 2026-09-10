@@ -33,7 +33,7 @@ const ConditionVarSelector = ({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
-        // TODO: Declare non-native button semantics for this div trigger to support keyboard activation.
+        nativeButton={false}
         render={
           <div className="w-full cursor-pointer">
             <VariableTag
