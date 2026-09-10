@@ -64,6 +64,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
     handleModelSelectorChange,
     hasSetBlockStatus,
     handleCompletionParamsChange,
+    handleInvocationChange,
     handleContextVarChange,
     filterInputVar,
     filterVar,
@@ -255,12 +256,13 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
               popupClassName="w-[387px]!"
               isInWorkflow
               isAdvancedMode={true}
-              supportFirstTokenTimeout
               provider={model?.provider}
               completionParams={model?.completion_params}
+              invocation={inputs.invocation}
               modelId={model?.name}
               setModel={handleModelChange}
               onCompletionParamsChange={handleCompletionParamsChange}
+              onInvocationChange={handleInvocationChange}
               hideDebugWithMultipleModel
               debugWithMultipleModel={false}
               readonly={readOnly || isEnvironmentModelSource}

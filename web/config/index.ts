@@ -347,7 +347,8 @@ export const STOP_PARAMETER_RULE: ModelParameterRule = {
   },
 }
 
-// Consumed by the Dify backend, never sent to model providers.
+// Rendered like a model parameter, but stored on the node's invocation policy and
+// consumed by the Dify backend. It is never sent to model providers.
 export const FIRST_TOKEN_TIMEOUT_PARAMETER_RULE: ModelParameterRule = {
   default: 2000,
   min: 100,

@@ -172,6 +172,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           startTime={created_at}
           time={elapsed_time}
           tokens={total_tokens}
+          timeToFirstToken={execution_metadata?.time_to_first_token}
           steps={steps}
           showSteps={showSteps}
         />

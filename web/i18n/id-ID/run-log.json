@@ -7,6 +7,7 @@
   "meta.status": "Keadaan",
   "meta.steps": "Jalankan Langkah-langkah",
   "meta.time": "Waktu yang telah berlalu",
+  "meta.timeToFirstToken": "Waktu ke Token Pertama",
   "meta.title": "METADATA",
   "meta.tokens": "Total Token",
   "result": "HASIL",

@@ -7,6 +7,7 @@
   "meta.status": "ສະຖານະ",
   "meta.steps": "ຂັ້ນຕອນການເຮັດວຽກ",
   "meta.time": "ເວລາທີ່ໃຊ້ໄປ",
+  "meta.timeToFirstToken": "ເວລາຮອດໂທເຄັນທຳອິດ",
   "meta.title": "ຂໍ້ມູນເມຕາ",
   "meta.tokens": "ໂທເຄັນທັງໝົດ",
   "result": "ຜົນລັດ",

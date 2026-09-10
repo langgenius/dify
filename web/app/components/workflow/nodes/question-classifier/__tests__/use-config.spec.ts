@@ -167,6 +167,21 @@ describe('question-classifier/use-config', () => {
     })
   })
 
+  it('writes the invocation policy outside the completion params', () => {
+    const { result } = renderHook(() => useConfig('question-classifier-node', createPayload()))
+
+    act(() => {
+      result.current.handleInvocationChange({ first_token_timeout_ms: 2500 })
+    })
+
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invocation: { first_token_timeout_ms: 2500 },
+        model: expect.objectContaining({ completion_params: {} }),
+      }),
+    )
+  })
+
   it('does not default the query selector to sys.query in snippet flows', async () => {
     mockFlowType.value = FlowType.snippet
     mockUseWorkflow.mockReturnValue({

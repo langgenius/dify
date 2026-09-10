@@ -26,6 +26,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
     isChatMode,
     isChatModel,
     handleCompletionParamsChange,
+    handleInvocationChange,
     handleQueryVarChange,
     handleTopicsChange,
     hasSetBlockStatus,
@@ -50,12 +51,13 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
             popupClassName="w-[387px]!"
             isInWorkflow
             isAdvancedMode={true}
-            supportFirstTokenTimeout
             provider={model?.provider}
             completionParams={model.completion_params}
+            invocation={inputs.invocation}
             modelId={model.name}
             setModel={handleModelChanged}
             onCompletionParamsChange={handleCompletionParamsChange}
+            onInvocationChange={handleInvocationChange}
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
             readonly={readOnly}

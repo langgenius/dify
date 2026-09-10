@@ -249,6 +249,13 @@ export type ModelConfig = LLMEnvironmentVariableValue & {
   completion_params: LLMCompletionParams
 }
 
+// Per-node policy for how the model is called, as opposed to what is asked of it.
+// Deliberately a sibling of `model` rather than part of `completion_params`, which
+// is forwarded to the provider verbatim.
+export type InvocationConfig = {
+  first_token_timeout_ms?: number
+}
+
 export enum PromptRole {
   system = 'system',
   user = 'user',

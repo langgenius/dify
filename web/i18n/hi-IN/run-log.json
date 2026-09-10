@@ -7,6 +7,7 @@
   "meta.status": "स्थिति",
   "meta.steps": "चालाने के चरण",
   "meta.time": "समय की अवधि",
+  "meta.timeToFirstToken": "पहले टोकन तक का समय",
   "meta.title": "मेटाडाटा",
   "meta.tokens": "कुल टोकन्स",
   "result": "नतीजा",
