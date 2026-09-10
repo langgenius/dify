@@ -48,6 +48,7 @@ from core.app.entities.app_invoke_entities import DifyRunContext
 from core.app.entities.queue_entities import (
     QueueAgentMessageEvent,
     QueueAgentThoughtEvent,
+    QueueHumanInputRequiredEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
@@ -864,12 +865,33 @@ class AgentAppRunner:
 
         # The structured form is delivered via the HITL surface(s); the chat turn
         # ends by echoing the agent's question so the conversation reflects the ask.
-        self._publish_answer(
+        answer = self._ask_human_message(created.args)
+        usage = _llm_usage_from_agent_backend(terminal.usage)
+        publish_text_delta(
             queue_manager=queue_manager,
             model_name=model_name,
-            answer=self._ask_human_message(created.args),
-            query=query,
-            usage=_llm_usage_from_agent_backend(terminal.usage),
+            delta=answer,
+            user_query=query,
+        )
+        queue_manager.publish(
+            QueueHumanInputRequiredEvent(
+                form_id=created.form_id,
+                node_id=message_id,
+                node_title=created.node_title,
+                form_content=created.node_data.form_content,
+                inputs=list(created.node_data.inputs),
+                actions=list(created.node_data.user_actions),
+                resolved_default_values=created.resolved_default_values,
+                display_in_ui=True,
+            ),
+            PublishFrom.APPLICATION_MANAGER,
+        )
+        publish_message_end(
+            queue_manager=queue_manager,
+            model_name=model_name,
+            answer=answer,
+            user_query=query,
+            usage=usage,
         )
 
     def _resolve_pending_ask_human(
