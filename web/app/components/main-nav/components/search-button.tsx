@@ -1,6 +1,6 @@
 'use client'
 
-import type { ShortcutPlatform } from '../platform'
+import type { ShortcutPlatform } from '../shortcut-platform'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { detectPlatform, formatForDisplay } from '@tanstack/react-hotkeys'
@@ -49,7 +49,7 @@ export function MainNavSearchButton({
       <Kbd
         aria-hidden="true"
         data-pending={displayPlatform === null ? '' : undefined}
-        className="h-4.5 w-9 min-w-0 shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary data-pending:invisible"
+        className="h-4.5 min-w-0 shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary data-pending:invisible"
       >
         {displayPlatform !== null &&
           GOTO_ANYTHING_HOTKEY.split('+').map((key) => (

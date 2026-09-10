@@ -1,18 +1,18 @@
 import type { DehydratedState } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, queryOptions, useQuery } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { consoleQuery } from '@/service/console'
 
 const mocks = vi.hoisted(() => ({
   queryClient: undefined as QueryClient | undefined,
   profileQueryFn: vi.fn(),
-  featuresQueryFn: vi.fn(),
   workspaceQueryFn: vi.fn(),
   workspaceQueryOptions: vi.fn(),
   permissionQueryFn: vi.fn(),
   permissionQueryOptions: vi.fn(),
+  featuresQueryFn: vi.fn(),
+  featuresQueryOptions: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
@@ -57,11 +57,7 @@ vi.mock('@/service/console', () => ({
   consoleQuery: {
     features: {
       get: {
-        queryOptions: (options: object) => ({
-          queryKey: ['console', 'features', 'get'],
-          queryFn: mocks.featuresQueryFn,
-          ...options,
-        }),
+        queryOptions: (...args: unknown[]) => mocks.featuresQueryOptions(...args),
       },
     },
     workspaces: {
@@ -118,7 +114,6 @@ describe('CommonLayoutHydrationBoundary', () => {
       plan: 'sandbox',
       credits: 200,
     })
-    mocks.featuresQueryFn.mockResolvedValue({ enable_skill: true })
     mocks.permissionQueryFn.mockResolvedValue({
       workspace: { permission_keys: ['agent.acl.preview'] },
       app: { default_permission_keys: [], overrides: [] },
@@ -135,6 +130,12 @@ describe('CommonLayoutHydrationBoundary', () => {
         { type: 'query' },
       ],
       queryFn: mocks.permissionQueryFn,
+      retry: false,
+    })
+    mocks.featuresQueryFn.mockResolvedValue({ enable_skill: true })
+    mocks.featuresQueryOptions.mockReturnValue({
+      queryKey: ['console', 'features', 'get'],
+      queryFn: mocks.featuresQueryFn,
       retry: false,
     })
   })
@@ -161,6 +162,51 @@ describe('CommonLayoutHydrationBoundary', () => {
       retry: false,
     })
     expect(mocks.permissionQueryFn).toHaveBeenCalledTimes(1)
+    expect(mocks.featuresQueryOptions).toHaveBeenCalledWith({
+      retry: false,
+    })
+    expect(mocks.featuresQueryFn).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([true, false])('hydrates the initial skill flag as %s', async (enableSkill) => {
+    mocks.featuresQueryFn.mockResolvedValue({ enable_skill: enableSkill })
+    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+    const client = new QueryClient()
+    function SkillFlag() {
+      const { data } = useQuery(
+        queryOptions<{ enable_skill: boolean }>({
+          queryKey: ['console', 'features', 'get'],
+          queryFn: mocks.featuresQueryFn,
+          staleTime: Infinity,
+        }),
+      )
+      return <output aria-label="Skills enabled">{String(data?.enable_skill)}</output>
+    }
+    const element = await CommonLayoutHydrationBoundary({ children: <SkillFlag /> })
+    render(<QueryClientProvider client={client}>{element}</QueryClientProvider>)
+    expect(screen.getByLabelText('Skills enabled')).toHaveTextContent(String(enableSkill))
+    expect(mocks.featuresQueryFn).toHaveBeenCalledTimes(1)
+    client.clear()
+  })
+
+  it('does not hydrate another request’s feature flag after a failed prefetch', async () => {
+    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+    const first = await CommonLayoutHydrationBoundary({ children: null })
+    const firstState = (first as ReactElement<{ state: DehydratedState }>).props.state
+    expect(
+      firstState.queries.find((query) => query.queryKey.includes('features'))?.state.data,
+    ).toEqual({ enable_skill: true })
+
+    mocks.queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    mocks.featuresQueryFn.mockRejectedValue(new Error('features unavailable'))
+    const second = await CommonLayoutHydrationBoundary({ children: null })
+    const secondState = (second as ReactElement<{ state: DehydratedState }>).props.state
+    expect(secondState.queries.map((query) => query.queryKey)).not.toContainEqual([
+      'console',
+      'features',
+      'get',
+    ])
+    expect(mocks.redirect).not.toHaveBeenCalled()
   })
 
   it('should dehydrate only Common-owned queries', async () => {
@@ -174,44 +220,37 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(queryKeys).toEqual(
       expect.arrayContaining([
         ['common', 'user-profile'],
-        ['console', 'features', 'get'],
         ['console', 'workspaces', 'current', 'summary', 'get'],
         [['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'], { type: 'query' }],
+        ['console', 'features', 'get'],
       ]),
     )
   })
 
-  it.each([true, false])('hydrates the actual Skills feature flag (%s)', async (enabled) => {
-    mocks.featuresQueryFn.mockResolvedValue({ enable_skill: enabled })
-    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
-    const element = await CommonLayoutHydrationBoundary({ children: null })
-    const client = new QueryClient()
-
-    render(<QueryClientProvider client={client}>{element}</QueryClientProvider>)
-
-    expect(client.getQueryData(consoleQuery.features.get.queryOptions().queryKey)).toEqual({
-      enable_skill: enabled,
-    })
-  })
-
-  it('keeps the shell recoverable without inventing feature flags when the feature request fails', async () => {
-    mocks.featuresQueryFn.mockRejectedValue(new Error('Features unavailable'))
-    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
-    const element = await CommonLayoutHydrationBoundary({ children: <div>Common shell</div> })
-    const client = new QueryClient()
-
-    render(<QueryClientProvider client={client}>{element}</QueryClientProvider>)
-
-    expect(screen.getByText('Common shell')).toBeInTheDocument()
-    expect(client.getQueryData(consoleQuery.features.get.queryOptions().queryKey)).toBeUndefined()
-    expect(mocks.redirect).not.toHaveBeenCalled()
-  })
-
-  it.each(['workspace', 'permissions'] as const)(
-    'should keep the Common shell recoverable when the %s query fails',
-    async (target) => {
-      const failedQueryFn =
-        target === 'workspace' ? mocks.workspaceQueryFn : mocks.permissionQueryFn
+  it.each([
+    {
+      queryKey: ['console', 'workspaces', 'current', 'summary', 'get'],
+      target: 'workspace' as const,
+    },
+    {
+      queryKey: [
+        ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
+        { type: 'query' },
+      ],
+      target: 'permissions' as const,
+    },
+    {
+      queryKey: ['console', 'features', 'get'],
+      target: 'features' as const,
+    },
+  ])(
+    'should keep the Common shell recoverable when the $target query fails',
+    async ({ queryKey, target }) => {
+      const failedQueryFn = {
+        features: mocks.featuresQueryFn,
+        permissions: mocks.permissionQueryFn,
+        workspace: mocks.workspaceQueryFn,
+      }[target]
       failedQueryFn.mockRejectedValue(new Error(`${target} unavailable`))
       const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
@@ -219,14 +258,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       const state = (element as ReactElement<{ state: DehydratedState }>).props.state
 
       expect(mocks.redirect).not.toHaveBeenCalled()
-      expect(state.queries.map((query) => query.queryKey)).not.toContainEqual(
-        target === 'workspace'
-          ? ['console', 'workspaces', 'current', 'summary', 'get']
-          : [
-              ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
-              { type: 'query' },
-            ],
-      )
+      expect(state.queries.map((query) => query.queryKey)).not.toContainEqual(queryKey)
     },
   )
 

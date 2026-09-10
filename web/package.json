@@ -67,6 +67,7 @@
     "@tanstack/react-virtual": "catalog:",
     "abcjs": "catalog:",
     "ahooks": "catalog:",
+    "bowser": "catalog:",
     "class-variance-authority": "catalog:",
     "copy-to-clipboard": "catalog:",
     "cron-parser": "catalog:",
