@@ -128,7 +128,7 @@ def diagnose(
         "single node that caused the failure and the root cause. Reply with ONLY a JSON object: "
         '{"culprit_node_id": "<an existing node id>", "root_cause": "<concise explanation>", '
         '"severity": "low|medium|high"}.'
-    )
+    ) + llm.json_language_instruction("root_cause")
     failed_desc = (
         "\n".join(
             f"- {o.node_id} ({o.title}) status={o.status} error={o.error!r} "
@@ -163,7 +163,7 @@ def diagnose_checklist(
         "most important node to fix and the root cause. Reply with ONLY a JSON object: "
         '{"culprit_node_id": "<an existing node id>", "root_cause": "<concise explanation>", '
         '"severity": "low|medium|high"}.'
-    )
+    ) + llm.json_language_instruction("root_cause")
     errs = (
         "\n".join(
             f"- {e.node_id} ({e.node_type}) {e.title}: {'; '.join(e.messages)} "
@@ -276,7 +276,7 @@ def propose_repair(
         + "Allowed node types: "
         + ", ".join(sorted(_ALLOWED_NODE_TYPES))
         + ".\n"
-    )
+    ) + llm.json_language_instruction("risk.reason")
     user = (
         f"DIAGNOSIS:\n culprit={diagnosis.culprit_node_id}\n root_cause={diagnosis.root_cause}\n"
         f" severity={diagnosis.severity}\n\nCULPRIT NODE CONFIG:\n{_culprit_config(diagnosis.culprit_node_id, graph)}"
