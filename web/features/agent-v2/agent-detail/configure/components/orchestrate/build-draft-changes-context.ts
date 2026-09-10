@@ -24,6 +24,7 @@ export type AgentBuildDraftChangeSummary = {
   skills: readonly AgentBuildDraftChangeItem[]
   files: readonly AgentBuildDraftChangeItem[]
   envVariables: readonly AgentBuildDraftChangeItem[]
+  appVariables: readonly AgentBuildDraftChangeItem[]
 }
 
 export type AgentBuildDraftChangeSection = 'skills' | 'files' | 'advancedSettings'
@@ -34,7 +35,7 @@ const changedKeysBySection: Record<
 > = {
   skills: ['skills'],
   files: ['files'],
-  advancedSettings: ['envVariables'],
+  advancedSettings: ['envVariables', 'appVariables'],
 }
 
 const AgentBuildDraftChangedKeysContext = createContext<ReadonlySet<AgentBuildDraftChangedKey>>(
