@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.file import remote_fetcher
+from core.helper import ssrf_proxy
 from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -39,6 +40,24 @@ USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124"
     " Safari/537.36"
 )
+
+
+def _max_url_load_bytes() -> int:
+    """Largest configured upload allowance, in bytes.
+
+    URL-loaded documents are classified after download, so the pre-download
+    bound uses the ceiling across all upload categories.
+    """
+    return (
+        max(
+            dify_config.UPLOAD_FILE_SIZE_LIMIT,
+            dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
+            dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
+            dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
+        )
+        * 1024
+        * 1024
+    )
 
 
 class ExtractProcessor:
@@ -77,16 +96,25 @@ class ExtractProcessor:
 
     @classmethod
     def load_from_url(cls, url: str, return_text: bool = False) -> list[Document] | str:
-        response = remote_fetcher.make_request("GET", url, headers={"User-Agent": USER_AGENT})
+        # Stream with a hard size bound: the URL and its response are fully
+        # attacker-controlled, so buffering blindly exhausts memory and disk.
+        response = remote_fetcher.make_request("GET", url, headers={"User-Agent": USER_AGENT}, stream_response=True)
+        try:
+            buffered = ssrf_proxy.buffer_response(response, max_response_bytes=_max_url_load_bytes())
+        except ssrf_proxy.ResponseTooLargeError as error:
+            raise ValueError(f"remote file at {url} exceeds the size limit") from error
+        except ssrf_proxy.UnsupportedResponseEncodingError as error:
+            raise ValueError(f"remote file at {url} uses an unsupported content encoding") from error
+        content = buffered.content
 
         with tempfile.TemporaryDirectory() as temp_dir:
             suffix = Path(url).suffix
             if not suffix and suffix != ".":
                 # get content-type
-                if response.headers.get("Content-Type"):
-                    suffix = "." + response.headers.get("Content-Type").split("/")[-1]
+                if buffered.headers.get("Content-Type"):
+                    suffix = "." + buffered.headers.get("Content-Type").split("/")[-1]
                 else:
-                    content_disposition = response.headers.get("Content-Disposition")
+                    content_disposition = buffered.headers.get("Content-Disposition")
                     filename_match = re.search(r'filename="([^"]+)"', content_disposition)
                     if filename_match:
                         filename = unquote(filename_match.group(1))
@@ -98,7 +126,7 @@ class ExtractProcessor:
             # https://stackoverflow.com/questions/26541416/generate-temporary-file-names-without-creating-actual-file-in-python#comment90414256_26541521
             # Generate a temporary filename under the created temp_dir and ensure the directory exists
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
-            Path(file_path).write_bytes(response.content)
+            Path(file_path).write_bytes(content)
             extract_setting = ExtractSetting(datasource_type=DatasourceType.FILE, document_model="text_model")
             if return_text:
                 delimiter = "\n"

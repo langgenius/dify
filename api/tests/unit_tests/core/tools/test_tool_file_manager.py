@@ -7,7 +7,7 @@ remote HTTP remain mocked because they are external I/O boundaries.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import httpx
@@ -119,10 +119,12 @@ def test_create_file_by_raw_prefers_filename_extension_over_mimetype(
 def test_create_file_by_url_downloads_and_persists_record(sqlite_tool_file_session: Session) -> None:
     manager = ToolFileManager()
     tenant_id = str(uuid4())
-    response = Mock()
-    response.content = b"binary"
-    response.headers = {"Content-Type": "application/octet-stream"}
-    response.raise_for_status.return_value = None
+    response = httpx.Response(
+        httpx.codes.OK,
+        content=b"binary",
+        headers={"Content-Type": "application/octet-stream"},
+        request=httpx.Request("GET", "https://example.com/f.bin"),
+    )
 
     with (
         patch("core.tools.tool_file_manager.storage") as storage,
@@ -143,10 +145,12 @@ def test_create_file_by_url_prefers_url_extension_over_mimetype(
 ) -> None:
     manager = ToolFileManager()
     tenant_id = str(uuid4())
-    response = Mock()
-    response.content = b"docx"
-    response.headers = {"Content-Type": "application/octet-stream"}
-    response.raise_for_status.return_value = None
+    response = httpx.Response(
+        httpx.codes.OK,
+        content=b"docx",
+        headers={"Content-Type": "application/octet-stream"},
+        request=httpx.Request("GET", "https://example.com/report.docx?download=1"),
+    )
 
     with (
         patch("core.tools.tool_file_manager.storage") as storage,
@@ -173,6 +177,29 @@ def test_create_file_by_url_raises_on_timeout() -> None:
     ):
         with pytest.raises(ValueError, match="timeout when downloading file"):
             manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
+
+
+def test_create_file_by_url_rejects_oversized_body(
+    sqlite_tool_file_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An attacker-controlled response past the cap must be cut off, not buffered."""
+    manager = ToolFileManager()
+    monkeypatch.setattr(tool_file_manager_module, "_max_tool_file_download_bytes", lambda: 1024)
+    response = httpx.Response(
+        httpx.codes.OK,
+        content=b"x" * 2048,
+        headers={"Content-Type": "application/octet-stream"},
+        request=httpx.Request("GET", "https://example.com/f.bin"),
+    )
+
+    with (
+        patch("core.tools.tool_file_manager.storage") as storage,
+        patch("core.tools.tool_file_manager.remote_fetcher.make_request", return_value=response),
+    ):
+        with pytest.raises(ValueError, match="file too large when downloading file"):
+            manager.create_file_by_url(str(uuid4()), str(uuid4()), "https://example.com/f.bin", str(uuid4()))
+
+    storage.save.assert_not_called()
 
 
 def test_get_file_binary_returns_none_when_not_found(sqlite_tool_file_session: Session) -> None:

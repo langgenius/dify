@@ -7,6 +7,7 @@ import httpx
 
 from core.file import remote_fetcher
 from core.file.remote_file_metadata import InvalidRemoteFileMetadataError, guess_file_info_from_response
+from core.helper import ssrf_proxy
 from core.helper.ssrf_proxy import MaxRetriesExceededError
 from core.tools.errors import ToolSSRFError
 from graphon.file import helpers as file_helpers
@@ -69,8 +70,18 @@ class RemoteFileService:
     def fetch_info(self, *, url: str) -> RemoteFileInfoResult:
         response = self._request("HEAD", url=url)
         if response.status_code != httpx.codes.OK:
-            response = self._request("GET", url=url, timeout=3)
-        self._ensure_success(response)
+            # Fall back to GET for servers that refuse HEAD, but stream so only
+            # headers are inspected — the body must never be buffered by a probe.
+            response = self._request("GET", url=url, timeout=3, stream_response=True)
+            try:
+                return self._info_from_response(response)
+            finally:
+                response.close()
+        return self._info_from_response(response)
+
+    @staticmethod
+    def _info_from_response(response: httpx.Response) -> RemoteFileInfoResult:
+        RemoteFileService._ensure_success(response)
 
         content_length = response.headers.get("Content-Length")
         try:
@@ -90,9 +101,9 @@ class RemoteFileService:
         user: Account | EndUser,
         tenant_id: str | None = None,
     ) -> RemoteFileUploadResult:
-        response = self._fetch_for_upload(url=url)
+        metadata, content = self._fetch_for_upload(url=url)
         try:
-            file_info = guess_file_info_from_response(response)
+            file_info = guess_file_info_from_response(metadata)
         except InvalidRemoteFileMetadataError as error:
             raise RemoteFileInvalidResponseError("The remote response contains invalid file metadata") from error
         except ValueError as error:
@@ -108,10 +119,13 @@ class RemoteFileService:
         ):
             raise FileTooLargeError()
 
-        if response.request.method == "GET":
-            content = response.content
-        else:
-            content = self._fetch_content(url=url)
+        extension_limit = FileService.file_size_limit(extension=file_info.extension)
+        if content is None:
+            content = self._fetch_content(url=url, limit=extension_limit)
+        elif len(content) > extension_limit:
+            # The fallback metadata read was bounded by the largest configured
+            # allowance, so enforce the file's own extension limit here.
+            raise FileTooLargeError()
 
         upload_file = self._files.upload_file(
             filename=file_info.filename,
@@ -158,13 +172,58 @@ class RemoteFileService:
             raise RemoteFileUnavailableError("The remote file request failed") from error
 
     @classmethod
-    def _fetch_for_upload(cls, *, url: str) -> httpx.Response:
-        response = cls._request("HEAD", url=url)
-        if response.status_code != httpx.codes.OK:
-            response = cls._request("GET", url=url, timeout=3, follow_redirects=True)
+    def _fetch_for_upload(cls, *, url: str) -> tuple[httpx.Response, bytes | None]:
+        """Fetch metadata for an upload, prefetching bounded content on GET fallback.
 
-        cls._ensure_success(response)
-        return response
+        Returns the metadata response plus prefetched body bytes when the metadata
+        already came from a GET. Prefetched bytes are bounded by the largest
+        configured upload allowance; the caller enforces the extension limit.
+        """
+        response = cls._request("HEAD", url=url)
+        if response.status_code == httpx.codes.OK:
+            return response, None
+
+        # Some servers refuse HEAD: fall back to GET, but stream and bound the
+        # read so a malicious response cannot exhaust server memory or disk.
+        # The buffered response keeps headers and body for metadata guessing.
+        fallback = cls._request("GET", url=url, timeout=3, follow_redirects=True, stream_response=True)
+        try:
+            cls._ensure_success(fallback)
+        except Exception:
+            fallback.close()
+            raise
+        buffered = cls._buffer_bounded(fallback, limit=_max_upload_bytes())
+        return buffered, buffered.content
+
+    @classmethod
+    def _fetch_content(cls, *, url: str, limit: int) -> bytes:
+        """Download upload content with a hard size bound.
+
+        Streams the body and aborts once `limit` bytes are exceeded, so a
+        server that lies about Content-Length cannot exhaust worker memory.
+        """
+        response = cls._request("GET", url=url, stream_response=True)
+        try:
+            cls._ensure_success(response)
+        except Exception:
+            response.close()
+            raise
+        return cls._buffer_bounded(response, limit=limit).content
+
+    @staticmethod
+    def _buffer_bounded(response: httpx.Response, *, limit: int) -> httpx.Response:
+        """Buffer one streaming response under `limit` bytes (fail-closed)."""
+        if limit <= 0:
+            response.close()
+            raise FileTooLargeError()
+        try:
+            return ssrf_proxy.buffer_response(response, max_response_bytes=limit)
+        except ssrf_proxy.ResponseTooLargeError as error:
+            raise FileTooLargeError() from error
+        except ssrf_proxy.UnsupportedResponseEncodingError as error:
+            # Encoded bodies cannot be size-bounded before decoding (gzip bomb),
+            # so refuse them instead of buffering blindly.
+            raise RemoteFileInvalidResponseError("The remote response uses an unsupported content encoding") from error
 
     @staticmethod
     def _ensure_success(response: httpx.Response) -> None:
@@ -178,8 +237,12 @@ class RemoteFileService:
 
         raise RemoteFileUnavailableError(f"The remote file request returned HTTP {response.status_code}")
 
-    @classmethod
-    def _fetch_content(cls, *, url: str) -> bytes:
-        response = cls._request("GET", url=url)
-        cls._ensure_success(response)
-        return response.content
+
+def _max_upload_bytes() -> int:
+    """Largest configured per-extension upload allowance, in bytes.
+
+    Bounds reads taken before the file's extension is known (GET fallback
+    prefetch). The extension-specific limit is still enforced afterwards.
+    Representative extensions cover every branch of FileService.file_size_limit.
+    """
+    return max(FileService.file_size_limit(extension=extension) for extension in (".bin", ".png", ".mp4", ".mp3"))

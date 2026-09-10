@@ -86,7 +86,43 @@ def test_fetch_info_falls_back_to_get(remote_file_service: RemoteFileService) ->
 
     assert result.content_type == "application/octet-stream"
     assert result.content_length is None
-    assert make_request.call_args_list == [call("HEAD", url=REMOTE_URL), call("GET", url=REMOTE_URL, timeout=3)]
+    assert make_request.call_args_list == [
+        call("HEAD", url=REMOTE_URL),
+        call("GET", url=REMOTE_URL, timeout=3, stream_response=True),
+    ]
+    # A metadata probe must not touch the body: the fallback stream is closed
+    # without reading it. (Plain test doubles are already fully read, so close
+    # is a no-op for them; the no-body-read guarantee is covered by
+    # test_fetch_info_fallback_does_not_read_body below.)
+
+
+def test_fetch_info_fallback_does_not_read_body(remote_file_service: RemoteFileService) -> None:
+    """The GET fallback is headers-only: body access must never happen."""
+
+    class _HeadersOnlyResponse:
+        status_code = httpx.codes.OK
+        headers = {"Content-Type": "application/pdf", "Content-Length": "16"}
+        closed = False
+
+        @property
+        def content(self) -> bytes:
+            raise AssertionError("metadata probe must not read the body")
+
+        def close(self) -> None:
+            self.closed = True
+
+    head_response = _response("HEAD", httpx.codes.METHOD_NOT_ALLOWED)
+    get_response = _HeadersOnlyResponse()
+
+    with patch(
+        "services.remote_file_service.remote_fetcher.make_request",
+        side_effect=[head_response, get_response],
+    ):
+        result = remote_file_service.fetch_info(url=REMOTE_URL)
+
+    assert result.content_type == "application/pdf"
+    assert result.content_length == 16
+    assert get_response.closed
 
 
 @pytest.mark.parametrize(
@@ -207,7 +243,7 @@ def test_upload_reuses_get_fallback_content_and_returns_signed_result(
 
     assert make_request.call_args_list == [
         call("HEAD", url=REMOTE_URL),
-        call("GET", url=REMOTE_URL, timeout=3, follow_redirects=True),
+        call("GET", url=REMOTE_URL, timeout=3, follow_redirects=True, stream_response=True),
     ]
     file_service.is_file_size_within_limit.assert_called_once_with(extension=".pdf", file_size=14)
     file_service.upload_file.assert_called_once_with(
@@ -259,7 +295,10 @@ def test_upload_fetches_content_after_successful_head(
     ):
         remote_file_service.upload_from_url(url=REMOTE_URL, user=account)
 
-    assert make_request.call_args_list == [call("HEAD", url=REMOTE_URL), call("GET", url=REMOTE_URL)]
+    assert make_request.call_args_list == [
+        call("HEAD", url=REMOTE_URL),
+        call("GET", url=REMOTE_URL, stream_response=True),
+    ]
     assert file_service.upload_file.call_args.kwargs["content"] == b"downloaded content"
     assert file_service.upload_file.call_args.kwargs["tenant_id"] is None
 
@@ -354,4 +393,101 @@ def test_upload_rejects_file_that_exceeds_size_limit(
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     file_service.is_file_size_within_limit.assert_called_once_with(extension=".pdf", file_size=1024)
+    file_service.upload_file.assert_not_called()
+
+
+def _oversized_body() -> bytes:
+    limit = FileService.file_size_limit(extension=".pdf")
+    return b"x" * (limit + 1024)
+
+
+def test_upload_aborts_oversized_fallback_body_with_lying_content_length(
+    remote_file_service: RemoteFileService,
+    file_service: MagicMock,
+) -> None:
+    """A server that declares 16 bytes but streams past the cap must be cut off.
+
+    Regression test: the GET fallback used to buffer the entire body into
+    memory before any size check ran (worker memory exhaustion via a
+    low-privilege remote-URL upload).
+    """
+    head_response = _response("HEAD", httpx.codes.METHOD_NOT_ALLOWED)
+    get_response = _response(
+        "GET",
+        httpx.codes.OK,
+        content=_oversized_body(),
+        headers={"Content-Type": "application/pdf", "Content-Length": "16"},
+    )
+    file_info = FileInfo(filename="report.pdf", extension=".pdf", mimetype="application/pdf", size=16)
+
+    with (
+        patch(
+            "services.remote_file_service.remote_fetcher.make_request",
+            side_effect=[head_response, get_response],
+        ) as make_request,
+        patch("services.remote_file_service.guess_file_info_from_response", return_value=file_info),
+    ):
+        with pytest.raises(FileTooLargeError):
+            remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
+
+    assert make_request.call_args_list[1] == call(
+        "GET", url=REMOTE_URL, timeout=3, follow_redirects=True, stream_response=True
+    )
+    file_service.upload_file.assert_not_called()
+
+
+def test_upload_aborts_oversized_content_after_successful_head(
+    remote_file_service: RemoteFileService,
+    file_service: MagicMock,
+) -> None:
+    head_response = _response(
+        "HEAD", httpx.codes.OK, headers={"Content-Type": "application/pdf", "Content-Length": "16"}
+    )
+    content_response = _response(
+        "GET",
+        httpx.codes.OK,
+        content=_oversized_body(),
+        headers={"Content-Type": "application/pdf", "Content-Length": "16"},
+    )
+    file_info = FileInfo(filename="report.pdf", extension=".pdf", mimetype="application/pdf", size=16)
+
+    with (
+        patch(
+            "services.remote_file_service.remote_fetcher.make_request",
+            side_effect=[head_response, content_response],
+        ),
+        patch("services.remote_file_service.guess_file_info_from_response", return_value=file_info),
+    ):
+        with pytest.raises(FileTooLargeError):
+            remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
+
+    file_service.upload_file.assert_not_called()
+
+
+def test_upload_rejects_unsupported_content_encoding(
+    remote_file_service: RemoteFileService,
+    file_service: MagicMock,
+) -> None:
+    """Encoded bodies cannot be size-bounded before decoding (gzip bomb)."""
+    head_response = _response("HEAD", httpx.codes.OK, headers={"Content-Type": "application/pdf"})
+    # NOTE: plain Mock, not httpx.Response — httpx eagerly decodes `content`
+    # at construction time when Content-Encoding is set, so a real Response
+    # cannot even represent the undecodable wire bytes this guards against.
+    content_response = MagicMock()
+    content_response.status_code = httpx.codes.OK
+    # lowercase key: buffer_response looks up "content-encoding" on the mapping
+    # (real httpx headers are case-insensitive; a plain dict is not)
+    content_response.headers = {"Content-Type": "application/pdf", "content-encoding": "gzip"}
+    file_info = FileInfo(filename="report.pdf", extension=".pdf", mimetype="application/pdf", size=7)
+
+    with (
+        patch(
+            "services.remote_file_service.remote_fetcher.make_request",
+            side_effect=[head_response, content_response],
+        ),
+        patch("services.remote_file_service.guess_file_info_from_response", return_value=file_info),
+    ):
+        with pytest.raises(RemoteFileInvalidResponseError):
+            remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
+
     file_service.upload_file.assert_not_called()

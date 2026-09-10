@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from sqlalchemy.orm import Session
 
@@ -120,7 +121,7 @@ class TestExtractProcessorLoaders:
     def test_load_from_url_builds_temp_file_with_correct_suffix(
         self, monkeypatch: pytest.MonkeyPatch, url, headers, expected_suffix
     ):
-        response = SimpleNamespace(headers=headers, content=b"body")
+        response = httpx.Response(httpx.codes.OK, headers=headers, content=b"body", request=httpx.Request("GET", url))
         monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
         monkeypatch.setattr(processor_module, "ExtractSetting", lambda **kwargs: SimpleNamespace(**kwargs))
 
@@ -144,7 +145,13 @@ class TestExtractProcessorLoaders:
 
     def test_load_from_url_extracts_long_text_without_upload_file(self, monkeypatch: pytest.MonkeyPatch):
         content = "a" * 100_000
-        response = SimpleNamespace(headers={"Content-Type": "text/plain"}, content=content.encode())
+        url = "https://example.com/response.txt"
+        response = httpx.Response(
+            httpx.codes.OK,
+            headers={"Content-Type": "text/plain"},
+            content=content.encode(),
+            request=httpx.Request("GET", url),
+        )
         monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
         apply_config_overrides(monkeypatch, ETL_TYPE="SelfHosted")
 
@@ -153,7 +160,13 @@ class TestExtractProcessorLoaders:
         assert text == content
 
     def test_load_from_url_extracts_pdf_without_upload_file(self, monkeypatch: pytest.MonkeyPatch):
-        response = SimpleNamespace(headers={"Content-Type": "application/pdf"}, content=b"%PDF-1.1 body")
+        url = "https://example.com/report"
+        response = httpx.Response(
+            httpx.codes.OK,
+            headers={"Content-Type": "application/pdf"},
+            content=b"%PDF-1.1 body",
+            request=httpx.Request("GET", url),
+        )
         monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
         factory = _patch_all_extractors(monkeypatch)
         apply_config_overrides(monkeypatch, ETL_TYPE="dify")
@@ -166,6 +179,21 @@ class TestExtractProcessorLoaders:
         # no upload_file for URL-loaded files: tenant/user context must be None
         assert args[1] is None
         assert args[2] is None
+
+    def test_load_from_url_rejects_oversized_body(self, monkeypatch: pytest.MonkeyPatch):
+        """An attacker-controlled response past the cap must be cut off, not buffered."""
+        monkeypatch.setattr(processor_module, "_max_url_load_bytes", lambda: 1024)
+        url = "https://example.com/report"
+        response = httpx.Response(
+            httpx.codes.OK,
+            headers={"Content-Type": "application/pdf"},
+            content=b"x" * 2048,
+            request=httpx.Request("GET", url),
+        )
+        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
+
+        with pytest.raises(ValueError, match="exceeds the size limit"):
+            ExtractProcessor.load_from_url(url, return_text=True)
 
 
 class TestExtractProcessorFileRouting:

@@ -15,6 +15,7 @@ from sqlalchemy import select
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.file import remote_fetcher
+from core.helper import ssrf_proxy
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_storage import storage
 from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
@@ -110,9 +111,20 @@ class ToolFileManager:
     ) -> ToolFile:
         # try to download image
         try:
-            response = remote_fetcher.make_request("GET", file_url)
-            response.raise_for_status()
-            blob = response.content
+            # Stream with a hard size bound: the URL and its response are fully
+            # attacker-controlled, so buffering blindly exhausts worker memory.
+            response = remote_fetcher.make_request("GET", file_url, stream_response=True)
+            try:
+                response.raise_for_status()
+            except Exception:
+                response.close()
+                raise
+            try:
+                blob = ssrf_proxy.buffer_response(response, max_response_bytes=_max_tool_file_download_bytes()).content
+            except ssrf_proxy.ResponseTooLargeError as error:
+                raise ValueError(f"file too large when downloading file from {file_url}") from error
+            except ssrf_proxy.UnsupportedResponseEncodingError as error:
+                raise ValueError(f"unsupported content encoding when downloading file from {file_url}") from error
         except httpx.TimeoutException:
             raise ValueError(f"timeout when downloading file from {file_url}")
 
@@ -227,6 +239,24 @@ def resolve_extension(*, filename: str | None, mimetype: str) -> str:
     if filename_extension:
         return filename_extension
     return guess_extension(mimetype) or ".bin"
+
+
+def _max_tool_file_download_bytes() -> int:
+    """Largest configured upload allowance, in bytes.
+
+    Tool files are classified after download, so the pre-download bound uses
+    the ceiling across all upload categories instead of an extension limit.
+    """
+    return (
+        max(
+            dify_config.UPLOAD_FILE_SIZE_LIMIT,
+            dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
+            dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
+            dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
+        )
+        * 1024
+        * 1024
+    )
 
 
 set_tool_file_manager_factory(_factory)
