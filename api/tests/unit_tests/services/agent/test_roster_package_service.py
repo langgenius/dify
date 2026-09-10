@@ -678,7 +678,8 @@ def test_reader_records_unusable_skills_and_preserves_other_members(failure: str
         assert reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload)) == file_payload
 
 
-def test_member_read_rechecks_limit_and_integrity_after_preflight() -> None:
+@pytest.mark.parametrize("rewrite_manifest", [False, True])
+def test_member_read_rechecks_limit_and_integrity_after_preflight(rewrite_manifest: bool) -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
     manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
@@ -694,6 +695,8 @@ def test_member_read_rechecks_limit_and_integrity_after_preflight() -> None:
         prepared.archive.seek(0)
         prepared.archive.truncate()
         prepared.archive.write(modified)
+        if rewrite_manifest:
+            prepared.manifest.files[0].sha256 = hashlib.sha256(b"bad-content").hexdigest()
         with pytest.raises(InvalidRosterAgentPackageError, match="integrity checks"):
             reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload))
 

@@ -19,7 +19,6 @@ _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 @dataclass(frozen=True)
 class RosterAgentPackageMember:
-    path: str
     size: int
     sha256: str
 
