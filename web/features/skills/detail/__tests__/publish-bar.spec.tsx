@@ -31,6 +31,29 @@ describe('SkillPublishBar', () => {
     expect(onPublish).toHaveBeenCalledTimes(2)
   })
 
+  it('does not publish from the shortcut while an editing field is focused', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <SkillPublishBar
+          metaLabel="Saved 5 min ago"
+          state="draft"
+          onOpenVersions={onOpenVersions}
+          onPublish={onPublish}
+        />
+        <textarea aria-label="Skill code editor" />
+      </>,
+    )
+
+    const editor = screen.getByRole('textbox', { name: 'Skill code editor' })
+    await user.click(editor)
+    expect(editor).toHaveFocus()
+
+    await user.keyboard('{Control>}{Shift>}p{/Shift}{/Control}')
+
+    expect(onPublish).not.toHaveBeenCalled()
+  })
+
   it('shows the published state as up to date and disables publishing', () => {
     render(
       <SkillPublishBar
