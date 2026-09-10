@@ -62,7 +62,7 @@ def analyze_impact(
         f"change touches. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
         'Reply with ONLY JSON: {"fields": [{"key","label","type","options"}], '
         '"values": {...}, "target_node_ids": ["<existing id>", ...]}.'
-    )
+    ) + llm.json_language_instruction("field labels and values")
     try:
         data = llm.invoke_json(
             model,
@@ -92,7 +92,10 @@ def propose_edit_plan(
 ) -> list[str]:
     if model is None:
         return ["Apply the requested edit"]
-    system = 'You are a Dify workflow edit planner. Reply with ONLY JSON: {"plan": ["step", ...]}.'
+    system = (
+        'You are a Dify workflow edit planner. Reply with ONLY JSON: {"plan": ["step", ...]}.'
+        + llm.json_language_instruction("plan steps")
+    )
     try:
         data = llm.invoke_json(
             model,

@@ -34,7 +34,7 @@ def analyze_goal(
         f"field. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
         'Reply with ONLY JSON: {"fields": [{"key": "...", "label": "...", "type": "...", '
         '"options": ["..."]}], "values": {"<key>": <default>}}.'
-    )
+    ) + llm.json_language_instruction("field labels and values")
     try:
         data = llm.invoke_json(model, system=system, user=f"GOAL:\n{goal_text}", on_reasoning=on_reasoning)
     except Exception:
@@ -63,7 +63,7 @@ def propose_plan_v1(
     system = (
         "You are a Dify workflow planner. Given requirements, propose an ordered list of "
         'concise build steps. Reply with ONLY JSON: {"plan": ["step", ...]}.'
-    )
+    ) + llm.json_language_instruction("plan steps")
     try:
         data = llm.invoke_json(
             model,
