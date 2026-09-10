@@ -179,7 +179,13 @@ const RunPanel: FC<RunProps> = ({
           )}
         </TabsPanel>
         <TabsPanel value="TRACING">
-          {!loading && <TracingPanel className="bg-background-section-burn" list={list} />}
+          {!loading && (
+            <TracingPanel
+              className="bg-background-section-burn"
+              list={list}
+              totalElapsedTime={runDetail?.elapsed_time}
+            />
+          )}
         </TabsPanel>
       </div>
     </Tabs>
