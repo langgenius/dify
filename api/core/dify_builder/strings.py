@@ -156,6 +156,11 @@ TEMPLATES: list[Template] = [
         template="Proposed repair (risk: {level}, {count} change(s))",
         translate_fields=frozenset(),  # level/count are technical values; re-inserted verbatim
     ),
+    Template(
+        pattern=re.compile(r"^Model changed to (?P<name>.*)$", re.DOTALL),
+        template="Model changed to {name}",
+        translate_fields=frozenset(),  # name is a model identifier; re-inserted verbatim
+    ),
 ]
 
 
