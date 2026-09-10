@@ -52,7 +52,6 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageExport,
     RosterAgentPackageFile,
     RosterAgentPackageManifest,
-    RosterAgentPackageMember,
     RosterAgentPackageSkill,
 )
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
@@ -208,7 +207,8 @@ class RosterAgentPackageExporter:
             tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b"),  # noqa: SIM115
         )
         try:
-            member_metadata: dict[str, RosterAgentPackageMember] = {}
+            skills: list[RosterAgentPackageSkill] = []
+            files: list[RosterAgentPackageFile] = []
             with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
                 total_size = 0
                 nested_uncompressed_size = 0
@@ -218,11 +218,10 @@ class RosterAgentPackageExporter:
                     remaining_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - total_size
                     if isinstance(source, _SkillSource):
                         remaining_bytes = min(remaining_bytes, dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024)
-                    member = self._write_storage_member(
+                    member_size, member_digest = self._write_storage_member(
                         archive, path=source.path, storage_key=source.storage_key, max_bytes=remaining_bytes
                     )
-                    total_size += member.size
-                    member_metadata[source.path] = member
+                    total_size += member_size
                     if isinstance(source, _SkillSource):
                         # Inspect only the embedded Skill; our writer already owns
                         # the outer container, resource sizes, and digests.
@@ -242,38 +241,40 @@ class RosterAgentPackageExporter:
                                 "Roster Agent package nested Skill contents exceed the size limit"
                             )
 
+                        skills.append(
+                            RosterAgentPackageSkill(
+                                id=source.id,
+                                scope=source.scope,
+                                name=source.name,
+                                display_name=source.display_name,
+                                description=source.description,
+                                priority=source.priority,
+                                path=source.path,
+                                size=member_size,
+                                sha256=member_digest,
+                                audit=RosterAgentPackageAudit(ref=source.audit_ref),
+                            )
+                        )
+                    else:
+                        files.append(
+                            RosterAgentPackageFile(
+                                id=source.id,
+                                role="agent_config_file",
+                                path=source.path,
+                                original_name=source.original_name,
+                                mime_type=source.mime_type,
+                                size=member_size,
+                                sha256=member_digest,
+                                audit=RosterAgentPackageAudit(ref=source.audit_ref),
+                            )
+                        )
+
                 manifest = RosterAgentPackageManifest(
                     format=ROSTER_AGENT_PACKAGE_FORMAT,
                     format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
                     audit=audit,
-                    skills=[
-                        RosterAgentPackageSkill(
-                            id=item.id,
-                            scope=item.scope,
-                            name=item.name,
-                            display_name=item.display_name,
-                            description=item.description,
-                            priority=item.priority,
-                            path=item.path,
-                            size=member_metadata[item.path].size,
-                            sha256=member_metadata[item.path].sha256,
-                            audit=RosterAgentPackageAudit(ref=item.audit_ref),
-                        )
-                        for item in skill_sources
-                    ],
-                    files=[
-                        RosterAgentPackageFile(
-                            id=item.id,
-                            role="agent_config_file",
-                            path=item.path,
-                            original_name=item.original_name,
-                            mime_type=item.mime_type,
-                            size=member_metadata[item.path].size,
-                            sha256=member_metadata[item.path].sha256,
-                            audit=RosterAgentPackageAudit(ref=item.audit_ref),
-                        )
-                        for item in file_sources
-                    ],
+                    skills=skills,
+                    files=files,
                 )
                 manifest.validate_app(app)
                 for path, document in (("manifest.yaml", manifest), ("app.yaml", app)):
@@ -434,7 +435,7 @@ class RosterAgentPackageExporter:
         path: str,
         storage_key: str,
         max_bytes: int,
-    ) -> RosterAgentPackageMember:
+    ) -> tuple[int, str]:
         digest = hashlib.sha256()
         size = 0
         try:
@@ -451,7 +452,7 @@ class RosterAgentPackageExporter:
             raise
         except Exception as exc:
             raise RosterAgentPackageExportFailedError(f"Unable to read package resource {path!r}") from exc
-        return RosterAgentPackageMember(path=path, size=size, sha256=digest.hexdigest())
+        return size, digest.hexdigest()
 
     @staticmethod
     def _safe_extension(filename: str) -> str:
