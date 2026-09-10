@@ -9,6 +9,7 @@ M1) never matches and is passed through. Translations are cached per
 
 import json
 import logging
+import re
 from collections.abc import Callable
 
 from core.dify_builder import strings
@@ -21,6 +22,12 @@ _DETECT_SYSTEM = (
     "Identify the language of the user's text. Reply with ONLY its IETF BCP-47 "
     "code, e.g. en, zh-Hans, zh-Hant, ja, fr, es. No other text."
 )
+
+# A plausible BCP-47 language tag: a 2-3 letter primary subtag optionally
+# followed by one or more hyphenated subtags (script/region/variant, e.g.
+# "zh-Hans", "zh-Hant-HK"). Guards against a model that ignores "reply with
+# ONLY the code" and returns a sentence instead.
+_LANG_CODE_RE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$")
 
 
 class Localizer:
@@ -36,13 +43,19 @@ class Localizer:
         if model is None:
             return "en"
         try:
-            code = llm.invoke_text(model, system=_DETECT_SYSTEM, user=text[:2000]).strip()
+            raw = llm.invoke_text(model, system=_DETECT_SYSTEM, user=text[:2000]).strip()
         except Exception:
             logger.exception("dify_builder: language detection failed; defaulting to en")
             return "en"
-        # keep it to a sane token (e.g. "zh-Hans"); fall back to en on garbage
-        code = code.split()[0].strip().strip('."') if code else "en"
-        return code or "en"
+        # Reject anything that isn't a single short, code-shaped token: the model
+        # disobeying "reply with ONLY the code" (e.g. "The language is Japanese.")
+        # must fall back to en rather than silently becoming the target language.
+        if not raw or re.search(r"\s", raw) or len(raw) > 35:
+            return "en"
+        code = raw.strip('."')
+        if not code or not _LANG_CODE_RE.match(code):
+            return "en"
+        return code
 
     # -- localization -------------------------------------------------------
     def localize_items(self, items: list[ConversationItem], language: str) -> list[ConversationItem]:
