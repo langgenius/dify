@@ -1341,7 +1341,7 @@ wheels = [
 
 [[package]]
 name = "dify-agent"
-version = "1.17.0"
+version = "1.17.1"
 source = { editable = "../dify-agent" }
 dependencies = [
     { name = "httpx" },
@@ -1391,7 +1391,7 @@ docs = [
 
 [[package]]
 name = "dify-api"
-version = "1.17.0"
+version = "1.17.1"
 source = { virtual = "." }
 dependencies = [
     { name = "aliyun-log-python-sdk" },
