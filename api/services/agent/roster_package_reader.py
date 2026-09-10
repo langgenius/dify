@@ -193,7 +193,6 @@ class RosterAgentPackageReader:
                             f"Roster Agent package resource {resource.path!r} failed integrity checks",
                         )
                     members[resource.path] = RosterAgentPackageMember(
-                        path=resource.path,
                         size=resource.size,
                         sha256=digest,
                     )
