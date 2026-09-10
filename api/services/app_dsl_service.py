@@ -708,17 +708,7 @@ class AppDslService:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        export_data = make_app_dsl(app_model)
-
-        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            cls._append_workflow_export_data(
-                export_data=export_data,
-                app_model=app_model,
-                include_secret=include_secret,
-                workflow_id=workflow_id,
-                session=session,
-            )
-        elif app_mode == AppMode.AGENT:
+        if app_mode == AppMode.AGENT:
             package_ref, packages = AgentDslService(session).export_agent_app(app=app_model)
             dependencies = AgentDslService(session).extract_package_dependencies(packages)
             export_data = make_agent_app_dsl(
@@ -730,7 +720,17 @@ class AppDslService:
                 ),
             ).model_dump(mode="json")
         else:
-            cls._append_model_config_export_data(export_data, app_model, session=session)
+            export_data = make_app_dsl(app_model)
+            if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+                cls._append_workflow_export_data(
+                    export_data=export_data,
+                    app_model=app_model,
+                    include_secret=include_secret,
+                    workflow_id=workflow_id,
+                    session=session,
+                )
+            else:
+                cls._append_model_config_export_data(export_data, app_model, session=session)
 
         return yaml.dump(export_data, allow_unicode=True)
 
