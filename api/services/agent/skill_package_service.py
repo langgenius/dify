@@ -86,7 +86,6 @@ class NormalizedSkillPackage(BaseModel):
 class _InspectedSkillArchive:
     metadata: SkillPackageInspection
     normalized_members: dict[str, zipfile.ZipInfo]
-    normalized_size: int
     skill_md_bytes: bytes
     strip_prefix: str | None
 
@@ -131,7 +130,10 @@ class SkillPackageService:
                 description=inspection.metadata.description,
                 entry_path=_SKILL_MD_NAME,
                 files=sorted(inspection.normalized_members),
-                size=inspection.normalized_size,
+                size=sum(
+                    len(inspection.skill_md_bytes) if path == _SKILL_MD_NAME else max(info.file_size, 0)
+                    for path, info in inspection.normalized_members.items()
+                ),
                 hash=hashlib.sha256(normalized_archive_bytes).hexdigest(),
             )
         except ValidationError as exc:
@@ -172,10 +174,6 @@ class SkillPackageService:
         return _InspectedSkillArchive(
             metadata=metadata,
             normalized_members=normalized_members,
-            normalized_size=sum(
-                len(skill_md_bytes) if path == _SKILL_MD_NAME else max(info.file_size, 0)
-                for path, info in normalized_members.items()
-            ),
             skill_md_bytes=skill_md_bytes,
             strip_prefix=strip_prefix,
         )
