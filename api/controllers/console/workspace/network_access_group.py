@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Self
+from typing import Any, Self
 from uuid import UUID
 
 from flask_restx import Resource
@@ -8,34 +8,24 @@ from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, Not
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import (
-    account_initialization_required,
-    cloud_edition_billing_paid_plan_required,
-    is_cloud_edition_billing_paid_plan,
-    model_validate,
-    only_edition_cloud,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
+from controllers.console.app.error import AppNotFoundError
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import cloud_edition_billing_paid_plan_required, model_validate
+from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
-from libs.login import login_required
-from models import Account, App, AppMode, TenantAccountRole
-from services.billing_service import BillingService, NetworkAccessGroupUpstreamError
-from services.network_access_group_service import NetworkAccessGroupService
-
-NetworkAccessPoint = Literal["webapp", "service_api", "mcp", "trigger"]
-
-_ACCESS_POINTS_BY_APP_MODE: dict[AppMode, tuple[NetworkAccessPoint, ...]] = {
-    AppMode.WORKFLOW: ("webapp", "service_api", "mcp", "trigger"),
-    AppMode.ADVANCED_CHAT: ("webapp", "service_api", "mcp"),
-    AppMode.CHAT: ("webapp", "service_api", "mcp"),
-    AppMode.COMPLETION: ("webapp", "service_api", "mcp"),
-    AppMode.AGENT_CHAT: ("webapp", "service_api", "mcp"),
-    AppMode.AGENT: ("webapp", "service_api"),
-}
+from machinery.context import RequestContext
+from services.network_access_group_service import (
+    NetworkAccessGroupAccessDeniedError,
+    NetworkAccessGroupAppNotFoundError,
+    NetworkAccessGroupEntitlementUnavailableError,
+    NetworkAccessGroupError,
+    NetworkAccessGroupUnsupportedAccessPointsError,
+    NetworkAccessGroupUnsupportedAppModeError,
+    NetworkAccessGroupUpstreamError,
+    NetworkAccessPoint,
+)
 
 
 class NetworkAccessGroupCreatePayload(BaseModel):
@@ -184,59 +174,6 @@ register_response_schema_models(
 )
 
 
-def _available_access_points(app_model: App) -> list[NetworkAccessPoint]:
-    app_mode = app_model.mode if isinstance(app_model.mode, AppMode) else AppMode.value_of(str(app_model.mode))
-    available = _ACCESS_POINTS_BY_APP_MODE.get(app_mode)
-    if available is None:
-        raise BadRequest(f"Network access control is not supported for app mode '{app_mode.value}'.")
-    return list(available)
-
-
-def _validate_app_access_points(
-    requested: list[NetworkAccessPoint],
-    available: list[NetworkAccessPoint],
-) -> None:
-    unsupported = sorted(set(requested).difference(available))
-    if unsupported:
-        raise BadRequest(f"Unsupported access points for this app: {', '.join(unsupported)}.")
-
-
-def _effective_entitlement(tenant_id: str, upstream_entitled: object) -> bool:
-    return bool(upstream_entitled) and is_cloud_edition_billing_paid_plan(tenant_id)
-
-
-def _normalize_app_binding_defaults(payload: dict) -> None:
-    """Materialize ProtoJSON defaults so the Console response stays stable."""
-
-    payload.setdefault("binding", None)
-    binding = payload.get("binding")
-    if not isinstance(binding, dict):
-        return
-    binding.setdefault("enabled", False)
-    if "access_points" not in binding and "accessPoints" not in binding:
-        binding["access_points"] = []
-
-
-def _limit_binding_access_points(payload: dict, available: list[NetworkAccessPoint]) -> None:
-    """Hide stale scopes which are not real access points for the current App mode."""
-
-    binding = payload.get("binding")
-    if not isinstance(binding, dict):
-        return
-    raw_access_points = binding.get("access_points", binding.get("accessPoints", []))
-    if not isinstance(raw_access_points, list):
-        return
-    binding["access_points"] = [access_point for access_point in raw_access_points if access_point in available]
-    binding.pop("accessPoints", None)
-
-
-def _ensure_workspace_admin_or_owner(current_user: Account) -> None:
-    """Authorize management against the persisted current-workspace membership."""
-
-    if not TenantAccountRole.is_privileged_role(current_user.current_role):
-        raise Forbidden("Only workspace owners and administrators can manage network access groups.")
-
-
 def _translate_upstream_error(exc: NetworkAccessGroupUpstreamError) -> Exception:
     if exc.reason == "INVALID_SECRET_KEY":
         return ServiceUnavailable("Network access group service authentication failed.")
@@ -260,7 +197,23 @@ def _translate_upstream_error(exc: NetworkAccessGroupUpstreamError) -> Exception
     return BadGateway("Unexpected response from the network access group service.")
 
 
-def _serialize_response(response_model: type[ResponseModel], payload: dict):
+def _translate_service_error(exc: NetworkAccessGroupError) -> Exception:
+    if isinstance(exc, NetworkAccessGroupUpstreamError):
+        return _translate_upstream_error(exc)
+    if isinstance(exc, NetworkAccessGroupAccessDeniedError):
+        return Forbidden("Only workspace owners and administrators can manage network access groups.")
+    if isinstance(exc, NetworkAccessGroupEntitlementUnavailableError):
+        return ServiceUnavailable("Billing entitlement is temporarily unavailable.")
+    if isinstance(exc, NetworkAccessGroupAppNotFoundError):
+        return AppNotFoundError()
+    if isinstance(exc, NetworkAccessGroupUnsupportedAppModeError):
+        return BadRequest(f"Network access control is not supported for app mode '{exc.app_mode}'.")
+    if isinstance(exc, NetworkAccessGroupUnsupportedAccessPointsError):
+        return BadRequest(f"Unsupported access points for this app: {', '.join(exc.access_points)}.")
+    raise TypeError(f"Unsupported network access group error: {type(exc).__name__}")
+
+
+def _serialize_response(response_model: type[ResponseModel], payload: dict[str, Any]) -> dict[str, Any]:
     try:
         return dump_response(response_model, payload)
     except ValidationError as exc:
@@ -274,20 +227,12 @@ class CurrentWorkspaceNetworkAccessGroupsApi(Resource):
         "Workspace network access groups retrieved successfully",
         console_ns.models[NetworkAccessGroupListResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
-        _ensure_workspace_admin_or_owner(current_user)
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext) -> dict[str, Any]:
         try:
-            payload = BillingService.list_network_access_groups(current_tenant_id, current_user.id)
-        except NetworkAccessGroupUpstreamError as exc:
-            raise _translate_upstream_error(exc) from exc
-        payload["entitled"] = _effective_entitlement(current_tenant_id, payload.get("entitled"))
-        NetworkAccessGroupService.enrich_app_references(payload, current_tenant_id)
+            payload = application_services().network_access_groups.list_groups(request_context)
+        except NetworkAccessGroupError as exc:
+            raise _translate_service_error(exc) from exc
         return _serialize_response(NetworkAccessGroupListResponse, payload)
 
     @console_ns.expect(console_ns.models[NetworkAccessGroupCreatePayload.__name__])
@@ -296,32 +241,23 @@ class CurrentWorkspaceNetworkAccessGroupsApi(Resource):
         "Workspace network access group created successfully",
         console_ns.models[NetworkAccessGroupMutationResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
     @cloud_edition_billing_paid_plan_required
-    @with_current_user
-    @with_current_tenant_id
     @model_validate(NetworkAccessGroupCreatePayload)
     def post(
         self,
         req_data: NetworkAccessGroupCreatePayload,
-        current_tenant_id: str,
-        current_user: Account,
-    ):
-        _ensure_workspace_admin_or_owner(current_user)
+        request_context: RequestContext,
+    ) -> tuple[dict[str, Any], int]:
         try:
-            payload = BillingService.create_network_access_group(
-                current_tenant_id,
+            payload = application_services().network_access_groups.create_group(
+                request_context,
                 name=req_data.name,
                 description=req_data.description,
                 allowed_cidrs=req_data.allowed_cidrs,
-                actor_account_id=current_user.id,
             )
-        except NetworkAccessGroupUpstreamError as exc:
-            raise _translate_upstream_error(exc) from exc
-        NetworkAccessGroupService.enrich_app_references(payload, current_tenant_id)
+        except NetworkAccessGroupError as exc:
+            raise _translate_service_error(exc) from exc
         return _serialize_response(NetworkAccessGroupMutationResponse, payload), 201
 
 
@@ -332,19 +268,15 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
         "Workspace network access group retrieved successfully",
         console_ns.models[NetworkAccessGroupMutationResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account, group_id: UUID):
-        _ensure_workspace_admin_or_owner(current_user)
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext, group_id: UUID) -> dict[str, Any]:
         try:
-            payload = BillingService.get_network_access_group(current_tenant_id, str(group_id), current_user.id)
-        except NetworkAccessGroupUpstreamError as exc:
-            raise _translate_upstream_error(exc) from exc
-        NetworkAccessGroupService.enrich_app_references(payload, current_tenant_id)
+            payload = application_services().network_access_groups.get_group(
+                request_context,
+                group_id=str(group_id),
+            )
+        except NetworkAccessGroupError as exc:
+            raise _translate_service_error(exc) from exc
         return _serialize_response(NetworkAccessGroupMutationResponse, payload)
 
     @console_ns.expect(console_ns.models[NetworkAccessGroupUpdatePayload.__name__])
@@ -353,35 +285,26 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
         "Workspace network access group updated successfully",
         console_ns.models[NetworkAccessGroupMutationResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
     @cloud_edition_billing_paid_plan_required
-    @with_current_user
-    @with_current_tenant_id
     @model_validate(NetworkAccessGroupUpdatePayload)
     def put(
         self,
         req_data: NetworkAccessGroupUpdatePayload,
-        current_tenant_id: str,
-        current_user: Account,
+        request_context: RequestContext,
         group_id: UUID,
-    ):
-        _ensure_workspace_admin_or_owner(current_user)
+    ) -> dict[str, Any]:
         try:
-            payload = BillingService.update_network_access_group(
-                current_tenant_id,
-                str(group_id),
+            payload = application_services().network_access_groups.update_group(
+                request_context,
+                group_id=str(group_id),
                 name=req_data.name,
                 description=req_data.description,
                 allowed_cidrs=req_data.allowed_cidrs,
                 expected_version=req_data.expected_version,
-                actor_account_id=current_user.id,
             )
-        except NetworkAccessGroupUpstreamError as exc:
-            raise _translate_upstream_error(exc) from exc
-        NetworkAccessGroupService.enrich_app_references(payload, current_tenant_id)
+        except NetworkAccessGroupError as exc:
+            raise _translate_service_error(exc) from exc
         return _serialize_response(NetworkAccessGroupMutationResponse, payload)
 
     @console_ns.doc(params=query_params_from_model(NetworkAccessGroupDeleteQuery))
@@ -390,31 +313,23 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
         "Workspace network access group deleted successfully",
         console_ns.models[NetworkAccessGroupDeleteResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
     @cloud_edition_billing_paid_plan_required
-    @with_current_user
-    @with_current_tenant_id
     @model_validate(NetworkAccessGroupDeleteQuery)
     def delete(
         self,
         req_data: NetworkAccessGroupDeleteQuery,
-        current_tenant_id: str,
-        current_user: Account,
+        request_context: RequestContext,
         group_id: UUID,
-    ):
-        _ensure_workspace_admin_or_owner(current_user)
+    ) -> dict[str, Any]:
         try:
-            payload = BillingService.delete_network_access_group(
-                current_tenant_id,
-                str(group_id),
+            payload = application_services().network_access_groups.delete_group(
+                request_context,
+                group_id=str(group_id),
                 expected_version=req_data.expected_version,
-                actor_account_id=current_user.id,
             )
-        except NetworkAccessGroupUpstreamError as exc:
-            raise _translate_upstream_error(exc) from exc
+        except NetworkAccessGroupError as exc:
+            raise _translate_service_error(exc) from exc
         return _serialize_response(NetworkAccessGroupDeleteResponse, payload)
 
 
@@ -425,28 +340,15 @@ class AppNetworkAccessGroupApi(Resource):
         "App network access group binding retrieved successfully",
         console_ns.models[AppNetworkAccessGroupResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    @with_current_user
-    @with_current_tenant_id
-    @get_app_model
-    def get(self, current_tenant_id: str, current_user: Account, app_model: App):
-        _ensure_workspace_admin_or_owner(current_user)
-        available_access_points = _available_access_points(app_model)
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, Any]:
         try:
-            payload = BillingService.get_app_network_access_group(
-                current_tenant_id,
-                str(app_model.id),
-                current_user.id,
+            payload = application_services().network_access_groups.get_app_binding(
+                request_context,
+                app_id=str(app_id),
             )
-        except NetworkAccessGroupUpstreamError as exc:
-            raise _translate_upstream_error(exc) from exc
-        _normalize_app_binding_defaults(payload)
-        _limit_binding_access_points(payload, available_access_points)
-        payload["entitled"] = _effective_entitlement(current_tenant_id, payload.get("entitled"))
-        payload["available_access_points"] = available_access_points
+        except NetworkAccessGroupError as exc:
+            raise _translate_service_error(exc) from exc
         return _serialize_response(AppNetworkAccessGroupResponse, payload)
 
     @console_ns.expect(console_ns.models[AppNetworkAccessGroupUpdatePayload.__name__])
@@ -455,38 +357,24 @@ class AppNetworkAccessGroupApi(Resource):
         "App network access group binding updated successfully",
         console_ns.models[AppNetworkAccessGroupMutationResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
     @cloud_edition_billing_paid_plan_required
-    @with_current_user
-    @with_current_tenant_id
-    @get_app_model
     @model_validate(AppNetworkAccessGroupUpdatePayload)
     def put(
         self,
         req_data: AppNetworkAccessGroupUpdatePayload,
-        current_tenant_id: str,
-        current_user: Account,
-        app_model: App,
-    ):
-        _ensure_workspace_admin_or_owner(current_user)
-        available_access_points = _available_access_points(app_model)
-        _validate_app_access_points(req_data.access_points, available_access_points)
+        request_context: RequestContext,
+        app_id: UUID,
+    ) -> dict[str, Any]:
         try:
-            payload = BillingService.update_app_network_access_group(
-                current_tenant_id,
-                str(app_model.id),
+            payload = application_services().network_access_groups.update_app_binding(
+                request_context,
+                app_id=str(app_id),
                 enabled=req_data.enabled,
                 group_id=str(req_data.group_id) if req_data.group_id is not None else None,
                 access_points=list(req_data.access_points),
                 expected_version=req_data.expected_version,
-                actor_account_id=current_user.id,
             )
-        except NetworkAccessGroupUpstreamError as exc:
-            raise _translate_upstream_error(exc) from exc
-        _normalize_app_binding_defaults(payload)
-        _limit_binding_access_points(payload, available_access_points)
-        payload["available_access_points"] = available_access_points
+        except NetworkAccessGroupError as exc:
+            raise _translate_service_error(exc) from exc
         return _serialize_response(AppNetworkAccessGroupMutationResponse, payload)
