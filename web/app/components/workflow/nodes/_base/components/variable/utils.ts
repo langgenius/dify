@@ -570,10 +570,13 @@ const formatItem = (
       }
 
       const payload = data as AgentNodeType
-      const outputs: Var[] = []
+      const standardVarNames = new Set(AGENT_OUTPUT_STRUCT.map(({ variable }) => variable))
+      const schemaOutputs: Var[] = []
       Object.keys(payload.output_schema?.properties || {}).forEach((outputKey) => {
+        if (standardVarNames.has(outputKey)) return
+
         const output = payload.output_schema.properties[outputKey]
-        outputs.push({
+        schemaOutputs.push({
           variable: outputKey,
           type:
             output.type === 'array'
@@ -581,7 +584,7 @@ const formatItem = (
               : (`${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}` as VarType),
         })
       })
-      res.vars = [...outputs, ...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT]
+      res.vars = [...AGENT_OUTPUT_STRUCT, ...schemaOutputs]
       break
     }
 
