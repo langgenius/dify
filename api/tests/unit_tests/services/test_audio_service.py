@@ -54,12 +54,13 @@ Tests available voice retrieval:
 """
 
 import json
+from collections.abc import Generator
 from decimal import Decimal
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask
+from flask import Flask, has_request_context, request
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
@@ -73,7 +74,7 @@ from models.enums import ConversationFromSource, MessageStatus
 from models.model import App, AppMode, AppModelConfig, Message
 from models.workflow import Workflow, WorkflowType
 from services.app_ref_service import AppRef, MessageRef
-from services.audio_service import AudioService
+from services.audio_service import AudioService, _create_tts_response
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -252,6 +253,46 @@ class AudioServiceTestDataFactory:
 def factory(sqlite_session: Session) -> AudioServiceTestDataFactory:
     """Provide the test data factory to all tests."""
     return AudioServiceTestDataFactory(sqlite_session)
+
+
+@pytest.mark.parametrize("consumed_chunks", [0, 1, 2, None])
+def test_tts_response_closes_retained_provider_stream(consumed_chunks: int | None) -> None:
+    closed: list[bool] = []
+    audio_chunks = [b"RIFF\x24\x00\x00\x00WAVE" + b"\x00" * 32, b"first-tail", b"second-tail"]
+
+    def chunks() -> Generator[bytes]:
+        try:
+            for chunk in audio_chunks:
+                assert has_request_context()
+                assert request.path == "/text-to-audio"
+                yield chunk
+        finally:
+            closed.append(True)
+
+    source = chunks()
+    app = Flask(__name__)
+    with app.test_request_context("/text-to-audio", method="POST"):
+        response = _create_tts_response(source, "audio/x-wav")
+
+    assert response.status_code == 200
+    assert dict(response.headers) == {"Content-Type": "audio/wav"}
+    assert response.is_streamed
+    assert closed == []
+    try:
+        iterator = iter(response.response)
+        if consumed_chunks is None:
+            assert list(iterator) == audio_chunks
+            assert closed == [True]
+        else:
+            assert [next(iterator) for _ in range(consumed_chunks)] == audio_chunks[:consumed_chunks]
+            assert closed == []
+    finally:
+        response.close()
+        response.close()
+
+    assert closed == [True]
+    with pytest.raises(StopIteration):
+        next(source)
 
 
 class TestAudioServiceASR:

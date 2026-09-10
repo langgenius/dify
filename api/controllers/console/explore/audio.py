@@ -136,9 +136,9 @@ class ChatTextApi(Resource):
             data = bytes(output.data)
             return Response(data, content_type=resolve_audio_mime_type(data, output.mime_type))
         audio_stream, mime_type = inspect_audio_stream(output.data, output.mime_type)
-        # Preserve the shared MIME and request context behavior. TODO: Make the
-        # shared MIME iterator propagate close() to the provider stream.
-        return Response(
+        response = Response(
             stream_with_context(audio_stream),  # pyrefly: ignore[no-matching-overload]
             content_type=mime_type,
         )
+        response.call_on_close(audio_stream.close)
+        return response

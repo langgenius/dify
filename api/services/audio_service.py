@@ -62,10 +62,12 @@ def _create_tts_response(
         return Response(audio_bytes, content_type=resolve_audio_mime_type(audio_bytes, declared_mime_type))
 
     audio_stream, mime_type = inspect_audio_stream(audio, declared_mime_type)
-    return Response(
+    response = Response(
         stream_with_context(audio_stream),  # pyrefly: ignore[no-matching-overload]
         content_type=mime_type,
     )
+    response.call_on_close(audio_stream.close)
+    return response
 
 
 class AudioService:
