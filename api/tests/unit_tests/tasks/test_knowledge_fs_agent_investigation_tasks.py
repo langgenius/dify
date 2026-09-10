@@ -5,6 +5,7 @@ import pytest
 from celery.exceptions import Retry
 from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 
+from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 from tasks import knowledge_fs_agent_investigation_tasks as module
 from tests.unit_tests.tasks.task_options import task_options
 
@@ -48,3 +49,50 @@ def test_revoked_authority_stops_publication_and_transient_failures_retry(monkey
     with pytest.raises(Retry):
         task.run(report=payload, control_space_id=space)
     retry.assert_called_once()
+
+
+@pytest.mark.parametrize("status_code", [400, 403, 409, 413, 422])
+def test_permanent_remote_rejections_do_not_retry(monkeypatch, status_code):
+    gateway = Mock()
+    gateway.capture_investigation.side_effect = KnowledgeFSProductRequestRejectedError(status_code=status_code)
+    monkeypatch.setattr(module, "AgentKnowledgeGateway", lambda: gateway)
+    task = module.capture_agent_knowledge_investigation_task
+    retry = Mock(side_effect=Retry())
+    monkeypatch.setattr(task, "retry", retry)
+    payload, space = report()
+
+    task.run(report=payload, control_space_id=space)
+
+    gateway.capture_investigation.assert_called_once()
+    retry.assert_not_called()
+
+
+@pytest.mark.parametrize(("retries", "countdown"), [(0, 30), (1, 60), (2, 120)])
+def test_rate_limited_report_retries_with_backoff(monkeypatch, retries, countdown):
+    gateway = Mock()
+    error = KnowledgeFSProductRequestRejectedError(status_code=429)
+    gateway.capture_investigation.side_effect = error
+    monkeypatch.setattr(module, "AgentKnowledgeGateway", lambda: gateway)
+    task = module.capture_agent_knowledge_investigation_task
+    retry = Mock(side_effect=Retry())
+    monkeypatch.setattr(task, "retry", retry)
+    monkeypatch.setattr(task.request, "retries", retries)
+    payload, space = report()
+
+    with pytest.raises(Retry):
+        task.run(report=payload, control_space_id=space)
+
+    retry.assert_called_once_with(exc=error, countdown=countdown)
+
+
+def test_malformed_queued_report_is_rejected_before_gateway_publication(monkeypatch):
+    gateway = Mock()
+    monkeypatch.setattr(module, "AgentKnowledgeGateway", lambda: gateway)
+    task = module.capture_agent_knowledge_investigation_task
+    retry = Mock(side_effect=Retry())
+    monkeypatch.setattr(task, "retry", retry)
+
+    task.run(report={"investigation_id": "invalid"}, control_space_id=str(uuid4()))
+
+    gateway.capture_investigation.assert_not_called()
+    retry.assert_not_called()

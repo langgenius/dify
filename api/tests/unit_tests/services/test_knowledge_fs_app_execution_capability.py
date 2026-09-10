@@ -76,6 +76,8 @@ class Remote(UnavailableKnowledgeFSProductRemote):
     @override
     def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
         self.calls.append(request)
+        if request.operation_id == "captureAgentKnowledgeInvestigation":
+            return {"investigationId": "investigation-1", "failedQueries": []}
         if request.operation_id == "captureWorkflowFailedRetrieval":
             return {
                 "failedQueryId": "019fac9f-bfb0-75ee-9af5-252ebafbac1c",
@@ -522,3 +524,52 @@ def test_capture_workflow_failed_retrieval_uses_fresh_transport_trace_and_busine
             },
         )
     ]
+
+
+def test_agent_investigation_uses_authorized_space_and_preserves_report_identity() -> None:
+    broker = Broker()
+    remote = Remote()
+    service = KnowledgeFSAppExecutionCapabilityService(admission=Admission(), broker=broker, remote=remote)
+    issued = broker.issue_app(operation_id="captureAgentKnowledgeInvestigation")
+    payload: dict[str, JsonValue] = {"investigationId": "investigation-1", "query": "refund", "attempts": []}
+
+    result = service.capture_agent_investigation(issued=issued, tenant_id="tenant-1", payload=payload)
+
+    assert result == {"investigationId": "investigation-1", "failedQueries": []}
+    assert remote.calls == [
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="captureAgentKnowledgeInvestigation",
+            method="POST",
+            path="/knowledge-spaces/space-1/agent-investigations",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="token",
+            trace_id="trace-1",
+            payload=payload,
+        )
+    ]
+
+
+@pytest.mark.parametrize("unavailable", ["wrong-capability", "unready-operation", "missing-path"])
+def test_agent_investigation_refuses_unavailable_or_wrong_capability_before_io(
+    monkeypatch: pytest.MonkeyPatch, unavailable: str
+) -> None:
+    broker = Broker()
+    remote = Remote()
+    service = KnowledgeFSAppExecutionCapabilityService(admission=Admission(), broker=broker, remote=remote)
+    issued = broker.issue_app(operation_id="captureAgentKnowledgeInvestigation")
+    if unavailable == "wrong-capability":
+        issued = issued._replace(operation_id="retrieveEvidence")
+    elif unavailable == "unready-operation":
+        monkeypatch.setattr(app_execution_capability, "is_product_operation_ready", lambda _operation_id: False)
+    else:
+        operation_id = "captureAgentKnowledgeInvestigation"
+        operations = dict(app_execution_capability.KNOWLEDGE_FS_PRODUCT_OPERATIONS)
+        operations[operation_id] = operations[operation_id]._replace(kfs_path=None)
+        monkeypatch.setattr(app_execution_capability, "KNOWLEDGE_FS_PRODUCT_OPERATIONS", operations)
+        monkeypatch.setattr(app_execution_capability, "is_product_operation_ready", lambda _operation_id: True)
+
+    with pytest.raises(KnowledgeFSOperationUnavailableError):
+        service.capture_agent_investigation(issued=issued, tenant_id="tenant-1", payload={})
+
+    assert remote.calls == []
