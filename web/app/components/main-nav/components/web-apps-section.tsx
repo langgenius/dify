@@ -225,14 +225,14 @@ const WebAppsSectionContent = () => {
     >
       <CollapsibleTrigger
         ref={sectionToggleRef}
-        className="col-start-1 row-start-1 my-1 ml-2 min-h-6 w-fit min-w-0 justify-start gap-0 rounded-md px-2 py-1 text-left text-text-tertiary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-tertiary"
+        className="group/collapsible col-start-1 row-start-1 my-1 ml-2 flex min-h-6 w-fit min-w-0 touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-left system-sm-medium text-text-tertiary outline-hidden select-none hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       >
         <span id={sectionLabelId} className="system-xs-medium-uppercase">
           {t(($) => $['sidebar.webApps'], { ns: 'explore' })}
         </span>
         <span
           aria-hidden
-          className="i-ri-arrow-down-s-fill h-4 w-4 shrink-0 -rotate-90 transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none"
+          className="i-ri-arrow-down-s-fill h-4 w-4 shrink-0 -rotate-90 transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none"
         />
       </CollapsibleTrigger>
       <Collapsible
@@ -241,7 +241,7 @@ const WebAppsSectionContent = () => {
         className="contents"
       >
         <CollapsibleTrigger
-          className="col-start-2 row-start-1 my-1 mr-2 size-6 min-h-0 w-6 justify-center gap-0 self-center rounded-md p-0.5 hover:not-data-disabled:bg-state-base-hover hover:not-data-disabled:text-text-secondary data-panel-open:bg-state-base-hover data-panel-open:text-text-secondary"
+          className="col-start-2 row-start-1 my-1 mr-2 self-center text-text-secondary data-panel-open:bg-state-base-hover"
           render={
             <IconButton aria-label={t(($) => $['operation.search'], { ns: 'common' })}>
               <span aria-hidden className="i-ri-search-line size-3.5" />
