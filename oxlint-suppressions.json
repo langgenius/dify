@@ -1097,11 +1097,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/file-uploader/dynamic-pdf-preview.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/file-uploader/file-list-in-log.tsx": {
     "eslint-react/no-missing-key": {
       "count": 1
