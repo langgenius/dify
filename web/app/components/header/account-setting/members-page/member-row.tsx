@@ -1,4 +1,5 @@
 'use client'
+import type { MouseEvent } from 'react'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { memo, useCallback } from 'react'
@@ -40,8 +41,26 @@ const MemberRow = ({
     onOpenDetails(member)
   }, [member, onOpenDetails])
 
+  const handleRowClick = useCallback(
+    (event: MouseEvent<HTMLTableRowElement>) => {
+      const target = event.target
+      if (
+        !(target instanceof Element) ||
+        !event.currentTarget.contains(target) ||
+        target.closest('button, a')
+      )
+        return
+      openDetails()
+    },
+    [openDetails],
+  )
+
   return (
-    <tr data-testid={`member-row-${member.id}`} className="border-b border-divider-subtle">
+    <tr
+      data-testid={`member-row-${member.id}`}
+      className="cursor-pointer border-b border-divider-subtle hover:bg-state-base-hover"
+      onClick={handleRowClick}
+    >
       <td className="px-3 py-2">
         <div className="flex min-w-0 items-center">
           <Avatar avatar={member.avatar_url} size="sm" className="mr-2" name={member.name} />
