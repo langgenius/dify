@@ -1,7 +1,6 @@
 'use client'
 
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { AppIconType } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -11,18 +10,27 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { PolicyReferencedApps } from './referenced-apps'
-import { splitPolicySummary } from './validate-ip-entry'
 
-function toAppIconType(iconType: string | null | undefined): AppIconType | undefined {
-  if (iconType === 'image' || iconType === 'emoji' || iconType === 'link') return iconType
-}
+export const policyRowClassName = 'flex items-center pl-3 pr-1'
+export const policyNameColClassName = 'min-w-0 flex-1 truncate'
+export const policyIpEntriesColClassName = 'w-30 shrink-0'
+export const policyEnforcingColClassName = 'w-32 shrink-0'
+export const policyUpdatedColClassName = 'w-52 shrink-0'
+export const policyActionsColClassName = 'flex w-8 shrink-0 items-center justify-center'
 
 type PolicyItemProps = {
   group: NetworkAccessGroupResponse
@@ -32,13 +40,22 @@ type PolicyItemProps = {
 
 export function PolicyItem({ group, canMutate, onEdit }: PolicyItemProps) {
   const { t } = useTranslation()
+  const { formatTimeFromNow } = useFormatTimeFromNow()
+  const [menuOpen, setMenuOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const deleteGroup = useMutation(
     consoleQuery.workspaces.current.networkAccessGroups.byGroupId.delete.mutationOptions(),
   )
-  const summary = splitPolicySummary(group.allowed_cidrs)
   const isBound = group.used_by_count > 0
-  const usedByNames = group.apps.map((app) => app.name).filter(Boolean)
+  const enforcingLabel =
+    group.used_by_count <= 0
+      ? t(($) => $['settings.ipPolicyEnforcingNone'], { ns: 'common' })
+      : group.used_by_count === 1
+        ? t(($) => $['settings.ipPolicyEnforcingOne'], { ns: 'common' })
+        : t(($) => $['settings.ipPolicyEnforcingMany'], {
+            ns: 'common',
+            count: group.used_by_count,
+          })
 
   const handleDelete = () => {
     if (!canMutate) return
@@ -57,64 +74,61 @@ export function PolicyItem({ group, canMutate, onEdit }: PolicyItemProps) {
   }
 
   return (
-    <div className="group flex items-center rounded-xl border-[0.5px] border-transparent bg-components-input-bg-normal px-4 py-3 focus-within:border-components-input-border-active focus-within:shadow-xs hover:border-components-input-border-active hover:shadow-xs">
-      <div className="min-w-0 flex-1">
-        <p className="truncate system-sm-medium text-text-secondary">{group.name}</p>
-        <p className="truncate system-xs-regular text-text-tertiary">
-          {summary.listed.length === 0
-            ? t(($) => $['studio.accessControl.policySummaryNone'], { ns: 'deployments' })
-            : summary.listed.length === 1
-              ? t(($) => $['studio.accessControl.policySummaryOne'], {
-                  ns: 'deployments',
-                  address: summary.listed[0],
-                })
-              : summary.moreCount > 0
-                ? t(($) => $['studio.accessControl.policySummaryMany'], {
-                    ns: 'deployments',
-                    listed: summary.listed.join(', '),
-                    count: summary.moreCount,
-                  })
-                : t(($) => $['studio.accessControl.policySummaryTwo'], {
-                    ns: 'deployments',
-                    first: summary.listed[0],
-                    second: summary.listed[1],
-                  })}
-        </p>
-        {isBound && (
-          <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
-            <div className="flex items-center -space-x-1">
-              {group.apps.slice(0, 3).map((app) => (
-                <AppIcon
-                  key={app.id}
-                  size="xs"
-                  decorative
-                  iconType={toAppIconType(app.icon_type)}
-                  icon={app.icon ?? undefined}
-                  background={app.icon_background}
-                  className="rounded-sm ring-1 ring-components-panel-bg"
-                />
-              ))}
-            </div>
-            <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
-              {usedByNames.length > 0
-                ? usedByNames.join(', ')
-                : t(($) => $['settings.ipPolicyUsedBy'], {
-                    ns: 'common',
-                    count: group.used_by_count,
-                  })}
-            </p>
-          </div>
-        )}
-      </div>
-      <div className="pointer-events-none flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-        <Button disabled={!canMutate} onClick={() => canMutate && onEdit(group)}>
-          <span className="i-ri-edit-line size-4" aria-hidden="true" />
-          {t(($) => $['operation.edit'], { ns: 'common' })}
-        </Button>
-        <Button disabled={!canMutate} onClick={() => canMutate && setConfirmDelete(true)}>
-          <span className="i-ri-delete-bin-line size-4" aria-hidden="true" />
-          {t(($) => $['operation.delete'], { ns: 'common' })}
-        </Button>
+    <div className={`${policyRowClassName} border-b border-divider-subtle py-3`}>
+      <p className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
+        {group.name}
+      </p>
+      <p className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}>
+        {group.allowed_cidrs.length}
+      </p>
+      <p className={`${policyEnforcingColClassName} system-sm-regular text-text-tertiary`}>
+        {enforcingLabel}
+      </p>
+      <p className={`${policyUpdatedColClassName} system-sm-regular text-text-tertiary`}>
+        {formatTimeFromNow(Date.parse(group.updated_at))}
+      </p>
+      <div className={policyActionsColClassName}>
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+          <DropdownMenuTrigger
+            render={
+              <IconButton
+                size="md"
+                aria-label={t(($) => $['operation.moreActionsFor'], {
+                  ns: 'common',
+                  name: group.name,
+                })}
+                className="data-popup-open:bg-state-base-hover"
+              >
+                <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+              </IconButton>
+            }
+          />
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-35">
+            <DropdownMenuItem
+              disabled={!canMutate}
+              className="system-sm-semibold text-text-secondary"
+              onClick={() => {
+                if (!canMutate) return
+                onEdit(group)
+              }}
+            >
+              {t(($) => $['operation.edit'], { ns: 'common' })}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              disabled={!canMutate}
+              variant="destructive"
+              className="system-sm-semibold"
+              onClick={() => {
+                if (!canMutate) return
+                setConfirmDelete(true)
+                setMenuOpen(false)
+              }}
+            >
+              {t(($) => $['operation.delete'], { ns: 'common' })}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent backdropProps={{ forceRender: true }} className="w-100">

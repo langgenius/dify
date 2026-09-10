@@ -13,6 +13,7 @@ const translations = vi.hoisted(() => ({
   'operation.close': 'Close',
   'operation.delete': 'Delete',
   'operation.edit': 'Edit',
+  'operation.moreActionsFor': 'More actions for {{name}}',
   'settings.ipPolicies': 'IP Policies',
   'settings.ipPoliciesDescription':
     'Reusable rules that control which IP addresses or ranges can access your apps',
@@ -20,7 +21,14 @@ const translations = vi.hoisted(() => ({
   'settings.ipPolicyAllowlist': 'Allowlist',
   'settings.ipPolicyAllowlistHelp':
     'Single addresses (203.0.113.42) or CIDR ranges (10.0.0.0/8). IPv4 and IPv6 are both accepted.',
+  'settings.ipPolicyColumnEnforcing': 'Enforcing',
+  'settings.ipPolicyColumnIpEntries': 'IP entries',
+  'settings.ipPolicyColumnName': 'Name',
+  'settings.ipPolicyColumnUpdatedAt': 'Updated at',
   'settings.ipPolicyCreate': 'Create',
+  'settings.ipPolicyEnforcingMany': '{{count}} apps',
+  'settings.ipPolicyEnforcingNone': '0 apps',
+  'settings.ipPolicyEnforcingOne': '1 app',
   'settings.ipPolicyDeleteBound': 'This policy is in use',
   'settings.ipPolicyDeleteBoundDescription':
     '{{name}} is applied to {{count}} apps. Deleting it turns off IP restriction for those apps, so they can be reached from any IP. Other app permissions stay the same.',
@@ -123,7 +131,13 @@ describe('IpPoliciesPage', () => {
     )
 
     expect(screen.getByText('Internal Network')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(screen.getByText('Name')).toBeInTheDocument()
+    expect(screen.getByText('IP entries')).toBeInTheDocument()
+    expect(screen.getByText('Enforcing')).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.getByText('0 apps')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Edit' }))
     expect(screen.getByRole('heading', { name: 'Edit IP Policy' })).toBeInTheDocument()
     expect(screen.getByDisplayValue('Internal Network')).toBeInTheDocument()
   })
@@ -157,7 +171,8 @@ describe('IpPoliciesPage', () => {
       { queryClient },
     )
 
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Edit' }))
     expect(screen.getByText('Used by')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Support Bot' })).toHaveAttribute(
       'href',
@@ -195,7 +210,8 @@ describe('IpPoliciesPage', () => {
       { queryClient },
     )
 
-    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0] as HTMLElement)
+    await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
     expect(screen.getByRole('heading', { name: 'Delete “Internal Network”?' })).toBeInTheDocument()
     expect(
       screen.getByText(
