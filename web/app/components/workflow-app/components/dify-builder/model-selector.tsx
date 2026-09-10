@@ -1,49 +1,17 @@
 import type { SessionModel } from './types'
+import type { useDifyBuilderModel } from './use-dify-builder-model'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useDefaultModel,
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import {
-  difyBuilderModelReadonlyAtom,
-  difyBuilderSelectedModelAtom,
-  difyBuilderSelectModelAtom,
-  difyBuilderSessionModelAtom,
-} from './store'
+import { difyBuilderModelReadonlyAtom, difyBuilderSelectModelAtom } from './store'
 
-const DifyBuilderModelSelector = () => {
+type DifyBuilderModelSelectorProps = ReturnType<typeof useDifyBuilderModel>
+
+const DifyBuilderModelSelector = ({ model, modelList }: DifyBuilderModelSelectorProps) => {
   const { t } = useTranslation()
   const readonly = useAtomValue(difyBuilderModelReadonlyAtom)
-  const selectedModel = useAtomValue(difyBuilderSelectedModelAtom)
-  const sessionModel = useAtomValue(difyBuilderSessionModelAtom)
   const selectModel = useSetAtom(difyBuilderSelectModelAtom)
-  const { data: defaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
-  const { activeTextGenerationModelList } = useTextGenerationCurrentProviderAndModelAndModelList()
-  const model = useMemo<SessionModel | null>(() => {
-    if (selectedModel) return selectedModel
-    if (sessionModel) return sessionModel
-    if (!defaultModel) return null
-
-    const provider = defaultModel.provider.provider
-    const targetProvider = activeTextGenerationModelList.find((item) => item.provider === provider)
-    const targetModel = targetProvider?.models.find((item) => item.model === defaultModel.model)
-    if (!targetModel || targetModel.status !== ModelStatusEnum.active) return null
-
-    return {
-      provider,
-      name: defaultModel.model,
-      mode: String(targetModel.model_properties.mode ?? ''),
-      completion_params: {},
-    }
-  }, [activeTextGenerationModelList, defaultModel, selectedModel, sessionModel])
 
   const commitModel = (nextModel: SessionModel) => {
     void selectModel(nextModel)
@@ -54,7 +22,7 @@ const DifyBuilderModelSelector = () => {
       provider={model?.provider ?? ''}
       modelId={model?.name ?? ''}
       completionParams={(model?.completion_params ?? {}) as FormValue}
-      modelList={activeTextGenerationModelList}
+      modelList={modelList}
       popupClassName="w-[340px]! max-w-[340px]!"
       placement="top-start"
       isAdvancedMode

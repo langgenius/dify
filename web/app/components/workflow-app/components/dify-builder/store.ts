@@ -161,41 +161,48 @@ const prepareDifyBuilderSessionAtom = atom(null, async (get, set) => {
   }
 })
 
-export const difyBuilderStartPromptAtom = atom(null, async (get, set, text: string) => {
-  const prompt = text.trim()
-  const runtime = get(difyBuilderRuntimeAtom)
-  const view = get(difyBuilderSessionViewAtom)
-  if (
-    !runtime?.enabled ||
-    !runtime.appId ||
-    !runtime.canEdit ||
-    !prompt ||
-    get(difyBuilderSessionBusyAtom)
-  )
-    return false
+const startDifyBuilderPromptAtom = atom(
+  null,
+  async (get, set, { model, text }: { model?: SessionModel; text: string }) => {
+    const prompt = text.trim()
+    const runtime = get(difyBuilderRuntimeAtom)
+    const view = get(difyBuilderSessionViewAtom)
+    if (
+      !runtime?.enabled ||
+      !runtime.appId ||
+      !runtime.canEdit ||
+      !prompt ||
+      get(difyBuilderSessionBusyAtom)
+    )
+      return false
 
-  runtime.setShowPanel(true)
-  if (view && !isTerminalStatus(view.run_status)) {
-    if (!canContinueConversation(view.run_status)) return false
+    runtime.setShowPanel(true)
+    if (view && !isTerminalStatus(view.run_status)) {
+      if (!canContinueConversation(view.run_status)) return false
+      if (!(await set(prepareDifyBuilderSessionAtom))) return false
+      return runtime.session.sendMessage(prompt)
+    }
     if (!(await set(prepareDifyBuilderSessionAtom))) return false
-    return runtime.session.sendMessage(prompt)
-  }
-  if (!(await set(prepareDifyBuilderSessionAtom))) return false
 
-  const { nodes, edgeCount } = runtime.getCanvasSnapshot()
-  const selectedModel = get(difyBuilderSelectedModelAtom) ?? undefined
-  return shouldStartBuildSession(nodes, edgeCount)
-    ? runtime.session.startBuild(runtime.appId, prompt, selectedModel)
-    : runtime.session.startEdit(runtime.appId, prompt, selectedModel)
-})
+    const { nodes, edgeCount } = runtime.getCanvasSnapshot()
+    const selectedModel = model ?? get(difyBuilderSelectedModelAtom) ?? undefined
+    return shouldStartBuildSession(nodes, edgeCount)
+      ? runtime.session.startBuild(runtime.appId, prompt, selectedModel)
+      : runtime.session.startEdit(runtime.appId, prompt, selectedModel)
+  },
+)
 
-export const difyBuilderSendDraftAtom = atom(null, async (get, set) => {
+export const difyBuilderStartPromptAtom = atom(null, (_get, set, text: string) =>
+  set(startDifyBuilderPromptAtom, { text }),
+)
+
+export const difyBuilderSendDraftAtom = atom(null, async (get, set, model: SessionModel | null) => {
   const draft = get(difyBuilderDraftAtom)
   const prompt = draft.trim()
-  if (!prompt || !get(difyBuilderCanComposeAtom)) return false
+  if (!model || !prompt || !get(difyBuilderCanComposeAtom)) return false
 
   set(difyBuilderDraftAtom, '')
-  return set(difyBuilderStartPromptAtom, prompt)
+  return set(startDifyBuilderPromptAtom, { model, text: prompt })
 })
 
 export const difyBuilderRetryMessageAtom = atom(null, async (get, set, turnId: string) => {

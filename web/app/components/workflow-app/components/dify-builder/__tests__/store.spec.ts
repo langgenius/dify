@@ -28,6 +28,13 @@ import {
   difyBuilderSubmitActionAtom,
 } from '../store'
 
+const builderModel = {
+  completion_params: {},
+  mode: 'chat',
+  name: 'gpt-4o',
+  provider: 'openai',
+} satisfies NonNullable<SessionView['model']>
+
 const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
   app_id: 'app-1',
   canvas_read_only: false,
@@ -244,7 +251,7 @@ describe('Dify Builder store', () => {
     )
     store.set(difyBuilderDraftAtom, 'First draft')
 
-    const sending = store.set(difyBuilderSendDraftAtom)
+    const sending = store.set(difyBuilderSendDraftAtom, builderModel)
     expect(store.get(difyBuilderDraftAtom)).toBe('')
     await vi.waitFor(() => {
       expect(runtime.session.sendMessage).toHaveBeenCalledWith('First draft')
@@ -267,8 +274,21 @@ describe('Dify Builder store', () => {
     )
     store.set(difyBuilderDraftAtom, 'Retry this message')
 
-    expect(await store.set(difyBuilderSendDraftAtom)).toBe(false)
+    expect(await store.set(difyBuilderSendDraftAtom, builderModel)).toBe(false)
     expect(store.get(difyBuilderDraftAtom)).toBe('')
+  })
+
+  it('rejects a draft without a model and preserves it for later', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderDraftAtom, 'Wait for a model')
+
+    expect(await store.set(difyBuilderSendDraftAtom, null)).toBe(false)
+    expect(store.get(difyBuilderDraftAtom)).toBe('Wait for a model')
+    expect(runtime.session.startBuild).not.toHaveBeenCalled()
+    expect(runtime.session.startEdit).not.toHaveBeenCalled()
+    expect(runtime.session.sendMessage).not.toHaveBeenCalled()
   })
 
   it('retries a failed message with its original turn id', async () => {

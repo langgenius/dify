@@ -1,4 +1,4 @@
-import type { ConversationItem, SessionView } from '../types'
+import type { ConversationItem, SessionModel, SessionView } from '../types'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
@@ -11,11 +11,18 @@ import {
 import {
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
+  difyBuilderDraftAtom,
   difyBuilderRuntimeAtom,
 } from '../store'
 
 const mocks = vi.hoisted(() => ({
   closePanel: vi.fn(),
+  model: {
+    completion_params: {},
+    mode: 'chat',
+    name: 'gpt-4o',
+    provider: 'openai',
+  } as SessionModel | null,
   reset: vi.fn(),
   runAction: vi.fn(async () => true),
   sendMessage: vi.fn(async () => true),
@@ -60,6 +67,10 @@ const sessionConversation: ConversationItem[] = [
 
 vi.mock('../model-selector', () => ({
   default: () => <button type="button">Model selector</button>,
+}))
+
+vi.mock('../use-dify-builder-model', () => ({
+  useDifyBuilderModel: () => ({ model: mocks.model, modelList: [] }),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -114,6 +125,12 @@ const renderPanel = (
 describe('DifyBuilderPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.model = {
+      completion_params: {},
+      mode: 'chat',
+      name: 'gpt-4o',
+      provider: 'openai',
+    }
   })
 
   it('keeps actions above a text-only composer and sends chat during an active waiting flow', async () => {
@@ -166,6 +183,33 @@ describe('DifyBuilderPanel', () => {
         await sending
       })
     }
+  })
+
+  it('disables the composer and blocks submission when no model is available', () => {
+    mocks.model = null
+    renderPanel(sessionView, (store) => {
+      store.set(difyBuilderDraftAtom, 'Do not submit this draft')
+    })
+
+    const composer = screen.getByRole('textbox', {
+      name: 'workflow.difyBuilder.messagePlaceholder',
+    })
+    const sendButton = screen.getByRole('button', {
+      name: 'workflow.difyBuilder.messageSend',
+    })
+    const form = composer.closest('form')
+
+    expect(composer).toBeDisabled()
+    expect(composer).toHaveAttribute('placeholder', 'workflow.workflowGenerator.modelRequired')
+    expect(sendButton).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Model selector' })).toBeEnabled()
+    expect(form).not.toBeNull()
+
+    fireEvent.submit(form!)
+
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+    expect(mocks.startBuild).not.toHaveBeenCalled()
+    expect(composer).toHaveValue('Do not submit this draft')
   })
 
   it('shows retry below the failed user bubble and resends the same turn', async () => {
@@ -263,7 +307,7 @@ describe('DifyBuilderPanel', () => {
     await user.type(composer, 'Build a smaller workflow')
     await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
 
-    expect(mocks.startBuild).toHaveBeenCalledWith('app-1', 'Build a smaller workflow', undefined)
+    expect(mocks.startBuild).toHaveBeenCalledWith('app-1', 'Build a smaller workflow', mocks.model)
     expect(mocks.sendMessage).not.toHaveBeenCalled()
   })
 
