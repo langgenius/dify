@@ -262,15 +262,15 @@ class RosterAgentPackageExporter:
                 )
                 manifest.validate_app(app)
                 for path, document in (("manifest.yaml", manifest), ("app.yaml", app)):
-                    payload = yaml.safe_dump(
+                    document_bytes = yaml.safe_dump(
                         document.model_dump(mode="json", exclude_none=True), allow_unicode=True, sort_keys=False
                     ).encode("utf-8")
-                    if len(payload) > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
+                    if len(document_bytes) > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
                         raise RosterAgentPackageTooLargeError(f"Roster Agent package {path} exceeds the size limit")
-                    total_size += len(payload)
+                    total_size += len(document_bytes)
                     if total_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                         raise RosterAgentPackageTooLargeError("Roster Agent package exceeds the size limit")
-                    archive.writestr(path, payload)
+                    archive.writestr(path, document_bytes)
 
             size = output.tell()
             if size > dify_config.AGENT_PACKAGE_MAX_BYTES:
