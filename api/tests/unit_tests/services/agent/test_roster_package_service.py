@@ -7,6 +7,7 @@ from collections.abc import Callable, Generator
 
 import pytest
 import yaml
+from flask import Flask, send_file
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -919,26 +920,27 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
         archive_bytes = exported.archive.read()
         assert exported.filename == "research-agent.ifpkg"
-        exported_soul = exported.app.package.soul
-        assert exported_soul.model is not None
-        assert exported_soul.model.credential_ref is None
-        assert exported_soul.tools.dify_tools[0].credential_ref is None
-        assert exported_soul.tools.dify_tools[0].runtime_parameters == {"query": "retain", "api_key": None}
-        assert "private-" not in exported.app.model_dump_json()
-        assert draft_soul.model is not None
-        assert draft_soul.model.credential_ref is not None
-        assert draft_soul.tools.dify_tools[0].runtime_parameters["api_key"] == "private-value"
-        assert exported.app.package.soul.prompt.system_prompt == "draft"
-        assert exported.app.package.soul.config_skills[0].file_id == "s_000001"
-        assert exported.app.package.soul.config_files[0].file_id == "f_000001"
-        assert exported.app.package.soul.config_skills[1].is_missing is True
-        assert exported.app.package.soul.config_skills[1].file_id == ""
-        assert exported.app.package.soul.config_files[1].is_missing is True
-        assert exported.app.package.soul.config_files[1].file_id == ""
         with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
             assert set(archive.namelist()) == {"manifest.yaml", "app.yaml", "s_000001.zip", "f_000001.pdf"}
             manifest_data = yaml.safe_load(archive.read("manifest.yaml"))
             app_data = yaml.safe_load(archive.read("app.yaml"))
+            exported_app = AgentAppDsl.model_validate(app_data)
+            exported_soul = exported_app.package.soul
+            assert exported_soul.model is not None
+            assert exported_soul.model.credential_ref is None
+            assert exported_soul.tools.dify_tools[0].credential_ref is None
+            assert exported_soul.tools.dify_tools[0].runtime_parameters == {"query": "retain", "api_key": None}
+            assert "private-" not in exported_app.model_dump_json()
+            assert draft_soul.model is not None
+            assert draft_soul.model.credential_ref is not None
+            assert draft_soul.tools.dify_tools[0].runtime_parameters["api_key"] == "private-value"
+            assert exported_app.package.soul.prompt.system_prompt == "draft"
+            assert exported_app.package.soul.config_skills[0].file_id == "s_000001"
+            assert exported_app.package.soul.config_files[0].file_id == "f_000001"
+            assert exported_app.package.soul.config_skills[1].is_missing is True
+            assert exported_app.package.soul.config_skills[1].file_id == ""
+            assert exported_app.package.soul.config_files[1].is_missing is True
+            assert exported_app.package.soul.config_files[1].file_id == ""
             assert set(manifest_data) == {"format", "format_version", "audit", "skills", "files"}
             assert set(app_data) == {"version", "kind", "app", "agent", "agent_packages", "dependencies"}
             assert app_data["kind"] == "app"
@@ -946,15 +948,14 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
             assert app_data["app"]["icon"] == "R"
             assert app_data["agent"]["package_ref"] == "agent_1"
             assert "audit" not in app_data["agent_packages"]["agent_1"]["metadata"]
-            assert AgentAppDsl.model_validate(app_data) == exported.app
             for key in ("version", "kind", "app", "agent", "dependencies"):
                 assert app_data[key] == standalone_dsl[key]
             standalone_package = AgentPackage.model_validate(standalone_dsl["agent_packages"]["agent_1"])
-            assert exported.app.package.metadata == standalone_package.metadata
+            assert exported_app.package.metadata == standalone_package.metadata
             assert standalone_package.soul.config_skills[0].is_missing is True
             assert standalone_package.soul.config_skills[0].file_id == ""
             assert standalone_package.soul.config_files[0].is_missing is True
-            assert {item.name for item in exported.app.package.omitted_assets} == {"missing-skill", "missing.txt"}
+            assert {item.name for item in exported_app.package.omitted_assets} == {"missing-skill", "missing.txt"}
             assert {item.name for item in standalone_package.omitted_assets} == {
                 "research",
                 "guide.pdf",
@@ -1089,14 +1090,14 @@ def test_export_uses_current_workspace_skill_bindings(
         dependency_provider=lambda _tenant_id, _dependencies: [],
     )
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
-        assert len(exported.manifest.skills) == 1
-        assert exported.manifest.skills[0].scope == "workspace"
-        assert exported.manifest.skills[0].priority == 0
-        assert exported.manifest.skills[0].name == "legacy-published"
-        assert exported.manifest.skills[0].display_name == "Legacy Published"
-        assert exported.manifest.skills[0].description == "Research skill."
-        assert exported.app.package.soul.config_skills[0].is_missing is True
         with RosterAgentPackageReader().read(exported.archive) as prepared:
+            assert len(prepared.manifest.skills) == 1
+            assert prepared.manifest.skills[0].scope == "workspace"
+            assert prepared.manifest.skills[0].priority == 0
+            assert prepared.manifest.skills[0].name == "legacy-published"
+            assert prepared.manifest.skills[0].display_name == "Legacy Published"
+            assert prepared.manifest.skills[0].description == "Research skill."
+            assert prepared.app.package.soul.config_skills[0].is_missing is True
             assert prepared.manifest.skills[0].sha256 == hashlib.sha256(workspace_payload).hexdigest()
 
     draft = AgentConfigDraft(
@@ -1114,8 +1115,9 @@ def test_export_uses_current_workspace_skill_bindings(
     sqlite_session.commit()
 
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
-        assert exported.app.package.soul.prompt.system_prompt == "current draft"
-        assert exported.manifest.skills == []
+        with RosterAgentPackageReader().read(exported.archive) as prepared:
+            assert prepared.app.package.soul.prompt.system_prompt == "current draft"
+            assert prepared.manifest.skills == []
 
 
 def test_manifest_yaml_is_strict() -> None:
@@ -1190,3 +1192,23 @@ def test_member_read_reports_closed_prepared_archive() -> None:
     prepared.close()
     with pytest.raises(InvalidRosterAgentPackageError, match="member is unavailable"):
         reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload))
+
+
+def test_export_download_closes_owned_archive(app: Flask) -> None:
+    exported = RosterAgentPackageExporter()._build_archive(
+        app=_package_app(AgentSoulConfig()), skill_sources=[], file_sources=[]
+    )
+    with app.test_request_context("/"):
+        response = send_file(
+            exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
+        )
+        response.call_on_close(exported.close)
+        try:
+            content = b"".join(response.iter_encoded())
+            assert len(content) == exported.size
+            assert exported.filename in response.headers["Content-Disposition"]
+            with zipfile.ZipFile(io.BytesIO(content)) as archive:
+                assert set(archive.namelist()) == {"manifest.yaml", "app.yaml"}
+        finally:
+            response.close()
+    assert exported.archive.closed

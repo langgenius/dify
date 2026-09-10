@@ -296,8 +296,6 @@ class RosterAgentPackageExporter:
                 archive=output,
                 filename=f"{self._safe_slug(app.package.metadata.name)}.ifpkg",
                 size=size,
-                manifest=manifest,
-                app=app,
             )
         except Exception:
             output.close()
