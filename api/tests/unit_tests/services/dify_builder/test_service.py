@@ -908,6 +908,54 @@ def test_submit_action_update_model_persists_without_dispatch(
     assert enqueued == []
 
 
+def test_submit_action_update_model_localizes_notice(
+    service: DifyBuilderService,
+    repo: SqlDifyBuilderRepository,
+    enqueued: list[tuple],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """update_model commits its notice directly (bypassing the engine _commit
+    localization hook), so the service must localize it itself when the session
+    has a detected reply_language."""
+    import services.dify_builder.agent.localize as localize_mod
+
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_VERIFY,
+    )
+    repo.create_session(
+        s,
+        DifyBuilderContext(failed_run_id="TR-1", reply_language="ja"),
+        [ConversationItem(kind="run-context", seq=0)],
+    )
+    monkeypatch.setattr(service_module, "validate_model_config", lambda _tenant_id, _config: None)
+
+    class _FakeLocalizer:
+        def __init__(self, _provider):
+            pass
+
+        def localize_items(self, items, language):
+            for it in items:
+                if "text" in it.payload:
+                    it.payload["text"] = f"[{language}] {it.payload['text']}"
+            return items
+
+    monkeypatch.setattr(localize_mod, "Localizer", _FakeLocalizer)
+
+    model_config = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
+    service.submit_action(
+        s.id,
+        _actor(),
+        Action(kind="update_model", payload={"model_config": model_config}, base_version=s.version),
+    )
+
+    assert repo.list_conversation(s.id)[-1].payload["text"] == "[ja] Model changed to gpt-4o"
+    assert enqueued == []
+
+
 def test_submit_action_update_model_rejects_missing_config(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:

@@ -10,7 +10,8 @@ def test_plain_catalog_has_core_microcopy():
     assert "Workflow built on the canvas." in strings.PLAIN
     assert "Test run" in strings.PLAIN
     assert "Review" in strings.PLAIN
-    assert "runs" in strings.PLAIN and "errors" in strings.PLAIN  # stat labels
+    assert "runs" in strings.PLAIN  # stat label
+    assert "errors" in strings.PLAIN  # stat label
 
 
 def test_template_matches_interpolated_strings():
@@ -25,6 +26,17 @@ def test_template_matches_interpolated_strings():
     tpl2, groups2 = m2
     assert groups2["value"] == "the model timed out"
     assert "value" in tpl2.translate_fields  # prose kept (already localized by M1)
+
+
+def test_template_matches_model_changed_notice():
+    # The update_model action commits "Model changed to <name>" (localized in
+    # the service layer, bypassing the engine _commit hook).
+    m = strings.match_template("Model changed to gpt-4o")
+    assert m is not None
+    tpl, groups = m
+    assert groups["name"] == "gpt-4o"
+    assert "{name}" in tpl.template
+    assert "name" not in tpl.translate_fields  # model name is an identifier; re-inserted verbatim
 
 
 def test_plain_string_is_not_a_template():
