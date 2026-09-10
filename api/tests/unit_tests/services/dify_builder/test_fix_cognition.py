@@ -173,3 +173,12 @@ def test_propose_provider_error_surfaces():
     intents, risk = fix.propose_repair(_BoomInstance(), _DIAG, _RG)
     assert intents == []
     assert risk.level == "high"
+
+
+def test_diagnose_none_model_surfaces_launch_error_when_no_failed_nodes():
+    """A launch failure (verify threw before any node ran: empty node_outputs,
+    message on run.error) must surface that error in the degraded diagnosis
+    instead of the blind 'Automatic diagnosis unavailable.'"""
+    run = Run(status="failed", per_node=[], error="query is required in input form")
+    d = fix.diagnose(None, run, _GRAPH, [])
+    assert "in input form" in d.root_cause

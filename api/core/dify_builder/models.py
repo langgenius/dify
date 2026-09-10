@@ -96,6 +96,8 @@ class Run:
     status: str = ""  # running | succeeded | failed
     per_node: list[NodeOutput] = field(default_factory=list)
     culprit_node_id: str = ""
+    # Launch-failure text (run threw before any node executed); "" once a node ran.
+    error: str = ""
     inputs_ref: str = ""
     tokens: int = 0
     elapsed_ms: int = 0

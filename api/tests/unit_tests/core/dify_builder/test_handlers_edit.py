@@ -357,6 +357,44 @@ def test_edit_test_run_draft_raises_routes_to_await_repair_failed():
     assert result.run.status == "failed"
 
 
+def test_edit_test_run_draft_raises_captures_error_on_run():
+    """Regression: a launch-time exception must be captured on run.error, not
+    silently discarded. A non-input error still routes to the config-repair gate."""
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+
+    env, _ = _new_env()
+    env.dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    fc = DifyBuilderContext(edit_target_node_ids=["llm"])
+
+    result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert result.run is not None
+    assert "kaboom-provider" in (result.run.error or "")
+
+
+def test_edit_test_run_draft_raises_input_error_routes_to_testdata_gate():
+    """A launch-time exception whose message is an input-validation error must
+    route back to the testdata gate, and the real error must be captured on
+    the run."""
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.models import TestInput
+
+    env, _ = _new_env()
+    env.dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(ValueError("query is required in input form"))
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(edit_target_node_ids=["llm"], test_input_ref="ti-1")
+
+    result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.EDIT_AWAIT_TESTDATA
+    assert result.context.test_input_ref == ""  # stale input cleared
+    assert result.run is not None
+    assert "in input form" in (result.run.error or "")
+
+
 def test_edit_test_input_failure_routes_to_testdata_gate():
     """An INPUT-caused run failure (missing/invalid test data, per
     is_input_failure's signal match) must clear the stale input ref and route
