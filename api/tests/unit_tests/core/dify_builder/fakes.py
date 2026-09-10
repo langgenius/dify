@@ -439,6 +439,9 @@ class StubAgent:
             on_delta(reply)
         return reply
 
+    def model_or_none(self):
+        return None
+
 
 # ---- fake DifyPort that actually builds the graph -------------------------
 

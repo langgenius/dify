@@ -226,8 +226,8 @@ def test_model_or_none_logs_resolution_failure_once(caplog):
     agent._model = _raise  # type: ignore[method-assign]  # force resolution to fail
 
     with caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.llm_agent"):
-        first = agent._model_or_none()
-        second = agent._model_or_none()
+        first = agent.model_or_none()
+        second = agent.model_or_none()
 
     assert first is None
     assert second is None

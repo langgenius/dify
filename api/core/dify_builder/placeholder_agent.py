@@ -269,3 +269,8 @@ class PlaceholderAgent:
         if on_delta is not None:
             on_delta(reply)
         return reply
+
+    def model_or_none(self) -> object | None:
+        """The placeholder agent has no model — reply-language localization
+        degrades to English when the provider returns None."""
+        return None
