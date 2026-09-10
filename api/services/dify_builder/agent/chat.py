@@ -57,6 +57,7 @@ def respond(
         "A chat reply must never approve, publish, revert, run, or mutate the workflow. Do not claim an action "
         "was performed. When an explicit UI action is required, explain which available action the user should use."
     )
+    system += llm.LANGUAGE_INSTRUCTION
     context_payload = {
         "state": str(state),
         "entry_goal": context.goal_text,

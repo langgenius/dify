@@ -21,6 +21,20 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.nodes.llm.reasoning import ThinkStreamFilter, split_reasoning
 
+# --- Reply-language instruction (M1) -----------------------------------------
+# Appended to user-facing prompts so generated prose adopts the user's input
+# language. The user's text is already in each prompt, so the model infers the
+# language; no explicit language value is plumbed.
+LANGUAGE_INSTRUCTION = " Always write your reply in the same language as the user's input."
+
+
+def json_language_instruction(fields: str) -> str:
+    """Language instruction for a JSON-emitting prompt: localize only the named
+    human-readable field(s); keep JSON keys and enum values in English."""
+    return (
+        f" Write the {fields} in the same language as the user's input; keep all JSON keys and enum values in English."
+    )
+
 
 class LlmError(Exception):
     """The model did not return usable output (e.g. non-JSON after one retry)."""
