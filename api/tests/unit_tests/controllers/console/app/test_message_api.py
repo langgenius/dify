@@ -398,7 +398,9 @@ def test_batch_workflow_run_elapsed_times_returns_mapping(sqlite_session: Sessio
     sqlite_session.add(workflow_run)
     sqlite_session.commit()
 
-    elapsed_times = message_module._batch_workflow_run_elapsed_times(sqlite_session, [message])
+    from services.message_service import get_workflow_run_elapsed_times_for_messages
+
+    elapsed_times = get_workflow_run_elapsed_times_for_messages(sqlite_session, [message])
 
     assert elapsed_times == {"workflow-run-1": 12.5}
 
