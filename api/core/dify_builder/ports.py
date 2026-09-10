@@ -110,6 +110,12 @@ class DifyBuilderAgent(Protocol):
         on_delta: Callable[[str], None] | None = None,
     ) -> str: ...
 
+    # The agent's resolved model instance (or None when it can't resolve).
+    # Typed loosely as ``object | None`` to keep this pure port free of any
+    # model-runtime import; the reply-language Localizer uses it as its model
+    # provider. Implementers that have no model return None.
+    def model_or_none(self) -> object | None: ...
+
 
 @runtime_checkable
 class ReasoningStreamingAgent(Protocol):
