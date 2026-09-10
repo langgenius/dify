@@ -478,7 +478,7 @@ class FileUploadConfig(BaseSettings):
 
     UPLOAD_SKILL_FILE_SIZE_LIMIT: NonNegativeInt = Field(
         description="Maximum allowed Skill package size for uploads in megabytes",
-        default=20,
+        default=50,
     )
 
     SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES: PositiveInt = Field(
