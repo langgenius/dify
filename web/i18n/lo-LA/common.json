@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "ຖືກໃຊ້ໂດຍ",
   "settings.members": "ສະມາຊິກ",
   "settings.permissionSet": "ຊຸດການອະນຸຍາດ",
   "settings.permissionSetDescription": "ຕັ້ງຄ່າຊຸດການອະນຸຍາດສຳລັບໃຊ້ກັບແອັບ ແລະ ຖານຄວາມຮູ້. ຊຸດການອະນຸຍາດແມ່ນການລວມເອົາສິດການດຳເນີນການຊັບພະຍາກອນທີ່ສາມາດນຳມາໃຊ້ຄືນໄດ້ ເຊິ່ງສາມາດມອບໝາຍໃຫ້ສະມາຊິກສຳລັບຊັບພະຍາກອນສະເພາະ.",

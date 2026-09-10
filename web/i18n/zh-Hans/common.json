@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "新建 IP 策略",
   "settings.ipPolicyRemoveEntry": "删除条目",
   "settings.ipPolicyUsedBy": "已被 {{count}} 个应用使用",
+  "settings.ipPolicyUsedByLabel": "被用于",
   "settings.members": "成员",
   "settings.permissionSet": "权限集",
   "settings.permissionSetDescription": "配置可供应用和知识库使用的权限集。权限集是一组可复用的资源操作权限，可针对特定资源分配给成员。",

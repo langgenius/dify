@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Используется",
   "settings.members": "Участники",
   "settings.permissionSet": "Набор разрешений",
   "settings.permissionSetDescription": "Настройте наборы разрешений для использования с приложениями и базами знаний. Набор разрешений — это многократно используемая коллекция разрешений на операции с ресурсами, которую можно назначать участникам для конкретных ресурсов.",

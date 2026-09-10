@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "استفاده‌شده توسط",
   "settings.members": "اعضا",
   "settings.permissionSet": "مجموعه مجوزها",
   "settings.permissionSetDescription": "مجموعه‌های مجوز را برای استفاده با برنامه‌ها و پایگاه‌های دانش پیکربندی کنید. مجموعه مجوز، مجموعه‌ای قابل استفاده مجدد از مجوزهای عملیات منبع است که می‌توان آن را برای منابع مشخص به اعضا اختصاص داد.",

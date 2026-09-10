@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Folosit de",
   "settings.members": "Membri",
   "settings.permissionSet": "Set de permisiuni",
   "settings.permissionSetDescription": "Configurați seturi de permisiuni pentru utilizare cu aplicații și baze de cunoștințe. Un set de permisiuni este o colecție reutilizabilă de permisiuni pentru operațiuni asupra resurselor, care poate fi atribuită membrilor pentru resurse specifice.",

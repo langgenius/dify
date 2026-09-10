@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Gebruikt door",
   "settings.members": "Members",
   "settings.permissionSet": "Set met rechten",
   "settings.permissionSetDescription": "Configureer sets met rechten voor gebruik met apps en kennisbanken. Een set met rechten is een herbruikbare verzameling rechten voor resourcebewerkingen die aan leden kan worden toegewezen voor specifieke resources.",

@@ -80,17 +80,6 @@ export function IpPolicyDialog({
             <DialogDescription className="system-sm-regular text-text-tertiary">
               {t(($) => $['settings.ipPolicyDialogDescription'], { ns: 'common' })}
             </DialogDescription>
-            {mode === 'edit' && usedByCount > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <p className="system-xs-regular text-text-warning">
-                  {t(($) => $['settings.ipPolicyEditUsedBy'], {
-                    ns: 'common',
-                    count: usedByCount,
-                  })}
-                </p>
-                <PolicyReferencedApps apps={referencedApps} usedByCount={usedByCount} />
-              </div>
-            )}
           </div>
           <DialogClose
             render={
@@ -106,7 +95,7 @@ export function IpPolicyDialog({
         </div>
 
         <form
-          className="flex min-h-0 flex-1 flex-col gap-6"
+          className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto"
           onSubmit={(event) => {
             event.preventDefault()
             if (!canSubmit) return
@@ -127,6 +116,15 @@ export function IpPolicyDialog({
           </Field>
 
           <AllowlistField entries={entries} currentIp={currentIp} onEntriesChange={setEntries} />
+
+          {mode === 'edit' && usedByCount > 0 && (
+            <Field className="flex shrink-0 flex-col gap-3">
+              <FieldLabel>
+                {t(($) => $['settings.ipPolicyUsedByLabel'], { ns: 'common' })}
+              </FieldLabel>
+              <PolicyReferencedApps apps={referencedApps} usedByCount={usedByCount} />
+            </Field>
+          )}
 
           <div className="flex shrink-0 items-center justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>

@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Utilisé par",
   "settings.members": "Membres",
   "settings.permissionSet": "Ensemble d’autorisations",
   "settings.permissionSetDescription": "Configurez des ensembles d’autorisations à utiliser avec les apps et les bases de connaissances. Un ensemble d’autorisations est une collection réutilisable d’autorisations d’opérations sur les ressources pouvant être attribuée aux membres pour des ressources spécifiques.",

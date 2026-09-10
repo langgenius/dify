@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Kullanan",
   "settings.members": "Üyeler",
   "settings.permissionSet": "İzin Seti",
   "settings.permissionSetDescription": "Uygulamalar ve bilgi tabanlarıyla kullanılacak izin setlerini yapılandırın. İzin seti, belirli kaynaklar için üyelere atanabilen yeniden kullanılabilir kaynak işlem izinleri koleksiyonudur.",

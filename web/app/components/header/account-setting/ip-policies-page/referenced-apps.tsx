@@ -21,21 +21,21 @@ export function PolicyReferencedApps({ apps, usedByCount }: PolicyReferencedApps
     if (usedByCount <= 0) return null
 
     return (
-      <p className="system-xs-regular text-text-tertiary">
+      <p className="system-sm-regular text-text-tertiary">
         {t(($) => $['settings.ipPolicyUsedBy'], { ns: 'common', count: usedByCount })}
       </p>
     )
   }
 
   return (
-    <ul className="flex flex-col gap-1">
+    <ul className="flex flex-wrap content-start items-start gap-2">
       {apps.map((app) => (
         <li key={app.id}>
           <a
             href={`/app/${app.id}/overview`}
             target="_blank"
             rel="noreferrer"
-            className="flex min-w-0 items-center gap-1.5 rounded-md py-0.5 pr-1 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex min-h-7 items-center gap-1.5 rounded-md border border-components-panel-border-subtle bg-background-default py-1 pr-1.5 pl-1 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             <AppIcon
               size="xs"
@@ -43,11 +43,13 @@ export function PolicyReferencedApps({ apps, usedByCount }: PolicyReferencedApps
               iconType={toAppIconType(app.icon_type)}
               icon={app.icon ?? undefined}
               background={app.icon_background}
-              className="rounded-sm"
+              className="size-5 rounded-sm"
             />
-            <span className="min-w-0 truncate system-xs-medium text-text-secondary">
-              {app.name}
-            </span>
+            <span className="system-sm-medium whitespace-nowrap text-text-primary">{app.name}</span>
+            <span
+              aria-hidden
+              className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary"
+            />
           </a>
         </li>
       ))}

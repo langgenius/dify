@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Used by",
   "settings.members": "Members",
   "settings.permissionSet": "Permission Set",
   "settings.permissionSetDescription": "Configure permission sets for use with applications and knowledge bases. A permission set is a reusable collection of resource operation permissions that can be assigned to members for specific resources.",

@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Використовується",
   "settings.members": "Учасники",
   "settings.permissionSet": "Набір дозволів",
   "settings.permissionSetDescription": "Налаштуйте набори дозволів для використання із застосунками та базами знань. Набір дозволів — це багаторазова колекція дозволів на операції з ресурсами, яку можна призначати учасникам для конкретних ресурсів.",
