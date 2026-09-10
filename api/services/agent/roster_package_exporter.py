@@ -38,7 +38,6 @@ from services.agent.dsl_entities import (
     AgentPackageWorkspaceSkill,
     make_agent_app_dsl,
     make_portable_agent_package,
-    make_portable_agent_soul,
 )
 from services.agent.errors import (
     AgentNotFoundError,
@@ -155,15 +154,15 @@ class RosterAgentPackageExporter:
                     raise AgentVersionNotFoundError()
                 soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
 
-            portable_soul, skill_sources, file_sources = self._collect_payloads(
+            resource_soul, skill_sources, file_sources = self._collect_payloads(
                 session=session,
                 tenant_id=tenant_id,
                 soul=soul,
             )
-            package = make_portable_agent_package(agent, portable_soul, include_assets=True)
+            package = make_portable_agent_package(agent, resource_soul, include_assets=True)
             app = make_agent_app_dsl(app_model, package_ref="agent_1", packages={"agent_1": package}, dependencies=[])
             audit = RosterAgentPackageAudit(ref=agent.id)
-            dependency_ids = extract_agent_soul_dependencies(portable_soul)
+            dependency_ids = extract_agent_soul_dependencies(package.soul)
 
         workspace_skills = SkillManagementService().list_runtime_agent_skill_archives(
             tenant_id=tenant_id,
@@ -172,7 +171,7 @@ class RosterAgentPackageExporter:
         )
         skill_sources.extend(
             self._workspace_skill_sources(
-                soul=portable_soul,
+                soul=package.soul,
                 archives=workspace_skills,
                 start_index=len(skill_sources),
             )
@@ -298,13 +297,13 @@ class RosterAgentPackageExporter:
         tenant_id: str,
         soul: AgentSoulConfig,
     ) -> tuple[AgentSoulConfig, list[_SkillSource], list[_FileSource]]:
-        portable_data = make_portable_agent_soul(soul).model_dump(mode="json")
+        resource_data = soul.model_dump(mode="json")
         skill_sources: list[_SkillSource] = []
         file_sources: list[_FileSource] = []
 
         skill_file_ids = [item.file_id for item in soul.config_skills if not item.is_missing]
         tool_files = self._tool_files(session=session, tenant_id=tenant_id, file_ids=skill_file_ids)
-        for skill_ref, portable_skill_ref in zip(soul.config_skills, portable_data["config_skills"]):
+        for skill_ref, portable_skill_ref in zip(soul.config_skills, resource_data["config_skills"]):
             if skill_ref.is_missing:
                 continue
             resource_id = f"s_{len(skill_sources) + 1:06d}"
@@ -335,7 +334,7 @@ class RosterAgentPackageExporter:
         ]
         file_tool_files = self._tool_files(session=session, tenant_id=tenant_id, file_ids=tool_file_refs)
         upload_files = self._upload_files(session=session, tenant_id=tenant_id, file_ids=upload_file_refs)
-        for file_ref, portable_file_ref in zip(soul.config_files, portable_data["config_files"]):
+        for file_ref, portable_file_ref in zip(soul.config_files, resource_data["config_files"]):
             if file_ref.is_missing:
                 continue
             resource_id = f"f_{len(file_sources) + 1:06d}"
@@ -367,7 +366,7 @@ class RosterAgentPackageExporter:
                 )
             )
 
-        return AgentSoulConfig.model_validate(portable_data), skill_sources, file_sources
+        return AgentSoulConfig.model_validate(resource_data), skill_sources, file_sources
 
     @staticmethod
     def _workspace_skill_sources(
