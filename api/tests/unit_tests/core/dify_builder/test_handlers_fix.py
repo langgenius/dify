@@ -769,3 +769,35 @@ def test_testdata_form_fields_drops_malformed_constraints():
     assert field.hint is None
     assert field.unit is None
     assert field.json_schema is None
+
+
+# ---- launch-failure classification (verify run threw before any node ran) ----
+
+
+def test_is_input_failure_matches_launch_error_input_validation():
+    """A launch-time failure (empty per_node, message on run.error) that carries
+    an input-validation signal must classify as an input failure so it routes to
+    the testdata gate, not the blind config-repair loop."""
+    from core.dify_builder.handlers_fix import is_input_failure
+
+    run = Run(status="failed", per_node=[], error="query is required in input form")
+    assert is_input_failure(run) is True
+
+
+def test_is_input_failure_launch_error_non_input_is_config():
+    """A launch error that matches no input signal stays a config failure."""
+    from core.dify_builder.handlers_fix import is_input_failure
+
+    run = Run(status="failed", per_node=[], error="RuntimeError: connection reset by peer")
+    assert is_input_failure(run) is False
+
+
+def test_launch_error_text_prefers_message_falls_back_to_type():
+    from core.dify_builder.handlers_fix import launch_error_text
+
+    assert launch_error_text(ValueError("query is required in input form")) == "query is required in input form"
+
+    class _Empty(Exception):
+        pass
+
+    assert launch_error_text(_Empty()) == "_Empty"
