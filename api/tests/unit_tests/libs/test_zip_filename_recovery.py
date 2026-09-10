@@ -67,3 +67,28 @@ def test_zip64_recovery_rejects_mismatched_local_name(monkeypatch: pytest.Monkey
     damaged = original[:directory] + original[directory:].replace(b"\xc3\xa9.py", b"\xffa.py")
     with pytest.raises(zipfile.BadZipFile, match="names differ"):
         open_zip_with_replacement_names(damaged)
+
+
+def _damaged_utf8_zip() -> bytearray:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        archive.writestr("scripts/\u00e9.py", b"print('ok')\n")
+    return bytearray(output.getvalue().replace(b"\xc3\xa9.py", b"\xffa.py"))
+
+
+@pytest.mark.parametrize("offset", [0xFFFFFFFF, 0xFFFFFFFE])
+def test_recovery_rejects_unresolvable_local_header_offsets(offset: int) -> None:
+    content = _damaged_utf8_zip()
+    directory = content.index(b"PK\x01\x02")
+    struct.pack_into("<I", content, directory + 42, offset)
+    with pytest.raises(zipfile.BadZipFile, match="ZIP64 extra field|local header offset"):
+        open_zip_with_replacement_names(bytes(content))
+
+
+@pytest.mark.parametrize("entries", [0, 2])
+def test_recovery_rejects_inconsistent_directory_entry_counts(entries: int) -> None:
+    content = _damaged_utf8_zip()
+    end = content.rfind(b"PK\x05\x06")
+    struct.pack_into("<HH", content, end + 8, entries, entries)
+    with pytest.raises(zipfile.BadZipFile, match="directory bounds|directory length mismatch"):
+        open_zip_with_replacement_names(bytes(content))
