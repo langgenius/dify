@@ -1,6 +1,6 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
@@ -109,7 +109,19 @@ describe('WorkflowLogArchivesPage', () => {
       // Assert
       expect(screen.queryByText('appLog.archives.upgradeTip.title')).not.toBeInTheDocument()
       expect(screen.getByText('2025-03')).toBeInTheDocument()
-      expect(screen.getAllByText('125').length).toBeGreaterThan(0)
+      const table = screen.getByRole('table')
+      expect(
+        within(table)
+          .getAllByRole('columnheader')
+          .map((header) => header.textContent),
+      ).toEqual([
+        'appLog.archives.table.month',
+        'appLog.archives.table.runs',
+        'appLog.archives.table.size',
+        'appLog.archives.table.action',
+      ])
+      const row = within(table).getByRole('row', { name: /2025-03/ })
+      expect(within(row).getByRole('cell', { name: '125' })).toBeInTheDocument()
       expect(
         screen.getByRole('button', {
           name: 'appLog.archives.action.prepareDownload 2025-03',

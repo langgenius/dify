@@ -1,5 +1,6 @@
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { useDocumentSort } from '../document-list/hooks'
@@ -57,26 +58,13 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock child components that are complex
-vi.mock('../document-list/components', () => ({
+vi.mock('../document-list/components', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../document-list/components')>()),
   DocumentTableRow: ({ doc, index }: { doc: SimpleDocumentDetail; index: number }) => (
     <tr data-testid={`doc-row-${doc.id}`}>
       <td>{index + 1}</td>
       <td>{doc.name}</td>
     </tr>
-  ),
-  renderTdValue: (val: string) => val || '-',
-  SortHeader: ({
-    field,
-    label,
-    onSort,
-  }: {
-    field: string
-    label: string
-    onSort: (f: string) => void
-  }) => (
-    <button data-testid={`sort-${field}`} onClick={() => onSort(field)}>
-      {label}
-    </button>
   ),
 }))
 
@@ -159,9 +147,16 @@ describe('DocumentList', () => {
     it('should render the document table with headers', () => {
       render(<DocumentList {...defaultProps} />)
 
-      expect(screen.getByText('#')).toBeInTheDocument()
-      expect(screen.getByTestId('sort-hit_count')).toBeInTheDocument()
-      expect(screen.getByTestId('sort-created_at')).toBeInTheDocument()
+      expect(screen.getAllByRole('columnheader')).toHaveLength(8)
+      expect(
+        screen.getByRole('columnheader', { name: 'datasetDocuments.list.table.header.fileName' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetDocuments.list.table.header.hitCount' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetDocuments.list.table.header.uploadTime' }),
+      ).toBeInTheDocument()
     })
 
     it('should render select-all area when embeddingAvailable is true', () => {
@@ -173,10 +168,9 @@ describe('DocumentList', () => {
     })
 
     it('should still render # column when embeddingAvailable is false', () => {
-      const { container } = render(<DocumentList {...defaultProps} embeddingAvailable={false} />)
+      render(<DocumentList {...defaultProps} embeddingAvailable={false} />)
 
-      const firstTd = container.querySelector('thead td')
-      expect(firstTd?.textContent).toContain('#')
+      expect(screen.getByRole('columnheader', { name: '#' })).toBeInTheDocument()
     })
 
     it('should render document rows from sortedDocuments', () => {
@@ -207,12 +201,48 @@ describe('DocumentList', () => {
     })
   })
 
+  it('exposes sorting only on the current column and supports keyboard activation', async () => {
+    const user = userEvent.setup()
+    vi.mocked(useDocumentSort).mockReturnValue({
+      sortField: 'created_at',
+      sortOrder: 'desc',
+      handleSort: mockHandleSort,
+    })
+    const { rerender } = render(<DocumentList {...defaultProps} embeddingAvailable={false} />)
+    const uploadedHeader = screen.getByRole('columnheader', {
+      name: 'datasetDocuments.list.table.header.uploadTime',
+    })
+    const hitsHeader = screen.getByRole('columnheader', {
+      name: 'datasetDocuments.list.table.header.hitCount',
+    })
+    expect(uploadedHeader).toHaveAttribute('aria-sort', 'descending')
+    expect(hitsHeader).not.toHaveAttribute('aria-sort')
+
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'datasetDocuments.list.table.header.hitCount' }),
+    ).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(mockHandleSort).toHaveBeenCalledWith('hit_count')
+
+    vi.mocked(useDocumentSort).mockReturnValue({
+      sortField: 'hit_count',
+      sortOrder: 'asc',
+      handleSort: mockHandleSort,
+    })
+    rerender(<DocumentList {...defaultProps} embeddingAvailable={false} />)
+    expect(hitsHeader).toHaveAttribute('aria-sort', 'ascending')
+    expect(uploadedHeader).not.toHaveAttribute('aria-sort')
+  })
+
   // Verify sort headers trigger sort handler
   describe('Sorting', () => {
     it('should call handleSort when sort header is clicked', () => {
       render(<DocumentList {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('sort-created_at'))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'datasetDocuments.list.table.header.uploadTime' }),
+      )
 
       expect(mockHandleSort).toHaveBeenCalledWith('created_at')
     })
