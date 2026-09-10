@@ -29,7 +29,11 @@ import {
 } from '@/utils/marketplace-site-track'
 import MarketplaceDetailDialog from '../detail-dialog'
 import TemplateDetailDialog from '../templates/template-detail-dialog'
-import { getPluginLinkInMarketplace, getTemplateLinkInMarketplace } from '../utils'
+import {
+  getPluginLinkInMarketplace,
+  getTemplateDetailLinkInMarketplace,
+  getTemplateLinkInMarketplace,
+} from '../utils'
 import background from './assets/background.webp'
 import difyUpdatesArt from './assets/dify-updates-art.png'
 import {
@@ -117,7 +121,11 @@ const getLocalCardHref = (card: BannerRecommendCard) => {
       return `/plugin/${encodeURIComponent(identity.org)}/${encodeURIComponent(identity.name)}`
   }
 
-  if (card.item_type === 'template') return `/templates?tid=${encodeURIComponent(card.item_id)}`
+  if (card.item_type === 'template')
+    return getTemplateDetailLinkInMarketplace({
+      id: card.item_id,
+      publisher_unique_handle: card.creator || 'template',
+    })
 
   return '/'
 }
