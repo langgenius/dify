@@ -243,6 +243,7 @@ class DifyBuilderContext:
 
     # -- Build fields (Slice 2, additive) --
     goal_text: str = ""
+    reply_language: str = ""  # detected user-input language (BCP-47); drives reply/localization
     requirements: dict[str, Any] = field(default_factory=dict)
     plan_items: list[str] = field(default_factory=list)
     plan_version_tag: str = ""
