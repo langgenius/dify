@@ -143,6 +143,27 @@ def test_inspect_reports_uncompressed_size_without_rebuilding(monkeypatch: pytes
     assert inspection.uncompressed_size == sum(len(content) for content in members.values())
 
 
+@pytest.mark.parametrize("prefix", ["", "pdf-toolkit/"])
+@pytest.mark.parametrize("crlf", [False, True])
+def test_inspection_and_normalization_keep_distinct_size_meanings(prefix: str, crlf: bool) -> None:
+    skill_md = _SKILL_MD.replace("\n", "\r\n") if crlf else _SKILL_MD
+    script = b"print('hi')\n"
+    members = {f"{prefix}SKILL.md": skill_md.encode(), f"{prefix}scripts/run.py": script}
+    if prefix:
+        members["README.md"] = b"ignored outside the selected root"
+    content = _zip(members)
+    service = SkillPackageService()
+    inspection = service.inspect(content=content, filename="skill.zip")
+    normalized = service.validate_and_normalize(content=content, filename="skill.zip")
+    assert inspection.uncompressed_size == sum(len(value) for value in members.values())
+    expected_size = len(_SKILL_MD.encode()) + len(script)
+    assert normalized.manifest.size == expected_size
+    with zipfile.ZipFile(io.BytesIO(normalized.archive_bytes)) as archive:
+        assert sum(info.file_size for info in archive.infolist()) == expected_size
+    if prefix or crlf:
+        assert inspection.uncompressed_size > normalized.manifest.size
+
+
 def test_name_and_description_are_required_in_frontmatter():
     with pytest.raises(SkillPackageError) as exc_info:
         _normalize({"SKILL.md": b"# heading-name\n\nbody"})
