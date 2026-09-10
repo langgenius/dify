@@ -1024,7 +1024,7 @@ export type AppVariableConfig = {
   default?: unknown
   hide?: boolean
   name: string
-  options?: Array<string>
+  options?: Array<string> | null
   required?: boolean
   type: string
 }
