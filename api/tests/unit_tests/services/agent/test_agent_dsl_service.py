@@ -70,7 +70,8 @@ def _agent_node(node_id: str, binding: object | None = None) -> dict:
     return {"id": node_id, "data": data}
 
 
-def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -> None:
+@pytest.mark.parametrize("include_assets", [False, True])
+def test_make_portable_agent_package_strips_workspace_credentials_and_assets(include_assets: bool) -> None:
     soul = AgentSoulConfig.model_validate(
         {
             "model": {
@@ -110,8 +111,10 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
                 ],
             },
             "env": {"secret_refs": [{"name": "GLOBAL_TOKEN", "value": "plain-secret", "id": "secret-1"}]},
-            "config_skills": [{"name": "research", "file_kind": "tool_file", "file_id": "skill-file"}],
-            "config_files": [{"name": "guide.md", "file_kind": "upload_file", "file_id": "config-file"}],
+            "config_skills": [{"name": "research", "file_id": "skill-file"}, {"name": "missing", "is_missing": True}],
+            "config_files": [
+                {"name": "guide.md", "file_kind": "upload_file", "file_id": "config-file", "mime_type": "text/markdown"}
+            ],
             "human": {
                 "contacts": [
                     {
@@ -125,7 +128,9 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
         }
     )
 
-    package = make_portable_agent_package(_agent(), soul)
+    original = soul.model_dump(mode="json")
+    package = make_portable_agent_package(_agent(), soul, include_assets=include_assets)
+    assert soul.model_dump(mode="json") == original
     serialized = package.model_dump(mode="json")
 
     assert package.soul.model is not None
@@ -135,19 +140,31 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
     assert package.soul.tools.dify_tools[0].runtime_parameters["upload_file_id"] is None
     assert package.soul.tools.dify_tools[0].runtime_parameters["api_key"] is None
     assert package.soul.config_skills[0].name == "research"
-    assert package.soul.config_skills[0].file_id == ""
-    assert package.soul.config_skills[0].is_missing is True
+    assert package.soul.config_skills[0].file_id == ("skill-file" if include_assets else "")
+    assert package.soul.config_skills[0].is_missing is (not include_assets)
     assert package.soul.config_files[0].name == "guide.md"
-    assert package.soul.config_files[0].file_id == ""
-    assert package.soul.config_files[0].is_missing is True
-    assert [asset.kind for asset in package.omitted_assets] == ["skill", "file"]
+    assert package.soul.config_files[0].file_id == ("config-file" if include_assets else "")
+    assert package.soul.config_files[0].is_missing is (not include_assets)
+    assert package.soul.config_skills[1].is_missing
+    assert package.soul.config_files[0].mime_type == "text/markdown"
+    assert [asset.kind for asset in package.omitted_assets] == (
+        ["skill"] if include_assets else ["skill", "skill", "file"]
+    )
+    assert [asset.name for asset in package.omitted_assets] == (
+        ["missing"] if include_assets else ["research", "missing", "guide.md"]
+    )
     assert "plain-secret" not in str(serialized)
     assert "model-secret" not in str(serialized)
     assert "tool-secret" not in str(serialized)
-    assert "skill-file" not in str(serialized)
-    assert "config-file" not in str(serialized)
+    assert ("skill-file" in str(serialized)) is include_assets
+    assert ("config-file" in str(serialized)) is include_assets
     assert package.soul.human.contacts[0].id is None
     assert package.soul.human.contacts[0].name == "Reviewer"
+
+    package.soul.config_skills[0].description = "Changed"
+    package.soul.config_files[0].name = "changed.md"
+    package.soul.tools.cli_tools[0].env.secret_refs[0].name = "CHANGED"
+    assert soul.model_dump(mode="json") == original
 
 
 def test_agent_package_round_trips_as_strict_dsl_dto() -> None:
@@ -872,40 +889,3 @@ def test_require_helpers_and_graph_detection(sqlite_session: Session) -> None:
     assert AgentDslService._agent_icon_type(None) is None
     assert is_agent_v2_graph({"nodes": [_agent_node("agent")]}) is True
     assert is_agent_v2_graph({"nodes": ["invalid", {"data": {"type": "start"}}]}) is False
-
-
-@pytest.mark.parametrize("include_assets", [False, True])
-def test_portable_package_resource_changes_do_not_mutate_source(include_assets: bool) -> None:
-    soul = AgentSoulConfig.model_validate(
-        {
-            "config_skills": [
-                {"name": "research", "file_id": "skill-source"},
-                {"name": "missing", "is_missing": True},
-            ],
-            "config_files": [
-                {
-                    "name": "guide.pdf",
-                    "file_kind": "upload_file",
-                    "file_id": "file-source",
-                    "mime_type": "application/pdf",
-                }
-            ],
-            "tools": {"cli_tools": [{"name": "cli", "env": {"secret_refs": [{"name": "TOKEN", "value": "secret"}]}}]},
-        }
-    )
-    original = soul.model_dump(mode="json")
-
-    package = make_portable_agent_package(_agent(), soul, include_assets=include_assets)
-
-    assert soul.model_dump(mode="json") == original
-    assert package.soul.config_skills[0].file_id == ("skill-source" if include_assets else "")
-    assert package.soul.config_files[0].file_id == ("file-source" if include_assets else "")
-    assert package.soul.config_files[0].mime_type == "application/pdf"
-    assert package.soul.config_skills[1].is_missing
-    assert [item.name for item in package.omitted_assets] == (
-        ["missing"] if include_assets else ["research", "missing", "guide.pdf"]
-    )
-    package.soul.config_skills[0].description = "Changed"
-    package.soul.config_files[0].name = "changed.pdf"
-    package.soul.tools.cli_tools[0].env.secret_refs[0].name = "CHANGED"
-    assert soul.model_dump(mode="json") == original
