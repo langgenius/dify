@@ -126,7 +126,6 @@ def _manifest(*, skill_payload: bytes, file_payload: bytes) -> RosterAgentPackag
         files=[
             RosterAgentPackageFile(
                 id="f_000001",
-                role="agent_config_file",
                 path="f_000001.pdf",
                 original_name="guide.pdf",
                 mime_type="application/pdf",
@@ -212,13 +211,11 @@ def test_skill_resource_rejects_invalid_metadata(overrides: dict[str, object], m
     [
         ({"path": "f_000001"}, "file path must start"),
         ({"path": "f_000001.dir/file"}, "root-level archive member"),
-        ({"platform": "linux"}, "agent config files must not declare"),
     ],
 )
 def test_file_resource_rejects_invalid_metadata(overrides: dict[str, object], message: str) -> None:
     values: dict[str, object] = {
         "id": "f_000001",
-        "role": "agent_config_file",
         "path": "f_000001.pdf",
         "original_name": "guide.pdf",
         "mime_type": "application/pdf",
@@ -272,7 +269,7 @@ def test_manifest_rejects_duplicate_localized_skill_names() -> None:
         ("unreferenced_skill", "agent_config skill resources must be referenced"),
         ("missing_file", "config file reference must resolve"),
         ("file_name", "config file name must match"),
-        ("unreferenced_file", "agent_config_file resources must be referenced"),
+        ("unreferenced_file", "file resources must be referenced"),
     ],
 )
 def test_manifest_rejects_inconsistent_resource_index(mutation: str, message: str) -> None:
@@ -314,18 +311,27 @@ def test_reader_rejects_manifest_without_format_discriminator(missing_field: str
         RosterAgentPackageReader().read(io.BytesIO(package))
 
 
-def test_binary_dependency_requires_platform_and_arch_together() -> None:
-    with pytest.raises(ValidationError, match="platform and arch together"):
-        RosterAgentPackageFile(
-            id="f_000001",
-            role="binary_dependency",
-            path="f_000001.so",
-            original_name="tool.so",
-            mime_type="application/octet-stream",
-            platform="linux",
-            size=1,
-            sha256="0" * 64,
-        )
+@pytest.mark.parametrize("file_kind", ["upload_file", "tool_file"])
+def test_package_files_reuse_existing_dsl_file_kinds(file_kind: str) -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
+    app_data = _package_app().model_dump(mode="json")
+    app_data["agent_packages"]["agent_1"]["soul"]["config_files"][0]["file_kind"] = file_kind
+    app = AgentAppDsl.model_validate(app_data)
+    content = _package_bytes(manifest, app=app, skill_payload=skill_payload, file_payload=file_payload)
+    reader = RosterAgentPackageReader()
+    with reader.read(io.BytesIO(content)) as prepared:
+        assert prepared.app.package.soul.config_files[0].file_kind == file_kind
+        assert reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload)) == file_payload
+    assert set(manifest.files[0].model_dump(exclude_none=True)) == {
+        "id",
+        "path",
+        "size",
+        "sha256",
+        "original_name",
+        "mime_type",
+    }
 
 
 @pytest.mark.parametrize(
@@ -945,6 +951,15 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
             assert exported_app.package.soul.config_files[1].is_missing is True
             assert exported_app.package.soul.config_files[1].file_id == ""
             assert set(manifest_data) == {"format", "format_version", "audit", "skills", "files"}
+            assert set(manifest_data["files"][0]) == {
+                "id",
+                "path",
+                "size",
+                "sha256",
+                "audit",
+                "original_name",
+                "mime_type",
+            }
             assert set(app_data) == {"version", "kind", "app", "agent", "agent_packages", "dependencies"}
             assert app_data["kind"] == "app"
             assert app_data["app"]["mode"] == "agent"
