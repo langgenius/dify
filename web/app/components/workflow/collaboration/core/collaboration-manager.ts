@@ -343,7 +343,7 @@ export class CollaborationManager {
   }
 
   private populateNodeContainer(container: LoroMap<Record<string, Value>>, node: Node): void {
-    const listFields = new Set(['variables', 'prompt_template', 'parameters'])
+    const listFields = new Set(['variables', 'parameters'])
     container.set('id', node.id)
     container.set('type', node.type)
     container.set('position', toLoroValue(node.position))
@@ -392,7 +392,8 @@ export class CollaborationManager {
       if (!this.shouldSyncDataKey(key)) return
       handledKeys.add(key)
 
-      if (listFields.has(key)) this.syncList(container, key, Array.isArray(value) ? value : [])
+      if (listFields.has(key) || (key === 'prompt_template' && Array.isArray(value)))
+        this.syncList(container, key, Array.isArray(value) ? value : [])
       else dataContainer.set(key, toLoroValue(value))
     })
 
