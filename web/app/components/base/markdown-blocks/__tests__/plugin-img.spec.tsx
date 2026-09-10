@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginImg } from '../plugin-img'
 
 /* -------------------- Mocks -------------------- */

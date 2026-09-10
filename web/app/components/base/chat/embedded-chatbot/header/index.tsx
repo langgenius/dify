@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import type { Theme } from '../theme/theme'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 import Divider from '@/app/components/base/divider'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
@@ -115,8 +115,8 @@ const Header: FC<IHeaderProps> = ({
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
-                    size="l"
+                  <IconButton
+                    size="lg"
                     aria-label={
                       expanded
                         ? t(($) => $['chat.collapse'], { ns: 'share' })
@@ -132,7 +132,7 @@ const Header: FC<IHeaderProps> = ({
                     ) : (
                       <div className="i-ri-expand-diagonal-2-line h-4.5 w-4.5" aria-hidden="true" />
                     )}
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>
@@ -146,13 +146,13 @@ const Header: FC<IHeaderProps> = ({
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
-                    size="l"
+                  <IconButton
+                    size="lg"
                     aria-label={t(($) => $['chat.resetChat'], { ns: 'share' })}
                     onClick={onCreateNewChat}
                   >
                     <div className="i-ri-reset-left-line h-4.5 w-4.5" aria-hidden="true" />
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>{t(($) => $['chat.resetChat'], { ns: 'share' })}</TooltipContent>
@@ -185,8 +185,8 @@ const Header: FC<IHeaderProps> = ({
           <Tooltip>
             <TooltipTrigger
               render={
-                <ActionButton
-                  size="l"
+                <IconButton
+                  size="lg"
                   aria-label={
                     expanded
                       ? t(($) => $['chat.collapse'], { ns: 'share' })
@@ -211,7 +211,7 @@ const Header: FC<IHeaderProps> = ({
                       aria-hidden="true"
                     />
                   )}
-                </ActionButton>
+                </IconButton>
               }
             />
             <TooltipContent>
@@ -225,8 +225,8 @@ const Header: FC<IHeaderProps> = ({
           <Tooltip>
             <TooltipTrigger
               render={
-                <ActionButton
-                  size="l"
+                <IconButton
+                  size="lg"
                   aria-label={t(($) => $['chat.resetChat'], { ns: 'share' })}
                   onClick={onCreateNewChat}
                 >
@@ -234,7 +234,7 @@ const Header: FC<IHeaderProps> = ({
                     className={cn('i-ri-reset-left-line h-4.5 w-4.5', theme?.colorPathOnHeader)}
                     aria-hidden="true"
                   />
-                </ActionButton>
+                </IconButton>
               }
             />
             <TooltipContent>{t(($) => $['chat.resetChat'], { ns: 'share' })}</TooltipContent>

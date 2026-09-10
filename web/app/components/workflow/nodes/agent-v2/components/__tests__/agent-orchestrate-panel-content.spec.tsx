@@ -3,9 +3,13 @@ import type {
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode, Ref } from 'react'
+import type { AgentBuildDraftChangeSummary } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-changes-context'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { AgentScope } from '@/features/agent-v2/analytics'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-panel-content'
 
@@ -13,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   checkoutBuildDraft: vi.fn(),
   completeBuildConversation: undefined as (() => void) | undefined,
   deleteBuildDraft: vi.fn(),
+  downloadAgentSandboxFile: vi.fn(),
+  downloadWorkflowSandboxFile: vi.fn(),
   loadBuildDraft: vi.fn(),
   applyBuildDraft: vi.fn(),
   finalizeBuildChat: vi.fn(),
@@ -21,14 +27,19 @@ const mocks = vi.hoisted(() => ({
   saveAgentSoulConfig: vi.fn(),
   saveDraft: vi.fn(),
   stopBuildChat: vi.fn(),
+  trackEvent: vi.fn(),
   uploadAgentSandboxFile: vi.fn(),
   uploadWorkflowSandboxFile: vi.fn(),
 }))
 
-const permission = vi.hoisted(() => ({ canManageAgents: true }))
+const permission = vi.hoisted(() => ({ canCreateAgents: true }))
 
 vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => permission.canManageAgents,
+  useCanCreateAgents: () => permission.canCreateAgents,
+}))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mocks.trackEvent,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -79,6 +90,7 @@ vi.mock(
   '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar',
   () => ({
     AgentBuildDraftBar: (props: {
+      changeSummary?: AgentBuildDraftChangeSummary
       changesCount: number
       disabled?: boolean
       onApply: () => void
@@ -86,6 +98,9 @@ vi.mock(
     }) => (
       <div role="region" aria-label="build-draft-bar">
         <span>{`changes:${props.changesCount}`}</span>
+        <span>
+          {`summary:${props.changeSummary?.files.map((file) => file.name).join(',') ?? 'none'}`}
+        </span>
         <button type="button" disabled={props.disabled} onClick={props.onApply}>
           apply build draft
         </button>
@@ -188,7 +203,7 @@ vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
   }),
 }))
 
-vi.mock('@/service/client', async () => {
+vi.mock('@/service/console', async () => {
   const { createSystemFeaturesFixture } = await import('@/test/console/system-features')
   return {
     consoleClient: {
@@ -328,6 +343,11 @@ vi.mock('@/service/client', async () => {
                   }),
                 },
               },
+              download: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.downloadAgentSandboxFile }),
+                },
+              },
               upload: {
                 post: {
                   mutationOptions: () => ({ mutationFn: mocks.uploadAgentSandboxFile }),
@@ -369,6 +389,13 @@ vi.mock('@/service/client', async () => {
                               Promise.resolve({
                                 text: 'result',
                               }),
+                          }),
+                        },
+                      },
+                      download: {
+                        post: {
+                          mutationOptions: () => ({
+                            mutationFn: mocks.downloadWorkflowSandboxFile,
                           }),
                         },
                       },
@@ -467,8 +494,9 @@ function createDeferredPromise<T>() {
 describe('WorkflowInlineAgentConfigureWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useAppStore.getState().setAppDetail({ mode: AppModeEnum.WORKFLOW } as never)
     mocks.completeBuildConversation = undefined
-    permission.canManageAgents = true
+    permission.canCreateAgents = true
     mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))
     mocks.checkoutBuildDraft.mockResolvedValue({
       agent_soul: {},
@@ -540,6 +568,40 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     )
   }
 
+  it('should load the build draft while the inline composer is pending', async () => {
+    render(
+      <WorkflowInlineAgentConfigureWorkspace
+        agentId="agent-1"
+        flowId="app-1"
+        flowType={FlowType.appFlow}
+        nodeId="node-1"
+        open
+      />,
+    )
+
+    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
+    await waitFor(() => expect(mocks.loadBuildDraft).toHaveBeenCalledTimes(1))
+  })
+
+  it('should not load the build draft while the inline agent panel is closed', async () => {
+    render(
+      <WorkflowInlineAgentConfigureWorkspace
+        agentId="agent-1"
+        flowId="app-1"
+        flowType={FlowType.appFlow}
+        inlineComposerState={createInlineComposerState()}
+        nodeId="node-1"
+        open={false}
+      />,
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(mocks.loadBuildDraft).not.toHaveBeenCalled()
+  })
+
   async function restartCurrentChat() {
     fireEvent.click(
       screen.getByRole('button', {
@@ -560,7 +622,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       const user = userEvent.setup()
       renderWorkspace()
 
-      const previewButton = await screen.findByRole('button', {
+      const previewButton = await screen.findByRole('radio', {
         name: 'agentV2.agentDetail.configure.rightPanel.preview',
       })
       expect(previewButton).toBeEnabled()
@@ -576,10 +638,13 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await user.click(screen.getByRole('button', { name: 'send preview message' }))
 
       await waitFor(() => expect(mocks.saveDraft).toHaveBeenCalled())
+      expect(mocks.trackEvent).toHaveBeenCalledWith('agent_preview_mode_run', {
+        agent_scope: AgentScope.InWorkflow,
+      })
       expect(mocks.saveBuildDraft).not.toHaveBeenCalled()
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.build',
         }),
       )
@@ -599,7 +664,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })
 
       await user.click(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -631,7 +696,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.build',
         }),
       )
@@ -651,7 +716,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       )
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -702,7 +767,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await waitFor(() => expect(mocks.saveBuildDraft).toHaveBeenCalledTimes(1))
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -744,7 +809,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       if (!completeBuildConversation) throw new Error('Expected a Build completion callback.')
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -756,7 +821,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await screen.findByRole('region', { name: 'preview-chat' })
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.build',
         }),
       )
@@ -790,7 +855,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       renderWorkspace()
 
       await user.click(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -813,7 +878,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       renderWorkspace({ deploymentEdition: 'COMMUNITY' })
 
       expect(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       ).toBeDisabled()
@@ -839,8 +904,8 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should hide the save-to-roster menu when the user cannot manage agents', async () => {
-      permission.canManageAgents = false
+    it('should hide the save-to-roster menu when the user cannot create agents', async () => {
+      permission.canCreateAgents = false
 
       renderWorkspace({
         onSaveInlineToRoster: vi.fn(),
@@ -863,7 +928,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
 
       expect(
         screen.queryByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.open',
+          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
         }),
       ).not.toBeInTheDocument()
 
@@ -879,7 +944,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       )
       expect(
         screen.queryByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.open',
+          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
         }),
       ).not.toBeInTheDocument()
 
@@ -890,13 +955,13 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       )
       expect(
         screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.open',
+          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
         }),
       ).toBeInTheDocument()
 
       fireEvent.click(
         await screen.findByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.open',
+          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
         }),
       )
 
@@ -948,6 +1013,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
 
       expect(saveDraftCallOrder).toBeLessThan(saveBuildDraftCallOrder)
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+      expect(mocks.trackEvent).toHaveBeenCalledWith('agent_build_mode_run', {
+        agent_scope: AgentScope.InWorkflow,
+      })
     })
 
     it('should use the saved build draft response as the build chat source', async () => {
@@ -1073,6 +1141,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })
 
       expect(await screen.findByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toHaveTextContent(
+        'summary:build_note.md',
+      )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
         'build:inline-debug-conversation-1',
       )

@@ -73,6 +73,12 @@ const clientSchema = {
   NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: coercedBoolean.default(false),
   NEXT_PUBLIC_ENABLE_AGENT_V2: coercedBoolean.default(false),
   /**
+   * Surface the Agent v2 node inside Chatflow (advanced-chat) apps.
+   * Requires NEXT_PUBLIC_ENABLE_AGENT_V2. Disabled by default so Chatflow keeps
+   * showing only the legacy Agent node until this is explicitly turned on.
+   */
+  NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW: coercedBoolean.default(false),
+  /**
    * Enable preview features that are still in development.
    * Currently gates the `/create` and `/refine` slash commands in the
    * "Go to Anything" command palette (Cmd/Ctrl+K).
@@ -100,6 +106,10 @@ const clientSchema = {
    * Additional literal characters allowed in Markdown form field names.
    */
   NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: z.string().default(''),
+  /**
+   * Maximum length of Markdown form field names.
+   */
+  NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH: coercedNumber.default(128),
   /**
    * The API PREFIX for MARKETPLACE
    */
@@ -146,6 +156,10 @@ const clientSchema = {
    * The maximum number of top-k value for RAG.
    */
   NEXT_PUBLIC_TOP_K_MAX_VALUE: coercedNumber.default(10),
+  /**
+   * Cloudflare Turnstile site key for Dify Cloud sign-in verification.
+   */
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
   /**
    * Disable Upload Image as WebApp icon default is false
    */
@@ -226,6 +240,9 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLE_AGENT_V2: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
       : getRuntimeEnvFromBody('enableAgentV2'),
+    NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW
+      : getRuntimeEnvFromBody('enableAgentV2InChatflow'),
     NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW
       : getRuntimeEnvFromBody('enableFeaturePreview'),
@@ -256,6 +273,9 @@ export const env = createEnv({
     NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: isServer
       ? process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
       : getRuntimeEnvFromBody('markdownFormFieldNameExtraChars'),
+    NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH: isServer
+      ? process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH
+      : getRuntimeEnvFromBody('markdownFormFieldNameMaxLength'),
     NEXT_PUBLIC_MARKETPLACE_API_PREFIX: isServer
       ? process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX
       : getRuntimeEnvFromBody('marketplaceApiPrefix'),
@@ -298,6 +318,9 @@ export const env = createEnv({
     NEXT_PUBLIC_TOP_K_MAX_VALUE: isServer
       ? process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE
       : getRuntimeEnvFromBody('topKMaxValue'),
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: isServer
+      ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+      : getRuntimeEnvFromBody('turnstileSiteKey'),
     NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON: isServer
       ? process.env.NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON
       : getRuntimeEnvFromBody('uploadImageAsIcon'),

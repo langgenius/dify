@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -36,6 +37,7 @@ from services.agent_config_service import (
     AgentConfigServiceError,
     AgentConfigTarget,
     AgentConfigVersionKind,
+    ConfigDownloadRequest,
     ConfigPushPayload,
     ConfigPushSkillItem,
 )
@@ -137,6 +139,7 @@ def _target(
 ) -> AgentConfigTarget:
     agent_soul = soul or _soul()
     return AgentConfigTarget(
+        tenant_id=TENANT,
         agent_id=AGENT,
         version_id=version_id,
         kind=kind,
@@ -221,6 +224,29 @@ def test_resolve_target_requires_user_for_build_draft(sqlite_session: Session) -
         )
 
     assert exc_info.value.code == "missing_user_id"
+
+
+@pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
+def test_resolve_target_hides_build_draft_from_another_user(sqlite_session: Session) -> None:
+    _persist_target(
+        sqlite_session,
+        _draft(
+            version_id=BUILD_DRAFT,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=USER,
+        ),
+    )
+
+    with pytest.raises(AgentConfigServiceError) as exc_info:
+        _service(sqlite_session).resolve_target(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id=BUILD_DRAFT,
+            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            user_id=END_USER,
+        )
+
+    assert (exc_info.value.code, exc_info.value.status_code) == ("config_version_not_found", 404)
 
 
 @pytest.mark.parametrize(
@@ -373,6 +399,146 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
     assert persisted_source.user_id == END_USER
 
 
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
+def test_request_download_signs_config_tool_files_without_rechecking_end_user_owner(
+    sqlite_session: Session,
+) -> None:
+    soul = _soul(
+        config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="tool_file", file_id=TOOL_FILE)],
+        config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id=SKILL_FILE)],
+    )
+    _persist_target(
+        sqlite_session,
+        _draft(
+            version_id=BUILD_DRAFT,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=USER,
+            soul=soul,
+        ),
+    )
+    guide = ToolFile(
+        tenant_id=TENANT,
+        user_id=END_USER,
+        conversation_id=None,
+        size=7,
+        mimetype="text/plain",
+        file_key="tool-files/guide.txt",
+        name="guide.txt",
+    )
+    guide.id = TOOL_FILE
+    skill = ToolFile(
+        tenant_id=TENANT,
+        user_id=END_USER,
+        conversation_id=None,
+        size=123,
+        mimetype="application/zip",
+        file_key="tool-files/alpha.zip",
+        name="alpha.zip",
+    )
+    skill.id = SKILL_FILE
+    sqlite_session.add_all([guide, skill])
+    sqlite_session.commit()
+    service = _service(sqlite_session)
+
+    file_download = service.request_download(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        config_version_id=BUILD_DRAFT,
+        config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        kind="file",
+        name="guide.txt",
+        user_id=USER,
+    )
+    skill_download = service.request_download(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        config_version_id=BUILD_DRAFT,
+        config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        kind="skill",
+        name="alpha",
+        user_id=USER,
+    )
+
+    assert (file_download.filename, file_download.mime_type, file_download.size) == ("guide.txt", "text/plain", 7)
+    assert file_download.download_uri.startswith(f"/files/tools/{TOOL_FILE}.txt?")
+    assert "as_attachment=true" in file_download.download_uri
+    assert (skill_download.filename, skill_download.mime_type, skill_download.size) == (
+        "alpha.zip",
+        "application/zip",
+        123,
+    )
+    assert skill_download.download_uri.startswith(f"/files/tools/{SKILL_FILE}.zip?")
+
+
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, UploadFile)], indirect=True)
+def test_request_download_signs_tenant_scoped_config_upload_file(sqlite_session: Session) -> None:
+    soul = _soul(
+        config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="upload_file", file_id=UPLOAD_FILE)]
+    )
+    _persist_target(sqlite_session, _draft(soul=soul))
+    upload_file = UploadFile(
+        tenant_id=TENANT,
+        storage_type=StorageType.LOCAL,
+        key="uploads/guide.txt",
+        name="source-name.txt",
+        size=7,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=END_USER,
+        created_at=datetime(2025, 1, 1),
+        used=False,
+    )
+    upload_file.id = UPLOAD_FILE
+    sqlite_session.add(upload_file)
+    sqlite_session.commit()
+
+    result = _service(sqlite_session).request_download(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        config_version_id=DRAFT,
+        config_version_kind=AgentConfigVersionKind.DRAFT,
+        kind="file",
+        name="guide.txt",
+        user_id=USER,
+    )
+
+    assert (result.filename, result.mime_type, result.size) == ("guide.txt", "text/plain", 7)
+    assert result.download_uri.startswith(f"/files/{UPLOAD_FILE}/file-preview?")
+    assert "as_attachment=true" in result.download_uri
+
+
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
+def test_request_download_rejects_config_source_from_another_tenant(sqlite_session: Session) -> None:
+    soul = _soul(config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="tool_file", file_id=TOOL_FILE)])
+    _persist_target(sqlite_session, _draft(soul=soul))
+    source = ToolFile(
+        tenant_id=OTHER_TENANT,
+        user_id=END_USER,
+        conversation_id=None,
+        size=7,
+        mimetype="text/plain",
+        file_key="tool-files/guide.txt",
+        name="guide.txt",
+    )
+    source.id = TOOL_FILE
+    sqlite_session.add(source)
+    sqlite_session.commit()
+
+    with pytest.raises(AgentConfigServiceError) as exc_info:
+        _service(sqlite_session).request_download(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id=DRAFT,
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            kind="file",
+            name="guide.txt",
+            user_id=USER,
+        )
+
+    assert (exc_info.value.code, exc_info.value.status_code) == ("config_file_not_found", 404)
+
+
 @pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
 def test_push_file_for_console_rejects_snapshot_writes(sqlite_session: Session) -> None:
     _persist_target(sqlite_session, _snapshot())
@@ -511,7 +677,15 @@ def test_apply_skill_updates_maps_normalizer_failures(
     sqlite_session: Session,
 ) -> None:
     service = AgentConfigService()
-    tool_file = SimpleNamespace(name="alpha.zip", file_key="tool-files/alpha.zip")
+    tool_file = ToolFile(
+        user_id=USER,
+        tenant_id=TENANT,
+        conversation_id=None,
+        file_key="tool-files/alpha.zip",
+        mimetype="application/zip",
+        name="alpha.zip",
+        size=1,
+    )
 
     with (
         patch.object(service, "_require_tool_file_source", return_value=tool_file),
@@ -591,6 +765,89 @@ def test_inspect_skill_maps_invalid_archives_to_service_errors(archive_bytes: by
     assert exc_info.value.status_code == 500
 
 
+def test_request_download_falls_back_to_workspace_runtime_skill() -> None:
+    service = AgentConfigService()
+    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False, soul=_soul(config_skills=[]))
+    expected = SimpleNamespace(
+        filename="workspace-skill.zip",
+        mime_type="application/zip",
+        size=123,
+        download_uri="/files/tools/workspace.zip?signature=1",
+    )
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch(f"{MODULE}.SkillManagementService") as skill_management_service,
+        patch.object(service, "_resolve_download_request", return_value=expected) as resolve_download_request,
+    ):
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "name": "workspace-skill",
+                "file_id": "workspace-archive-id",
+            }
+        ]
+        download = service.request_download(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id="draft-1",
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            kind="skill",
+            name="workspace-skill",
+            user_id=USER,
+        )
+
+    assert download is expected
+    resolve_download_request.assert_called_once_with(
+        tenant_id=TENANT,
+        file_kind="tool_file",
+        file_id="workspace-archive-id",
+        filename="workspace-skill.zip",
+        default_mime_type="application/zip",
+        missing_code="config_skill_not_found",
+        missing_message="config skill payload is missing",
+    )
+
+
+def test_inspect_skill_falls_back_to_workspace_runtime_skill() -> None:
+    service = AgentConfigService()
+    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False, soul=_soul(config_skills=[]))
+    archive = _zip_bytes(
+        {
+            "SKILL.md": b"---\nname: workspace-skill\ndescription: Workspace skill.\n---\n# Workspace",
+            "references/policy.md": b"Policy",
+        }
+    )
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch(f"{MODULE}.SkillManagementService") as skill_management_service,
+    ):
+        skill_management_service.return_value.pull_runtime_agent_skill.return_value = SimpleNamespace(payload=archive)
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "id": "skill-1",
+                "name": "workspace-skill",
+                "description": "Workspace skill.",
+                "size": len(archive),
+                "hash": "hash",
+                "mime_type": "application/zip",
+            }
+        ]
+        result = service.inspect_skill(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id="draft-1",
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            name="workspace-skill",
+            user_id=USER,
+        )
+
+    assert result["id"] == "skill-1"
+    assert result["source"] == "config_skill_zip"
+    assert result["skill_md"]["text"] == "---\nname: workspace-skill\ndescription: Workspace skill.\n---\n# Workspace"
+    assert [item["path"] for item in result["files"]] == ["SKILL.md", "references", "references/policy.md"]
+
+
 def test_manifest_uses_items_shape_without_download_urls() -> None:
     target = _target(
         kind=AgentConfigVersionKind.DRAFT,
@@ -602,7 +859,9 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
         ),
     )
 
-    manifest = AgentConfigService._manifest_for_target(target)
+    with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = []
+        manifest = AgentConfigService._manifest_for_target(target)
 
     assert manifest == {
         "agent_id": AGENT,
@@ -644,7 +903,7 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
 
 
 @pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
-def test_manifest_preserves_missing_config_assets_and_pull_rejects_them(sqlite_session: Session) -> None:
+def test_manifest_preserves_missing_config_assets_and_download_rejects_them(sqlite_session: Session) -> None:
     soul = _soul(
         config_skills=[{"name": "alpha", "file_id": "", "is_missing": True}],
         config_files=[{"name": "guide.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}],
@@ -659,25 +918,29 @@ def test_manifest_preserves_missing_config_assets_and_pull_rejects_them(sqlite_s
         user_id=USER,
     )
 
-    manifest = service._manifest_for_target(target)
+    with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = []
+        manifest = service._manifest_for_target(target)
 
     assert manifest["skills"]["items"][0]["is_missing"] is True  # type: ignore[index]
     assert manifest["files"]["items"][0]["is_missing"] is True  # type: ignore[index]
     with pytest.raises(AgentConfigServiceError) as skill_error:
-        service.pull_skill(
+        service.request_download(
             tenant_id=TENANT,
             agent_id=AGENT,
             config_version_id=DRAFT,
             config_version_kind=AgentConfigVersionKind.DRAFT,
+            kind="skill",
             name="alpha",
             user_id=USER,
         )
     with pytest.raises(AgentConfigServiceError) as file_error:
-        service.pull_file(
+        service.request_download(
             tenant_id=TENANT,
             agent_id=AGENT,
             config_version_id=DRAFT,
             config_version_kind=AgentConfigVersionKind.DRAFT,
+            kind="file",
             name="guide.txt",
             user_id=USER,
         )
@@ -705,6 +968,79 @@ def test_config_asset_refs_require_file_id_unless_marked_missing() -> None:
             file_id="workspace-file-id",
             is_missing=True,
         )
+
+
+def test_manifest_appends_published_workspace_skills() -> None:
+    target = _target(
+        kind=AgentConfigVersionKind.DRAFT,
+        writable=False,
+        soul=_soul(
+            config_skills=[AgentConfigSkillRefConfig(name="alpha", description="Alpha skill", file_id="tool-file-1")]
+        ),
+    )
+
+    with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "id": "workspace-skill-id",
+                "name": "beta",
+                "file_id": "tool-file-2",
+                "description": "Beta workspace skill",
+                "size": 123,
+                "hash": "sha256:beta",
+                "mime_type": "application/zip",
+            },
+            {
+                "id": "duplicate",
+                "name": "alpha",
+                "file_id": "tool-file-ignored",
+                "description": "Duplicate workspace skill",
+                "size": 456,
+                "hash": "sha256:ignored",
+                "mime_type": "application/zip",
+            },
+        ]
+        manifest = AgentConfigService._manifest_for_target(target)
+
+    assert [item["name"] for item in manifest["skills"]["items"]] == ["alpha", "beta"]
+    assert manifest["skills"]["items"][1]["file_id"] == "tool-file-2"
+
+
+def test_list_skills_excludes_workspace_skill_bindings() -> None:
+    target = _target(
+        kind=AgentConfigVersionKind.DRAFT,
+        writable=False,
+        soul=_soul(
+            config_skills=[AgentConfigSkillRefConfig(name="alpha", description="Alpha skill", file_id="tool-file-1")]
+        ),
+    )
+
+    service = AgentConfigService()
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch(f"{MODULE}.SkillManagementService") as skill_management_service,
+    ):
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "id": "workspace-skill-id",
+                "name": "beta",
+                "file_id": "tool-file-2",
+                "description": "Beta workspace skill",
+                "size": 123,
+                "hash": "sha256:beta",
+                "mime_type": "application/zip",
+            }
+        ]
+        result = service.list_skills(
+            tenant_id=target.tenant_id,
+            agent_id=target.agent_id,
+            config_version_id=target.version_id,
+            config_version_kind=target.kind,
+            user_id=None,
+        )
+
+    assert [item["name"] for item in result["items"]] == ["alpha"]
+    skill_management_service.return_value.list_runtime_agent_skills.assert_not_called()
 
 
 def test_preview_skill_file_returns_text_preview() -> None:
@@ -827,23 +1163,20 @@ def test_resolve_skill_file_member_path_requires_existing_member() -> None:
     assert exc_info.value.status_code == 404
 
 
-def test_download_url_helpers_use_shared_url_resolution() -> None:
+def test_download_url_helpers_bind_shared_download_request_to_console_origin(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(FILES_URL="https://example.com")
     service = AgentConfigService()
-    target = _target(
-        kind=AgentConfigVersionKind.BUILD_DRAFT,
-        writable=True,
-        soul=_soul(
-            config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id="tool-file-1")],
-            config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="upload_file", file_id="upload-file-1")],
-        ),
-    )
 
     with (
-        patch.object(service, "resolve_target", return_value=target),
         patch.object(
             service,
-            "_resolve_download_url",
-            side_effect=["https://example.com/alpha.zip", "https://example.com/guide.txt"],
+            "request_download",
+            side_effect=[
+                ConfigDownloadRequest("alpha.zip", "application/zip", 10, "/files/alpha.zip?sign=1"),
+                ConfigDownloadRequest("guide.txt", "text/plain", 20, "/files/guide.txt?sign=2"),
+            ],
         ),
     ):
         assert (
@@ -855,7 +1188,7 @@ def test_download_url_helpers_use_shared_url_resolution() -> None:
                 name="alpha",
                 user_id=USER,
             )
-            == "https://example.com/alpha.zip"
+            == "https://example.com/files/alpha.zip?sign=1"
         )
         assert (
             service.download_file_url(
@@ -866,5 +1199,5 @@ def test_download_url_helpers_use_shared_url_resolution() -> None:
                 name="guide.txt",
                 user_id=USER,
             )
-            == "https://example.com/guide.txt"
+            == "https://example.com/files/guide.txt?sign=2"
         )

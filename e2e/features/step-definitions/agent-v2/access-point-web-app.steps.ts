@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
+import { getAgentWebAppURL } from '../../agent-v2/support/access-point'
 import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources'
 import { getCurrentAgentId, getDialog, getWebAppCard } from './access-point-helpers'
 
@@ -23,7 +24,7 @@ Then('I should see the Agent v2 Web app access URL', async function (this: DifyW
   await expect(webAppCard.getByRole('heading', { name: 'Web app' })).toBeVisible()
   await expect(webAppCard.getByText('Access URL')).toBeVisible()
   await expect(webAppCard.getByLabel('Copy access URL')).toBeEnabled()
-  await expect(webAppCard.getByRole('link', { name: 'Launch' })).toBeVisible()
+  await expect(webAppCard.getByRole('link', { name: 'Open' })).toBeVisible()
 })
 
 When('I copy the Agent v2 Web app access URL', async function (this: DifyWorld) {
@@ -37,19 +38,20 @@ Then('the Agent v2 Web app access URL should show it was copied', async function
 
 When('I launch the Agent v2 Web app', async function (this: DifyWorld) {
   await recordComposerDraftSnapshot(this)
-  const launchLink = getWebAppCard(this).getByRole('link', { name: 'Launch' })
-  const href = await launchLink.getAttribute('href')
-  if (!href) throw new Error('Agent v2 Web app Launch link does not expose an href.')
+  const openLink = getWebAppCard(this).getByRole('link', { name: 'Open' })
+  const href = await openLink.getAttribute('href')
+  if (!href) throw new Error('Agent v2 Web app Open link does not expose an href.')
 
-  const [webAppPage] = await Promise.all([this.getPage().waitForEvent('popup'), launchLink.click()])
+  const [webAppPage] = await Promise.all([this.getPage().waitForEvent('popup'), openLink.click()])
 
   this.agentBuilder.accessPoint.webAppURL = href
   this.agentBuilder.accessPoint.webAppPage = webAppPage
 })
 
 When('I open the Agent v2 Web app URL', async function (this: DifyWorld) {
-  const webAppURL = this.agentBuilder.accessPoint.webAppURL
-  if (!webAppURL) throw new Error('No Agent v2 Web app URL was recorded.')
+  const agentId = getCurrentAgentId(this)
+  const agent = await this.getConsoleClient().agent.byAgentId.get({ params: { agent_id: agentId } })
+  const webAppURL = this.agentBuilder.accessPoint.webAppURL ?? getAgentWebAppURL(agent)
   if (!this.context) throw new Error('Playwright browser context has not been initialized.')
 
   const webAppPage = await this.context.newPage()
@@ -128,7 +130,7 @@ When('I close the Agent v2 Web app', async function (this: DifyWorld) {
 
 When('I open Agent v2 Embedded configuration', async function (this: DifyWorld) {
   await recordComposerDraftSnapshot(this)
-  await getWebAppCard(this).getByRole('button', { name: 'Embedded' }).click()
+  await getWebAppCard(this).getByRole('button', { name: 'Embed Into Site' }).click()
 })
 
 Then('I should see the Agent v2 Embedded configuration dialog', async function (this: DifyWorld) {
@@ -141,7 +143,7 @@ Then('I should see the Agent v2 Embedded configuration dialog', async function (
 
 When('I open Agent v2 Web app customization', async function (this: DifyWorld) {
   await recordComposerDraftSnapshot(this)
-  await getWebAppCard(this).getByRole('button', { name: 'Custom Frontend' }).click()
+  await getWebAppCard(this).getByRole('button', { name: 'Custom frontend' }).click()
 })
 
 Then('I should see the Agent v2 Web app customization dialog', async function (this: DifyWorld) {
@@ -154,7 +156,7 @@ Then('I should see the Agent v2 Web app customization dialog', async function (t
 
 When('I open Agent v2 Web app settings', async function (this: DifyWorld) {
   await recordComposerDraftSnapshot(this)
-  await getWebAppCard(this).getByRole('button', { name: 'Branding' }).click()
+  await getWebAppCard(this).getByRole('button', { name: 'Settings' }).click()
 })
 
 Then('I should see the Agent v2 Web app settings dialog', async function (this: DifyWorld) {

@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "vp check && pnpm lint:eslint",
-    "check:fix": "pnpm lint:eslint:fix && vp check --fix",
+    "check": "vp check && vp run lint:eslint",
+    "check:fix": "vp run lint:eslint:fix && vp check --fix",
     "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
     "knip": "knip --workspace web",
     "knip:production": "knip --workspace web --production --include files",
@@ -26,16 +26,17 @@
     "@iconify-json/heroicons": "catalog:",
     "@iconify-json/ri": "catalog:",
     "@tanstack/eslint-plugin-query": "catalog:",
+    "@types/node": "catalog:",
     "@typescript-eslint/parser": "catalog:",
     "@typescript/native": "catalog:",
     "concurrently": "catalog:",
     "eslint": "catalog:",
+    "eslint-config-flat-gitignore": "catalog:",
     "eslint-markdown": "catalog:",
     "eslint-plugin-antfu": "catalog:",
     "eslint-plugin-better-tailwindcss": "catalog:",
     "eslint-plugin-command": "catalog:",
     "eslint-plugin-erasable-syntax-only": "catalog:",
-    "eslint-plugin-hyoban": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
     "eslint-plugin-jsonc": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
@@ -56,12 +57,12 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "^22.22.1",
+      "version": "24.20.0",
       "onFail": "download"
     }
   },
   "engines": {
-    "node": "^22.22.1"
+    "node": "^24.20.0"
   },
-  "packageManager": "pnpm@11.20.0"
+  "packageManager": "pnpm@12.3.4"
 }

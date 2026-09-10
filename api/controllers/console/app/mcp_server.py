@@ -7,14 +7,15 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -86,7 +87,7 @@ class AppMCPServerController(Resource):
     @login_required
     @account_initialization_required
     @setup_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model
     def get(self, app_model: App):
         server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
@@ -106,20 +107,19 @@ class AppMCPServerController(Resource):
     @login_required
     @setup_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_tenant_id
     @get_app_model
-    def post(self, current_tenant_id: str, app_model: App):
-        payload = MCPServerCreatePayload.model_validate(console_ns.payload or {})
-
-        description = payload.description
+    @model_validate(MCPServerCreatePayload)
+    def post(self, req_data: MCPServerCreatePayload, current_tenant_id: str, app_model: App):
+        description = req_data.description
         if not description:
             description = app_model.description or ""
 
         server = AppMCPServer(
             name=app_model.name,
             description=description,
-            parameters=json.dumps(payload.parameters, ensure_ascii=False),
+            parameters=json.dumps(req_data.parameters, ensure_ascii=False),
             status=AppMCPServerStatus.ACTIVE,
             app_id=app_model.id,
             tenant_id=current_tenant_id,
@@ -142,12 +142,12 @@ class AppMCPServerController(Resource):
     @setup_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @get_app_model
-    def put(self, app_model: App):
-        payload = MCPServerUpdatePayload.model_validate(console_ns.payload or {})
+    @model_validate(MCPServerUpdatePayload)
+    def put(self, req_data: MCPServerUpdatePayload, app_model: App):
         app_ref = AppRefService.create_app_ref(app_model)
-        server_ref = AppRefService.create_mcp_server_ref(app_ref, payload.id)
+        server_ref = AppRefService.create_mcp_server_ref(app_ref, req_data.id)
         server = db.session.scalar(
             select(AppMCPServer)
             .where(
@@ -160,7 +160,7 @@ class AppMCPServerController(Resource):
         if not server:
             raise NotFound()
 
-        description = payload.description
+        description = req_data.description
         if description is None or not description:
             server.description = app_model.description or ""
         else:
@@ -168,10 +168,10 @@ class AppMCPServerController(Resource):
 
         server.name = app_model.name
 
-        server.parameters = json.dumps(payload.parameters, ensure_ascii=False)
-        if payload.status:
+        server.parameters = json.dumps(req_data.parameters, ensure_ascii=False)
+        if req_data.status:
             try:
-                server.status = AppMCPServerStatus(payload.status)
+                server.status = AppMCPServerStatus(req_data.status)
             except ValueError:
                 raise ValueError("Invalid status")
         db.session.commit()
@@ -190,7 +190,7 @@ class AppMCPServerRefreshController(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_tenant_id
     @get_app_model
     def post(self, current_tenant_id: str, app_model: App):

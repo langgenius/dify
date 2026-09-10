@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ConfigContext from '@/context/debug-configuration'
@@ -38,9 +39,10 @@ const mockState = vi.hoisted(() => ({
       fileUploadConfig: undefined as { image_file_size_limit?: number } | undefined,
     },
   },
-  mockProviderContext: {
-    textGenerationModelList: [] as Array<{
+  mockModelListResult: {
+    data: [] as Array<{
       provider: string
+      status: string
       models: Array<{
         model: string
         features?: string[]
@@ -155,25 +157,6 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({
-    children,
-    onClick,
-    state,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-    state?: string
-  }) => (
-    <button type="button" data-testid="action-button" data-state={state} onClick={onClick}>
-      {children}
-    </button>
-  ),
-  ActionButtonState: {
-    Active: 'active',
-  },
-}))
-
 vi.mock('@/app/components/base/agent-log-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
     <div data-testid="agent-log-modal">
@@ -227,8 +210,9 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockState.mockProviderContext,
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => mockState.mockModelListResult,
 }))
 
 vi.mock('@/service/debug', () => ({
@@ -325,7 +309,6 @@ const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugCo
   readonly: false,
   canTestAndRun: true,
   appId: 'app-id',
-  isAPIKeySet: true,
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
@@ -472,7 +455,6 @@ const renderDebug = (
 ) => {
   const onSetting = vi.fn()
   const props: ComponentProps<typeof Debug> = {
-    isAPIKeySet: true,
     onSetting,
     inputs: {},
     modelParameterParams: {
@@ -486,10 +468,10 @@ const renderDebug = (
   }
 
   render(
-    React.createElement(ConfigContext.Provider, {
-      value: createContextValue(options.contextValue),
-      children: <Debug {...props} />,
-    }),
+    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
+    <ConfigContext.Provider value={createContextValue(options.contextValue)}>
+      <Debug {...props} />
+    </ConfigContext.Provider>,
   )
 
   return { onSetting, notify: mockState.mockToastCall, props }
@@ -517,10 +499,11 @@ describe('Debug', () => {
       text2speech: { enabled: false },
       file: { enabled: false, allowed_file_upload_methods: [], fileUploadConfig: undefined },
     }
-    mockState.mockProviderContext = {
-      textGenerationModelList: [
+    mockState.mockModelListResult = {
+      data: [
         {
           provider: 'openai',
+          status: 'active',
           models: [
             {
               model: 'vision-model',
@@ -543,9 +526,7 @@ describe('Debug', () => {
             model_id: '',
           },
         },
-        props: {
-          isAPIKeySet: false,
-        },
+        props: {},
       })
 
       expect(screen.getByText('appDebug.noModelProviderConfigured'))!.toBeInTheDocument()
@@ -564,9 +545,7 @@ describe('Debug', () => {
             model_id: '',
           },
         },
-        props: {
-          isAPIKeySet: true,
-        },
+        props: {},
       })
 
       expect(screen.getByText('appDebug.noModelSelected'))!.toBeInTheDocument()
@@ -581,7 +560,7 @@ describe('Debug', () => {
 
       expect(screen.getByTestId('debug-with-single-model'))!.toBeInTheDocument()
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
@@ -607,7 +586,14 @@ describe('Debug', () => {
       })
 
       expect(screen.getByTestId('chat-user-input'))!.toBeInTheDocument()
-      fireEvent.click(screen.getAllByTestId('action-button')[1]!)
+      const inputPanelButton = screen.getByRole('button', {
+        name: 'workflow.panel.userInputField',
+      })
+      expect(inputPanelButton).toHaveAttribute('aria-expanded', 'true')
+
+      fireEvent.click(inputPanelButton)
+
+      expect(inputPanelButton).toHaveAttribute('aria-expanded', 'false')
       expect(screen.queryByTestId('chat-user-input')).not.toBeInTheDocument()
     })
 
@@ -619,7 +605,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
@@ -631,7 +617,9 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.queryByTestId('action-button')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.refresh' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should show formatting confirmation and handle cancel', () => {
@@ -847,7 +835,7 @@ describe('Debug', () => {
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
       const [, requestData, handlers] = (mockState.mockSendCompletionMessage.mock.calls[0] ??
-        []) as [unknown, any, { onNotifyError: (message: string) => void }]
+        []) as [unknown, unknown, { onNotifyError: (message: string) => void }]
       expect(requestData).toMatchObject({
         inputs: { question: 'hello' },
         model_config: {
@@ -1076,7 +1064,9 @@ describe('Debug', () => {
       })
     })
 
-    it('should emit restart event when refresh is clicked in multiple-model mode', () => {
+    it('should emit restart event when refresh is clicked in multiple-model mode', async () => {
+      const user = userEvent.setup()
+
       renderDebug({
         props: {
           debugWithMultipleModel: true,
@@ -1086,7 +1076,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      await user.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockEventEmitterEmit).toHaveBeenCalledWith({
         type: APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
       })

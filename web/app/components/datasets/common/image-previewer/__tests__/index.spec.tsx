@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ImagePreviewer from '../index'
 
 const mockFetch = vi.fn<typeof fetch>()
@@ -32,15 +32,11 @@ const images = [
 
 const successfulResponse = () => new Response(new Blob(['test'], { type: 'image/png' }))
 
-const getPreviewButtons = () => {
-  const [closeButton, previousButton, nextButton] = screen.getAllByRole('button')
-
-  expect(closeButton).toBeInTheDocument()
-  expect(previousButton).toBeInTheDocument()
-  expect(nextButton).toBeInTheDocument()
-
-  return { closeButton: closeButton!, previousButton: previousButton!, nextButton: nextButton! }
-}
+const getPreviewButtons = () => ({
+  closeButton: screen.getByRole('button', { name: 'common.operation.close' }),
+  previousButton: screen.getByRole('button', { name: 'common.pagination.previous' }),
+  nextButton: screen.getByRole('button', { name: 'common.pagination.next' }),
+})
 
 describe('ImagePreviewer', () => {
   beforeEach(() => {
@@ -137,10 +133,9 @@ describe('ImagePreviewer', () => {
     render(<ImagePreviewer images={images} onClose={vi.fn()} />)
 
     expect(await screen.findByText(/Failed to load image/)).toHaveTextContent(images[0]!.url)
-    const [, retryButton] = screen.getAllByRole('button')
-    expect(retryButton).toBeInTheDocument()
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
 
-    await user.click(retryButton!)
+    await user.click(retryButton)
 
     expect(await screen.findByRole('img', { name: 'image1.png' })).toBeInTheDocument()
     expect(mockFetch).toHaveBeenCalledTimes(4)

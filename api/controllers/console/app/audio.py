@@ -9,8 +9,8 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import HTTPException, InternalServerError
 
 import services
+from controllers.common.rbac import PlainApp, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.wraps import enforce_rbac_access
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
@@ -28,9 +28,9 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -241,11 +241,10 @@ class AgentChatMessageAudioApi(Resource):
             agent_id=agent_id,
         )
         # Agent routes expose Agent ids, while APP RBAC is keyed by the resolved runtime App id.
-        enforce_rbac_access(
+        enforce_rbac_checks(
             tenant_id=current_tenant_id,
             account_id=current_user.id,
-            resource_type=RBACResourceScope.APP,
-            scene=RBACPermission.APP_TEST_AND_RUN,
+            checks=[RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())],
             path_args={"app_id": app_model.id},
         )
         agent_soul = AgentComposerService.load_agent_soul_for_debug(
@@ -276,15 +275,15 @@ class ChatMessageTextApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model
-    def post(self, app_model: App):
+    @model_validate(TextToSpeechPayload)
+    def post(self, req_data: TextToSpeechPayload, app_model: App):
         try:
-            payload = TextToSpeechPayload.model_validate(console_ns.payload)
             message_ref = None
-            if payload.message_id:
+            if req_data.message_id:
                 app_ref = AppRefService.create_app_ref(app_model)
                 message_ref = AppRefService.create_message_ref(
                     app_ref,
-                    payload.message_id,
+                    req_data.message_id,
                     account_id=current_user.id,
                 )
 
@@ -292,8 +291,8 @@ class ChatMessageTextApi(Resource):
             return AudioService.transcript_tts(
                 app_model=app_model,
                 session=db.session(),
-                text=payload.text,
-                voice=payload.voice,
+                text=req_data.text,
+                voice=req_data.voice,
                 message_ref=message_ref,
                 is_draft=True,
             )
@@ -337,15 +336,14 @@ class TextModesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model
-    def get(self, app_model: App):
+    @model_validate(TextToSpeechVoiceQuery)
+    def get(self, req_data: TextToSpeechVoiceQuery, app_model: App):
         try:
-            args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))
-
             response = AudioService.transcript_tts_voices(
                 tenant_id=app_model.tenant_id,
-                language=args.language,
+                language=req_data.language,
             )
 
             return dump_response(TextToSpeechVoiceListResponse, response)

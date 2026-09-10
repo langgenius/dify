@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings
 
 from .cache.redis_config import RedisConfig
 from .cache.redis_pubsub_config import RedisPubSubConfig
+from .key_provider.azure_keyvault_config import AzureKeyVaultConfig
 from .storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from .storage.amazon_s3_storage_config import S3StorageConfig
 from .storage.azure_blob_storage_config import AzureBlobStorageConfig
@@ -80,6 +81,22 @@ class StorageConfig(BaseSettings):
         description="Path for local storage when STORAGE_TYPE is set to 'local'.",
         default="storage",
         deprecated=True,
+    )
+
+
+_VALID_KEY_PROVIDER_TYPE = Literal[
+    "local",
+    "azure-keyvault",
+]
+
+
+class KeyProviderConfig(BaseSettings):
+    KEY_PROVIDER_TYPE: _VALID_KEY_PROVIDER_TYPE = Field(
+        description="Key provider used to encrypt/decrypt tenant credentials (LLM/tool provider secrets)."
+        " Options: 'local' (per-tenant RSA key pair, private key kept in the STORAGE_TYPE backend),"
+        " 'azure-keyvault' (per-tenant RSA key kept in Azure Key Vault, private key never leaves the vault)."
+        " Default is 'local'.",
+        default=cast(_VALID_KEY_PROVIDER_TYPE, "local"),
     )
 
 
@@ -318,22 +335,6 @@ class CeleryConfig(DatabaseConfig):
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
 
 
-class InternalTestConfig(BaseSettings):
-    """
-    Configuration settings for Internal Test
-    """
-
-    AWS_SECRET_ACCESS_KEY: str | None = Field(
-        description="Internal test AWS secret access key",
-        default=None,
-    )
-
-    AWS_ACCESS_KEY_ID: str | None = Field(
-        description="Internal test AWS access key ID",
-        default=None,
-    )
-
-
 class DatasetQueueMonitorConfig(BaseSettings):
     """
     Configuration settings for Dataset Queue Monitor
@@ -359,6 +360,9 @@ class MiddlewareConfig(
     KeywordStoreConfig,
     RedisConfig,
     RedisPubSubConfig,
+    # configs of the tenant credential encryption key provider
+    KeyProviderConfig,
+    AzureKeyVaultConfig,
     # configs of storage and storage providers
     StorageConfig,
     AliyunOSSStorageConfig,
@@ -396,7 +400,6 @@ class MiddlewareConfig(
     WeaviateConfig,
     ElasticsearchConfig,
     CouchbaseConfig,
-    InternalTestConfig,
     VikingDBConfig,
     UpstashConfig,
     TidbOnQdrantConfig,

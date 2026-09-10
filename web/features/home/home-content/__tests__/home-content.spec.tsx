@@ -47,7 +47,7 @@ function StepByStepTourSessionFixture({
 }
 
 const mockConsoleState = vi.hoisted(() => ({
-  userProfile: { id: 'user-1' },
+  userProfile: { id: 'user-1', name: 'Evan' },
   currentWorkspace: { id: 'workspace-1' },
   workspacePermissionKeys: [] as string[],
 }))
@@ -219,11 +219,18 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mockTrackEvent,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     systemFeatures: () => Promise.resolve({}),
   },
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'systemFeatures'],
@@ -364,10 +371,6 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -543,6 +546,14 @@ type RenderOptions = {
 const localeInput = { query: { language: 'en-US' } }
 const homeTemplatesQueryKey = ['console', 'explore', 'apps', 'get', localeInput]
 const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput]
+const recommendedAppQueryKey = (appId: string) => [
+  'console',
+  'explore',
+  'apps',
+  'byAppId',
+  'get',
+  { params: { app_id: appId } },
+]
 
 const renderHomeContent = ({
   hasEditPermission = false,
@@ -551,6 +562,7 @@ const renderHomeContent = ({
 }: RenderOptions = {}) => {
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile,
     systemFeatures: {
       deployment_edition: options.deploymentEdition ?? 'COMMUNITY',
       enable_explore_banner: options.enableExploreBanner ?? false,
@@ -630,6 +642,20 @@ describe('HomeContent', () => {
   })
 
   describe('Rendering', () => {
+    it('should always render the page intro as the only h1 when the banner is disabled', () => {
+      renderHomeContent()
+
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'explore.banner.greeting:{"name":"Evan"}',
+        }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('explore.banner.tagline')).toBeInTheDocument()
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+      expect(screen.queryByTestId('explore-banner')).not.toBeInTheDocument()
+    })
+
     it('should not render learn dify content while learn dify items are loading', () => {
       mockExploreData = {
         categories: ['Writing'],
@@ -680,7 +706,7 @@ describe('HomeContent', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
-      expect(screen.getByText('explore.apps.title')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'explore.apps.title' })).toBeInTheDocument()
     })
 
     it('should render continue work with the first eight workspace apps', () => {
@@ -895,6 +921,8 @@ describe('HomeContent', () => {
     })
 
     it('should keep selected category when clearing search text', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing', 'Translate'],
         allList: [
@@ -909,15 +937,9 @@ describe('HomeContent', () => {
 
       renderHomeContent({ searchParams: { category: 'Writing' } })
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'alp' } })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      await user.type(input, 'alp')
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
@@ -925,7 +947,9 @@ describe('HomeContent', () => {
   })
 
   describe('User Interactions', () => {
-    it('should filter apps by search keywords', async () => {
+    it('should filter local templates immediately as the user types', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [
@@ -935,12 +959,8 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      await user.type(input, 'gam')
 
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
       expect(screen.getByText('Gamma')).toBeInTheDocument()
@@ -986,6 +1006,36 @@ describe('HomeContent', () => {
           templateId: 'app-1',
         })
       })
+    })
+
+    it('should reuse an invalidated cached template snapshot when creating an app', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockGetRecommendedApp.mockRejectedValue(new Error('should not fetch'))
+      mockHandleImportDSL.mockResolvedValue(undefined)
+      const { queryClient } = renderHomeContent({ hasEditPermission: true })
+      queryClient.setQueryData(recommendedAppQueryKey('app-1'), {
+        export_data: 'cached-yaml',
+        mode: AppModeEnum.CHAT,
+      })
+      await queryClient.invalidateQueries({
+        queryKey: recommendedAppQueryKey('app-1'),
+        exact: true,
+        refetchType: 'none',
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() => expect(mockHandleImportDSL).toHaveBeenCalledTimes(1))
+      expect(mockGetRecommendedApp).not.toHaveBeenCalled()
+      expect(mockHandleImportDSL).toHaveBeenCalledWith(
+        expect.objectContaining({ yaml_content: 'cached-yaml' }),
+        expect.any(Object),
+      )
     })
 
     it('should open create flow from learn dify item card click', async () => {
@@ -1323,6 +1373,8 @@ describe('HomeContent', () => {
 
   describe('Edge Cases', () => {
     it('should reset search results when clear icon is clicked', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [
@@ -1332,17 +1384,11 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      await user.type(input, 'gam')
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Gamma')).toBeInTheDocument()
@@ -1513,6 +1559,7 @@ describe('HomeContent', () => {
 
       expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
       expect(screen.getByTestId('explore-banner')).toHaveAttribute('data-banner-count', '1')
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     })
   })
 })

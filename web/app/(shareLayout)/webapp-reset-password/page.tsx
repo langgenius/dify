@@ -1,11 +1,11 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
@@ -16,13 +16,14 @@ import { sendResetPasswordCode } from '@/service/common'
 
 export default function CheckCode() {
   const { t } = useTranslation()
-  useDocumentTitle('')
   const searchParams = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [loading, setIsLoading] = useState(false)
   const locale = useLocale()
   const setCountdownLeftTime = useSetCountdownLeftTime()
+  const pageTitle = t(($) => $.resetPassword, { ns: 'login' })
+  useDocumentTitle(pageTitle)
 
   const handleGetEMailVerificationCode = async () => {
     try {
@@ -61,9 +62,7 @@ export default function CheckCode() {
         <RiLockPasswordLine className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h2 className="title-4xl-semi-bold text-text-primary">
-          {t(($) => $.resetPassword, { ns: 'login' })}
-        </h2>
+        <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
         <p className="mt-2 body-md-regular text-text-secondary">
           {t(($) => $.resetPasswordDesc, { ns: 'login' })}
         </p>
@@ -78,17 +77,19 @@ export default function CheckCode() {
           <div className="mt-1">
             <Input
               id="email"
+              name="email"
               type="email"
+              autoComplete="email"
+              spellCheck={false}
               disabled={loading}
               value={email}
               placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
-              onChange={(e) => setEmail(e.target.value)}
+              onValueChange={setEmail}
             />
           </div>
           <div className="mt-3">
             <Button
               loading={loading}
-              disabled={loading}
               variant="primary"
               className="w-full"
               onClick={handleGetEMailVerificationCode}

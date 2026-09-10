@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID
+from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID, RunFailureType
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
@@ -19,6 +19,29 @@ class FakeScheduler:
 
 class FakeStore:
     pass
+
+
+def test_get_run_status_returns_failure_type() -> None:
+    from fastapi import FastAPI
+
+    class FailedRunStore:
+        async def get_run(self, run_id: str) -> RunRecord:
+            return RunRecord(
+                run_id=run_id,
+                status="failed",
+                error="run limit reached",
+                error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+            )
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FailedRunStore(), lambda: FakeScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    response = TestClient(app).get("/runs/run-1")
+
+    assert response.status_code == 200
+    assert response.json()["error"] == "run limit reached"
+    assert response.json()["error_type"] == "agent_run_limit_exceeded"
 
 
 def test_create_run_accepts_effectively_blank_user_prompt_list() -> None:

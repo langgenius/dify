@@ -11,6 +11,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 
 type DeleteConfirmModalProps = {
   isOpen: boolean
@@ -37,24 +38,20 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
       <AlertDialogContent className="overflow-hidden! border-none text-left align-middle shadow-xl">
         <div className="flex flex-col gap-y-2 p-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {`${t(($) => $['operation.delete'], { ns: 'common' })} ${versionInfo.marked_name || t(($) => $['versionHistory.defaultName'], { ns: 'workflow' })}`}
+            {`${t(($) => $['operation.delete'], { ns: 'common' })} ${getWorkflowVersionName(
+              versionInfo,
+              t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+            )}`}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-md-regular text-text-secondary">
             {t(($) => $['versionHistory.deletionTip'], { ns: 'workflow' })}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
-          <AlertDialogCancelButton
-            nativeButton={false}
-            variant="secondary"
-            closeProps={{ nativeButton: false }}
-          >
+          <AlertDialogCancelButton variant="secondary">
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            nativeButton={false}
-            onClick={onDelete.bind(null, versionInfo.id)}
-          >
+          <AlertDialogConfirmButton onClick={onDelete.bind(null, versionInfo.id)}>
             {t(($) => $['operation.delete'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

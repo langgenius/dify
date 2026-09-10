@@ -1,6 +1,5 @@
 import type { FileTypesRes } from './datasets'
 import type {
-  Model,
   ModelParameterRule,
   ModelProvider,
   ModelTypeEnum,
@@ -14,7 +13,8 @@ import type {
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
 
@@ -26,7 +26,7 @@ export const commonQueryKeys = {
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
-  modelList: (type: ModelTypeEnum) => [NAME_SPACE, 'model-list', type] as const,
+  modelProviderDetails: [NAME_SPACE, 'model-provider-details'] as const,
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
@@ -158,6 +158,7 @@ export const useLogout = () => {
     mutationKey: [NAME_SPACE, 'logout'],
     mutationFn: () => post('/logout'),
     onSuccess: () => {
+      discardRegistrationSessionState()
       // Drop all cached queries so the post-logout /signin probe doesn't read
       // the previous user's profile (the userProfile queryKey is shared with
       // the (commonLayout) tree, which keeps observing it during React's
@@ -194,17 +195,15 @@ export const useOneMoreStep = () => {
   })
 }
 
-export const useModelProviders = () => {
-  return useQuery<{ data: ModelProvider[] }>({
-    queryKey: commonQueryKeys.modelProviders,
+export const modelProviderDetailsQueryOptions = () =>
+  queryOptions({
+    queryKey: commonQueryKeys.modelProviderDetails,
     queryFn: () => get<{ data: ModelProvider[] }>('/workspaces/current/model-providers'),
   })
-}
 
-export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
-  return useQuery<{ data: Model[] }>({
-    queryKey: commonQueryKeys.modelList(type),
-    queryFn: () => get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`),
+export const useModelProviderDetails = (enabled = true) => {
+  return useQuery({
+    ...modelProviderDetailsQueryOptions(),
     enabled,
   })
 }

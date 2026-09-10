@@ -1,8 +1,8 @@
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useOneMoreStep } from '@/service/use-common'
 import OneMoreStep from '../one-more-step'
@@ -41,6 +41,17 @@ describe('OneMoreStep', () => {
     mockSubmitOneMoreStep.mockResolvedValue({ result: 'success' })
   })
 
+  it('exposes the page title as the main heading', () => {
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <OneMoreStep />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
   // Successful account initialization returns users to their original console destination.
   describe('Post-registration redirect', () => {
     it('should return to the requested console page when account initialization succeeds', async () => {
@@ -52,7 +63,8 @@ describe('OneMoreStep', () => {
         </QueryClientProvider>,
       )
 
-      await user.click(screen.getByRole('button', { name: 'login.go' }))
+      await user.click(screen.getByRole('textbox', { name: 'login.invitationCode' }))
+      await user.keyboard('{Enter}')
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/apps?tag=workflow')

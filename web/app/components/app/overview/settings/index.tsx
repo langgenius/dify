@@ -1,12 +1,14 @@
 'use client'
+
 import type { FC } from 'react'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { AppIconType, Language, SiteConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   ScrollArea,
@@ -27,6 +29,9 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -34,15 +39,19 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
-import { Plan } from '@/app/components/billing/type'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 
 type ISettingsModalProps = {
   isChat: boolean
+  canDeploy?: boolean
   appInfo: SettingsAppInfo
   isShow: boolean
   defaultValue?: string
@@ -91,10 +100,10 @@ export type ConfigParams = {
   chat_color_theme: string
   chat_color_theme_inverted: boolean
   prompt_public: boolean
-  copyright: string
+  copyright?: string
   privacy_policy: string
   custom_disclaimer: string
-  input_placeholder: string
+  input_placeholder?: string
   icon_type: AppIconType
   icon: string
   icon_background?: string
@@ -181,6 +190,7 @@ const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
 
 const SettingsModal: FC<ISettingsModalProps> = ({
   isChat,
+  canDeploy = false,
   appInfo,
   isShow = false,
   onClose,
@@ -201,24 +211,29 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [previousIsShow, setPreviousIsShow] = useState(isShow)
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
 
-  const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
-  const { setShowPricingModal } = useModalContext()
-  const isCloudSandboxPlan = enableBilling && plan.type === Plan.sandbox
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: webappCopyrightEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (data) => data.webapp_copyright_enabled,
+    }),
+  )
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
+  const canCustomizePlaceholder = deploymentEdition !== 'CLOUD' || webappCopyrightEnabled === true
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
   const inputPlaceholderLabelId = React.useId()
   const inputPlaceholderDescriptionId = React.useId()
-  const inputPlaceholderValue = isCloudSandboxPlan ? '' : (inputInfo.inputPlaceholder ?? '')
-  const copyrightSwitchValue = isCloudSandboxPlan ? false : inputInfo.copyrightSwitchValue
+  const inputPlaceholderValue = inputInfo.inputPlaceholder ?? ''
+  const copyrightSwitchValue = inputInfo.copyrightSwitchValue
   const showInputPlaceholderPreview =
-    !isCloudSandboxPlan && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
+    canCustomizePlaceholder && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
   const inputPlaceholderField = (
     <div
       className={cn(
         'mt-2 flex h-10 items-center gap-2 rounded-lg border border-components-input-border-hover bg-components-input-bg-normal pr-1 pl-3 transition-colors',
-        !isCloudSandboxPlan &&
+        canCustomizePlaceholder &&
           inputPlaceholderFocused &&
           'border-components-input-border-active bg-components-input-bg-active',
-        isCloudSandboxPlan && 'cursor-not-allowed opacity-60',
+        !canCustomizePlaceholder && 'cursor-not-allowed opacity-60',
       )}
     >
       <input
@@ -228,7 +243,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         onChange={(e) => setInputInfo((item) => ({ ...item, inputPlaceholder: e.target.value }))}
         onFocus={() => setInputPlaceholderFocused(true)}
         onBlur={() => setInputPlaceholderFocused(false)}
-        disabled={isCloudSandboxPlan}
+        disabled={!canCustomizePlaceholder}
         maxLength={INPUT_PLACEHOLDER_MAX_LENGTH}
         autoComplete="off"
         aria-labelledby={inputPlaceholderLabelId}
@@ -241,7 +256,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         className={cn(
           'flex-1 bg-transparent body-md-regular outline-hidden',
           showInputPlaceholderPreview ? 'text-text-placeholder' : 'text-text-primary',
-          isCloudSandboxPlan && 'cursor-not-allowed',
+          !canCustomizePlaceholder && 'cursor-not-allowed',
         )}
       />
       <span
@@ -258,8 +273,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     if (nextLanguage) setLanguage(nextLanguage.value)
   }
   const handlePlanClick = useCallback(() => {
-    setShowPricingModal()
-  }, [setShowPricingModal])
+    setPricing('open')
+  }, [setPricing])
 
   const shouldResetForm =
     isShow && (!previousIsShow || settingsResetKey !== previousSettingsResetKey)
@@ -316,16 +331,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
-      copyright:
-        !webappCopyrightEnabled || isCloudSandboxPlan
-          ? ''
-          : copyrightSwitchValue
-            ? inputInfo.copyright
-            : '',
+      copyright: !webappCopyrightEnabled
+        ? undefined
+        : copyrightSwitchValue
+          ? inputInfo.copyright
+          : '',
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
-      input_placeholder:
-        isCloudSandboxPlan || !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode)
+      input_placeholder: !canCustomizePlaceholder
+        ? undefined
+        : !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode)
           ? ''
           : (inputInfo.inputPlaceholder ?? '').slice(0, INPUT_PLACEHOLDER_MAX_LENGTH),
       icon_type: appIcon.type,
@@ -364,27 +379,66 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <DialogTitle className="grow title-2xl-semi-bold text-text-primary">
                 {t(($) => $[`${prefixSettings}.title`], { ns: 'appOverview' })}
               </DialogTitle>
-              <DialogCloseButton className="relative top-auto right-auto shrink-0" />
+              <DialogClose
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    size="sm"
+                    className="relative top-auto right-auto shrink-0 rounded-2xl"
+                  >
+                    <span aria-hidden className="i-ri-close-line size-4" />
+                  </IconButton>
+                }
+              />
             </div>
             <div className="mt-0.5 system-xs-regular text-text-tertiary">
               <span>{t(($) => $[`${prefixSettings}.modalTip`], { ns: 'appOverview' })}</span>
             </div>
           </div>
           <Form
-            className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto]"
+            className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]"
             onFormSubmit={handleFormSubmit}
           >
+            {canDeploy && (
+              <div className="row-start-1 px-6 py-2">
+                <div
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className="relative flex min-h-10 items-start gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
+                >
+                  <div
+                    aria-hidden="true"
+                    className="absolute -inset-px bg-linear-to-r from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent opacity-40"
+                  />
+                  <div className="relative flex size-6 shrink-0 items-center justify-center p-1">
+                    <span
+                      aria-hidden="true"
+                      className="i-ri-information-2-fill size-4 text-text-accent"
+                    />
+                  </div>
+                  <p className="relative min-w-0 flex-1 py-1 system-xs-medium wrap-break-word text-text-primary">
+                    {t(($) => $[`${prefixSettings}.multiEnvironmentNotice`], {
+                      ns: 'appOverview',
+                    })}
+                  </p>
+                </div>
+              </div>
+            )}
             {/* form body */}
-            <ScrollArea className="relative min-h-0">
+            <ScrollArea className="row-start-2 min-h-0 overflow-hidden">
               <ScrollAreaViewport className="overscroll-contain">
-                <ScrollAreaContent style={{ minWidth: 0 }} className="space-y-5 px-6 py-3">
+                <ScrollAreaContent
+                  className="flex flex-col gap-y-5 px-6 py-3"
+                  style={{ minWidth: 0 }}
+                >
                   {/* name & icon */}
                   <div className="flex gap-4">
                     <Field name="title" className="grow">
                       <FieldLabel>
                         {t(($) => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}
                       </FieldLabel>
-                      <FieldControl
+                      <Input
                         value={inputInfo.title}
                         onValueChange={(value) =>
                           setInputInfo((item) => ({ ...item, title: value }))
@@ -483,7 +537,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         </div>
                       </div>
                       <Field name="chat_color_theme" className="w-50 shrink-0">
-                        <FieldControl
+                        <Input
+                          aria-label={t(($) => $[`${prefixSettings}.chatColorTheme`], {
+                            ns: 'appOverview',
+                          })}
                           className="mb-1"
                           value={inputInfo.chatColorTheme ?? ''}
                           onValueChange={(value) =>
@@ -544,7 +601,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                                 ns: 'appOverview',
                               })}
                             </div>
-                            {isCloudSandboxPlan && (
+                            {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false && (
                               <div className="h-4.5 select-none">
                                 <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                   <span
@@ -569,7 +626,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             ns: 'appOverview',
                           })}
                         </p>
-                        {isCloudSandboxPlan ? (
+                        {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false ? (
                           <Tooltip>
                             <TooltipTrigger render={inputPlaceholderField} />
                             <TooltipContent className="w-45">
@@ -581,7 +638,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         ) : (
                           inputPlaceholderField
                         )}
-                        {!isCloudSandboxPlan && (
+                        {canCustomizePlaceholder && (
                           <div className="mt-1 text-right body-xs-regular text-text-tertiary">
                             {`${inputInfo.inputPlaceholder?.length ?? 0} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
                           </div>
@@ -596,7 +653,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             {t(($) => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}
                           </div>
                           {/* upgrade button */}
-                          {isCloudSandboxPlan && (
+                          {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false && (
                             <div className="h-4.5 select-none">
                               <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                 <span
@@ -612,8 +669,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             </div>
                           )}
                         </div>
-                        {webappCopyrightEnabled ? (
+                        {webappCopyrightEnabled !== false ? (
                           <Switch
+                            disabled={webappCopyrightEnabled !== true}
                             aria-label={t(($) => $[`${prefixSettings}.more.copyright`], {
                               ns: 'appOverview',
                             })}
@@ -657,6 +715,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             ns: 'appOverview',
                           })}
                           className="mt-2 h-10"
+                          disabled={webappCopyrightEnabled !== true}
                           value={inputInfo.copyright}
                           onChange={onChange('copyright')}
                           placeholder={
@@ -738,7 +797,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </ScrollAreaScrollbar>
             </ScrollArea>
             {/* footer */}
-            <div className="flex shrink-0 justify-end p-6 pt-5">
+            <div className="row-start-3 flex shrink-0 justify-end p-6 pt-5">
               <Button type="button" className="mr-2" onClick={handleClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>

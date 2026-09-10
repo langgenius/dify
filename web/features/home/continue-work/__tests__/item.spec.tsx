@@ -17,10 +17,6 @@ const toastMocks = vi.hoisted(() => ({
   warning: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
@@ -43,9 +39,19 @@ vi.mock('@/next/link', () => ({
     children,
     href,
     className,
+    prefetch,
     ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement> & { children?: ReactNode; href: string }) => (
-    <a href={href} className={className} {...props}>
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+    children?: ReactNode
+    href: string
+    prefetch?: boolean | null
+  }) => (
+    <a
+      href={href}
+      className={className}
+      data-prefetch={prefetch === null ? 'auto' : prefetch}
+      {...props}
+    >
       {children}
     </a>
   ),
@@ -71,7 +77,11 @@ const renderItem = (
   systemFeatures: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['systemFeatures'] = {
     rbac_enabled: true,
   },
-) => renderWithConsoleQuery(<ContinueWorkItem app={app} />, { systemFeatures })
+) =>
+  renderWithConsoleQuery(<ContinueWorkItem app={app} />, {
+    accountProfile: mockConsoleState.userProfile,
+    systemFeatures,
+  })
 
 describe('ContinueWorkItem', () => {
   beforeEach(() => {
@@ -81,18 +91,49 @@ describe('ContinueWorkItem', () => {
     mockFormatTimeFromNow.mockReturnValue('5 minutes ago')
   })
 
-  it('should render a link to the app configuration page when the app is editable', () => {
+  it.each(['chat', 'agent-chat', 'completion'] as const)(
+    'should keep visible metadata outside the %s app link label when the app is editable',
+    (mode) => {
+      renderItem(createApp({ mode }))
+
+      const link = screen.getByRole('link', { name: /Continue App/ })
+
+      expect(link).toHaveAttribute('href', '/app/app-1/configuration')
+      expect(link).toHaveAccessibleDescription(/Alice.*5 minutes ago/)
+      expect(link).not.toContainElement(screen.getByText('Alice'))
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+      expect(
+        screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}'),
+      ).toBeInTheDocument()
+      expect(mockFormatTimeFromNow).toHaveBeenCalledWith(200000)
+    },
+  )
+
+  it('should enable prefetch after pointer intent', async () => {
+    const user = userEvent.setup()
     renderItem(createApp())
 
     const link = screen.getByRole('link', { name: /Continue App/ })
 
-    expect(link).toHaveAttribute('href', '/app/app-1/configuration')
-    expect(link).toHaveAccessibleDescription(/Alice.*5 minutes ago/)
-    expect(screen.getByText('Alice')).toBeInTheDocument()
-    expect(
-      screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}'),
-    ).toBeInTheDocument()
-    expect(mockFormatTimeFromNow).toHaveBeenCalledWith(200000)
+    expect(link).toHaveAttribute('data-prefetch', 'false')
+
+    await user.hover(link)
+
+    expect(link).toHaveAttribute('data-prefetch', 'auto')
+  })
+
+  it('should enable prefetch after keyboard focus', async () => {
+    const user = userEvent.setup()
+    renderItem(createApp())
+
+    const link = screen.getByRole('link', { name: /Continue App/ })
+
+    expect(link).toHaveAttribute('data-prefetch', 'false')
+
+    await user.tab()
+
+    expect(link).toHaveFocus()
+    expect(link).toHaveAttribute('data-prefetch', 'auto')
   })
 
   it.each([
@@ -127,14 +168,19 @@ describe('ContinueWorkItem', () => {
     )
   })
 
-  it('should fall back to develop when RBAC is disabled for an access-config-only app', () => {
-    renderItem(createApp({ permission_keys: [AppACLPermission.AccessConfig] }), {
-      rbac_enabled: false,
-    })
+  it('should fall back to access point when RBAC is disabled and Access Point is viewable', () => {
+    renderItem(
+      createApp({
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPointView],
+      }),
+      {
+        rbac_enabled: false,
+      },
+    )
 
     expect(screen.getByRole('link', { name: /Continue App/ })).toHaveAttribute(
       'href',
-      '/app/app-1/develop',
+      '/app/app-1/access-point',
     )
   })
 

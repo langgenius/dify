@@ -2,8 +2,8 @@
 
 Config requests are scoped entirely by the signed execution context carried in
 the Agent Stub token. Tenant, agent, user, and config-version identifiers come
-only from that trusted context; sandbox request bodies contribute only mutable
-content such as asset names, env text, and note text.
+only from that trusted context; Sandbox request bodies provide only allowed
+Config operation inputs and asset selectors.
 """
 
 from __future__ import annotations
@@ -16,10 +16,13 @@ import httpx
 from pydantic import ValidationError
 
 from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubConfigDownloadSource,
     AgentStubConfigManifestResponse,
     AgentStubConfigPushRequest,
     AgentStubConfigPushResponse,
+    AgentStubFileDownloadResponse,
 )
+from dify_agent.agent_stub.server.agent_stub_files import bind_sandbox_file_uri
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
@@ -27,11 +30,14 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 class AgentStubConfigRequestHandler(Protocol):
     async def manifest(self, *, principal: AgentStubPrincipal) -> AgentStubConfigManifestResponse: ...
 
-    async def pull_skill(self, *, principal: AgentStubPrincipal, name: str) -> bytes: ...
+    async def create_download_request(
+        self,
+        *,
+        principal: AgentStubPrincipal,
+        source: AgentStubConfigDownloadSource,
+    ) -> AgentStubFileDownloadResponse: ...
 
     async def inspect_skill(self, *, principal: AgentStubPrincipal, name: str) -> dict[str, object]: ...
-
-    async def pull_file(self, *, principal: AgentStubPrincipal, name: str) -> bytes: ...
 
     async def push(
         self,
@@ -59,13 +65,16 @@ class AgentStubConfigRequestError(RuntimeError):
 class DifyApiAgentStubConfigRequestHandler:
     """Call Dify API inner config endpoints on behalf of authenticated sandboxes.
 
-    The sandbox never chooses tenant, agent, user, or config-version scope
-    directly. Those routing fields are derived from the signed execution
-    context, while request payloads only carry mutable config content.
+    The Sandbox never chooses tenant, agent, user, or config-version scope.
+    Those routing fields come from the signed execution context, while request
+    payloads carry only allowed Config operation inputs or asset selectors. A
+    download request forwards metadata only and binds the returned URI to the
+    Sandbox files base URL; it never proxies file bytes.
     """
 
     inner_api_url: str
     inner_api_key: str
+    sandbox_files_base_url: str
     timeout: httpx.Timeout | float = 30.0
 
     async def manifest(self, *, principal: AgentStubPrincipal) -> AgentStubConfigManifestResponse:
@@ -79,12 +88,35 @@ class DifyApiAgentStubConfigRequestHandler:
         except ValidationError as exc:
             raise AgentStubConfigRequestError(502, "Dify API config manifest response is invalid") from exc
 
-    async def pull_skill(self, *, principal: AgentStubPrincipal, name: str) -> bytes:
+    async def create_download_request(
+        self,
+        *,
+        principal: AgentStubPrincipal,
+        source: AgentStubConfigDownloadSource,
+    ) -> AgentStubFileDownloadResponse:
         execution_context = self._require_config_context(principal.execution_context)
-        return await self._get_inner_api_bytes(
-            f"/inner/api/agent-config/{execution_context.agent_id}/skills/{name}/pull",
-            self._config_query_params(execution_context),
+        payload = await self._post_inner_api_json(
+            f"/inner/api/agent-config/{execution_context.agent_id}/download-request",
+            {
+                **self._config_query_params(execution_context),
+                "config": source.model_dump(mode="json"),
+            },
         )
+        if not isinstance(payload, dict):
+            raise AgentStubConfigRequestError(502, "Dify API config download response is invalid")
+        download_uri = payload.get("download_uri")
+        if not isinstance(download_uri, str) or not download_uri:
+            raise AgentStubConfigRequestError(502, "Dify API config download response is missing download_uri")
+        try:
+            download_url = bind_sandbox_file_uri(
+                sandbox_files_base_url=self.sandbox_files_base_url,
+                uri=download_uri,
+            )
+            return AgentStubFileDownloadResponse.model_validate(
+                {key: value for key, value in payload.items() if key != "download_uri"} | {"download_url": download_url}
+            )
+        except (ValueError, ValidationError) as exc:
+            raise AgentStubConfigRequestError(502, "Dify API config download response is invalid") from exc
 
     async def inspect_skill(self, *, principal: AgentStubPrincipal, name: str) -> dict[str, object]:
         execution_context = self._require_config_context(principal.execution_context)
@@ -95,13 +127,6 @@ class DifyApiAgentStubConfigRequestHandler:
         if not isinstance(payload, dict):
             raise AgentStubConfigRequestError(502, "Dify API config skill inspect response is invalid")
         return payload
-
-    async def pull_file(self, *, principal: AgentStubPrincipal, name: str) -> bytes:
-        execution_context = self._require_config_context(principal.execution_context)
-        return await self._get_inner_api_bytes(
-            f"/inner/api/agent-config/{execution_context.agent_id}/files/{name}/pull",
-            self._config_query_params(execution_context),
-        )
 
     async def push(
         self,
@@ -189,18 +214,6 @@ class DifyApiAgentStubConfigRequestHandler:
         return self._normalize_json_payload(
             response, invalid_json_detail="Dify API config request returned invalid JSON"
         )
-
-    async def _get_inner_api_bytes(self, path: str, params: Mapping[str, str]) -> bytes:
-        response = await self._request("GET", path, params=dict(params))
-        if response.is_error:
-            detail = self._normalize_json_payload(
-                response,
-                invalid_json_detail="Dify API config request returned invalid JSON",
-            )
-            raise AgentStubConfigRequestError(
-                response.status_code, detail.get("detail", detail) if isinstance(detail, dict) else detail
-            )
-        return response.content
 
     async def _post_inner_api_json(self, path: str, payload: Mapping[str, Any]) -> object:
         response = await self._request("POST", path, json=dict(payload))

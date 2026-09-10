@@ -266,7 +266,7 @@ const LoadingDemo = () => {
   return (
     <div className="flex flex-col items-center space-y-4">
       <button
-        className="rounded-sm border px-2 py-1 text-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="rounded-sm border px-2 py-1 text-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         onClick={() => setLoading(!loading)}
       >
         {loading ? 'Stop Loading' : 'Start Loading'}

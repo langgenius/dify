@@ -60,9 +60,7 @@ vi.mock('@/app/components/workflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="workflow-context-provider">{children}</div>
-  ),
+  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
@@ -164,7 +162,6 @@ describe('SnippetPage', () => {
   it('should render the orchestrate route shell without owning the main landmark', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
-    expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-default-context')).toBeInTheDocument()
     expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1')
     expect(screen.queryByRole('main')).not.toBeInTheDocument()

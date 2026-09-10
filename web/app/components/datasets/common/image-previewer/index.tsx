@@ -1,9 +1,9 @@
-import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd } from '@langgenius/dify-ui/kbd'
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { formatFileSize } from '@/utils/format'
 
@@ -29,6 +29,7 @@ type ImagePreviewerProps = {
 }
 
 const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerProps) => {
+  const { t } = useTranslation()
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [cachedImages, setCachedImages] = useState<Record<string, CachedImage>>(() => {
     return images.reduce(
@@ -154,31 +155,32 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
     >
       <DialogContent
         className="image-previewer inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-background-overlay-fullscreen p-5! pb-4! shadow-none! backdrop-blur-[6px]"
-        backdropClassName="bg-transparent!"
+        backdropProps={{ className: 'bg-transparent!' }}
       >
         <div className="absolute top-6 right-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
-          <Button
+          <IconButton
             variant="tertiary"
+            size="xl"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onClose}
-            className="size-9 rounded-[10px] p-0"
-            size="large"
           >
-            <RiCloseLine className="size-5" />
-          </Button>
+            <span aria-hidden className="i-ri-close-line size-5" />
+          </IconButton>
           <Kbd>{formatForDisplay('Escape')}</Kbd>
         </div>
         {cachedImages[currentImage!.url]!.status === 'loading' && <Loading type="app" />}
         {cachedImages[currentImage!.url]!.status === 'error' && (
           <div className="flex max-w-sm flex-col items-center gap-y-2 system-sm-regular text-text-tertiary">
             <span>{`Failed to load image: ${currentImage!.url}. Please try again.`}</span>
-            <Button
+            <IconButton
               variant="secondary"
+              size="xl"
+              aria-label={t(($) => $['operation.retry'], { ns: 'common' })}
               onClick={() => retryImage(currentImage!)}
-              className="size-9 rounded-full p-0"
-              size="large"
+              className="rounded-full"
             >
-              <RiRefreshLine className="size-5" />
-            </Button>
+              <span aria-hidden className="i-ri-refresh-line size-5" />
+            </IconButton>
           </div>
         )}
         {cachedImages[currentImage!.url]!.status === 'loaded' && (
@@ -197,24 +199,26 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
             </div>
           </div>
         )}
-        <Button
+        <IconButton
           variant="secondary"
+          size="xl"
+          aria-label={t(($) => $['pagination.previous'], { ns: 'common' })}
           onClick={prevImage}
-          className="absolute top-1/2 left-8 z-10 size-9 -translate-y-1/2 rounded-full p-0"
+          className="absolute top-1/2 left-8 z-10 -translate-y-1/2 rounded-full"
           disabled={currentIndex === 0}
-          size="large"
         >
-          <RiArrowLeftLine className="size-5" />
-        </Button>
-        <Button
+          <span aria-hidden className="i-ri-arrow-left-line size-5" />
+        </IconButton>
+        <IconButton
           variant="secondary"
+          size="xl"
+          aria-label={t(($) => $['pagination.next'], { ns: 'common' })}
           onClick={nextImage}
-          className="absolute top-1/2 right-8 z-10 size-9 -translate-y-1/2 rounded-full p-0"
+          className="absolute top-1/2 right-8 z-10 -translate-y-1/2 rounded-full"
           disabled={currentIndex === images.length - 1}
-          size="large"
         >
-          <RiArrowRightLine className="size-5" />
-        </Button>
+          <span aria-hidden className="i-ri-arrow-right-line size-5" />
+        </IconButton>
       </DialogContent>
     </Dialog>
   )

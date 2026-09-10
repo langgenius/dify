@@ -3,25 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import EditAnnotationModal from '../index'
 
-const { mockAddAnnotation, mockEditAnnotation } = vi.hoisted(() => ({
-  mockAddAnnotation: vi.fn(),
+const { mockEditAnnotation } = vi.hoisted(() => ({
   mockEditAnnotation: vi.fn(),
 }))
 
 // Mock only external dependencies
 vi.mock('@/service/annotation', () => ({
-  addAnnotation: mockAddAnnotation,
   editAnnotation: mockEditAnnotation,
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: {
-      usage: { annotatedResponse: 5 },
-      total: { annotatedResponse: 10 },
-    },
-    enableBilling: true,
-  }),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -44,16 +32,17 @@ describe('EditAnnotationModal', () => {
     isShow: true,
     onHide: vi.fn(),
     appId: 'test-app-id',
+    annotationId: 'test-annotation-id',
     query: 'Test query',
     answer: 'Test answer',
     onEdited: vi.fn(),
-    onAdded: vi.fn(),
+
     onRemove: vi.fn(),
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAddAnnotation.mockResolvedValue({
+    mockEditAnnotation.mockResolvedValue({
       id: 'test-id',
       account: { name: 'Test User' },
     })
@@ -198,86 +187,10 @@ describe('EditAnnotationModal', () => {
       // Assert
       expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDocument()
     })
-
-    it('should save content when edited', async () => {
-      // Arrange
-      const mockOnAdded = vi.fn()
-      const props = {
-        ...defaultProps,
-        onAdded: mockOnAdded,
-      }
-      const user = userEvent.setup()
-
-      // Mock API response
-      mockAddAnnotation.mockResolvedValueOnce({
-        id: 'test-annotation-id',
-        account: { name: 'Test User' },
-      })
-
-      // Act
-      render(<EditAnnotationModal {...props} />)
-
-      // Find and click edit link for query
-      const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0]!)
-
-      // Find textarea and enter new content
-      const textarea = screen.getByRole('textbox')
-      await user.clear(textarea)
-      await user.type(textarea, 'New query content')
-
-      // Click save button
-      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-      await user.click(saveButton)
-
-      // Assert
-      expect(mockAddAnnotation).toHaveBeenCalledWith('test-app-id', {
-        question: 'New query content',
-        answer: 'Test answer',
-        message_id: undefined,
-      })
-    })
   })
 
   // API Calls
   describe('API Calls', () => {
-    it('should call addAnnotation when saving new annotation', async () => {
-      // Arrange
-      const mockOnAdded = vi.fn()
-      const props = {
-        ...defaultProps,
-        onAdded: mockOnAdded,
-      }
-      const user = userEvent.setup()
-
-      // Mock the API response
-      mockAddAnnotation.mockResolvedValueOnce({
-        id: 'test-annotation-id',
-        account: { name: 'Test User' },
-      })
-
-      // Act
-      render(<EditAnnotationModal {...props} />)
-
-      // Edit query content
-      const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0]!)
-
-      const textarea = screen.getByRole('textbox')
-      await user.clear(textarea)
-      await user.type(textarea, 'Updated query')
-
-      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-      await user.click(saveButton)
-
-      // Assert
-      expect(mockAddAnnotation).toHaveBeenCalledWith('test-app-id', {
-        question: 'Updated query',
-        answer: 'Test answer',
-        message_id: undefined,
-      })
-    })
-
     it('should call editAnnotation when updating existing annotation', async () => {
       // Arrange
       const mockOnEdited = vi.fn()
@@ -494,82 +407,6 @@ describe('EditAnnotationModal', () => {
 
   // Error Handling (CRITICAL for coverage)
   describe('Error Handling', () => {
-    it('should show error toast and skip callbacks when addAnnotation fails', async () => {
-      // Arrange
-      const mockOnAdded = vi.fn()
-      const props = {
-        ...defaultProps,
-        onAdded: mockOnAdded,
-      }
-      const user = userEvent.setup()
-
-      // Mock API failure
-      mockAddAnnotation.mockRejectedValueOnce(new Error('API Error'))
-
-      // Act
-      render(<EditAnnotationModal {...props} />)
-
-      // Find and click edit link for query
-      const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0]!)
-
-      // Find textarea and enter new content
-      const textarea = screen.getByRole('textbox')
-      await user.clear(textarea)
-      await user.type(textarea, 'New query content')
-
-      // Click save button
-      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-      await user.click(saveButton)
-
-      // Assert
-      await waitFor(() => {
-        expect(toastErrorSpy).toHaveBeenCalledWith('API Error')
-      })
-      expect(mockOnAdded).not.toHaveBeenCalled()
-
-      // Verify edit mode remains open (textarea should still be visible)
-      // Verify edit mode remains open (textarea should still be visible)
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeInTheDocument()
-    })
-
-    it('should show fallback error message when addAnnotation error has no message', async () => {
-      // Arrange
-      const mockOnAdded = vi.fn()
-      const props = {
-        ...defaultProps,
-        onAdded: mockOnAdded,
-      }
-      const user = userEvent.setup()
-
-      mockAddAnnotation.mockRejectedValueOnce({})
-
-      // Act
-      render(<EditAnnotationModal {...props} />)
-
-      const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0]!)
-
-      const textarea = screen.getByRole('textbox')
-      await user.clear(textarea)
-      await user.type(textarea, 'New query content')
-
-      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-      await user.click(saveButton)
-
-      // Assert
-      await waitFor(() => {
-        expect(toastErrorSpy).toHaveBeenCalledWith('common.api.actionFailed')
-      })
-      expect(mockOnAdded).not.toHaveBeenCalled()
-
-      // Verify edit mode remains open (textarea should still be visible)
-      // Verify edit mode remains open (textarea should still be visible)
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeInTheDocument()
-    })
-
     it('should show error toast and skip callbacks when editAnnotation fails', async () => {
       // Arrange
       const mockOnEdited = vi.fn()
@@ -728,19 +565,6 @@ describe('EditAnnotationModal', () => {
 
   // React.memo Performance Testing
   describe('React.memo Performance', () => {
-    it('should not re-render when props are the same', () => {
-      // Arrange
-      const props = { ...defaultProps }
-      const { rerender } = render(<EditAnnotationModal {...props} />)
-
-      // Act - Re-render with same props
-      rerender(<EditAnnotationModal {...props} />)
-
-      // Assert - Component should still be visible (no errors thrown)
-      // Assert - Component should still be visible (no errors thrown)
-      expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
-    })
-
     it('should re-render when props change', () => {
       // Arrange
       const props = { ...defaultProps }

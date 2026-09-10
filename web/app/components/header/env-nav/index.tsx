@@ -1,8 +1,8 @@
 'use client'
 
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 
 const headerEnvClassName: { [k: string]: string } = {
   DEVELOPMENT: 'bg-[#FEC84B] border-[#FDB022] text-[#93370D]',
@@ -11,24 +11,25 @@ const headerEnvClassName: { [k: string]: string } = {
 
 const EnvNav = () => {
   const { t } = useTranslation()
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const showEnvTag =
-    langGeniusVersionInfo.current_env === 'TESTING' ||
-    langGeniusVersionInfo.current_env === 'DEVELOPMENT'
+  const { data: currentEnv } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentEnv,
+  })
+  const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   if (!showEnvTag) return null
 
   return (
     <div
-      className={`mr-1 flex h-5.5 items-center rounded-md border px-2 text-xs font-medium ${headerEnvClassName[langGeniusVersionInfo.current_env]} `}
+      className={`mr-1 flex h-5.5 items-center rounded-md border px-2 text-xs font-medium ${headerEnvClassName[currentEnv]} `}
     >
-      {langGeniusVersionInfo.current_env === 'TESTING' && (
+      {currentEnv === 'TESTING' && (
         <>
           <span aria-hidden className="i-custom-vender-solid-education-beaker-02 size-3" />
           <div className="ml-1">{t(($) => $['environment.testing'], { ns: 'common' })}</div>
         </>
       )}
-      {langGeniusVersionInfo.current_env === 'DEVELOPMENT' && (
+      {currentEnv === 'DEVELOPMENT' && (
         <>
           <span aria-hidden className="i-custom-vender-solid-development-terminal-square size-3" />
           <div className="ml-1">{t(($) => $['environment.development'], { ns: 'common' })}</div>

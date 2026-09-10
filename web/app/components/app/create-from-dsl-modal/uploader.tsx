@@ -2,6 +2,7 @@
 import type { ChangeEvent, DragEvent, MouseEvent, RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -167,7 +168,7 @@ export function Uploader({
             aria-labelledby={fileNameId}
             aria-describedby={fileMetadataId}
             className={cn(
-              'group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
               'hover:bg-components-panel-on-panel-item-bg-hover',
             )}
           >
@@ -191,17 +192,16 @@ export function Uploader({
               </div>
             </div>
             <div className="flex items-center pr-3 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
-              <Button
+              <IconButton
                 ref={removeButtonRef}
                 variant="ghost"
-                size="small"
-                className="size-6 p-0"
+                size="md"
                 aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
                 disabled={disabled}
                 onClick={removeFile}
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
-              </Button>
+              </IconButton>
             </div>
           </div>
         )}

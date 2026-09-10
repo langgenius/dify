@@ -1,17 +1,10 @@
 import type { Credential } from '../../types'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { CredentialTypeEnum } from '../../types'
 import Item from '../item'
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -191,8 +184,7 @@ describe('Item Component', () => {
       )
 
       const enterRenameMode = () => {
-        const firstButton = result.container.querySelectorAll('button')[0] as HTMLElement
-        fireEvent.click(firstButton)
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.rename' }))
       }
 
       return { ...result, onRename, enterRenameMode }
@@ -203,7 +195,7 @@ describe('Item Component', () => {
 
       enterRenameMode()
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'common.operation.rename' })).toBeInTheDocument()
     })
 
     it('should show save and cancel buttons in rename mode', () => {
@@ -220,7 +212,7 @@ describe('Item Component', () => {
 
       enterRenameMode()
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'common.operation.rename' })
       fireEvent.change(input, { target: { value: 'New Name' } })
       fireEvent.click(screen.getByText('common.operation.save'))
 
@@ -235,7 +227,7 @@ describe('Item Component', () => {
       const { enterRenameMode } = renderWithRenameEnabled()
 
       enterRenameMode()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'common.operation.rename' })).toBeInTheDocument()
 
       fireEvent.click(screen.getByText('common.operation.cancel'))
 
@@ -247,7 +239,7 @@ describe('Item Component', () => {
 
       enterRenameMode()
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'common.operation.rename' })
       fireEvent.change(input, { target: { value: 'Updated Value' } })
 
       expect(input).toHaveValue('Updated Value')

@@ -1,6 +1,5 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { ChatRequestPayloadWithUser } from '@dify/contracts/api/service/types.gen'
-import type { ConsoleClient } from '../../../support/api/console-client'
 import { consumeServiceApiSse, SERVICE_API_STREAM_TIMEOUT_MS } from './service-api-sse'
 
 export type AgentServiceApiChatResult = {
@@ -39,19 +38,6 @@ export function getAgentWebAppURL(agent: AgentAppDetailWithSite): string {
   if (!baseURL) throw new Error(`Agent v2 ${agent.id} does not expose a Web app base URL.`)
 
   return `${baseURL.replace(/\/$/, '')}/agent/${token}`
-}
-
-export async function enableAgentWebApp(client: ConsoleClient, agentId: string): Promise<string> {
-  const agent = await client.agent.byAgentId.get({ params: { agent_id: agentId } })
-  const appId = agent.app_id ?? agent.backing_app_id
-  if (!appId) throw new Error(`Agent v2 ${agentId} does not expose a backing app ID.`)
-
-  await client.apps.byAppId.siteEnable.post({
-    body: { enable_site: true },
-    params: { app_id: appId },
-  })
-  const updatedAgent = await client.agent.byAgentId.get({ params: { agent_id: agentId } })
-  return getAgentWebAppURL(updatedAgent)
 }
 
 export async function sendAgentServiceApiChatMessage({

@@ -1,9 +1,52 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactElement } from 'react'
 import type { Collection } from '../../types'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AuthType, CollectionType } from '../../types'
 import ProviderDetail from '../detail'
+
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: [
+      {
+        ...providerSummaryFixture,
+        ...{ provider: 'model-collection-id' },
+      } satisfies ModelProviderSummaryResponse,
+    ],
+    plugins: {},
+  })
+  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
+    data: [{ provider: 'model-collection-id' }],
+  })
+  void queryClient.invalidateQueries({
+    queryKey: commonQueryKeys.modelProviderDetails,
+    exact: true,
+    refetchType: 'none',
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 vi.mock('@/i18n-config/language', () => ({
   getLanguage: () => 'en_US',
@@ -30,12 +73,6 @@ const mockSetShowModelModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowModelModal: mockSetShowModelModal,
-  }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: [{ provider: 'model-collection-id', name: 'TestModel' }],
   }),
 }))
 
@@ -571,7 +608,10 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      expect(mockSetShowModelModal).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(mockSetShowModelModal).toHaveBeenCalled()
+      })
+      expect(globalThis.fetch).not.toHaveBeenCalled()
     })
   })
 
@@ -769,6 +809,9 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
+      await waitFor(() => {
+        expect(mockSetShowModelModal).toHaveBeenCalled()
+      })
       const call = mockSetShowModelModal.mock.calls[0]![0]
       act(() => {
         call.onSaveCallback()

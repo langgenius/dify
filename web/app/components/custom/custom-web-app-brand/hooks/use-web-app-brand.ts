@@ -1,48 +1,55 @@
+import type { WorkspaceCustomConfigPayload } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ChangeEvent } from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
-import { Plan } from '@/app/components/billing/type'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
-import { currentWorkspaceAtom, refreshCurrentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { updateCurrentWorkspace } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
-const CUSTOM_CONFIG_URL = '/workspaces/custom-config'
 const WEB_APP_LOGO_UPLOAD_URL = '/workspaces/custom-config/webapp-logo/upload'
 const useWebAppBrand = () => {
   const { t } = useTranslation()
-  const { plan, enableBilling } = useProviderContext()
-  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const mutateCurrentWorkspace = useSetAtom(refreshCurrentWorkspaceAtom)
+  const { data: canReplaceLogo } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (data) => data.can_replace_logo,
+    }),
+  )
+  const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const isSandbox = enableBilling && plan.type === Plan.sandbox
+  const customConfigQuery = useQuery(consoleQuery.workspaces.customConfig.get.queryOptions())
+  const { data: customConfig } = customConfigQuery
+  const updateCustomConfigMutation = useMutation(
+    consoleQuery.workspaces.customConfig.post.mutationOptions(),
+  )
   const uploading = uploadProgress > 0 && uploadProgress < 100
-  const webappLogo = currentWorkspace.custom_config?.replace_webapp_logo || ''
-  const webappBrandRemoved = currentWorkspace.custom_config?.remove_webapp_brand
+  const webappLogo = customConfig?.replace_webapp_logo || ''
+  const webappBrandRemoved = customConfig?.remove_webapp_brand ?? undefined
   const canManageCustomBrand = hasPermission(workspacePermissionKeys, 'customization.manage')
-  const uploadDisabled = isSandbox || webappBrandRemoved || !canManageCustomBrand
+  const isCustomConfigUnavailable = customConfig === undefined || canReplaceLogo === undefined
+  const uploadDisabled =
+    isCustomConfigUnavailable || !canReplaceLogo || webappBrandRemoved || !canManageCustomBrand
   const workspaceLogo = systemFeatures.branding.enabled
     ? systemFeatures.branding.workspace_logo
     : ''
-  const persistWorkspaceBrand = async (body: Record<string, unknown>) => {
-    await updateCurrentWorkspace({
-      url: CUSTOM_CONFIG_URL,
-      body,
+  const persistWorkspaceBrand = async (body: WorkspaceCustomConfigPayload) => {
+    if (isCustomConfigUnavailable || !canReplaceLogo || !canManageCustomBrand) return
+    await updateCustomConfigMutation.mutateAsync({ body })
+    await queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.customConfig.get.key(),
     })
-    mutateCurrentWorkspace()
   }
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (uploadDisabled) return
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > MAX_LOGO_FILE_SIZE) {
@@ -101,9 +108,10 @@ const useWebAppBrand = () => {
     uploading,
     webappLogo,
     webappBrandRemoved,
+    isCustomConfigUnavailable,
     uploadDisabled,
     workspaceLogo,
-    isSandbox,
+    canReplaceLogo,
     canManageCustomBrand,
     handleApply,
     handleCancel,

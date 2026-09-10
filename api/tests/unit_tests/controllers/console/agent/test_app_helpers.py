@@ -2,13 +2,21 @@ from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
+from sqlalchemy.orm import Session
 
 from controllers.console.agent import app_helpers
+from models.model import App, AppMode
 
 
-def test_resolve_agent_app_model_reuses_caller_session(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    app = MagicMock()
+def _app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", name="Agent App", mode=AppMode.AGENT)
+
+
+def test_resolve_agent_app_model_reuses_caller_session(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    session = unbound_session
+    app = _app()
     service = MagicMock()
     service.get_agent_app_model.return_value = app
     service_factory = MagicMock(return_value=service)
@@ -28,9 +36,11 @@ def test_resolve_agent_app_model_reuses_caller_session(monkeypatch: pytest.Monke
     )
 
 
-def test_resolve_agent_runtime_app_model_reuses_caller_session(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    app = MagicMock()
+def test_resolve_agent_runtime_app_model_reuses_caller_session(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    session = unbound_session
+    app = _app()
     service = MagicMock()
     service.get_agent_runtime_app_model.return_value = app
     service_factory = MagicMock(return_value=service)

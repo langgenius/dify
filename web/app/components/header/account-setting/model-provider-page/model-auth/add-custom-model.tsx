@@ -26,9 +26,16 @@ const AddCustomModel = ({
   provider,
   configurationMethod,
   currentCustomConfigurationModelFixedFields,
+  open: controlledOpen,
+  onOpenChange,
 }: AddCustomModelProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const setOpen = (nextOpen: boolean) => {
+    setLocalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
   const canAddedModels = useCanAddedModels(provider)
   const noModels = !canAddedModels.length
   const { canUseCredential, canCreateCredential } = useCredentialPermissions()
@@ -107,7 +114,7 @@ const AddCustomModel = ({
       <PopoverContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="max-h-76 overflow-y-auto p-1">

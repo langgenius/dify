@@ -9,25 +9,24 @@ from typing import Self
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.errors import NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.site import WebAppSiteResponse
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import RateLimiter, dump_response, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
 from models.model import App, AppMode, Site
-from repositories.factory import DifyAPIRepositoryFactory
 from services.feature_service import FeatureService
-from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
@@ -98,15 +97,6 @@ _FORM_UPLOAD_TOKEN_RATE_LIMITER = RateLimiter(
 )
 
 
-def _create_upload_service() -> HumanInputFileUploadService:
-    session_factory = sessionmaker(bind=db.engine)
-    workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
-    return HumanInputFileUploadService(
-        session_factory=session_factory,
-        workflow_run_repository=workflow_run_repository,
-    )
-
-
 @web_ns.route("/form/human_input/<string:form_token>/upload-token")
 class HumanInputFormUploadTokenApi(Resource):
     """API for issuing HITL upload tokens for active human input forms."""
@@ -139,7 +129,7 @@ class HumanInputFormUploadTokenApi(Resource):
         _FORM_UPLOAD_TOKEN_RATE_LIMITER.increment_rate_limit(ip_address)
 
         try:
-            token = _create_upload_service().issue_upload_token(form_token)
+            token = application_services().human_input_file_uploads.issue_upload_token(form_token)
         except FormNotFoundError:
             raise NotFoundError("Form not found")
 
@@ -154,7 +144,6 @@ class HumanInputFormApi(Resource):
 
     # NOTE(QuantumGhost): this endpoint is unauthenticated on purpose for now.
 
-    # def get(self, _app_model: App, _end_user: EndUser, form_token: str):
     @web_ns.doc("get_human_input_form")
     @web_ns.doc(description="Get a human input form definition by token")
     @web_ns.doc(params={"form_token": "Human input form token"})
@@ -216,7 +205,6 @@ class HumanInputFormApi(Resource):
             ),
         )
 
-    # def post(self, _app_model: App, _end_user: EndUser, form_token: str):
     @web_ns.expect(web_ns.models[HumanInputFormSubmitPayload.__name__])
     @web_ns.doc("submit_human_input_form")
     @web_ns.doc(description="Submit a human input form by token")
@@ -235,7 +223,8 @@ class HumanInputFormApi(Resource):
         "Form submitted successfully",
         web_ns.models[HumanInputFormSubmitResponse.__name__],
     )
-    def post(self, form_token: str):
+    @model_validate(HumanInputFormSubmitPayload)
+    def post(self, payload: HumanInputFormSubmitPayload, form_token: str):
         """
         Submit human input form by token.
 
@@ -249,8 +238,6 @@ class HumanInputFormApi(Resource):
             "action": "Approve"
         }
         """
-        payload = HumanInputFormSubmitPayload.model_validate(request.get_json())
-
         ip_address = extract_remote_ip(request)
         if _FORM_SUBMIT_RATE_LIMITER.is_rate_limited(ip_address):
             raise WebFormRateLimitExceededError()
@@ -262,7 +249,7 @@ class HumanInputFormApi(Resource):
             raise NotFoundError("Form not found")
 
         if (recipient_type := form.recipient_type) is None:
-            logger.warning("Recipient type is None for form, form_id=%", form.id)
+            logger.warning("Recipient type is None for form, form_id=%s", form.id)
             raise AssertionError("Recipient type is None")
 
         try:
@@ -272,7 +259,6 @@ class HumanInputFormApi(Resource):
                 selected_action_id=payload.action,
                 form_data=payload.inputs,
                 submission_end_user_id=None,
-                # submission_end_user_id=_end_user.id,
             )
         except FormNotFoundError:
             raise NotFoundError("Form not found")

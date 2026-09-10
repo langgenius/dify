@@ -1,16 +1,18 @@
 'use client'
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import {
+  MultimodalRetrievalGuidance,
+  MultimodalRetrievalGuidanceLearnMore,
+} from '@/app/components/datasets/common/multimodal-retrieval-guidance'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
@@ -30,7 +32,7 @@ type IndexingSectionProps = {
   setKeywordNumber: (value: number) => void
   embeddingModel: DefaultModel
   setEmbeddingModel: (value: DefaultModel) => void
-  embeddingModelList: Model[]
+  embeddingModelList: ProviderWithModelsResponse[]
   retrievalConfig: RetrievalConfig
   setRetrievalConfig: (value: RetrievalConfig) => void
   summaryIndexSetting: SummaryIndexSettingType | undefined
@@ -146,20 +148,27 @@ const IndexingSection = ({
         </div>
       )}
 
-      {/* Embedding Model */}
+      {/* Embedding ProviderWithModelsResponse */}
       {indexMethod === IndexingType.QUALIFIED && (
         <div className={rowClass}>
-          <div className={labelClass}>
+          <div className="flex w-45 shrink-0 flex-col pt-1">
             <div className="system-sm-semibold text-text-secondary">
               {t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' })}
             </div>
+            <MultimodalRetrievalGuidanceLearnMore />
           </div>
           <div className="grow">
+            <MultimodalRetrievalGuidance
+              variant="settings"
+              embeddingModel={embeddingModel}
+              embeddingModelList={embeddingModelList}
+              className="mb-2"
+            />
             <ModelSelector
-              defaultModel={embeddingModel}
-              modelList={embeddingModelList}
-              onSelect={setEmbeddingModel}
-              readonly={readonly}
+              value={embeddingModel}
+              models={embeddingModelList}
+              onValueChange={setEmbeddingModel}
+              disabled={readonly}
             />
           </div>
         </div>

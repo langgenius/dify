@@ -5,7 +5,7 @@ import type {
 import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
 import { useTempConfigDir } from '@test/fixtures/config-dir'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { Registry } from '@/auth/hosts'
 import { selectFromList } from '@/sys/io/select'
 import { bufferStreams } from '@/sys/io/streams'

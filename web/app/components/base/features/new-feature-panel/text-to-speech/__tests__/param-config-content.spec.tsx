@@ -1,5 +1,6 @@
 import type { Features } from '../../../types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { skipToken } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TtsAutoPlay } from '@/types/app'
@@ -18,8 +19,21 @@ let mockVoiceItems: { value: string; name: string }[] | undefined = [
   { value: 'echo', name: 'Echo' },
 ]
 
-const mockUseAppVoices = vi.fn((_appId: string, _language?: string) => ({
-  data: mockVoiceItems,
+const mockVoicesQuery = vi.fn(
+  (_options: {
+    enabled: boolean
+    input: typeof skipToken | { params: { app_id: string }; query: { language: string } }
+  }) => ({
+    data: mockVoiceItems,
+  }),
+)
+
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: (options: {
+    enabled: boolean
+    input: typeof skipToken | { params: { app_id: string }; query: { language: string } }
+  }) => mockVoicesQuery(options),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -31,10 +45,6 @@ vi.mock('@/i18n-config/language', () => ({
   get languages() {
     return mockLanguages
   },
-}))
-
-vi.mock('@/service/use-apps', () => ({
-  useAppVoices: (appId: string, language?: string) => mockUseAppVoices(appId, language),
 }))
 
 const defaultFeatures: Features = {
@@ -331,12 +341,17 @@ describe('ParamConfigContent', () => {
       expect(getVoiceSelect()).toHaveAttribute('data-disabled')
     })
 
-    it('should call useAppVoices with empty appId when pathname has no app segment', () => {
+    it('should disable the voices query when pathname has no app segment', () => {
       mockPathname = '/configuration'
 
       renderWithProvider()
 
-      expect(mockUseAppVoices).toHaveBeenCalledWith('', 'en-US')
+      expect(mockVoicesQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          enabled: false,
+          input: skipToken,
+        }),
+      )
     })
 
     it('should render language text when selected language value is empty string', () => {

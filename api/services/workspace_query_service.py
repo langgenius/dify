@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import NamedTuple, Protocol
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from machinery.context import RequestContext
 
 

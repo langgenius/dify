@@ -16,6 +16,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
+import { parseWebAppAddress } from '@/service/webapp-address'
 
 type WebAppStore = {
   shareCode: string | null
@@ -58,12 +59,10 @@ export const useWebAppStore = create<WebAppStore>((set) => ({
 
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
   const currentOrigin = typeof window === 'undefined' ? undefined : window.location.origin
-  return resolveWebAppLoginRedirect(redirectUrl, currentOrigin)?.appCode || null
+  return resolveWebAppLoginRedirect(redirectUrl, currentOrigin)?.address.code || null
 }
 const getShareCodeFromPathname = (pathname: string): string | null => {
-  const code = pathname.split('/').pop() || null
-  if (code === 'webapp-signin') return null
-  return code
+  return parseWebAppAddress(pathname)?.code || null
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {

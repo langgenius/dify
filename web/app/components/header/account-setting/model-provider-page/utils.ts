@@ -32,11 +32,6 @@ import {
 
 export { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 
-export const providerToPluginId = (providerKey: string): string => {
-  const lastSlash = providerKey.lastIndexOf('/')
-  return lastSlash > 0 ? providerKey.slice(0, lastSlash) : ''
-}
-
 export const MODEL_PROVIDER_QUOTA_GET_PAID = [
   ModelProviderQuotaGetPaid.OPENAI,
   ModelProviderQuotaGetPaid.ANTHROPIC,
@@ -86,7 +81,7 @@ export const sizeFormat = (size: number) => {
   else return `${remainder}K`
 }
 
-export const modelTypeFormat = (modelType: ModelTypeEnum) => {
+export const modelTypeFormat = (modelType: string) => {
   if (modelType === ModelTypeEnum.textEmbedding) return 'TEXT EMBEDDING'
 
   return modelType.toLocaleUpperCase()

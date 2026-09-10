@@ -47,6 +47,14 @@ describe('WebSocketClient', () => {
     ioMock.mockReset()
   })
 
+  it('identifies the built-in socket URLs', async () => {
+    const { isDefaultSocketUrl } = await import('../websocket-manager')
+
+    expect(isDefaultSocketUrl('ws://localhost')).toBe(true)
+    expect(isDefaultSocketUrl('ws://localhost:5001')).toBe(true)
+    expect(isDefaultSocketUrl('wss://collaboration.example.com')).toBe(false)
+  })
+
   it('connects with default url and registers base listeners', async () => {
     const mockSocket = createMockSocket('socket-fallback')
     ioMock.mockImplementation(() => mockSocket)

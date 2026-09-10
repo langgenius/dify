@@ -1,28 +1,36 @@
 'use client'
 import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
-import { useAtomValue } from 'jotai'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
-import { userProfileEmailAtom } from '@/context/account-state'
-import { useProviderContext } from '@/context/provider-context'
-import { langGeniusCurrentVersionAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 
 const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) => {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
-  const currentVersion = useAtomValue(langGeniusCurrentVersionAtom)
-  const isTeam = plan.type === Plan.team
-  const usage = plan.usage.buildApps
-  const total = plan.total.buildApps
+  const { data: billing } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (data) => ({ plan: data.billing.subscription.plan, apps: data.apps }),
+    }),
+  )
+  const { data: accountProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => ({
+      email: data.profile.email,
+      currentVersion: data.meta.currentVersion,
+    }),
+  })
+  if (!billing) return null
+  const isTeam = billing.plan === 'team'
+  const usage = billing.apps.size
+  const total = billing.apps.limit
   const percent = total > 0 ? (usage / total) * 100 : 0
   const tone: MeterTone = percent >= 80 ? 'error' : percent >= 50 ? 'warning' : 'neutral'
   const buildAppsLabel = t(($) => $['usagePage.buildApps'], { ns: 'billing' })
@@ -54,19 +62,22 @@ const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) =
             </div>
           </div>
         )}
-        {(plan.type === Plan.sandbox || plan.type === Plan.professional) && (
+        {(billing.plan === 'sandbox' || billing.plan === 'professional') && (
           <UpgradeBtn isShort loc={loc} />
         )}
-        {plan.type !== Plan.sandbox && plan.type !== Plan.professional && (
-          <Button variant="secondary-accent">
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href={mailToSupport(userProfileEmail, plan.type, currentVersion)}
-            >
-              {t(($) => $['apps.contactUs'], { ns: 'billing' })}
-            </a>
-          </Button>
+        {billing.plan !== 'sandbox' && billing.plan !== 'professional' && (
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href={mailToSupport(
+              accountProfile.email,
+              billing.plan,
+              accountProfile.currentVersion ?? '',
+            )}
+            className={buttonVariants({ variant: 'secondary-accent' })}
+          >
+            {t(($) => $['apps.contactUs'], { ns: 'billing' })}
+          </a>
         )}
       </div>
       <div className="flex flex-col gap-2">

@@ -15,6 +15,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -27,9 +28,9 @@ from controllers.console.agent.app_helpers import resolve_agent_runtime_app_mode
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -658,6 +659,7 @@ class AgentConfigManifestByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -703,6 +705,7 @@ class AgentConfigSkillUploadByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -732,7 +735,7 @@ class AgentConfigSkillUploadApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=_WORKFLOW_APP_MODES)
@@ -750,6 +753,7 @@ class AgentConfigSkillsByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -788,6 +792,7 @@ class AgentConfigFilesByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -807,17 +812,25 @@ class AgentConfigFilesByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        payload = AgentConfigFileUploadPayload.model_validate(console_ns.payload or {})
+    @model_validate(AgentConfigFileUploadPayload)
+    def post(
+        self,
+        req_data: AgentConfigFileUploadPayload,
+        session: Session,
+        tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
         return _with_agent_route_target(
             session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
-            action=lambda target: _file_upload_response(target, payload),
+            action=lambda target: _file_upload_response(target, req_data),
         )
 
 
@@ -845,17 +858,17 @@ class AgentConfigFilesApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=_WORKFLOW_APP_MODES)
-    def post(self, session: Session, current_user: Account, app_model: App):
-        payload = AgentConfigFileUploadPayload.model_validate(console_ns.payload or {})
+    @model_validate(AgentConfigFileUploadPayload)
+    def post(self, req_data: AgentConfigFileUploadPayload, session: Session, current_user: Account, app_model: App):
         return _with_app_route_target(
             session=session,
             app_model=app_model,
             current_user=current_user,
-            action=lambda target: _file_upload_response(target, payload),
+            action=lambda target: _file_upload_response(target, req_data),
         )
 
 
@@ -869,6 +882,7 @@ class AgentConfigSkillInspectByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -920,6 +934,7 @@ class AgentConfigSkillFilePreviewByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -980,6 +995,7 @@ class AgentConfigSkillDownloadByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1029,6 +1045,7 @@ class AgentConfigSkillFileDownloadByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1098,6 +1115,7 @@ class AgentConfigSkillFileDownloadContentByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1150,6 +1168,7 @@ class AgentConfigSkillByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1174,7 +1193,7 @@ class AgentConfigSkillApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=_WORKFLOW_APP_MODES)
@@ -1197,6 +1216,7 @@ class AgentConfigFilePreviewByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1242,6 +1262,7 @@ class AgentConfigFileDownloadByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1287,6 +1308,7 @@ class AgentConfigFileByAgentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1311,7 +1333,7 @@ class AgentConfigFileApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=_WORKFLOW_APP_MODES)

@@ -14,9 +14,11 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.console.datasets import data_source as module
-from controllers.console.datasets.data_source import DataSourceApi, DataSourceNotionListApi
+from controllers.console.datasets.data_source import DataSourceApi, DataSourceNotionListApi, DataSourceNotionListQuery
 from models import Account, DataSourceOauthBinding
+from models.dataset import Dataset
 from models.engine import db
+from models.enums import DataSourceType
 
 ControllerMethod = Callable[..., tuple[dict[str, object], int]]
 
@@ -217,7 +219,11 @@ def test_notion_pre_import_pages_serializes_frontend_list_shape(
         patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime),
     ):
         response, status = unwrap(DataSourceNotionListApi().get)(
-            DataSourceNotionListApi(), sqlite_session, "tenant-1", current_user
+            DataSourceNotionListApi(),
+            DataSourceNotionListQuery(credential_id="credential-1"),
+            sqlite_session,
+            "tenant-1",
+            current_user,
         )
 
     assert status == 200
@@ -255,7 +261,13 @@ def test_notion_pre_import_pages_rejects_missing_credential(
         patch.object(module.DatasourceProviderService, "get_datasource_credentials", return_value=None),
         pytest.raises(NotFound, match="Credential not found"),
     ):
-        unwrap(DataSourceNotionListApi().get)(DataSourceNotionListApi(), sqlite_session, TENANT_ID, current_user)
+        unwrap(DataSourceNotionListApi().get)(
+            DataSourceNotionListApi(),
+            DataSourceNotionListQuery(credential_id="credential-1"),
+            sqlite_session,
+            TENANT_ID,
+            current_user,
+        )
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -264,7 +276,12 @@ def test_notion_pre_import_pages_rejects_non_notion_dataset(
     current_user: Account,
     sqlite_session: Session,
 ) -> None:
-    dataset = MagicMock(data_source_type="other_type")
+    dataset = Dataset(
+        tenant_id=TENANT_ID,
+        name="Non-Notion dataset",
+        created_by=current_user.id,
+        data_source_type=DataSourceType.WEBSITE_CRAWL,
+    )
 
     with (
         flask_app.test_request_context("/?credential_id=credential-1&dataset_id=dataset-1"),
@@ -276,4 +293,10 @@ def test_notion_pre_import_pages_rejects_non_notion_dataset(
         patch.object(module.DatasetService, "get_dataset", return_value=dataset),
         pytest.raises(ValueError, match="Dataset is not notion type"),
     ):
-        unwrap(DataSourceNotionListApi().get)(DataSourceNotionListApi(), sqlite_session, TENANT_ID, current_user)
+        unwrap(DataSourceNotionListApi().get)(
+            DataSourceNotionListApi(),
+            DataSourceNotionListQuery(credential_id="credential-1", dataset_id="dataset-1"),
+            sqlite_session,
+            TENANT_ID,
+            current_user,
+        )

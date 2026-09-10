@@ -1,21 +1,19 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type { ModelProvider } from './declarations'
-import type { PluginDetail } from '@/app/components/plugins/types'
+import type { ModelProviderPluginSummary } from './index'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Trans, useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { PluginSource } from '@/app/components/plugins/types'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import InstallFromMarketplace from './install-from-marketplace'
 import ProviderAddedCard from './provider-added-card'
 import QuotaPanel from './provider-added-card/quota-panel'
-import { providerToPluginId } from './utils'
 
 type ModelProviderPageBodyProps = {
-  providers: ModelProvider[]
-  filteredConfiguredProviders: ModelProvider[]
-  filteredNotConfiguredProviders: ModelProvider[]
+  providers: ModelProviderSummaryResponse[]
+  filteredConfiguredProviders: ModelProviderSummaryResponse[]
+  filteredNotConfiguredProviders: ModelProviderSummaryResponse[]
   isLoadingModelProviders: boolean
   showEmptyProvider: boolean
   showConfiguredProviders: boolean
@@ -23,7 +21,7 @@ type ModelProviderPageBodyProps = {
   showMarketplace: boolean
   enableMarketplace: boolean
   searchText: string
-  pluginDetailMap: Map<string, PluginDetail>
+  pluginSummaryMap: Map<string, ModelProviderPluginSummary>
   onOpenMarketplace?: () => void
 }
 
@@ -107,26 +105,27 @@ function EmptyProviderState({
 
 type ProviderCardListProps = {
   firstCardTarget?: string
-  providers: ModelProvider[]
-  pluginDetailMap: Map<string, PluginDetail>
+  providers: ModelProviderSummaryResponse[]
+  pluginSummaryMap: Map<string, ModelProviderPluginSummary>
   notConfigured?: boolean
 }
 
-function isDebuggingProvider(provider: ModelProvider, pluginDetailMap: Map<string, PluginDetail>) {
-  return (
-    pluginDetailMap.get(providerToPluginId(provider.provider))?.source === PluginSource.debugging
-  )
+function isDebuggingProvider(
+  provider: ModelProviderSummaryResponse,
+  pluginSummaryMap: Map<string, ModelProviderPluginSummary>,
+) {
+  return pluginSummaryMap.get(provider.plugin_id)?.source === 'remote'
 }
 
 function ProviderCardList({
   firstCardTarget,
   providers,
-  pluginDetailMap,
+  pluginSummaryMap,
   notConfigured,
 }: ProviderCardListProps) {
   const sortedProviders = [...providers].sort((a, b) => {
-    const aIsDebuggingPlugin = isDebuggingProvider(a, pluginDetailMap)
-    const bIsDebuggingPlugin = isDebuggingProvider(b, pluginDetailMap)
+    const aIsDebuggingPlugin = isDebuggingProvider(a, pluginSummaryMap)
+    const bIsDebuggingPlugin = isDebuggingProvider(b, pluginSummaryMap)
 
     if (aIsDebuggingPlugin === bIsDebuggingPlugin) return 0
 
@@ -136,7 +135,7 @@ function ProviderCardList({
   return (
     <div className="relative flex flex-col gap-2">
       {sortedProviders.map((provider, index) => {
-        const pluginDetail = pluginDetailMap.get(providerToPluginId(provider.provider))
+        const pluginSummary = pluginSummaryMap.get(provider.plugin_id)
 
         return (
           <div
@@ -146,7 +145,7 @@ function ProviderCardList({
             <ProviderAddedCard
               notConfigured={notConfigured}
               provider={provider}
-              pluginDetail={pluginDetail}
+              pluginSummary={pluginSummary}
             />
           </div>
         )
@@ -166,7 +165,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   showMarketplace,
   enableMarketplace,
   searchText,
-  pluginDetailMap,
+  pluginSummaryMap,
   onOpenMarketplace,
 }) => {
   const { t } = useTranslation()
@@ -203,7 +202,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
         <ProviderCardList
           firstCardTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction}
           providers={filteredConfiguredProviders}
-          pluginDetailMap={pluginDetailMap}
+          pluginSummaryMap={pluginSummaryMap}
         />
       )}
       {showNotConfiguredProviders && (
@@ -219,14 +218,13 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
             }
             providers={filteredNotConfiguredProviders}
             notConfigured
-            pluginDetailMap={pluginDetailMap}
+            pluginSummaryMap={pluginSummaryMap}
           />
         </div>
       )}
       {showMarketplace && (
         <div>
           <InstallFromMarketplace
-            providers={providers}
             searchText={searchText}
             onOpenMarketplace={onOpenMarketplace}
             stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall}

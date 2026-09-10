@@ -21,20 +21,22 @@ const ToolDetail = ({ payload }: ToolDetailProps) => {
         expand && 'border-[0.5px] border-components-panel-border-subtle bg-background-section-burn',
       )}
     >
-      <div
+      <button
+        type="button"
+        aria-expanded={expand}
         className={cn(
-          'flex cursor-pointer items-center px-2.5 py-2 system-xs-medium text-text-tertiary',
+          'flex w-full cursor-pointer appearance-none items-center rounded-xl px-2.5 py-2 text-start system-xs-medium text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
           expand && 'pb-1.5',
         )}
         onClick={() => setExpand(!expand)}
       >
-        {isFinished && <RiHammerFill className="mr-1 size-3.5" />}
-        {!isFinished && <RiLoader2Line className="mr-1 size-3.5 animate-spin" />}
+        {isFinished && <RiHammerFill aria-hidden="true" className="mr-1 size-3.5" />}
+        {!isFinished && <RiLoader2Line aria-hidden="true" className="mr-1 size-3.5 animate-spin" />}
         {t(($) => $[`thought.${isFinished ? 'used' : 'using'}`], { ns: 'tools' })}
-        <div className="mx-1 text-text-secondary">{toolLabel}</div>
-        {!expand && <RiArrowRightSLine className="size-4" />}
-        {expand && <RiArrowDownSLine className="ml-auto size-4" />}
-      </div>
+        <span className="mx-1 text-text-secondary">{toolLabel}</span>
+        {!expand && <RiArrowRightSLine aria-hidden="true" className="size-4" />}
+        {expand && <RiArrowDownSLine aria-hidden="true" className="ml-auto size-4" />}
+      </button>
       {expand && (
         <>
           <div className="mx-1 mb-0.5 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">

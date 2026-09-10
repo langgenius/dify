@@ -17,6 +17,7 @@ from core.entities.provider_entities import (
     QuotaConfiguration,
     UnaddedModelConfiguration,
 )
+from core.plugin.entities.plugin import PluginInstallationSource
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
     FetchFrom,
@@ -69,6 +70,67 @@ class SystemConfigurationResponse(BaseModel):
     quota_configurations: list[QuotaConfiguration] = []
 
 
+class ModelProviderCustomConfigurationSummaryResponse(BaseModel):
+    status: CustomConfigurationStatus
+    has_custom_models: bool = Field(
+        description="Whether custom model configuration exists, including saved model credentials."
+    )
+    available_credentials: list[CredentialConfiguration]
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
+    current_credential_usable: bool
+
+
+class ModelProviderSystemConfigurationSummaryResponse(BaseModel):
+    enabled: bool
+
+
+class ModelProviderPluginSummaryResponse(BaseModel):
+    installation_id: str
+    plugin_id: str
+    plugin_unique_identifier: str
+    runtime_type: str
+    source: PluginInstallationSource
+    version: str
+
+
+class ModelProviderSummaryResponse(BaseModel):
+    """Fields required to render the collapsed model-provider list."""
+
+    tenant_id: str = Field(exclude=True)
+    provider: str
+    plugin_id: str
+    label: I18nObject
+    description: I18nObject | None = None
+    icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
+    supported_model_types: Sequence[ModelType]
+    configurate_methods: list[ConfigurateMethod]
+    preferred_provider_type: ProviderType
+    is_configured: bool
+    custom_configuration: ModelProviderCustomConfigurationSummaryResponse
+    system_configuration: ModelProviderSystemConfigurationSummaryResponse
+
+    model_config = ConfigDict(protected_namespaces=())
+
+    @model_validator(mode="after")
+    def build_icon_urls(self):
+        url_prefix = (
+            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
+        )
+        if self.icon_small is not None:
+            self.icon_small = I18nObject(
+                en_US=f"{url_prefix}/icon_small/en_US",
+                zh_Hans=f"{url_prefix}/icon_small/zh_Hans",
+            )
+        if self.icon_small_dark is not None:
+            self.icon_small_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_small_dark/en_US",
+                zh_Hans=f"{url_prefix}/icon_small_dark/zh_Hans",
+            )
+        return self
+
+
 class ProviderResponse(BaseModel):
     """
     Model class for provider response.
@@ -117,10 +179,12 @@ class ProviderWithModelsResponse(BaseModel):
 
     tenant_id: str
     provider: str
-    label: I18nObject
+    label: I18nObject = Field(description="Localized display name of the provider.")
     icon_small: I18nObject | None = None
     icon_small_dark: I18nObject | None = None
-    status: CustomConfigurationStatus
+    status: CustomConfigurationStatus = Field(
+        description="Provider status. `active` when credentials are configured and valid."
+    )
     models: list[ProviderModelWithStatusEntity]
 
     @model_validator(mode="after")

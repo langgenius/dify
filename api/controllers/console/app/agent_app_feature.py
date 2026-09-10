@@ -16,15 +16,16 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import AgentId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -82,19 +83,26 @@ class AgentAppFeatureConfigResource(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+    @model_validate(AgentAppFeaturesPayload)
+    def post(
+        self,
+        req_data: AgentAppFeaturesPayload,
+        session: Session,
+        tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        args = AgentAppFeaturesPayload.model_validate(console_ns.payload or {})
 
         new_app_model_config = AgentAppFeatureConfigService.update_features(
             app_model=app_model,
             account=current_user,
-            config=args.model_dump(exclude_none=True),
+            config=req_data.model_dump(exclude_none=True),
             session=session,
         )
 

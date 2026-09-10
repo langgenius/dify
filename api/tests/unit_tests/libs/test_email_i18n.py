@@ -21,7 +21,7 @@ from libs.email_i18n import (
     create_default_email_config,
     get_email_i18n_service,
 )
-from services.feature_service import BrandingModel
+from services.entities.feature_entities import BrandingModel
 
 
 class MockEmailRenderer:

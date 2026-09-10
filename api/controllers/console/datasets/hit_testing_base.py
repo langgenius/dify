@@ -34,7 +34,10 @@ class HitTestingPayload(BaseModel):
     query: str = Field(description="Search query text.", max_length=250)
     retrieval_model: RetrievalModel | None = Field(
         default=None,
-        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+        description=(
+            "Retrieval model configuration. Controls how chunks are searched and ranked when querying this "
+            "knowledge base."
+        ),
     )
     external_retrieval_model: ExternalRetrievalModel = Field(
         default=None,

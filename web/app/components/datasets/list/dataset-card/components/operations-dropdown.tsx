@@ -12,8 +12,8 @@ import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
 } from '@/app/components/step-by-step-tour/dropdown-menu'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
@@ -43,7 +43,10 @@ const OperationsDropdown = ({
   })
   const open = operationsMenu.open
   const setOpen = operationsMenu.onOpenChange
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: isRbacEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -102,10 +105,10 @@ const OperationsDropdown = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"
-          popupClassName="min-w-[186px]"
           {...getStepByStepTourDropdownMenuContentProps({
             highlightPart: stepByStepTourHighlightPart,
             interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
+            className: 'min-w-[186px]',
           })}
         >
           <Operations

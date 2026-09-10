@@ -1,6 +1,6 @@
 import type { CustomCollectionBackend } from '../../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import { AuthType } from '../../types'
 import CustomCreateCard, { NewCustomToolButton } from '../custom-create-card'

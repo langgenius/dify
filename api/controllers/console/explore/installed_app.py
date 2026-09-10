@@ -15,6 +15,7 @@ from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    model_validate,
     with_current_tenant_id,
     with_current_user,
 )
@@ -195,16 +196,15 @@ class InstalledAppsListApi(Resource):
     @console_ns.expect(console_ns.models[InstalledAppCreatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleMessageResponse.__name__])
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
-        payload = InstalledAppCreatePayload.model_validate(console_ns.payload or {})
-
+    @model_validate(InstalledAppCreatePayload)
+    def post(self, req_data: InstalledAppCreatePayload, current_tenant_id: str):
         recommended_app = db.session.scalar(
-            select(RecommendedApp).where(RecommendedApp.app_id == payload.app_id).limit(1)
+            select(RecommendedApp).where(RecommendedApp.app_id == req_data.app_id).limit(1)
         )
         if recommended_app is None:
             raise NotFound("Recommended app not found")
 
-        app = db.session.get(App, payload.app_id)
+        app = db.session.get(App, req_data.app_id)
 
         if app is None:
             raise NotFound("App entity not found")
@@ -214,7 +214,7 @@ class InstalledAppsListApi(Resource):
 
         installed_app = db.session.scalar(
             select(InstalledApp)
-            .where(and_(InstalledApp.app_id == payload.app_id, InstalledApp.tenant_id == current_tenant_id))
+            .where(and_(InstalledApp.app_id == req_data.app_id, InstalledApp.tenant_id == current_tenant_id))
             .limit(1)
         )
 
@@ -223,7 +223,7 @@ class InstalledAppsListApi(Resource):
             recommended_app.install_count += 1
 
             new_installed_app = InstalledApp(
-                app_id=payload.app_id,
+                app_id=req_data.app_id,
                 tenant_id=current_tenant_id,
                 app_owner_tenant_id=app.tenant_id,
                 is_pinned=False,
@@ -281,12 +281,11 @@ class InstalledAppApi(InstalledAppResource):
 
     @console_ns.response(200, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
     @console_ns.expect(console_ns.models[InstalledAppUpdatePayload.__name__])
-    def patch(self, installed_app: InstalledApp):
-        payload = InstalledAppUpdatePayload.model_validate(console_ns.payload or {})
-
+    @model_validate(InstalledAppUpdatePayload)
+    def patch(self, req_data: InstalledAppUpdatePayload, installed_app: InstalledApp):
         commit_args = False
-        if payload.is_pinned is not None:
-            installed_app.is_pinned = payload.is_pinned
+        if req_data.is_pinned is not None:
+            installed_app.is_pinned = req_data.is_pinned
             commit_args = True
 
         if commit_args:

@@ -1,6 +1,6 @@
 import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import NewChildSegmentModal from '../new-child-segment'
 
 vi.mock('@/next/navigation', () => ({

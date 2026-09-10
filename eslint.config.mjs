@@ -1,8 +1,9 @@
 // @ts-check
+/// <reference types="node" />
 
 import markdown from '@eslint/markdown'
+import gitignore from 'eslint-config-flat-gitignore'
 import md from 'eslint-markdown'
-import hyoban from 'eslint-plugin-hyoban'
 import jsonc from 'eslint-plugin-jsonc'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import pnpm from 'eslint-plugin-pnpm'
@@ -122,8 +123,12 @@ const tsconfigCompilerOptionsOrder = [
 ]
 
 const pnpmWorkspaceOrder = [
+  'allowBuilds',
+  'autoInstallPeers',
+  'blockExoticSubdeps',
   'cacheDir',
   'catalogMode',
+  'catalogPrune',
   'cleanupUnusedCatalogs',
   'dedupeDirectDeps',
   'deployAllFiles',
@@ -152,17 +157,20 @@ const pnpmWorkspaceOrder = [
   'registrySupportsTimeField',
   'requiredScripts',
   'resolutionMode',
+  'saveExact',
   'savePrefix',
   'scriptShell',
   'shamefullyHoist',
   'shellEmulator',
   'stateDir',
+  'strictDepBuilds',
   'supportedArchitectures',
   'symlink',
   'tag',
   'trustPolicy',
   'trustPolicyExclude',
   'updateNotifier',
+  'verifyDepsBeforeRun',
   'packages',
   'overrides',
   'patchedDependencies',
@@ -192,6 +200,7 @@ export default defineConfig([
       '!packages/**/*',
       '!sdks/',
       '!sdks/nodejs-client/',
+      '!sdks/nodejs-client/package.json',
       '!sdks/nodejs-client/src/',
       '!sdks/nodejs-client/src/**/*',
       '!sdks/nodejs-client/tests/',
@@ -206,6 +215,11 @@ export default defineConfig([
     ],
     'Project lint scope',
   ),
+  gitignore({
+    cwd: import.meta.dirname,
+    root: true,
+    recursive: { skipDirs: ['.venv', 'volumes'] },
+  }),
   globalIgnores([codeFiles], 'Migration tradeoff: code files are handled by Oxlint only'),
   globalIgnores(
     [
@@ -222,7 +236,8 @@ export default defineConfig([
       '**/storybook-static/**',
       'e2e/.auth/**',
       'e2e/cucumber-report/**',
-      'packages/contracts/**',
+      'packages/contracts/**/*',
+      '!packages/contracts/package.json',
       'web/next/**',
       'web/next-env.d.ts',
       'web/public/**',
@@ -309,8 +324,10 @@ export default defineConfig([
       'pnpm/json-enforce-catalog': [
         'error',
         {
+          allowedProtocols: ['workspace'],
           autofix: true,
-          ignores: ['@types/vscode'],
+          conflicts: 'error',
+          fields: ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'],
         },
       ],
       'pnpm/json-prefer-workspace-settings': ['error', { autofix: true }],
@@ -343,6 +360,7 @@ export default defineConfig([
         'error',
         {
           settings: {
+            catalogMode: 'strict',
             shellEmulator: true,
             trustPolicy: 'no-downgrade',
           },
@@ -421,12 +439,11 @@ export default defineConfig([
     files: ['web/i18n/**/*.json'],
     plugins: {
       dify,
-      hyoban,
     },
     rules: {
       'dify/consistent-placeholders': 'error',
+      'dify/i18n-flat-key': 'error',
       'dify/no-extra-keys': 'error',
-      'hyoban/i18n-flat-key': 'error',
       'jsonc/sort-keys': 'error',
     },
   },

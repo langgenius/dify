@@ -1,11 +1,17 @@
+import type {
+  ModelProviderSummaryResponse,
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement, ReactNode } from 'react'
-import type { DefaultModel, Model, ModelItem } from '../../declarations'
+import type { DefaultModel } from '../../declarations'
 import type { ModelSelectorPreviewPayload } from '../popup-item'
-import { Combobox } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -15,6 +21,23 @@ import {
   PreferredProviderTypeEnum,
 } from '../../declarations'
 import PopupItem from '../popup-item'
+
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
 
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockUpdateModelProviders = vi.hoisted(() => vi.fn())
@@ -41,7 +64,7 @@ vi.mock('../../model-name', () => ({
     nameClassName,
     children,
   }: {
-    modelItem: ModelItem
+    modelItem: ProviderModelWithStatusEntity
     className?: string
     nameClassName?: string
     children?: ReactNode
@@ -84,10 +107,7 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-const mockUseProviderContext = vi.hoisted(() => vi.fn())
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: mockUseProviderContext,
-}))
+const mockProviderSummary = vi.hoisted(() => vi.fn())
 
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
@@ -107,7 +127,9 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const makeModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'gpt-4',
   label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
   model_type: ModelTypeEnum.textGeneration,
@@ -119,7 +141,10 @@ const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const makeModel = (overrides: Partial<Model> = {}): Model => ({
+const makeModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: { en_US: '', zh_Hans: '' },
   label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -128,7 +153,12 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   ...overrides,
 })
 
-const makeProvider = (overrides: Record<string, unknown> = {}) => ({
+const makeProvider = (
+  overrides: Partial<Omit<ModelProviderSummaryResponse, 'custom_configuration'>> & {
+    custom_configuration?: Partial<ModelProviderSummaryResponse['custom_configuration']>
+  } = {},
+) => ({
+  ...providerSummaryFixture,
   provider: 'openai',
   preferred_provider_type: PreferredProviderTypeEnum.custom,
   custom_configuration: {
@@ -141,16 +171,21 @@ const makeProvider = (overrides: Record<string, unknown> = {}) => ({
 const previewCardProps = () => ({
   previewCardHandle: createPreviewCardHandle<ModelSelectorPreviewPayload>(),
   onPreviewCardClose: vi.fn(),
+  onSelect: vi.fn(),
 })
 
-const createComboboxNode = (node: ReactElement, onValueChange = vi.fn()) => (
-  <Combobox filter={null} open onValueChange={onValueChange}>
-    {node}
-  </Combobox>
-)
+const createPopupItemNode = (node: ReactElement) => node
 
-const renderWithCombobox = (node: ReactElement, onValueChange = vi.fn()) => {
-  return render(createComboboxNode(node, onValueChange))
+const renderPopupItem = (node: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
+    data: [makeProvider()],
+  })
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    ...mockProviderSummary(),
+    plugins: {},
+  })
+  return renderWithConsoleQuery(createPopupItemNode(node), { queryClient })
 }
 
 describe('PopupItem', () => {
@@ -158,8 +193,8 @@ describe('PopupItem', () => {
     vi.clearAllMocks()
     mockWorkspacePermissionKeys.value = ['credential.use', 'credential.create', 'credential.manage']
     mockUseLanguage.mockReturnValue('en_US')
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [makeProvider()],
+    mockProviderSummary.mockReturnValue({
+      data: [makeProvider()],
     })
     mockConsoleStateReader.mockReturnValue({
       currentWorkspace: { trial_credits: 200, trial_credits_used: 0 },
@@ -177,38 +212,40 @@ describe('PopupItem', () => {
   })
 
   it('should render nothing when provider is not found in modelProviders', () => {
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [],
+    mockProviderSummary.mockReturnValue({
+      data: [],
     })
 
-    const { container } = renderWithCombobox(
+    const { container } = renderPopupItem(
       <PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />,
     )
 
     expect(container.textContent).toBe('')
   })
 
-  it('should select the combobox value when clicking an active model', () => {
-    const onValueChange = vi.fn()
-    renderWithCombobox(
-      <PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />,
-      onValueChange,
+  it('should select the model when clicking an active model', () => {
+    const onSelect = vi.fn()
+    renderPopupItem(
+      <PopupItem
+        {...previewCardProps()}
+        model={makeModel()}
+        onSelect={onSelect}
+        onHide={vi.fn()}
+      />,
     )
 
     fireEvent.click(screen.getByText('GPT-4'))
 
-    expect(onValueChange).toHaveBeenCalledWith(
-      { provider: 'openai', model: 'gpt-4' },
-      expect.objectContaining({ reason: 'item-press' }),
-    )
+    expect(onSelect).toHaveBeenCalledWith('openai', expect.objectContaining({ model: 'gpt-4' }))
   })
 
   it('should close the shared preview before pressing an active model', () => {
     const onPreviewCardClose = vi.fn()
-    renderWithCombobox(
+    renderPopupItem(
       <PopupItem
         previewCardHandle={createPreviewCardHandle<ModelSelectorPreviewPayload>()}
         onPreviewCardClose={onPreviewCardClose}
+        onSelect={vi.fn()}
         model={makeModel()}
         onHide={vi.fn()}
       />,
@@ -220,23 +257,23 @@ describe('PopupItem', () => {
   })
 
   it('should not select the combobox value when model is not active', () => {
-    const onValueChange = vi.fn()
-    renderWithCombobox(
+    const onSelect = vi.fn()
+    renderPopupItem(
       <PopupItem
         {...previewCardProps()}
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.disabled })] })}
+        onSelect={onSelect}
         onHide={vi.fn()}
       />,
-      onValueChange,
     )
 
     fireEvent.click(screen.getByText('GPT-4'))
 
-    expect(onValueChange).not.toHaveBeenCalled()
+    expect(onSelect).not.toHaveBeenCalled()
   })
 
   it('should strike through deprecated model name', () => {
-    renderWithCombobox(
+    renderPopupItem(
       <PopupItem
         {...previewCardProps()}
         model={makeModel({ models: [makeModelItem({ deprecated: true })] })}
@@ -248,7 +285,7 @@ describe('PopupItem', () => {
   })
 
   it('should render incompatible model names with tertiary text color', () => {
-    renderWithCombobox(
+    renderPopupItem(
       <PopupItem
         {...previewCardProps()}
         model={makeModel({
@@ -267,8 +304,9 @@ describe('PopupItem', () => {
     expect(screen.getByText('GPT-4')).toHaveClass('text-text-quaternary')
   })
 
-  it('should render suggestion icon with tooltip for suggested models', async () => {
-    renderWithCombobox(
+  it('should expose the suggestion in the model name and on hover', async () => {
+    const user = userEvent.setup()
+    renderPopupItem(
       <PopupItem
         {...previewCardProps()}
         model={makeModel({
@@ -284,26 +322,36 @@ describe('PopupItem', () => {
 
     expect(screen.getByText('GPT-5.5')).toBeInTheDocument()
     expect(screen.getByText('GPT-5')).toBeInTheDocument()
-    const suggestionIcon = screen.getByLabelText('common.modelProvider.selector.suggestionTip')
+    const modelButton = screen.getByRole('button', {
+      name: /GPT-5\.5.*common.modelProvider.selector.suggestionTip/,
+    })
+    const suggestionText = screen.getByText('common.modelProvider.selector.suggestionTip')
+    const suggestionIndicator = suggestionText.parentElement
 
-    expect(suggestionIcon).toHaveClass('i-ri-shield-star-line')
+    expect(modelButton).toBeInTheDocument()
+    expect(suggestionIndicator).not.toBeNull()
 
-    await userEvent.hover(suggestionIcon)
+    await user.hover(suggestionIndicator!)
 
     expect(
-      await screen.findByText('common.modelProvider.selector.suggestionTip'),
+      await screen.findByText(
+        (content, element) =>
+          content === 'common.modelProvider.selector.suggestionTip' &&
+          !!element &&
+          !modelButton.contains(element),
+      ),
     ).toBeInTheDocument()
   })
 
-  it('should open model modal when clicking add on unconfigured model', () => {
-    const onValueChange = vi.fn()
-    const { rerender } = renderWithCombobox(
+  it('should open model modal when clicking add on unconfigured model', async () => {
+    const onSelect = vi.fn()
+    renderPopupItem(
       <PopupItem
         {...previewCardProps()}
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })}
+        onSelect={onSelect}
         onHide={vi.fn()}
       />,
-      onValueChange,
     )
 
     fireEvent.click(screen.getByText('GPT-4'))
@@ -311,45 +359,21 @@ describe('PopupItem', () => {
     expect(addButton.closest('[aria-disabled="true"]')).toBeNull()
     fireEvent.click(addButton)
 
-    expect(onValueChange).not.toHaveBeenCalled()
-    expect(mockSetShowModelModal).toHaveBeenCalled()
+    expect(onSelect).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockSetShowModelModal).toHaveBeenCalled()
+    })
 
     const call = mockSetShowModelModal.mock.calls[0]![0] as { onSaveCallback?: () => void }
     call.onSaveCallback?.()
 
     expect(mockUpdateModelProviders).toHaveBeenCalled()
     expect(mockUpdateModelList).toHaveBeenCalledWith(ModelTypeEnum.textGeneration)
-
-    rerender(
-      createComboboxNode(
-        <PopupItem
-          {...previewCardProps()}
-          model={makeModel({
-            models: [
-              makeModelItem({
-                status: ModelStatusEnum.noConfigure,
-                model_type: undefined as unknown as ModelTypeEnum,
-              }),
-            ],
-          })}
-          onHide={vi.fn()}
-        />,
-      ),
-    )
-
-    fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
-    const call2 = mockSetShowModelModal.mock.calls.at(-1)?.[0] as
-      | { onSaveCallback?: () => void }
-      | undefined
-    call2?.onSaveCallback?.()
-
-    expect(mockUpdateModelProviders).toHaveBeenCalled()
-    expect(mockUpdateModelList).toHaveBeenCalledTimes(1)
   })
 
   it('should show selected state when defaultModel matches', () => {
     const defaultModel: DefaultModel = { provider: 'openai', model: 'gpt-4' }
-    renderWithCombobox(
+    renderPopupItem(
       <PopupItem
         {...previewCardProps()}
         defaultModel={defaultModel}
@@ -358,18 +382,18 @@ describe('PopupItem', () => {
       />,
     )
 
-    expect(screen.getByText('GPT-4'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /GPT-4/ })).toHaveAttribute('aria-current', 'true')
   })
 
   it('should fall back to english labels when the current language is unavailable', () => {
     mockUseLanguage.mockReturnValue('zh_Hans')
 
-    renderWithCombobox(
+    renderPopupItem(
       <PopupItem
         {...previewCardProps()}
         model={makeModel({
-          label: { en_US: 'OpenAI only' } as Model['label'],
-          models: [makeModelItem({ label: { en_US: 'GPT-4 only' } as ModelItem['label'] })],
+          label: { en_US: 'OpenAI only' },
+          models: [makeModelItem({ label: { en_US: 'GPT-4 only' } })],
         })}
         onHide={vi.fn()}
       />,
@@ -380,21 +404,27 @@ describe('PopupItem', () => {
   })
 
   it('should toggle collapsed state when clicking provider header', () => {
-    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
+    renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
-    expect(screen.getByText('GPT-4'))!.toBeInTheDocument()
+    const providerTrigger = screen.getByRole('button', { name: 'OpenAI' })
+    const modelButton = screen.getByRole('button', { name: /GPT-4/ })
 
-    fireEvent.click(screen.getByText('OpenAI'))
+    expect(providerTrigger).toHaveAttribute('aria-expanded', 'true')
+    expect(modelButton).toBeVisible()
 
-    expect(screen.queryByText('GPT-4')).not.toBeInTheDocument()
+    fireEvent.click(providerTrigger)
 
-    fireEvent.click(screen.getByText('OpenAI'))
+    expect(providerTrigger).toHaveAttribute('aria-expanded', 'false')
+    expect(modelButton).not.toBeVisible()
 
-    expect(screen.getByText('GPT-4'))!.toBeInTheDocument()
+    fireEvent.click(providerTrigger)
+
+    expect(providerTrigger).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: /GPT-4/ })).toBeVisible()
   })
 
   it('should show credential name when using custom provider', () => {
-    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
+    renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText('my-api-key'))!.toBeInTheDocument()
   })
@@ -411,15 +441,15 @@ describe('PopupItem', () => {
       credits: 200,
     })
 
-    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
+    renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText('stale-key'))!.toBeInTheDocument()
     expect(document.querySelector('.bg-components-badge-status-light-error-bg')).not.toBeNull()
   })
 
   it('should show configure required when no credential name', () => {
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [
+    mockProviderSummary.mockReturnValue({
+      data: [
         makeProvider({
           custom_configuration: {
             status: CustomConfigurationStatusEnum.noConfigure,
@@ -439,14 +469,14 @@ describe('PopupItem', () => {
       credits: 0,
     })
 
-    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
+    renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.configureRequired/))!.toBeInTheDocument()
   })
 
   it('should show credits info when using system provider with remaining credits', () => {
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [
+    mockProviderSummary.mockReturnValue({
+      data: [
         makeProvider({
           preferred_provider_type: PreferredProviderTypeEnum.system,
         }),
@@ -463,14 +493,14 @@ describe('PopupItem', () => {
       credits: 200,
     })
 
-    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
+    renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.aiCredits/))!.toBeInTheDocument()
   })
 
   it('should show credits exhausted when system provider has no credits', () => {
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [
+    mockProviderSummary.mockReturnValue({
+      data: [
         makeProvider({
           preferred_provider_type: PreferredProviderTypeEnum.system,
         }),
@@ -490,26 +520,26 @@ describe('PopupItem', () => {
       credits: 0,
     })
 
-    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
+    renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/))!.toBeInTheDocument()
   })
 
-  it('should close the dropdown through dropdown content callbacks', () => {
+  it('should close the dropdown through dropdown content callbacks', async () => {
     const onHide = vi.fn()
 
-    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={onHide} />)
+    renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={onHide} />)
 
     fireEvent.click(screen.getByRole('button', { name: /my-api-key/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'close dropdown' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'close dropdown' }))
 
     expect(onHide).toHaveBeenCalled()
   })
 
-  it('should keep the credential dropdown enabled for manage-only users', () => {
+  it('should keep the credential dropdown enabled for manage-only users', async () => {
     mockWorkspacePermissionKeys.value = ['credential.manage']
 
-    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
+    renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     const trigger = screen.getByRole('button', { name: /my-api-key/ })
 
@@ -517,6 +547,6 @@ describe('PopupItem', () => {
 
     fireEvent.click(trigger)
 
-    expect(screen.getByRole('button', { name: 'close dropdown' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'close dropdown' })).toBeInTheDocument()
   })
 })

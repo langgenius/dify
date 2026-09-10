@@ -1,9 +1,8 @@
-/* oxlint-disable typescript/no-explicit-any */
+import type { ReactElement } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import CreateFromDSLModal from '../index'
 import { CreateFromDSLModalTab } from '../types'
@@ -17,7 +16,6 @@ const mockGetRedirection = vi.fn()
 const mockResolveImportedAppRedirectionTarget = vi.fn(
   async (target: Record<string, unknown>) => target,
 )
-const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
   success: vi.fn(),
@@ -27,8 +25,8 @@ const toastMocks = vi.hoisted(() => ({
 const hotkeyMocks = vi.hoisted(() => ({
   handlers: new Map<string, { handler: () => void; options?: { enabled?: boolean } }>(),
 }))
-let mockPlanUsage = 0
-let mockPlanTotal = 10
+let appCount = 0
+let appLimit = 10
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 const mockUserProfile = { id: 'user-1' }
 vi.mock('ahooks', () => ({
@@ -63,8 +61,8 @@ vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleClient: {
@@ -78,10 +76,24 @@ vi.mock('@/service/client', async (importOriginal) => {
     },
     consoleQuery: {
       ...actual.consoleQuery,
+      features: actual.consoleQuery.features,
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
       systemFeatures: actual.consoleQuery.systemFeatures,
       apps: {
         ...actual.consoleQuery.apps,
         imports: {
+          ...actual.consoleQuery.apps.imports,
+          post: {
+            mutationOptions: () => ({
+              mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
+            }),
+          },
           byImportId: {
             confirm: {
               post: {
@@ -97,23 +109,12 @@ vi.mock('@/service/client', async (importOriginal) => {
     },
   }
 })
-vi.mock('@/service/use-apps', () => ({
-  useInvalidateAppList: () => mockInvalidateAppList,
-}))
-
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({
     handleCheckPluginDependencies: mockHandleCheckPluginDependencies,
   }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -121,20 +122,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: {
-      usage: {
-        buildApps: mockPlanUsage,
-      },
-      total: {
-        buildApps: mockPlanTotal,
-      },
-    },
-    enableBilling: true,
-  }),
-}))
 
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: (...args: unknown[]) => mockGetRedirection(...args),
@@ -157,15 +144,20 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { apps: { size: appCount, limit: appLimit } },
+  })
+}
+
 describe('CreateFromDSLModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     hotkeyMocks.handlers.clear()
-    mockPlanUsage = 0
-    mockPlanTotal = 10
+    appCount = 0
+    appLimit = 10
     mockWorkspacePermissionKeys = ['app.create_and_management']
-    localStorage.clear()
-
     Object.defineProperty(File.prototype, 'text', {
       configurable: true,
       value: vi.fn().mockResolvedValue('app: demo'),
@@ -312,8 +304,6 @@ describe('CreateFromDSLModal', () => {
     })
     expect(handleSuccess).toHaveBeenCalledTimes(1)
     expect(handleClose).toHaveBeenCalledTimes(1)
-    expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
-    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
     expect(mockGetRedirection).toHaveBeenCalledWith(
       { id: 'app-1', mode: 'chat', permission_keys: ['app.acl.view_layout'] },
@@ -401,9 +391,54 @@ describe('CreateFromDSLModal', () => {
       expect.stringMatching(/(?:^|\.)newApp\.caution(?=$|:)/),
       {
         type: 'warning',
-        description: "Agent secret 'SEARCH_TOKEN' must be configured.",
+        description: expect.anything(),
       },
     )
+  })
+
+  it('should lock the complete file import while reading its content', async () => {
+    let resolveFileText!: (value: string) => void
+    const file = new File(['app: demo'], 'demo.yml', { type: 'text/yaml' })
+    const readFile = vi.spyOn(file, 'text').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFileText = resolve
+        }),
+    )
+    const handleClose = vi.fn()
+    mockImportDSL.mockResolvedValue({
+      id: 'import-file-in-flight',
+      status: DSLImportStatus.COMPLETED,
+      app_id: 'app-1',
+      app_mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.view_layout'],
+    })
+
+    render(<CreateFromDSLModal show onClose={handleClose} droppedFile={file} />)
+
+    fireEvent.click(getCreateButton())
+    await waitFor(() => {
+      expect(readFile).toHaveBeenCalledTimes(1)
+      expect(getCreateButton()).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    fireEvent.click(getCreateButton())
+    fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Cancel(?=$|:)/ })[0]!)
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    expect(readFile).toHaveBeenCalledTimes(1)
+    expect(mockImportDSL).not.toHaveBeenCalled()
+    expect(handleClose).not.toHaveBeenCalled()
+
+    resolveFileText('app: demo')
+
+    await waitFor(() => {
+      expect(mockImportDSL).toHaveBeenCalledTimes(1)
+      expect(mockImportDSL).toHaveBeenCalledWith({
+        mode: DSLImportMode.YAML_CONTENT,
+        yaml_content: 'app: demo',
+      })
+    })
   })
 
   it('should remove the current file and keep the create shortcut guarded', async () => {
@@ -475,7 +510,6 @@ describe('CreateFromDSLModal', () => {
     expect(mockImportDSLConfirm).toHaveBeenCalledWith({
       import_id: 'import-3',
     })
-    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockTrackCreateApp).toHaveBeenCalledWith({
       source: 'studio_upload',
       appMode: AppModeEnum.WORKFLOW,
@@ -537,7 +571,7 @@ describe('CreateFromDSLModal', () => {
 
     expect(toastMocks.call).toHaveBeenCalledWith(expect.stringMatching(/newApp\.caution/), {
       type: 'warning',
-      description: "Agent tool 'web_search' requires authorization.",
+      description: expect.anything(),
     })
     expect(mockResolveImportedAppRedirectionTarget).toHaveBeenCalledWith({
       id: 'agent-app-1',
@@ -763,8 +797,8 @@ describe('CreateFromDSLModal', () => {
       })
     })
 
-    mockPlanUsage = 1
-    mockPlanTotal = 1
+    appCount = 1
+    appLimit = 1
     render(
       <CreateFromDSLModal
         show

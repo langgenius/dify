@@ -15,7 +15,7 @@ from shellctl.shared.constants import (
     DEFAULT_TERMINATE_GRACE_SECONDS,
     DEFAULT_TIMEOUT_SECONDS,
     MAX_OUTPUT_LIMIT_BYTES,
-    MAX_WAIT_TIMEOUT_SECONDS,
+    SHELL_TOOL_HARD_TIMEOUT_SECONDS,
 )
 
 
@@ -40,6 +40,13 @@ class JobStatusName(StrEnum):
     TERMINATED = "terminated"
     FAILED = "failed"
     LOST = "lost"
+
+
+class JobMode(StrEnum):
+    """Standard-stream wiring used to execute a shellctl job."""
+
+    PTY = "pty"
+    STDIO = "stdio"
 
 
 TERMINAL_JOB_STATUSES = frozenset(
@@ -139,7 +146,8 @@ class RunJobRequest(ShellctlModel):
     cwd: str | None = None
     env: dict[str, str] | None = None
     terminal: TerminalSize | None = None
-    timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=MAX_WAIT_TIMEOUT_SECONDS)
+    mode: JobMode = JobMode.PTY
+    timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=SHELL_TOOL_HARD_TIMEOUT_SECONDS)
     output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
     idle_flush_seconds: float = Field(default=DEFAULT_IDLE_FLUSH_SECONDS, ge=0, le=30)
 
@@ -171,7 +179,7 @@ class RunJobRequest(ShellctlModel):
 class WaitJobRequest(ShellctlModel):
     """HTTP request body for `POST /v1/jobs/{job_id}/wait`."""
 
-    timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, ge=0, le=MAX_WAIT_TIMEOUT_SECONDS)
+    timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, ge=0, le=SHELL_TOOL_HARD_TIMEOUT_SECONDS)
     offset: int = Field(ge=0)
     output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
     idle_flush_seconds: float = Field(default=DEFAULT_IDLE_FLUSH_SECONDS, ge=0, le=30)
@@ -181,7 +189,7 @@ class InputJobRequest(ShellctlModel):
     """HTTP request body for `POST /v1/jobs/{job_id}/input`."""
 
     text: str
-    timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=MAX_WAIT_TIMEOUT_SECONDS)
+    timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=SHELL_TOOL_HARD_TIMEOUT_SECONDS)
     offset: int = Field(ge=0)
     output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
     idle_flush_seconds: float = Field(default=DEFAULT_IDLE_FLUSH_SECONDS, ge=0, le=30)
@@ -190,7 +198,7 @@ class InputJobRequest(ShellctlModel):
 class TerminateJobRequest(ShellctlModel):
     """HTTP request body for `POST /v1/jobs/{job_id}/terminate`."""
 
-    grace_seconds: float = Field(default=DEFAULT_TERMINATE_GRACE_SECONDS, ge=0, le=300)
+    grace_seconds: float = Field(default=DEFAULT_TERMINATE_GRACE_SECONDS, ge=0, le=SHELL_TOOL_HARD_TIMEOUT_SECONDS)
 
 
 __all__ = [
@@ -201,6 +209,7 @@ __all__ = [
     "HealthResponse",
     "InputJobRequest",
     "JobInfo",
+    "JobMode",
     "JobResult",
     "JobStatusName",
     "JobStatusView",

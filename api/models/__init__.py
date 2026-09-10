@@ -17,8 +17,6 @@ from .agent import (
     AgentConfigSnapshot,
     AgentConfigVersionKind,
     AgentDebugConversation,
-    AgentDriveFile,
-    AgentDriveFileKind,
     AgentHomeSnapshot,
     AgentIconType,
     AgentKind,
@@ -79,6 +77,7 @@ from .model import (
     AppModelConfig,
     AppStar,
     Conversation,
+    DatasetApiTokenBinding,
     DatasetRetrieverResource,
     DifySetup,
     EndUser,
@@ -114,6 +113,7 @@ from .provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from .skill import AgentSkillBinding, Skill, SkillDraftFile, SkillFileKind, SkillFileStorage, SkillVersion
 from .snippet import CustomizedSnippet, SnippetType
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from .task import CeleryTask, CeleryTaskSet
@@ -148,6 +148,7 @@ from .workflow import (
     WorkflowRun,
     WorkflowRunArchiveBundle,
     WorkflowType,
+    WorkflowVersionCounter,
     resolve_workflow_kind,
 )
 
@@ -167,12 +168,11 @@ __all__ = [
     "AgentConfigSnapshot",
     "AgentConfigVersionKind",
     "AgentDebugConversation",
-    "AgentDriveFile",
-    "AgentDriveFileKind",
     "AgentHomeSnapshot",
     "AgentIconType",
     "AgentKind",
     "AgentScope",
+    "AgentSkillBinding",
     "AgentSource",
     "AgentStatus",
     "AgentWorkingResourceStatus",
@@ -205,6 +205,7 @@ __all__ = [
     "DataSourceApiKeyAuthBinding",
     "DataSourceOauthBinding",
     "Dataset",
+    "DatasetApiTokenBinding",
     "DatasetCollectionBinding",
     "DatasetKeywordTable",
     "DatasetPermission",
@@ -250,6 +251,11 @@ __all__ = [
     "RecommendedApp",
     "SavedMessage",
     "Site",
+    "Skill",
+    "SkillDraftFile",
+    "SkillFileKind",
+    "SkillFileStorage",
+    "SkillVersion",
     "SnippetType",
     "Tag",
     "TagBinding",
@@ -293,5 +299,6 @@ __all__ = [
     "WorkflowToolProvider",
     "WorkflowTriggerStatus",
     "WorkflowType",
+    "WorkflowVersionCounter",
     "resolve_workflow_kind",
 ]

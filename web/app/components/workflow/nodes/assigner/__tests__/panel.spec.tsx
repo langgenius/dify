@@ -105,7 +105,7 @@ describe('assigner/panel', () => {
       }),
     )
 
-    await user.click(screen.getAllByRole('button')[0]!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     expect(mockUseHandleAddOperationItem).toHaveBeenCalledWith(createData().items)
     expect(handleOperationListChanges).toHaveBeenCalledWith([

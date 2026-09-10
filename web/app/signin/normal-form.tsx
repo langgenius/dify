@@ -186,10 +186,10 @@ function NormalForm() {
       <div className="mx-auto mt-8 w-full">
         {isInviteLink ? (
           <div className="mx-auto w-full">
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.join, { ns: 'login' })}
               {workspaceName}
-            </h2>
+            </h1>
             {!systemFeatures.branding.enabled && (
               <p className="mt-2 body-md-regular text-text-tertiary">
                 {t(($) => $.joinTipStart, { ns: 'login' })}
@@ -200,11 +200,11 @@ function NormalForm() {
           </div>
         ) : (
           <div className="mx-auto w-full">
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {systemFeatures.branding.enabled
                 ? t(($) => $.pageTitleForE, { ns: 'login' })
                 : t(($) => $.pageTitle, { ns: 'login' })}
-            </h2>
+            </h1>
             <p className="mt-2 body-md-regular text-text-tertiary">
               {t(($) => $.welcome, { ns: 'login' })}
             </p>
@@ -328,7 +328,7 @@ function NormalForm() {
                 </Link>
               </div>
               {isNonCloudEdition && (
-                <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
+                <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
                   {t(($) => $.goToInit, { ns: 'login' })}
                   &nbsp;
                   <Link

@@ -44,7 +44,7 @@ from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
-from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus, PendingImportOwner
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     KnowledgeConfiguration,
@@ -70,7 +70,7 @@ class RagPipelineImportInfo(BaseModel):
     dataset_id: str | None = None
 
 
-class RagPipelinePendingData(BaseModel):
+class RagPipelinePendingData(PendingImportOwner):
     import_mode: str
     yaml_content: str
     pipeline_id: str | None
@@ -221,7 +221,12 @@ class RagPipelineDslService:
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
                 pending_data = RagPipelinePendingData(
+                    tenant_id=tenant_id,
+                    account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
                     pipeline_id=pipeline_id,
@@ -384,6 +389,15 @@ class RagPipelineDslService:
                     error="Invalid import information",
                 )
             pending_data = RagPipelinePendingData.model_validate_json(pending_data)
+            if not pending_data.is_accessible_by(
+                tenant_id=account.current_tenant_id,
+                account_id=account.id,
+            ):
+                return RagPipelineImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="Import information expired or does not exist",
+                )
             data = yaml.safe_load(pending_data.yaml_content)
 
             pipeline = None
@@ -548,6 +562,11 @@ class RagPipelineDslService:
         rag_pipeline_variables_list = workflow_data.get("rag_pipeline_variables", [])
 
         graph = workflow_data.get("graph", {})
+        if not isinstance(graph, dict):
+            raise ValueError("Workflow graph must be a mapping")
+        # The source canvas position should not determine the imported pipeline's initial view.
+        graph = graph.copy()
+        graph.pop("viewport", None)
         for node in graph.get("nodes", []):
             if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node["data"].get("dataset_ids", [])

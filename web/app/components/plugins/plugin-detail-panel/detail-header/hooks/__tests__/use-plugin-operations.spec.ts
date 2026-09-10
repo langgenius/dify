@@ -1,7 +1,7 @@
 import type { PluginDetail } from '../../../../types'
 import type { ModalStates, VersionTarget } from '../use-detail-header-state'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as amplitude from '@/app/components/base/amplitude'
 import { PluginSource } from '../../../../types'
 import { usePluginOperations } from '../use-plugin-operations'

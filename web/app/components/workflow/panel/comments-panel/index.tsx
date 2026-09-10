@@ -8,14 +8,14 @@ import {
   RiCloseLine,
   RiFilter3Line,
 } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowComment } from '../../hooks/use-workflow-comment'
 
@@ -39,7 +39,11 @@ const CommentsPanel = () => {
     [handleCommentIconClick],
   )
 
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+
+    select: (data) => data.profile.id,
+  })
 
   const filteredSorted = useMemo(() => {
     let data = comments

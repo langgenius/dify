@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import type { ConfigurationViewModel } from '../hooks/use-configuration'
+import type { ConfigurationViewModel } from '../hooks/configuration-view-model'
 import type AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
 import type { Plugin } from '@/app/components/plugins/types'
@@ -98,7 +98,6 @@ const createDeletedAgentTool = (providerId: string): AgentTool => ({
 
 const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['value'] => ({
   appId: 'app-1',
-  isAPIKeySet: true,
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
@@ -258,6 +257,11 @@ const createViewModel = (
     publishedConfig: {
       modelConfig: createContextValue().modelConfig,
       completionParams: {},
+      promptMode: createContextValue().promptMode,
+      chatPromptConfig: createContextValue().chatPromptConfig,
+      completionPromptConfig: createContextValue().completionPromptConfig,
+      datasetConfigs: createContextValue().datasetConfigs,
+      externalDataToolsConfig: createContextValue().externalDataToolsConfig,
     },
     resetAppConfig: vi.fn(),
   } as ComponentProps<typeof AppPublisher>,

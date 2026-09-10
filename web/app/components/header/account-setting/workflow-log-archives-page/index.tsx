@@ -10,15 +10,17 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useQueryState } from 'nuqs'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { Plan } from '@/app/components/billing/type'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { API_PREFIX } from '@/config'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const numberFormatter = new Intl.NumberFormat()
 const byteFormatter = new Intl.NumberFormat(undefined, {
@@ -69,21 +71,25 @@ export default function WorkflowLogArchivesPage() {
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { plan, enableBilling } = useProviderContext()
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const [visibleArchiveMonthCount, setVisibleArchiveMonthCount] = useState(ARCHIVE_MONTH_PAGE_SIZE)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
-  const canViewArchiveContent =
-    deploymentEdition === 'CLOUD' && enableBilling && plan.type !== Plan.sandbox
   const archiveListQuery = useQuery(
     consoleQuery.workflowRunArchives.get.queryOptions({
-      enabled: canViewArchiveContent,
+      enabled: deploymentEdition === 'CLOUD' && (plan === 'professional' || plan === 'team'),
     }),
   )
   const archiveData = archiveListQuery.data
   const archiveMonths = archiveData?.months ?? []
   const visibleArchiveMonths = archiveMonths.slice(0, visibleArchiveMonthCount)
   const summary = archiveData?.summary
-  const isLoading = archiveListQuery.isLoading
+  const isLoading =
+    (deploymentEdition === 'CLOUD' && plan === undefined) || archiveListQuery.isLoading
   const hasMoreArchives = visibleArchiveMonths.length < archiveMonths.length
 
   useEffect(() => {
@@ -130,7 +136,7 @@ export default function WorkflowLogArchivesPage() {
     },
   ]
 
-  if (!canViewArchiveContent) {
+  if (deploymentEdition !== 'CLOUD' || plan === 'sandbox') {
     return (
       <div className="pb-6">
         <ArchivedLogsUpgradeBanner />
@@ -261,7 +267,7 @@ export default function WorkflowLogArchivesPage() {
 
 function ArchivedLogsUpgradeBanner() {
   const { t } = useTranslation()
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
@@ -276,7 +282,7 @@ function ArchivedLogsUpgradeBanner() {
       <button
         type="button"
         className="flex h-10 w-30 shrink-0 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
-        onClick={() => setShowPricingModal()}
+        onClick={() => setPricing('open')}
       >
         {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
       </button>
@@ -286,6 +292,8 @@ function ArchivedLogsUpgradeBanner() {
 
 function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonthResponse }) {
   const { t } = useTranslation()
+  const archiveMonthLabelId = useId()
+  const downloadActionLabelId = useId()
   const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(
     null,
   )
@@ -368,9 +376,6 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     return t(($) => $['archives.action.prepareDownload'], { ns: 'appLog' })
   })()
 
-  const buttonAriaLabel = isReady
-    ? t(($) => $['archives.action.downloadMonth'], { ns: 'appLog', month: archiveMonth })
-    : t(($) => $['archives.action.prepareMonth'], { ns: 'appLog', month: archiveMonth })
   const buttonIconClassName = isReady ? 'i-ri-download-2-line' : 'i-ri-inbox-archive-line'
   const onAction = isReady ? downloadArchive : prepareDownload
 
@@ -382,7 +387,9 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
       )}
     >
       <div className="min-w-0 text-center">
-        <span className="truncate system-sm-semibold text-text-primary">{archiveMonth}</span>
+        <span id={archiveMonthLabelId} className="truncate system-sm-semibold text-text-primary">
+          {archiveMonth}
+        </span>
       </div>
       <div className="text-center system-sm-medium text-text-secondary tabular-nums">
         {formatNumber(archive.workflow_run_count)}
@@ -398,15 +405,14 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                 size="small"
                 variant="secondary"
                 loading={isPreparing}
-                disabled={isPreparing}
                 className="px-2"
-                aria-label={buttonAriaLabel}
+                aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
                 onClick={onAction}
               >
                 {!isPreparing && (
                   <span className={cn(buttonIconClassName, 'size-3.5')} aria-hidden="true" />
                 )}
-                {buttonContent}
+                <span id={downloadActionLabelId}>{buttonContent}</span>
               </Button>
             }
           />

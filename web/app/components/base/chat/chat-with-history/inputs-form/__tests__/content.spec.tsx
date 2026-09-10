@@ -2,7 +2,7 @@ import type { ChatWithHistoryContextValue } from '../../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import InputsFormContent from '../content'
 
@@ -155,7 +155,6 @@ const MockContextProvider = ({
   const [newInputs, setNewInputs] = React.useState(value.newConversationInputs)
 
   const newInputsRef = React.useRef(newInputs)
-  newInputsRef.current = newInputs
 
   const contextValue: ChatWithHistoryContextValue = {
     ...value,
@@ -167,6 +166,7 @@ const MockContextProvider = ({
       value.setCurrentConversationInputs(v)
     },
     handleNewConversationInputsChange: (v: Record<string, unknown>) => {
+      newInputsRef.current = v
       setNewInputs(v)
       value.handleNewConversationInputsChange(v)
     },
@@ -216,7 +216,7 @@ describe('InputsFormContent', () => {
   it('uses currentConversationInputs when currentConversationId is present', () => {
     const context = createMockContext()
     renderWithContext(<InputsFormContent />, context)
-    const input = screen.getByPlaceholderText('Text Label') as HTMLInputElement
+    const input = screen.getByRole('textbox', { name: 'Text Label' }) as HTMLInputElement
     expect(input.value).toBe('current-value')
   })
 
@@ -227,7 +227,7 @@ describe('InputsFormContent', () => {
     })
 
     renderWithContext(<InputsFormContent />, context)
-    const input = screen.getByPlaceholderText('Text Label') as HTMLInputElement
+    const input = screen.getByRole('textbox', { name: 'Text Label' }) as HTMLInputElement
     expect(input.value).toBe('new-value')
   })
 
@@ -235,7 +235,7 @@ describe('InputsFormContent', () => {
     const user = userEvent.setup()
     const context = createMockContext()
     renderWithContext(<InputsFormContent />, context)
-    const input = screen.getByPlaceholderText('Text Label') as HTMLInputElement
+    const input = screen.getByRole('textbox', { name: 'Text Label' }) as HTMLInputElement
 
     await user.clear(input)
     await user.type(input, 'updated')
@@ -256,7 +256,7 @@ describe('InputsFormContent', () => {
     })
 
     renderWithContext(<InputsFormContent />, context)
-    const input = screen.getByPlaceholderText('Num') as HTMLInputElement
+    const input = screen.getByRole('spinbutton', { name: 'Num' }) as HTMLInputElement
     expect(input).toHaveAttribute('type', 'number')
 
     await user.type(input, '123')
@@ -274,7 +274,7 @@ describe('InputsFormContent', () => {
     })
 
     renderWithContext(<InputsFormContent />, context)
-    const textarea = screen.getByPlaceholderText('Para') as HTMLTextAreaElement
+    const textarea = screen.getByRole('textbox', { name: 'Para' }) as HTMLTextAreaElement
     await user.type(textarea, 'hello')
 
     expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(

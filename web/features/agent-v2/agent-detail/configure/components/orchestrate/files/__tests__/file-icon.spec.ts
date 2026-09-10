@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { getDriveFileIconType, getFileIconType } from '../file-icon'
 
 describe('agent file icon helpers', () => {

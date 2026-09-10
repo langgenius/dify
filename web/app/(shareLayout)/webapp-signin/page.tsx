@@ -9,6 +9,7 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
@@ -44,12 +45,11 @@ function WebSSOForm() {
     return `/webapp-signin?${params.toString()}`
   }, [redirectUrl])
 
-  const shareCode = useWebAppStore((s) => s.shareCode)
   const backToHome = useCallback(async () => {
-    await webAppLogout(shareCode!)
+    await webAppLogout(resolveWebAppAddress())
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, shareCode])
+  }, [getSigninUrl, router])
 
   if (!loginRedirect) {
     return (
@@ -86,9 +86,13 @@ function WebSSOForm() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-y-4">
       <AppUnavailable className="size-auto" isUnknownReason={true} />
-      <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>
+      <button
+        type="button"
+        className="cursor-pointer appearance-none system-sm-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        onClick={backToHome}
+      >
         {t(($) => $['login.backToHome'], { ns: 'share' })}
-      </span>
+      </button>
     </div>
   )
 }

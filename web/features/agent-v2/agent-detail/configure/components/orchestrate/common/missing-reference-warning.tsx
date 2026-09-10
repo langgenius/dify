@@ -18,7 +18,7 @@ export function MissingReferenceWarning({
             type="button"
             aria-label={label}
             className={cn(
-              'flex size-5 shrink-0 items-center justify-center rounded-md outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'flex size-5 shrink-0 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
               className,
             )}
           >
@@ -26,7 +26,7 @@ export function MissingReferenceWarning({
           </button>
         }
       />
-      <TooltipContent aria-label={label}>{label}</TooltipContent>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   )
 }

@@ -1,14 +1,9 @@
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import {
-  BubbleX,
-  LongArrowLeft,
-  LongArrowRight,
-} from '@/app/components/base/icons/src/vender/line/others'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
@@ -203,70 +198,85 @@ const ChatVariablePanel = () => {
   )
 
   return (
-    <div
-      className={cn(
-        'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
-      )}
+    <Collapsible
+      open={showTip}
+      onOpenChange={setShowTip}
+      render={
+        <div
+          className={cn(
+            'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
+          )}
+        />
+      }
     >
       <div className="flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
         {t(($) => $['chatVariable.panelTitle'], { ns: 'workflow' })}
         <div className="flex items-center gap-1">
-          <ActionButton
-            state={showTip ? ActionButtonState.Active : undefined}
-            onClick={() => setShowTip(!showTip)}
-          >
-            <RiBookOpenLine className="size-4" />
-          </ActionButton>
-          <div
-            className="flex size-6 cursor-pointer items-center justify-center"
+          <CollapsibleTrigger
+            className="size-6 min-h-0 justify-center gap-0 p-0.5 hover:not-data-disabled:text-text-secondary data-panel-open:bg-state-accent-active data-panel-open:text-text-accent data-panel-open:hover:bg-state-accent-active-alt"
+            render={
+              <IconButton aria-label={t(($) => $['chatVariable.tips'], { ns: 'workflow' })}>
+                <span aria-hidden="true" className="i-ri-book-open-line size-4" />
+              </IconButton>
+            }
+          />
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={() => setShowChatVariablePanel(false)}
           >
-            <RiCloseLine className="size-4 text-text-tertiary" />
-          </div>
+            <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
+          </IconButton>
         </div>
       </div>
-      {showTip && (
-        <div className="shrink-0 px-3 pt-2.5 pb-2">
-          <div className="relative rounded-2xl bg-background-section-burn p-3">
-            <div className="inline-block rounded-[5px] border border-divider-deep px-1.25 py-0.75 system-2xs-medium-uppercase text-text-tertiary">
-              TIPS
-            </div>
-            <div className="mt-1 mb-4 system-sm-regular text-text-secondary">
-              {t(($) => $['chatVariable.panelDescription'], { ns: 'workflow' })}
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex flex-col rounded-[10px] border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
-                <BubbleX className="mb-1 size-4 shrink-0 text-util-colors-teal-teal-700" />
-                <div className="system-xs-semibold text-text-secondary">conversation_var</div>
-                <div className="system-2xs-regular text-text-tertiary">String</div>
-              </div>
-              <div className="grow">
-                <div className="mb-2 flex items-center gap-2 py-1">
-                  <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
-                    <LongArrowLeft className="h-2 grow text-text-quaternary" />
-                    <div className="shrink-0 system-2xs-medium text-text-tertiary">WRITE</div>
-                  </div>
-                  <BlockIcon className="shrink-0" type={BlockEnum.Assigner} />
-                  <div className="grow truncate system-xs-semibold text-text-secondary">
-                    {t(($) => $['blocks.assigner'], { ns: 'workflow' })}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 py-1">
-                  <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
-                    <div className="shrink-0 system-2xs-medium text-text-tertiary">READ</div>
-                    <LongArrowRight className="h-2 grow text-text-quaternary" />
-                  </div>
-                  <BlockIcon className="shrink-0" type={BlockEnum.LLM} />
-                  <div className="grow truncate system-xs-semibold text-text-secondary">
-                    {t(($) => $['blocks.llm'], { ns: 'workflow' })}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="absolute -top-1 right-9.5 z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
+      <CollapsiblePanel render={<div className="shrink-0 px-3 pt-2.5 pb-2" />}>
+        <div className="relative rounded-2xl bg-background-section-burn p-3">
+          <div className="inline-block rounded-[5px] border border-divider-deep px-1.25 py-0.75 system-2xs-medium-uppercase text-text-tertiary">
+            TIPS
           </div>
+          <div className="mt-1 mb-4 system-sm-regular text-text-secondary">
+            {t(($) => $['chatVariable.panelDescription'], { ns: 'workflow' })}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col rounded-[10px] border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
+              <span
+                aria-hidden="true"
+                className="mb-1 i-custom-vender-line-others-bubble-x size-4 shrink-0 text-util-colors-teal-teal-700"
+              />
+              <div className="system-xs-semibold text-text-secondary">conversation_var</div>
+              <div className="system-2xs-regular text-text-tertiary">String</div>
+            </div>
+            <div className="grow">
+              <div className="mb-2 flex items-center gap-2 py-1">
+                <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
+                  <span
+                    aria-hidden="true"
+                    className="i-custom-vender-line-others-long-arrow-left h-2 grow text-text-quaternary"
+                  />
+                  <div className="shrink-0 system-2xs-medium text-text-tertiary">WRITE</div>
+                </div>
+                <BlockIcon className="shrink-0" type={BlockEnum.Assigner} />
+                <div className="grow truncate system-xs-semibold text-text-secondary">
+                  {t(($) => $['blocks.assigner'], { ns: 'workflow' })}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 py-1">
+                <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
+                  <div className="shrink-0 system-2xs-medium text-text-tertiary">READ</div>
+                  <span
+                    aria-hidden="true"
+                    className="i-custom-vender-line-others-long-arrow-right h-2 grow text-text-quaternary"
+                  />
+                </div>
+                <BlockIcon className="shrink-0" type={BlockEnum.LLM} />
+                <div className="grow truncate system-xs-semibold text-text-secondary">
+                  {t(($) => $['blocks.llm'], { ns: 'workflow' })}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="absolute -top-1 right-9.5 z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
         </div>
-      )}
+      </CollapsiblePanel>
       <div className="shrink-0 px-4 pt-2 pb-3">
         <VariableModalTrigger
           open={showVariableModal}
@@ -292,7 +302,7 @@ const ChatVariablePanel = () => {
         onCancel={() => setShowRemoveConfirm(false)}
         onConfirm={() => cacheForDelete && handleDelete(cacheForDelete)}
       />
-    </div>
+    </Collapsible>
   )
 }
 

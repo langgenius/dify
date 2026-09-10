@@ -1,5 +1,5 @@
 import type { Viewport } from 'reactflow'
-import type { Metadata } from '@/app/components/base/chat/chat/type'
+import type { Metadata, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { VisionFile } from '@/types/app'
 
@@ -79,7 +79,7 @@ type MessageContent = {
   }>
   message_files: VisionFile[]
   metadata: Metadata
-  agent_thoughts: any[] // TODO
+  agent_thoughts: ThoughtItem[]
   workflow_run_id: string
   parent_message_id: string | null
 }

@@ -1,6 +1,5 @@
 from uuid import UUID
 
-from flask import request
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
@@ -10,7 +9,7 @@ from controllers.console import console_ns
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import with_current_user
+from controllers.console.wraps import model_validate, with_current_user
 from extensions.ext_database import db
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
@@ -28,7 +27,8 @@ class SavedMessageListApi(InstalledAppResource):
     @console_ns.doc(params=query_params_from_model(SavedMessageListQuery))
     @console_ns.response(200, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
     @with_current_user
-    def get(self, current_user: Account, installed_app: InstalledApp):
+    @model_validate(SavedMessageListQuery)
+    def get(self, req_data: SavedMessageListQuery, current_user: Account, installed_app: InstalledApp):
         session = db.session()
         app_model = installed_app.app_with_session(session=session)
         if app_model is None:
@@ -36,10 +36,12 @@ class SavedMessageListApi(InstalledAppResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        args = SavedMessageListQuery.model_validate(request.args.to_dict())
-
         pagination = SavedMessageService.pagination_by_last_id(
-            app_model, current_user, str(args.last_id) if args.last_id else None, args.limit, session=session
+            app_model,
+            current_user,
+            str(req_data.last_id) if req_data.last_id else None,
+            req_data.limit,
+            session=session,
         )
         adapter = TypeAdapter(SavedMessageItem)
         items = [
@@ -55,17 +57,16 @@ class SavedMessageListApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
+    @model_validate(SavedMessageCreatePayload)
+    def post(self, req_data: SavedMessageCreatePayload, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        payload = SavedMessageCreatePayload.model_validate(console_ns.payload or {})
-
         try:
-            SavedMessageService.save(app_model, current_user, str(payload.message_id), session=db.session())
+            SavedMessageService.save(app_model, current_user, str(req_data.message_id), session=db.session())
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 

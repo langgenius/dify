@@ -1,12 +1,11 @@
 'use client'
 
 import type { AgentVersionFilter } from './filter'
-import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
-import { consoleQuery } from '@/service/client'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import { CurrentDraftItem } from './current-draft-item'
 import { VersionFilter } from './filter'
 import { VersionFilterEmpty } from './version-filter-empty'
@@ -28,7 +27,10 @@ export function AgentPreviewVersionsPanel({
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const { t: tWorkflow } = useTranslation('workflow')
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const [filterValue, setFilterValue] = useState<AgentVersionFilter>('all')
   const versionsQuery = useQuery(
     consoleQuery.agent.byAgentId.versions.get.queryOptions({

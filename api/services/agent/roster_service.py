@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Sequence
 from typing import Any, TypedDict
 
 from sqlalchemy import and_, func, or_, select
@@ -23,8 +24,6 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
-    AgentWorkingResourceStatus,
-    AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
@@ -42,12 +41,12 @@ from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionNotFoundError,
 )
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
-from services.feature_service import FeatureService
+from services.rbac_agent_access_service import initialize_agent_rbac_access
+from services.system_feature_service import SystemFeatureService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
@@ -228,7 +227,14 @@ class AgentRosterService:
         }
 
     def list_invite_options(
-        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None, app_id: str | None = None
+        self,
+        *,
+        tenant_id: str,
+        page: int = 1,
+        limit: int = 20,
+        keyword: str | None = None,
+        app_id: str | None = None,
+        accessible_agent_ids: Sequence[str] | None = None,
     ) -> dict[str, Any]:
         """List active roster Agents whose published snapshot can be called by Workflow."""
 
@@ -236,6 +242,8 @@ class AgentRosterService:
             Agent.active_config_has_model.is_(True),
             workflow_callable_active_snapshot_filter(),
         )
+        if accessible_agent_ids is not None:
+            stmt = stmt.where(Agent.id.in_(accessible_agent_ids))
         total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
         agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
         versions_by_id = self._load_versions_by_id(
@@ -317,10 +325,12 @@ class AgentRosterService:
                 source=source,
             )
             self._session.commit()
-            return agent
         except IntegrityError as exc:
             self._session.rollback()
             raise AgentNameConflictError() from exc
+
+        initialize_agent_rbac_access(tenant_id=tenant_id, agent_id=agent.id, creator_account_id=account_id)
+        return agent
 
     def _create_roster_agent_in_transaction(
         self,
@@ -912,6 +922,22 @@ class AgentRosterService:
         ).all()
         return {agent.app_id: agent for agent in agents if agent.app_id and agent.id}
 
+    def load_app_ids_for_agents(self, *, tenant_id: str, agent_ids: Sequence[str]) -> list[str]:
+        """Return active Agent App ids for the requested roster Agents."""
+        if not agent_ids:
+            return []
+        app_ids = self._session.scalars(
+            select(Agent.app_id).where(
+                Agent.tenant_id == tenant_id,
+                Agent.id.in_(agent_ids),
+                Agent.app_id.is_not(None),
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        ).all()
+        return sorted({str(app_id) for app_id in app_ids if app_id})
+
     def get_app_backing_agent(self, *, tenant_id: str, app_id: str) -> Agent | None:
         """Return the roster Agent that backs the given Agent App, if any."""
         return self._session.scalar(
@@ -1095,8 +1121,10 @@ class AgentRosterService:
             session=self._session,
         )
 
-        target_app.enable_site = source_app.enable_site
-        target_app.enable_api = source_app.enable_api
+        # A copy owns a new publication history. It remains private until its
+        # first successful publish even when the source Agent is public.
+        target_app.enable_site = False
+        target_app.enable_api = False
         target_app.use_icon_as_answer_icon = source_app.use_icon_as_answer_icon
         target_app.tracing = source_app.tracing
 
@@ -1107,8 +1135,21 @@ class AgentRosterService:
             target_app_id=target_app.id,
             account_id=account.id,
         )
+        from services.skill_management_service import SkillManagementService
+
+        target_agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=target_app.id)
+        if target_agent is None:
+            raise AgentNotFoundError()
+        SkillManagementService(session=self._session).copy_agent_bindings(
+            tenant_id=tenant_id,
+            source_agent_id=source_agent.id,
+            source_snapshot_id=source_agent.active_config_snapshot_id or "",
+            target_agent_id=target_agent.id,
+            user_id=account.id,
+            source_include_draft=not source_agent.active_config_is_published,
+        )
         self._session.commit()
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             try:
                 original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app.id)
                 access_mode = original_settings.access_mode
@@ -1164,7 +1205,7 @@ class AgentRosterService:
         target_version.version_note = source_version.version_note
         target_version.created_by = account_id
         target_agent.active_config_has_model = agent_soul_has_model(target_version.config_snapshot)
-        target_agent.active_config_is_published = source_agent.active_config_is_published
+        target_agent.active_config_is_published = False
         target_agent.updated_by = account_id
 
     def _next_duplicate_agent_name(self, *, tenant_id: str, base_name: str) -> str:
@@ -1258,41 +1299,6 @@ class AgentRosterService:
             self._session.rollback()
             raise AgentNameConflictError() from exc
         return self.get_roster_agent_detail(tenant_id=tenant_id, agent_id=agent_id)
-
-    def archive_roster_agent(self, *, tenant_id: str, agent_id: str, account_id: str) -> None:
-        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
-        retired_binding_ids: list[str] = []
-        if agent.status != AgentStatus.ARCHIVED:
-            agent.status = AgentStatus.ARCHIVED
-            agent.archived_by = account_id
-            agent.archived_at = naive_utc_now()
-            agent.updated_by = account_id
-        bindings = self._session.scalars(
-            select(AgentWorkspaceBinding).where(
-                AgentWorkspaceBinding.tenant_id == tenant_id,
-                AgentWorkspaceBinding.agent_id == agent_id,
-                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-        ).all()
-        for binding in bindings:
-            retired_id = AgentWorkspaceService.retire_binding(
-                session=self._session,
-                tenant_id=tenant_id,
-                binding_id=binding.id,
-            )
-            if retired_id is not None:
-                retired_binding_ids.append(retired_id)
-        retired_snapshot_ids = AgentHomeSnapshotService.retire_all_for_agent(
-            session=self._session,
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-        )
-        self._session.commit()
-        enqueue_agent_resource_collection(
-            tenant_id=tenant_id,
-            binding_ids=retired_binding_ids,
-            home_snapshot_ids=retired_snapshot_ids,
-        )
 
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:

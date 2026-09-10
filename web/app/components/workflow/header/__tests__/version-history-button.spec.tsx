@@ -41,7 +41,7 @@ describe('VersionHistoryButton', () => {
     const onClick = vi.fn()
     render(<VersionHistoryButton onClick={onClick} />)
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.versionHistory' }))
 
     expect(onClick).toHaveBeenCalledTimes(1)
   })
@@ -64,7 +64,7 @@ describe('VersionHistoryButton', () => {
     const user = userEvent.setup()
     render(<VersionHistoryButton onClick={vi.fn()} />)
 
-    await user.hover(screen.getByRole('button'))
+    await user.hover(screen.getByRole('button', { name: 'workflow.common.versionHistory' }))
 
     expect(await screen.findByText('workflow.common.versionHistory')).toBeInTheDocument()
   })

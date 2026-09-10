@@ -2,7 +2,7 @@ import type { ChatItem } from '../../types'
 import type { ChatContextValue } from '../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { useChatContext } from '../context'
 import { ChatContextProvider } from '../context-provider'
 

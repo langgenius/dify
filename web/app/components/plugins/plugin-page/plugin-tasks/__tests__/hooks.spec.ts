@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TaskStatus } from '@/app/components/plugins/types'
 import { usePluginTaskStatus } from '../hooks'
 

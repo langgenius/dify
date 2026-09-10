@@ -1,7 +1,10 @@
 'use client'
 
-import type { AppListCategory } from './app-type-filter-shared'
+import type { AppListUrlQuery } from './query-params'
+import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
 import dynamic from '@/next/dynamic'
+
+type AppListCategory = AppListUrlQuery['category']
 
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
   ssr: false,
@@ -13,81 +16,45 @@ const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/creat
   ssr: false,
 })
 
+export type AppListCreationDialog =
+  | { type: 'blank' }
+  | { type: 'template' }
+  | { type: 'dsl'; droppedFile?: File }
+  | null
+
 export function AppListCreationModals({
   canCreateApp,
   category,
-  droppedDSLFile,
-  showCreateFromDSLModal,
-  showNewAppModal,
-  showNewAppTemplateDialog,
-  onPlanInfoChanged,
-  onRefetch,
-  onSetDroppedDSLFile,
-  onSetShowCreateFromDSLModal,
-  onSetShowNewAppModal,
-  onSetShowNewAppTemplateDialog,
+  dialog,
+  onClose,
+  onOpenBlank,
+  onOpenTemplate,
 }: {
   canCreateApp: boolean
   category: AppListCategory
-  droppedDSLFile?: File
-  showCreateFromDSLModal: boolean
-  showNewAppModal: boolean
-  showNewAppTemplateDialog: boolean
-  onPlanInfoChanged: () => void
-  onRefetch: () => void
-  onSetDroppedDSLFile: (file?: File) => void
-  onSetShowCreateFromDSLModal: (show: boolean) => void
-  onSetShowNewAppModal: (show: boolean) => void
-  onSetShowNewAppTemplateDialog: (show: boolean) => void
+  dialog: AppListCreationDialog
+  onClose: () => void
+  onOpenBlank: () => void
+  onOpenTemplate: () => void
 }) {
   if (!canCreateApp) return null
+  const defaultAppModeResult = zPostAppsBody.shape.mode.safeParse(category)
 
   return (
     <>
-      {showCreateFromDSLModal && (
-        <CreateFromDSLModal
-          show={showCreateFromDSLModal}
-          onClose={() => {
-            onSetShowCreateFromDSLModal(false)
-            onSetDroppedDSLFile(undefined)
-          }}
-          onSuccess={() => {
-            onSetShowCreateFromDSLModal(false)
-            onSetDroppedDSLFile(undefined)
-            onPlanInfoChanged()
-            onRefetch()
-          }}
-          droppedFile={droppedDSLFile}
-        />
+      {dialog?.type === 'dsl' && (
+        <CreateFromDSLModal show onClose={onClose} droppedFile={dialog.droppedFile} />
       )}
-      {showNewAppModal && (
+      {dialog?.type === 'blank' && (
         <CreateAppModal
-          show={showNewAppModal}
-          onClose={() => onSetShowNewAppModal(false)}
-          onSuccess={() => {
-            onPlanInfoChanged()
-            onRefetch()
-          }}
-          onCreateFromTemplate={() => {
-            onSetShowNewAppTemplateDialog(true)
-            onSetShowNewAppModal(false)
-          }}
-          defaultAppMode={category !== 'all' ? category : undefined}
+          show
+          onClose={onClose}
+          onCreateFromTemplate={onOpenTemplate}
+          defaultAppMode={defaultAppModeResult.success ? defaultAppModeResult.data : undefined}
         />
       )}
-      {showNewAppTemplateDialog && (
-        <CreateAppTemplateDialog
-          show={showNewAppTemplateDialog}
-          onClose={() => onSetShowNewAppTemplateDialog(false)}
-          onSuccess={() => {
-            onPlanInfoChanged()
-            onRefetch()
-          }}
-          onCreateFromBlank={() => {
-            onSetShowNewAppModal(true)
-            onSetShowNewAppTemplateDialog(false)
-          }}
-        />
+      {dialog?.type === 'template' && (
+        <CreateAppTemplateDialog show onClose={onClose} onCreateFromBlank={onOpenBlank} />
       )}
     </>
   )

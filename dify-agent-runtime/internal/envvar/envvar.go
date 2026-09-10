@@ -23,18 +23,11 @@ const (
 // --- Agent Stub ---
 
 const (
-	// EnvAgentStubAPIBaseURL is the Agent Stub HTTP/gRPC endpoint.
+	// EnvAgentStubAPIBaseURL is the Agent Stub HTTP endpoint.
 	EnvAgentStubAPIBaseURL = "DIFY_AGENT_STUB_API_BASE_URL"
 
 	// EnvAgentStubAuthJWE is the per-request JWE token for Agent Stub auth.
 	EnvAgentStubAuthJWE = "DIFY_AGENT_STUB_AUTH_JWE"
-
-	// EnvAgentStubDriveBase is the sandbox-local drive directory for the agent.
-	EnvAgentStubDriveBase = "DIFY_AGENT_STUB_DRIVE_BASE"
-
-	// DefaultDriveBase is the default Agent Stub drive mount point.
-	// currently unused.
-	DefaultDriveBase = "/mnt/drive"
 )
 
 // PathIsolationEnabled returns whether Landlock filesystem isolation is active.

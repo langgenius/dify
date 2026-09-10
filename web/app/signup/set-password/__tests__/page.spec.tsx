@@ -1,12 +1,14 @@
 import type { ReactElement } from 'react'
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Cookies from 'js-cookie'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
 
@@ -68,6 +70,7 @@ const renderWithQueryClient = (ui: ReactElement) => {
       mutations: { retry: false },
     },
   })
+  seedSystemFeatures(queryClient)
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
@@ -90,17 +93,26 @@ describe('Signup Set Password Page', () => {
     mockRegister.mockResolvedValue({ result: 'fail', data: {} })
   })
 
+  it('exposes the page title as the main heading', () => {
+    renderWithQueryClient(<ChangePasswordForm />)
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
   describe('Registration payload', () => {
     it('should submit locale and browser timezone when setting password', async () => {
+      const user = userEvent.setup()
       renderWithQueryClient(<ChangePasswordForm />)
 
-      fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.change(screen.getByLabelText('common.account.confirmPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+
+      expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+      expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
+      expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
+
+      await user.type(passwordInput, 'ValidPass123!')
+      await user.type(confirmPasswordInput, 'ValidPass123!{Enter}')
 
       await waitFor(() => {
         expect(mockRegister).toHaveBeenCalledWith({
@@ -112,26 +124,48 @@ describe('Signup Set Password Page', () => {
         })
       })
     })
+
+    it('revalidates the confirmation field when the password changes', async () => {
+      const user = userEvent.setup()
+      renderWithQueryClient(<ChangePasswordForm />)
+
+      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      await user.type(passwordInput, 'ValidPass123!')
+      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
+
+      const error = await screen.findByText('common.account.notEqual')
+      expect(confirmPasswordInput).toHaveAttribute('aria-invalid', 'true')
+      expect(confirmPasswordInput).toHaveAccessibleDescription(error.textContent ?? '')
+      expect(confirmPasswordInput).toHaveFocus()
+      expect(mockRegister).not.toHaveBeenCalled()
+
+      await user.clear(passwordInput)
+      await user.type(passwordInput, 'DifferentPass123!')
+
+      await waitFor(() => {
+        expect(screen.queryByText('common.account.notEqual')).not.toBeInTheDocument()
+      })
+      expect(confirmPasswordInput).not.toHaveAttribute('aria-invalid', 'true')
+      expect(mockRegister).not.toHaveBeenCalled()
+    })
   })
 
   // On successful registration the Amplitude event is deferred (remembered) so it can
   // fire after the user ID is attached, while the GA event still fires immediately.
   describe('Registration success tracking', () => {
-    const fillAndSubmit = () => {
-      fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.change(screen.getByLabelText('common.account.confirmPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+    const fillAndSubmit = async () => {
+      const user = userEvent.setup()
+      await user.type(screen.getByLabelText('common.account.newPassword'), 'ValidPass123!')
+      await user.type(screen.getByLabelText('common.account.confirmPassword'), 'ValidPass123!')
+      await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
     }
 
     it('should defer the amplitude event and fire GA immediately when registration succeeds', async () => {
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
       renderWithQueryClient(<ChangePasswordForm />)
-      fillAndSubmit()
+      await fillAndSubmit()
 
       await waitFor(() => {
         expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
@@ -154,7 +188,7 @@ describe('Signup Set Password Page', () => {
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
       renderWithQueryClient(<ChangePasswordForm />)
-      fillAndSubmit()
+      await fillAndSubmit()
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/apps?tag=workflow')
@@ -166,7 +200,7 @@ describe('Signup Set Password Page', () => {
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
       renderWithQueryClient(<ChangePasswordForm />)
-      fillAndSubmit()
+      await fillAndSubmit()
 
       await waitFor(() => {
         expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({

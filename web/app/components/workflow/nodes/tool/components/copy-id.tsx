@@ -30,11 +30,7 @@ const CopyFeedbackNew = ({ content }: Props) => {
       : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''
 
   return (
-    <div
-      className="inline-flex w-full pb-0.5"
-      onClick={(e) => e.stopPropagation()}
-      onMouseLeave={onMouseLeave}
-    >
+    <div className="inline-flex w-full pb-0.5" onMouseLeave={onMouseLeave}>
       <Tooltip>
         <TooltipTrigger
           render={
@@ -42,7 +38,10 @@ const CopyFeedbackNew = ({ content }: Props) => {
               type="button"
               aria-label={tooltip}
               className="group/copy flex w-full items-center gap-0.5 text-left"
-              onClick={onClickCopy}
+              onClick={(event) => {
+                event.stopPropagation()
+                onClickCopy()
+              }}
             >
               <span className="w-0 grow cursor-pointer truncate system-2xs-regular text-text-quaternary group-hover:text-text-tertiary">
                 {content}

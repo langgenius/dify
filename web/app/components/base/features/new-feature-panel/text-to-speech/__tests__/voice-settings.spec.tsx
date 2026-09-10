@@ -17,10 +17,9 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'test-app-id' }),
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  useAppVoices: () => ({
-    data: [{ name: 'alloy', value: 'alloy' }],
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => ({ data: [{ name: 'alloy', value: 'alloy' }] }),
 }))
 
 const defaultFeatures: Features = {

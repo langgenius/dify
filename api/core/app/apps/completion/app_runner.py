@@ -9,14 +9,17 @@ from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
 from core.app.entities.app_invoke_entities import (
     CompletionAppGenerateEntity,
+    get_credit_usage_app_type,
+    get_credit_usage_created_by,
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import create_session
-from core.model_manager import ModelInstance
+from core.model_manager import ModelManager
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from graphon.file import File
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.model import App, Message
 
 logger = logging.getLogger(__name__)
@@ -184,17 +187,23 @@ class CompletionAppRunner(AppRunner):
         self.recalc_llm_max_tokens(model_config=application_generate_entity.model_conf, prompt_messages=prompt_messages)
 
         # Invoke model
-        model_instance = ModelInstance(
-            provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,
+        model_instance = ModelManager.for_tenant(tenant_id=app_config.tenant_id).get_model_instance(
+            tenant_id=app_config.tenant_id,
+            provider=application_generate_entity.model_conf.provider,
+            model_type=ModelType.LLM,
             model=application_generate_entity.model_conf.model,
         )
+
+        request_metadata: dict[str, object] = {"app_id": app_config.app_id}
+        request_metadata["app_type"] = get_credit_usage_app_type(app_config.app_mode)
+        request_metadata["created_by"] = get_credit_usage_created_by(app_config.app_mode)
 
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=application_generate_entity.model_conf.parameters,
             stop=stop,
             stream=application_generate_entity.stream,
-            request_metadata={"app_id": app_config.app_id},
+            request_metadata=request_metadata,
         )
 
         # handle invoke result

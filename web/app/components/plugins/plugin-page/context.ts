@@ -11,10 +11,14 @@ export type PluginPageTab =
   | (typeof PLUGIN_PAGE_TABS_MAP)[keyof typeof PLUGIN_PAGE_TABS_MAP]
   | (typeof PLUGIN_TYPE_SEARCH_MAP)[keyof typeof PLUGIN_TYPE_SEARCH_MAP]
 
+export type PluginPageSelection =
+  | { type: 'builtinTool'; id: string }
+  | { type: 'plugin'; id: string }
+
 type PluginPageContextValue = {
   containerRef: RefObject<HTMLDivElement | null>
-  currentPluginID: string | undefined
-  setCurrentPluginID: (pluginID?: string) => void
+  selectedItem: PluginPageSelection | undefined
+  setSelectedItem: (item?: PluginPageSelection) => void
   filters: FilterState
   setFilters: (filter: FilterState) => void
   activeTab: PluginPageTab
@@ -26,8 +30,8 @@ const emptyContainerRef: RefObject<HTMLDivElement | null> = { current: null }
 
 export const PluginPageContext = createContext<PluginPageContextValue>({
   containerRef: emptyContainerRef,
-  currentPluginID: undefined,
-  setCurrentPluginID: noop,
+  selectedItem: undefined,
+  setSelectedItem: noop,
   filters: {
     categories: [],
     tags: [],

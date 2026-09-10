@@ -1,3 +1,5 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { act, waitFor } from '@testing-library/react'
@@ -7,7 +9,8 @@ import {
   DataSourceType,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import { renderHook } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../../create/step-two'
@@ -22,14 +25,11 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
 const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+const renderHook = (callback: () => ReturnType<typeof useFormState>) =>
+  renderHookWithConsoleState(callback, {
+    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+  })
 
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
@@ -176,10 +176,6 @@ vi.mock('@/service/use-common', () => ({
       ],
     },
   }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({ data: [] }),
 }))
 
 vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
@@ -836,4 +832,20 @@ describe('useFormState', () => {
       })
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return { data: [] }
+    },
+  }
 })

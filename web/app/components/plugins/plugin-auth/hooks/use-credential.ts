@@ -83,10 +83,10 @@ export const useGetPluginOAuthUrlHook = (pluginPayload: PluginPayload) => {
   return useGetPluginOAuthUrl(apiMap.getOauthUrl)
 }
 
-export const useGetPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload) => {
+export const useGetPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload, enabled = true) => {
   const apiMap = useGetApi(pluginPayload)
 
-  return useGetPluginOAuthClientSchema(apiMap.getOauthClientSchema)
+  return useGetPluginOAuthClientSchema(enabled ? apiMap.getOauthClientSchema : '')
 }
 
 export const useInvalidPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload) => {

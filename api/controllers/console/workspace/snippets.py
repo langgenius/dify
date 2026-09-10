@@ -5,9 +5,10 @@ from uuid import UUID
 from flask import Response, request
 from flask_restx import Resource
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.fields import TextFileResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     register_response_schema_models,
@@ -17,16 +18,16 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import with_session
 from controllers.console.snippets.payloads import (
     CreateSnippetPayload,
-    IncludeSecretQuery,
+    SnippetExportQuery,
     SnippetImportPayload,
     SnippetListQuery,
     UpdateSnippetPayload,
 )
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -35,7 +36,13 @@ from controllers.console.wraps import (
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.snippet_fields import SnippetListItemResponse, SnippetPaginationResponse, SnippetResponse
+from fields.snippet_fields import (
+    SnippetListItemResponse,
+    SnippetPaginationResponse,
+    SnippetResponse,
+    snippet_list_item_responses,
+    snippet_response,
+)
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -88,7 +95,7 @@ register_schema_models(
     CreateSnippetPayload,
     UpdateSnippetPayload,
     SnippetImportPayload,
-    IncludeSecretQuery,
+    SnippetExportQuery,
 )
 register_response_schema_models(
     console_ns,
@@ -111,14 +118,15 @@ class CustomizedSnippetsApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str):
         """List customized snippets with pagination and search."""
         query = _snippet_list_query_from_request()
 
         snippet_service = _snippet_service()
         snippets, total, has_more = snippet_service.get_snippets(
             tenant_id=current_tenant_id,
-            session=db.session(),
+            session=session,
             page=query.page,
             limit=query.limit,
             keyword=query.keyword,
@@ -130,7 +138,7 @@ class CustomizedSnippetsApi(Resource):
         return dump_response(
             SnippetPaginationResponse,
             {
-                "data": snippets,
+                "data": snippet_list_item_responses(snippets, session=session),
                 "page": query.page,
                 "limit": query.limit,
                 "total": total,
@@ -146,38 +154,36 @@ class CustomizedSnippetsApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account):
+    @with_session
+    @model_validate(CreateSnippetPayload)
+    def post(self, req_data: CreateSnippetPayload, session: Session, current_tenant_id: str, current_user: Account):
         """Create a new customized snippet."""
-        payload = CreateSnippetPayload.model_validate(console_ns.payload or {})
-
         try:
-            snippet_type = SnippetType(payload.type)
+            snippet_type = SnippetType(req_data.type)
         except ValueError:
             snippet_type = SnippetType.NODE
 
         try:
-            if payload.graph is not None:
-                SnippetService.validate_snippet_graph_forbidden_nodes(payload.graph)
+            if req_data.graph is not None:
+                SnippetService.validate_snippet_graph_forbidden_nodes(req_data.graph)
 
             snippet_service = _snippet_service()
             snippet = snippet_service.create_snippet(
                 tenant_id=current_tenant_id,
-                name=payload.name,
-                description=payload.description,
+                name=req_data.name,
+                description=req_data.description,
                 snippet_type=snippet_type,
-                icon_info=payload.icon_info.model_dump() if payload.icon_info else None,
-                input_fields=[f.model_dump() for f in payload.input_fields] if payload.input_fields else None,
+                icon_info=req_data.icon_info.model_dump() if req_data.icon_info else None,
+                input_fields=[f.model_dump() for f in req_data.input_fields] if req_data.input_fields else None,
                 account=current_user,
             )
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return dump_response(SnippetResponse, snippet), 201
+        return dump_response(SnippetResponse, snippet_response(snippet, session=session)), 201
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>")
@@ -189,7 +195,8 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, snippet_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, snippet_id: UUID):
         """Get customized snippet details."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
@@ -200,7 +207,7 @@ class CustomizedSnippetDetailApi(Resource):
         if not snippet:
             raise NotFound("Snippet not found")
 
-        return dump_response(SnippetResponse, snippet), 200
+        return dump_response(SnippetResponse, snippet_response(snippet, session=session)), 200
 
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
@@ -211,45 +218,54 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @with_current_user
     @with_current_tenant_id
-    def patch(self, current_tenant_id: str, current_user: Account, snippet_id: str):
+    @with_session
+    @model_validate(UpdateSnippetPayload)
+    def patch(
+        self,
+        req_data: UpdateSnippetPayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        snippet_id: str,
+    ):
         """Update customized snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
         if not snippet:
             raise NotFound("Snippet not found")
 
-        payload = UpdateSnippetPayload.model_validate(console_ns.payload or {})
-        update_data = payload.model_dump(exclude_unset=True)
+        update_data = req_data.model_dump(exclude_unset=True)
 
         if "icon_info" in update_data and update_data["icon_info"] is not None:
-            update_data["icon_info"] = payload.icon_info.model_dump() if payload.icon_info else None
+            update_data["icon_info"] = req_data.icon_info.model_dump() if req_data.icon_info else None
 
         if not update_data:
             return {"message": "No valid fields to update"}, 400
 
         try:
-            with Session(db.engine, expire_on_commit=False) as session:
-                snippet = session.merge(snippet)
-                snippet = SnippetService.update_snippet(
-                    session=session,
-                    snippet=snippet,
-                    account_id=current_user.id,
-                    data=update_data,
-                )
-                session.commit()
+            snippet = session.merge(snippet)
+            snippet = SnippetService.update_snippet(
+                session=session,
+                snippet=snippet,
+                account_id=current_user.id,
+                data=update_data,
+            )
+            session.commit()
         except ValueError as e:
-            return {"message": str(e)}, 400
+            # Raise rather than return: `with_session` commits on a normal return, so returning here
+            # would persist whatever the update wrote before it rejected the payload. Raising routes
+            # through the decorator's rollback. Status stays 400 and `message` is unchanged; the body
+            # picks up the standard error envelope, as on every other BadRequest in the console API.
+            raise BadRequest(str(e)) from e
 
-        return dump_response(SnippetResponse, snippet), 200
+        return dump_response(SnippetResponse, snippet_response(snippet, session=session)), 200
 
     @console_ns.doc("delete_customized_snippet")
     @console_ns.response(204, "Snippet deleted successfully")
@@ -258,14 +274,14 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_MANAGE, Workspace()))
     @with_current_user
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, current_user: Account, snippet_id: str):
         """Delete customized snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -289,22 +305,20 @@ class CustomizedSnippetExportApi(Resource):
     @console_ns.doc("export_customized_snippet")
     @console_ns.doc(description="Export snippet configuration as DSL")
     @console_ns.doc(params={"snippet_id": "Snippet ID to export"})
-    @console_ns.doc(params=query_params_from_model(IncludeSecretQuery))
+    @console_ns.doc(params=query_params_from_model(SnippetExportQuery))
     @console_ns.response(200, "Snippet exported successfully", console_ns.models[TextFileResponse.__name__])
     @console_ns.response(404, "Snippet not found")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @with_current_tenant_id
     def get(self, current_tenant_id: str, snippet_id: str):
         """Export snippet as DSL."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -312,11 +326,18 @@ class CustomizedSnippetExportApi(Resource):
             raise NotFound("Snippet not found")
 
         # Get include_secret parameter
-        query = IncludeSecretQuery.model_validate(request.args.to_dict())
+        query = SnippetExportQuery.model_validate(request.args.to_dict())
 
         with Session(db.engine) as session:
             export_service = SnippetDslService(session)
-            result = export_service.export_snippet_dsl(snippet=snippet, include_secret=query.include_secret == "true")
+            try:
+                result = export_service.export_snippet_dsl(
+                    snippet=snippet,
+                    include_secret=query.include_secret == "true",
+                    workflow_id=query.workflow_id,
+                )
+            except ValueError as exc:
+                raise NotFound(str(exc)) from exc
 
         # Set filename with .snippet extension
         filename = f"{snippet.name}.snippet"
@@ -344,24 +365,21 @@ class CustomizedSnippetImportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account):
+    @model_validate(SnippetImportPayload)
+    def post(self, req_data: SnippetImportPayload, session: Session, current_user: Account):
         """Import snippet from DSL."""
-        payload = SnippetImportPayload.model_validate(console_ns.payload or {})
-
         import_service = SnippetDslService(session)
         result = import_service.import_snippet(
             account=current_user,
-            import_mode=payload.mode,
-            yaml_content=payload.yaml_content,
-            yaml_url=payload.yaml_url,
-            snippet_id=payload.snippet_id,
-            name=payload.name,
-            description=payload.description,
+            import_mode=req_data.mode,
+            yaml_content=req_data.yaml_content,
+            yaml_url=req_data.yaml_url,
+            snippet_id=req_data.snippet_id,
+            name=req_data.name,
+            description=req_data.description,
         )
 
         # Return appropriate status code based on result
@@ -384,9 +402,7 @@ class CustomizedSnippetImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, import_id: str):
@@ -414,15 +430,13 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @with_current_tenant_id
     def get(self, current_tenant_id: str, snippet_id: str):
         """Check dependencies for a snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 
@@ -452,7 +466,7 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
         """Increment snippet use count when it is inserted into a workflow."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
-            snippet_id=str(snippet_id),
+            snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
 

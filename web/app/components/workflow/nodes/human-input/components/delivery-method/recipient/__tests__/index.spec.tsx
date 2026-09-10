@@ -1,5 +1,7 @@
+import type { ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { withSelectorKey } from '@/test/i18n-mock'
 import Recipient from '../index'
 
@@ -11,14 +13,15 @@ const mockConsoleState = vi.hoisted(() => ({
   currentWorkspace: { name: "Dify's Lab" },
 }))
 
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)

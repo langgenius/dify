@@ -133,7 +133,7 @@ describe('SnippetInfoDropdown', () => {
     it('should render the dropdown trigger button', () => {
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
     })
 
     it('should render nothing without snippet create or management permission', () => {
@@ -149,7 +149,7 @@ describe('SnippetInfoDropdown', () => {
       mockWorkspacePermissionKeys = ['snippets.create_and_modify']
 
       const { unmount } = render(<SnippetInfoDropdown snippet={mockSnippet} />)
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(screen.getByText('snippet.menu.editInfo')).toBeInTheDocument()
       expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
@@ -158,7 +158,7 @@ describe('SnippetInfoDropdown', () => {
       unmount()
       mockWorkspacePermissionKeys = ['snippets.management']
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(screen.queryByText('snippet.menu.editInfo')).not.toBeInTheDocument()
       expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
@@ -177,7 +177,7 @@ describe('SnippetInfoDropdown', () => {
       )
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByText('snippet.menu.editInfo'))
 
       expect(screen.getByTestId('create-snippet-dialog')).toBeInTheDocument()
@@ -216,7 +216,7 @@ describe('SnippetInfoDropdown', () => {
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByText('snippet.menu.exportSnippet'))
 
       await waitFor(() => {
@@ -236,7 +236,7 @@ describe('SnippetInfoDropdown', () => {
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByText('snippet.menu.exportSnippet'))
 
       await waitFor(() => {
@@ -257,7 +257,7 @@ describe('SnippetInfoDropdown', () => {
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByText('snippet.menu.deleteSnippet'))
 
       expect(screen.getByText('snippet.deleteConfirmTitle')).toBeInTheDocument()

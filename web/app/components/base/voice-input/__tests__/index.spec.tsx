@@ -101,7 +101,7 @@ describe('VoiceInput', () => {
 
       expect(await screen.findByText('common.voiceInput.speaking')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.voiceInput.stop' })).toBeInTheDocument()
-      expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:00')
+      expect(screen.getByRole('timer')).toHaveTextContent('00:00')
       expect(getByteFrequencyData).toHaveBeenCalledTimes(1)
     })
 
@@ -301,7 +301,7 @@ describe('VoiceInput', () => {
 
       act(() => vi.advanceTimersByTime(1000))
 
-      expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:01')
+      expect(screen.getByRole('timer')).toHaveTextContent('00:01')
     })
 
     it('should stop automatically at ten minutes', async () => {
@@ -312,7 +312,7 @@ describe('VoiceInput', () => {
       await act(async () => {})
 
       expect(recorderStop).toHaveBeenCalledTimes(1)
-      expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('10:00')
+      expect(screen.getByRole('timer')).toHaveTextContent('10:00')
     })
   })
 })

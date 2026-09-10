@@ -1,28 +1,16 @@
-/* oxlint-disable react/only-export-components */
 'use client'
+import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
 import type { SelectorParam } from 'i18next'
 import type { FC } from 'react'
 import type { ChartRow } from './app-chart-utils'
+import { useQuery } from '@tanstack/react-query'
 import ReactECharts from 'echarts-for-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
-import {
-  useAppAverageResponseTime,
-  useAppAverageSessionInteractions,
-  useAppDailyConversations,
-  useAppDailyEndUsers,
-  useAppDailyMessages,
-  useAppSatisfactionRate,
-  useAppTokenCosts,
-  useAppTokensPerSecond,
-  useWorkflowAverageInteractions,
-  useWorkflowDailyConversations,
-  useWorkflowDailyTerminals,
-  useWorkflowTokenCosts,
-} from '@/service/use-apps'
+import { consoleQuery } from '@/service/console'
 import {
   buildChartOptions,
   CHART_TYPE_CONFIG,
@@ -107,7 +95,10 @@ const Chart: React.FC<IChartProps> = ({
     >
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center">
-          <div className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary">
+          <div
+            className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary"
+            title={title}
+          >
             {title}
           </div>
           {explanation && (
@@ -147,13 +138,10 @@ type ChartResponse = {
   data: ChartRow[]
 }
 
-type UseChartData = (
+type ChartQueryOptions<TData extends ChartResponse> = (
   id: string,
   query?: PeriodParams['query'],
-) => {
-  data?: ChartResponse
-  isLoading: boolean
-}
+) => UseQueryOptions<TData, Error, TData, QueryKey>
 
 const CHART_TRANSLATION_SELECTOR_MAP = {
   'analysis.activeUsers.explanation': ($) => $['analysis.activeUsers.explanation'],
@@ -182,11 +170,11 @@ const CHART_TRANSLATION_SELECTOR_MAP = {
 
 type ChartTranslationKey = keyof typeof CHART_TRANSLATION_SELECTOR_MAP
 
-type BizChartConfig = {
+type BizChartConfig<TData extends ChartResponse> = {
   chartType: keyof typeof CHART_TYPE_CONFIG
   titleKey: ChartTranslationKey
   explanationKey: ChartTranslationKey
-  useChartData: UseChartData
+  queryOptions: ChartQueryOptions<TData>
   valueKey?: string
   emptyValueKey?: string
   yMaxWhenEmpty: number
@@ -195,21 +183,21 @@ type BizChartConfig = {
   className?: string
 }
 
-const createBizChartComponent = ({
+const createBizChartComponent = <TData extends ChartResponse>({
   chartType,
   titleKey,
   explanationKey,
-  useChartData,
+  queryOptions,
   valueKey,
   emptyValueKey,
   yMaxWhenEmpty,
   isAvg,
   unitKey,
   className,
-}: BizChartConfig): FC<IBizChartProps> => {
+}: BizChartConfig<TData>): FC<IBizChartProps> => {
   const BizChart: FC<IBizChartProps> = ({ id, period }) => {
     const { t } = useTranslation()
-    const { data: response, isLoading } = useChartData(id, period.query)
+    const { data: response, isLoading } = useQuery(queryOptions(id, period.query))
 
     if (isLoading || !response) return <Loading />
 
@@ -257,7 +245,10 @@ export const MessagesChart = createBizChartComponent({
   chartType: 'messages',
   titleKey: 'analysis.totalMessages.title',
   explanationKey: 'analysis.totalMessages.explanation',
-  useChartData: useAppDailyMessages,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.dailyMessages.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'message_count',
   emptyValueKey: 'message_count',
   yMaxWhenEmpty: 500,
@@ -267,7 +258,10 @@ export const ConversationsChart = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.totalConversations.title',
   explanationKey: 'analysis.totalConversations.explanation',
-  useChartData: useAppDailyConversations,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.dailyConversations.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'conversation_count',
   emptyValueKey: 'conversation_count',
   yMaxWhenEmpty: 500,
@@ -277,7 +271,10 @@ export const EndUsersChart = createBizChartComponent({
   chartType: 'endUsers',
   titleKey: 'analysis.activeUsers.title',
   explanationKey: 'analysis.activeUsers.explanation',
-  useChartData: useAppDailyEndUsers,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.dailyEndUsers.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'terminal_count',
   emptyValueKey: 'terminal_count',
   yMaxWhenEmpty: 500,
@@ -287,7 +284,10 @@ export const AvgSessionInteractions = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.avgSessionInteractions.title',
   explanationKey: 'analysis.avgSessionInteractions.explanation',
-  useChartData: useAppAverageSessionInteractions,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.averageSessionInteractions.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'interactions',
   emptyValueKey: 'interactions',
   yMaxWhenEmpty: 500,
@@ -298,7 +298,10 @@ export const AvgResponseTime = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.avgResponseTime.title',
   explanationKey: 'analysis.avgResponseTime.explanation',
-  useChartData: useAppAverageResponseTime,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.averageResponseTime.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'latency',
   emptyValueKey: 'latency',
   yMaxWhenEmpty: 500,
@@ -310,7 +313,10 @@ export const TokenPerSecond = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.tps.title',
   explanationKey: 'analysis.tps.explanation',
-  useChartData: useAppTokensPerSecond,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.tokensPerSecond.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'tps',
   emptyValueKey: 'tps',
   yMaxWhenEmpty: 100,
@@ -323,7 +329,10 @@ export const UserSatisfactionRate = createBizChartComponent({
   chartType: 'endUsers',
   titleKey: 'analysis.userSatisfactionRate.title',
   explanationKey: 'analysis.userSatisfactionRate.explanation',
-  useChartData: useAppSatisfactionRate,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.userSatisfactionRate.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'rate',
   emptyValueKey: 'rate',
   yMaxWhenEmpty: 1000,
@@ -335,7 +344,10 @@ export const CostChart = createBizChartComponent({
   chartType: 'costs',
   titleKey: 'analysis.tokenUsage.title',
   explanationKey: 'analysis.tokenUsage.explanation',
-  useChartData: useAppTokenCosts,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.tokenCosts.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'token_count',
   emptyValueKey: 'token_count',
   yMaxWhenEmpty: 100,
@@ -345,7 +357,10 @@ export const WorkflowMessagesChart = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.totalMessages.title',
   explanationKey: 'analysis.totalMessages.explanation',
-  useChartData: useWorkflowDailyConversations,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.dailyConversations.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'runs',
   emptyValueKey: 'runs',
   yMaxWhenEmpty: 500,
@@ -355,7 +370,10 @@ export const WorkflowDailyTerminalsChart = createBizChartComponent({
   chartType: 'endUsers',
   titleKey: 'analysis.activeUsers.title',
   explanationKey: 'analysis.activeUsers.explanation',
-  useChartData: useWorkflowDailyTerminals,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.dailyTerminals.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'terminal_count',
   emptyValueKey: 'terminal_count',
   yMaxWhenEmpty: 500,
@@ -365,7 +383,10 @@ export const WorkflowCostChart = createBizChartComponent({
   chartType: 'workflowCosts',
   titleKey: 'analysis.tokenUsage.title',
   explanationKey: 'analysis.tokenUsage.explanation',
-  useChartData: useWorkflowTokenCosts,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.tokenCosts.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'token_count',
   emptyValueKey: 'token_count',
   yMaxWhenEmpty: 100,
@@ -375,7 +396,10 @@ export const AvgUserInteractions = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.avgUserInteractions.title',
   explanationKey: 'analysis.avgUserInteractions.explanation',
-  useChartData: useWorkflowAverageInteractions,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.averageAppInteractions.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'interactions',
   emptyValueKey: 'interactions',
   yMaxWhenEmpty: 500,

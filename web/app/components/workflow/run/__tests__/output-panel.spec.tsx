@@ -1,6 +1,7 @@
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FileResponse } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
 import OutputPanel from '../output-panel'
 
@@ -37,8 +38,19 @@ vi.mock('@/app/components/workflow/run/status-container', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ language, value, height }: { language: string; value: string; height?: number }) => (
+  default: ({
+    language,
+    value,
+    height,
+    title,
+  }: {
+    language: string
+    value: string
+    height?: number
+    title?: React.ReactNode
+  }) => (
     <div data-height={height} data-language={language} data-testid="code-editor" data-value={value}>
+      <div>{title}</div>
       {value}
     </div>
   ),
@@ -136,6 +148,17 @@ describe('OutputPanel', () => {
   "score": 1
 }`,
     )
+  })
+
+  it('keeps the non-interactive output title out of the tab order', async () => {
+    const user = userEvent.setup()
+
+    render(<OutputPanel height={200} outputs={{ answer: 'hello', score: 1 }} />)
+
+    const outputTitle = screen.getByText('Output')
+    await user.tab()
+
+    expect(outputTitle).not.toHaveFocus()
   })
 
   it('skips the code editor when structured outputs have no positive height', () => {

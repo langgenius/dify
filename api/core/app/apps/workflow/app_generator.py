@@ -686,8 +686,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             try:
                 with active_workflow_task(application_generate_entity.task_id):
                     runner.run()
-            except GenerateTaskStoppedError as e:
-                logger.warning("Task stopped: %s", str(e))
+            except GenerateTaskStoppedError:
+                logger.warning("Task stopped", exc_info=True)
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(

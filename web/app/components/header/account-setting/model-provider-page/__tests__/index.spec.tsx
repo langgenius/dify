@@ -1,18 +1,38 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
 import { act, fireEvent, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
+  ModelTypeEnum,
   QuotaUnitEnum,
 } from '../declarations'
 import ModelProviderPage from '../index'
+
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
 
 type MockReferenceSetting = {
   permission: Record<string, never>
@@ -28,6 +48,11 @@ type MockReferenceSetting = {
 const { mockSetSettingsDestination, mockSaveAutoUpgrade } = vi.hoisted(() => ({
   mockSetSettingsDestination: vi.fn(),
   mockSaveAutoUpgrade: vi.fn(),
+}))
+
+const { mockDefaultModelQuery, mockPluginSettingsAccess } = vi.hoisted(() => ({
+  mockDefaultModelQuery: vi.fn(),
+  mockPluginSettingsAccess: { canSetPluginPreferences: true },
 }))
 
 const { mockReferenceSetting, mockAutoUpgradeError } = vi.hoisted(() => ({
@@ -46,11 +71,21 @@ const { mockReferenceSetting, mockAutoUpgradeError } = vi.hoisted(() => ({
   },
 }))
 
-const { mockProviderContextState, mockRefreshModelProviders } = vi.hoisted(() => ({
-  mockProviderContextState: {
-    isLoadingModelProviders: false,
+const { mockSummaryState } = vi.hoisted(() => ({
+  mockSummaryState: {
+    isLoading: false,
+    plugins: {} as Record<
+      string,
+      {
+        installation_id: string
+        plugin_id: string
+        plugin_unique_identifier: string
+        runtime_type: string
+        source: 'github' | 'marketplace' | 'package' | 'remote'
+        version: string
+      }
+    >,
   },
-  mockRefreshModelProviders: vi.fn(),
 }))
 
 const { mockInstalledModelPlugins, mockUseInstalledPluginList } = vi.hoisted(() => ({
@@ -67,22 +102,6 @@ const mockQuotaConfig = {
   quota_used: 1,
   last_used: 0,
   is_valid: true,
-}
-
-const renderModelProviderPage = (
-  props: {
-    enableMarketplace?: boolean
-    searchText?: string
-    stickyToolbar?: boolean
-  } = {},
-) => {
-  const { searchText = '', enableMarketplace = true, stickyToolbar = true } = props
-  return renderWithConsoleQuery(
-    <ModelProviderPage searchText={searchText} stickyToolbar={stickyToolbar} />,
-    {
-      systemFeatures: { enable_marketplace: enableMarketplace },
-    },
-  )
 }
 
 const saveUpdateSettings = () => {
@@ -159,9 +178,22 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
   }
 }
 
-const mockProviders = [
+type MockProvider = {
+  provider: string
+  plugin_id?: string
+  label: { en_US: string }
+  custom_configuration: { status: CustomConfigurationStatusEnum }
+  system_configuration: {
+    enabled: boolean
+    current_quota_type: CurrentSystemQuotaTypeEnum
+    quota_configurations: (typeof mockQuotaConfig)[]
+  }
+}
+
+const mockProviders: MockProvider[] = [
   {
     provider: 'openai',
+    plugin_id: 'langgenius/openai',
     label: { en_US: 'OpenAI' },
     custom_configuration: { status: CustomConfigurationStatusEnum.active },
     system_configuration: {
@@ -172,6 +204,7 @@ const mockProviders = [
   },
   {
     provider: 'anthropic',
+    plugin_id: 'langgenius/anthropic',
     label: { en_US: 'Anthropic' },
     custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
     system_configuration: {
@@ -182,13 +215,52 @@ const mockProviders = [
   },
 ]
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: mockProviders,
-    isLoadingModelProviders: mockProviderContextState.isLoadingModelProviders,
-    refreshModelProviders: mockRefreshModelProviders,
-  }),
-}))
+const renderModelProviderPage = (
+  props: {
+    enableMarketplace?: boolean
+    searchText?: string
+    stickyToolbar?: boolean
+  } = {},
+) => {
+  const { searchText = '', enableMarketplace = true, stickyToolbar = true } = props
+  const queryClient = createConsoleQueryClient()
+  if (mockSummaryState.isLoading) {
+    queryClient.setQueryDefaults(
+      consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+      { queryFn: () => new Promise(() => {}) },
+    )
+  } else {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+      {
+        data: mockProviders.map(
+          (provider) =>
+            ({
+              ...providerSummaryFixture,
+              ...{
+                ...provider,
+                is_configured:
+                  provider.custom_configuration.status === CustomConfigurationStatusEnum.active ||
+                  provider.system_configuration.enabled,
+              },
+              custom_configuration: {
+                ...providerSummaryFixture.custom_configuration,
+                ...provider.custom_configuration,
+              },
+            }) satisfies ModelProviderSummaryResponse,
+        ),
+        plugins: mockSummaryState.plugins,
+      },
+    )
+  }
+  return renderWithConsoleQuery(
+    <ModelProviderPage searchText={searchText} stickyToolbar={stickyToolbar} />,
+    {
+      queryClient,
+      systemFeatures: { enable_marketplace: enableMarketplace },
+    },
+  )
+}
 
 const mockDefaultModels: Record<string, { data: unknown; isLoading: boolean }> = {
   llm: { data: null, isLoading: false },
@@ -199,7 +271,10 @@ const mockDefaultModels: Record<string, { data: unknown; isLoading: boolean }> =
 }
 
 vi.mock('../hooks', () => ({
-  useDefaultModel: (type: string) => mockDefaultModels[type] ?? { data: null, isLoading: false },
+  useDefaultModel: (type: string, options?: { enabled?: boolean }) => {
+    mockDefaultModelQuery(type, options)
+    return mockDefaultModels[type] ?? { data: null, isLoading: false }
+  },
   useLanguage: () => 'en_US',
 }))
 
@@ -211,17 +286,17 @@ vi.mock('../provider-added-card', () => ({
   default: ({
     notConfigured,
     provider,
-    pluginDetail,
+    pluginSummary,
   }: {
     notConfigured?: boolean
     provider: { provider: string }
-    pluginDetail?: { plugin_id: string; source?: string }
+    pluginSummary?: { plugin_id: string; source?: string }
   }) => (
     <div
       data-testid="provider-card"
       data-not-configured={String(!!notConfigured)}
-      data-plugin-id={pluginDetail?.plugin_id ?? ''}
-      data-plugin-source={pluginDetail?.source ?? ''}
+      data-plugin-id={pluginSummary?.plugin_id ?? ''}
+      data-plugin-source={pluginSummary?.source ?? ''}
     >
       {provider.provider}
     </div>
@@ -249,7 +324,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   }),
   usePluginSettingsAccess: () => ({
     canSetPermissions: true,
-    canSetPluginPreferences: true,
+    canSetPluginPreferences: mockPluginSettingsAccess.canSetPluginPreferences,
   }),
   default: () => ({
     referenceSetting: mockReferenceSetting,
@@ -287,8 +362,8 @@ vi.mock('nuqs', async (importOriginal) => {
   return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const originalWorkspaces = actual.consoleQuery.workspaces
   return {
     ...actual,
@@ -299,6 +374,18 @@ vi.mock('@/service/client', async (importOriginal) => {
             ...originalWorkspaces,
             current: {
               ...originalWorkspaces.current,
+              modelProviders: {
+                summary: {
+                  get: {
+                    queryKey: () =>
+                      originalWorkspaces.current.modelProviders.summary.get.queryKey(),
+                    queryOptions: () => ({
+                      ...originalWorkspaces.current.modelProviders.summary.get.queryOptions(),
+                      queryFn: () => new Promise(() => {}),
+                    }),
+                  },
+                },
+              },
               plugin: {
                 ...originalWorkspaces.current.plugin,
                 list: {
@@ -352,9 +439,10 @@ describe('ModelProviderPage', () => {
     vi.useFakeTimers()
     vi.clearAllMocks()
     mockUseInstalledPluginList.mockClear()
-    mockRefreshModelProviders.mockClear()
     mockInstalledModelPlugins.value = []
-    mockProviderContextState.isLoadingModelProviders = false
+    mockSummaryState.isLoading = false
+    mockSummaryState.plugins = {}
+    mockPluginSettingsAccess.canSetPluginPreferences = true
     mockAutoUpgradeError.value = undefined
     mockReferenceSetting.auto_upgrade = {
       strategy_setting: 'latest',
@@ -371,6 +459,7 @@ describe('ModelProviderPage', () => {
       mockProviders.length,
       {
         provider: 'openai',
+        plugin_id: 'langgenius/openai',
         label: { en_US: 'OpenAI' },
         custom_configuration: { status: CustomConfigurationStatusEnum.active },
         system_configuration: {
@@ -381,6 +470,7 @@ describe('ModelProviderPage', () => {
       },
       {
         provider: 'anthropic',
+        plugin_id: 'langgenius/anthropic',
         label: { en_US: 'Anthropic' },
         custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
         system_configuration: {
@@ -408,6 +498,24 @@ describe('ModelProviderPage', () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
+  })
+
+  it('should skip system model settings without plugin preference access', () => {
+    mockPluginSettingsAccess.canSetPluginPreferences = false
+
+    renderModelProviderPage()
+
+    expect(mockDefaultModelQuery.mock.calls).toEqual([
+      [ModelTypeEnum.textGeneration, { enabled: false }],
+      [ModelTypeEnum.textEmbedding, { enabled: false }],
+      [ModelTypeEnum.rerank, { enabled: false }],
+      [ModelTypeEnum.speech2text, { enabled: false }],
+      [ModelTypeEnum.tts, { enabled: false }],
+    ])
+    expect(screen.queryByTestId('system-model-selector')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('should align the toolbar without extra internal top offset', () => {
@@ -531,9 +639,10 @@ describe('ModelProviderPage', () => {
     expect(target).toContainElement(screen.getByText('common.modelProvider.emptyProviderTitle'))
   })
 
-  it('should use the model plugin installation list to attach plugin detail to provider cards', () => {
+  it('should use the summary plugin map to attach plugin metadata to provider cards', () => {
     mockProviders.splice(0, mockProviders.length, {
       provider: 'langgenius/openai/openai',
+      plugin_id: 'langgenius/openai-marketplace',
       label: { en_US: 'OpenAI' },
       custom_configuration: { status: CustomConfigurationStatusEnum.active },
       system_configuration: {
@@ -542,25 +651,23 @@ describe('ModelProviderPage', () => {
         quota_configurations: [mockQuotaConfig],
       },
     })
-    mockInstalledModelPlugins.value = [
-      createPluginDetail({
-        plugin_id: 'langgenius/openai',
-        declaration: createPluginDeclaration({
-          plugin_unique_identifier: 'langgenius/openai:1.0.0',
-          name: 'openai',
-          label: { en_US: 'OpenAI Plugin' } as unknown as PluginDeclaration['label'],
-        }),
-      }),
-    ]
+    mockSummaryState.plugins = {
+      'langgenius/openai-marketplace': {
+        installation_id: 'openai-installation',
+        plugin_id: 'langgenius/openai-marketplace',
+        plugin_unique_identifier: 'langgenius/openai:1.0.0',
+        runtime_type: 'local',
+        source: 'marketplace',
+        version: '1.0.0',
+      },
+    }
 
     renderModelProviderPage()
 
-    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(false, 100, {
-      category: PluginCategoryEnum.model,
-    })
+    expect(mockUseInstalledPluginList).not.toHaveBeenCalled()
     expect(screen.getByTestId('provider-card')).toHaveAttribute(
       'data-plugin-id',
-      'langgenius/openai',
+      'langgenius/openai-marketplace',
     )
     expect(screen.queryByText('OpenAI Plugin')).not.toBeInTheDocument()
   })
@@ -587,24 +694,25 @@ describe('ModelProviderPage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should refresh model providers once when a debugging model plugin is missing from providers', () => {
-    mockInstalledModelPlugins.value = [
-      createPluginDetail({
+  it('should not refresh providers when remote plugin metadata already comes from summary', () => {
+    mockSummaryState.plugins = {
+      'langgenius/debug-model': {
+        installation_id: 'debug-installation',
         plugin_id: 'langgenius/debug-model',
-        declaration: createPluginDeclaration({
-          label: { en_US: 'Debug Model' } as unknown as PluginDeclaration['label'],
-        }),
-      }),
-    ]
+        plugin_unique_identifier: 'langgenius/debug-model:1.0.0',
+        runtime_type: 'remote',
+        source: 'remote',
+        version: '1.0.0',
+      },
+    }
 
     renderModelProviderPage()
-
-    expect(mockRefreshModelProviders).toHaveBeenCalledTimes(1)
   })
 
-  it('should prefer debugging plugin detail when an installed model plugin shares the same plugin id', () => {
+  it('should render remote source from the authoritative summary plugin entry', () => {
     mockProviders.splice(0, mockProviders.length, {
       provider: 'langgenius/openai/openai',
+      plugin_id: 'langgenius/openai',
       label: { en_US: 'OpenAI' },
       custom_configuration: { status: CustomConfigurationStatusEnum.active },
       system_configuration: {
@@ -613,26 +721,16 @@ describe('ModelProviderPage', () => {
         quota_configurations: [mockQuotaConfig],
       },
     })
-    mockInstalledModelPlugins.value = [
-      createPluginDetail({
+    mockSummaryState.plugins = {
+      'langgenius/openai': {
+        installation_id: 'openai-debug-installation',
         plugin_id: 'langgenius/openai',
-        declaration: createPluginDeclaration({
-          plugin_unique_identifier: 'langgenius/openai:debug',
-          name: 'openai',
-          label: { en_US: 'OpenAI Debug Plugin' } as unknown as PluginDeclaration['label'],
-        }),
-        source: PluginSource.debugging,
-      }),
-      createPluginDetail({
-        plugin_id: 'langgenius/openai',
-        declaration: createPluginDeclaration({
-          plugin_unique_identifier: 'langgenius/openai:1.0.0',
-          name: 'openai',
-          label: { en_US: 'OpenAI Installed Plugin' } as unknown as PluginDeclaration['label'],
-        }),
-        source: PluginSource.marketplace,
-      }),
-    ]
+        plugin_unique_identifier: 'langgenius/openai:debug',
+        runtime_type: 'remote',
+        source: 'remote',
+        version: '1.0.0',
+      },
+    }
 
     renderModelProviderPage()
 
@@ -640,18 +738,15 @@ describe('ModelProviderPage', () => {
       'data-plugin-id',
       'langgenius/openai',
     )
-    expect(screen.getByTestId('provider-card')).toHaveAttribute(
-      'data-plugin-source',
-      PluginSource.debugging,
-    )
-    expect(mockRefreshModelProviders).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('provider-card')).toHaveAttribute('data-plugin-source', 'remote')
   })
 
   it('should show provider placeholders while model providers are loading', () => {
-    mockProviderContextState.isLoadingModelProviders = true
+    mockSummaryState.isLoading = true
 
     renderModelProviderPage()
 
+    expect(mockUseInstalledPluginList).not.toHaveBeenCalled()
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByTestId('provider-card')).not.toBeInTheDocument()
     expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
@@ -857,6 +952,7 @@ describe('ModelProviderPage', () => {
       },
       {
         provider: 'langgenius/debug-model/debug-model',
+        plugin_id: 'langgenius/debug-model',
         label: { en_US: 'Debug Model' },
         custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
         system_configuration: {
@@ -866,16 +962,16 @@ describe('ModelProviderPage', () => {
         },
       },
     )
-    mockInstalledModelPlugins.value = [
-      createPluginDetail({
+    mockSummaryState.plugins = {
+      'langgenius/debug-model': {
+        installation_id: 'debug-installation',
         plugin_id: 'langgenius/debug-model',
-        declaration: createPluginDeclaration({
-          plugin_unique_identifier: 'langgenius/debug-model:1.0.0',
-          name: 'debug-model',
-          label: { en_US: 'Debug Model' } as unknown as PluginDeclaration['label'],
-        }),
-      }),
-    ]
+        plugin_unique_identifier: 'langgenius/debug-model:1.0.0',
+        runtime_type: 'remote',
+        source: 'remote',
+        version: '1.0.0',
+      },
+    }
 
     renderModelProviderPage()
 

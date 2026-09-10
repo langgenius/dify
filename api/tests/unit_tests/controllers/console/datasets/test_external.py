@@ -1,28 +1,34 @@
 import inspect
-from types import SimpleNamespace
+import json
+from datetime import datetime
 from typing import Any
-from unittest.mock import ANY, MagicMock, PropertyMock, patch
+from unittest.mock import ANY, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.datasets.external import (
-    BedrockRetrievalApi,
     ExternalApiTemplateApi,
     ExternalApiTemplateListApi,
+    ExternalApiTemplateListQuery,
     ExternalApiUseCheckApi,
     ExternalDatasetCreateApi,
+    ExternalHitTestingPayload,
+    ExternalKnowledgeApiPayload,
     ExternalKnowledgeHitTestingApi,
 )
+from fields.dataset_fields import DatasetDetailResponse
 from models.account import Account, TenantAccountRole
+from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from services.dataset_service import DatasetService
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
-from services.knowledge_service import ExternalDatasetTestService
 
 
 @pytest.fixture
@@ -60,16 +66,34 @@ def _external_api_dict(api_id: str = "api-1") -> dict:
     }
 
 
-def _external_api_object(api_id: str = "api-1") -> SimpleNamespace:
+def _external_api_object(session: Session, api_id: str = "api-1") -> ExternalKnowledgeApis:
     payload = _external_api_dict(api_id)
-    dataset_bindings = [SimpleNamespace(**binding) for binding in payload["dataset_bindings"]]
-    return SimpleNamespace(
-        **{
-            **payload,
-            "dataset_bindings": dataset_bindings,
-            "get_dataset_bindings": MagicMock(return_value=dataset_bindings),
-        }
+    api = ExternalKnowledgeApis(
+        name=payload["name"],
+        description=payload["description"],
+        tenant_id=payload["tenant_id"],
+        settings=json.dumps(payload["settings"]),
+        created_by=payload["created_by"],
+        updated_by=None,
     )
+    api.id = api_id
+    api.created_at = datetime.fromisoformat(payload["created_at"])
+    bound_dataset = Dataset(
+        id=payload["dataset_bindings"][0]["id"],
+        tenant_id=payload["tenant_id"],
+        name=payload["dataset_bindings"][0]["name"],
+        created_by=payload["created_by"],
+    )
+    binding = ExternalKnowledgeBindings(
+        tenant_id=payload["tenant_id"],
+        external_knowledge_api_id=api_id,
+        dataset_id=bound_dataset.id,
+        external_knowledge_id=f"knowledge-{api_id}",
+        created_by=payload["created_by"],
+    )
+    session.add_all([api, bound_dataset, binding])
+    session.flush()
+    return api
 
 
 def _expected_dataset_detail_payload() -> dict[str, Any]:
@@ -142,28 +166,40 @@ def _expected_dataset_detail_payload() -> dict[str, Any]:
     }
 
 
-def _dataset_detail_object() -> SimpleNamespace:
+def _dataset() -> Dataset:
     payload = _expected_dataset_detail_payload()
-    return SimpleNamespace(
-        **{
-            **payload,
-            "summary_index_setting": SimpleNamespace(**payload["summary_index_setting"]),
-            "tags": [SimpleNamespace(**tag) for tag in payload["tags"]],
-            "external_knowledge_info": SimpleNamespace(**payload["external_knowledge_info"]),
-            "external_retrieval_model": SimpleNamespace(**payload["external_retrieval_model"]),
-            "doc_metadata": [SimpleNamespace(**item) for item in payload["doc_metadata"]],
-            "icon_info": SimpleNamespace(**payload["icon_info"]),
-        }
+    return Dataset(
+        id=payload["id"],
+        tenant_id="tenant-1",
+        name=payload["name"],
+        description=payload["description"],
+        provider=payload["provider"],
+        permission=payload["permission"],
+        data_source_type=payload["data_source_type"],
+        indexing_technique=payload["indexing_technique"],
+        created_by=payload["created_by"],
     )
 
 
-class TestExternalApiTemplateListApi:
+def _dataset_detail_response() -> DatasetDetailResponse:
+    return DatasetDetailResponse.model_validate(_expected_dataset_detail_payload())
+
+
+class _UsesSQLiteSession:
+    session: Session
+
+    @pytest.fixture(autouse=True)
+    def _inject_sqlite_session(self, sqlite_session: Session) -> None:
+        self.session = sqlite_session
+
+
+class TestExternalApiTemplateListApi(_UsesSQLiteSession):
     def test_get_success(self, app: Flask):
         api = ExternalApiTemplateListApi()
         method = inspect.unwrap(api.get)
 
-        api_item = _external_api_object("api-1")
-        session = MagicMock()
+        session = self.session
+        api_item = _external_api_object(session, "api-1")
 
         with (
             app.test_request_context("/?page=2&limit=1&keyword=vector"),
@@ -173,7 +209,9 @@ class TestExternalApiTemplateListApi:
                 return_value=([api_item], 3),
             ) as get_external_knowledge_apis,
         ):
-            resp, status = method(api, session, "tenant-1")
+            resp, status = method(
+                api, ExternalApiTemplateListQuery(page=2, limit=1, keyword="vector"), session, "tenant-1"
+            )
 
         assert status == 200
         assert resp == {
@@ -183,7 +221,6 @@ class TestExternalApiTemplateListApi:
             "total": 3,
             "page": 2,
         }
-        api_item.get_dataset_bindings.assert_called_once_with(session=session)
         get_external_knowledge_apis.assert_called_once_with(2, 1, "tenant-1", "vector", session=ANY)
 
     def test_post_success_uses_validated_payload_and_returns_template(self, app: Flask, current_user: Account):
@@ -199,8 +236,8 @@ class TestExternalApiTemplateListApi:
                 "timeout": 30,
             },
         }
-        created = _external_api_object("api-created")
-        session = MagicMock()
+        session = self.session
+        created = _external_api_object(session, "api-created")
 
         with (
             app.test_request_context("/", json=payload),
@@ -212,11 +249,12 @@ class TestExternalApiTemplateListApi:
                 return_value=created,
             ) as create_external_knowledge_api,
         ):
-            resp, status = method(api, session, "tenant-1", current_user)
+            resp, status = method(
+                api, ExternalKnowledgeApiPayload.model_validate(payload), session, "tenant-1", current_user
+            )
 
         assert status == 201
         assert resp == _external_api_dict("api-created")
-        created.get_dataset_bindings.assert_called_once_with(session=session)
         validate_api_list.assert_called_once_with(payload["settings"])
         create_external_knowledge_api.assert_called_once_with(
             tenant_id="tenant-1",
@@ -238,7 +276,7 @@ class TestExternalApiTemplateListApi:
             patch.object(ExternalDatasetService, "validate_api_list"),
         ):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, ExternalKnowledgeApiPayload.model_validate(payload), self.session, "tenant-1", current_user)
 
     def test_post_duplicate_name(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateListApi()
@@ -257,15 +295,15 @@ class TestExternalApiTemplateListApi:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, ExternalKnowledgeApiPayload.model_validate(payload), self.session, "tenant-1", current_user)
 
 
-class TestExternalApiTemplateApi:
+class TestExternalApiTemplateApi(_UsesSQLiteSession):
     def test_get_success_returns_template_contract(self, app: Flask):
         api = ExternalApiTemplateApi()
         method = inspect.unwrap(api.get)
-        template = _external_api_object("api-detail")
-        session = MagicMock()
+        session = self.session
+        template = _external_api_object(session, "api-detail")
 
         with (
             app.test_request_context("/"),
@@ -279,7 +317,6 @@ class TestExternalApiTemplateApi:
 
         assert status == 200
         assert resp == _external_api_dict("api-detail")
-        template.get_dataset_bindings.assert_called_once_with(session=session)
         get_external_knowledge_api.assert_called_once_with(
             external_knowledge_api_id="api-detail", tenant_id="tenant-1", session=session
         )
@@ -297,7 +334,7 @@ class TestExternalApiTemplateApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), "tenant-1", "api-id")
+                method(api, self.session, "tenant-1", "api-id")
 
     def test_patch_success_uses_validated_payload_and_returns_template(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateApi()
@@ -311,8 +348,8 @@ class TestExternalApiTemplateApi:
                 "headers": {"X-Version": "2"},
             },
         }
-        updated = _external_api_object("api-updated")
-        session = MagicMock()
+        session = self.session
+        updated = _external_api_object(session, "api-updated")
 
         with (
             app.test_request_context("/", json=payload),
@@ -324,11 +361,17 @@ class TestExternalApiTemplateApi:
                 return_value=updated,
             ) as update_external_knowledge_api,
         ):
-            resp, status = method(api, session, "tenant-1", current_user, "api-updated")
+            resp, status = method(
+                api,
+                ExternalKnowledgeApiPayload.model_validate(payload),
+                session,
+                "tenant-1",
+                current_user,
+                "api-updated",
+            )
 
         assert status == 200
         assert resp == _external_api_dict("api-updated")
-        updated.get_dataset_bindings.assert_called_once_with(session=session)
         validate_api_list.assert_called_once_with(payload["settings"])
         update_external_knowledge_api.assert_called_once_with(
             tenant_id="tenant-1",
@@ -346,15 +389,15 @@ class TestExternalApiTemplateApi:
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", current_user, "api-id")
+                method(api, self.session, "tenant-1", current_user, "api-id")
 
 
-class TestExternalApiUseCheckApi:
+class TestExternalApiUseCheckApi(_UsesSQLiteSession):
     def test_get_scopes_usage_check_to_current_tenant(self, app: Flask):
         api = ExternalApiUseCheckApi()
         method = inspect.unwrap(api.get)
 
-        session = MagicMock()
+        session = self.session
 
         with (
             app.test_request_context("/"),
@@ -371,7 +414,7 @@ class TestExternalApiUseCheckApi:
         mock_use_check.assert_called_once_with("api-id", "tenant-1", session=ANY)
 
 
-class TestExternalDatasetCreateApi:
+class TestExternalDatasetCreateApi(_UsesSQLiteSession):
     def test_create_success(self, app: Flask, current_user: Account):
         api = ExternalDatasetCreateApi()
         method = inspect.unwrap(api.post)
@@ -388,7 +431,7 @@ class TestExternalDatasetCreateApi:
             },
         }
 
-        dataset = _dataset_detail_object()
+        dataset = _dataset()
 
         with (
             app.test_request_context("/", json=payload),
@@ -400,21 +443,26 @@ class TestExternalDatasetCreateApi:
             ) as create_external_dataset,
             patch(
                 "controllers.console.datasets.external.dataset_detail_response_source",
-                return_value=dataset,
+                return_value=_dataset_detail_response(),
             ) as dataset_response_source,
         ):
-            session = MagicMock()
-            resp, status = method(api, session, "tenant-1", current_user)
+            resp, status = method(
+                api,
+                ExternalDatasetCreatePayload.model_validate(payload),
+                self.session,
+                "tenant-1",
+                current_user,
+            )
 
         assert status == 201
         assert resp == _expected_dataset_detail_payload()
         create_external_dataset.assert_called_once_with(
             tenant_id="tenant-1",
             user_id="user-1",
-            args=payload,
-            session=session,
+            args=ExternalDatasetCreatePayload.model_validate(payload),
+            session=self.session,
         )
-        dataset_response_source.assert_called_once_with(dataset, session=session)
+        dataset_response_source.assert_called_once_with(dataset, session=self.session)
 
     def test_create_forbidden(self, app: Flask, current_user: Account):
         current_user.role = TenantAccountRole.NORMAL
@@ -432,10 +480,12 @@ class TestExternalDatasetCreateApi:
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
         ):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(
+                    api, ExternalDatasetCreatePayload.model_validate(payload), self.session, "tenant-1", current_user
+                )
 
 
-class TestExternalKnowledgeHitTestingApi:
+class TestExternalKnowledgeHitTestingApi(_UsesSQLiteSession):
     def test_hit_testing_dataset_not_found(self, app: Flask, current_user: Account):
         api = ExternalKnowledgeHitTestingApi()
         method = inspect.unwrap(api.post)
@@ -449,7 +499,7 @@ class TestExternalKnowledgeHitTestingApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), current_user, "dataset-id")
+                method(api, ExternalHitTestingPayload(query="test"), self.session, current_user, "dataset-id")
 
     def test_hit_testing_success(self, app: Flask, current_user: Account):
         api = ExternalKnowledgeHitTestingApi()
@@ -468,7 +518,7 @@ class TestExternalKnowledgeHitTestingApi:
             },
         }
 
-        dataset = MagicMock()
+        dataset = _dataset()
         retrieve_response = {
             "query": {"content": "hello"},
             "records": [
@@ -480,7 +530,7 @@ class TestExternalKnowledgeHitTestingApi:
                 }
             ],
         }
-        session = MagicMock()
+        session = self.session
 
         with (
             app.test_request_context("/", json=payload),
@@ -495,7 +545,7 @@ class TestExternalKnowledgeHitTestingApi:
             ) as external_retrieve,
             patch("controllers.console.datasets.external.dump_response", side_effect=lambda _model, value: value),
         ):
-            resp = method(api, session, current_user, "dataset-id")
+            resp = method(api, ExternalHitTestingPayload.model_validate(payload), session, current_user, "dataset-id")
 
         assert resp == retrieve_response
         check_dataset_permission.assert_called_once_with(dataset, current_user, session)
@@ -510,55 +560,7 @@ class TestExternalKnowledgeHitTestingApi:
         )
 
 
-class TestBedrockRetrievalApi:
-    def test_bedrock_retrieval(self, app: Flask):
-        api = BedrockRetrievalApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {
-            "retrieval_setting": {"top_k": 5, "score_threshold": 0.72},
-            "query": "hello bedrock",
-            "knowledge_id": "knowledge-base-1",
-        }
-        retrieval_response = {
-            "records": [
-                {
-                    "metadata": {"source": "bedrock", "uri": "s3://bucket/doc.txt"},
-                    "score": 0.8,
-                    "title": "doc",
-                    "content": "answer",
-                },
-                {
-                    "metadata": {"source": "bedrock", "uri": "s3://bucket/other.txt"},
-                    "score": 0.65,
-                    "title": None,
-                    "content": None,
-                },
-            ]
-        }
-
-        session = MagicMock()
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch.object(
-                ExternalDatasetTestService,
-                "knowledge_retrieval",
-                return_value=retrieval_response,
-            ) as knowledge_retrieval,
-        ):
-            resp, status = method()
-
-        assert status == 200
-        assert resp == retrieval_response
-        retrieval_setting, query, knowledge_id = knowledge_retrieval.call_args.args
-        assert retrieval_setting.model_dump() == payload["retrieval_setting"]
-        assert query == "hello bedrock"
-        assert knowledge_id == "knowledge-base-1"
-
-
-class TestExternalApiTemplateListApiAdvanced:
+class TestExternalApiTemplateListApiAdvanced(_UsesSQLiteSession):
     def test_post_duplicate_name_error(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateListApi()
         method = inspect.unwrap(api.post)
@@ -575,13 +577,13 @@ class TestExternalApiTemplateListApiAdvanced:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, ExternalKnowledgeApiPayload.model_validate(payload), self.session, "tenant-1", current_user)
 
     def test_get_with_pagination(self, app: Flask):
         api = ExternalApiTemplateListApi()
         method = inspect.unwrap(api.get)
 
-        templates = [_external_api_object(f"api-{i}") for i in range(3)]
+        templates = [_external_api_object(self.session, f"api-{i}") for i in range(3)]
 
         with (
             app.test_request_context("/?page=2&limit=3"),
@@ -590,7 +592,7 @@ class TestExternalApiTemplateListApiAdvanced:
                 return_value=(templates, 25),
             ) as get_external_knowledge_apis,
         ):
-            resp, status = method(api, MagicMock(), "tenant-1")
+            resp, status = method(api, ExternalApiTemplateListQuery(page=2, limit=3), self.session, "tenant-1")
 
         assert status == 200
         assert resp == {
@@ -603,7 +605,7 @@ class TestExternalApiTemplateListApiAdvanced:
         get_external_knowledge_apis.assert_called_once_with(2, 3, "tenant-1", None, session=ANY)
 
 
-class TestExternalDatasetCreateApiAdvanced:
+class TestExternalDatasetCreateApiAdvanced(_UsesSQLiteSession):
     def test_create_forbidden(self, app: Flask, current_user: Account):
         """Test creating external dataset without permission"""
         api = ExternalDatasetCreateApi()
@@ -620,10 +622,12 @@ class TestExternalDatasetCreateApiAdvanced:
 
         with app.test_request_context("/", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(
+                    api, ExternalDatasetCreatePayload.model_validate(payload), self.session, "tenant-1", current_user
+                )
 
 
-class TestExternalKnowledgeHitTestingApiAdvanced:
+class TestExternalKnowledgeHitTestingApiAdvanced(_UsesSQLiteSession):
     def test_hit_testing_dataset_not_found(self, app: Flask, current_user: Account):
         """Test hit testing on non-existent dataset"""
         api = ExternalKnowledgeHitTestingApi()
@@ -643,19 +647,19 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), current_user, "ds-1")
+                method(api, ExternalHitTestingPayload.model_validate(payload), self.session, current_user, "ds-1")
 
     def test_hit_testing_with_custom_retrieval_model(self, app: Flask, current_user: Account):
         api = ExternalKnowledgeHitTestingApi()
         method = inspect.unwrap(api.post)
 
-        dataset = MagicMock()
+        dataset = _dataset()
         payload = {
             "query": "test query",
             "external_retrieval_model": {"type": "bm25"},
             "metadata_filtering_conditions": {"status": "active"},
         }
-        session = MagicMock()
+        session = self.session
 
         with (
             app.test_request_context("/", json=payload),
@@ -681,7 +685,7 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
                 },
             ) as external_retrieve,
         ):
-            resp = method(api, session, current_user, "ds-1")
+            resp = method(api, ExternalHitTestingPayload.model_validate(payload), session, current_user, "ds-1")
 
         assert resp == {
             "query": {"content": "test query"},
@@ -704,26 +708,3 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
             external_retrieval_model={"type": "bm25"},
             metadata_filtering_conditions={"status": "active"},
         )
-
-
-class TestBedrockRetrievalApiAdvanced:
-    def test_bedrock_retrieval_with_invalid_setting(self, app: Flask):
-        api = BedrockRetrievalApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {
-            "retrieval_setting": {},
-            "query": "test",
-            "knowledge_id": "k-1",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.external.ExternalDatasetTestService.knowledge_retrieval",
-                side_effect=ValueError("Invalid settings"),
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method()

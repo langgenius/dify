@@ -1,12 +1,18 @@
-import { fireEvent, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { Popup } from '../popup'
 
-const render = (ui: React.ReactElement) => {
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
+let mockIsAllowPublishAsCustom = true
+
+const renderWithoutPricing = (ui: React.ReactElement) => {
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { knowledge_pipeline: { publish_enabled: mockIsAllowPublishAsCustom } },
   })
   return renderWithConsoleState(ui, { wrapper })
 }
@@ -39,11 +45,10 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     promise: toastMocks.promise,
   }),
 }))
-const mockPush = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockSetPublishedAt = vi.fn()
 const mockMutateDatasetRes = vi.fn()
-const mockSetShowPricingModal = vi.fn()
+
 const mockInvalidPublishedPipelineInfo = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidCustomizedTemplateList = vi.fn()
@@ -51,7 +56,6 @@ const mockInvalidCustomizedTemplateList = vi.fn()
 let mockPublishedAt: string | undefined = '2024-01-01T00:00:00Z'
 let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
-let mockIsAllowPublishAsCustom = true
 let mockDatasetPermissionKeys = ['dataset.acl.use']
 let mockDatasetMaintainer: string | undefined
 let mockCurrentUserId = 'user-1'
@@ -60,13 +64,10 @@ let mockWorkspacePermissionKeys: string[] = []
 const mockUseBoolean = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
-  useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
 
 vi.mock('ahooks', () => ({
@@ -137,16 +138,6 @@ vi.mock('@/context/dataset-detail', () => ({
     }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: {
-      id: mockCurrentUserId,
-    },
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -160,16 +151,6 @@ vi.mock('@/context/permission-state', async () => {
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => 'https://docs.dify.ai',
-}))
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: <T,>(
-    selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T,
-  ) => selector({ setShowPricingModal: mockSetShowPricingModal }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: () => mockIsAllowPublishAsCustom,
 }))
 
 vi.mock('@/hooks/use-api-access-url', () => ({
@@ -237,6 +218,11 @@ vi.mock('@remixicon/react', () => ({
   RiTerminalBoxLine: () => <span />,
 }))
 
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
+
 describe('Popup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -285,18 +271,6 @@ describe('Popup', () => {
       expect(container.querySelectorAll('kbd')).toHaveLength(3)
     })
 
-    it('should render "Go to Add Documents" button', () => {
-      render(<Popup />)
-
-      expect(screen.getByText('pipeline.common.goToAddDocuments')).toBeInTheDocument()
-    })
-
-    it('should render "API Reference" button', () => {
-      render(<Popup />)
-
-      expect(screen.getByText('workflow.common.accessAPIReference')).toBeInTheDocument()
-    })
-
     it('should render "Publish As" button', () => {
       const { container } = render(<Popup />)
 
@@ -322,12 +296,21 @@ describe('Popup', () => {
   })
 
   describe('Navigation', () => {
-    it('should navigate to add documents page', () => {
+    it('should link to the add documents page', () => {
       render(<Popup />)
 
-      fireEvent.click(screen.getByText('pipeline.common.goToAddDocuments'))
+      expect(
+        screen.getByRole('link', { name: 'pipeline.common.goToAddDocuments' }),
+      ).toHaveAttribute('href', '/datasets/ds-123/documents/create-from-pipeline')
+    })
 
-      expect(mockPush).toHaveBeenCalledWith('/datasets/ds-123/documents/create-from-pipeline')
+    it('should open the API reference safely in a new tab', () => {
+      render(<Popup />)
+
+      const link = screen.getByRole('link', { name: 'workflow.common.accessAPIReference' })
+      expect(link).toHaveAttribute('href', '/api/datasets/ds-123')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })
   })
 
@@ -358,7 +341,7 @@ describe('Popup', () => {
   })
 
   describe('Publish As Knowledge Pipeline', () => {
-    it('should show pricing modal when not allowed', () => {
+    it('should show pricing modal when not allowed', async () => {
       mockIsAllowPublishAsCustom = false
       const onRequestClose = vi.fn()
       render(<Popup onRequestClose={onRequestClose} />)
@@ -366,7 +349,9 @@ describe('Popup', () => {
       fireEvent.click(screen.getByText('pipeline.common.publishAs'))
 
       expect(onRequestClose).toHaveBeenCalledTimes(1)
-      expect(mockSetShowPricingModal).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
     it('should request closing the outer popover before opening publish-as modal', () => {

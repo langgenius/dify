@@ -26,6 +26,8 @@ export enum FormTypeEnum {
   object = 'object',
   array = 'array',
   dynamicSelect = 'dynamic-select',
+  date = 'date',
+  dateRange = 'date-range',
 }
 
 export type FormOption = {
@@ -238,15 +240,6 @@ export type ModelProvider = {
     quota_configurations: QuotaConfiguration[]
   }
   allow_custom_token?: boolean
-}
-
-export type Model = {
-  provider: string
-  icon_small: TypeWithI18N
-  icon_small_dark?: TypeWithI18N
-  label: TypeWithI18N
-  models: ModelItem[]
-  status: ModelStatusEnum
 }
 
 export type DefaultModelResponse = {

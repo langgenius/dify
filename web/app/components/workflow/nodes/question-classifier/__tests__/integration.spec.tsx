@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { QuestionClassifierNodeType, Topic } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -64,9 +63,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: any) => (
+  ModelSelector: ({ value }: any) => (
     <div>
-      {defaultModel.provider}:{defaultModel.model}
+      {value.provider}:{value.model}
     </div>
   ),
 }))

@@ -15,6 +15,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,7 +30,10 @@ import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/component
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
+import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
+import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   createPickerProps,
   getFieldFlags,
@@ -64,6 +68,10 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
+  const { data: timezone } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.timezone ?? 'UTC',
+  })
 
   const handleAutomatic = (key: string, val: boolean, type: string) => {
     onChange(updateInputAutoState(value, key, val, type))
@@ -153,6 +161,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
       isSelect,
       isAppSelector,
       isModelSelector,
+      isDate,
+      isDateRange,
       showTypeSwitch,
       isConstant,
       showVariableSelector,
@@ -233,12 +243,32 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {isNumber && isConstant && (
               <Input
+                aria-label={fieldTitle}
                 className="h-8 grow"
                 type="number"
                 value={(varInput?.value as string | number) || ''}
                 onChange={(e) => handleValueChange(variable, type)(e.target.value)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
               />
+            )}
+            {isDate && isConstant && (
+              <div className="min-w-0 grow">
+                <ToolDatePicker
+                  value={typeof varInput?.value === 'string' ? varInput.value : ''}
+                  onChange={handleValueChange(variable, type)}
+                  timezone={timezone}
+                  placeholder={placeholder?.[language] || placeholder?.en_US}
+                />
+              </div>
+            )}
+            {isDateRange && varInput?.type !== VarKindType.variable && (
+              <div className="grow">
+                <ToolDateRangePicker
+                  value={varInput?.value}
+                  onChange={handleValueChange(variable, type)}
+                  timezone={timezone}
+                />
+              </div>
             )}
             {isBoolean && (
               <FormInputBoolean

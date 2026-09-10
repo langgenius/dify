@@ -1,12 +1,13 @@
 'use client'
+
 import type { FC } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import Loading from '@/app/components/base/loading'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import {
@@ -33,11 +34,12 @@ const FORCED_POLLING_STATUSES = new Set(['queuing', 'indexing', 'paused'])
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const router = useRouter()
-  const { plan } = useProviderContext()
-  const isFreePlan = plan.type === 'sandbox'
 
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const embeddingAvailable = !!dataset?.embedding_available
   const datasetACLCapabilities = getDatasetACLCapabilities(dataset?.permission_keys, {
@@ -180,7 +182,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         canManageMetadata={datasetACLCapabilities.canEdit}
         canAddDocument={datasetACLCapabilities.canUse}
         canEditDocument={datasetACLCapabilities.canEdit}
-        isFreePlan={isFreePlan}
         statusFilterValue={statusFilterValue}
         sortValue={sortValue}
         inputValue={inputValue}
