@@ -793,6 +793,24 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     published_soul = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "published"}})
     draft_soul = AgentSoulConfig.model_validate(
         {
+            "model": {
+                "plugin_id": "langgenius/openai",
+                "model_provider": "langgenius/openai/openai",
+                "model": "gpt-test",
+                "credential_ref": {"type": "provider", "id": "private-model"},
+            },
+            "tools": {
+                "dify_tools": [
+                    {
+                        "provider_id": "langgenius/google/google",
+                        "provider_type": "plugin",
+                        "tool_name": "search",
+                        "credential_type": "api-key",
+                        "credential_ref": {"type": "tool", "id": "private-tool"},
+                        "runtime_parameters": {"query": "retain", "api_key": "private-value"},
+                    }
+                ],
+            },
             "prompt": {"system_prompt": "draft"},
             "config_skills": [
                 {"name": "research", "file_id": skill_file.id},
@@ -870,6 +888,15 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
         archive_bytes = exported.archive.read()
         assert exported.filename == "research-agent.ifpkg"
+        exported_soul = exported.app.package.soul
+        assert exported_soul.model is not None
+        assert exported_soul.model.credential_ref is None
+        assert exported_soul.tools.dify_tools[0].credential_ref is None
+        assert exported_soul.tools.dify_tools[0].runtime_parameters == {"query": "retain", "api_key": None}
+        assert "private-" not in exported.app.model_dump_json()
+        assert draft_soul.model is not None
+        assert draft_soul.model.credential_ref is not None
+        assert draft_soul.tools.dify_tools[0].runtime_parameters["api_key"] == "private-value"
         assert exported.app.package.soul.prompt.system_prompt == "draft"
         assert exported.app.package.soul.config_skills[0].file_id == "s_000001"
         assert exported.app.package.soul.config_files[0].file_id == "f_000001"
