@@ -28,6 +28,31 @@ function HomeTemplateCardSkeleton() {
   )
 }
 
+function HomeRecommendationsSkeleton() {
+  return (
+    <div className="px-8 pb-5" aria-hidden="true">
+      <div className="flex items-center justify-between pt-2">
+        <SkeletonRectangle className="my-0 h-6 w-48 animate-pulse" />
+        <SkeletonRectangle className="my-0 h-4 w-20 animate-pulse" />
+      </div>
+      <div className={cn('gap-2.5 pt-2', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}>
+        {Array.from({ length: 4 }, (_, index) => (
+          <div
+            key={index}
+            className="flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 py-4 shadow-xs shadow-shadow-shadow-3"
+          >
+            <SkeletonRectangle className="my-0 size-10 shrink-0 animate-pulse rounded-lg" />
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <SkeletonRectangle className="my-0 h-4 w-2/3 animate-pulse" />
+              <SkeletonRectangle className="my-0 h-3 w-1/2 animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function HomeTemplatesHeaderSkeletonBody() {
   return (
     <div className="sticky top-0 z-10 bg-background-body">
@@ -82,6 +107,7 @@ export function HomeSkeleton({ showBanner }: { showBanner: boolean }) {
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="contents">
       <HomeIntroSkeleton />
       {showBanner && <HomeBannerSkeleton />}
+      <HomeRecommendationsSkeleton />
       <HomeTemplatesHeaderSkeletonBody />
       <div className="relative flex flex-1 shrink-0 grow flex-col pb-6">
         <HomeTemplatesSkeletonBody />

@@ -1,7 +1,7 @@
 'use client'
 
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/console'
@@ -20,16 +20,15 @@ export function HomeRecommendations({
   onCreate: (app: RecommendedAppResponse) => void
   onTry: (app: RecommendedAppResponse) => void
 }) {
-  const { data: recentApps } = useQuery({
+  const { data: recentApps } = useSuspenseQuery({
     ...consoleQuery.apps.recent.get.queryOptions({
       input: { query: { limit: 8 } },
     }),
-    throwOnError: (_error, query) => query.state.data === undefined,
   })
 
   return (
     <>
-      {recentApps && <ContinueWork apps={recentApps.data} />}
+      <ContinueWork apps={recentApps.data} />
       <LearnDify
         canCreate={canCreate}
         className="pb-0"

@@ -17,6 +17,7 @@ import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/utils'
+import { Suspense } from 'react'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import {
   resetStepByStepTourSessionAtom,
@@ -595,7 +596,9 @@ const renderHomeContent = ({
   )
   const rendered = renderWithNuqs(
     <Wrapped>
-      <HomeContent />
+      <Suspense fallback={<div role="status">Loading home</div>}>
+        <HomeContent />
+      </Suspense>
     </Wrapped>,
     { searchParams },
   )
@@ -811,7 +814,7 @@ describe('HomeContent', () => {
     })
 
     it.each([false, true])(
-      'should keep templates visible while recent apps load (has apps: %s)',
+      'should wait for recent apps before revealing templates (has apps: %s)',
       async (hasApps) => {
         vi.useRealTimers()
         let resolveRecentApps!: (response: { data: RecentAppResponse[] }) => void
@@ -822,7 +825,8 @@ describe('HomeContent', () => {
 
         renderHomeContent({ hasEditPermission: true, enableLearnApp: false })
 
-        expect(screen.getByRole('button', { name: 'Alpha' })).toBeVisible()
+        expect(screen.queryByRole('button', { name: 'Alpha' })).not.toBeInTheDocument()
+        expect(screen.getByRole('status')).toHaveTextContent('Loading home')
         expect(
           screen.queryByRole('heading', { name: 'explore.continueWork.title' }),
         ).not.toBeInTheDocument()
@@ -843,7 +847,8 @@ describe('HomeContent', () => {
             ).not.toBeInTheDocument()
           })
         }
-        expect(screen.getByRole('button', { name: 'Alpha' })).toBeVisible()
+        expect(await screen.findByRole('button', { name: 'Alpha' })).toBeVisible()
+        expect(screen.queryByRole('status')).not.toBeInTheDocument()
       },
     )
 
