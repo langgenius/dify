@@ -1,8 +1,17 @@
+from collections.abc import Generator
 from datetime import datetime
 
 import pytest
+from flask import Flask
 
-from libs.helper import OptionalTimestampField, alphanumeric, email, escape_like_pattern, extract_tenant_id
+from libs.helper import (
+    OptionalTimestampField,
+    alphanumeric,
+    email,
+    escape_like_pattern,
+    extract_tenant_id,
+    length_prefixed_response,
+)
 from models.account import Account
 from models.model import EndUser
 
@@ -197,3 +206,51 @@ class TestAlphanumericValidator:
             alphanumeric("tool.name")
         with pytest.raises(ValueError, match="not a valid alphanumeric value"):
             alphanumeric("tool/name")
+
+
+@pytest.mark.parametrize("consume_frame", [False, True])
+def test_length_prefixed_response_closes_prestarted_source(consume_frame: bool) -> None:
+    released: list[bool] = []
+
+    def generate() -> Generator[bytes, None, None]:
+        try:
+            yield b"prefetched"
+            yield b"next"
+            yield b"remaining"
+        finally:
+            released.append(True)
+
+    source = generate()
+    assert next(source) == b"prefetched"
+    with Flask(__name__).test_request_context():
+        response = length_prefixed_response(0xF, source)
+        if consume_frame:
+            assert next(iter(response.response))[14:] == b"next"
+        assert released == []
+        response.close()
+        response.close()
+
+        assert released == [True]
+        with pytest.raises(StopIteration):
+            next(source)
+
+
+def test_length_prefix_encoding_error_closes_source_immediately() -> None:
+    released: list[bool] = []
+
+    def generate() -> Generator[str, None, None]:
+        try:
+            yield "\ud800"
+            yield "remaining"
+        finally:
+            released.append(True)
+
+    source = generate()
+    with Flask(__name__).test_request_context():
+        response = length_prefixed_response(0xF, source)
+        try:
+            with pytest.raises(UnicodeEncodeError):
+                next(iter(response.response))
+            assert released == [True]
+        finally:
+            response.close()

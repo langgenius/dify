@@ -1,5 +1,7 @@
 import base64
+from collections.abc import Generator, Iterator
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest
@@ -47,6 +49,19 @@ def _run(publisher: AppGeneratorTTSPublisher, *messages: MagicMock) -> None:
         publisher._msg_queue.put(message)
     publisher._msg_queue.put(None)
     publisher._runtime()
+
+
+class _CloseRecordingStream(Iterator[bytes]):
+    def __init__(self, chunks: list[bytes]) -> None:
+        self._chunks: Iterator[bytes] = iter(chunks)
+        self.close_calls: int = 0
+
+    @override
+    def __next__(self) -> bytes:
+        return next(self._chunks)
+
+    def close(self) -> None:
+        self.close_calls += 1
 
 
 class TestAudioTrunk:
@@ -141,6 +156,80 @@ class TestAppGeneratorTTSPublisher:
         assert publisher._audio_queue.get().audio == base64.b64encode(b"audio1")
         assert publisher._audio_queue.get().audio == base64.b64encode(b"audio2")
         assert publisher._audio_queue.get().status == "finish"
+
+    def test_runtime_closes_the_provider_stream_after_normal_completion(
+        self, mock_model_manager: MagicMock, mock_model_instance: MagicMock
+    ) -> None:
+        stream = _CloseRecordingStream([b"\xff\xfb" + b"\x00" * 30, b"audio-tail"])
+        mock_model_instance.invoke_tts.return_value = stream
+        publisher = AppGeneratorTTSPublisher("tenant", "voice1")
+        publisher.msg_text = "Hello"
+
+        _run(publisher)
+
+        assert stream.close_calls == 1
+        assert publisher._audio_queue.get().status == "responding"
+        assert publisher._audio_queue.get().status == "responding"
+        assert publisher._audio_queue.get().status == "finish"
+
+    @pytest.mark.parametrize("cancel_during_inspection", [True, False])
+    def test_runtime_closes_the_provider_stream_when_cancelled(
+        self,
+        mock_model_manager: MagicMock,
+        mock_model_instance: MagicMock,
+        cancel_during_inspection: bool,
+    ) -> None:
+        publisher = AppGeneratorTTSPublisher("tenant", "voice1")
+        publisher.msg_text = "Hello"
+        closed = False
+
+        def audio_chunks() -> Generator[bytes, None, None]:
+            nonlocal closed
+            try:
+                if cancel_during_inspection:
+                    publisher.cancel()
+                yield b"\xff\xfb" + b"\x00" * 30
+                publisher.cancel()
+                yield b"audio-tail"
+            finally:
+                closed = True
+
+        # Keep the generator alive so garbage collection cannot stand in for explicit close.
+        stream = audio_chunks()
+        mock_model_instance.invoke_tts.return_value = stream
+
+        _run(publisher)
+
+        assert closed
+        if not cancel_during_inspection:
+            assert publisher._audio_queue.get().status == "responding"
+        assert publisher._audio_queue.empty()
+
+    def test_runtime_closes_the_provider_stream_when_incremental_format_validation_fails(
+        self, mock_model_manager: MagicMock, mock_model_instance: MagicMock
+    ) -> None:
+        publisher = AppGeneratorTTSPublisher("tenant", "voice1")
+        closed = False
+
+        def audio_chunks() -> Generator[TTSAudioChunk, None, None]:
+            nonlocal closed
+            try:
+                yield TTSAudioChunk(b"RIFF\x24\x00\x00\x00WAVE" + b"\x00" * 20, "audio/wav")
+                pytest.fail("The rejected provider stream must not be consumed further")
+            finally:
+                closed = True
+
+        stream = audio_chunks()
+        mock_model_instance.invoke_tts.return_value = stream
+
+        _run(publisher, _text_event("First. Second. tail"))
+
+        assert closed
+        terminal = publisher._audio_queue.get()
+        assert terminal.status == "error"
+        assert isinstance(terminal.error, InvokeBadRequestError)
+        assert "cannot be played incrementally" in str(terminal.error)
+        assert publisher._audio_queue.empty()
 
     def test_runtime_skips_an_empty_final_buffer(self, mock_model_manager, mock_model_instance: MagicMock):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")

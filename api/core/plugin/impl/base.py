@@ -47,6 +47,7 @@ from graphon.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from libs.stream import close_stream
 
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
 _plugin_daemon_timeout_config = cast(
@@ -362,34 +363,38 @@ class BasePluginClient:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
-        for line in self._stream_request(method, path, params, headers, data, files):
-            try:
-                rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
-            except (ValueError, TypeError):
-                # TODO modify this when line_data has code and message
+        response = self._stream_request(method, path, params, headers, data, files)
+        try:
+            for line in response:
                 try:
-                    line_data = json.loads(line)
+                    rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
                 except (ValueError, TypeError):
-                    raise ValueError(line)
-                # If the dictionary contains the `error` key, use its value as the argument
-                # for `ValueError`.
-                # Otherwise, use the `line` to provide better contextual information about the error.
-                raise ValueError(line_data.get("error", line))
-
-            if rep.code != 0:
-                if rep.code == -500:
+                    # TODO modify this when line_data has code and message
                     try:
-                        error = PluginDaemonError.model_validate(json.loads(rep.message))
-                    except Exception:
-                        raise PluginDaemonInnerError(code=rep.code, message=rep.message)
+                        line_data = json.loads(line)
+                    except (ValueError, TypeError):
+                        raise ValueError(line)
+                    # If the dictionary contains the `error` key, use its value as the argument
+                    # for `ValueError`.
+                    # Otherwise, use the `line` to provide better contextual information about the error.
+                    raise ValueError(line_data.get("error", line))
 
-                    logger.error("Error in stream response for plugin %s", rep.__dict__)
-                    self._handle_plugin_daemon_error(error.error_type, error.message)
-                raise ValueError(f"plugin daemon: {rep.message}, code: {rep.code}")
-            if rep.data is None:
-                frame = inspect.currentframe()
-                raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
-            yield rep.data
+                if rep.code != 0:
+                    if rep.code == -500:
+                        try:
+                            error = PluginDaemonError.model_validate(json.loads(rep.message))
+                        except Exception:
+                            raise PluginDaemonInnerError(code=rep.code, message=rep.message)
+
+                        logger.error("Error in stream response for plugin %s", rep.__dict__)
+                        self._handle_plugin_daemon_error(error.error_type, error.message)
+                    raise ValueError(f"plugin daemon: {rep.message}, code: {rep.code}")
+                if rep.data is None:
+                    frame = inspect.currentframe()
+                    raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
+                yield rep.data
+        finally:
+            close_stream(response)
 
     def _handle_plugin_daemon_error(self, error_type: str, message: str):
         """

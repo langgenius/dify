@@ -209,6 +209,49 @@ def test_tts_stream_preserves_split_signature_and_all_chunks(runtime: _Runtime) 
     assert dict(response.headers) == {"Content-Type": "audio/wav"}
 
 
+@pytest.mark.parametrize("consumed_chunks", [0, 1, 2, None])
+def test_tts_http_response_closes_retained_provider_stream(runtime: _Runtime, consumed_chunks: int | None) -> None:
+    closed: list[bool] = []
+    audio_chunks = [_WAV + b"\x00" * 32, b"first-tail", b"second-tail"]
+    path = f"/installed-apps/{runtime.harness.installed_app.id}/text-to-audio"
+
+    def chunks() -> Generator[bytes]:
+        try:
+            for chunk in audio_chunks:
+                assert has_request_context()
+                assert request.path == path
+                yield chunk
+        finally:
+            closed.append(True)
+
+    source = chunks()
+    runtime.output = AudioOutput(data=source, mime_type="audio/x-wav")
+    # Dispatch without the test client's initial WSGI read, including the case
+    # where the HTTP response is closed before any audio bytes are consumed.
+    with runtime.harness.app.test_request_context(path, method="POST", json={"text": "你好"}):
+        response = runtime.harness.app.full_dispatch_request()
+
+    assert response.status_code == 200
+    assert dict(response.headers) == {"Content-Type": "audio/wav"}
+    assert response.is_streamed
+    assert closed == []
+    try:
+        iterator = iter(response.response)
+        if consumed_chunks is None:
+            assert list(iterator) == audio_chunks
+            assert closed == [True]
+        else:
+            assert [next(iterator) for _ in range(consumed_chunks)] == audio_chunks[:consumed_chunks]
+            assert closed == []
+    finally:
+        response.close()
+        response.close()
+
+    assert closed == [True]
+    with pytest.raises(StopIteration):
+        next(source)
+
+
 def test_tts_rejects_provider_mime_mismatch_with_specific_completion_error(runtime: _Runtime) -> None:
     runtime.output = AudioOutput(data=_WAV, mime_type="audio/mpeg")
     _error(
