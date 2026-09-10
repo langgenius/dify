@@ -350,6 +350,41 @@ class TestAsyncWorkflowService:
         mocks["team_task"].delay.assert_not_called()
         mocks["sandbox_task"].delay.assert_not_called()
 
+    def test_should_mark_log_failed_when_celery_dispatch_raises(
+        self,
+        async_workflow_trigger_mocks,
+        sqlite_session: Session,
+    ):
+        """Test dispatch-failure path marks the trigger log FAILED instead of leaving it PENDING."""
+        # Arrange
+        sqlite_session.add(AsyncWorkflowServiceTestDataFactory.create_app())
+        sqlite_session.commit()
+        trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
+        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
+
+        mocks = async_workflow_trigger_mocks
+        mocks["dispatcher"].get_queue_name.return_value = QueuePriority.TEAM
+        mocks["get_workflow"].return_value = workflow
+        mocks["team_task"].delay.side_effect = RuntimeError("broker unavailable")
+
+        quota_charge_mock = MagicMock()
+        mocks["quota_service"].reserve.return_value = quota_charge_mock
+
+        # Act / Assert
+        with pytest.raises(RuntimeError, match="broker unavailable"):
+            AsyncWorkflowService.trigger_workflow_async(
+                session=sqlite_session,
+                user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
+                trigger_data=trigger_data,
+            )
+
+        quota_charge_mock.refund.assert_called_once()
+        quota_charge_mock.commit.assert_not_called()
+        updated_log = sqlite_session.scalar(select(WorkflowTriggerLog))
+        assert updated_log is not None
+        assert updated_log.status == WorkflowTriggerStatus.FAILED
+        assert "broker unavailable" in (updated_log.error or "")
+
     def test_should_raise_when_reinvoke_target_log_does_not_exist(self, sqlite_session: Session):
         """Test reinvoke_trigger error path when original trigger log is missing."""
         # Arrange
