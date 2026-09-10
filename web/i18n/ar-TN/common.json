@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "مستخدم بواسطة",
   "settings.members": "الأعضاء",
   "settings.permissionSet": "مجموعة الأذونات",
   "settings.permissionSetDescription": "قم بتكوين مجموعات الأذونات لاستخدامها مع التطبيقات وقواعد المعرفة. مجموعة الأذونات هي مجموعة قابلة لإعادة الاستخدام من أذونات عمليات الموارد يمكن تعيينها للأعضاء لموارد محددة.",

@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Używane przez",
   "settings.members": "Członkowie",
   "settings.permissionSet": "Zestaw uprawnień",
   "settings.permissionSetDescription": "Skonfiguruj zestawy uprawnień do użycia z aplikacjami i bazami wiedzy. Zestaw uprawnień to wielokrotnego użytku zbiór uprawnień do operacji na zasobach, który można przypisywać członkom dla konkretnych zasobów.",

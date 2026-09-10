@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Verwendet von",
   "settings.members": "Mitglieder",
   "settings.permissionSet": "Berechtigungssatz",
   "settings.permissionSetDescription": "Konfigurieren Sie Berechtigungssätze zur Verwendung mit Apps und Wissensdatenbanken. Ein Berechtigungssatz ist eine wiederverwendbare Sammlung von Berechtigungen für Ressourcenoperationen, die Mitgliedern für bestimmte Ressourcen zugewiesen werden kann.",

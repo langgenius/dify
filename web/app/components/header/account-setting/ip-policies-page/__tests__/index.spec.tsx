@@ -25,8 +25,7 @@ const translations = vi.hoisted(() => ({
   'settings.ipPolicyDeleteBoundDescription':
     '{{name}} is applied to {{count}} apps. Deleting it turns off IP restriction for those apps, so they can be reached from any IP. Other app permissions stay the same.',
   'settings.ipPolicyDeleteConfirm': 'Delete “{{name}}”?',
-  'settings.ipPolicyEditUsedBy':
-    'This policy is used by {{count}} apps. Saving updates the allowlist for all of them.',
+  'settings.ipPolicyUsedByLabel': 'Used by',
   'settings.ipPolicyDialogDescription':
     'Specify which IP addresses or ranges can access your apps.',
   'settings.ipPolicyEditTitle': 'Edit IP Policy',
@@ -159,15 +158,12 @@ describe('IpPoliciesPage', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Edit' }))
-    expect(
-      screen.getByText(
-        'This policy is used by 2 apps. Saving updates the allowlist for all of them.',
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Used by')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Support Bot' })).toHaveAttribute(
       'href',
       '/app/app-a/overview',
     )
+    expect(screen.getByRole('link', { name: 'Support Bot' })).toHaveAttribute('target', '_blank')
   })
 
   it('lets the user delete a referenced policy after confirming the impact', async () => {

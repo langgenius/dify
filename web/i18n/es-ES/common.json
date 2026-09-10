@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Usado por",
   "settings.members": "Miembros",
   "settings.permissionSet": "Conjunto de permisos",
   "settings.permissionSetDescription": "Configura conjuntos de permisos para usarlos con aplicaciones y bases de conocimiento. Un conjunto de permisos es una colección reutilizable de permisos de operaciones sobre recursos que se puede asignar a miembros para recursos específicos.",

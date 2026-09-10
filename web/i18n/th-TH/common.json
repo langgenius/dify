@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "ถูกใช้โดย",
   "settings.members": "สมาชิก",
   "settings.permissionSet": "ชุดสิทธิ์",
   "settings.permissionSetDescription": "กำหนดค่าชุดสิทธิ์สำหรับใช้กับแอปและฐานความรู้ ชุดสิทธิ์คือชุดสิทธิ์การดำเนินการกับทรัพยากรที่นำกลับมาใช้ซ้ำได้ และสามารถกำหนดให้สมาชิกสำหรับทรัพยากรเฉพาะได้",

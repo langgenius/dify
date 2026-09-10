@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Được dùng bởi",
   "settings.members": "Thành viên",
   "settings.permissionSet": "Bộ quyền",
   "settings.permissionSetDescription": "Định cấu hình các bộ quyền để sử dụng với ứng dụng và cơ sở kiến thức. Bộ quyền là tập hợp có thể tái sử dụng các quyền thao tác trên tài nguyên, có thể được gán cho thành viên đối với các tài nguyên cụ thể.",

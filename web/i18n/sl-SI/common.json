@@ -586,6 +586,7 @@
   "settings.ipPolicyNewTitle": "New IP Policy",
   "settings.ipPolicyRemoveEntry": "Remove entry",
   "settings.ipPolicyUsedBy": "Used by {{count}} apps",
+  "settings.ipPolicyUsedByLabel": "Uporablja",
   "settings.members": "Člani",
   "settings.permissionSet": "Nabor dovoljenj",
   "settings.permissionSetDescription": "Konfigurirajte nabore dovoljenj za uporabo z aplikacijami in bazami znanja. Nabor dovoljenj je ponovno uporabna zbirka dovoljenj za operacije nad viri, ki jo je mogoče dodeliti članom za določene vire.",
