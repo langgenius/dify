@@ -35,7 +35,6 @@ import {
   getTemplateLinkInMarketplace,
 } from '../utils'
 import background from './assets/background.webp'
-import difyUpdatesArt from './assets/dify-updates-art.png'
 import {
   EMBEDDED_MOBILE_BANNER_MEDIA,
   MARKETPLACE_MOBILE_BANNER_MEDIA,
@@ -563,6 +562,7 @@ function BlogBannerSlide({
   const href = sanitizeMarketplaceHref(banner.content.link)
   if (!href) return null
   const opensInNewTab = /^https?:\/\//.test(href)
+  const coverSrc = getMarketplaceAssetURL(banner.content.cover_image)
 
   return (
     <Link
@@ -647,18 +647,20 @@ function BlogBannerSlide({
           </div>
         </div>
       </div>
-      <img
-        src={difyUpdatesArt.src}
-        width={400}
-        height={200}
-        alt=""
-        aria-hidden
-        className={cn(
-          styles.updatesArt,
-          isMarketplacePlatform && styles.stackedVisual,
-          'h-[200px] shrink-0 rounded-2xl object-cover object-left',
-        )}
-      />
+      {coverSrc ? (
+        <img
+          src={coverSrc}
+          width={400}
+          height={200}
+          alt=""
+          aria-hidden
+          className={cn(
+            styles.updatesArt,
+            isMarketplacePlatform && styles.stackedVisual,
+            'h-[200px] shrink-0 rounded-2xl object-cover object-left',
+          )}
+        />
+      ) : null}
     </Link>
   )
 }
