@@ -128,7 +128,7 @@ class SkillPackageService:
                 entry_path=_SKILL_MD_NAME,
                 files=sorted(inspection.normalized_members),
                 size=sum(
-                    len(inspection.skill_md_bytes) if path == _SKILL_MD_NAME else max(info.file_size, 0)
+                    len(inspection.skill_md_bytes) if path == _SKILL_MD_NAME else info.file_size
                     for path, info in inspection.normalized_members.items()
                 ),
                 hash=hashlib.sha256(normalized_archive_bytes).hexdigest(),
@@ -162,7 +162,7 @@ class SkillPackageService:
             metadata = SkillPackageInspection(
                 name=name,
                 description=description,
-                uncompressed_size=sum(max(info.file_size, 0) for info, _ in members),
+                uncompressed_size=sum(info.file_size for info, _ in members),
             )
         except ValidationError as exc:
             raise self._manifest_validation_error(exc) from exc
@@ -220,8 +220,8 @@ class SkillPackageService:
         total_uncompressed = 0
         for info in infos:
             members.append((info, self._safe_member_path(info.filename)))
-            total_uncompressed += max(info.file_size, 0)
-            if info.file_size < 0 or info.compress_size < 0 or (info.file_size and info.compress_size == 0):
+            total_uncompressed += info.file_size
+            if info.file_size and info.compress_size == 0:
                 raise SkillPackageError("invalid_archive", "skill package has invalid ZIP metadata", status_code=400)
         if total_uncompressed > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
             raise SkillPackageError(
