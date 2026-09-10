@@ -29,6 +29,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.common.controller_schemas import DocumentBatchRetryPayload
 from controllers.common.errors import FileTooLargeError as FileTooLargeHTTPError
 from controllers.service_api.dataset import document as document_module
 from controllers.service_api.dataset.document import (
@@ -38,6 +39,7 @@ from controllers.service_api.dataset.document import (
     DocumentAddByFileApi,
     DocumentAddByTextApi,
     DocumentApi,
+    DocumentBatchRetryApi,
     DocumentIndexingStatusApi,
     DocumentListApi,
     DocumentListQuery,
@@ -46,7 +48,11 @@ from controllers.service_api.dataset.document import (
     DocumentUpdateByTextApi,
     InvalidMetadataError,
 )
-from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
+from controllers.service_api.dataset.error import (
+    ArchivedDocumentImmutableError,
+    DocumentAlreadyFinishedError,
+    DocumentIndexingError,
+)
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
@@ -1685,6 +1691,165 @@ class TestDocumentUpdateByTextApiPost(SQLiteControllerTest):
                     tenant_id=mock_tenant,
                     dataset_id=mock_dataset.id,
                     document_id=doc_id,
+                )
+
+
+class TestDocumentBatchRetryApi(SQLiteControllerTest):
+    """Test suite for the batch document retry endpoint."""
+
+    @patch("controllers.service_api.dataset.document.DocumentService")
+    def test_retry_documents_success(self, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
+        """Retry documents in request order after validating dataset scope."""
+        self._persist_dataset(mock_dataset)
+        first_id = uuid.uuid4()
+        second_id = uuid.uuid4()
+        first_document = make_serializable_document(
+            id=str(first_id),
+            tenant_id=mock_tenant,
+            dataset_id=mock_dataset.id,
+            indexing_status=IndexingStatus.ERROR,
+        )
+        second_document = make_serializable_document(
+            id=str(second_id),
+            tenant_id=mock_tenant,
+            dataset_id=mock_dataset.id,
+            indexing_status=IndexingStatus.PAUSED,
+        )
+        mock_doc_svc.get_documents_by_ids.return_value = [second_document, first_document]
+        mock_doc_svc.check_archived.return_value = False
+        payload = DocumentBatchRetryPayload(document_ids=[first_id, second_id])
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/retry",
+            method="POST",
+        ):
+            api = DocumentBatchRetryApi()
+            response, status = _unwrap_non_wrapped_controller(type(api).post)(
+                api,
+                payload,
+                self.session,
+                tenant_id=mock_tenant,
+                dataset_id=mock_dataset.id,
+            )
+
+        assert (response, status) == ("", 204)
+        dataset_ref = mock_doc_svc.get_documents_by_ids.call_args.args[0]
+        assert dataset_ref.tenant_id == mock_tenant
+        assert dataset_ref.dataset_id == mock_dataset.id
+        mock_doc_svc.retry_document.assert_called_once_with(
+            mock_dataset.id, [first_document, second_document], self.session
+        )
+
+    @patch("controllers.service_api.dataset.document.DocumentService")
+    def test_retry_documents_rejects_missing_document(self, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
+        self._persist_dataset(mock_dataset)
+        missing_id = uuid.uuid4()
+        mock_doc_svc.get_documents_by_ids.return_value = []
+        payload = DocumentBatchRetryPayload(document_ids=[missing_id])
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/retry",
+            method="POST",
+        ):
+            api = DocumentBatchRetryApi()
+            with pytest.raises(NotFound, match="Document not found"):
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api,
+                    payload,
+                    self.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
+                )
+
+        mock_doc_svc.retry_document.assert_not_called()
+
+    @patch("controllers.service_api.dataset.document.DocumentService")
+    def test_retry_documents_rejects_completed_document(self, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
+        self._persist_dataset(mock_dataset)
+        document_id = uuid.uuid4()
+        document = make_serializable_document(
+            id=str(document_id),
+            tenant_id=mock_tenant,
+            dataset_id=mock_dataset.id,
+            indexing_status=IndexingStatus.COMPLETED,
+        )
+        mock_doc_svc.get_documents_by_ids.return_value = [document]
+        mock_doc_svc.check_archived.return_value = False
+        payload = DocumentBatchRetryPayload(document_ids=[document_id])
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/retry",
+            method="POST",
+        ):
+            api = DocumentBatchRetryApi()
+            with pytest.raises(DocumentAlreadyFinishedError):
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api,
+                    payload,
+                    self.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
+                )
+
+        mock_doc_svc.retry_document.assert_not_called()
+
+    @patch("controllers.service_api.dataset.document.DocumentService")
+    def test_retry_documents_rejects_archived_document(self, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
+        self._persist_dataset(mock_dataset)
+        document_id = uuid.uuid4()
+        document = make_serializable_document(
+            id=str(document_id),
+            tenant_id=mock_tenant,
+            dataset_id=mock_dataset.id,
+            indexing_status=IndexingStatus.ERROR,
+        )
+        mock_doc_svc.get_documents_by_ids.return_value = [document]
+        mock_doc_svc.check_archived.return_value = True
+        payload = DocumentBatchRetryPayload(document_ids=[document_id])
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/retry",
+            method="POST",
+        ):
+            api = DocumentBatchRetryApi()
+            with pytest.raises(ArchivedDocumentImmutableError):
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api,
+                    payload,
+                    self.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
+                )
+
+        mock_doc_svc.retry_document.assert_not_called()
+
+    @patch("controllers.service_api.dataset.document.DocumentService")
+    def test_retry_documents_maps_concurrent_retry_error(self, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
+        self._persist_dataset(mock_dataset)
+        document_id = uuid.uuid4()
+        document = make_serializable_document(
+            id=str(document_id),
+            tenant_id=mock_tenant,
+            dataset_id=mock_dataset.id,
+            indexing_status=IndexingStatus.ERROR,
+        )
+        mock_doc_svc.get_documents_by_ids.return_value = [document]
+        mock_doc_svc.check_archived.return_value = False
+        mock_doc_svc.retry_document.side_effect = ValueError("Document is being retried")
+        payload = DocumentBatchRetryPayload(document_ids=[document_id])
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/retry",
+            method="POST",
+        ):
+            api = DocumentBatchRetryApi()
+            with pytest.raises(DocumentIndexingError, match="Document is being retried"):
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api,
+                    payload,
+                    self.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
                 )
 
 
