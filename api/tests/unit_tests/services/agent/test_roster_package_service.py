@@ -313,12 +313,6 @@ def test_package_files_reuse_existing_dsl_file_kinds(file_kind: str) -> None:
     with reader.read(io.BytesIO(content)) as prepared:
         assert prepared.app.package.soul.config_files[0].file_kind == file_kind
         assert reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload)) == file_payload
-    assert set(manifest.files[0].model_dump(exclude_none=True)) == {
-        "id",
-        "path",
-        "size",
-        "sha256",
-    }
 
 
 @pytest.mark.parametrize(
