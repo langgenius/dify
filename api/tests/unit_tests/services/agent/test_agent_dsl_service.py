@@ -872,3 +872,40 @@ def test_require_helpers_and_graph_detection(sqlite_session: Session) -> None:
     assert AgentDslService._agent_icon_type(None) is None
     assert is_agent_v2_graph({"nodes": [_agent_node("agent")]}) is True
     assert is_agent_v2_graph({"nodes": ["invalid", {"data": {"type": "start"}}]}) is False
+
+
+@pytest.mark.parametrize("include_assets", [False, True])
+def test_portable_package_resource_changes_do_not_mutate_source(include_assets: bool) -> None:
+    soul = AgentSoulConfig.model_validate(
+        {
+            "config_skills": [
+                {"name": "research", "file_id": "skill-source"},
+                {"name": "missing", "is_missing": True},
+            ],
+            "config_files": [
+                {
+                    "name": "guide.pdf",
+                    "file_kind": "upload_file",
+                    "file_id": "file-source",
+                    "mime_type": "application/pdf",
+                }
+            ],
+            "tools": {"cli_tools": [{"name": "cli", "env": {"secret_refs": [{"name": "TOKEN", "value": "secret"}]}}]},
+        }
+    )
+    original = soul.model_dump(mode="json")
+
+    package = make_portable_agent_package(_agent(), soul, include_assets=include_assets)
+
+    assert soul.model_dump(mode="json") == original
+    assert package.soul.config_skills[0].file_id == ("skill-source" if include_assets else "")
+    assert package.soul.config_files[0].file_id == ("file-source" if include_assets else "")
+    assert package.soul.config_files[0].mime_type == "application/pdf"
+    assert package.soul.config_skills[1].is_missing
+    assert [item.name for item in package.omitted_assets] == (
+        ["missing"] if include_assets else ["research", "missing", "guide.pdf"]
+    )
+    package.soul.config_skills[0].description = "Changed"
+    package.soul.config_files[0].name = "changed.pdf"
+    package.soul.tools.cli_tools[0].env.secret_refs[0].name = "CHANGED"
+    assert soul.model_dump(mode="json") == original
