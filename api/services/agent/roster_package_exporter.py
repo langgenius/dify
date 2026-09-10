@@ -55,7 +55,7 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageMember,
     RosterAgentPackageSkill,
 )
-from services.agent.roster_package_reader import RosterAgentPackageReader
+from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.skill_management_service import RuntimeAgentSkillArchive, SkillManagementService
 
@@ -215,16 +215,37 @@ class RosterAgentPackageExporter:
             member_metadata: dict[str, RosterAgentPackageMember] = {}
             with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
                 total_size = 0
-                for payload in [
-                    *(item.payload for item in skill_sources),
-                    *(item.payload for item in file_sources),
-                ]:
+                nested_uncompressed_size = 0
+                skill_packages = SkillPackageService()
+                sources: list[_SkillSource | _FileSource] = [*skill_sources, *file_sources]
+                for source in sources:
+                    payload = source.payload
                     remaining_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - total_size
+                    if isinstance(source, _SkillSource):
+                        remaining_bytes = min(remaining_bytes, dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024)
                     member = self._write_storage_member(archive, payload, max_bytes=remaining_bytes)
                     total_size += member.size
-                    if total_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
-                        raise RosterAgentPackageTooLargeError("Roster Agent package payloads exceed the size limit")
                     member_metadata[payload.path] = member
+                    if isinstance(source, _SkillSource):
+                        # Inspect only the embedded Skill; our writer already owns
+                        # the outer container, resource sizes, and digests.
+                        try:
+                            inspection = skill_packages.inspect(
+                                content=archive.read(payload.path), filename=payload.path
+                            )
+                        except SkillPackageError as exc:
+                            raise RosterAgentPackageExportFailedError(
+                                f"Roster Agent package contains unusable Skill {source.name!r}"
+                            ) from exc
+                        if inspection.name != source.name:
+                            raise RosterAgentPackageExportFailedError(
+                                f"Roster Agent package contains unusable Skill {source.name!r}: name mismatch"
+                            )
+                        nested_uncompressed_size += inspection.uncompressed_size
+                        if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
+                            raise RosterAgentPackageTooLargeError(
+                                "Roster Agent package nested Skill contents exceed the size limit"
+                            )
 
                 manifest = RosterAgentPackageManifest(
                     format=ROSTER_AGENT_PACKAGE_FORMAT,
@@ -274,10 +295,6 @@ class RosterAgentPackageExporter:
             size = output.tell()
             if size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                 raise RosterAgentPackageTooLargeError("Roster Agent package exceeds the archive size limit")
-            output.seek(0)
-            with RosterAgentPackageReader().read(output) as prepared:
-                if prepared.invalid_skills:
-                    raise RosterAgentPackageExportFailedError("Roster Agent package contains unusable Skill payloads")
             output.seek(0)
             return RosterAgentPackageExport(
                 archive=output,

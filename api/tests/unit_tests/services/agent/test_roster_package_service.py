@@ -696,8 +696,23 @@ def test_member_read_rechecks_limit_and_integrity_after_preflight() -> None:
             reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload))
 
 
-def test_export_rejects_unusable_skill_payload() -> None:
-    payload = _zip({"README.md": b"missing skill manifest"})
+@pytest.mark.parametrize(
+    ("case", "error_type", "message"),
+    [
+        ("missing_manifest", RosterAgentPackageExportFailedError, "unusable Skill"),
+        ("name_mismatch", RosterAgentPackageExportFailedError, "unusable Skill"),
+        ("size_limit", RosterAgentPackageTooLargeError, "exceeds the size limit"),
+    ],
+)
+def test_export_rejects_unusable_or_oversized_skill_payload(
+    case: str,
+    error_type: type[RosterAgentPackageExportFailedError | RosterAgentPackageTooLargeError],
+    message: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = _zip({"README.md": b"missing skill manifest"}) if case == "missing_manifest" else _skill_archive("other")
+    if case == "size_limit":
+        apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
     source = roster_package_exporter_module._SkillSource(
         payload=roster_package_exporter_module._PayloadSource("s_000001.zip", "skill"),
         id="s_000001",
@@ -711,7 +726,7 @@ def test_export_rejects_unusable_skill_payload() -> None:
     app = _package_app()
     app.package.soul.config_files = []
     exporter = RosterAgentPackageExporter(storage_backend=_MemoryStorage({"skill": payload}))
-    with pytest.raises(RosterAgentPackageExportFailedError, match="unusable Skill"):
+    with pytest.raises(error_type, match=message):
         exporter._build_archive(app=app, skill_sources=[source], file_sources=[])
 
 
