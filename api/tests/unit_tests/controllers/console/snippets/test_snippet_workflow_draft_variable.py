@@ -167,11 +167,7 @@ def test_variable_collection_get_raises_when_draft_workflow_missing(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
-    monkeypatch.setattr(
-        module,
-        "SnippetService",
-        Mock(return_value=Mock(get_draft_workflow=Mock(return_value=None))),
-    )
+    monkeypatch.setattr(module.SnippetService, "get_draft_workflow", Mock(return_value=None))
 
     api = module.SnippetWorkflowVariableCollectionApi()
     handler = unwrap(api.get)
@@ -269,11 +265,7 @@ def test_variable_reset_deletes_variable_without_node_execution(
 ) -> None:
     variable = _make_node_variable("var-1", node_execution_id=None)
     _persist_variables(sqlite_session, variable)
-    monkeypatch.setattr(
-        module,
-        "SnippetService",
-        Mock(return_value=Mock(get_draft_workflow=Mock(return_value=_make_workflow()))),
-    )
+    monkeypatch.setattr(module.SnippetService, "get_draft_workflow", Mock(return_value=_make_workflow()))
     api = module.SnippetVariableResetApi()
     handler = unwrap(api.put)
 
@@ -302,9 +294,7 @@ def test_environment_variables_returns_workflow_environment_variables(
         value="sk-test",
     )
     monkeypatch.setattr(
-        module,
-        "SnippetService",
-        Mock(return_value=Mock(get_draft_workflow=Mock(return_value=_make_workflow(environment_variables=[env_var])))),
+        module.SnippetService, "get_draft_workflow", Mock(return_value=_make_workflow(environment_variables=[env_var]))
     )
 
     api = module.SnippetEnvironmentVariableCollectionApi()

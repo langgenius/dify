@@ -5,7 +5,7 @@ from functools import wraps
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import WorkflowUpdatePayload
@@ -71,12 +71,8 @@ logger = logging.getLogger(__name__)
 # Register Pydantic models with Swagger
 
 
-def _snippet_session_maker() -> sessionmaker[Session]:
-    return session_factory.get_session_maker()
-
-
 def _snippet_service() -> SnippetService:
-    return SnippetService(_snippet_session_maker())
+    return SnippetService(session_factory.get_session_maker())
 
 
 class SnippetWorkflowResponse(WorkflowResponse):
@@ -492,7 +488,7 @@ class SnippetWorkflowByIdApi(Resource):
     def delete(self, snippet: CustomizedSnippet, workflow_id: str):
         """Delete a published snippet workflow version."""
         snippet_service = _snippet_service()
-        with _snippet_session_maker().begin() as session:
+        with session_factory.get_session_maker().begin() as session:
             try:
                 snippet_service.delete_workflow(
                     session=session,
@@ -642,10 +638,10 @@ class SnippetDraftNodeRunApi(Resource):
             account=current_user,
             query=req_data.query,
             files=files,
-            session_maker=_snippet_session_maker(),
+            session_maker=session_factory.get_session_maker(),
         )
 
-        with _snippet_session_maker()() as session:
+        with session_factory.create_session() as session:
             return WorkflowRunNodeExecutionResponse.model_validate(
                 node_execution_response_source(workflow_node_execution, session=session), from_attributes=True
             ).model_dump(mode="json")
@@ -684,7 +680,7 @@ class SnippetDraftNodeLastRunApi(Resource):
         if node_exec is None:
             raise NotFound("Node last run not found")
 
-        with _snippet_session_maker()() as session:
+        with session_factory.create_session() as session:
             return WorkflowRunNodeExecutionResponse.model_validate(
                 node_execution_response_source(node_exec, session=session), from_attributes=True
             ).model_dump(mode="json")
@@ -731,7 +727,7 @@ class SnippetDraftRunIterationNodeApi(Resource):
                 node_id=node_id,
                 args=args,
                 streaming=True,
-                session_maker=_snippet_session_maker(),
+                session_maker=session_factory.get_session_maker(),
             )
 
             return helper.compact_generate_response(response)
@@ -782,7 +778,7 @@ class SnippetDraftRunLoopNodeApi(Resource):
                 node_id=node_id,
                 args=req_data,
                 streaming=True,
-                session_maker=_snippet_session_maker(),
+                session_maker=session_factory.get_session_maker(),
             )
 
             return helper.compact_generate_response(response)
@@ -826,7 +822,7 @@ class SnippetDraftWorkflowRunApi(Resource):
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
-                session_maker=_snippet_session_maker(),
+                session_maker=session_factory.get_session_maker(),
             )
 
             return helper.compact_generate_response(response)
