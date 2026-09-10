@@ -37,8 +37,8 @@ _ALLOWED_COMPRESSIONS = {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}
 class RosterAgentPackageReader:
     """Produce a validated, bounded package without external side effects."""
 
-    def __init__(self, *, skill_package_service: SkillPackageService | None = None) -> None:
-        self._skill_packages = skill_package_service or SkillPackageService()
+    def __init__(self) -> None:
+        self._skill_packages = SkillPackageService()
 
     def read(self, source: BinaryIO) -> PreparedRosterAgentPackage:
         """Validate the container and record unusable Skill payloads for import warnings."""
