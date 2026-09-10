@@ -177,62 +177,29 @@ def test_shallowest_skill_md_preferred_during_normalization():
     assert manifest.files == ["SKILL.md", "nested/SKILL.md"]
 
 
-def test_validate_and_normalize_keeps_root_skill_unchanged():
-    package = _normalize({"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('hi')\n"})
+@pytest.mark.parametrize(
+    ("prefix", "extra_members"),
+    [
+        pytest.param("", {}, id="root"),
+        pytest.param("pdf-toolkit/", {}, id="single-folder"),
+        pytest.param("pdf-toolkit/", {"README.md": b"bundle notes\n"}, id="root-outsider"),
+        pytest.param("pdf-toolkit/", {"bundle/other.txt": b"x"}, id="nested-outsider"),
+        pytest.param("bundle/pdf-toolkit/", {}, id="deep-root"),
+    ],
+)
+def test_normalization_preserves_selected_skill_contents(prefix: str, extra_members: dict[str, bytes]) -> None:
+    expected = {"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('hi')\n"}
+    original = _zip({**{prefix + path: content for path, content in expected.items()}, **extra_members})
+    package = SkillPackageService().validate_and_normalize(content=original, filename="skill.zip")
 
     assert package.manifest.entry_path == "SKILL.md"
-    assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
+    assert package.manifest.files == sorted(expected)
     with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
-        assert archive.read("SKILL.md") == _SKILL_MD.encode()
-    assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
-    assert len(package.manifest.hash) == 64
-
-
-def test_validate_and_normalize_strips_single_top_level_folder():
-    package = _normalize(
-        {
-            "pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
-            "pdf-toolkit/scripts/run.py": b"print('hi')\n",
-        }
-    )
-
-    assert package.manifest.entry_path == "SKILL.md"
-    assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
-    with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
-        assert archive.read("SKILL.md") == _SKILL_MD.encode()
-    assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
-
-
-def test_validate_and_normalize_strips_single_top_level_folder_ignoring_other_root_entries():
-    package = _normalize(
-        {
-            "pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
-            "pdf-toolkit/scripts/run.py": b"print('hi')\n",
-            "README.md": b"bundle notes\n",
-        }
-    )
-
-    assert package.manifest.entry_path == "SKILL.md"
-    assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
-    with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
-        assert archive.read("SKILL.md") == _SKILL_MD.encode()
-    assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
-
-
-def test_validate_and_normalize_strips_single_top_level_folder_dropping_nested_foreign_paths():
-    package = _normalize(
-        {
-            "pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
-            "pdf-toolkit/scripts/run.py": b"print('hi')\n",
-            "bundle/other.txt": b"x",
-        }
-    )
-
-    assert package.manifest.entry_path == "SKILL.md"
-    assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
-    with zipfile.ZipFile(io.BytesIO(package.archive_bytes)) as archive:
-        assert archive.read("SKILL.md") == _SKILL_MD.encode()
-    assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
+        assert archive.namelist() == sorted(expected)
+        assert {path: archive.read(path) for path in archive.namelist()} == expected
+    assert package.manifest.hash == hashlib.sha256(package.archive_bytes).hexdigest()
+    if prefix:
+        assert package.manifest.hash != hashlib.sha256(original).hexdigest()
 
 
 def test_validate_and_normalize_rejects_multiple_depth_2_skill_roots_with_sibling_skill_tree():
@@ -245,21 +212,6 @@ def test_validate_and_normalize_rejects_multiple_depth_2_skill_roots_with_siblin
             }
         )
     assert exc_info.value.code == "files_outside_skill_root"
-
-
-def test_validate_and_normalize_strips_deeper_selected_skill_root():
-    members = {
-        "bundle/pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
-        "bundle/pdf-toolkit/scripts/run.py": b"print('hi')\n",
-    }
-    original_upload_bytes = _zip(members)
-    package = SkillPackageService().validate_and_normalize(content=original_upload_bytes, filename="skill.zip")
-
-    assert package.manifest.entry_path == "SKILL.md"
-    assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
-    assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
-    assert package.manifest.hash == hashlib.sha256(package.archive_bytes).hexdigest()
-    assert package.manifest.hash != hashlib.sha256(original_upload_bytes).hexdigest()
 
 
 @pytest.mark.parametrize(
