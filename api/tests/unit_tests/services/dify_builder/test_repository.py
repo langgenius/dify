@@ -421,3 +421,20 @@ def test_get_latest_conversation_item_filters_by_kind(repo: SqlDifyBuilderReposi
 
     assert item is not None
     assert item.seq == 2
+
+
+def test_save_run_persists_error_field(repo: SqlDifyBuilderRepository) -> None:
+    """A launch-failure run captures its exception text on ``error``; save_run
+    must persist it and get_run must round-trip it (was silently discarded)."""
+    run = Run(
+        kind="verify",
+        status="failed",
+        per_node=[],
+        error="query is required in input form",
+        immutable=True,
+    )
+
+    repo.save_run("session-1", run)
+    loaded = repo.get_run(run.id)
+
+    assert loaded.error == "query is required in input form"

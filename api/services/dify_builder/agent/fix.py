@@ -88,12 +88,19 @@ def _diagnosis_from_json(
     return Diagnosis(culprit_node_id=culprit, root_cause=root_cause, severity=_coerce_severity(data.get("severity")))
 
 
-def _degraded_diagnosis(failed: list[NodeOutput]) -> Diagnosis:
+def _degraded_diagnosis(failed: list[NodeOutput], launch_error: str = "") -> Diagnosis:
     if failed:
         node = failed[0]
         return Diagnosis(
             culprit_node_id=node.node_id,
             root_cause=f"Automatic diagnosis unavailable — node error: {node.error or '(none)'}",
+            severity="high",
+        )
+    if launch_error:
+        # No node executed: surface the captured launch error, not the blind message.
+        return Diagnosis(
+            culprit_node_id="",
+            root_cause=f"Automatic diagnosis unavailable — launch error: {launch_error}",
             severity="high",
         )
     return Diagnosis(culprit_node_id="", root_cause="Automatic diagnosis unavailable.", severity="medium")
@@ -115,7 +122,7 @@ def diagnose(
 ) -> Diagnosis:
     failed = _failed_nodes(node_outputs)
     if model is None:
-        return _degraded_diagnosis(failed)
+        return _degraded_diagnosis(failed, failed_run.error)
     system = (
         "You are a Dify workflow debugging assistant. Given a failed workflow run, identify the "
         "single node that caused the failure and the root cause. Reply with ONLY a JSON object: "
@@ -128,13 +135,17 @@ def diagnose(
             f"inputs={_truncate(o.inputs)} outputs={_truncate(o.outputs)}"
             for o in failed
         )
-        or "(no per-node failure recorded)"
+        or (
+            f"(no node executed; the run threw at launch: {failed_run.error!r})"
+            if failed_run.error
+            else "(no per-node failure recorded)"
+        )
     )
     user = f"FAILED NODES:\n{failed_desc}\n\nGRAPH:\n{_graph_context(graph)}"
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
     except Exception:  # any LLM/provider failure degrades to a surfaced result, never crashes the advance
-        return _degraded_diagnosis(failed)
+        return _degraded_diagnosis(failed, failed_run.error)
     fallback = failed[0].node_id if failed else ""
     return _diagnosis_from_json(data, graph, fallback_node=fallback)
 
