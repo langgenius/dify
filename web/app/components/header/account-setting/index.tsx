@@ -74,11 +74,10 @@ export default function AccountSetting({
     systemFeatures.deployment_edition === 'CLOUD' && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
+  const canViewIpPolicies =
+    systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
   const activeMenu = (() => {
-    if (
-      activeTab === ACCOUNT_SETTING_TAB.IP_POLICIES &&
-      systemFeatures.deployment_edition !== 'CLOUD'
-    )
+    if (activeTab === ACCOUNT_SETTING_TAB.IP_POLICIES && !canViewIpPolicies)
       return ACCOUNT_SETTING_TAB.MEMBERS
     if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES
@@ -154,8 +153,7 @@ export default function AccountSetting({
     const visibleTabs: AccountSettingTab[] = []
 
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
-    if (systemFeatures.deployment_edition === 'CLOUD')
-      visibleTabs.push(ACCOUNT_SETTING_TAB.IP_POLICIES)
+    if (canViewIpPolicies) visibleTabs.push(ACCOUNT_SETTING_TAB.IP_POLICIES)
 
     if (canManageWorkspaceRoles) {
       visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)

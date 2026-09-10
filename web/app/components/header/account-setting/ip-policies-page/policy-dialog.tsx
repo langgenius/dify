@@ -1,5 +1,6 @@
 'use client'
 
+import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -15,11 +16,16 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AllowlistField } from './allowlist-field'
 import { createAllowlistRow } from './allowlist-row'
-import { canSubmitIpPolicy, collectIpAddresses } from './validate-ip-entry'
+import { PolicyReferencedApps } from './referenced-apps'
+import {
+  canSubmitIpPolicy,
+  collectAllowedCidrs,
+  IP_POLICY_NAME_MAX_LENGTH,
+} from './validate-ip-entry'
 
 export type IpPolicyDialogSubmit = {
   name: string
-  addresses: string[]
+  allowed_cidrs: string[]
 }
 
 type IpPolicyDialogProps = {
@@ -28,6 +34,9 @@ type IpPolicyDialogProps = {
   currentIp?: string
   initialName?: string
   initialEntries?: readonly string[]
+  usedByCount?: number
+  referencedApps?: NetworkAccessGroupResponse['apps']
+  isPending?: boolean
   onOpenChange: (open: boolean) => void
   onSubmit?: (payload: IpPolicyDialogSubmit) => void
 }
@@ -38,6 +47,9 @@ export function IpPolicyDialog({
   currentIp,
   initialName = '',
   initialEntries,
+  usedByCount = 0,
+  referencedApps = [],
+  isPending = false,
   onOpenChange,
   onSubmit,
 }: IpPolicyDialogProps) {
@@ -68,6 +80,17 @@ export function IpPolicyDialog({
             <DialogDescription className="system-sm-regular text-text-tertiary">
               {t(($) => $['settings.ipPolicyDialogDescription'], { ns: 'common' })}
             </DialogDescription>
+            {mode === 'edit' && usedByCount > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <p className="system-xs-regular text-text-warning">
+                  {t(($) => $['settings.ipPolicyEditUsedBy'], {
+                    ns: 'common',
+                    count: usedByCount,
+                  })}
+                </p>
+                <PolicyReferencedApps apps={referencedApps} usedByCount={usedByCount} />
+              </div>
+            )}
           </div>
           <DialogClose
             render={
@@ -89,7 +112,7 @@ export function IpPolicyDialog({
             if (!canSubmit) return
             onSubmit?.({
               name: name.trim(),
-              addresses: collectIpAddresses(entryValues),
+              allowed_cidrs: collectAllowedCidrs(entryValues),
             })
           }}
         >
@@ -97,6 +120,7 @@ export function IpPolicyDialog({
             <FieldLabel>{t(($) => $['settings.ipPolicyName'], { ns: 'common' })}</FieldLabel>
             <Input
               value={name}
+              maxLength={IP_POLICY_NAME_MAX_LENGTH}
               placeholder={t(($) => $['settings.ipPolicyNamePlaceholder'], { ns: 'common' })}
               onChange={(event) => setName(event.currentTarget.value)}
             />
@@ -108,7 +132,12 @@ export function IpPolicyDialog({
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
-            <Button type="submit" variant="primary" disabled={!canSubmit}>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={!canSubmit || isPending}
+              loading={isPending}
+            >
               {mode === 'edit'
                 ? t(($) => $['operation.save'], { ns: 'common' })
                 : t(($) => $['settings.ipPolicyCreate'], { ns: 'common' })}

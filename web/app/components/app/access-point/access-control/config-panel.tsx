@@ -12,7 +12,7 @@ import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
-import { canSaveAccessControl } from './draft'
+import { canSaveAccessControl, hasSelectedProtectableAccessPoint } from './draft'
 import { AccessControlPolicyField } from './policy-field'
 import { AccessControlScopeList } from './scope-list'
 
@@ -21,7 +21,9 @@ type AccessControlConfigPanelProps = {
   policies: readonly AccessControlPolicy[]
   currentIp?: string
   availability: AccessControlScopeAvailability
+  baseline?: AccessControlDraft
   showBack?: boolean
+  saving?: boolean
   onBack?: () => void
   onCancel: () => void
   onCreatePolicy: () => void
@@ -35,7 +37,9 @@ export function AccessControlConfigPanel({
   policies,
   currentIp,
   availability,
+  baseline,
   showBack = false,
+  saving = false,
   onBack,
   onCancel,
   onCreatePolicy,
@@ -46,7 +50,7 @@ export function AccessControlConfigPanel({
   const { t } = useTranslation()
   const title = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
   const hasSelectedPolicy = Boolean(draft.selectedPolicyId)
-  const canSave = canSaveAccessControl({ draft, availability })
+  const canSave = canSaveAccessControl({ draft, availability, baseline })
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -110,7 +114,7 @@ export function AccessControlConfigPanel({
             availability={availability}
             onDraftChange={onDraftChange}
           />
-          {hasSelectedPolicy && !canSave && (
+          {hasSelectedPolicy && !hasSelectedProtectableAccessPoint(draft, availability) && (
             <p className="system-xs-regular text-text-warning">
               {t(($) => $['studio.accessControl.selectAccessPoint'], { ns: 'deployments' })}
             </p>
@@ -121,7 +125,7 @@ export function AccessControlConfigPanel({
           <Button type="button" variant="secondary" onClick={onCancel}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
-          <Button type="submit" variant="primary" disabled={!canSave}>
+          <Button type="submit" variant="primary" disabled={!canSave || saving} loading={saving}>
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>

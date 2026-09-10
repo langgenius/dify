@@ -1,4 +1,12 @@
-import { canSubmitIpPolicy, collectIpAddresses, validateIpEntry } from '../validate-ip-entry'
+import {
+  canSubmitIpPolicy,
+  collectAllowedCidrs,
+  collectIpAddresses,
+  IP_POLICY_CIDR_MAX_COUNT,
+  IP_POLICY_NAME_MAX_LENGTH,
+  toAllowedCidr,
+  validateIpEntry,
+} from '../validate-ip-entry'
 
 describe('validateIpEntry', () => {
   it('treats blank input as empty, not invalid', () => {
@@ -84,5 +92,37 @@ describe('collectIpAddresses', () => {
       '10.0.0.0/8',
       '203.0.113.42',
     ])
+  })
+})
+
+describe('toAllowedCidr', () => {
+  it('appends /32 to bare IPv4 addresses and /128 to bare IPv6 addresses', () => {
+    expect(toAllowedCidr('203.0.113.42')).toBe('203.0.113.42/32')
+    expect(toAllowedCidr('::1')).toBe('::1/128')
+    expect(toAllowedCidr('10.0.0.0/8')).toBe('10.0.0.0/8')
+  })
+})
+
+describe('collectAllowedCidrs', () => {
+  it('normalizes submitted entries to CIDR notation', () => {
+    expect(collectAllowedCidrs([' 203.0.113.42 ', '', '10.0.0.0/8'])).toEqual([
+      '203.0.113.42/32',
+      '10.0.0.0/8',
+    ])
+  })
+})
+
+describe('canSubmitIpPolicy limits', () => {
+  it('rejects names longer than the API maximum', () => {
+    expect(canSubmitIpPolicy('n'.repeat(IP_POLICY_NAME_MAX_LENGTH + 1), ['10.0.0.0/8'])).toBe(false)
+    expect(canSubmitIpPolicy('n'.repeat(IP_POLICY_NAME_MAX_LENGTH), ['10.0.0.0/8'])).toBe(true)
+  })
+
+  it('rejects more CIDRs than the API maximum', () => {
+    const cidrs = Array.from(
+      { length: IP_POLICY_CIDR_MAX_COUNT + 1 },
+      (_, index) => `10.0.0.${index}`,
+    )
+    expect(canSubmitIpPolicy('Office', cidrs)).toBe(false)
   })
 })

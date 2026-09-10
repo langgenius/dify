@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
@@ -108,6 +109,7 @@ const renderAccessPoint = ({
 } = {}) => {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
+  seedCurrentWorkspaceQuery(queryClient)
   seedSystemFeatures(queryClient)
   const queryOptions =
     consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({

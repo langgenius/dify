@@ -24,8 +24,9 @@ import { useTranslation } from 'react-i18next'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
+import { splitPolicySummary } from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
 import { getInServiceCoverage } from './chip-status'
-import { isProtectableAccessPoint, splitPolicySummary } from './draft'
+import { isProtectableAccessPoint } from './draft'
 
 const SCOPE_ICONS: Record<Exclude<AccessPoint, 'webApp'>, string> = {
   serviceApi: 'i-custom-vender-knowledge-api-aggregate',
@@ -39,6 +40,13 @@ type AccessControlStatusPanelProps = {
   enabled: boolean
   availability: AccessControlScopeAvailability
   onEdit: () => void
+  updating?: boolean
+  dirty?: boolean
+  canSave?: boolean
+  readOnly?: boolean
+  onUpgrade?: () => void
+  onCancel?: () => void
+  onSave?: () => void
   onEnabledChange: (enabled: boolean) => void
 }
 
@@ -48,13 +56,20 @@ export function AccessControlStatusPanel({
   enabled,
   availability,
   onEdit,
+  updating = false,
+  dirty = false,
+  canSave = false,
+  readOnly = false,
+  onUpgrade,
+  onCancel,
+  onSave,
   onEnabledChange,
 }: AccessControlStatusPanelProps) {
   const { t } = useTranslation()
   const appInfo = useAppStore((state) => state.appDetail)
   const [confirmPause, setConfirmPause] = useState(false)
   const selectedPolicy = policies.find((policy) => policy.id === draft.selectedPolicyId)
-  const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.addresses) : undefined
+  const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.allowed_cidrs) : undefined
   const coverage = getInServiceCoverage(draft.scopes, availability)
   const labels: Record<AccessPoint, string> = {
     webApp: t(($) => $['overview.appInfo.title'], { ns: 'appOverview' }),
@@ -78,9 +93,15 @@ export function AccessControlStatusPanel({
               })
             : t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })}
         </PopoverTitle>
-        <Button type="button" variant="ghost" size="small" onClick={onEdit}>
-          {t(($) => $['operation.edit'], { ns: 'common' })}
-        </Button>
+        {readOnly ? (
+          <Button type="button" variant="ghost" size="small" onClick={onUpgrade}>
+            {t(($) => $['studio.accessControl.turnOn'], { ns: 'deployments' })}
+          </Button>
+        ) : (
+          <Button type="button" variant="ghost" size="small" onClick={onEdit}>
+            {t(($) => $['operation.edit'], { ns: 'common' })}
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col gap-5 overflow-hidden px-4 pt-2 pb-4">
@@ -104,6 +125,7 @@ export function AccessControlStatusPanel({
           </div>
           <Switch
             checked={enabled}
+            disabled={updating || readOnly}
             aria-label={t(($) => $['studio.accessControl.restrictByIp'], { ns: 'deployments' })}
             onCheckedChange={(next) => {
               if (next) {
@@ -202,6 +224,22 @@ export function AccessControlStatusPanel({
             )
           })}
         </div>
+        {dirty && !readOnly && (
+          <div className="flex items-center justify-end gap-2 pt-5">
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              disabled={!canSave || updating}
+              loading={updating}
+              onClick={onSave}
+            >
+              {t(($) => $['operation.save'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
       </div>
 
       <AlertDialog open={confirmPause} onOpenChange={setConfirmPause}>

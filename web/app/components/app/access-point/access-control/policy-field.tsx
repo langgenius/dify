@@ -15,7 +15,10 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
-import { policyIncludesIp, splitPolicySummary } from './draft'
+import {
+  policyIncludesIp,
+  splitPolicySummary,
+} from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
 
 const MANAGE_POLICIES_VALUE = '__manage-ip-policies__'
 
@@ -38,12 +41,12 @@ export function AccessControlPolicyField({
 }: AccessControlPolicyFieldProps) {
   const { t } = useTranslation()
   const selectedPolicy = policies.find((policy) => policy.id === selectedPolicyId)
-  const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.addresses) : undefined
+  const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.allowed_cidrs) : undefined
   const showLockout =
     Boolean(selectedPolicy && currentIp) &&
     selectedPolicy !== undefined &&
     currentIp !== undefined &&
-    !policyIncludesIp(selectedPolicy.addresses, currentIp)
+    !policyIncludesIp(selectedPolicy.allowed_cidrs, currentIp)
   const selectLabel = t(($) => $['studio.accessControl.ipPolicy'], { ns: 'deployments' })
   const placeholder = t(($) => $['studio.accessControl.selectPolicy'], { ns: 'deployments' })
 
@@ -73,7 +76,7 @@ export function AccessControlPolicyField({
           <span className="shrink-0 system-xs-regular text-text-tertiary">
             {t(($) => $['studio.accessControl.addressCount'], {
               ns: 'deployments',
-              count: policy.addresses.length,
+              count: policy.allowed_cidrs.length,
             })}
           </span>
           <SelectItemIndicator />
@@ -132,7 +135,7 @@ export function AccessControlPolicyField({
               <span className="shrink-0 system-xs-regular text-text-tertiary">
                 {t(($) => $['studio.accessControl.addressCount'], {
                   ns: 'deployments',
-                  count: policy.addresses.length,
+                  count: policy.allowed_cidrs.length,
                 })}
               </span>
             </button>

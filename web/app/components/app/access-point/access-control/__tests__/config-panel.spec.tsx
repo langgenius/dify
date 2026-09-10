@@ -22,12 +22,12 @@ const policies: AccessControlPolicy[] = [
   {
     id: 'internal-network',
     name: 'Internal Network',
-    addresses: ['203.0.113.42', '198.51.100.0/24', '192.0.2.1', '192.0.2.2'],
+    allowed_cidrs: ['203.0.113.42/32', '198.51.100.0/24', '192.0.2.1/32', '192.0.2.2/32'],
   },
   {
     id: 'office-vpn',
     name: 'Office VPN',
-    addresses: ['198.51.100.0/24'],
+    allowed_cidrs: ['198.51.100.0/24'],
   },
 ]
 
@@ -113,7 +113,7 @@ describe('AccessControlConfigPanel', () => {
     await user.click(await screen.findByRole('option', { name: /Internal Network/ }))
 
     expect(
-      screen.getByText('Allows 203.0.113.42, 198.51.100.0/24 and 2 more addresses'),
+      screen.getByText('Allows 203.0.113.42/32, 198.51.100.0/24 and 2 more addresses'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
     expect(screen.getByRole('switch', { name: 'Web App' })).not.toHaveAttribute(
@@ -156,6 +156,7 @@ describe('AccessControlConfigPanel', () => {
         initialDraft={{
           ...createDefaultAccessControlDraft(),
           selectedPolicyId: 'internal-network',
+          enabled: true,
         }}
         availability={{ ...allScopesAvailable, mcp: false }}
       />,
@@ -174,6 +175,7 @@ describe('AccessControlConfigPanel', () => {
         initialDraft={{
           ...createDefaultAccessControlDraft(),
           selectedPolicyId: 'internal-network',
+          enabled: true,
         }}
         availability={{ webApp: true, serviceApi: true, mcp: false, trigger: false }}
       />,

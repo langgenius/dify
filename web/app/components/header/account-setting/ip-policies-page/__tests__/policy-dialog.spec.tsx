@@ -34,7 +34,7 @@ function DialogHarness({
   onSubmit = vi.fn(),
 }: {
   currentIp?: string
-  onSubmit?: (payload: { name: string; addresses: string[] }) => void
+  onSubmit?: (payload: { name: string; allowed_cidrs: string[] }) => void
 }) {
   const [open, setOpen] = useState(true)
   return (
@@ -107,7 +107,7 @@ describe('IpPolicyDialog', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       name: 'Internal Network',
-      addresses: ['10.0.0.0/8', '203.0.113.42'],
+      allowed_cidrs: ['10.0.0.0/8', '203.0.113.42/32'],
     })
   })
 })

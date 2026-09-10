@@ -31,20 +31,30 @@ describe('getInServiceCoverage', () => {
 })
 
 describe('getAccessControlChipState', () => {
-  it('returns pro for Cloud sandbox', () => {
+  it('returns pro when the workspace is not entitled and has no assignment', () => {
     expect(
       getAccessControlChipState({
-        plan: 'sandbox',
-        assignment,
+        entitled: false,
+        assignment: null,
         availability,
       }).kind,
     ).toBe('pro')
   })
 
+  it('keeps the saved assignment visible when the workspace is not entitled', () => {
+    expect(
+      getAccessControlChipState({
+        entitled: false,
+        assignment,
+        availability,
+      }).kind,
+    ).toBe('on')
+  })
+
   it('returns off when the app has never been configured', () => {
     expect(
       getAccessControlChipState({
-        plan: 'professional',
+        entitled: true,
         assignment: null,
         availability,
       }),
@@ -54,7 +64,7 @@ describe('getAccessControlChipState', () => {
   it('returns paused when a saved policy is not enforcing', () => {
     expect(
       getAccessControlChipState({
-        plan: 'professional',
+        entitled: true,
         assignment: { ...assignment, enabled: false },
         availability,
       }),
@@ -69,7 +79,7 @@ describe('getAccessControlChipState', () => {
   it('returns on when every in-service access point is covered', () => {
     expect(
       getAccessControlChipState({
-        plan: 'team',
+        entitled: true,
         assignment,
         availability,
       }),
@@ -84,7 +94,7 @@ describe('getAccessControlChipState', () => {
   it('returns partial when some in-service access points are excluded', () => {
     expect(
       getAccessControlChipState({
-        plan: 'professional',
+        entitled: true,
         assignment: {
           ...assignment,
           scopes: { ...assignment.scopes, mcp: false },
