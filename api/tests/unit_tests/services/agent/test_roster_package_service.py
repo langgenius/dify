@@ -1104,7 +1104,6 @@ def test_export_uses_current_workspace_skill_bindings(
                 "audit",
                 "scope",
                 "name",
-                "mime_type",
             }
             assert prepared.app.package.workspace_skills[0].priority == 0
             assert prepared.manifest.skills[0].name == "legacy-published"
