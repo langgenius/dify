@@ -40,6 +40,62 @@ def _archive_members(content: bytes) -> list[str]:
         return sorted(info.filename for info in archive.infolist() if not info.is_dir())
 
 
+def test_normalize_replaces_invalid_utf8_member_names() -> None:
+    original = _zip(
+        {
+            "SKILL.md": _SKILL_MD.encode(),
+            "scripts/\u00e9.py": b"print('keep payload')\n",
+            "assets/\u00f6.txt": b"valid unicode name",
+            "assets/X.txt": b"legacy encoded name",
+        }
+    )
+    damaged = original.replace(b"\xc3\xa9.py", b"\xffa.py").replace(b"assets/X.txt", b"assets/\x82.txt")
+    service = SkillPackageService()
+    assert service.inspect(content=damaged, filename="skill.zip").name == "pdf-toolkit"
+    normalized = service.validate_and_normalize(content=damaged, filename="skill.zip")
+    with zipfile.ZipFile(io.BytesIO(normalized.archive_bytes)) as archive:
+        assert archive.read("scripts/\ufffda.py") == b"print('keep payload')\n"
+        assert archive.read("assets/\u00f6.txt") == b"valid unicode name"
+        assert archive.read("assets/\u00e9.txt") == b"legacy encoded name"
+        assert archive.testzip() is None
+
+
+def test_normalize_recovers_zip64_skill_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    with monkeypatch.context() as scoped:
+        scoped.setattr(zipfile, "ZIP64_LIMIT", 0)
+        original = _zip({"SKILL.md": _SKILL_MD.encode(), "scripts/\u00e9.py": b"print('ok')\n"})
+    damaged = original.replace(b"\xc3\xa9.py", b"\xffa.py")
+    service = SkillPackageService()
+    assert service.inspect(content=damaged, filename="skill.zip").name == "pdf-toolkit"
+    normalized = service.validate_and_normalize(content=damaged, filename="skill.zip")
+    with zipfile.ZipFile(io.BytesIO(normalized.archive_bytes)) as archive:
+        assert archive.read("scripts/\ufffda.py") == b"print('ok')\n"
+
+
+def test_replacement_member_names_must_remain_unique() -> None:
+    original = _zip(
+        {
+            "SKILL.md": _SKILL_MD.encode(),
+            "scripts/\u00e9.py": b"one",
+            "scripts/\u00f6.py": b"two",
+        }
+    )
+    damaged = original.replace(b"\xc3\xa9.py", b"\xffa.py").replace(b"\xc3\xb6.py", b"\xfea.py")
+    with pytest.raises(SkillPackageError) as error:
+        SkillPackageService().validate_and_normalize(content=damaged, filename="skill.zip")
+    assert error.value.code == "duplicate_member_path"
+
+
+def test_replacement_names_do_not_hide_local_header_mismatch() -> None:
+    original = _zip({"SKILL.md": _SKILL_MD.encode(), "\u00e9.py": b"payload"})
+    # Damage only the central name, leaving the local header unchanged.
+    central = original.index(b"PK\x01\x02")
+    damaged = original[:central] + original[central:].replace(b"\xc3\xa9.py", b"\xffa.py")
+    with pytest.raises(SkillPackageError) as error:
+        SkillPackageService().validate_and_normalize(content=damaged, filename="skill.zip")
+    assert error.value.code == "invalid_archive"
+
+
 def test_valid_skill_normalizes_manifest():
     manifest = _normalize({"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('hi')\n"}).manifest
 

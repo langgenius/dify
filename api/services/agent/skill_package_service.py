@@ -26,6 +26,7 @@ import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from configs import dify_config
+from libs.zip_filename_recovery import open_zip_with_replacement_names
 
 _ALLOWED_EXTENSIONS = (".zip", ".skill")
 _SKILL_MD_NAME = "SKILL.md"
@@ -110,6 +111,8 @@ class SkillPackageService:
         The returned manifest is normalized to archive-root ``SKILL.md`` and its
         hash describes the rebuilt archive bytes. Member read/decompression
         failures while consuming the archive are mapped to ``invalid_archive``.
+        Malformed UTF-8 member names are decoded with replacement characters;
+        recovered path collisions still fail the normal duplicate-path check.
         """
         archive = self._open_archive(content=content, filename=filename)
         with archive:
@@ -209,7 +212,7 @@ class SkillPackageService:
             raise SkillPackageError("archive_too_large", "skill archive exceeds size limit", status_code=400)
 
         try:
-            return zipfile.ZipFile(io.BytesIO(content))
+            return open_zip_with_replacement_names(content)
         except zipfile.BadZipFile as exc:
             raise SkillPackageError("invalid_archive", "skill archive is not a valid zip", status_code=400) from exc
 
