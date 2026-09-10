@@ -350,6 +350,9 @@ catalogs:
     ahooks:
       specifier: 3.9.7
       version: 3.9.7
+    bowser:
+      specifier: 2.14.1
+      version: 2.14.1
     c12:
       specifier: 4.0.0-beta.5
       version: 4.0.0-beta.5
@@ -1387,6 +1390,9 @@ importers:
       ahooks:
         specifier: 'catalog:'
         version: 3.9.7(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      bowser:
+        specifier: 'catalog:'
+        version: 2.14.1
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -5503,6 +5509,9 @@ packages:
 
   boolbase@1.0.0:
     resolution: {integrity: sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==}
+
+  bowser@2.14.1:
+    resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
 
   brace-expansion@5.0.6:
     resolution: {integrity: sha512-kLpxurY4Z4r9sgMsyG0Z9uzsBlgiU/EFKhj/h91/8yHu0edo7XuixOIH3VcJ8kkxs6/jPzoI6U9Vj3WqbMQ94g==}
@@ -12881,6 +12890,8 @@ snapshots:
 
   boolbase@1.0.0: {}
 
+  bowser@2.14.1: {}
+
   brace-expansion@5.0.6:
     dependencies:
       balanced-match: 4.0.4
@@ -17492,6 +17503,7 @@ time:
   abcjs@6.7.0: '2026-08-07T18:50:14.156Z'
   agentation@3.0.2: '2026-03-25T16:24:19.682Z'
   ahooks@3.9.7: '2026-03-23T15:49:13.605Z'
+  bowser@2.14.1: '2026-02-08T22:04:35.837Z'
   c12@4.0.0-beta.5: '2026-05-06T17:28:34.367Z'
   chokidar@5.0.0: '2025-11-25T23:28:06.854Z'
   class-variance-authority@0.7.1: '2024-11-26T08:20:34.604Z'
