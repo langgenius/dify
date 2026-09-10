@@ -1,6 +1,7 @@
 'use client'
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
+import type { ConfigModalValidationError } from './utils'
 import type { SelectorTranslate } from '@/app/components/app/configuration/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
@@ -56,6 +57,7 @@ type ConfigModalFormFieldsProps = {
   selectOptions: SelectOptionItem[]
   showHiddenField?: boolean
   tempPayload: InputVar
+  validationError?: ConfigModalValidationError
   t: SelectorTranslate<'appDebug'>
 }
 
@@ -75,6 +77,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   selectOptions,
   showHiddenField = true,
   tempPayload,
+  validationError,
   t: rawTranslate,
 }) => {
   const t = getStringSelectorTranslate(rawTranslate)
@@ -82,6 +85,13 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
   const docLink = useDocLink()
   const fieldId = React.useId()
+  const errorId = `${fieldId}-error`
+  const getError = (field: ConfigModalValidationError['field']) =>
+    validationError?.field === field ? validationError.message : undefined
+  const getErrorProps = (field: ConfigModalValidationError['field']) => ({
+    'aria-invalid': !!getError(field) || undefined,
+    'aria-describedby': getError(field) ? errorId : undefined,
+  })
   const hiddenDescriptionAriaLabel = t(($) => $['variableConfig.hiddenDescription'], {
     ns: 'appDebug',
   }).replace(/<[^>]+>/g, '')
@@ -100,9 +110,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       <Field
         htmlFor={`${fieldId}-variable`}
         title={t(($) => $['variableConfig.varName'], { ns: 'appDebug' })}
+        errorMessage={getError('variable')}
+        errorId={errorId}
       >
         <Input
           id={`${fieldId}-variable`}
+          {...getErrorProps('variable')}
           value={variable}
           onChange={onVarNameChange}
           onBlur={onVarKeyBlur}
@@ -112,9 +125,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       <Field
         htmlFor={`${fieldId}-label`}
         title={t(($) => $['variableConfig.labelName'], { ns: 'appDebug' })}
+        errorMessage={getError('label')}
+        errorId={errorId}
       >
         <Input
           id={`${fieldId}-label`}
+          {...getErrorProps('label')}
           value={label as string}
           onChange={(e) => onPayloadChange('label')(e.target.value)}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
@@ -225,8 +241,17 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
 
       {type === InputVarType.select && (
         <>
-          <Field title={t(($) => $['variableConfig.options'], { ns: 'appDebug' })}>
-            <ConfigSelect options={options || []} onChange={onPayloadChange('options')} />
+          <Field
+            title={t(($) => $['variableConfig.options'], { ns: 'appDebug' })}
+            errorMessage={getError('options')}
+            errorId={errorId}
+          >
+            <ConfigSelect
+              options={options || []}
+              onChange={onPayloadChange('options')}
+              errorMessage={getError('options')}
+              errorId={errorId}
+            />
           </Field>
           {options && options.length > 0 && (
             <div>
@@ -284,6 +309,13 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             payload={tempPayload as UploadFileSetting}
             onChange={onFilePayloadChange}
             isMultiple={type === InputVarType.multiFiles}
+            validationError={
+              validationError &&
+              (validationError.field === 'allowed_file_types' ||
+                validationError.field === 'allowed_file_extensions')
+                ? { field: validationError.field, message: validationError.message }
+                : undefined
+            }
           />
           <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
             <FileUploaderInAttachmentWrapper
@@ -315,15 +347,29 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       {type === InputVarType.jsonObject && (
-        <Field title={t(($) => $['variableConfig.jsonSchema'], { ns: 'appDebug' })} isOptional>
-          <CodeEditor
-            language={CodeLanguage.json}
-            value={jsonSchemaStr}
-            onChange={onJSONSchemaChange}
-            noWrapper
-            className="h-20 overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
-            placeholder={<div className="whitespace-pre">{jsonConfigPlaceHolder}</div>}
-          />
+        <Field
+          title={t(($) => $['variableConfig.jsonSchema'], { ns: 'appDebug' })}
+          titleId={`${fieldId}-json-schema`}
+          isOptional
+          errorMessage={getError('json_schema')}
+          errorId={errorId}
+        >
+          <div
+            role="group"
+            tabIndex={-1}
+            aria-labelledby={`${fieldId}-json-schema`}
+            {...getErrorProps('json_schema')}
+            className="rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            <CodeEditor
+              language={CodeLanguage.json}
+              value={jsonSchemaStr}
+              onChange={onJSONSchemaChange}
+              noWrapper
+              className="h-20 overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+              placeholder={<div className="whitespace-pre">{jsonConfigPlaceHolder}</div>}
+            />
+          </div>
         </Field>
       )}
 

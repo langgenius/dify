@@ -14,9 +14,11 @@ export type Options = string[]
 type IConfigSelectProps = {
   options: Options
   onChange: (options: Options) => void
+  errorMessage?: string
+  errorId?: string
 }
 
-const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
+const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange, errorMessage, errorId }) => {
   const { t } = useTranslation()
   const [focusID, setFocusID] = useState<number | null>(null)
   const [deletingID, setDeletingID] = useState<number | null>(null)
@@ -65,6 +67,9 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
                 <input
                   key={getItemKey(index)}
                   type="input"
+                  aria-label={`${t(($) => $['variableConfig.options'], { ns: 'appDebug' })} ${index + 1}`}
+                  aria-invalid={!!errorMessage || undefined}
+                  aria-describedby={errorMessage ? errorId : undefined}
                   value={o || ''}
                   onChange={(e) => {
                     const value = e.target.value
@@ -102,10 +107,12 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
       <Button
         type="button"
         variant="tertiary"
+        aria-invalid={(options.length === 0 && !!errorMessage) || undefined}
+        aria-describedby={options.length === 0 && errorMessage ? errorId : undefined}
         onClick={() => {
           onChange([...options, ''])
         }}
-        className="mt-1 h-9 w-full justify-start"
+        className="mt-1 flex h-9 w-full justify-start gap-2 px-3"
       >
         <RiAddLine aria-hidden="true" className="size-4" />
         <span className="system-sm-medium text-[13px]">

@@ -14,7 +14,9 @@ vi.mock('react-sortablejs', () => ({
     setList: (list: Array<{ id: number; name: string }>) => void
   }) => (
     <div>
-      <button onClick={() => setList([...list].reverse())}>reorder-options</button>
+      <button type="button" onClick={() => setList([...list].reverse())}>
+        reorder-options
+      </button>
       {children}
     </div>
   ),
@@ -30,12 +32,64 @@ describe('ConfigSelect Component', () => {
     vi.clearAllMocks()
   })
 
-  it('renders all options', () => {
+  it('gives each option input a localized accessible name', () => {
     render(<ConfigSelect {...defaultProps} />)
 
-    defaultProps.options.forEach((option) => {
-      expect(screen.getByDisplayValue(option)).toBeInTheDocument()
+    defaultProps.options.forEach((option, index) => {
+      expect(
+        screen.getByRole('textbox', {
+          name: `appDebug.variableConfig.options ${index + 1}`,
+        }),
+      ).toHaveValue(option)
     })
+  })
+
+  it('associates option errors with the inputs and clears them when corrected', () => {
+    const { rerender } = render(
+      <>
+        <ConfigSelect {...defaultProps} errorMessage="Duplicate options" errorId="options-error" />
+        <p id="options-error">Duplicate options</p>
+      </>,
+    )
+
+    screen.getAllByRole('textbox').forEach((input) => {
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(input).toHaveAccessibleDescription('Duplicate options')
+    })
+    expect(
+      screen.getByRole('button', {
+        name: 'appDebug.variableConfig.addOption',
+      }),
+    ).not.toHaveAttribute('aria-invalid')
+
+    rerender(<ConfigSelect {...defaultProps} />)
+
+    screen.getAllByRole('textbox').forEach((input) => {
+      expect(input).not.toHaveAttribute('aria-invalid')
+      expect(input).not.toHaveAttribute('aria-describedby')
+    })
+  })
+
+  it('associates the empty-list error with the focusable add action', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <ConfigSelect
+          options={[]}
+          onChange={defaultProps.onChange}
+          errorMessage="Add at least one option"
+          errorId="options-error"
+        />
+        <p id="options-error">Add at least one option</p>
+      </>,
+    )
+
+    const addOption = screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' })
+    await user.tab()
+
+    expect(addOption).toHaveFocus()
+    expect(addOption).toHaveAttribute('aria-invalid', 'true')
+    expect(addOption).toHaveAccessibleDescription('Add at least one option')
   })
 
   it('handles option deletion', () => {

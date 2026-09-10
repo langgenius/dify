@@ -7,7 +7,7 @@ import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
@@ -23,6 +23,10 @@ type Props = Readonly<{
   isMultiple: boolean
   inFeaturePanel?: boolean
   hideSupportFileType?: boolean
+  validationError?: {
+    field: 'allowed_file_types' | 'allowed_file_extensions'
+    message: string
+  }
   onChange: (payload: UploadFileSetting) => void
 }>
 
@@ -31,9 +35,14 @@ const FileUploadSetting: FC<Props> = ({
   isMultiple,
   inFeaturePanel = false,
   hideSupportFileType = false,
+  validationError,
   onChange,
 }) => {
   const { t } = useTranslation()
+  const errorId = useId()
+  const typeErrorId = validationError?.field === 'allowed_file_types' ? errorId : undefined
+  const customFileTypesErrorId =
+    validationError?.field === 'allowed_file_extensions' ? errorId : undefined
 
   const {
     allowed_file_upload_methods = [],
@@ -124,7 +133,11 @@ const FileUploadSetting: FC<Props> = ({
   return (
     <div>
       {!inFeaturePanel && (
-        <Field title={t(($) => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' })}>
+        <Field
+          title={t(($) => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' })}
+          errorMessage={validationError?.message}
+          errorId={errorId}
+        >
           <div className="space-y-1">
             {[
               SupportUploadFileTypes.document,
@@ -143,6 +156,7 @@ const FileUploadSetting: FC<Props> = ({
                 }
                 selected={allowed_file_types.includes(type)}
                 onToggle={handleSupportFileTypeChange}
+                typeErrorId={typeErrorId}
               />
             ))}
             <FileTypeItem
@@ -151,6 +165,8 @@ const FileUploadSetting: FC<Props> = ({
               onToggle={handleSupportFileTypeChange}
               customFileTypes={allowed_file_extensions}
               onCustomFileTypesChange={handleCustomFileTypesChange}
+              typeErrorId={typeErrorId}
+              customFileTypesErrorId={customFileTypesErrorId}
             />
           </div>
         </Field>
@@ -219,6 +235,8 @@ const FileUploadSetting: FC<Props> = ({
         <Field
           title={t(($) => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' })}
           className="mt-4"
+          errorMessage={validationError?.message}
+          errorId={errorId}
         >
           <div className="space-y-1">
             {[
@@ -238,6 +256,7 @@ const FileUploadSetting: FC<Props> = ({
                 }
                 selected={allowed_file_types.includes(type)}
                 onToggle={handleSupportFileTypeChange}
+                typeErrorId={typeErrorId}
               />
             ))}
             <FileTypeItem
@@ -246,6 +265,8 @@ const FileUploadSetting: FC<Props> = ({
               onToggle={handleSupportFileTypeChange}
               customFileTypes={allowed_file_extensions}
               onCustomFileTypesChange={handleCustomFileTypesChange}
+              typeErrorId={typeErrorId}
+              customFileTypesErrorId={customFileTypesErrorId}
             />
           </div>
         </Field>

@@ -1,11 +1,12 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
 import { useStore } from '@/app/components/app/store'
 import { InputVarType } from '@/app/components/workflow/types'
 import DebugConfigurationContext from '@/context/debug-configuration'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import ConfigModal from '../index'
 
@@ -166,7 +167,7 @@ describe('ConfigModal logic', () => {
     })
 
     fireEvent.click(screen.getByTestId('invalid-json-change'))
-    expect(screen.getByTestId('payload-schema')).toHaveTextContent(/"foo": "bar"/)
+    expect(screen.getByTestId('payload-schema')).toHaveTextContent('{invalid-json}')
 
     fireEvent.click(screen.getByTestId('empty-json-change'))
     await waitFor(() => {

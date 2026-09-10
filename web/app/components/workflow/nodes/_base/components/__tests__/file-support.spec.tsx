@@ -91,6 +91,97 @@ describe('File upload support components', () => {
   })
 
   describe('FileUploadSetting', () => {
+    it.each([false, true])(
+      'should associate file type errors with the checkboxes in feature panel mode %s',
+      async (inFeaturePanel) => {
+        const user = userEvent.setup()
+        const onChange = vi.fn()
+        const payload = createPayload({ allowed_file_types: [] })
+        const { rerender } = render(
+          <FileUploadSetting
+            payload={payload}
+            isMultiple={false}
+            inFeaturePanel={inFeaturePanel}
+            validationError={{ field: 'allowed_file_types', message: 'Choose a file type' }}
+            onChange={onChange}
+          />,
+        )
+
+        for (const checkbox of screen.getAllByRole('checkbox')) {
+          expect(checkbox).toBeInvalid()
+          expect(checkbox).toHaveAccessibleDescription('Choose a file type')
+        }
+        await user.click(
+          screen.getByRole('checkbox', { name: 'appDebug.variableConfig.file.document.name' }),
+        )
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...payload,
+          allowed_file_types: [SupportUploadFileTypes.document],
+        })
+
+        rerender(
+          <FileUploadSetting
+            payload={createPayload()}
+            isMultiple={false}
+            inFeaturePanel={inFeaturePanel}
+            onChange={onChange}
+          />,
+        )
+        expect(screen.queryByText('Choose a file type')).not.toBeInTheDocument()
+        for (const checkbox of screen.getAllByRole('checkbox')) {
+          expect(checkbox).not.toBeInvalid()
+          expect(checkbox).not.toHaveAccessibleDescription()
+        }
+      },
+    )
+
+    it.each([false, true])(
+      'should associate extension errors only with the named tag input in feature panel mode %s',
+      async (inFeaturePanel) => {
+        const user = userEvent.setup()
+        const onChange = vi.fn()
+        const payload = createPayload({
+          allowed_file_types: [SupportUploadFileTypes.custom],
+          allowed_file_extensions: [],
+        })
+        const { rerender } = render(
+          <FileUploadSetting
+            payload={payload}
+            isMultiple={false}
+            inFeaturePanel={inFeaturePanel}
+            validationError={{ field: 'allowed_file_extensions', message: 'Add an extension' }}
+            onChange={onChange}
+          />,
+        )
+
+        const input = screen.getByRole('textbox', {
+          name: 'appDebug.variableConfig.file.custom.name',
+        })
+        expect(input).toBeInvalid()
+        expect(input).toHaveAccessibleDescription('Add an extension')
+        expect(
+          screen.getByRole('checkbox', { name: 'appDebug.variableConfig.file.custom.name' }),
+        ).not.toBeInvalid()
+        await user.type(input, '.csv{Enter}')
+        expect(onChange).toHaveBeenLastCalledWith({
+          ...payload,
+          allowed_file_extensions: ['.csv'],
+        })
+
+        rerender(
+          <FileUploadSetting
+            payload={{ ...payload, allowed_file_extensions: ['.csv'] }}
+            isMultiple={false}
+            inFeaturePanel={inFeaturePanel}
+            onChange={onChange}
+          />,
+        )
+        expect(input).not.toBeInvalid()
+        expect(input).not.toHaveAccessibleDescription()
+        expect(screen.queryByText('Add an extension')).not.toBeInTheDocument()
+      },
+    )
+
     it('should let keyboard users change upload methods while preserving the rest of the settings', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()

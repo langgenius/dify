@@ -84,19 +84,17 @@ const UploadMethodField = ({ label, labelOptions, className }: UploadMethodField
         <div className="grid grid-cols-3 gap-2">
           {options.map((option) => (
             <FieldItem key={option.value}>
-              <FieldLabel className="relative flex h-8 items-center justify-center system-sm-regular text-text-secondary">
+              <FieldLabel className="block w-full min-w-0 py-0">
                 <RadioItem<TransferMethod>
                   value={option.value}
-                  className="absolute inset-0 size-full cursor-pointer rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-xs"
-                />
-                <span
                   className={cn(
-                    'pointer-events-none relative px-2',
-                    selectedMethod === option.value && 'system-sm-medium',
+                    'flex h-8 w-full cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-xs',
+                    selectedMethod !== option.value &&
+                      'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
                   )}
                 >
-                  {option.label}
-                </span>
+                  <span>{option.label}</span>
+                </RadioItem>
               </FieldLabel>
             </FieldItem>
           ))}

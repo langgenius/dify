@@ -10,10 +10,21 @@ type Props = Readonly<{
   htmlFor?: string
   titleId?: string
   isOptional?: boolean
+  errorMessage?: string
+  errorId?: string
   children: React.JSX.Element
 }>
 
-const Field: FC<Props> = ({ className, title, htmlFor, titleId, isOptional, children }) => {
+const Field: FC<Props> = ({
+  className,
+  title,
+  htmlFor,
+  titleId,
+  isOptional,
+  errorMessage,
+  errorId,
+  children,
+}) => {
   const { t } = useTranslation()
   const Label = htmlFor ? 'label' : 'div'
   return (
@@ -31,6 +42,11 @@ const Field: FC<Props> = ({ className, title, htmlFor, titleId, isOptional, chil
         )}
       </Label>
       <div>{children}</div>
+      {errorMessage && (
+        <p id={errorId} className="mt-1 system-xs-regular text-text-destructive">
+          {errorMessage}
+        </p>
+      )}
     </div>
   )
 }
