@@ -6,10 +6,28 @@ new GraphEngine command channel mechanism.
 """
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.execution_coordinator import app_task_stop_flag_key
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import RedisClientWrapper, redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from models.model import AppMode
+
+
+class AppTaskControlService:
+    """Injected task control for entry points that already admit app access."""
+
+    def __init__(self, *, redis_client: RedisClientWrapper) -> None:
+        self._redis_client: RedisClientWrapper = redis_client
+
+    def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
+        """Send both cancellation signals after the caller has admitted the app.
+
+        Preserve the legacy stop flag even if the GraphEngine command fails.
+        Trial workflow stops do not consult the task's user ownership cache.
+        """
+        if task_id:
+            self._redis_client.setex(app_task_stop_flag_key(task_id), 600, 1)
+        GraphEngineManager(self._redis_client).send_stop_command(task_id)
 
 
 class AppTaskService:
