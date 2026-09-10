@@ -107,6 +107,10 @@ class Env:
     # the current operation and persisted with its assistant turn, independent
     # from observable execution progress.
     emit_reasoning: Callable[[ReasoningEventData], None] | None = None
+    # Detects the user's input language (BCP-47) for a turn's user text. None -> no detection.
+    detect_language: Callable[[str], str] | None = None
+    # Localizes an about-to-be-committed item list into the given language. None -> no-op.
+    localize_items: Callable[[list["ConversationItem"], str], list["ConversationItem"]] | None = None
     # Correlation metadata for the handler transition currently running.
     # The runner resets it before every independently committed step.
     session_id: str = ""
@@ -180,6 +184,8 @@ class Runner:
         settled: bool,
     ) -> None:
         at_version = session.version + 1
+        if self._env.localize_items is not None and context.reply_language:
+            items = self._env.localize_items(items, context.reply_language)
         for item in items:
             # Handler helpers own conversation sequence numbers; the runner is
             # the only layer that knows which CAS version will make them
@@ -250,6 +256,13 @@ class Runner:
         """
         s, fc = self._env.repo.get_session(session_id)
         self._env.begin_operation(s)
+
+        if self._env.detect_language is not None:
+            user_text = turn.action.payload.get("text") if turn.action is not None else None
+            if isinstance(user_text, str) and user_text.strip():
+                fc.reply_language = self._env.detect_language(user_text)
+            elif not fc.reply_language and fc.goal_text:
+                fc.reply_language = self._env.detect_language(fc.goal_text)
 
         action_kind = turn.action.kind if turn.action is not None else ""
 
