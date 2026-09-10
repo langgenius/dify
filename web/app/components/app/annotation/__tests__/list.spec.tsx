@@ -46,7 +46,10 @@ describe('List', () => {
   })
 
   it('should toggle single and bulk selection states', () => {
-    const list = [createAnnotation({ id: 'a', question: 'A' }), createAnnotation({ id: 'b', question: 'B' })]
+    const list = [
+      createAnnotation({ id: 'a', question: 'A' }),
+      createAnnotation({ id: 'b', question: 'B' }),
+    ]
     const onSelectedIdsChange = vi.fn()
     const { rerender } = render(
       <List
@@ -97,7 +100,9 @@ describe('List', () => {
     const actionButtons = within(row).getAllByRole('button')
     fireEvent.click(actionButtons[1]!)
 
-    expect(await screen.findByText('appDebug.feature.annotation.removeConfirm'))!.toBeInTheDocument()
+    expect(
+      await screen.findByText('appDebug.feature.annotation.removeConfirm'),
+    )!.toBeInTheDocument()
     const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
     fireEvent.click(confirmButton)
     expect(onRemove).toHaveBeenCalledWith(item.id)

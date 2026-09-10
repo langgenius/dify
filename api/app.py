@@ -1,5 +1,24 @@
 from __future__ import annotations
 
+# ``python -m app`` (docker DEBUG=true, or IDE debugging) serves through the
+# gevent pywsgi server at the bottom of this file, so the stdlib must be
+# monkey-patched BEFORE any other import pulls in sockets or locks. Without
+# this, every request runs as a greenlet on one OS thread while blocking
+# calls (LLM invokes, ``Future.result`` waits, DB I/O) pin that thread — the
+# whole process freezes until the call returns. Gunicorn and Celery apply
+# their own patching (see gunicorn.conf.py / celery_entrypoint.py), and
+# ``flask run`` uses real Werkzeug threads, so both skip this branch.
+if __name__ == "__main__":
+    from gevent import monkey
+
+    monkey.patch_all()
+
+    import psycogreen.gevent as psycogreen_gevent
+    from grpc.experimental import gevent as grpc_gevent
+
+    grpc_gevent.init_gevent()
+    psycogreen_gevent.patch_psycopg()
+
 import logging
 import sys
 from typing import TYPE_CHECKING, cast

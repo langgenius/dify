@@ -5,6 +5,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def _load_generate_swagger_markdown_docs_module():
     api_dir = Path(__file__).resolve().parents[3]
@@ -20,7 +22,9 @@ def _load_generate_swagger_markdown_docs_module():
     return module
 
 
-def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_console(tmp_path, monkeypatch):
+def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_console(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     module = _load_generate_swagger_markdown_docs_module()
     openapi_dir = tmp_path / "openapi"
     markdown_dir = tmp_path / "markdown"
@@ -69,7 +73,9 @@ def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_con
     assert "FastOpenAPI Preview" not in (markdown_dir / "service-openapi.md").read_text(encoding="utf-8")
 
 
-def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagger_dir(tmp_path, monkeypatch):
+def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagger_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     module = _load_generate_swagger_markdown_docs_module()
     swagger_dir = tmp_path / "swagger"
     markdown_dir = tmp_path / "markdown"
@@ -105,7 +111,7 @@ def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagg
     assert not list(swagger_dir.glob("*.json"))
 
 
-def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path):
+def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-openapi.json"
     spec_path.write_text(
@@ -127,6 +133,7 @@ def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path
                                         {"$ref": "#/components/schemas/StringSource"},
                                         {"type": "null"},
                                     ],
+                                    "default": None,
                                 },
                                 "output_variable_name": {"type": "string"},
                             },
@@ -190,7 +197,7 @@ def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path
     assert "| allowed_file_types | [ [FileType](#filetype) ] |  | No |" in patched
 
 
-def test_patch_union_schema_markdown_fills_regular_schema_union_property(tmp_path):
+def test_patch_union_schema_markdown_fills_regular_schema_union_property(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "service-openapi.json"
     spec_path.write_text(
@@ -231,7 +238,88 @@ def test_patch_union_schema_markdown_fills_regular_schema_union_property(tmp_pat
     assert "| value | string<br>integer<br>number<br>boolean |  | No |" in patched
 
 
-def test_patch_union_schema_markdown_ignores_specs_without_schemas(tmp_path):
+def test_patch_union_schema_markdown_preserves_nullable_enum_values(tmp_path: Path):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "console-openapi.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "components": {
+                    "schemas": {
+                        "StepByStepTourStatePatchPayload": {
+                            "properties": {
+                                "task_id": {
+                                    "anyOf": [
+                                        {"enum": ["home", "studio"], "type": "string"},
+                                        {"type": "null"},
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    markdown = """#### StepByStepTourStatePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| task_id | string | Task ID | No |
+"""
+
+    patched = module._patch_union_schema_markdown(markdown, spec_path)
+
+    assert '| task_id | string, <br>**Available values:** "home", "studio" | Task ID | No |' in patched
+
+
+def test_patch_union_schema_markdown_fills_array_item_union_property(tmp_path: Path):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "console-openapi.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "components": {
+                    "schemas": {
+                        "MemberInviteResponse": {
+                            "properties": {
+                                "invitation_results": {
+                                    "type": "array",
+                                    "items": {
+                                        "oneOf": [
+                                            {"$ref": "#/components/schemas/MemberInviteSuccessResponse"},
+                                            {"$ref": "#/components/schemas/MemberInviteAlreadyMemberResponse"},
+                                            {"$ref": "#/components/schemas/MemberInviteFailedResponse"},
+                                        ],
+                                    },
+                                },
+                            },
+                        },
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    markdown = """#### MemberInviteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| invitation_results | [  ] |  | Yes |
+"""
+
+    patched = module._patch_union_schema_markdown(markdown, spec_path)
+
+    assert (
+        "| invitation_results | [ "
+        "[MemberInviteSuccessResponse](#memberinvitesuccessresponse)<br>"
+        "[MemberInviteAlreadyMemberResponse](#memberinvitealreadymemberresponse)<br>"
+        "[MemberInviteFailedResponse](#memberinvitefailedresponse) ] |  | Yes |"
+    ) in patched
+
+
+def test_patch_union_schema_markdown_ignores_specs_without_schemas(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-openapi.json"
     spec_path.write_text("{}", encoding="utf-8")
@@ -239,7 +327,37 @@ def test_patch_union_schema_markdown_ignores_specs_without_schemas(tmp_path):
     assert module._patch_union_schema_markdown("unchanged", spec_path) == "unchanged"
 
 
-def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path):
+def test_patch_wildcard_media_type_markdown_preserves_literal_wildcard():
+    module = _load_generate_swagger_markdown_docs_module()
+
+    patched = module._patch_wildcard_media_type_markdown("| 200 | Raw file. | ***/***: binary<br> |\n")
+
+    assert patched == "| 200 | Raw file. | `*/*`: binary<br> |\n"
+
+
+def test_drop_null_values_for_markdown_does_not_mutate_openapi_source():
+    module = _load_generate_swagger_markdown_docs_module()
+    payload = {
+        "schema": {
+            "default": None,
+            "enum": ["value", None],
+            "properties": {"nullable": {"default": None}},
+        }
+    }
+
+    converted = module._drop_null_values_for_markdown(payload)
+
+    assert converted == {
+        "schema": {
+            "enum": ["value", None],
+            "properties": {"nullable": {}},
+        }
+    }
+    assert payload["schema"]["default"] is None
+    assert payload["schema"]["properties"]["nullable"]["default"] is None
+
+
+def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-openapi.json"
     spec_path.write_text(
@@ -266,6 +384,7 @@ def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path):
     assert module._schema_ref_name(None) is None
     assert module._schema_markdown_type(None) == ""
     assert module._schema_markdown_type({"anyOf": [{"type": "null"}]}) == ""
+    assert module._strip_trailing_line_whitespace("line  \ncell\t \n") == "line\ncell\n"
     assert module._replace_schema_table_type("unchanged", "Definition", "field", "") == "unchanged"
     assert (
         module._replace_schema_table_type(
@@ -284,7 +403,7 @@ def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path):
     assert module._patch_union_schema_markdown("#### BrokenUnion\n", spec_path) == "#### BrokenUnion\n"
 
 
-def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path, monkeypatch):
+def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-openapi.json"
     output_path = tmp_path / "console-openapi.md"
@@ -305,6 +424,7 @@ def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path, monke
                                         {"$ref": "#/components/schemas/StringSource"},
                                         {"type": "null"},
                                     ],
+                                    "default": None,
                                 },
                             },
                         },
@@ -317,9 +437,21 @@ def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path, monke
 
     def run_converter(args, **kwargs):
         assert kwargs["check"] is False
+        converter_spec_path = Path(args[args.index("-i") + 1])
+        assert converter_spec_path != spec_path
+        converter_spec = json.loads(converter_spec_path.read_text(encoding="utf-8"))
+        converter_default_property = converter_spec["components"]["schemas"]["ParagraphInputConfig"]["properties"][
+            "default"
+        ]
+        assert "default" not in converter_default_property
+        source_spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        assert source_spec["components"]["schemas"]["ParagraphInputConfig"]["properties"]["default"]["default"] is None
         markdown_path = Path(args[args.index("-o") + 1])
         markdown_path.write_text(
-            """#### FormInputConfig
+            "Intro line"
+            + "  \n"
+            + """
+#### FormInputConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -340,5 +472,7 @@ def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path, monke
     module._convert_spec_to_markdown(spec_path, output_path)
 
     converted = output_path.read_text(encoding="utf-8")
+    assert "Intro line  \n" not in converted
+    assert "Intro line\n" in converted
     assert "| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig) |  |  |" in converted
     assert "| default | [StringSource](#stringsource) |  | No |" in converted

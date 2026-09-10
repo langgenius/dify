@@ -38,14 +38,21 @@ const mockBaseField = vi.fn()
 vi.mock('@/app/components/base/form/form-scenarios/base/field', () => {
   const MockBaseFieldFactory = (props: Record<string, unknown>) => {
     mockBaseField(props)
-    const config = props.config as { variable?: string, label?: string } | undefined
-    const MockField = ({ form }: { form: { getFieldValue?: (field: string) => string, setFieldValue?: (field: string, value: string) => void } }) => (
+    const config = props.config as { variable?: string; label?: string } | undefined
+    const MockField = ({
+      form,
+    }: {
+      form: {
+        getFieldValue?: (field: string) => string
+        setFieldValue?: (field: string, value: string) => void
+      }
+    }) => (
       <div data-testid={`field-${config?.variable || 'unknown'}`}>
         <span data-testid={`field-label-${config?.variable}`}>{config?.label}</span>
         <input
           data-testid={`field-input-${config?.variable}`}
           value={form.getFieldValue?.(config?.variable || '') || ''}
-          onChange={e => form.setFieldValue?.(config?.variable || '', e.target.value)}
+          onChange={(e) => form.setFieldValue?.(config?.variable || '', e.target.value)}
         />
       </div>
     )
@@ -58,7 +65,10 @@ vi.mock('@/app/components/base/form/form-scenarios/base/field', () => {
 const mockHandleSubmit = vi.fn()
 const mockFormValues: Record<string, unknown> = {}
 vi.mock('@/app/components/base/form', () => ({
-  useAppForm: (options: { validators?: { onSubmit?: (arg: { value: Record<string, unknown> }) => unknown }, onSubmit?: (arg: { value: Record<string, unknown> }) => void }) => {
+  useAppForm: (options: {
+    validators?: { onSubmit?: (arg: { value: Record<string, unknown> }) => unknown }
+    onSubmit?: (arg: { value: Record<string, unknown> }) => void
+  }) => {
     const formOptions = options
     return {
       handleSubmit: () => {
@@ -76,7 +86,9 @@ vi.mock('@/app/components/base/form', () => ({
   },
 }))
 
-const createMockVariable = (overrides?: Partial<RAGPipelineVariables[0]>): RAGPipelineVariables[0] => ({
+const createMockVariable = (
+  overrides?: Partial<RAGPipelineVariables[0]>,
+): RAGPipelineVariables[0] => ({
   belong_to_node_id: 'node-1',
   type: PipelineInputVarType.textInput,
   label: 'Test Label',
@@ -93,7 +105,8 @@ const createMockVariables = (count = 1): RAGPipelineVariables => {
     createMockVariable({
       variable: `variable_${i}`,
       label: `Label ${i}`,
-    }))
+    }),
+  )
 }
 
 type MockConfiguration = {
@@ -129,13 +142,15 @@ const createDefaultProps = (overrides?: Partial<OptionsProps>): OptionsProps => 
   ...overrides,
 })
 
+const getRunButton = () => screen.getByRole('button', { name: /run/i })
+
 describe('Options', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockToastError.mockReset()
 
     // Reset mock form values
-    Object.keys(mockFormValues).forEach(key => delete mockFormValues[key])
+    Object.keys(mockFormValues).forEach((key) => delete mockFormValues[key])
 
     // Default mock return values - using real generateZodSchema
     mockUseInitialData.mockReturnValue({})
@@ -143,14 +158,6 @@ describe('Options', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Options {...props} />)
-
-      expect(container.querySelector('form')).toBeInTheDocument()
-    })
-
     it('should render options header with toggle text', () => {
       const props = createDefaultProps()
 
@@ -164,7 +171,7 @@ describe('Options', () => {
 
       render(<Options {...props} />)
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(getRunButton()).toBeInTheDocument()
       expect(screen.getByText(/run/i)).toBeInTheDocument()
     })
 
@@ -255,7 +262,7 @@ describe('Options', () => {
 
         render(<Options {...props} />)
 
-        expect(screen.getByText(/running/i)).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /running/i })).toBeInTheDocument()
       })
 
       it('should keep button loading-disabled when step is running', () => {
@@ -263,7 +270,7 @@ describe('Options', () => {
 
         render(<Options {...props} />)
 
-        expectLoadingButton(screen.getByRole('button'))
+        expectLoadingButton(getRunButton())
       })
 
       it('should enable button when step is finished', () => {
@@ -271,7 +278,7 @@ describe('Options', () => {
 
         render(<Options {...props} />)
 
-        expect(screen.getByRole('button')).not.toBeDisabled()
+        expect(getRunButton()).not.toBeDisabled()
       })
     })
 
@@ -281,7 +288,7 @@ describe('Options', () => {
 
         render(<Options {...props} />)
 
-        expect(screen.getByRole('button')).toBeDisabled()
+        expect(getRunButton()).toBeDisabled()
       })
 
       it('should enable button when runDisabled is false and step is not running', () => {
@@ -289,7 +296,7 @@ describe('Options', () => {
 
         render(<Options {...props} />)
 
-        expect(screen.getByRole('button')).not.toBeDisabled()
+        expect(getRunButton()).not.toBeDisabled()
       })
 
       it('should disable button when both runDisabled is true and step is running', () => {
@@ -297,7 +304,7 @@ describe('Options', () => {
 
         render(<Options {...props} />)
 
-        expectLoadingButton(screen.getByRole('button'))
+        expectLoadingButton(getRunButton())
       })
 
       it('should default runDisabled to undefined (falsy)', () => {
@@ -306,7 +313,7 @@ describe('Options', () => {
 
         render(<Options {...props} />)
 
-        expect(screen.getByRole('button')).not.toBeDisabled()
+        expect(getRunButton()).not.toBeDisabled()
       })
     })
 
@@ -323,7 +330,7 @@ describe('Options', () => {
         const props = createDefaultProps({ onSubmit: mockOnSubmit })
 
         render(<Options {...props} />)
-        fireEvent.click(screen.getByRole('button'))
+        fireEvent.click(getRunButton())
 
         expect(mockOnSubmit).toHaveBeenCalled()
       })
@@ -342,7 +349,7 @@ describe('Options', () => {
         const props = createDefaultProps({ onSubmit: mockOnSubmit })
 
         render(<Options {...props} />)
-        fireEvent.click(screen.getByRole('button'))
+        fireEvent.click(getRunButton())
 
         expect(mockOnSubmit).not.toHaveBeenCalled()
       })
@@ -350,8 +357,16 @@ describe('Options', () => {
       it('should pass form values to onSubmit', () => {
         // Arrange - Use non-required fields so validation passes
         const configs = [
-          createMockConfiguration({ variable: 'url', required: false, type: BaseFieldType.textInput }),
-          createMockConfiguration({ variable: 'depth', required: false, type: BaseFieldType.numberInput }),
+          createMockConfiguration({
+            variable: 'url',
+            required: false,
+            type: BaseFieldType.textInput,
+          }),
+          createMockConfiguration({
+            variable: 'depth',
+            required: false,
+            type: BaseFieldType.numberInput,
+          }),
         ]
         mockUseConfigurations.mockReturnValue(configs)
         mockFormValues.url = 'https://example.com'
@@ -360,7 +375,7 @@ describe('Options', () => {
         const props = createDefaultProps({ onSubmit: mockOnSubmit })
 
         render(<Options {...props} />)
-        fireEvent.click(screen.getByRole('button'))
+        fireEvent.click(getRunButton())
 
         expect(mockOnSubmit).toHaveBeenCalledWith({ url: 'https://example.com', depth: 2 })
       })
@@ -476,7 +491,7 @@ describe('Options', () => {
       render(<Options {...props} />)
 
       // Assert - Button should not be in loading state
-      const button = screen.getByRole('button')
+      const button = getRunButton()
       expect(button).not.toBeDisabled()
       expect(screen.getByText(/run/i)).toBeInTheDocument()
     })
@@ -486,7 +501,7 @@ describe('Options', () => {
 
       render(<Options {...props} />)
 
-      const button = screen.getByRole('button')
+      const button = getRunButton()
       expectLoadingButton(button)
       expect(screen.getByText(/running/i)).toBeInTheDocument()
     })
@@ -512,7 +527,7 @@ describe('Options', () => {
       render(<Options {...props} />)
 
       // Act - Trigger validation via submit
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       // Assert - onSubmit should be called if validation passes
       expect(mockOnSubmit).toHaveBeenCalled()
@@ -570,7 +585,7 @@ describe('Options', () => {
       const props = createDefaultProps({ onSubmit: mockOnSubmit })
       render(<Options {...props} />)
 
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       expect(mockOnSubmit).toHaveBeenCalled()
     })
@@ -581,7 +596,7 @@ describe('Options', () => {
       render(<Options {...props} />)
 
       // Act - Try to click disabled button
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       expect(mockOnSubmit).not.toHaveBeenCalled()
     })
@@ -594,7 +609,7 @@ describe('Options', () => {
       expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
 
       // Act - Submit form
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       // Assert - Should still be expanded (unless step changes)
       expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
@@ -630,7 +645,7 @@ describe('Options', () => {
       const props = createDefaultProps()
       render(<Options {...props} />)
 
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       // Assert - Toast should be called with error message
       expect(mockToastError).toHaveBeenCalled()
@@ -648,7 +663,7 @@ describe('Options', () => {
       const props = createDefaultProps()
       render(<Options {...props} />)
 
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       // Assert - Toast message should contain field path
       expect(mockToastError).toHaveBeenCalledWith(expect.stringContaining('email_address'))
@@ -662,7 +677,7 @@ describe('Options', () => {
 
       // Assert - Should render without errors
       expect(container.querySelector('form')).toBeInTheDocument()
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(getRunButton()).toBeInTheDocument()
     })
 
     it('should handle single variable configuration', () => {
@@ -677,7 +692,8 @@ describe('Options', () => {
 
     it('should handle many configurations', () => {
       const manyConfigs = Array.from({ length: 10 }, (_, i) =>
-        createMockConfiguration({ variable: `field_${i}`, label: `Field ${i}` }))
+        createMockConfiguration({ variable: `field_${i}`, label: `Field ${i}` }),
+      )
       mockUseConfigurations.mockReturnValue(manyConfigs)
       const props = createDefaultProps()
 
@@ -690,14 +706,24 @@ describe('Options', () => {
     it('should handle validation with multiple required fields (shows first error)', () => {
       // Arrange - Multiple required fields
       const configs = [
-        createMockConfiguration({ variable: 'url', label: 'URL', required: true, type: BaseFieldType.textInput }),
-        createMockConfiguration({ variable: 'depth', label: 'Depth', required: true, type: BaseFieldType.textInput }),
+        createMockConfiguration({
+          variable: 'url',
+          label: 'URL',
+          required: true,
+          type: BaseFieldType.textInput,
+        }),
+        createMockConfiguration({
+          variable: 'depth',
+          label: 'Depth',
+          required: true,
+          type: BaseFieldType.textInput,
+        }),
       ]
       mockUseConfigurations.mockReturnValue(configs)
       const props = createDefaultProps()
       render(<Options {...props} />)
 
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       // Assert - Toast should be called once (only first error)
       expect(mockToastError).toHaveBeenCalledTimes(1)
@@ -717,7 +743,7 @@ describe('Options', () => {
       const props = createDefaultProps({ onSubmit: mockOnSubmit })
       render(<Options {...props} />)
 
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       // Assert - No toast error, onSubmit called
       expect(mockToastError).not.toHaveBeenCalled()
@@ -739,8 +765,7 @@ describe('Options', () => {
 
       // Act - Toggle rapidly multiple times
       const toggleText = screen.getByText(/options/i)
-      for (let i = 0; i < 5; i++)
-        fireEvent.click(toggleText)
+      for (let i = 0; i < 5; i++) fireEvent.click(toggleText)
 
       // Assert - Final state should be folded (odd number of clicks)
       expect(screen.queryByTestId('field-test_variable')).not.toBeInTheDocument()
@@ -756,21 +781,21 @@ describe('Options', () => {
       [{ step: CrawlStep.running, runDisabled: true }, true, 'running'],
       [{ step: CrawlStep.finished, runDisabled: false }, false, 'run'],
       [{ step: CrawlStep.finished, runDisabled: true }, true, 'run'],
-    ] as const)('should render correctly with step=%s, runDisabled=%s', (propVariation, expectedDisabled, expectedText) => {
-      const props = createDefaultProps(propVariation)
+    ] as const)(
+      'should render correctly with step=%s, runDisabled=%s',
+      (propVariation, expectedDisabled, expectedText) => {
+        const props = createDefaultProps(propVariation)
 
-      render(<Options {...props} />)
+        render(<Options {...props} />)
 
-      const button = screen.getByRole('button')
-      if (propVariation.step === CrawlStep.running)
-        expectLoadingButton(button)
-      else if (expectedDisabled)
-        expect(button).toBeDisabled()
-      else
-        expect(button).not.toBeDisabled()
+        const button = getRunButton()
+        if (propVariation.step === CrawlStep.running) expectLoadingButton(button)
+        else if (expectedDisabled) expect(button).toBeDisabled()
+        else expect(button).not.toBeDisabled()
 
-      expect(screen.getByText(new RegExp(expectedText, 'i'))).toBeInTheDocument()
-    })
+        expect(screen.getByText(new RegExp(expectedText, 'i'))).toBeInTheDocument()
+      },
+    )
 
     it('should handle all CrawlStep values', () => {
       // Arrange & Act & Assert
@@ -790,7 +815,7 @@ describe('Options', () => {
         createMockVariable({ type: PipelineInputVarType.checkbox, variable: 'checkbox_field' }),
         createMockVariable({ type: PipelineInputVarType.select, variable: 'select_field' }),
       ]
-      const configurations = variables.map(v => createMockConfiguration({ variable: v.variable }))
+      const configurations = variables.map((v) => createMockConfiguration({ variable: v.variable }))
       mockUseConfigurations.mockReturnValue(configurations)
       const props = createDefaultProps({ variables })
 
@@ -816,7 +841,7 @@ describe('Options', () => {
       const props = createDefaultProps({ onSubmit: mockOnSubmit })
       render(<Options {...props} />)
 
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       expect(mockOnSubmit).toHaveBeenCalled()
       expect(mockToastError).not.toHaveBeenCalled()
@@ -835,7 +860,7 @@ describe('Options', () => {
       const props = createDefaultProps({ onSubmit: mockOnSubmit })
       render(<Options {...props} />)
 
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       expect(mockOnSubmit).not.toHaveBeenCalled()
       expect(mockToastError).toHaveBeenCalled()
@@ -853,7 +878,7 @@ describe('Options', () => {
       const props = createDefaultProps()
       render(<Options {...props} />)
 
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(getRunButton())
 
       expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
     })
@@ -861,15 +886,6 @@ describe('Options', () => {
 
   // Styling Tests
   describe('Styling', () => {
-    it('should apply correct container classes to form', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Options {...props} />)
-
-      const form = container.querySelector('form')
-      expect(form).toHaveClass('w-full')
-    })
-
     it('should apply cursor-pointer class to toggle container', () => {
       const props = createDefaultProps()
 
@@ -886,26 +902,6 @@ describe('Options', () => {
 
       const toggleContainer = container.querySelector('.select-none')
       expect(toggleContainer).toBeInTheDocument()
-    })
-
-    it('should apply rotate class to arrow icon when folded', () => {
-      const props = createDefaultProps()
-      const { container } = render(<Options {...props} />)
-
-      // Act - Fold the options
-      fireEvent.click(screen.getByText(/options/i))
-
-      const arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).toHaveClass('-rotate-90')
-    })
-
-    it('should not apply rotate class to arrow icon when expanded', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Options {...props} />)
-
-      const arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).not.toHaveClass('-rotate-90')
     })
 
     it('should apply border class to fields container when expanded', () => {

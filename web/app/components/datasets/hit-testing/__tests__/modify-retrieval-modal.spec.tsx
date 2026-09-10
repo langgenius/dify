@@ -1,6 +1,9 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import ModifyRetrievalModal from '../modify-retrieval-modal'
 
@@ -21,23 +24,26 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
-    <button onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: vi.fn(() => true),
 }))
 
 vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
-  default: ({ value, onChange }: { value: RetrievalConfig, onChange: (v: RetrievalConfig) => void }) => (
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: RetrievalConfig
+    onChange: (v: RetrievalConfig) => void
+  }) => (
     <div data-testid="retrieval-method-config">
       <span>{value.search_method}</span>
-      <button data-testid="change-config" onClick={() => onChange({ ...value, search_method: RETRIEVE_METHOD.hybrid })}>change</button>
+      <button
+        data-testid="change-config"
+        onClick={() => onChange({ ...value, search_method: RETRIEVE_METHOD.hybrid })}
+      >
+        change
+      </button>
     </div>
   ),
 }))
@@ -46,16 +52,8 @@ vi.mock('@/app/components/datasets/common/economical-retrieval-method-config', (
   default: () => <div data-testid="economical-config" />,
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({ data: [] }),
-}))
-
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: () => 'model-name',
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
 vi.mock('../../settings/utils', () => ({
@@ -124,4 +122,20 @@ describe('ModifyRetrievalModal', () => {
     render(<ModifyRetrievalModal {...defaultProps} />)
     expect(screen.getByText('datasetSettings.form.retrievalSetting.learnMore')).toBeInTheDocument()
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return { data: [] }
+    },
+  }
 })

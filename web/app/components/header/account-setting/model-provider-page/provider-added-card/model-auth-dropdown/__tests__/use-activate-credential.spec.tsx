@@ -20,24 +20,26 @@ vi.mock('../../../hooks', () => ({
   useUpdateModelList: () => mockUpdateModelList,
 }))
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'langgenius/openai/openai',
-  supported_model_types: ['llm', 'text-embedding'],
-  custom_configuration: {
-    current_credential_id: 'cred-1',
-    available_credentials: [
-      { credential_id: 'cred-1', credential_name: 'Primary' },
-      { credential_id: 'cred-2', credential_name: 'Backup' },
-    ],
-  },
-  ...overrides,
-} as unknown as ModelProvider)
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'langgenius/openai/openai',
+    supported_model_types: ['llm', 'text-embedding'],
+    custom_configuration: {
+      current_credential_id: 'cred-1',
+      available_credentials: [
+        { credential_id: 'cred-1', credential_name: 'Primary' },
+        { credential_id: 'cred-2', credential_name: 'Backup' },
+      ],
+    },
+    ...overrides,
+  }) as unknown as ModelProvider
 
-const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
-  credential_id: 'cred-2',
-  credential_name: 'Backup',
-  ...overrides,
-} as Credential)
+const createCredential = (overrides: Partial<Credential> = {}): Credential =>
+  ({
+    credential_id: 'cred-2',
+    credential_name: 'Backup',
+    ...overrides,
+  }) as Credential
 
 describe('useActivateCredential', () => {
   const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')

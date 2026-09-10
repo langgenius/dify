@@ -5,30 +5,32 @@ import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import RunPanel from '../index'
 
-const {
-  mockFetchRunDetail,
-  mockFetchTracingList,
-  mockToastError,
-} = vi.hoisted(() => ({
+const { mockFetchRunDetail, mockFetchTracingList, mockToastError } = vi.hoisted(() => ({
   mockFetchRunDetail: vi.fn(),
   mockFetchTracingList: vi.fn(),
   mockToastError: vi.fn(),
 }))
 
-const originalClientHeightDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight')
+const originalClientHeightDescriptor = Object.getOwnPropertyDescriptor(
+  HTMLElement.prototype,
+  'clientHeight',
+)
 
 vi.mock('@/service/log', () => ({
   fetchRunDetail: (...args: unknown[]) => mockFetchRunDetail(...args),
   fetchTracingList: (...args: unknown[]) => mockFetchTracingList(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
 }))
 
-const createRunDetail = (overrides: Partial<WorkflowRunDetailResponse> = {}): WorkflowRunDetailResponse => ({
+const createRunDetail = (
+  overrides: Partial<WorkflowRunDetailResponse> = {},
+): WorkflowRunDetailResponse => ({
   id: 'run-1',
   version: '1',
   graph: {
@@ -129,7 +131,9 @@ describe('RunPanel', () => {
         url: '/console/api/runs/run-1/tracing',
       })
       expect(handleResult).toHaveBeenCalledWith(runDetail)
-      expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain('workflow output')
+      expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain(
+        'workflow output',
+      )
     })
   })
 
@@ -161,7 +165,9 @@ describe('RunPanel', () => {
 
     await waitFor(() => {
       expect(mockFetchRunDetail).toHaveBeenCalledTimes(2)
-      expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain('workflow output')
+      expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain(
+        'workflow output',
+      )
     })
   })
 

@@ -27,12 +27,7 @@ describe('FieldItem', () => {
 
   it('should render the variable, label, and required badge', () => {
     render(
-      <FieldItem
-        payload={createInputVar()}
-        index={0}
-        onClickEdit={vi.fn()}
-        onRemove={vi.fn()}
-      />,
+      <FieldItem payload={createInputVar()} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />,
     )
 
     expect(screen.getByText('field_name'))!.toBeInTheDocument()

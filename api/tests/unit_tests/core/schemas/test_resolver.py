@@ -703,9 +703,12 @@ class TestSchemaResolverClass:
 
             # For schemas without refs, hybrid should be competitive or better
             if not expected:  # No refs case
-                # Hybrid might be slightly slower due to JSON serialization overhead,
-                # but should not be dramatically worse
-                assert avg_hybrid < avg_recursive * 5  # At most 5x slower
+                relative_slowdown_limit = 5.0
+                absolute_noise_budget_seconds = 2e-4
+
+                # JSON serialization has a fixed overhead that dominates tiny schemas,
+                # so allow a small absolute noise budget on top of the relative limit.
+                assert avg_hybrid < (avg_recursive * relative_slowdown_limit) + absolute_noise_budget_seconds
 
     def test_string_matching_edge_cases(self):
         """Test edge cases for string-based detection"""

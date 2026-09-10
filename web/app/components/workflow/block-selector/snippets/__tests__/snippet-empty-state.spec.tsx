@@ -11,7 +11,9 @@ describe('SnippetEmptyState', () => {
       render(<SnippetEmptyState />)
 
       expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'workflow.tabs.createSnippet' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'workflow.tabs.createSnippet' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

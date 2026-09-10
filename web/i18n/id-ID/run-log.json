@@ -1,5 +1,4 @@
 {
-  "actionLogs": "Log Tindakan",
   "circularInvocationTip": "Ada pemanggilan melingkar alat/simpul dalam alur kerja saat ini.",
   "detail": "DETAIL",
   "input": "MASUKAN",
@@ -10,7 +9,6 @@
   "meta.time": "Waktu yang telah berlalu",
   "meta.title": "METADATA",
   "meta.tokens": "Total Token",
-  "meta.version": "Versi",
   "result": "HASIL",
   "resultEmpty.link": "Panel Detail",
   "resultEmpty.tipLeft": "silakan pergi ke",

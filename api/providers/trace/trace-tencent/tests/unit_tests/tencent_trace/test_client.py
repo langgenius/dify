@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 import types
 from types import SimpleNamespace
@@ -14,6 +15,8 @@ from dify_trace_tencent.client import TencentTraceClient, _get_opentelemetry_sdk
 from dify_trace_tencent.entities.tencent_trace_entity import SpanData
 from opentelemetry.sdk.trace import Event
 from opentelemetry.trace import SpanContext, Status, StatusCode, TraceFlags
+
+from enums import DeploymentEdition
 
 metric_reader_instances: list[DummyMetricReader] = []
 meter_provider_instances: list[DummyMeterProvider] = []
@@ -87,7 +90,6 @@ class PatchedCoreComponents(TypedDict):
     tracer: MagicMock
     span: MagicMock
     tracer_provider: MagicMock
-    logger: MagicMock
     trace_api: Any
 
 
@@ -148,9 +150,6 @@ def patch_core_components(monkeypatch: pytest.MonkeyPatch) -> PatchedCoreCompone
     resource = MagicMock(name="resource")
     monkeypatch.setattr(client_module, "Resource", MagicMock(return_value=resource))
 
-    logger_mock = MagicMock(name="tencent_logger")
-    monkeypatch.setattr(client_module, "logger", logger_mock)
-
     trace_api_stub = SimpleNamespace(
         set_span_in_context=MagicMock(name="set_span_in_context", return_value="trace-context"),
         NonRecordingSpan=MagicMock(name="non_recording_span", side_effect=lambda ctx: f"non-{ctx}"),
@@ -161,7 +160,7 @@ def patch_core_components(monkeypatch: pytest.MonkeyPatch) -> PatchedCoreCompone
         project=SimpleNamespace(version="test"),
         COMMIT_SHA="sha",
         DEPLOY_ENV="dev",
-        EDITION="cloud",
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
     )
     monkeypatch.setattr(client_module, "dify_config", fake_config)
 
@@ -174,7 +173,6 @@ def patch_core_components(monkeypatch: pytest.MonkeyPatch) -> PatchedCoreCompone
         "tracer": tracer,
         "span": span,
         "tracer_provider": tracer_provider,
-        "logger": logger_mock,
         "trace_api": trace_api_stub,
     }
 
@@ -268,14 +266,15 @@ def test_record_methods_skip_when_histogram_missing() -> None:
     client.record_trace_duration(0.5)
 
 
-def test_record_llm_duration_handles_exceptions(patch_core_components: PatchedCoreComponents) -> None:
+def test_record_llm_duration_handles_exceptions(caplog: pytest.LogCaptureFixture) -> None:
     client = _build_client()
     client.hist_llm_duration = MagicMock(name="hist_llm_duration")
     client.hist_llm_duration.record.side_effect = RuntimeError("boom")
 
+    caplog.set_level(logging.DEBUG, logger=client_module.logger.name)
     client.record_llm_duration(0.2)
-    logger = patch_core_components["logger"]
-    logger.debug.assert_called()
+
+    assert "[Tencent APM] Failed to record LLM duration" in caplog.text
 
 
 def test_create_and_export_span_sets_attributes(patch_core_components: PatchedCoreComponents) -> None:
@@ -328,12 +327,16 @@ def test_create_and_export_span_uses_parent_context(patch_core_components: Patch
     trace_api.set_span_in_context.assert_called_once()
 
 
-def test_create_and_export_span_exception_logs_error(patch_core_components: PatchedCoreComponents) -> None:
+def test_create_and_export_span_exception_logs_error(
+    patch_core_components: PatchedCoreComponents, caplog: pytest.LogCaptureFixture
+) -> None:
     client = _build_client()
     span = patch_core_components["span"]
     span.get_span_context.return_value = _make_span_context(span_id=2)
+    # pyrefly: ignore [missing-attribute]
     client.tracer.start_span.side_effect = RuntimeError("boom")
 
+    caplog.set_level(logging.DEBUG, logger=client_module.logger.name)
     client._create_and_export_span(
         SpanData(
             trace_id=1,
@@ -346,8 +349,10 @@ def test_create_and_export_span_exception_logs_error(patch_core_components: Patc
             end_time=1,
         )
     )
-    logger = patch_core_components["logger"]
-    logger.exception.assert_called_once()
+
+    error_records = [record for record in caplog.records if record.levelno == logging.ERROR]
+    assert len(error_records) == 1
+    assert error_records[0].getMessage() == "[Tencent APM] Error creating span: span"
 
 
 def test_api_check_connects_successfully(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -423,23 +428,19 @@ def test_shutdown_flushes_all_components(patch_core_components: PatchedCoreCompo
     metric_reader.shutdown.assert_called_once()
 
 
-def test_shutdown_logs_when_meter_provider_fails(patch_core_components: PatchedCoreComponents) -> None:
+def test_shutdown_logs_when_meter_provider_fails(caplog: pytest.LogCaptureFixture) -> None:
     client = _build_client()
     meter_provider = meter_provider_instances[-1]
     meter_provider.shutdown.side_effect = RuntimeError("boom")
     assert client.metric_reader is not None
+    # pyrefly: ignore [missing-attribute]
     client.metric_reader.shutdown.side_effect = RuntimeError("boom")
 
+    caplog.set_level(logging.DEBUG, logger=client_module.logger.name)
     client.shutdown()
-    logger = patch_core_components["logger"]
-    logger.debug.assert_any_call(
-        "[Tencent APM] Error shutting down meter provider",
-        exc_info=True,
-    )
-    logger.debug.assert_any_call(
-        "[Tencent APM] Error shutting down metric reader",
-        exc_info=True,
-    )
+
+    assert "[Tencent APM] Error shutting down meter provider" in caplog.text
+    assert "[Tencent APM] Error shutting down metric reader" in caplog.text
 
 
 def test_metrics_initialization_failure_sets_histogram_attributes(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -456,10 +457,11 @@ def test_metrics_initialization_failure_sets_histogram_attributes(monkeypatch: p
     assert client.metric_reader is None
 
 
-def test_add_span_logs_exception(monkeypatch: pytest.MonkeyPatch, patch_core_components: PatchedCoreComponents) -> None:
+def test_add_span_logs_exception(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
     client = _build_client()
     monkeypatch.setattr(client, "_create_and_export_span", MagicMock(side_effect=RuntimeError("boom")))
 
+    caplog.set_level(logging.DEBUG, logger=client_module.logger.name)
     client.add_span(
         SpanData(
             trace_id=1,
@@ -473,8 +475,9 @@ def test_add_span_logs_exception(monkeypatch: pytest.MonkeyPatch, patch_core_com
         )
     )
 
-    logger = patch_core_components["logger"]
-    logger.exception.assert_called_once()
+    error_records = [record for record in caplog.records if record.levelno == logging.ERROR]
+    assert len(error_records) == 1
+    assert error_records[0].getMessage() == "[Tencent APM] Failed to create span: span"
 
 
 def test_create_and_export_span_converts_attribute_types(patch_core_components: PatchedCoreComponents) -> None:
@@ -535,16 +538,20 @@ def test_record_trace_duration_converts_attributes() -> None:
     ],
 )
 def test_record_methods_handle_exceptions(
-    method: str, attr_name: str, args: tuple[object, ...], patch_core_components: PatchedCoreComponents
+    method: str, attr_name: str, args: tuple[object, ...], caplog: pytest.LogCaptureFixture
 ) -> None:
     client = _build_client()
     hist_mock = MagicMock(name=attr_name)
     hist_mock.record.side_effect = RuntimeError("boom")
     setattr(client, attr_name, hist_mock)
 
+    caplog.set_level(logging.DEBUG, logger=client_module.logger.name)
     getattr(client, method)(*args)
-    logger = patch_core_components["logger"]
-    logger.debug.assert_called()
+
+    assert any(
+        record.levelno == logging.DEBUG and record.getMessage().startswith("[Tencent APM] Failed to record")
+        for record in caplog.records
+    )
 
 
 def test_metrics_initializes_grpc_metric_exporter() -> None:

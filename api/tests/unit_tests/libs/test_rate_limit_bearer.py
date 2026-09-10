@@ -75,7 +75,7 @@ def test_enforce_bearer_rate_limit_raises_429_with_retry_after(mock_build):
 
 
 @patch("libs.rate_limit._build_limiter")
-def test_enforce_bearer_rate_limit_disabled_when_limit_is_zero(mock_build, monkeypatch):
+def test_enforce_bearer_rate_limit_disabled_when_limit_is_zero(mock_build, monkeypatch: pytest.MonkeyPatch):
     # 0 disables the limit — short-circuit before building/consulting a limiter.
     monkeypatch.setattr(
         "libs.rate_limit.LIMIT_BEARER_PER_TOKEN",

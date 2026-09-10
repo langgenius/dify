@@ -1,0 +1,28 @@
+.sourceTextarea {
+  overflow: auto;
+}
+
+.sourceTextarea::-webkit-scrollbar:vertical {
+  width: 0;
+}
+
+.sourceTextarea::-webkit-scrollbar:horizontal {
+  height: 8px;
+}
+
+.sourceTextarea::-webkit-scrollbar-track:horizontal {
+  background: transparent;
+}
+
+.sourceTextarea::-webkit-scrollbar-thumb:horizontal {
+  min-width: 40px;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-color: var(--color-divider-regular);
+  background-clip: content-box;
+}
+
+.sourceTextarea::-webkit-scrollbar-thumb:horizontal:hover {
+  background-color: var(--color-divider-solid);
+  background-clip: content-box;
+}

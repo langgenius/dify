@@ -1,5 +1,6 @@
 """Tests for logging filters."""
 
+import io
 import logging
 from unittest import mock
 
@@ -17,6 +18,15 @@ def log_record():
         args=(),
         exc_info=None,
     )
+
+
+@pytest.fixture(autouse=True)
+def _reset_logging_context():
+    from core.logging.context import clear_request_context
+
+    clear_request_context()
+    yield
+    clear_request_context()
 
 
 class TestTraceContextFilter:
@@ -147,8 +157,10 @@ class TestTraceContextFilter:
 
 class TestIdentityContextFilter:
     def test_sets_empty_identity_without_request_context(self, log_record):
+        from core.logging.context import clear_request_context
         from core.logging.filters import IdentityContextFilter
 
+        clear_request_context()
         filter = IdentityContextFilter()
         result = filter.filter(log_record)
 
@@ -164,131 +176,92 @@ class TestIdentityContextFilter:
         result = filter.filter(log_record)
         assert result is True
 
-    def test_handles_exception_gracefully(self, log_record):
+    def test_uses_explicit_identity_context_without_flask_context(self, log_record):
+        from core.logging.context import set_identity_context
         from core.logging.filters import IdentityContextFilter
+
+        set_identity_context(tenant_id="tenant_id", user_id="end_user_id", user_type="end_user")
 
         filter = IdentityContextFilter()
+        filter.filter(log_record)
 
-        # Should not raise even if something goes wrong
-        with mock.patch(
-            "core.logging.filters.flask.has_request_context", side_effect=Exception("Test error"), autospec=True
-        ):
-            result = filter.filter(log_record)
-            assert result is True
-            assert log_record.tenant_id == ""
+        assert log_record.tenant_id == "tenant_id"
+        assert log_record.user_id == "end_user_id"
+        assert log_record.user_type == "end_user"
 
-    def test_sets_empty_identity_unauthenticated(self, log_record):
+    def test_does_not_trigger_flask_login_request_loader(self, log_record):
+        from flask import Flask
+        from flask_login import LoginManager
+
+        from core.logging.context import clear_request_context
         from core.logging.filters import IdentityContextFilter
 
-        mock_user = mock.MagicMock()
-        mock_user.is_authenticated = False
+        app = Flask(__name__)
+        app.secret_key = "test"
+        login_manager = LoginManager(app)
+        request_loader = mock.Mock(return_value=None)
+        login_manager.request_loader(request_loader)
+        clear_request_context()
 
-        with (
-            mock.patch("flask.has_request_context", return_value=True),
-            mock.patch("flask_login.current_user", mock_user),
-        ):
-            filter = IdentityContextFilter()
-            filter.filter(log_record)
-            assert log_record.user_id == ""
+        with app.test_request_context("/"):
+            from flask import g
 
-    def test_sets_identity_for_account(self, log_record):
+            assert "_login_user" not in g
+            IdentityContextFilter().filter(log_record)
+            assert "_login_user" not in g
+
+        request_loader.assert_not_called()
+        assert log_record.tenant_id == ""
+        assert log_record.user_id == ""
+        assert log_record.user_type == ""
+
+    def test_ended_otel_span_warning_does_not_trigger_request_loader(self):
+        from flask import Flask, g
+        from flask_login import LoginManager
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+
+        from core.logging.context import clear_request_context
         from core.logging.filters import IdentityContextFilter
 
-        class MockAccount:
-            pass
+        app = Flask(__name__)
+        app.secret_key = "test"
+        login_manager = LoginManager(app)
+        request_loader = mock.Mock(return_value=None)
+        login_manager.request_loader(request_loader)
 
-        mock_user = MockAccount()
-        mock_user.id = "account_id"
-        mock_user.current_tenant_id = "tenant_id"
-        mock_user.is_authenticated = True
+        span = TracerProvider().get_tracer(__name__).start_span("ended")
+        span.end()
 
-        with (
-            mock.patch("flask.has_request_context", return_value=True),
-            mock.patch("models.Account", MockAccount),
-            mock.patch("flask_login.current_user", mock_user),
-        ):
-            filter = IdentityContextFilter()
-            filter.filter(log_record)
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.addFilter(IdentityContextFilter())
+        handler.setFormatter(logging.Formatter("%(tenant_id)s %(user_id)s %(user_type)s %(message)s"))
 
-            assert log_record.tenant_id == "tenant_id"
-            assert log_record.user_id == "account_id"
-            assert log_record.user_type == "account"
+        sdk_logger = logging.getLogger("opentelemetry.sdk.trace")
+        previous_level = sdk_logger.level
+        previous_propagate = sdk_logger.propagate
+        previous_disabled = sdk_logger.disabled
+        sdk_logger.addHandler(handler)
+        sdk_logger.setLevel(logging.WARNING)
+        sdk_logger.propagate = False
+        sdk_logger.disabled = False
+        clear_request_context()
 
-    def test_sets_identity_for_account_no_tenant(self, log_record):
-        from core.logging.filters import IdentityContextFilter
+        try:
+            with app.test_request_context("/"), trace.use_span(span, end_on_exit=False):
+                assert "_login_user" not in g
 
-        class MockAccount:
-            pass
+                span.set_attribute("test.key", "test-value")
 
-        mock_user = MockAccount()
-        mock_user.id = "account_id"
-        mock_user.current_tenant_id = None
-        mock_user.is_authenticated = True
+                assert "_login_user" not in g
+        finally:
+            clear_request_context()
+            sdk_logger.removeHandler(handler)
+            sdk_logger.setLevel(previous_level)
+            sdk_logger.propagate = previous_propagate
+            sdk_logger.disabled = previous_disabled
+            handler.close()
 
-        with (
-            mock.patch("flask.has_request_context", return_value=True),
-            mock.patch("models.Account", MockAccount),
-            mock.patch("flask_login.current_user", mock_user),
-        ):
-            filter = IdentityContextFilter()
-            filter.filter(log_record)
-
-            assert log_record.tenant_id == ""
-            assert log_record.user_id == "account_id"
-            assert log_record.user_type == "account"
-
-    def test_sets_identity_for_end_user(self, log_record):
-        from core.logging.filters import IdentityContextFilter
-
-        class MockEndUser:
-            pass
-
-        class AnotherClass:
-            pass
-
-        mock_user = MockEndUser()
-        mock_user.id = "end_user_id"
-        mock_user.tenant_id = "tenant_id"
-        mock_user.type = "custom_type"
-        mock_user.is_authenticated = True
-
-        with (
-            mock.patch("flask.has_request_context", return_value=True),
-            mock.patch("models.model.EndUser", MockEndUser),
-            mock.patch("models.Account", AnotherClass),
-            mock.patch("flask_login.current_user", mock_user),
-        ):
-            filter = IdentityContextFilter()
-            filter.filter(log_record)
-
-            assert log_record.tenant_id == "tenant_id"
-            assert log_record.user_id == "end_user_id"
-            assert log_record.user_type == "custom_type"
-
-    def test_sets_identity_for_end_user_default_type(self, log_record):
-        from core.logging.filters import IdentityContextFilter
-
-        class MockEndUser:
-            pass
-
-        class AnotherClass:
-            pass
-
-        mock_user = MockEndUser()
-        mock_user.id = "end_user_id"
-        mock_user.tenant_id = "tenant_id"
-        mock_user.type = None
-        mock_user.is_authenticated = True
-
-        with (
-            mock.patch("flask.has_request_context", return_value=True),
-            mock.patch("models.model.EndUser", MockEndUser),
-            mock.patch("models.Account", AnotherClass),
-            mock.patch("flask_login.current_user", mock_user),
-        ):
-            filter = IdentityContextFilter()
-            filter.filter(log_record)
-
-            assert log_record.tenant_id == "tenant_id"
-            assert log_record.user_id == "end_user_id"
-            assert log_record.user_type == "end_user"
+        request_loader.assert_not_called()
+        assert "Setting attribute on ended span" in stream.getvalue()

@@ -205,6 +205,17 @@ class InvokeFrom(StrEnum):
         return source_mapping.get(self, "dev")
 
 
+class EndUserType(StrEnum):
+    """Persisted type values for the ``end_users.type`` column."""
+
+    APP_DEPLOY = "app-deploy"
+    BROWSER = "browser"
+    MCP = "mcp"
+    OPENAPI = "openapi"
+    SERVICE_API = "service-api"
+    TRIGGER = "trigger"
+
+
 class DocumentDocType(StrEnum):
     """Document doc_type classification"""
 
@@ -227,6 +238,7 @@ class TagType(StrEnum):
     KNOWLEDGE = "knowledge"
     APP = "app"
     SNIPPET = "snippet"
+    SKILL = "skill"
 
 
 class DatasetMetadataType(StrEnum):

@@ -1,4 +1,5 @@
 import { renderHook } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { BlockEnum } from '../../types'
 import { useDynamicTestRunOptions } from '../use-dynamic-test-run-options'
 
@@ -18,12 +19,14 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: {
-    buildInTools: unknown[]
-    customTools: unknown[]
-    workflowTools: unknown[]
-    mcpTools: unknown[]
-  }) => unknown) => mockUseStore(selector),
+  useStore: (
+    selector: (state: {
+      buildInTools: unknown[]
+      customTools: unknown[]
+      workflowTools: unknown[]
+      mcpTools: unknown[]
+    }) => unknown,
+  ) => mockUseStore(selector),
 }))
 
 vi.mock('@/service/use-triggers', () => ({
@@ -38,24 +41,31 @@ describe('useDynamicTestRunOptions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
-    mockUseStore.mockImplementation((selector: (state: {
-      buildInTools: unknown[]
-      customTools: unknown[]
-      workflowTools: unknown[]
-      mcpTools: unknown[]
-    }) => unknown) => selector({
-      buildInTools: [],
-      customTools: [],
-      workflowTools: [],
-      mcpTools: [],
-    }))
+    mockUseStore.mockImplementation(
+      (
+        selector: (state: {
+          buildInTools: unknown[]
+          customTools: unknown[]
+          workflowTools: unknown[]
+          mcpTools: unknown[]
+        }) => unknown,
+      ) =>
+        selector({
+          buildInTools: [],
+          customTools: [],
+          workflowTools: [],
+          mcpTools: [],
+        }),
+    )
     mockUseAllTriggerPlugins.mockReturnValue({
-      data: [{
-        name: 'plugin-provider',
-        icon: '/plugin-icon.png',
-      }],
+      data: [
+        {
+          name: 'plugin-provider',
+          icon: '/plugin-icon.png',
+        },
+      ],
     })
   })
 
@@ -86,13 +96,15 @@ describe('useDynamicTestRunOptions', () => {
 
     const { result } = renderHook(() => useDynamicTestRunOptions())
 
-    expect(result.current.userInput).toEqual(expect.objectContaining({
-      id: 'inset-s-1',
-      type: 'user_input',
-      name: 'User Input',
-      nodeId: 'inset-s-1',
-      enabled: true,
-    }))
+    expect(result.current.userInput).toEqual(
+      expect.objectContaining({
+        id: 'inset-s-1',
+        type: 'user_input',
+        name: 'User Input',
+        nodeId: 'inset-s-1',
+        enabled: true,
+      }),
+    )
     expect(result.current.triggers).toEqual([
       expect.objectContaining({
         id: 'schedule-1',
@@ -113,11 +125,13 @@ describe('useDynamicTestRunOptions', () => {
         nodeId: 'plugin-1',
       }),
     ])
-    expect(result.current.runAll).toEqual(expect.objectContaining({
-      id: 'run-all',
-      type: 'all',
-      relatedNodeIds: ['schedule-1', 'webhook-1', 'plugin-1'],
-    }))
+    expect(result.current.runAll).toEqual(
+      expect.objectContaining({
+        id: 'run-all',
+        type: 'all',
+        relatedNodeIds: ['schedule-1', 'webhook-1', 'plugin-1'],
+      }),
+    )
   })
 
   it('should fall back to the workflow entry node and omit run-all when only one trigger exists', () => {
@@ -134,12 +148,14 @@ describe('useDynamicTestRunOptions', () => {
 
     const { result } = renderHook(() => useDynamicTestRunOptions())
 
-    expect(result.current.userInput).toEqual(expect.objectContaining({
-      id: 'fallback-start',
-      type: 'user_input',
-      name: 'blocks.start',
-      nodeId: 'fallback-start',
-    }))
+    expect(result.current.userInput).toEqual(
+      expect.objectContaining({
+        id: 'fallback-start',
+        type: 'user_input',
+        name: 'blocks.start',
+        nodeId: 'fallback-start',
+      }),
+    )
     expect(result.current.triggers).toHaveLength(1)
     expect(result.current.runAll).toBeUndefined()
   })

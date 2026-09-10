@@ -1,27 +1,16 @@
 import type { ErrorMessageBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import {
-  $insertNodes,
-  COMMAND_PRIORITY_EDITOR,
-  createCommand,
-} from 'lexical'
-import {
-  memo,
-  useEffect,
-} from 'react'
-import {
-  $createErrorMessageBlockNode,
-  ErrorMessageBlockNode,
-} from './node'
+import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
+import { memo, useEffect } from 'react'
+import { $createErrorMessageBlockNode, ErrorMessageBlockNode } from './node'
 
-export const INSERT_ERROR_MESSAGE_BLOCK_COMMAND = createCommand('INSERT_ERROR_MESSAGE_BLOCK_COMMAND')
+export const INSERT_ERROR_MESSAGE_BLOCK_COMMAND = createCommand(
+  'INSERT_ERROR_MESSAGE_BLOCK_COMMAND',
+)
 export const DELETE_ERROR_MESSAGE_COMMAND = createCommand('DELETE_ERROR_MESSAGE_COMMAND')
 
-const ErrorMessageBlock = memo(({
-  onInsert,
-  onDelete,
-}: ErrorMessageBlockType) => {
+const ErrorMessageBlock = memo(({ onInsert, onDelete }: ErrorMessageBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -36,8 +25,7 @@ const ErrorMessageBlock = memo(({
 
           $insertNodes([Node])
 
-          if (onInsert)
-            onInsert()
+          if (onInsert) onInsert()
 
           return true
         },
@@ -46,8 +34,7 @@ const ErrorMessageBlock = memo(({
       editor.registerCommand(
         DELETE_ERROR_MESSAGE_COMMAND,
         () => {
-          if (onDelete)
-            onDelete()
+          if (onDelete) onDelete()
 
           return true
         },

@@ -1,19 +1,14 @@
-import {
-  memo,
-  useState,
-} from 'react'
+import { memo, useState } from 'react'
 import Loading from '@/app/components/base/loading'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { useStore } from '@/app/components/workflow/store'
-import {
-  WorkflowRunningStatus,
-} from '@/app/components/workflow/types'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import ResultPreview from './result-preview'
 import Tabs from './tabs'
 
 const Result = () => {
-  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const workflowRunningData = useStore((s) => s.workflowRunningData)
   const [currentTab, setCurrentTab] = useState<string>('RESULT')
 
   const switchTab = async (tab: string) => {
@@ -22,11 +17,18 @@ const Result = () => {
 
   return (
     <div className="flex grow flex-col">
-      <Tabs currentTab={currentTab} workflowRunningData={workflowRunningData} switchTab={switchTab} />
+      <Tabs
+        currentTab={currentTab}
+        workflowRunningData={workflowRunningData}
+        switchTab={switchTab}
+      />
       <div className="flex h-0 grow flex-col overflow-y-auto">
         {currentTab === 'RESULT' && (
           <ResultPreview
-            isRunning={!workflowRunningData?.result || workflowRunningData?.result.status === WorkflowRunningStatus.Running}
+            isRunning={
+              !workflowRunningData?.result ||
+              workflowRunningData?.result.status === WorkflowRunningStatus.Running
+            }
             outputs={workflowRunningData?.result?.outputs}
             error={workflowRunningData?.result?.error}
             onSwitchToDetail={() => switchTab('DETAIL')}

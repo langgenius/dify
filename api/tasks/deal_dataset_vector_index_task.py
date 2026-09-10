@@ -33,10 +33,10 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
 
             if not dataset:
                 raise Exception("Dataset not found")
-            index_type = dataset.doc_form or IndexStructureType.PARAGRAPH_INDEX
+            index_type = dataset.get_doc_form(session=session) or IndexStructureType.PARAGRAPH_INDEX
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             if action == "remove":
-                index_processor.clean(dataset, None, with_keywords=False)
+                index_processor.clean(dataset, None, with_keywords=False, session=session)
             elif action == "add":
                 dataset_documents = session.scalars(
                     select(DatasetDocument).where(
@@ -82,7 +82,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
 
                                     documents.append(document)
                                 # save vector index
-                                index_processor.load(dataset, documents, with_keywords=False)
+                                index_processor.load(dataset, documents, with_keywords=False, session=session)
                             session.execute(
                                 update(DatasetDocument)
                                 .where(DatasetDocument.id == dataset_document.id)
@@ -117,7 +117,9 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                     session.commit()
 
                     # clean index
-                    index_processor.clean(dataset, None, with_keywords=False, delete_child_chunks=False)
+                    index_processor.clean(
+                        dataset, None, with_keywords=False, delete_child_chunks=False, session=session
+                    )
 
                     for dataset_document in dataset_documents:
                         # update from vector index
@@ -144,7 +146,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                         },
                                     )
                                     if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                                        child_chunks = segment.get_child_chunks()
+                                        child_chunks = segment.get_child_chunks(session=session)
                                         if child_chunks:
                                             child_documents = []
                                             for child_chunk in child_chunks:
@@ -160,7 +162,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                                 child_documents.append(child_document)
                                             document.children = child_documents
                                     if dataset.is_multimodal:
-                                        for attachment in segment.attachments:
+                                        for attachment in segment.get_attachments(session=session):
                                             multimodal_documents.append(
                                                 AttachmentDocument(
                                                     page_content=attachment["name"],
@@ -176,7 +178,11 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                     documents.append(document)
                                 # save vector index
                                 index_processor.load(
-                                    dataset, documents, multimodal_documents=multimodal_documents, with_keywords=False
+                                    dataset,
+                                    documents,
+                                    multimodal_documents=multimodal_documents,
+                                    with_keywords=False,
+                                    session=session,
                                 )
                             session.execute(
                                 update(DatasetDocument)
@@ -193,7 +199,9 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                             session.commit()
                 else:
                     # clean collection
-                    index_processor.clean(dataset, None, with_keywords=False, delete_child_chunks=False)
+                    index_processor.clean(
+                        dataset, None, with_keywords=False, delete_child_chunks=False, session=session
+                    )
 
             end_at = time.perf_counter()
             logger.info(

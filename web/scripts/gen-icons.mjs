@@ -11,35 +11,35 @@ const svgAssetsDir = path.resolve(__dirname, '../../packages/iconify-collections
 const generateDir = async (currentPath) => {
   try {
     await mkdir(currentPath, { recursive: true })
-  }
-  catch (err) {
+  } catch (err) {
     console.error(err.message)
   }
 }
 const processSvgStructure = (svgStructure, replaceFillOrStrokeColor) => {
   if (svgStructure?.children.length) {
-    svgStructure.children = svgStructure.children.filter(c => c.type !== 'text')
+    svgStructure.children = svgStructure.children.filter((c) => c.type !== 'text')
 
     svgStructure.children.forEach((child) => {
       if (child?.name === 'path' && replaceFillOrStrokeColor) {
-        if (child?.attributes?.stroke)
-          child.attributes.stroke = 'currentColor'
+        if (child?.attributes?.stroke) child.attributes.stroke = 'currentColor'
 
-        if (child?.attributes.fill)
-          child.attributes.fill = 'currentColor'
+        if (child?.attributes.fill) child.attributes.fill = 'currentColor'
       }
-      if (child?.children.length)
-        processSvgStructure(child, replaceFillOrStrokeColor)
+      if (child?.children.length) processSvgStructure(child, replaceFillOrStrokeColor)
     })
   }
 }
-const generateSvgComponent = async (fileHandle, entry, relativeSegments, replaceFillOrStrokeColor) => {
+const generateSvgComponent = async (
+  fileHandle,
+  entry,
+  relativeSegments,
+  replaceFillOrStrokeColor,
+) => {
   const currentPath = path.resolve(iconsDir, 'src', ...relativeSegments)
 
   try {
     await access(currentPath)
-  }
-  catch {
+  } catch {
     await generateDir(currentPath)
   }
 
@@ -54,7 +54,8 @@ const generateSvgComponent = async (fileHandle, entry, relativeSegments, replace
     name: fileName,
   }
 
-  const componentRender = template(`
+  const componentRender = template(
+    `
 // GENERATE BY script
 // DON NOT EDIT IT MANUALLY
 
@@ -75,16 +76,28 @@ const Icon = (
 Icon.displayName = '<%= svgName %>'
 
 export default Icon
-`.trim())
+`.trim(),
+  )
 
-  await writeFile(path.resolve(currentPath, `${fileName}.json`), `${JSON.stringify(svgData, '', '\t')}\n`)
-  await writeFile(path.resolve(currentPath, `${fileName}.tsx`), `${componentRender({ svgName: fileName })}\n`)
+  await writeFile(
+    path.resolve(currentPath, `${fileName}.json`),
+    `${JSON.stringify(svgData, '', '\t')}\n`,
+  )
+  await writeFile(
+    path.resolve(currentPath, `${fileName}.tsx`),
+    `${componentRender({ svgName: fileName })}\n`,
+  )
 
-  const indexingRender = template(`
+  const indexingRender = template(
+    `
 export { default as <%= svgName %> } from './<%= svgName %>'
-`.trim())
+`.trim(),
+  )
 
-  await appendFile(path.resolve(currentPath, 'index.ts'), `${indexingRender({ svgName: fileName })}\n`)
+  await appendFile(
+    path.resolve(currentPath, 'index.ts'),
+    `${indexingRender({ svgName: fileName })}\n`,
+  )
 }
 
 const generateImageComponent = async (entry, relativeSegments) => {
@@ -92,25 +105,30 @@ const generateImageComponent = async (entry, relativeSegments) => {
 
   try {
     await access(currentPath)
-  }
-  catch {
+  } catch {
     await generateDir(currentPath)
   }
 
   const prefixFileName = camelCase(entry.split('.')[0])
   const fileName = prefixFileName.charAt(0).toUpperCase() + prefixFileName.slice(1)
 
-  const componentCSSRender = template(`
+  const componentCSSRender = template(
+    `
 .wrapper {
   display: inline-flex;
   background: url(<%= assetPath %>) center center no-repeat;
   background-size: contain;
 }
-`.trim())
+`.trim(),
+  )
 
-  await writeFile(path.resolve(currentPath, `${fileName}.module.css`), `${componentCSSRender({ assetPath: path.posix.join('~@/app/components/base/icons/assets', ...relativeSegments, entry) })}\n`)
+  await writeFile(
+    path.resolve(currentPath, `${fileName}.module.css`),
+    `${componentCSSRender({ assetPath: path.posix.join('~@/app/components/base/icons/assets', ...relativeSegments, entry) })}\n`,
+  )
 
-  const componentRender = template(`
+  const componentRender = template(
+    `
 // GENERATE BY script
 // DON NOT EDIT IT MANUALLY
 
@@ -131,13 +149,19 @@ const Icon = (
 Icon.displayName = '<%= fileName %>'
 
 export default Icon
-`.trim())
+`.trim(),
+  )
 
-  await writeFile(path.resolve(currentPath, `${fileName}.tsx`), `${componentRender({ fileName })}\n`)
+  await writeFile(
+    path.resolve(currentPath, `${fileName}.tsx`),
+    `${componentRender({ fileName })}\n`,
+  )
 
-  const indexingRender = template(`
+  const indexingRender = template(
+    `
 export { default as <%= fileName %> } from './<%= fileName %>'
-`.trim())
+`.trim(),
+  )
 
   await appendFile(path.resolve(currentPath, 'index.ts'), `${indexingRender({ fileName })}\n`)
 }
@@ -162,13 +186,12 @@ const walk = async (basePath, entry, relativeSegments, replaceFillOrStrokeColor)
 
     if (stat.isFile() && /.+\.png$/.test(entry))
       await generateImageComponent(entry, relativeSegments)
-  }
-  finally {
+  } finally {
     fileHandle?.close()
   }
 }
 
-(async () => {
+;(async () => {
   await rm(path.resolve(iconsDir, 'src'), { recursive: true, force: true })
   await walk(svgAssetsDir, 'public', [], false)
   await walk(svgAssetsDir, 'vender', [], true)

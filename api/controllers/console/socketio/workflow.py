@@ -4,6 +4,7 @@ from typing import cast
 
 from flask import Request as FlaskRequest
 
+from core.db.session_factory import session_factory
 from extensions.ext_socketio import sio
 from libs.passport import PassportService
 from libs.token import extract_access_token
@@ -42,8 +43,8 @@ def socket_connect(sid, environ, auth):
             logging.warning("Socket connect rejected: missing user_id (sid=%s)", sid)
             return False
 
-        with sio.app.app_context():
-            user = AccountService.load_logged_in_account(account_id=user_id)
+        with sio.app.app_context(), session_factory.create_session() as session:
+            user = AccountService.load_logged_in_account(account_id=user_id, session=session)
             if not user:
                 logging.warning("Socket connect rejected: user not found (user_id=%s, sid=%s)", user_id, sid)
                 return False
@@ -68,7 +69,8 @@ def handle_user_connect(sid, data):
     if not workflow_id:
         return {"msg": "workflow_id is required"}, 400
 
-    result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid)
+    with sio.app.app_context(), session_factory.create_session() as session:
+        result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
     if not result:
         return {"msg": "unauthorized"}, 401
 
@@ -91,11 +93,10 @@ def handle_collaboration_event(sid, data):
     1. mouse_move
     2. vars_and_features_update
     3. sync_request (ask leader to update graph)
-    4. app_state_update
-    5. mcp_server_update
-    6. workflow_update
-    7. comments_update
-    8. node_panel_presence
+    4. workflow_update
+    5. comments_update
+    6. node_panel_presence
+    7. graph_view_state (session reports tab visibility; drives leader election)
     """
     return collaboration_service.relay_collaboration_event(sid, data)
 

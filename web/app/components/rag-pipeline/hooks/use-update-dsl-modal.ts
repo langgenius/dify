@@ -23,10 +23,10 @@ type UseUpdateDSLModalParams = {
   onCancel: () => void
   onImport?: () => void
 }
-const isCompletedStatus = (status: DSLImportStatus): boolean => status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+const isCompletedStatus = (status: DSLImportStatus): boolean =>
+  status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS
 const getNonEmptyString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string')
-    return undefined
+  if (typeof value !== 'string') return undefined
 
   const trimmedValue = value.trim()
   return trimmedValue || undefined
@@ -34,14 +34,12 @@ const getNonEmptyString = (value: unknown): string | undefined => {
 const getImportErrorMessage = async (error: unknown): Promise<string | undefined> => {
   if (error instanceof Response && !error.bodyUsed) {
     try {
-      const errorData = await error.clone().json() as ImportErrorResponse
+      const errorData = (await error.clone().json()) as ImportErrorResponse
       return getNonEmptyString(errorData.message) ?? getNonEmptyString(errorData.error)
-    }
-    catch {}
+    } catch {}
   }
 
-  if (error instanceof Error)
-    return getNonEmptyString(error.message)
+  if (error instanceof Error) return getNonEmptyString(error.message)
 
   return undefined
 }
@@ -72,64 +70,78 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   }
   const handleFile = (file?: File) => {
     setDSLFile(file)
-    if (file)
-      readFile(file)
-    if (!file)
-      setFileContent('')
+    if (file) readFile(file)
+    if (!file) setFileContent('')
   }
-  const notifyError = useCallback((message?: string) => {
-    setLoading(false)
-    toast.error(message || t('common.importFailure', { ns: 'workflow' }))
-  }, [t])
-  const updateWorkflow = useCallback(async (pipelineId: string) => {
-    const { graph, hash, rag_pipeline_variables } = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
-    const { nodes, edges, viewport } = graph
-    eventEmitter?.emit({
-      type: WORKFLOW_DATA_UPDATE,
-      payload: {
-        nodes: initialNodes(nodes, edges),
-        edges: initialEdges(edges, nodes),
-        viewport,
-        hash,
-        rag_pipeline_variables: rag_pipeline_variables || [],
-      },
-    })
-  }, [eventEmitter])
-  const completeImport = useCallback(async (pipelineId: string | undefined, status: DSLImportStatus = DSLImportStatus.COMPLETED) => {
-    if (!pipelineId) {
-      notifyError()
-      return
-    }
-    updateWorkflow(pipelineId)
-    onImport?.()
-    const isWarning = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-    toast(t(isWarning ? 'common.importWarning' : 'common.importSuccess', { ns: 'workflow' }), {
-      type: isWarning ? 'warning' : 'success',
-      description: isWarning && t('common.importWarningDetails', { ns: 'workflow' }),
-    })
-    await handleCheckPluginDependencies(pipelineId, true)
-    setLoading(false)
-    onCancel()
-  }, [updateWorkflow, onImport, t, handleCheckPluginDependencies, onCancel, notifyError])
-  const showVersionMismatch = useCallback((id: string, importedVersion?: string, systemVersion?: string) => {
-    setShow(false)
-    setTimeout(() => setShowErrorModal(true), 300)
-    setVersions({
-      importedVersion: importedVersion ?? '',
-      systemVersion: systemVersion ?? '',
-    })
-    setImportId(id)
-  }, [])
+  const notifyError = useCallback(
+    (message?: string) => {
+      setLoading(false)
+      toast.error(message || t(($) => $['common.importFailure'], { ns: 'workflow' }))
+    },
+    [t],
+  )
+  const updateWorkflow = useCallback(
+    async (pipelineId: string) => {
+      const { graph, hash, rag_pipeline_variables } = await fetchWorkflowDraft(
+        `/rag/pipelines/${pipelineId}/workflows/draft`,
+      )
+      const { nodes, edges, viewport } = graph
+      eventEmitter?.emit({
+        type: WORKFLOW_DATA_UPDATE,
+        payload: {
+          nodes: initialNodes(nodes, edges),
+          edges: initialEdges(edges, nodes),
+          viewport,
+          hash,
+          rag_pipeline_variables: rag_pipeline_variables || [],
+        },
+      })
+    },
+    [eventEmitter],
+  )
+  const completeImport = useCallback(
+    async (pipelineId: string | undefined, status: DSLImportStatus = DSLImportStatus.COMPLETED) => {
+      if (!pipelineId) {
+        notifyError()
+        return
+      }
+      updateWorkflow(pipelineId)
+      onImport?.()
+      const isWarning = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+      toast(
+        t(($) => $[isWarning ? 'common.importWarning' : 'common.importSuccess'], {
+          ns: 'workflow',
+        }),
+        {
+          type: isWarning ? 'warning' : 'success',
+          description: isWarning && t(($) => $['common.importWarningDetails'], { ns: 'workflow' }),
+        },
+      )
+      await handleCheckPluginDependencies(pipelineId, true)
+      setLoading(false)
+      onCancel()
+    },
+    [updateWorkflow, onImport, t, handleCheckPluginDependencies, onCancel, notifyError],
+  )
+  const showVersionMismatch = useCallback(
+    (id: string, importedVersion?: string, systemVersion?: string) => {
+      setShow(false)
+      setTimeout(() => setShowErrorModal(true), 300)
+      setVersions({
+        importedVersion: importedVersion ?? '',
+        systemVersion: systemVersion ?? '',
+      })
+      setImportId(id)
+    },
+    [],
+  )
   const handleImport: MouseEventHandler = useCallback(async () => {
     const { pipelineId } = workflowStore.getState()
-    if (isCreatingRef.current)
-      return
+    if (isCreatingRef.current) return
     isCreatingRef.current = true
-    if (!currentFile)
-      return
+    if (!currentFile) return
     try {
-      if (!pipelineId || !fileContent)
-        return
+      if (!pipelineId || !fileContent) return
       setLoading(true)
       const response = await importDSL({
         mode: DSLImportMode.YAML_CONTENT,
@@ -137,31 +149,33 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         pipeline_id: pipelineId,
       })
       const { id, status, pipeline_id, imported_dsl_version, current_dsl_version } = response
-      if (isCompletedStatus(status))
-        await completeImport(pipeline_id, status)
+      if (isCompletedStatus(status)) await completeImport(pipeline_id, status)
       else if (status === DSLImportStatus.PENDING)
         showVersionMismatch(id, imported_dsl_version, current_dsl_version)
-      else
-        notifyError(response.error)
-    }
-    catch (error) {
+      else notifyError(response.error)
+    } catch (error) {
       notifyError(await getImportErrorMessage(error))
     }
     isCreatingRef.current = false
-  }, [currentFile, fileContent, workflowStore, importDSL, completeImport, showVersionMismatch, notifyError])
+  }, [
+    currentFile,
+    fileContent,
+    workflowStore,
+    importDSL,
+    completeImport,
+    showVersionMismatch,
+    notifyError,
+  ])
   const onUpdateDSLConfirm: MouseEventHandler = useCallback(async () => {
-    if (!importId)
-      return
+    if (!importId) return
     try {
       const { status, pipeline_id, error } = await importDSLConfirm(importId)
       if (status === DSLImportStatus.COMPLETED) {
         await completeImport(pipeline_id)
         return
       }
-      if (status === DSLImportStatus.FAILED)
-        notifyError(error)
-    }
-    catch (error) {
+      if (status === DSLImportStatus.FAILED) notifyError(error)
+    } catch (error) {
       notifyError(await getImportErrorMessage(error))
     }
   }, [importId, importDSLConfirm, completeImport, notifyError])

@@ -1,5 +1,4 @@
 {
-  "actionLogs": "Action 日志",
   "circularInvocationTip": "当前工作流中存在工具/节点的循环调用。",
   "detail": "详情",
   "input": "输入",
@@ -10,7 +9,6 @@
   "meta.time": "运行时间",
   "meta.title": "元数据",
   "meta.tokens": "总 token 数",
-  "meta.version": "版本",
   "result": "结果",
   "resultEmpty.link": "详细信息面板",
   "resultEmpty.tipLeft": "请转到",

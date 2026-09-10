@@ -1,5 +1,9 @@
 import type { StateCreator } from 'zustand'
-import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '@/contract/console/workflow-comment'
+import type {
+  UserProfile,
+  WorkflowCommentDetail,
+  WorkflowCommentList,
+} from '@/app/components/workflow/comment/types'
 
 export type CommentSliceShape = {
   comments: WorkflowCommentList[]
@@ -24,35 +28,38 @@ export type CommentSliceShape = {
   setMentionableUsersLoading: (appId: string, loading: boolean) => void
 }
 
-export const createCommentSlice: StateCreator<CommentSliceShape> = set => ({
+export const createCommentSlice: StateCreator<CommentSliceShape> = (set) => ({
   comments: [],
-  setComments: comments => set({ comments }),
+  setComments: (comments) => set({ comments }),
   commentsLoading: false,
-  setCommentsLoading: commentsLoading => set({ commentsLoading }),
+  setCommentsLoading: (commentsLoading) => set({ commentsLoading }),
   showResolvedComments: false,
-  setShowResolvedComments: showResolvedComments => set({ showResolvedComments }),
+  setShowResolvedComments: (showResolvedComments) => set({ showResolvedComments }),
   activeCommentDetail: null,
-  setActiveCommentDetail: activeCommentDetail => set({ activeCommentDetail }),
+  setActiveCommentDetail: (activeCommentDetail) => set({ activeCommentDetail }),
   activeCommentDetailLoading: false,
-  setActiveCommentDetailLoading: activeCommentDetailLoading => set({ activeCommentDetailLoading }),
+  setActiveCommentDetailLoading: (activeCommentDetailLoading) =>
+    set({ activeCommentDetailLoading }),
   replySubmitting: false,
-  setReplySubmitting: replySubmitting => set({ replySubmitting }),
+  setReplySubmitting: (replySubmitting) => set({ replySubmitting }),
   replyUpdating: false,
-  setReplyUpdating: replyUpdating => set({ replyUpdating }),
+  setReplyUpdating: (replyUpdating) => set({ replyUpdating }),
   commentDetailCache: {},
-  setCommentDetailCache: commentDetailCache => set({ commentDetailCache }),
+  setCommentDetailCache: (commentDetailCache) => set({ commentDetailCache }),
   mentionableUsersCache: {},
-  setMentionableUsersCache: (appId, users) => set(state => ({
-    mentionableUsersCache: {
-      ...state.mentionableUsersCache,
-      [appId]: users,
-    },
-  })),
+  setMentionableUsersCache: (appId, users) =>
+    set((state) => ({
+      mentionableUsersCache: {
+        ...state.mentionableUsersCache,
+        [appId]: users,
+      },
+    })),
   mentionableUsersLoading: {},
-  setMentionableUsersLoading: (appId, loading) => set(state => ({
-    mentionableUsersLoading: {
-      ...state.mentionableUsersLoading,
-      [appId]: loading,
-    },
-  })),
+  setMentionableUsersLoading: (appId, loading) =>
+    set((state) => ({
+      mentionableUsersLoading: {
+        ...state.mentionableUsersLoading,
+        [appId]: loading,
+      },
+    })),
 })

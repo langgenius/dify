@@ -1,9 +1,8 @@
 from collections.abc import Sequence
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import InstrumentedAttribute
+from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from extensions.ext_database import db
 from models.account import Account
 from models.credential_permission import CredentialPermission
 from models.enums import PermissionEnum
@@ -17,9 +16,9 @@ class CredentialPermissionService:
     """
 
     @classmethod
-    def get_partial_member_list(cls, credential_id: str, credential_type: str) -> Sequence[str]:
+    def get_partial_member_list(cls, credential_id: str, credential_type: str, *, session: Session) -> Sequence[str]:
         """Return account_ids that have partial-member access to a credential."""
-        return db.session.scalars(
+        return session.scalars(
             select(CredentialPermission.account_id).where(
                 CredentialPermission.credential_id == credential_id,
                 CredentialPermission.credential_type == credential_type,

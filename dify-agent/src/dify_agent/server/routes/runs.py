@@ -24,7 +24,7 @@ from dify_agent.protocol.schemas import (
     RunEventsResponse,
     RunStatusResponse,
 )
-from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
+from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.sse import sse_event_stream
 from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
 
@@ -33,7 +33,6 @@ def create_runs_router(
     get_store: Callable[[], RedisRunStore],
     get_scheduler: Callable[[], RunScheduler],
 ) -> APIRouter:
-    """Create routes bound to the application's store dependency provider."""
     router = APIRouter(prefix="/runs", tags=["runs"])
 
     async def store_dep() -> RedisRunStore:
@@ -65,19 +64,22 @@ def create_runs_router(
             created_at=record.created_at,
             updated_at=record.updated_at,
             error=record.error,
+            error_type=record.error_type,
         )
 
     @router.post("/{run_id}/cancel", response_model=CancelRunResponse)
-    async def cancel_run(run_id: str, request: CancelRunRequest) -> CancelRunResponse:
-        """Reserve the cancellation endpoint in the public protocol.
-
-        Runtime cancellation requires scheduler task lookup and persistence
-        semantics that are outside the current server implementation. Exposing a
-        typed endpoint now lets clients bind to the final route while receiving
-        an explicit 501 until execution support lands.
-        """
-        del run_id, request
-        raise HTTPException(status_code=501, detail="run cancellation is not implemented")
+    async def cancel_run(
+        run_id: str,
+        request: CancelRunRequest,
+        scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
+    ) -> CancelRunResponse:
+        """Persist cancellation; the owner process observes it and stops its runner."""
+        try:
+            return await scheduler.cancel_run(run_id, request)
+        except RunNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="run not found") from exc
+        except RunCancellationConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @router.get("/{run_id}/events", response_model=RunEventsResponse)
     async def get_run_events(

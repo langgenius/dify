@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach } from 'vitest'
+import { afterEach, beforeEach } from 'vite-plus/test'
 import { ENV_CONFIG_DIR } from '../../src/store/dir.js'
 
 // Points ENV_CONFIG_DIR at a fresh temp dir per test and restores it after.
@@ -15,8 +15,7 @@ export function useTempConfigDir(prefix: string): () => string {
     process.env[ENV_CONFIG_DIR] = dir
   })
   afterEach(async () => {
-    if (prev === undefined)
-      delete process.env[ENV_CONFIG_DIR]
+    if (prev === undefined) delete process.env[ENV_CONFIG_DIR]
     else process.env[ENV_CONFIG_DIR] = prev
     await rm(dir, { recursive: true, force: true })
   })

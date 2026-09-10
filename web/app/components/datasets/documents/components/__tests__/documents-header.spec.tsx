@@ -1,18 +1,19 @@
 import type { SortType } from '@/service/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DocumentsHeader from '../documents-header'
 
 // Mock the context hooks
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
 
 // Mock child components that require API calls
-vi.mock('@/app/components/datasets/common/document-status-with-action/auto-disabled-document', () => ({
-  default: () => <div data-testid="auto-disabled-document">AutoDisabledDocument</div>,
-}))
+vi.mock(
+  '@/app/components/datasets/common/document-status-with-action/auto-disabled-document',
+  () => ({
+    default: () => <div data-testid="auto-disabled-document">AutoDisabledDocument</div>,
+  }),
+)
 
 vi.mock('@/app/components/datasets/common/document-status-with-action/index-failed', () => ({
   default: () => <div data-testid="index-failed">IndexFailed</div>,
@@ -32,7 +33,9 @@ describe('DocumentsHeader', () => {
     datasetId: 'dataset-123',
     dataSourceType: DataSourceType.FILE,
     embeddingAvailable: true,
-    isFreePlan: false,
+    canManageMetadata: true,
+    canAddDocument: true,
+    canEditDocument: true,
     statusFilterValue: 'all',
     sortValue: 'created_at' as SortType,
     inputValue: '',
@@ -58,11 +61,6 @@ describe('DocumentsHeader', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByText(/list\.title/i)).toBeInTheDocument()
-    })
-
     it('should render title', () => {
       render(<DocumentsHeader {...defaultProps} />)
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/list\.title/i)
@@ -84,18 +82,29 @@ describe('DocumentsHeader', () => {
 
     it('should render filter input', () => {
       render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
+    })
+
+    it('should hide action controls by default when permissions are omitted', () => {
+      const {
+        canManageMetadata: _canManageMetadata,
+        canAddDocument: _canAddDocument,
+        canEditDocument: _canEditDocument,
+        ...propsWithoutPermissions
+      } = defaultProps
+
+      render(<DocumentsHeader {...propsWithoutPermissions} />)
+
+      expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('index-failed')).not.toBeInTheDocument()
+      expect(screen.queryByText(/metadata\.metadata/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/list\.addFile/i)).not.toBeInTheDocument()
     })
   })
 
   describe('AutoDisabledDocument', () => {
-    it('should show AutoDisabledDocument when not free plan', () => {
-      render(<DocumentsHeader {...defaultProps} isFreePlan={false} />)
-      expect(screen.getByTestId('auto-disabled-document')).toBeInTheDocument()
-    })
-
-    it('should not show AutoDisabledDocument when on free plan', () => {
-      render(<DocumentsHeader {...defaultProps} isFreePlan={true} />)
+    it('should not show AutoDisabledDocument without document edit permission', () => {
+      render(<DocumentsHeader {...defaultProps} canEditDocument={false} />)
       expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
     })
   })
@@ -104,6 +113,11 @@ describe('DocumentsHeader', () => {
     it('should always show IndexFailed component', () => {
       render(<DocumentsHeader {...defaultProps} />)
       expect(screen.getByTestId('index-failed')).toBeInTheDocument()
+    })
+
+    it('should not show IndexFailed without document edit permission', () => {
+      render(<DocumentsHeader {...defaultProps} canEditDocument={false} />)
+      expect(screen.queryByTestId('index-failed')).not.toBeInTheDocument()
     })
   })
 
@@ -179,7 +193,7 @@ describe('DocumentsHeader', () => {
       const onInputChange = vi.fn()
       render(<DocumentsHeader {...defaultProps} onInputChange={onInputChange} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'search query' } })
 
       expect(onInputChange).toHaveBeenCalledWith('search query')

@@ -9,10 +9,7 @@ type VerifiedProps = {
   text: string
 }
 
-const Verified: FC<VerifiedProps> = ({
-  className,
-  text,
-}) => {
+const Verified: FC<VerifiedProps> = ({ className, text }) => {
   const { theme } = useTheme()
 
   return (

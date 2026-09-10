@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -6,15 +7,10 @@ from flask import Flask
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline.datasource_content_preview import (
     DataSourceContentPreviewApi,
+    Parser,
 )
 from models import Account
 from models.dataset import Pipeline
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def make_account() -> Account:
@@ -37,7 +33,7 @@ class TestDataSourceContentPreviewApi:
 
         payload = self._valid_payload()
 
-        pipeline = MagicMock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         node_id = "node-1"
         account = make_account()
 
@@ -54,7 +50,8 @@ class TestDataSourceContentPreviewApi:
                 return_value=service_instance,
             ),
         ):
-            response, status = method(api, account, pipeline, node_id)
+            req_data = Parser.model_validate(payload)
+            response, status = method(api, req_data, account, pipeline, node_id)
 
         service_instance.run_datasource_node_preview.assert_called_once_with(
             pipeline=pipeline,
@@ -77,7 +74,7 @@ class TestDataSourceContentPreviewApi:
             # datasource_type missing
         }
 
-        pipeline = MagicMock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         account = make_account()
 
         with (
@@ -85,7 +82,7 @@ class TestDataSourceContentPreviewApi:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(ValueError):
-                method(api, account, pipeline, "node-1")
+                method(api, Parser.model_validate(payload), account, pipeline, "node-1")
 
     def test_post_without_credential_id(self, app: Flask):
         api = DataSourceContentPreviewApi()
@@ -97,7 +94,7 @@ class TestDataSourceContentPreviewApi:
             "credential_id": None,
         }
 
-        pipeline = MagicMock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         account = make_account()
 
         service_instance = MagicMock()
@@ -111,7 +108,8 @@ class TestDataSourceContentPreviewApi:
                 return_value=service_instance,
             ),
         ):
-            response, status = method(api, account, pipeline, "node-1")
+            req_data = Parser.model_validate(payload)
+            response, status = method(api, req_data, account, pipeline, "node-1")
 
         service_instance.run_datasource_node_preview.assert_called_once()
         assert status == 200

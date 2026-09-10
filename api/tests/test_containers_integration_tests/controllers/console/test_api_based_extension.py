@@ -102,7 +102,8 @@ def test_list_scopes_api_based_extensions_to_authenticated_tenant(
             name="Foreign API",
             api_endpoint="https://foreign.example.com/hook",
             api_key="foreign-secret-12345",
-        )
+        ),
+        session=db_session_with_containers,
     )
 
     response = test_client_with_containers.get(

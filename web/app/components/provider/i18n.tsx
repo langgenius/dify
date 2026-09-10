@@ -16,9 +16,5 @@ export function I18nClientProvider({
 }) {
   const i18n = createI18nextInstance(locale, resource)
 
-  return (
-    <I18nextProvider i18n={i18n}>
-      {children}
-    </I18nextProvider>
-  )
+  return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
 }

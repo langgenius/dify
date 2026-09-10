@@ -6,81 +6,99 @@ import type {
   NodeTracing,
 } from '@/types/workflow'
 import { useBoolean } from 'ahooks'
-import {
-  useCallback,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 export const useLogs = () => {
-  const [showRetryDetail, {
-    setTrue: setShowRetryDetailTrue,
-    setFalse: setShowRetryDetailFalse,
-  }] = useBoolean(false)
+  const [showRetryDetail, { setTrue: setShowRetryDetailTrue, setFalse: setShowRetryDetailFalse }] =
+    useBoolean(false)
   const [retryResultList, setRetryResultList] = useState<NodeTracing[]>([])
-  const handleShowRetryResultList = useCallback((detail: NodeTracing[]) => {
-    setShowRetryDetailTrue()
-    setRetryResultList(detail)
-  }, [setShowRetryDetailTrue, setRetryResultList])
+  const handleShowRetryResultList = useCallback(
+    (detail: NodeTracing[]) => {
+      setShowRetryDetailTrue()
+      setRetryResultList(detail)
+    },
+    [setShowRetryDetailTrue, setRetryResultList],
+  )
 
-  const [showIteratingDetail, {
-    setTrue: setShowIteratingDetailTrue,
-    setFalse: setShowIteratingDetailFalse,
-  }] = useBoolean(false)
+  const [
+    showIteratingDetail,
+    { setTrue: setShowIteratingDetailTrue, setFalse: setShowIteratingDetailFalse },
+  ] = useBoolean(false)
   const [iterationResultList, setIterationResultList] = useState<NodeTracing[][]>([])
-  const [iterationResultDurationMap, setIterationResultDurationMap] = useState<IterationDurationMap>({})
-  const handleShowIterationResultList = useCallback((detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => {
-    setShowIteratingDetailTrue()
-    setIterationResultList(detail)
-    setIterationResultDurationMap(iterDurationMap)
-  }, [setShowIteratingDetailTrue, setIterationResultList, setIterationResultDurationMap])
+  const [iterationResultDurationMap, setIterationResultDurationMap] =
+    useState<IterationDurationMap>({})
+  const handleShowIterationResultList = useCallback(
+    (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => {
+      setShowIteratingDetailTrue()
+      setIterationResultList(detail)
+      setIterationResultDurationMap(iterDurationMap)
+    },
+    [setShowIteratingDetailTrue, setIterationResultList, setIterationResultDurationMap],
+  )
 
-  const [showLoopingDetail, {
-    setTrue: setShowLoopingDetailTrue,
-    setFalse: setShowLoopingDetailFalse,
-  }] = useBoolean(false)
+  const [
+    showLoopingDetail,
+    { setTrue: setShowLoopingDetailTrue, setFalse: setShowLoopingDetailFalse },
+  ] = useBoolean(false)
   const [loopResultList, setLoopResultList] = useState<NodeTracing[][]>([])
   const [loopResultDurationMap, setLoopResultDurationMap] = useState<LoopDurationMap>({})
   const [loopResultVariableMap, setLoopResultVariableMap] = useState<Record<string, any>>({})
-  const handleShowLoopResultList = useCallback((detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => {
-    setShowLoopingDetailTrue()
-    setLoopResultList(detail)
-    setLoopResultDurationMap(loopDurationMap)
-    setLoopResultVariableMap(loopVariableMap)
-  }, [setShowLoopingDetailTrue, setLoopResultList, setLoopResultDurationMap])
+  const handleShowLoopResultList = useCallback(
+    (
+      detail: NodeTracing[][],
+      loopDurationMap: LoopDurationMap,
+      loopVariableMap: LoopVariableMap,
+    ) => {
+      setShowLoopingDetailTrue()
+      setLoopResultList(detail)
+      setLoopResultDurationMap(loopDurationMap)
+      setLoopResultVariableMap(loopVariableMap)
+    },
+    [setShowLoopingDetailTrue, setLoopResultList, setLoopResultDurationMap],
+  )
 
-  const [agentOrToolLogItemStack, setAgentOrToolLogItemStack] = useState<AgentLogItemWithChildren[]>([])
+  const [agentOrToolLogItemStack, setAgentOrToolLogItemStack] = useState<
+    AgentLogItemWithChildren[]
+  >([])
   const agentOrToolLogItemStackRef = useRef(agentOrToolLogItemStack)
-  const [agentOrToolLogListMap, setAgentOrToolLogListMap] = useState<Record<string, AgentLogItemWithChildren[]>>({})
+  const [agentOrToolLogListMap, setAgentOrToolLogListMap] = useState<
+    Record<string, AgentLogItemWithChildren[]>
+  >({})
   const agentOrToolLogListMapRef = useRef(agentOrToolLogListMap)
-  const handleShowAgentOrToolLog = useCallback((detail?: AgentLogItemWithChildren) => {
-    if (!detail) {
-      setAgentOrToolLogItemStack([])
-      agentOrToolLogItemStackRef.current = []
-      return
-    }
-    const { message_id: id, children } = detail
-    let currentAgentOrToolLogItemStack = agentOrToolLogItemStackRef.current.slice()
-    const index = currentAgentOrToolLogItemStack.findIndex(logItem => logItem.message_id === id)
+  const handleShowAgentOrToolLog = useCallback(
+    (detail?: AgentLogItemWithChildren) => {
+      if (!detail) {
+        setAgentOrToolLogItemStack([])
+        agentOrToolLogItemStackRef.current = []
+        return
+      }
+      const { message_id: id, children } = detail
+      let currentAgentOrToolLogItemStack = agentOrToolLogItemStackRef.current.slice()
+      const index = currentAgentOrToolLogItemStack.findIndex((logItem) => logItem.message_id === id)
 
-    if (index > -1)
-      currentAgentOrToolLogItemStack = currentAgentOrToolLogItemStack.slice(0, index + 1)
-    else
-      currentAgentOrToolLogItemStack = [...currentAgentOrToolLogItemStack.slice(), detail]
+      if (index > -1)
+        currentAgentOrToolLogItemStack = currentAgentOrToolLogItemStack.slice(0, index + 1)
+      else currentAgentOrToolLogItemStack = [...currentAgentOrToolLogItemStack.slice(), detail]
 
-    setAgentOrToolLogItemStack(currentAgentOrToolLogItemStack)
-    agentOrToolLogItemStackRef.current = currentAgentOrToolLogItemStack
+      setAgentOrToolLogItemStack(currentAgentOrToolLogItemStack)
+      agentOrToolLogItemStackRef.current = currentAgentOrToolLogItemStack
 
-    if (children) {
-      setAgentOrToolLogListMap({
-        ...agentOrToolLogListMapRef.current,
-        [id]: children,
-      })
-    }
-  }, [setAgentOrToolLogItemStack, setAgentOrToolLogListMap])
+      if (children) {
+        setAgentOrToolLogListMap({
+          ...agentOrToolLogListMapRef.current,
+          [id]: children,
+        })
+      }
+    },
+    [setAgentOrToolLogItemStack, setAgentOrToolLogListMap],
+  )
 
   return {
-    showSpecialResultPanel: showRetryDetail || showIteratingDetail || showLoopingDetail || !!agentOrToolLogItemStack.length,
+    showSpecialResultPanel:
+      showRetryDetail ||
+      showIteratingDetail ||
+      showLoopingDetail ||
+      !!agentOrToolLogItemStack.length,
     showRetryDetail,
     setShowRetryDetailTrue,
     setShowRetryDetailFalse,

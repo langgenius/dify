@@ -31,7 +31,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
     """
     logger.info(click.style(f"Start batch import annotation: {job_id}", fg="green"))
     start_at = time.perf_counter()
-    indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
+    indexing_cache_key = f"app_annotation_batch_import_{job_id}"
     active_jobs_key = f"annotation_import_active:{tenant_id}"
 
     with session_factory.create_session() as session:
@@ -63,7 +63,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                 if app_annotation_setting:
                     dataset_collection_binding = (
                         DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                            app_annotation_setting.collection_binding_id, "annotation"
+                            app_annotation_setting.collection_binding_id, session, "annotation"
                         )
                     )
                     if not dataset_collection_binding:
@@ -77,7 +77,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                         collection_binding_id=dataset_collection_binding.id,
                     )
 
-                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
                     vector.create(documents, duplicate_check=True)
 
                 session.commit()
@@ -94,7 +94,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
             except Exception as e:
                 session.rollback()
                 redis_client.setex(indexing_cache_key, 600, "error")
-                indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
+                indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{job_id}"
                 redis_client.setex(indexing_error_msg_key, 600, str(e))
                 logger.exception("Build index for batch import annotations failed")
             finally:

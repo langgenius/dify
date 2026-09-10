@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { buildBody, isJSONSerializable } from './body.js'
 
 describe('isJSONSerializable', () => {
@@ -34,8 +34,14 @@ describe('isJSONSerializable', () => {
 
 describe('buildBody', () => {
   it('returns no body for GET regardless of json/body input', () => {
-    expect(buildBody({ method: 'GET', json: { a: 1 } })).toEqual({ body: undefined, contentType: undefined })
-    expect(buildBody({ method: 'GET', body: 'x' })).toEqual({ body: undefined, contentType: undefined })
+    expect(buildBody({ method: 'GET', json: { a: 1 } })).toEqual({
+      body: undefined,
+      contentType: undefined,
+    })
+    expect(buildBody({ method: 'GET', body: 'x' })).toEqual({
+      body: undefined,
+      contentType: undefined,
+    })
   })
 
   it('serializes json and sets Content-Type on payload methods', () => {

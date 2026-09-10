@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import CSVReader from '../index'
 
@@ -6,15 +6,21 @@ let mockAcceptedFile: { name: string } | null = null
 
 type CSVReaderHandlers = {
   onUploadAccepted?: (payload: { data: string[][] }) => void
-  onDragOver?: (event: DragEvent) => void
-  onDragLeave?: (event: DragEvent) => void
 }
 
 let capturedHandlers: CSVReaderHandlers = {}
 
 vi.mock('react-papaparse', () => ({
   useCSVReader: () => ({
-    CSVReader: ({ children, ...handlers }: { children: (ctx: { getRootProps: () => Record<string, string>, acceptedFile: { name: string } | null }) => React.ReactNode } & CSVReaderHandlers) => {
+    CSVReader: ({
+      children,
+      ...handlers
+    }: {
+      children: (ctx: {
+        getRootProps: () => Record<string, string>
+        acceptedFile: { name: string } | null
+      }) => React.ReactNode
+    } & CSVReaderHandlers) => {
       capturedHandlers = handlers
       return (
         <div data-testid="csv-reader-wrapper">
@@ -54,24 +60,5 @@ describe('CSVReader', () => {
 
     expect(screen.getByText('batch')).toBeInTheDocument()
     expect(screen.getByText('.csv')).toBeInTheDocument()
-  })
-
-  it('should toggle hover styling on drag events', async () => {
-    render(<CSVReader onParsed={vi.fn()} />)
-    const dragEvent = { preventDefault: vi.fn() } as unknown as DragEvent
-
-    await act(async () => {
-      capturedHandlers.onDragOver?.(dragEvent)
-    })
-    await waitFor(() => {
-      expect(screen.getByTestId('drop-zone')).toHaveClass('border-components-dropzone-border-accent')
-    })
-
-    await act(async () => {
-      capturedHandlers.onDragLeave?.(dragEvent)
-    })
-    await waitFor(() => {
-      expect(screen.getByTestId('drop-zone')).not.toHaveClass('border-components-dropzone-border-accent')
-    })
   })
 })

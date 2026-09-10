@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import i18next from 'i18next'
 import { useParams, usePathname } from '@/next/navigation'
-import AudioBtn from '../index'
+import { AudioBtn } from '../index'
 
 const mockPlayAudio = vi.fn()
 const mockPauseAudio = vi.fn()
@@ -68,13 +68,6 @@ describe('AudioBtn', () => {
       expect(getButton()).not.toBeDisabled()
       await hoverAndCheckTooltip('play')
     })
-
-    it('should apply className in initial state', () => {
-      const { container } = render(<AudioBtn value="hello" className="custom-wrapper" />)
-      const wrapper = container.firstElementChild
-
-      expect(wrapper)!.toHaveClass('custom-wrapper')
-    })
   })
 
   // URL path resolution for app/public audio endpoints.
@@ -104,9 +97,9 @@ describe('AudioBtn', () => {
       expect(call![1]).toBe(false)
     })
 
-    it('should call installed app endpoint for explore installed routes', async () => {
+    it('should call installed app endpoint for installed app routes', async () => {
       mockUseParams({ appId: '456' })
-      mockUsePathname('/explore/installed/app/456')
+      mockUsePathname('/installed/456')
 
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
@@ -162,17 +155,20 @@ describe('AudioBtn', () => {
       expect(getButton())!.toBeDisabled()
     })
 
-    it.each(['ended', 'paused', 'error'])('should return to play tooltip when %s event is received', async (event) => {
-      render(<AudioBtn value="test" />)
-      await userEvent.click(getButton())
+    it.each(['ended', 'paused', 'error'])(
+      'should return to play tooltip when %s event is received',
+      async (event) => {
+        render(<AudioBtn value="test" />)
+        await userEvent.click(getButton())
 
-      await act(() => {
-        getLatestAudioCallback()(event)
-      })
+        await act(() => {
+          getLatestAudioCallback()(event)
+        })
 
-      await hoverAndCheckTooltip('play')
-      expect(getButton()).not.toBeDisabled()
-    })
+        await hoverAndCheckTooltip('play')
+        expect(getButton()).not.toBeDisabled()
+      },
+    )
   })
 
   // Prop forwarding and minimal-input behavior.

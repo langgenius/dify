@@ -10,7 +10,6 @@
   "imageUploader.tip": "อัปโหลดหรือลากภาพลง (สูงสุด {{batchCount}} รูป, {{size}}MB ต่อรูป)",
   "imageUploader.tooltip": "อัปโหลดรูปภาพ (สูงสุด {{batchCount}} รูป, {{size}}MB ต่อรูป)",
   "input.countWarning": "สูงสุด 200 อักขระ",
-  "input.indexWarning": "ความรู้คุณภาพสูงเท่านั้น",
   "input.placeholder": "กรุณาป้อนข้อความแนะนําให้ใช้ประโยคประกาศสั้น ๆ",
   "input.testing": "การทดสอบ",
   "input.title": "ข้อความต้นฉบับ",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "เนื้อหาคำถาม",
   "table.header.source": "ที่มา",
   "table.header.time": "เวลา",
-  "title": "การทดสอบการดึงข้อมูล",
-  "viewChart": "ดูแผนภูมิเวกเตอร์",
-  "viewDetail": "ดูรายละเอียด"
+  "title": "การทดสอบการดึงข้อมูล"
 }

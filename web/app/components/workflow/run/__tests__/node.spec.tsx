@@ -1,5 +1,6 @@
 import type { NodeTracing } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import NodePanel from '../node'
 
@@ -69,16 +70,20 @@ describe('Run NodePanel', () => {
 
   it('forwards iteration details through the real iteration trigger', async () => {
     const handleShowIterationDetail = vi.fn()
-    const details = [[createNodeInfo({
-      id: 'iter-trace-1',
-      node_id: 'iter-node-1',
-      execution_metadata: {
-        total_tokens: 8,
-        total_price: 0,
-        currency: 'USD',
-        iteration_index: 0,
-      },
-    })]]
+    const details = [
+      [
+        createNodeInfo({
+          id: 'iter-trace-1',
+          node_id: 'iter-node-1',
+          execution_metadata: {
+            total_tokens: 8,
+            total_price: 0,
+            currency: 'USD',
+            iteration_index: 0,
+          },
+        }),
+      ],
+    ]
     const iterDurationMap = { 0: 1.2 }
 
     render(

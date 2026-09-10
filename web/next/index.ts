@@ -1,1 +1,1 @@
-export type { NextConfig, Viewport } from 'next'
+export type { Metadata, NextConfig, Viewport } from 'next'

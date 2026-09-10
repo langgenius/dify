@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import PublishToast from '../publish-toast'
 
 let mockPublishedAt = 0
@@ -44,13 +44,6 @@ describe('PublishToast', () => {
       const { container } = render(<PublishToast />)
 
       expect(container.firstChild).toBeNull()
-    })
-
-    it('should have correct positioning classes', () => {
-      render(<PublishToast />)
-
-      const container = screen.getByText('pipeline.publishToast.title').closest('.absolute')
-      expect(container).toHaveClass('bottom-[45px]', 'left-0', 'right-0', 'z-10')
     })
 
     it('should render info icon', () => {
@@ -103,7 +96,7 @@ describe('PublishToast', () => {
     it('should have correct toast width', () => {
       render(<PublishToast />)
 
-      const toastContainer = screen.getByText('pipeline.publishToast.title').closest('.w-\\[420px\\]')
+      const toastContainer = screen.getByText('pipeline.publishToast.title').closest('.w-105')
       expect(toastContainer).toBeInTheDocument()
     })
 

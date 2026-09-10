@@ -11,12 +11,17 @@ export const zWebsiteCrawlPayload = z.object({
   url: z.string(),
 })
 
+/**
+ * WebsiteCrawlResponse
+ */
+export const zWebsiteCrawlResponse = z.record(z.string(), z.unknown())
+
 export const zPostWebsiteCrawlBody = zWebsiteCrawlPayload
 
 /**
  * Website crawl initiated successfully
  */
-export const zPostWebsiteCrawlResponse = z.record(z.string(), z.unknown())
+export const zPostWebsiteCrawlResponse = zWebsiteCrawlResponse
 
 export const zGetWebsiteCrawlStatusByJobIdPath = z.object({
   job_id: z.string(),
@@ -29,4 +34,4 @@ export const zGetWebsiteCrawlStatusByJobIdQuery = z.object({
 /**
  * Crawl status retrieved successfully
  */
-export const zGetWebsiteCrawlStatusByJobIdResponse = z.record(z.string(), z.unknown())
+export const zGetWebsiteCrawlStatusByJobIdResponse = zWebsiteCrawlResponse

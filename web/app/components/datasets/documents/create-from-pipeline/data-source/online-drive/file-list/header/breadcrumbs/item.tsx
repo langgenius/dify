@@ -20,8 +20,7 @@ const BreadcrumbItem = ({
   showSeparator = true,
 }: BreadcrumbItemProps) => {
   const handleClickItem = useCallback(() => {
-    if (!disabled)
-      handleClick(index)
+    if (!disabled) handleClick(index)
   }, [disabled, handleClick, index])
 
   return (
@@ -29,8 +28,10 @@ const BreadcrumbItem = ({
       <button
         type="button"
         className={cn(
-          'max-w-full shrink truncate rounded-md px-[5px] py-1',
-          isActive ? 'system-sm-medium text-text-secondary' : 'system-sm-regular text-text-tertiary',
+          'max-w-full shrink truncate rounded-md px-1.25 py-1',
+          isActive
+            ? 'system-sm-medium text-text-secondary'
+            : 'system-sm-regular text-text-tertiary',
           !disabled && 'hover:bg-state-base-hover',
         )}
         disabled={disabled}

@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 import dify_agent.layers.dify_plugin as dify_plugin_exports
 from dify_agent.layers.dify_plugin import (
-    DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
     DifyPluginToolCredentialType,
     DifyPluginToolConfig,
@@ -37,29 +36,24 @@ def test_dify_plugin_package_exports_client_safe_config_symbols_only() -> None:
     assert not hasattr(dify_plugin_exports, "DifyPluginLLMLayer")
 
 
-def test_dify_plugin_llm_config_accepts_scalar_credentials_and_model_settings() -> None:
-    credential: DifyPluginCredentialValue = "secret"
-    config = DifyPluginLLMLayerConfig(
-        plugin_id="langgenius/openai",
-        model_provider="openai",
-        model="gpt-4o-mini",
-        credentials={"api_key": credential, "enabled": True, "retries": 2, "ratio": 0.5, "empty": None},
-        model_settings={"temperature": 0.2, "max_tokens": 64},
+def test_dify_plugin_llm_config_discards_legacy_credentials() -> None:
+    config = DifyPluginLLMLayerConfig.model_validate(
+        {
+            "plugin_id": "langgenius/openai",
+            "model_provider": "openai",
+            "model": "gpt-4o-mini",
+            "credentials": {"api_key": "secret", "nested": {"legacy": True}},
+            "model_settings": {"temperature": 0.2, "max_tokens": 64},
+            "context_window_tokens": 128_000,
+        }
     )
 
     assert config.plugin_id == "langgenius/openai"
     assert config.model_provider == "openai"
-    assert config.credentials == {"api_key": "secret", "enabled": True, "retries": 2, "ratio": 0.5, "empty": None}
+    assert not hasattr(config, "credentials")
+    assert "credentials" not in config.model_dump(mode="json")
     assert config.model_settings == {"temperature": 0.2, "max_tokens": 64}
-    with pytest.raises(ValidationError):
-        _ = DifyPluginLLMLayerConfig.model_validate(
-            {
-                "plugin_id": "langgenius/openai",
-                "model_provider": "openai",
-                "model": "gpt-4o-mini",
-                "credentials": {"nested": {"not": "allowed"}},
-            }
-        )
+    assert config.context_window_tokens == 128_000
 
 
 def test_dify_plugin_llm_config_rejects_old_provider_field() -> None:
@@ -70,6 +64,16 @@ def test_dify_plugin_llm_config_rejects_old_provider_field() -> None:
                 "plugin_id": "langgenius/openai",
                 "model": "gpt-4o-mini",
             }
+        )
+
+
+def test_dify_plugin_llm_config_rejects_non_positive_context_window() -> None:
+    with pytest.raises(ValidationError):
+        _ = DifyPluginLLMLayerConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-4o-mini",
+            context_window_tokens=0,
         )
 
 

@@ -10,7 +10,6 @@
   "imageUploader.tip": "上传或拖拽图片 (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)",
   "imageUploader.tooltip": "上传图片 (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)",
   "input.countWarning": "不超过 200 个字符",
-  "input.indexWarning": "仅支持高质量模式知识库",
   "input.placeholder": "请输入文本，建议使用简短的陈述句。",
   "input.testing": "测试",
   "input.title": "源文本",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "查询内容",
   "table.header.source": "数据源",
   "table.header.time": "时间",
-  "title": "召回测试",
-  "viewChart": "查看向量图表",
-  "viewDetail": "查看详情"
+  "title": "召回测试"
 }

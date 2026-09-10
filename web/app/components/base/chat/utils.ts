@@ -5,12 +5,13 @@ import { UUID_NIL } from './constants'
 async function decodeBase64AndDecompress(base64String: string) {
   try {
     const binaryString = atob(base64String)
-    const compressedUint8Array = Uint8Array.from(binaryString, char => char.charCodeAt(0))
-    const decompressedStream = new Response(compressedUint8Array).body?.pipeThrough(new DecompressionStream('gzip'))
+    const compressedUint8Array = Uint8Array.from(binaryString, (char) => char.charCodeAt(0))
+    const decompressedStream = new Response(compressedUint8Array).body?.pipeThrough(
+      new DecompressionStream('gzip'),
+    )
     const decompressedArrayBuffer = await new Response(decompressedStream).arrayBuffer()
     return new TextDecoder().decode(decompressedArrayBuffer)
-  }
-  catch {
+  } catch {
     return undefined
   }
 }
@@ -19,13 +20,14 @@ async function getRawInputsFromUrlParams(): Promise<Record<string, any>> {
   const urlParams = new URLSearchParams(window.location.search)
   const inputs: Record<string, any> = {}
   const entriesArray = Array.from(urlParams.entries())
-  await Promise.all(entriesArray.map(async ([key, value]) => {
-    const prefixArray = ['sys.', 'user.']
-    if (prefixArray.some(prefix => key.startsWith(prefix)))
-      return
+  await Promise.all(
+    entriesArray.map(async ([key, value]) => {
+      const prefixArray = ['sys.', 'user.']
+      if (prefixArray.some((prefix) => key.startsWith(prefix))) return
 
-    inputs[key] = decodeURIComponent(value)
-  }))
+      inputs[key] = decodeURIComponent(value)
+    }),
+  )
   return inputs
 }
 
@@ -36,7 +38,7 @@ async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
   await Promise.all(
     entriesArray.map(async ([key, value]) => {
       const prefixArray = ['sys.', 'user.']
-      if (!prefixArray.some(prefix => key.startsWith(prefix)))
+      if (!prefixArray.some((prefix) => key.startsWith(prefix)))
         inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
     }),
   )
@@ -51,8 +53,7 @@ async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string
     const queryString = decodedRedirectUrl.split('?')[1]
     if (queryString) {
       const redirectParams = new URLSearchParams(queryString)
-      for (const [key, value] of redirectParams.entries())
-        urlParams.set(key, value)
+      for (const [key, value] of redirectParams.entries()) urlParams.set(key, value)
     }
   }
   const systemVariables: Record<string, any> = {}
@@ -83,24 +84,29 @@ async function getRawUserVariablesFromUrlParams(): Promise<Record<string, any>> 
   const urlParams = new URLSearchParams(window.location.search)
   const userVariables: Record<string, any> = {}
   const entriesArray = Array.from(urlParams.entries())
-  await Promise.all(entriesArray.map(async ([key, value]) => {
-    if (!key.startsWith('user.'))
-      return
+  await Promise.all(
+    entriesArray.map(async ([key, value]) => {
+      if (!key.startsWith('user.')) return
 
-    userVariables[key.slice(5)] = decodeURIComponent(value)
-  }))
+      userVariables[key.slice(5)] = decodeURIComponent(value)
+    }),
+  )
   return userVariables
 }
 
 function isValidGeneratedAnswer(item?: ChatItem | ChatItemInTree): boolean {
-  return !!item && item.isAnswer && !item.id.startsWith('answer-placeholder-') && !item.isOpeningStatement
+  return (
+    !!item &&
+    item.isAnswer &&
+    !item.id.startsWith('answer-placeholder-') &&
+    !item.isOpeningStatement
+  )
 }
 
 function getLastAnswer<T extends ChatItem | ChatItemInTree>(chatList: T[]): T | null {
   for (let i = chatList.length - 1; i >= 0; i--) {
     const item = chatList[i]!
-    if (isValidGeneratedAnswer(item))
-      return item
+    if (isValidGeneratedAnswer(item)) return item
   }
   return null
 }
@@ -114,6 +120,15 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
   const map: Record<string, ChatItemInTree> = {}
   const rootNodes: ChatItemInTree[] = []
   const childrenCount: Record<string, number> = {}
+  const messageIds = new Set(allMessages.map((item) => item.id))
+  const pendingChildren: Record<string, ChatItemInTree[]> = {}
+  const appendPendingChildren = (parentId: string) => {
+    const children = pendingChildren[parentId]
+    if (!children) return
+
+    map[parentId]?.children?.push(...children)
+    delete pendingChildren[parentId]
+  }
 
   let lastAppendedLegacyAnswer: ChatItemInTree | null = null
   for (let i = 0; i < allMessages.length; i += 2) {
@@ -122,8 +137,8 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
 
     const isLegacy = question.parentMessageId === UUID_NIL
     const parentMessageId = isLegacy
-      ? (lastAppendedLegacyAnswer?.id || '')
-      : (question.parentMessageId || '')
+      ? lastAppendedLegacyAnswer?.id || ''
+      : question.parentMessageId || ''
 
     // Process question
     childrenCount[parentMessageId] = (childrenCount[parentMessageId] || 0) + 1
@@ -144,24 +159,25 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
 
     // Connect question and answer
     questionNode.children!.push(answerNode)
+    appendPendingChildren(question.id)
+    appendPendingChildren(answer.id)
 
     // Append to parent or add to root
     if (isLegacy) {
-      if (!lastAppendedLegacyAnswer)
-        rootNodes.push(questionNode)
-      else
-        lastAppendedLegacyAnswer.children!.push(questionNode)
+      if (!lastAppendedLegacyAnswer) rootNodes.push(questionNode)
+      else lastAppendedLegacyAnswer.children!.push(questionNode)
 
       lastAppendedLegacyAnswer = answerNode
-    }
-    else {
+    } else {
       if (
-        !parentMessageId
-        || !allMessages.some(item => item.id === parentMessageId) // parent message might not be fetched yet, in this case we will append the question to the root nodes
+        !parentMessageId ||
+        !messageIds.has(parentMessageId) // parent message might not be fetched yet, in this case we will append the question to the root nodes
       ) {
         rootNodes.push(questionNode)
-      }
-      else {
+      } else if (!map[parentMessageId]) {
+        pendingChildren[parentMessageId] = pendingChildren[parentMessageId] || []
+        pendingChildren[parentMessageId]!.push(questionNode)
+      } else {
         map[parentMessageId]!.children!.push(questionNode)
       }
     }
@@ -175,25 +191,31 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   let targetNode: ChatItemInTree | undefined
 
   // find path to the target message
-  const stack = tree.slice().reverse().map(rootNode => ({
-    node: rootNode,
-    path: [rootNode],
-  }))
+  const stack = tree
+    .slice()
+    .reverse()
+    .map((rootNode) => ({
+      node: rootNode,
+      path: [rootNode],
+    }))
   while (stack.length > 0) {
     const { node, path } = stack.pop()!
     if (
-      node.id === targetMessageId
-      || (!targetMessageId && !node.children?.length && !stack.length) // if targetMessageId is not provided, we use the last message in the tree as the target
+      node.id === targetMessageId ||
+      (!targetMessageId && !node.children?.length && !stack.length) // if targetMessageId is not provided, we use the last message in the tree as the target
     ) {
       targetNode = node
       ret = path.map((item, index) => {
-        if (!item.isAnswer)
-          return item
+        if (!item.isAnswer) return item
 
         const parentAnswer = path[index - 2]
         const siblingCount = !parentAnswer ? tree.length : parentAnswer.children!.length
-        const prevSibling = !parentAnswer ? tree[item.siblingIndex! - 1]?.children?.[0]?.id : parentAnswer.children![item.siblingIndex! - 1]?.children?.[0]!.id
-        const nextSibling = !parentAnswer ? tree[item.siblingIndex! + 1]?.children?.[0]?.id : parentAnswer.children![item.siblingIndex! + 1]?.children?.[0]!.id
+        const prevSibling = !parentAnswer
+          ? tree[item.siblingIndex! - 1]?.children?.[0]?.id
+          : parentAnswer.children![item.siblingIndex! - 1]?.children?.[0]!.id
+        const nextSibling = !parentAnswer
+          ? tree[item.siblingIndex! + 1]?.children?.[0]?.id
+          : parentAnswer.children![item.siblingIndex! + 1]?.children?.[0]!.id
 
         return { ...item, siblingCount, prevSibling, nextSibling }
       })
@@ -214,8 +236,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
     const stack = [targetNode]
     while (stack.length > 0) {
       const node = stack.pop()!
-      if (node !== targetNode)
-        ret.push(node)
+      if (node !== targetNode) ret.push(node)
       if (node.children?.length) {
         const lastChild = node.children.at(-1)!
 

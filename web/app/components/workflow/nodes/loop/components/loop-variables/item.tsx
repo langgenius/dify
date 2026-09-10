@@ -2,12 +2,12 @@ import type {
   LoopVariable,
   LoopVariablesComponentShape,
 } from '@/app/components/workflow/nodes/loop/types'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import Input from '@/app/components/base/input'
 import { ValueType, VarType } from '@/app/components/workflow/types'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import FormItem from './form-item'
@@ -17,32 +17,34 @@ import VariableTypeSelect from './variable-type-select'
 type ItemProps = {
   item: LoopVariable
 } & LoopVariablesComponentShape
-const Item = ({
-  nodeId,
-  item,
-  handleRemoveLoopVariable,
-  handleUpdateLoopVariable,
-}: ItemProps) => {
+const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable }: ItemProps) => {
   const { t } = useTranslation()
+  const variableNameLabel = t(($) => $['nodes.loop.variableName'], { ns: 'workflow' })
 
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
+      toast.error(
+        t(($) => $[`varKeyError.${errorMessageKey}`], {
+          ns: 'appDebug',
+          key: t(($) => $['env.modal.name'], { ns: 'workflow' }),
+        }),
+      )
       return false
     }
     return true
   }
-  const handleUpdateItemLabel = useCallback((e: any) => {
-    replaceSpaceWithUnderscoreInVarNameInput(e.target)
-    if (!!e.target.value && !checkVariableName(e.target.value))
-      return
-    handleUpdateLoopVariable(item.id, { label: e.target.value })
-  }, [item.id, handleUpdateLoopVariable])
+  const handleUpdateItemLabel = useCallback(
+    (e: any) => {
+      replaceSpaceWithUnderscoreInVarNameInput(e.target)
+      if (!!e.target.value && !checkVariableName(e.target.value)) return
+      handleUpdateLoopVariable(item.id, { label: e.target.value })
+    },
+    [item.id, handleUpdateLoopVariable],
+  )
 
   const getDefaultValue = useCallback((varType: VarType, valueType: ValueType) => {
-    if (valueType === ValueType.variable)
-      return undefined
+    if (valueType === ValueType.variable) return undefined
     switch (varType) {
       case VarType.boolean:
         return false
@@ -53,53 +55,61 @@ const Item = ({
     }
   }, [])
 
-  const handleUpdateItemVarType = useCallback((value: any) => {
-    handleUpdateLoopVariable(item.id, { var_type: value, value: getDefaultValue(value, item.value_type) })
-  }, [item.id, handleUpdateLoopVariable])
+  const handleUpdateItemVarType = useCallback(
+    (value: any) => {
+      handleUpdateLoopVariable(item.id, {
+        var_type: value,
+        value: getDefaultValue(value, item.value_type),
+      })
+    },
+    [item.id, handleUpdateLoopVariable],
+  )
 
-  const handleUpdateItemValueType = useCallback((value: any) => {
-    handleUpdateLoopVariable(item.id, { value_type: value, value: getDefaultValue(item.var_type, value) })
-  }, [item.id, handleUpdateLoopVariable])
+  const handleUpdateItemValueType = useCallback(
+    (value: any) => {
+      handleUpdateLoopVariable(item.id, {
+        value_type: value,
+        value: getDefaultValue(item.var_type, value),
+      })
+    },
+    [item.id, handleUpdateLoopVariable],
+  )
 
-  const handleUpdateItemValue = useCallback((value: any) => {
-    handleUpdateLoopVariable(item.id, { value })
-  }, [item.id, handleUpdateLoopVariable])
+  const handleUpdateItemValue = useCallback(
+    (value: any) => {
+      handleUpdateLoopVariable(item.id, { value })
+    },
+    [item.id, handleUpdateLoopVariable],
+  )
 
   return (
     <div className="mb-4 flex last-of-type:mb-0">
       <div className="w-0 grow">
         <div className="mb-1 grid grid-cols-3 gap-1">
           <Input
+            aria-label={variableNameLabel}
             value={item.label}
             onChange={handleUpdateItemLabel}
-            onBlur={e => checkVariableName(e.target.value)}
+            onBlur={(e) => checkVariableName(e.target.value)}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- An empty item is mounted after the user adds a loop variable, and its name is the primary editing target.
             autoFocus={!item.label}
-            placeholder={t('nodes.loop.variableName', { ns: 'workflow' })}
+            placeholder={variableNameLabel}
           />
-          <VariableTypeSelect
-            value={item.var_type}
-            onChange={handleUpdateItemVarType}
-          />
-          <InputModeSelect
-            value={item.value_type}
-            onChange={handleUpdateItemValueType}
-          />
+          <VariableTypeSelect value={item.var_type} onChange={handleUpdateItemVarType} />
+          <InputModeSelect value={item.value_type} onChange={handleUpdateItemValueType} />
         </div>
         <div>
-          <FormItem
-            nodeId={nodeId}
-            item={item}
-            onChange={handleUpdateItemValue}
-          />
+          <FormItem nodeId={nodeId} item={item} onChange={handleUpdateItemValue} />
         </div>
       </div>
-      <ActionButton
+      <IconButton
+        aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
         className="shrink-0"
-        size="l"
+        size="lg"
         onClick={() => handleRemoveLoopVariable(item.id)}
       >
-        <RiDeleteBinLine className="size-4 text-text-tertiary" />
-      </ActionButton>
+        <RiDeleteBinLine aria-hidden="true" className="size-4 text-text-tertiary" />
+      </IconButton>
     </div>
   )
 }

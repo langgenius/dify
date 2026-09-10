@@ -19,12 +19,11 @@ export const mergeCurrentPageSelectedSegmentIds = ({
   nextCurrentPageSelectedSegmentIds,
 }: MergeCurrentPageSelectedSegmentIdsOptions) => {
   const currentPageSegmentIdSet = new Set(currentPageSegmentIds)
-  const selectedSegmentIdsOutsideCurrentPage = selectedSegmentIds.filter(segmentId => !currentPageSegmentIdSet.has(segmentId))
+  const selectedSegmentIdsOutsideCurrentPage = selectedSegmentIds.filter(
+    (segmentId) => !currentPageSegmentIdSet.has(segmentId),
+  )
 
-  return [
-    ...selectedSegmentIdsOutsideCurrentPage,
-    ...nextCurrentPageSelectedSegmentIds,
-  ]
+  return [...selectedSegmentIdsOutsideCurrentPage, ...nextCurrentPageSelectedSegmentIds]
 }
 
 export const useSegmentSelection = (): UseSegmentSelectionReturn => {

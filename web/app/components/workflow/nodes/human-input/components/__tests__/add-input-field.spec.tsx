@@ -19,19 +19,23 @@ vi.mock('@/app/components/base/prompt-editor/plugins/hitl-input-block/input-fiel
       <div>
         <button
           type="button"
-          onClick={() => props.onChange({
-            type: InputVarType.paragraph,
-            output_variable_name: 'comment',
-            default: {
-              type: 'constant',
-              selector: [],
-              value: '',
-            },
-          })}
+          onClick={() =>
+            props.onChange({
+              type: InputVarType.paragraph,
+              output_variable_name: 'comment',
+              default: {
+                type: 'constant',
+                selector: [],
+                value: '',
+              },
+            })
+          }
         >
           save
         </button>
-        <button type="button" onClick={props.onCancel}>cancel</button>
+        <button type="button" onClick={props.onCancel}>
+          cancel
+        </button>
       </div>
     )
   },
@@ -55,19 +59,23 @@ describe('human-input/components/add-input-field', () => {
       />,
     )
 
-    expect(mockInputField).toHaveBeenCalledWith(expect.objectContaining({
-      nodeId: 'human-node',
-      isEdit: false,
-      unavailableVariableNames: ['comment'],
-      onChange: handleSave,
-      onCancel: handleCancel,
-    }))
+    expect(mockInputField).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodeId: 'human-node',
+        isEdit: false,
+        unavailableVariableNames: ['comment'],
+        onChange: handleSave,
+        onCancel: handleCancel,
+      }),
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'save' }))
-    expect(handleSave).toHaveBeenCalledWith(expect.objectContaining({
-      type: InputVarType.paragraph,
-      output_variable_name: 'comment',
-    }))
+    expect(handleSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: InputVarType.paragraph,
+        output_variable_name: 'comment',
+      }),
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'cancel' }))
     expect(handleCancel).toHaveBeenCalledTimes(1)

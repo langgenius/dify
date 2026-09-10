@@ -9,10 +9,7 @@ type MockForm = {
   setFieldValue: (fieldName: string, value: unknown) => void
 }
 
-const {
-  mockForm,
-  mockInputField,
-} = vi.hoisted(() => ({
+const { mockForm, mockInputField } = vi.hoisted(() => ({
   mockForm: {
     store: {},
     getFieldValue: vi.fn(),
@@ -26,9 +23,10 @@ const {
 }))
 
 vi.mock('@/app/components/base/form', () => ({
-  withForm: ({ render }: {
-    render: (props: { form: MockForm }) => React.ReactNode
-  }) => ({ form }: { form?: MockForm }) => render({ form: form ?? mockForm }),
+  withForm:
+    ({ render }: { render: (props: { form: MockForm }) => React.ReactNode }) =>
+    ({ form }: { form?: MockForm }) =>
+      render({ form: form ?? mockForm }),
 }))
 
 vi.mock('@/app/components/base/form/form-scenarios/input-field/field', () => ({
@@ -56,11 +54,13 @@ describe('InitialFields', () => {
     }) as unknown as ComponentType
     render(<InitialFieldsComp />)
 
-    expect(useConfigurations).toHaveBeenCalledWith(expect.objectContaining({
-      supportFile: true,
-      getFieldValue: expect.any(Function),
-      setFieldValue: expect.any(Function),
-    }))
+    expect(useConfigurations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        supportFile: true,
+        getFieldValue: expect.any(Function),
+        setFieldValue: expect.any(Function),
+      }),
+    )
     expect(screen.getAllByTestId('input-field')).toHaveLength(2)
     expect(screen.getByText('type')).toBeInTheDocument()
     expect(screen.getByText('label')).toBeInTheDocument()

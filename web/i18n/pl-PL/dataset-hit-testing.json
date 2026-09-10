@@ -10,7 +10,6 @@
   "imageUploader.tip": "Prześlij lub upuść obrazy (Maks. {{batchCount}}, {{size}} MB każdy)",
   "imageUploader.tooltip": "Prześlij obrazy (maks. {{batchCount}}, {{size}} MB każdy)",
   "input.countWarning": "Do 200 znaków.",
-  "input.indexWarning": "Tylko wiedza wysokiej jakości.",
   "input.placeholder": "Proszę wpisać tekst, zaleca się krótkie zdanie deklaratywne.",
   "input.testing": "Testowanie",
   "input.title": "Tekst źródłowy",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "Treść zapytania",
   "table.header.source": "Źródło",
   "table.header.time": "Czas",
-  "title": "Testowanie odzyskiwania",
-  "viewChart": "Zobacz WYKRES WEKTOROWY",
-  "viewDetail": "Pokaż szczegóły"
+  "title": "Testowanie odzyskiwania"
 }

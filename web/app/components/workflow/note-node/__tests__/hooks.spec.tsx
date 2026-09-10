@@ -5,10 +5,13 @@ import { useNote } from '../hooks'
 const mockHandleNodeDataUpdateWithSyncDraft = vi.hoisted(() => vi.fn())
 const mockSaveStateToHistory = vi.hoisted(() => vi.fn())
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-node-data-update', () => ({
   useNodeDataUpdate: () => ({
     handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-history', () => ({
   useWorkflowHistory: () => ({
     saveStateToHistory: mockSaveStateToHistory,
   }),

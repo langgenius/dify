@@ -7,7 +7,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Renders workspace and page icons returned from Notion APIs, falling back to text initials or the default document glyph.',
+        component:
+          'Renders workspace and page icons returned from Notion APIs, falling back to text initials or the default document glyph.',
       },
     },
   },
@@ -23,7 +24,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const WorkspaceIcon: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-center gap-3 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
       <NotionIcon {...args} />
       <span className="text-sm text-text-secondary">Workspace icon pulled from a remote URL.</span>
@@ -38,18 +39,19 @@ export const WorkspaceIcon: Story = {
   type="workspace"
   name="Knowledge Base"
   src="https://cloud.dify.ai/logo/logo.svg"
-/>`
-          .trim(),
+/>`.trim(),
       },
     },
   },
 }
 
 export const WorkspaceInitials: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-center gap-3 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
       <NotionIcon {...args} src={null} name="Operations" />
-      <span className="text-sm text-text-secondary">Fallback initial rendered when no icon URL is available.</span>
+      <span className="text-sm text-text-secondary">
+        Fallback initial rendered when no icon URL is available.
+      </span>
     </div>
   ),
   parameters: {
@@ -57,18 +59,19 @@ export const WorkspaceInitials: Story = {
       source: {
         language: 'tsx',
         code: `
-<NotionIcon type="workspace" name="Operations" src={null} />`
-          .trim(),
+<NotionIcon type="workspace" name="Operations" src={null} />`.trim(),
       },
     },
   },
 }
 
 export const PageEmoji: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-center gap-3 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
       <NotionIcon {...args} type="page" src={{ type: 'emoji', emoji: '🧠', url: '' }} />
-      <span className="text-sm text-text-secondary">Page-level emoji icon returned by the API.</span>
+      <span className="text-sm text-text-secondary">
+        Page-level emoji icon returned by the API.
+      </span>
     </div>
   ),
   parameters: {
@@ -76,20 +79,23 @@ export const PageEmoji: Story = {
       source: {
         language: 'tsx',
         code: `
-<NotionIcon type="page" src={{ type: 'emoji', emoji: '🧠' }} />`
-          .trim(),
+<NotionIcon type="page" src={{ type: 'emoji', emoji: '🧠' }} />`.trim(),
       },
     },
   },
 }
 
 export const PageImage: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-center gap-3 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
       <NotionIcon
         {...args}
         type="page"
-        src={{ type: 'url', url: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=80&q=60', emoji: '' }}
+        src={{
+          type: 'url',
+          url: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=80&q=60',
+          emoji: '',
+        }}
       />
       <span className="text-sm text-text-secondary">Page icon resolved from an image URL.</span>
     </div>
@@ -102,18 +108,19 @@ export const PageImage: Story = {
 <NotionIcon
   type="page"
   src={{ type: 'url', url: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=80&q=60' }}
-/>`
-          .trim(),
+/>`.trim(),
       },
     },
   },
 }
 
 export const DefaultIcon: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-center gap-3 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
       <NotionIcon {...args} type="page" src={undefined} />
-      <span className="text-sm text-text-secondary">When neither emoji nor URL is provided, the generic document icon is shown.</span>
+      <span className="text-sm text-text-secondary">
+        When neither emoji nor URL is provided, the generic document icon is shown.
+      </span>
     </div>
   ),
   parameters: {
@@ -121,8 +128,7 @@ export const DefaultIcon: Story = {
       source: {
         language: 'tsx',
         code: `
-<NotionIcon type="page" src={undefined} />`
-          .trim(),
+<NotionIcon type="page" src={undefined} />`.trim(),
       },
     },
   },

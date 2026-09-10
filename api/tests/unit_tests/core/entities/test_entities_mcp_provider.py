@@ -1,16 +1,15 @@
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 
-from core.entities import mcp_provider as mcp_provider_module
 from core.entities.mcp_provider import (
     DEFAULT_EXPIRES_IN,
     DEFAULT_TOKEN_TYPE,
     MCPProviderEntity,
 )
 from core.mcp.types import OAuthTokens
+from models.tools import MCPToolProvider
 
 
 def _build_mcp_provider_entity() -> MCPProviderEntity:
@@ -37,24 +36,25 @@ def _build_mcp_provider_entity() -> MCPProviderEntity:
 def test_from_db_model_maps_fields() -> None:
     # Arrange
     now = datetime(2025, 1, 1, tzinfo=UTC)
-    db_provider = SimpleNamespace(
-        id="provider-1",
+    db_provider = MCPToolProvider(
         server_identifier="server-1",
         name="Example MCP",
         tenant_id="tenant-1",
         user_id="user-1",
         server_url="encrypted-server-url",
-        headers={"Authorization": "enc"},
+        server_url_hash="server-url-hash",
+        encrypted_headers='{"Authorization": "enc"}',
         timeout=15,
         sse_read_timeout=120,
         authed=True,
-        credentials={"access_token": "enc-token"},
-        tool_dict=[{"name": "search"}],
+        encrypted_credentials='{"access_token": "enc-token"}',
+        tools='[{"name": "search"}]',
         icon=None,
-        created_at=now,
-        updated_at=now,
         identity_mode="off",
     )
+    db_provider.id = "provider-1"
+    db_provider.created_at = now
+    db_provider.updated_at = now
 
     # Act
     entity = MCPProviderEntity.from_db_model(db_provider)
@@ -68,7 +68,9 @@ def test_from_db_model_maps_fields() -> None:
 def test_redirect_url_uses_console_api_url(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
     entity = _build_mcp_provider_entity()
-    monkeypatch.setattr(mcp_provider_module.dify_config, "CONSOLE_API_URL", "https://console.example.com")
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://console.example.com")
 
     # Act
     redirect_url = entity.redirect_url

@@ -10,7 +10,6 @@
   "imageUploader.tip": "画像をアップロードまたはドラッグ＆ドロップしてください（最大 {{batchCount}} 件、各 {{size}}MB まで）",
   "imageUploader.tooltip": "画像をアップロード（最大 {{batchCount}} 件、各 {{size}}MB まで）",
   "input.countWarning": "最大 200 文字まで入力できます。",
-  "input.indexWarning": "高品質のナレッジのみ。",
   "input.placeholder": "テキストを入力してください。短い記述文がおすすめです。",
   "input.testing": "テスト",
   "input.title": "ソーステキスト",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "クエリ内容",
   "table.header.source": "ソース",
   "table.header.time": "時間",
-  "title": "検索テスト",
-  "viewChart": "ベクトルチャートを表示",
-  "viewDetail": "詳細を表示"
+  "title": "検索テスト"
 }

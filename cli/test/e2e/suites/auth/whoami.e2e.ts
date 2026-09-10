@@ -8,7 +8,7 @@
  *       E2E layer bypasses Device Flow via injectAuth, focusing on session state and CLI behaviour.
  */
 
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import { assertExitCode } from '../../helpers/assert.js'
 import { injectAuth, injectSsoAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
@@ -56,6 +56,8 @@ describe('E2E / difyctl auth whoami + SSO session', () => {
       issuer,
     })
   }
+
+  const itWithSso = optionalIt(Boolean(E.ssoToken))
 
   // ── auth whoami — internal user ──────────────────────────────────────────────
 
@@ -123,12 +125,12 @@ describe('E2E / difyctl auth whoami + SSO session', () => {
     expect(result.exitCode).not.toBe(0)
   })
 
-  it('[P0] external user get app returns insufficient_scope error', async () => {
-    // Spec: external user get app returns insufficient_scope
+  itWithSso('[P0] external user can list permitted apps via SSO token', async () => {
+    // External users read apps via the permitted-external surface (no workspace scope).
     await withSSOAuth()
     const result = await r(['get', 'app'])
-    expect(result.exitCode).not.toBe(0)
-    expect(result.stderr).toMatch(/insufficient|scope|workspace|SSO/i)
+    assertExitCode(result, 0)
+    expect(result.stdout).toMatch(/NAME\s+ID\s+MODE/i)
   })
 
   it('[P0] external user whoami outputs SSO email', async () => {
@@ -137,8 +139,6 @@ describe('E2E / difyctl auth whoami + SSO session', () => {
     assertExitCode(result, 0)
     expect(result.stdout).toContain('sso-user@example.com')
   })
-
-  const itWithSso = optionalIt(Boolean(E.ssoToken))
 
   itWithSso('[P0] external user can execute run app using SSO token', async () => {
     await injectSsoAuth(configDir, {
@@ -150,20 +150,31 @@ describe('E2E / difyctl auth whoami + SSO session', () => {
 
     let result: Awaited<ReturnType<typeof r>>
     try {
-      result = await withRetry(async () => {
-        const runResult = await r(['run', 'app', E.chatAppId, 'hello', '--workspace', E.workspaceId])
-        if (runResult.exitCode !== 0 && /server_5xx|HTTP 5\d\d/i.test(runResult.stderr))
-          throw new Error(runResult.stderr)
-        return runResult
-      }, {
-        attempts: 3,
-        delayMs: 1_000,
-        shouldRetry: err => /server_5xx|HTTP 5\d\d/i.test(String(err)),
-      })
-    }
-    catch (err) {
+      result = await withRetry(
+        async () => {
+          const runResult = await r([
+            'run',
+            'app',
+            E.chatAppId,
+            'hello',
+            '--workspace',
+            E.workspaceId,
+          ])
+          if (runResult.exitCode !== 0 && /server_5xx|HTTP 5\d\d/i.test(runResult.stderr))
+            throw new Error(runResult.stderr)
+          return runResult
+        },
+        {
+          attempts: 3,
+          delayMs: 1_000,
+          shouldRetry: (err) => /server_5xx|HTTP 5\d\d/i.test(String(err)),
+        },
+      )
+    } catch (err) {
       if (/server_5xx|HTTP 5\d\d/i.test(String(err))) {
-        console.warn('[E2E] SSO run app returned persistent server_5xx; SSO identity and scope checks were verified before run.')
+        console.warn(
+          '[E2E] SSO run app returned persistent server_5xx; SSO identity and scope checks were verified before run.',
+        )
         return
       }
       throw err

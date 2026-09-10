@@ -23,7 +23,14 @@ export type SearchParamValue = string | number | boolean | undefined
 // RequestInit is stricter and only accepts DataView, which `Uint8Array` covers for our byte-buffer
 // callers.
 export type HeadersInit = Headers | [string, string][] | Record<string, string>
-export type BodyInit = string | Blob | ArrayBuffer | FormData | URLSearchParams | ReadableStream<Uint8Array> | Uint8Array
+export type BodyInit =
+  | string
+  | Blob
+  | ArrayBuffer
+  | FormData
+  | URLSearchParams
+  | ReadableStream<Uint8Array>
+  | Uint8Array
 
 export type FetchContext = {
   request: Request
@@ -75,6 +82,8 @@ export type ClientOptions = {
   readonly retryAttempts?: number
   readonly logger?: HttpLogger
   readonly hooks?: Hooks
+  // Skip TLS certificate verification (local-dev only, self-signed hosts).
+  readonly insecure?: boolean
 }
 
 export type HttpClient = {

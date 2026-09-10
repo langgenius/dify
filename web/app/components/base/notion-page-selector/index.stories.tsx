@@ -101,20 +101,24 @@ type NotionApiResponse = typeof marketingPages
 const emptyNotionResponse: NotionApiResponse = { notion_info: [] }
 
 const useMockNotionApi = () => {
-  const responseMap = useMemo(() => ({
-    [`${DATASET_ID}:cred-1`]: marketingPages,
-    [`${DATASET_ID}:cred-2`]: productPages,
-  }) satisfies Record<`${typeof DATASET_ID}:${typeof CREDENTIALS[number]['id']}`, NotionApiResponse>, [])
+  const responseMap = useMemo(
+    () =>
+      ({
+        [`${DATASET_ID}:cred-1`]: marketingPages,
+        [`${DATASET_ID}:cred-2`]: productPages,
+      }) satisfies Record<
+        `${typeof DATASET_ID}:${(typeof CREDENTIALS)[number]['id']}`,
+        NotionApiResponse
+      >,
+    [],
+  )
 
   useEffect(() => {
     const originalFetch = globalThis.fetch?.bind(globalThis)
 
     const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
 
       if (url.includes('/notion/pre-import/pages')) {
         const parsed = new URL(url, globalThis.location.origin)
@@ -123,21 +127,20 @@ const useMockNotionApi = () => {
         let payload: NotionApiResponse = emptyNotionResponse
 
         if (datasetId === DATASET_ID) {
-          const credential = CREDENTIALS.find(item => item.id === credentialId)
+          const credential = CREDENTIALS.find((item) => item.id === credentialId)
           if (credential) {
             const mapKey = `${DATASET_ID}:${credential.id}` as keyof typeof responseMap
             payload = responseMap[mapKey]
           }
         }
 
-        return new Response(
-          JSON.stringify(payload),
-          { headers: { 'Content-Type': 'application/json' }, status: 200 },
-        )
+        return new Response(JSON.stringify(payload), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        })
       }
 
-      if (originalFetch)
-        return originalFetch(input, init)
+      if (originalFetch) return originalFetch(input, init)
 
       throw new Error(`Unmocked fetch call for ${url}`)
     }
@@ -145,8 +148,7 @@ const useMockNotionApi = () => {
     globalThis.fetch = handler as typeof globalThis.fetch
 
     return () => {
-      if (originalFetch)
-        globalThis.fetch = originalFetch
+      if (originalFetch) globalThis.fetch = originalFetch
     }
   }, [responseMap])
 }
@@ -162,7 +164,7 @@ const NotionSelectorPreview = () => {
       <NotionPageSelector
         datasetId={DATASET_ID}
         credentialList={CREDENTIALS}
-        value={selectedPages.map(page => page.page_id)}
+        value={selectedPages.map((page) => page.page_id)}
         onSelect={setSelectedPages}
         onSelectCredential={setCredentialId}
         canPreview
@@ -190,7 +192,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Credential-aware selector that fetches Notion pages and lets users choose which ones to sync.',
+        component:
+          'Credential-aware selector that fetches Notion pages and lets users choose which ones to sync.',
       },
     },
   },

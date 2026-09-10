@@ -25,12 +25,12 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     start_at = time.perf_counter()
     total_index_node_ids = []
 
-    with session_factory.create_session() as session:
+    with session_factory.create_session() as session, session.begin():
         dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
 
         if not dataset:
             raise Exception("Document has no dataset")
-        index_type = dataset.doc_form
+        index_type = dataset.get_doc_form(session=session)
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
         document_delete_stmt = delete(Document).where(Document.id.in_(document_ids))
@@ -48,11 +48,16 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     # exception escaping this task would produce orphans that no later request
     # can reference back. Mirrors the pattern in ``clean_dataset_task``.
     try:
-        with session_factory.create_session() as session:
+        with session_factory.create_session() as session, session.begin():
             dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if dataset:
                 index_processor.clean(
-                    dataset, total_index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
+                    dataset,
+                    total_index_node_ids,
+                    with_keywords=True,
+                    delete_child_chunks=True,
+                    delete_summaries=True,
+                    session=session,
                 )
     except Exception:
         logger.exception(

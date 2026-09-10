@@ -5,7 +5,7 @@ from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from models.execution_extra_content import ExecutionContentType
 
 

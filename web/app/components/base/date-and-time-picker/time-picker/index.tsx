@@ -7,12 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TimezoneLabel from '@/app/components/base/timezone-label'
 import { Period } from '../types'
-import dayjs, {
-  getDateWithTimezone,
-  getHourIn12Hour,
-  isDayjsObject,
-  toDayjs,
-} from '../utils/dayjs'
+import dayjs, { getDateWithTimezone, getHourIn12Hour, isDayjsObject, toDayjs } from '../utils/dayjs'
 import Footer from './footer'
 import Header from './header'
 import Options from './options'
@@ -31,11 +26,9 @@ const TimePicker = ({
   renderTrigger,
   title,
   minuteFilter,
-  popupClassName,
   notClearable = false,
   triggerFullWidth = false,
   showTimezone = false,
-  placement = 'bottom-start',
 }: TimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -68,49 +61,43 @@ const TimePicker = ({
     prevTimezoneRef.current = timezone
 
     // Skip if neither timezone changed nor value changed
-    if (!timezoneChanged && !valueChanged)
-      return
+    if (!timezoneChanged && !valueChanged) return
 
     if (value !== undefined && value !== null) {
       const dayjsValue = toDayjs(value, { timezone })
-      if (!dayjsValue)
-        return
+      if (!dayjsValue) return
 
-      // eslint-disable-next-line react/set-state-in-effect -- value/timezone changes intentionally resync the internal selected time.
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- value/timezone changes intentionally resync the internal selected time.
       setSelectedTime(dayjsValue)
 
-      if (timezoneChanged && !valueChanged)
-        onChange(dayjsValue)
+      if (timezoneChanged && !valueChanged) onChange(dayjsValue)
       return
     }
 
-    // eslint-disable-next-line react/set-state-in-effect -- value/timezone changes intentionally resync the internal selected time.
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- value/timezone changes intentionally resync the internal selected time.
     setSelectedTime((prev) => {
-      if (!isDayjsObject(prev))
-        return undefined
+      if (!isDayjsObject(prev)) return undefined
       return timezone ? getDateWithTimezone({ date: prev, timezone }) : prev
     })
   }, [timezone, value, onChange])
 
   const syncSelectedTimeFromValue = useCallback(() => {
-    if (!value)
-      return
+    if (!value) return
 
     const dayjsValue = toDayjs(value, { timezone })
-    const needsUpdate = dayjsValue && (
-      !selectedTime
-      || !isDayjsObject(selectedTime)
-      || !dayjsValue.isSame(selectedTime, 'minute')
-    )
-    if (needsUpdate)
-      setSelectedTime(dayjsValue)
+    const needsUpdate =
+      dayjsValue &&
+      (!selectedTime || !isDayjsObject(selectedTime) || !dayjsValue.isSame(selectedTime, 'minute'))
+    if (needsUpdate) setSelectedTime(dayjsValue)
   }, [selectedTime, timezone, value])
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    setIsOpen(nextOpen)
-    if (nextOpen)
-      syncSelectedTimeFromValue()
-  }, [syncSelectedTimeFromValue])
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setIsOpen(nextOpen)
+      if (nextOpen) syncSelectedTimeFromValue()
+    },
+    [syncSelectedTimeFromValue],
+  )
 
   const handleClickTrigger = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -121,45 +108,63 @@ const TimePicker = ({
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
     setSelectedTime(undefined)
-    if (!isOpen)
-      onClear()
+    if (!isOpen) onClear()
   }
 
-  const handleTimeSelect = useCallback((hour: string, minute: string, period: Period) => {
-    const periodAdjustedHour = to24Hour(hour, period)
-    const nextMinute = Number.parseInt(minute, 10)
-    setSelectedTime((prev) => {
-      const reference = isDayjsObject(prev)
-        ? prev
-        : (timezone ? getDateWithTimezone({ timezone }) : dayjs()).startOf('minute')
-      return reference
-        .set('hour', periodAdjustedHour)
-        .set('minute', nextMinute)
-        .set('second', 0)
-        .set('millisecond', 0)
-    })
-  }, [timezone])
+  const handleTimeSelect = useCallback(
+    (hour: string, minute: string, period: Period) => {
+      const periodAdjustedHour = to24Hour(hour, period)
+      const nextMinute = Number.parseInt(minute, 10)
+      setSelectedTime((prev) => {
+        const reference = isDayjsObject(prev)
+          ? prev
+          : (timezone ? getDateWithTimezone({ timezone }) : dayjs()).startOf('minute')
+        return reference
+          .set('hour', periodAdjustedHour)
+          .set('minute', nextMinute)
+          .set('second', 0)
+          .set('millisecond', 0)
+      })
+    },
+    [timezone],
+  )
 
   const getSafeTimeObject = useCallback(() => {
-    if (isDayjsObject(selectedTime))
-      return selectedTime
+    if (isDayjsObject(selectedTime)) return selectedTime
     return (timezone ? getDateWithTimezone({ timezone }) : dayjs()).startOf('day')
   }, [selectedTime, timezone])
 
-  const handleSelectHour = useCallback((hour: string) => {
-    const time = getSafeTimeObject()
-    handleTimeSelect(hour, time.minute().toString().padStart(2, '0'), time.format('A') as Period)
-  }, [getSafeTimeObject, handleTimeSelect])
+  const handleSelectHour = useCallback(
+    (hour: string) => {
+      const time = getSafeTimeObject()
+      handleTimeSelect(hour, time.minute().toString().padStart(2, '0'), time.format('A') as Period)
+    },
+    [getSafeTimeObject, handleTimeSelect],
+  )
 
-  const handleSelectMinute = useCallback((minute: string) => {
-    const time = getSafeTimeObject()
-    handleTimeSelect(getHourIn12Hour(time).toString().padStart(2, '0'), minute, time.format('A') as Period)
-  }, [getSafeTimeObject, handleTimeSelect])
+  const handleSelectMinute = useCallback(
+    (minute: string) => {
+      const time = getSafeTimeObject()
+      handleTimeSelect(
+        getHourIn12Hour(time).toString().padStart(2, '0'),
+        minute,
+        time.format('A') as Period,
+      )
+    },
+    [getSafeTimeObject, handleTimeSelect],
+  )
 
-  const handleSelectPeriod = useCallback((period: Period) => {
-    const time = getSafeTimeObject()
-    handleTimeSelect(getHourIn12Hour(time).toString().padStart(2, '0'), time.minute().toString().padStart(2, '0'), period)
-  }, [getSafeTimeObject, handleTimeSelect])
+  const handleSelectPeriod = useCallback(
+    (period: Period) => {
+      const time = getSafeTimeObject()
+      handleTimeSelect(
+        getHourIn12Hour(time).toString().padStart(2, '0'),
+        time.minute().toString().padStart(2, '0'),
+        period,
+      )
+    },
+    [getSafeTimeObject, handleTimeSelect],
+  )
 
   const handleSelectCurrentTime = useCallback(() => {
     const newDate = getDateWithTimezone({ timezone })
@@ -176,75 +181,96 @@ const TimePicker = ({
 
   const timeFormat = 'hh:mm A'
 
-  const formatTimeValue = useCallback((timeValue: string | Dayjs | undefined): string => {
-    if (!timeValue)
-      return ''
+  const formatTimeValue = useCallback(
+    (timeValue: string | Dayjs | undefined): string => {
+      if (!timeValue) return ''
 
-    const dayjsValue = toDayjs(timeValue, { timezone })
-    return dayjsValue?.format(timeFormat) || ''
-  }, [timezone])
+      const dayjsValue = toDayjs(timeValue, { timezone })
+      return dayjsValue?.format(timeFormat) || ''
+    },
+    [timezone],
+  )
 
   const displayValue = formatTimeValue(value)
+  const renderInput = (open: boolean) => {
+    const placeholderDate =
+      open && isDayjsObject(selectedTime)
+        ? selectedTime.format(timeFormat)
+        : placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
 
-  const placeholderDate = isOpen && isDayjsObject(selectedTime)
-    ? selectedTime.format(timeFormat)
-    : (placeholder || t('defaultPlaceholder', { ns: 'time' }))
-
-  const inputElem = (
-    <input
-      className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular text-components-input-text-filled
-            outline-hidden select-none placeholder:text-components-input-text-placeholder"
-      readOnly
-      value={isOpen ? '' : displayValue}
-      placeholder={placeholderDate}
-    />
-  )
+    return (
+      <input
+        className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular text-components-input-text-filled outline-hidden select-none placeholder:text-components-input-text-placeholder"
+        readOnly
+        value={open ? '' : displayValue}
+        placeholder={placeholderDate}
+      />
+    )
+  }
   return (
-    <Popover
-      open={isOpen}
-      onOpenChange={handleOpenChange}
-    >
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         nativeButton={false}
         className={triggerFullWidth ? 'flex! w-full' : undefined}
-        render={renderTrigger
-          ? renderTrigger({
-              inputElem,
-              onClick: handleClickTrigger,
-              isOpen,
-            })
-          : (
-              <div
+        render={(props, state) => {
+          const inputElem = renderInput(state.open)
+          if (renderTrigger)
+            return renderTrigger(props, state, { inputElem, onClick: handleClickTrigger })
+
+          return (
+            <div
+              {...props}
+              className={cn(
+                'group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
+                triggerFullWidth ? 'w-full min-w-0' : 'w-63',
+                props.className,
+              )}
+              onClick={(event) => {
+                handleClickTrigger(event)
+                props.onClick?.(event)
+              }}
+              data-testid="time-picker-trigger"
+            >
+              {inputElem}
+              {showTimezone && timezone && (
+                <TimezoneLabel
+                  timezone={timezone}
+                  inline
+                  className="shrink-0 text-xs select-none"
+                />
+              )}
+              <span
                 className={cn(
-                  'group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
-                  triggerFullWidth ? 'w-full min-w-0' : 'w-[252px]',
+                  'i-ri-time-line size-4 shrink-0 text-text-quaternary',
+                  state.open ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+                  (displayValue || (state.open && selectedTime)) &&
+                    !notClearable &&
+                    'group-hover:hidden',
                 )}
-                onClick={handleClickTrigger}
-                data-testid="time-picker-trigger"
+              />
+              <button
+                type="button"
+                className={cn(
+                  'hidden size-4 shrink-0 border-none bg-transparent p-0 text-text-quaternary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                  (displayValue || (state.open && selectedTime)) &&
+                    !notClearable &&
+                    'group-hover:inline-block',
+                )}
+                aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                onClick={handleClear}
               >
-                {inputElem}
-                {showTimezone && timezone && (
-                  <TimezoneLabel timezone={timezone} inline className="shrink-0 text-xs select-none" />
-                )}
-                <span className={cn('i-ri-time-line size-4 shrink-0 text-text-quaternary', isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:hidden')} />
-                <button
-                  type="button"
-                  className={cn('hidden size-4 shrink-0 border-none bg-transparent p-0 text-text-quaternary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:inline-block')}
-                  aria-label={t('operation.clear', { ns: 'common' })}
-                  onClick={handleClear}
-                >
-                  <span className="i-ri-close-circle-fill size-4" aria-hidden="true" />
-                </button>
-              </div>
-            )}
+                <span className="i-ri-close-circle-fill size-4" aria-hidden="true" />
+              </button>
+            </div>
+          )
+        }}
       />
       <PopoverContent
-        placement={placement}
+        placement="bottom-start"
         sideOffset={0}
-        className={popupClassName}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
-        <div className="mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
+        <div className="mt-1 w-63 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}
           <Header title={title} />
 
@@ -258,11 +284,7 @@ const TimePicker = ({
           />
 
           {/* Footer */}
-          <Footer
-            handleSelectCurrentTime={handleSelectCurrentTime}
-            handleConfirm={handleConfirm}
-          />
-
+          <Footer handleSelectCurrentTime={handleSelectCurrentTime} handleConfirm={handleConfirm} />
         </div>
       </PopoverContent>
     </Popover>

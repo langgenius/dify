@@ -13,42 +13,38 @@ type Props = Readonly<{
   onChange?: OnFeaturesChange
 }>
 
-const SpeechToText = ({
-  disabled,
-  onChange,
-}: Props) => {
+const SpeechToText = ({ disabled, onChange }: Props) => {
   const { t } = useTranslation()
-  const features = useFeatures(s => s.features)
+  const features = useFeatures((s) => s.features)
   const featuresStore = useFeaturesStore()
 
-  const handleChange = useCallback((type: FeatureEnum, enabled: boolean) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (type: FeatureEnum, enabled: boolean) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      draft[type] = {
-        ...draft[type],
-        enabled,
-      }
-    })
-    setFeatures(newFeatures)
-    if (onChange)
-      onChange()
-  }, [featuresStore, onChange])
+      const newFeatures = produce(features, (draft) => {
+        draft[type] = {
+          ...draft[type],
+          enabled,
+        }
+      })
+      setFeatures(newFeatures)
+      if (onChange) onChange()
+    },
+    [featuresStore, onChange],
+  )
 
   return (
     <FeatureCard
-      icon={(
+      icon={
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs">
           <Microphone01 className="size-4 text-text-primary-on-surface" />
         </div>
-      )}
-      title={t('feature.speechToText.title', { ns: 'appDebug' })}
+      }
+      title={t(($) => $['feature.speechToText.title'], { ns: 'appDebug' })}
       value={!!features.speech2text?.enabled}
-      description={t('feature.speechToText.description', { ns: 'appDebug' })!}
-      onChange={state => handleChange(FeatureEnum.speech2text, state)}
+      description={t(($) => $['feature.speechToText.description'], { ns: 'appDebug' })!}
+      onChange={(state) => handleChange(FeatureEnum.speech2text, state)}
       disabled={disabled}
     />
   )

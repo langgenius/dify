@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, RefObject } from 'react'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -9,6 +9,7 @@ import { useStore } from '@/app/components/workflow/store'
 import VarReferenceVars from './var-reference-vars'
 
 type Props = Readonly<{
+  searchInputRef?: RefObject<HTMLInputElement | null>
   vars: NodeOutPutVar[]
   popupFor?: 'assigned' | 'toAssigned'
   onChange: (value: ValueSelector, varDetail: Var) => void
@@ -17,6 +18,7 @@ type Props = Readonly<{
   preferSchemaType?: boolean
 }>
 const VarReferencePopup: FC<Props> = ({
+  searchInputRef,
   vars,
   popupFor,
   onChange,
@@ -25,9 +27,9 @@ const VarReferencePopup: FC<Props> = ({
   preferSchemaType,
 }) => {
   const { t } = useTranslation()
-  const pipelineId = useStore(s => s.pipelineId)
+  const pipelineId = useStore((s) => s.pipelineId)
   const showManageRagInputFields = useMemo(() => !!pipelineId, [pipelineId])
-  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
+  const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
@@ -37,40 +39,39 @@ const VarReferencePopup: FC<Props> = ({
         width: itemWidth || 228,
       }}
     >
-      {((!vars || vars.length === 0) && popupFor)
-        ? (popupFor === 'toAssigned'
-            ? (
-                <ListEmpty
-                  title={t('variableReference.noAvailableVars', { ns: 'workflow' }) || ''}
-                  description={(
-                    <div className="system-xs-regular text-text-tertiary">
-                      {t('variableReference.noVarsForOperation', { ns: 'workflow' })}
-                    </div>
-                  )}
-                />
-              )
-            : (
-                <ListEmpty
-                  title={t('variableReference.noAssignedVars', { ns: 'workflow' }) || ''}
-                  description={(
-                    <div className="system-xs-regular text-text-tertiary">
-                      {t('variableReference.assignedVarsDescription', { ns: 'workflow' })}
-                    </div>
-                  )}
-                />
-              ))
-        : (
-            <VarReferenceVars
-              searchBoxClassName="mt-1"
-              vars={vars}
-              onChange={onChange}
-              itemWidth={itemWidth}
-              isSupportFileVar={isSupportFileVar}
-              showManageInputField={showManageRagInputFields}
-              onManageInputField={() => setShowInputFieldPanel?.(true)}
-              preferSchemaType={preferSchemaType}
-            />
-          )}
+      {(!vars || vars.length === 0) && popupFor ? (
+        popupFor === 'toAssigned' ? (
+          <ListEmpty
+            title={t(($) => $['variableReference.noAvailableVars'], { ns: 'workflow' }) || ''}
+            description={
+              <div className="system-xs-regular text-text-tertiary">
+                {t(($) => $['variableReference.noVarsForOperation'], { ns: 'workflow' })}
+              </div>
+            }
+          />
+        ) : (
+          <ListEmpty
+            title={t(($) => $['variableReference.noAssignedVars'], { ns: 'workflow' }) || ''}
+            description={
+              <div className="system-xs-regular text-text-tertiary">
+                {t(($) => $['variableReference.assignedVarsDescription'], { ns: 'workflow' })}
+              </div>
+            }
+          />
+        )
+      ) : (
+        <VarReferenceVars
+          searchInputRef={searchInputRef}
+          searchBoxClassName="mt-1"
+          vars={vars}
+          onChange={onChange}
+          itemWidth={itemWidth}
+          isSupportFileVar={isSupportFileVar}
+          showManageInputField={showManageRagInputFields}
+          onManageInputField={() => setShowInputFieldPanel?.(true)}
+          preferSchemaType={preferSchemaType}
+        />
+      )}
     </div>
   )
 }

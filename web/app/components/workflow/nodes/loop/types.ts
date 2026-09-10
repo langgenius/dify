@@ -62,7 +62,11 @@ export type HandleToggleConditionLogicalOperator = () => void
 
 export type HandleAddSubVariableCondition = (conditionId: string, key?: string) => void
 export type handleRemoveSubVariableCondition = (conditionId: string, subConditionId: string) => void
-export type HandleUpdateSubVariableCondition = (conditionId: string, subConditionId: string, newSubCondition: Condition) => void
+export type HandleUpdateSubVariableCondition = (
+  conditionId: string,
+  subConditionId: string,
+  newSubCondition: Condition,
+) => void
 export type HandleToggleSubVariableConditionLogicalOperator = (conditionId: string) => void
 
 export type LoopVariable = {

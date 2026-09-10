@@ -1,6 +1,7 @@
 import type { PipelineTemplate } from '@/models/pipeline'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import TemplateCard from '../index'
 
@@ -43,9 +44,14 @@ let _capturedHandleExportDSL: (() => void) | undefined
 let _capturedOpenEditModal: (() => void) | undefined
 
 vi.mock('../actions', () => ({
-  default: ({ onApplyTemplate, handleShowTemplateDetails, showMoreOperations, openEditModal, handleExportDSL, handleDelete }: {
+  default: ({
+    onApplyTemplate,
+    showMoreOperations,
+    openEditModal,
+    handleExportDSL,
+    handleDelete,
+  }: {
     onApplyTemplate: () => void
-    handleShowTemplateDetails: () => void
     showMoreOperations: boolean
     openEditModal: () => void
     handleExportDSL: () => void
@@ -56,13 +62,21 @@ vi.mock('../actions', () => ({
     _capturedOpenEditModal = openEditModal
     return (
       <div data-testid="actions">
-        <button data-testid="action-choose" onClick={onApplyTemplate}>operations.choose</button>
-        <button data-testid="action-details" onClick={handleShowTemplateDetails}>operations.details</button>
+        <button data-testid="action-choose" onClick={onApplyTemplate}>
+          operations.choose
+        </button>
+        <DialogTrigger data-testid="action-details">operations.details</DialogTrigger>
         {showMoreOperations && (
           <>
-            <button data-testid="action-edit" onClick={openEditModal}>Edit</button>
-            <button data-testid="action-export" onClick={handleExportDSL}>Export</button>
-            <button data-testid="action-delete" onClick={handleDelete}>Delete</button>
+            <button data-testid="action-edit" onClick={openEditModal}>
+              Edit
+            </button>
+            <button data-testid="action-export" onClick={handleExportDSL}>
+              Export
+            </button>
+            <button data-testid="action-delete" onClick={handleDelete}>
+              Delete
+            </button>
           </>
         )}
       </div>
@@ -74,17 +88,23 @@ vi.mock('../actions', () => ({
 vi.mock('../edit-pipeline-info', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="edit-pipeline-info">
-      <button data-testid="edit-close" onClick={onClose}>Close</button>
+      <button data-testid="edit-close" onClick={onClose}>
+        Close
+      </button>
     </div>
   ),
 }))
 
 // Mock Details component
 vi.mock('../details', () => ({
-  default: ({ onClose, onApplyTemplate }: { onClose: () => void, onApplyTemplate: () => void }) => (
+  default: ({ onClose, onApplyTemplate }: { onClose: () => void; onApplyTemplate: () => void }) => (
     <div data-testid="details-component">
-      <button data-testid="details-close" onClick={onClose}>Close</button>
-      <button data-testid="details-apply" onClick={onApplyTemplate}>Apply</button>
+      <button data-testid="details-close" onClick={onClose}>
+        Close
+      </button>
+      <button data-testid="details-apply" onClick={onApplyTemplate}>
+        Apply
+      </button>
     </div>
   ),
 }))
@@ -119,7 +139,9 @@ vi.mock('@/service/use-pipeline', () => ({
   }),
   useExportTemplateDSL: () => ({
     mutateAsync: mockExportPipelineDSL,
-    get isPending() { return mockIsExporting },
+    get isPending() {
+      return mockIsExporting
+    },
   }),
   useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
 }))
@@ -155,8 +177,10 @@ describe('TemplateCard', () => {
     type: 'customized' as const,
   }
 
-  const getDeleteConfirmButton = () => screen.getByRole('button', { name: 'common.operation.confirm' })
-  const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
+  const getDeleteConfirmButton = () =>
+    screen.getByRole('button', { name: 'common.operation.confirm' })
+  const getDeleteCancelButton = () =>
+    screen.getByRole('button', { name: 'common.operation.cancel' })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -175,11 +199,6 @@ describe('TemplateCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<TemplateCard {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
-    })
-
     it('should render pipeline name', () => {
       render(<TemplateCard {...defaultProps} />)
       expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
@@ -481,9 +500,11 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(downloadBlob).toHaveBeenCalledWith(expect.objectContaining({
-          fileName: 'Test Pipeline.pipeline',
-        }))
+        expect(downloadBlob).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fileName: 'Test Pipeline.pipeline',
+          }),
+        )
       })
     })
   })
@@ -659,30 +680,16 @@ describe('TemplateCard', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper card styling', () => {
-      const { container } = render(<TemplateCard {...defaultProps} />)
-      const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('group', 'relative', 'flex', 'cursor-pointer', 'flex-col', 'rounded-xl')
-    })
-
     it('should have fixed height', () => {
       const { container } = render(<TemplateCard {...defaultProps} />)
       const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('h-[132px]')
+      expect(card).toHaveClass('h-33')
     })
 
     it('should have shadow and border', () => {
       const { container } = render(<TemplateCard {...defaultProps} />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('border-[0.5px]', 'shadow-xs')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<TemplateCard {...defaultProps} />)
-      rerender(<TemplateCard {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
     })
   })
 })

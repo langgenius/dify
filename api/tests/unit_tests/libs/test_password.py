@@ -35,6 +35,13 @@ class TestValidPassword:
         with pytest.raises(ValueError):
             valid_password("")
 
+    def test_should_reject_password_shorter_than_minimum_length(self):
+        """A 7-character password with letters and numbers is rejected for length."""
+        with pytest.raises(ValueError) as exc_info:
+            valid_password("abc1234")
+
+        assert "at least 8" in str(exc_info.value)
+
 
 class TestPasswordHashing:
     """Test password hashing and comparison"""

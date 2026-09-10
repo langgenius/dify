@@ -259,7 +259,7 @@ class MCPToolManageService:
                 mcp_provider.encrypted_credentials = self._process_credentials(authentication, mcp_provider, tenant_id)
 
             # Update user-identity forwarding mode. The controller has already
-            # resolved "leave unchanged" and applied the ENTERPRISE_ENABLED gate,
+            # resolved "leave unchanged" and applied the Enterprise-edition gate,
             # so this is always a concrete, vetted value.
             mcp_provider.identity_mode = identity_mode
 
@@ -459,13 +459,11 @@ class MCPToolManageService:
         Returns:
             JSON string of encrypted data
         """
-        from core.entities.provider_entities import BasicProviderConfig
+        from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
         from core.tools.utils.encryption import create_provider_encrypter
 
         # Create config for secret fields
-        config = [
-            BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=field) for field in secret_fields
-        ]
+        config = [BasicProviderConfig(type=ProviderConfigType.SECRET_INPUT, name=field) for field in secret_fields]
 
         encrypter_instance, _ = create_provider_encrypter(
             tenant_id=tenant_id,

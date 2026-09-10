@@ -19,11 +19,7 @@ describe('VariableItem', () => {
     const onEdit = vi.fn()
     const onDelete = vi.fn()
     const { container } = render(
-      <VariableItem
-        item={createVariable()}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
+      <VariableItem item={createVariable()} onEdit={onEdit} onDelete={onDelete} />,
     )
 
     const card = container.firstElementChild as HTMLDivElement

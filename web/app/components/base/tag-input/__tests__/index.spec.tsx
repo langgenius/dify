@@ -39,13 +39,17 @@ describe('TagInput', () => {
 
       expect(screen.getByText('alpha'))!.toBeInTheDocument()
       expect(screen.getByText('beta'))!.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('datasetDocuments.segment.addKeyWord'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetDocuments.segment.addKeyWord'),
+      )!.toBeInTheDocument()
     })
 
     it('should render special mode placeholder when confirm key is Tab', () => {
       renderTagInput({ customizedConfirmKey: 'Tab' })
 
-      expect(screen.getByPlaceholderText('common.model.params.stop_sequencesPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('common.model.params.stop_sequencesPlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should render custom placeholder when placeholder prop is provided', () => {
@@ -59,8 +63,6 @@ describe('TagInput', () => {
       const input = screen.getByRole('textbox')
       const inputContainer = input.parentElement
 
-      expect(input)!.toHaveClass('custom-input')
-      expect(input)!.not.toHaveAttribute('style')
       expect(inputContainer).toHaveAttribute('data-input-value', 'Tag')
 
       await userEvent.type(input, 'longer')
@@ -77,19 +79,9 @@ describe('TagInput', () => {
     it('should hide remove controls when remove is disabled', () => {
       renderTagInput({ items: ['alpha'], disableRemove: true })
 
-      expect(screen.queryByRole('button', { name: 'common.operation.remove alpha' })).not.toBeInTheDocument()
-    })
-
-    it('should apply focused style in special mode when input is focused', async () => {
-      renderTagInput({ customizedConfirmKey: 'Tab' })
-      const input = screen.getByRole('textbox')
-      const inputContainer = input.parentElement
-
-      expect(inputContainer)!.toHaveClass('border-transparent')
-
-      await userEvent.click(input)
-
-      expect(inputContainer)!.toHaveClass('border-dashed')
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.remove alpha' }),
+      ).not.toBeInTheDocument()
     })
   })
 

@@ -11,6 +11,7 @@ from models.account import Account, Tenant, TenantAccountJoin
 from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 
@@ -111,10 +112,11 @@ class TestWorkflowDeletion:
 
         service = WorkflowService(sessionmaker(bind=db.engine))
         result = service.delete_workflow(
-            session=db_session_with_containers, workflow_id=workflow_id, tenant_id=tenant.id
+            session=db_session_with_containers,
+            workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow_id),
         )
 
-        assert result is True
+        assert result == []
         db_session_with_containers.expire_all()
         assert db_session_with_containers.get(Workflow, workflow_id) is None
 
@@ -128,7 +130,10 @@ class TestWorkflowDeletion:
 
         service = WorkflowService(sessionmaker(bind=db.engine))
         with pytest.raises(DraftWorkflowDeletionError):
-            service.delete_workflow(session=db_session_with_containers, workflow_id=workflow.id, tenant_id=tenant.id)
+            service.delete_workflow(
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow.id),
+            )
 
     def test_delete_workflow_in_use_by_app_raises_error(self, db_session_with_containers: Session):
         tenant, account = self._create_tenant_and_account(db_session_with_containers)
@@ -142,7 +147,10 @@ class TestWorkflowDeletion:
 
         service = WorkflowService(sessionmaker(bind=db.engine))
         with pytest.raises(WorkflowInUseError, match="currently in use by app"):
-            service.delete_workflow(session=db_session_with_containers, workflow_id=workflow.id, tenant_id=tenant.id)
+            service.delete_workflow(
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow.id),
+            )
 
     def test_delete_workflow_published_as_tool_raises_error(self, db_session_with_containers: Session):
         tenant, account = self._create_tenant_and_account(db_session_with_containers)
@@ -155,4 +163,7 @@ class TestWorkflowDeletion:
 
         service = WorkflowService(sessionmaker(bind=db.engine))
         with pytest.raises(WorkflowInUseError, match="published as a tool"):
-            service.delete_workflow(session=db_session_with_containers, workflow_id=workflow.id, tenant_id=tenant.id)
+            service.delete_workflow(
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow.id),
+            )

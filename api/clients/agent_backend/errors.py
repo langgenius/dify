@@ -8,7 +8,38 @@ classes.
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import Any
+
+from dify_agent.client import DifyAgentHTTPError
+from dify_agent.protocol import RunFailureType
+
+
+def backend_reported_failure(exc: DifyAgentHTTPError) -> bool:
+    """Whether the backend itself reported the failure.
+
+    ``DifyAgentValidationError`` is a ``DifyAgentHTTPError`` that the client also
+    raises when a *successful* response fails DTO validation. Those carry a 2xx
+    status and a Pydantic error list, not a backend-authored error envelope.
+    """
+    return exc.status_code >= HTTPStatus.BAD_REQUEST
+
+
+def backend_error_detail(
+    exc: DifyAgentHTTPError,
+    *,
+    default_code: str = "agent_backend_error",
+) -> tuple[str, str]:
+    """Split an Agent backend HTTP error into the code and message the backend itself sent."""
+    detail = exc.detail
+    if isinstance(detail, dict):
+        code = detail.get("code")
+        message = detail.get("message")
+        return (
+            code if isinstance(code, str) and code else default_code,
+            message if isinstance(message, str) and message else str(exc),
+        )
+    return default_code, str(detail)
 
 
 class AgentBackendError(Exception):
@@ -54,8 +85,24 @@ class AgentBackendRunFailedError(AgentBackendError):
 
     run_id: str
     detail: Any
+    error_type: RunFailureType | None
+    reason: str | None
+    source_event_id: str | None
 
-    def __init__(self, run_id: str, detail: Any) -> None:
+    def __init__(
+        self,
+        run_id: str,
+        detail: Any,
+        *,
+        message: str | None = None,
+        error_type: RunFailureType | None = None,
+        reason: str | None = None,
+        source_event_id: str | None = None,
+    ) -> None:
         self.run_id = run_id
         self.detail = detail
-        super().__init__(f"Agent backend run failed: {run_id}")
+        self.error_type = error_type
+        self.reason = reason
+        self.source_event_id = source_event_id
+        display_message = message or f"Agent backend run failed: {run_id}"
+        super().__init__(f"{display_message} (agent_run_id={run_id})")

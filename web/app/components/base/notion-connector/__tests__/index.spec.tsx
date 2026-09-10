@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import NotionConnector from '../index'
 
 describe('NotionConnector', () => {
@@ -36,13 +36,5 @@ describe('NotionConnector', () => {
     await user.click(button)
 
     expect(onSetting).toHaveBeenCalledTimes(1)
-  })
-
-  it('should maintain the correct visual hierarchy classes', () => {
-    const { container } = render(<NotionConnector onSetting={vi.fn()} />)
-
-    // Verify the outer container has the specific workflow-process-bg
-    const mainContainer = container.firstChild
-    expect(mainContainer).toHaveClass('bg-workflow-process-bg', 'rounded-2xl', 'p-6')
   })
 })

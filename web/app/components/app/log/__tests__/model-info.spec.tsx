@@ -1,11 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ModelInfo from '../model-info'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
@@ -21,54 +16,20 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-icon', () => ({
-  default: ({ modelName }: { provider: unknown, modelName: string }) => (
-    <div data-testid="model-icon" data-model-name={modelName}>ModelIcon</div>
+  default: ({ modelName }: { provider: unknown; modelName: string }) => (
+    <div data-testid="model-icon" data-model-name={modelName}>
+      ModelIcon
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-name', () => ({
-  default: ({ modelItem, showMode }: { modelItem: { model: string }, showMode: boolean }) => (
+  default: ({ modelItem, showMode }: { modelItem: { model: string }; showMode: boolean }) => (
     <div data-testid="model-name" data-show-mode={showMode ? 'true' : 'false'}>
       {modelItem?.model}
     </div>
   ),
 }))
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext<{ open: boolean, onOpenChange?: (open: boolean) => void } | null>(null)
-
-  return {
-    Popover: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
-      <PopoverContext.Provider value={{ open, onOpenChange }}>
-        <div data-testid="popover-root" data-open={open ? 'true' : 'false'}>
-          {children}
-        </div>
-      </PopoverContext.Provider>
-    ),
-    PopoverTrigger: ({ children, render }: { children?: React.ReactNode, render?: React.ReactNode }) => {
-      const context = React.useContext(PopoverContext)
-      const content = render ?? children
-      const handleClick = () => {
-        context?.onOpenChange?.(!context.open)
-      }
-
-      if (React.isValidElement(content)) {
-        const element = content as React.ReactElement<{ onClick?: () => void }>
-        return React.cloneElement(element, { onClick: handleClick })
-      }
-
-      return <button type="button" data-testid="popover-trigger" onClick={handleClick}>{content}</button>
-    },
-    PopoverContent: ({ children }: { children: React.ReactNode }) => {
-      const context = React.useContext(PopoverContext)
-      if (!context?.open)
-        return null
-
-      return <div data-testid="popover-content">{children}</div>
-    },
-  }
-})
 
 describe('ModelInfo', () => {
   const defaultModel = {
@@ -116,32 +77,32 @@ describe('ModelInfo', () => {
     it('should be closed by default', () => {
       render(<ModelInfo model={defaultModel} />)
 
-      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'false')
-      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).not.toBeInTheDocument()
     })
 
-    it('should open when info button is clicked', () => {
+    it('should open when info button is clicked', async () => {
+      const user = userEvent.setup()
       render(<ModelInfo model={defaultModel} />)
 
       const trigger = screen.getByRole('button')
-      fireEvent.click(trigger)
+      await user.click(trigger)
 
-      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'true')
-      expect(screen.getByTestId('popover-content')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).toBeInTheDocument()
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
     })
 
-    it('should close when info button is clicked again', () => {
+    it('should close when info button is clicked again', async () => {
+      const user = userEvent.setup()
       render(<ModelInfo model={defaultModel} />)
 
       const trigger = screen.getByRole('button')
 
-      // Open
-      fireEvent.click(trigger)
-      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'true')
+      await user.click(trigger)
+      expect(screen.getByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).toBeInTheDocument()
 
-      // Close
-      fireEvent.click(trigger)
-      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'false')
+      await user.click(trigger)
+      expect(screen.queryByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).not.toBeInTheDocument()
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
     })
   })
 
@@ -150,7 +111,7 @@ describe('ModelInfo', () => {
       render(<ModelInfo model={defaultModel} />)
       fireEvent.click(screen.getByRole('button'))
 
-      expect(screen.getByText('detail.modelParams')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should render temperature parameter', () => {

@@ -6,30 +6,22 @@ import type { SnippetInputField } from '@/models/snippet'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useReactFlowStore } from 'reactflow'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import { getProcessedInputs } from '@/app/components/base/chat/chat/utils'
 import Loading from '@/app/components/base/loading'
-import {
-  useWorkflowInteractions,
-  useWorkflowRun,
-} from '@/app/components/workflow/hooks'
+import ResizeHandle from '@/app/components/base/resize-handle'
+import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
+import { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
+import { getPreviewPanelMaxWidth } from '@/app/components/workflow/panel/panel-width'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import ResultText from '@/app/components/workflow/run/result-text'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { useStore } from '@/app/components/workflow/store'
-import {
-  InputVarType,
-  WorkflowRunningStatus,
-} from '@/app/components/workflow/types'
+import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { formatWorkflowRunIdentifier } from '@/app/components/workflow/utils'
 import { PipelineInputVarType } from '@/models/pipeline'
 
@@ -50,7 +42,7 @@ const PIPELINE_TO_WORKFLOW_INPUT_VAR_TYPE: Record<PipelineInputVarType, InputVar
 }
 
 const buildPreviewFields = (fields: SnippetInputField[]): SnippetRunField[] => {
-  return fields.map(field => ({
+  return fields.map((field) => ({
     type: PIPELINE_TO_WORKFLOW_INPUT_VAR_TYPE[field.type],
     label: field.label,
     variable: field.variable,
@@ -69,25 +61,25 @@ const buildPreviewFields = (fields: SnippetInputField[]): SnippetRunField[] => {
 
 const buildInitialInputs = (fields: SnippetRunField[]) => {
   return fields.reduce<Record<string, unknown>>((acc, field) => {
-    if (field.default !== undefined)
-      acc[field.variable] = field.default
+    if (field.default !== undefined) acc[field.variable] = field.default
 
     return acc
   }, {})
 }
 
-const SnippetRunPanel = ({
-  fields,
-}: SnippetRunPanelProps) => {
+const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
   const { t } = useTranslation()
+  const panelId = useId()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleRun } = useWorkflowRun()
   const { checkInputsForm } = useCheckInputsForms()
-  const workflowRunningData = useStore(s => s.workflowRunningData)
-  const showInputsPanel = useStore(s => s.showInputsPanel)
-  const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
-  const panelWidth = useStore(s => s.previewPanelWidth)
-  const setPreviewPanelWidth = useStore(s => s.setPreviewPanelWidth)
+  const workflowRunningData = useStore((s) => s.workflowRunningData)
+  const showInputsPanel = useStore((s) => s.showInputsPanel)
+  const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
+  const panelWidth = useStore((s) => s.previewPanelWidth)
+  const setPreviewPanelWidth = useStore((s) => s.setPreviewPanelWidth)
+  const hasSelectedNode = useReactFlowStore((s) => s.getNodes().some((node) => node.data.selected))
+  const maxPanelWidth = getPreviewPanelMaxWidth(workflowCanvasWidth, hasSelectedNode)
 
   const previewFields = useMemo(() => buildPreviewFields(fields), [fields])
   const initialInputs = useMemo(() => buildInitialInputs(previewFields), [previewFields])
@@ -98,22 +90,26 @@ const SnippetRunPanel = ({
   const inputs = inputOverrides ?? initialInputs
   const hasInputTab = showInputsPanel && previewFields.length > 0
   const defaultTab = hasInputTab ? 'INPUT' : 'RESULT'
-  const shouldShowDetailByDefault = !!workflowRunningData
-    && (workflowRunningData.result.status === WorkflowRunningStatus.Succeeded || workflowRunningData.result.status === WorkflowRunningStatus.Failed)
-    && !workflowRunningData.resultText
-    && !workflowRunningData.result.files?.length
+  const shouldShowDetailByDefault =
+    !!workflowRunningData &&
+    (workflowRunningData.result.status === WorkflowRunningStatus.Succeeded ||
+      workflowRunningData.result.status === WorkflowRunningStatus.Failed) &&
+    !workflowRunningData.resultText &&
+    !workflowRunningData.result.files?.length
   const currentTab = selectedTab ?? (shouldShowDetailByDefault ? 'DETAIL' : defaultTab)
 
-  const handleValueChange = useCallback((variable: string, value: unknown) => {
-    setInputOverrides(prev => ({
-      ...(prev ?? initialInputs),
-      [variable]: value,
-    }))
-  }, [initialInputs])
+  const handleValueChange = useCallback(
+    (variable: string, value: unknown) => {
+      setInputOverrides((prev) => ({
+        ...(prev ?? initialInputs),
+        [variable]: value,
+      }))
+    },
+    [initialInputs],
+  )
 
   const handleSubmit = useCallback(() => {
-    if (!checkInputsForm(inputs, previewFields))
-      return
+    if (!checkInputsForm(inputs, previewFields)) return
 
     setSelectedTab('RESULT')
     handleRun({
@@ -130,17 +126,15 @@ const SnippetRunPanel = ({
     setIsResizing(false)
   }, [])
 
-  const resize = useCallback((e: MouseEvent) => {
-    if (!isResizing)
-      return
+  const resize = useCallback(
+    (e: MouseEvent) => {
+      if (!isResizing) return
 
-    const newWidth = window.innerWidth - e.clientX
-    const reservedCanvasWidth = 400
-    const maxAllowed = workflowCanvasWidth ? (workflowCanvasWidth - reservedCanvasWidth) : 1024
-
-    if (newWidth >= 400 && newWidth <= maxAllowed)
-      setPreviewPanelWidth(newWidth)
-  }, [isResizing, setPreviewPanelWidth, workflowCanvasWidth])
+      const newWidth = window.innerWidth - e.clientX
+      if (newWidth >= 400 && newWidth <= maxPanelWidth) setPreviewPanelWidth(newWidth)
+    },
+    [isResizing, setPreviewPanelWidth, maxPanelWidth],
+  )
 
   useEffect(() => {
     window.addEventListener('mousemove', resize)
@@ -153,11 +147,19 @@ const SnippetRunPanel = ({
 
   return (
     <div
+      id={panelId}
       className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{ width: `${panelWidth}px` }}
     >
-      <div
-        className="absolute top-1/2 bottom-0 left-[3px] z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
+      <ResizeHandle
+        side="left"
+        value={panelWidth}
+        min={400}
+        max={maxPanelWidth}
+        controls={panelId}
+        label={t(($) => $['singleRun.testRun'], { ns: 'workflow' })}
+        onResize={setPreviewPanelWidth}
+        className="absolute top-1/2 bottom-0 left-0.75 z-50 h-6 w-0.75 cursor-col-resize bg-state-base-handle"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
@@ -170,46 +172,45 @@ const SnippetRunPanel = ({
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {hasInputTab && (
             <div
-              className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'INPUT' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'}`}
+              className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-4.5 font-semibold ${currentTab === 'INPUT' ? 'border-[rgb(21,94,239)]! text-text-secondary' : 'border-transparent text-text-tertiary'}`}
               onClick={() => setSelectedTab('INPUT')}
             >
-              {t('input', { ns: 'runLog' })}
+              {t(($) => $.input, { ns: 'runLog' })}
             </div>
           )}
           <div
-            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'RESULT' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
+            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-4.5 font-semibold ${currentTab === 'RESULT' ? 'border-[rgb(21,94,239)]! text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? 'cursor-not-allowed! opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('RESULT')}
           >
-            {t('result', { ns: 'runLog' })}
+            {t(($) => $.result, { ns: 'runLog' })}
           </div>
           <div
-            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'DETAIL' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
+            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-4.5 font-semibold ${currentTab === 'DETAIL' ? 'border-[rgb(21,94,239)]! text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? 'cursor-not-allowed! opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('DETAIL')}
           >
-            {t('detail', { ns: 'runLog' })}
+            {t(($) => $.detail, { ns: 'runLog' })}
           </div>
           <div
-            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'TRACING' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
+            className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-4.5 font-semibold ${currentTab === 'TRACING' ? 'border-[rgb(21,94,239)]! text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? 'cursor-not-allowed! opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('TRACING')}
           >
-            {t('tracing', { ns: 'runLog' })}
+            {t(($) => $.tracing, { ns: 'runLog' })}
           </div>
         </div>
-        <div className={`h-0 grow overflow-y-auto rounded-b-2xl ${(currentTab === 'RESULT' || currentTab === 'TRACING') ? '!bg-background-section-burn' : 'bg-components-panel-bg'}`}>
+        <div
+          className={`h-0 grow overflow-y-auto rounded-b-2xl ${currentTab === 'RESULT' || currentTab === 'TRACING' ? 'bg-background-section-burn!' : 'bg-components-panel-bg'}`}
+        >
           {currentTab === 'INPUT' && hasInputTab && (
             <>
               <div className="px-4 pt-3 pb-2">
                 {previewFields.map((field, index) => (
-                  <div
-                    key={field.variable}
-                    className="mb-2 last-of-type:mb-0"
-                  >
+                  <div key={field.variable} className="mb-2 last-of-type:mb-0">
                     <FormItem
                       autoFocus={index === 0}
-                      className="!block"
+                      className="block!"
                       payload={field}
                       value={inputs[field.variable]}
-                      onChange={value => handleValueChange(field.variable, value)}
+                      onChange={(value) => handleValueChange(field.variable, value)}
                     />
                   </div>
                 ))}
@@ -221,7 +222,7 @@ const SnippetRunPanel = ({
                   disabled={workflowRunningData?.result?.status === WorkflowRunningStatus.Running}
                   onClick={handleSubmit}
                 >
-                  {t('singleRun.startRun', { ns: 'workflow' })}
+                  {t(($) => $['singleRun.startRun'], { ns: 'workflow' })}
                 </Button>
               </div>
             </>
@@ -229,24 +230,29 @@ const SnippetRunPanel = ({
           {currentTab === 'RESULT' && (
             <div className="p-2">
               <ResultText
-                isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
+                isRunning={
+                  workflowRunningData?.result?.status === WorkflowRunningStatus.Running ||
+                  !workflowRunningData?.result
+                }
                 outputs={workflowRunningData?.resultText}
                 allFiles={workflowRunningData?.result?.files}
                 error={workflowRunningData?.result?.error}
                 onClick={() => setSelectedTab('DETAIL')}
               />
-              {(workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded && workflowRunningData?.resultText && typeof workflowRunningData.resultText === 'string') && (
-                <Button
-                  className="mb-4 ml-4 space-x-1"
-                  onClick={() => {
-                    copy(workflowRunningData?.resultText || '')
-                    toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
-                  }}
-                >
-                  <span className="i-ri-clipboard-line h-3.5 w-3.5" />
-                  <div>{t('operation.copy', { ns: 'common' })}</div>
-                </Button>
-              )}
+              {workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded &&
+                workflowRunningData?.resultText &&
+                typeof workflowRunningData.resultText === 'string' && (
+                  <Button
+                    className="mb-4 ml-4"
+                    onClick={() => {
+                      copy(workflowRunningData?.resultText || '')
+                      toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
+                    }}
+                  >
+                    <span className="i-ri-clipboard-line h-3.5 w-3.5" />
+                    <div>{t(($) => $['operation.copy'], { ns: 'common' })}</div>
+                  </Button>
+                )}
             </div>
           )}
           {currentTab === 'DETAIL' && workflowRunningData?.result && (
@@ -263,7 +269,9 @@ const SnippetRunPanel = ({
               elapsed_time={workflowRunningData.result?.elapsed_time}
               total_tokens={workflowRunningData.result?.total_tokens}
               created_at={workflowRunningData.result?.created_at}
-              created_by={(workflowRunningData.result?.created_by as unknown as { name: string })?.name}
+              created_by={
+                (workflowRunningData.result?.created_by as unknown as { name: string })?.name
+              }
               steps={workflowRunningData.result?.total_steps}
               exceptionCounts={workflowRunningData.result?.exceptions_count}
             />
@@ -280,7 +288,7 @@ const SnippetRunPanel = ({
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
-            <div className="flex h-full items-center justify-center !bg-background-section-burn">
+            <div className="flex h-full items-center justify-center bg-background-section-burn!">
               <Loading />
             </div>
           )}

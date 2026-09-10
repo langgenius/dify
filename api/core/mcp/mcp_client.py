@@ -1,9 +1,12 @@
 import logging
+import re
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
 from types import TracebackType
 from typing import Any
 from urllib.parse import urlparse
+
+from flask import has_request_context, request
 
 from core.mcp.client.sse_client import sse_client
 from core.mcp.client.streamable_client import streamablehttp_client
@@ -23,9 +26,21 @@ class MCPClient:
         sse_read_timeout: float | None = None,
     ):
         self.server_url = server_url
-        self.headers = headers or {}
+        self.headers = headers.copy() if headers else {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
+
+        # Substitute placeholders with incoming request headers if in a request context
+        if has_request_context() and self.headers:
+            pattern = re.compile(r"\{\{\s*request\.headers?\.(.+?)\s*\}\}", re.IGNORECASE)
+            for key, value in list(self.headers.items()):
+                if isinstance(value, str):
+
+                    def replace_func(match):
+                        header_name = match.group(1)
+                        return request.headers.get(header_name, "")
+
+                    self.headers[key] = pattern.sub(replace_func, value)
 
         # Initialize session and client objects
         self._session: ClientSession | None = None

@@ -108,13 +108,6 @@ class TestModelConfigResourcePermissions:
         )
         monkeypatch.setattr(AppModelConfigService, "validate_configuration", mock_validate_config)
 
-        # Mock database operations
-        mock_db_session = mock.Mock()
-        mock_db_session.add = mock.Mock()
-        mock_db_session.flush = mock.Mock()
-        mock_db_session.commit = mock.Mock()
-        monkeypatch.setattr(model_config_api.db, "session", mock_db_session)
-
         # Mock app_model_config_was_updated event
         mock_event = mock.Mock()
         mock_event.send = mock.Mock()

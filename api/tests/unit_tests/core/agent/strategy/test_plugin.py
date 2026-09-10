@@ -5,7 +5,9 @@ from unittest.mock import MagicMock
 import pytest
 from pytest_mock import MockerFixture
 
+from core.agent.plugin_entities import AgentStrategyParameter
 from core.agent.strategy.plugin import PluginAgentStrategy
+from core.tools.entities.common_entities import I18nObject
 
 # ============================================================
 # Fixtures
@@ -81,7 +83,7 @@ class TestPluginAgentStrategyInitialization:
 
 
 class TestGetParameters:
-    def test_get_parameters_returns_parameters(self, strategy, mock_declaration) -> None:
+    def test_get_parameters_returns_parameters(self, strategy: PluginAgentStrategy, mock_declaration) -> None:
         result = strategy.get_parameters()
         assert result == mock_declaration.parameters
 
@@ -92,7 +94,7 @@ class TestGetParameters:
 
 
 class TestInitializeParameters:
-    def test_initialize_parameters_success(self, strategy, mock_declaration) -> None:
+    def test_initialize_parameters_success(self, strategy: PluginAgentStrategy, mock_declaration) -> None:
         params = {"param1": "value1"}
 
         result = strategy.initialize_parameters(params.copy())
@@ -102,6 +104,17 @@ class TestInitializeParameters:
 
         mock_declaration.parameters[0].init_frontend_parameter.assert_called_once_with("value1")
         mock_declaration.parameters[1].init_frontend_parameter.assert_called_once_with(None)
+
+    def test_initialize_parameters_allows_empty_tools_selection(self, strategy: PluginAgentStrategy) -> None:
+        tools_parameter = AgentStrategyParameter(
+            name="tools",
+            label=I18nObject(en_US="Tools"),
+            required=True,
+            type=AgentStrategyParameter.AgentStrategyParameterType.TOOLS_SELECTOR,
+        )
+        strategy.declaration.parameters = [tools_parameter]
+
+        assert strategy.initialize_parameters({"tools": []}) == {"tools": []}
 
     @pytest.mark.parametrize(
         "input_params",
@@ -114,13 +127,13 @@ class TestInitializeParameters:
             {"param1": {}, "param2": "value"},
         ],
     )
-    def test_initialize_parameters_edge_cases(self, strategy, input_params) -> None:
+    def test_initialize_parameters_edge_cases(self, strategy: PluginAgentStrategy, input_params) -> None:
         result = strategy.initialize_parameters(input_params.copy())
 
         for param in strategy.declaration.parameters:
             assert param.name in result
 
-    def test_initialize_parameters_invalid_input_type(self, strategy) -> None:
+    def test_initialize_parameters_invalid_input_type(self, strategy: PluginAgentStrategy) -> None:
         with pytest.raises(AttributeError):
             strategy.initialize_parameters(None)
 
@@ -131,7 +144,7 @@ class TestInitializeParameters:
 
 
 class TestInvoke:
-    def test_invoke_success_all_arguments(self, strategy, mocker) -> None:
+    def test_invoke_success_all_arguments(self, strategy: PluginAgentStrategy, mocker: MockerFixture) -> None:
         mock_manager = MagicMock()
         mock_manager.invoke = MagicMock(return_value=iter(["msg1", "msg2"]))
 
@@ -171,7 +184,7 @@ class TestInvoke:
         assert call_kwargs["message_id"] == "msg_1"
         assert call_kwargs["context"] is not None
 
-    def test_invoke_with_credentials(self, strategy, mocker) -> None:
+    def test_invoke_with_credentials(self, strategy: PluginAgentStrategy, mocker: MockerFixture) -> None:
         mock_manager = MagicMock()
         mock_manager.invoke = MagicMock(return_value=iter([]))
 
@@ -243,7 +256,7 @@ class TestInvoke:
         assert result == []
         mock_manager.invoke.assert_called_once()
 
-    def test_invoke_convert_raises_exception(self, strategy, mocker) -> None:
+    def test_invoke_convert_raises_exception(self, strategy: PluginAgentStrategy, mocker: MockerFixture) -> None:
         mocker.patch(
             "core.agent.strategy.plugin.PluginAgentClient",
             return_value=MagicMock(),
@@ -257,7 +270,7 @@ class TestInvoke:
         with pytest.raises(ValueError):
             list(strategy._invoke(params={}, user_id="user_1"))
 
-    def test_invoke_manager_raises_exception(self, strategy, mocker) -> None:
+    def test_invoke_manager_raises_exception(self, strategy: PluginAgentStrategy, mocker: MockerFixture) -> None:
         mock_manager = MagicMock()
         mock_manager.invoke.side_effect = RuntimeError("invoke failed")
 

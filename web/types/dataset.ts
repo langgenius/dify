@@ -5,4 +5,4 @@ export const segmentImportStatus = {
   error: 'error',
 } as const
 
-export type SegmentImportStatus = typeof segmentImportStatus[keyof typeof segmentImportStatus]
+export type SegmentImportStatus = (typeof segmentImportStatus)[keyof typeof segmentImportStatus]

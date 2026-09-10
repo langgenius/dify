@@ -29,12 +29,12 @@ export function colorScheme(enabled: boolean): ColorScheme {
     }
   }
   return {
-    bold: s => pc.bold(s),
-    dim: s => pc.dim(s),
-    cyan: s => pc.cyan(s),
-    green: s => pc.green(s),
-    yellow: s => pc.yellow(s),
-    magenta: s => pc.magenta(s),
+    bold: (s) => pc.bold(s),
+    dim: (s) => pc.dim(s),
+    cyan: (s) => pc.cyan(s),
+    green: (s) => pc.green(s),
+    yellow: (s) => pc.yellow(s),
+    magenta: (s) => pc.magenta(s),
     successIcon: () => pc.green('✓'),
     warningIcon: () => pc.yellow('!'),
     failureIcon: () => pc.red('✗'),
@@ -42,8 +42,7 @@ export function colorScheme(enabled: boolean): ColorScheme {
 }
 
 export function colorEnabled(isTTY: boolean): boolean {
-  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '')
-    return false
+  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '') return false
   if (process.env.DIFYCTL_NO_COLOR !== undefined && process.env.DIFYCTL_NO_COLOR !== '')
     return false
   return isTTY

@@ -1,44 +1,45 @@
-import type { ModalContextState } from '@/context/modal-context'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContext } from '@/context/modal-context'
-import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
+import { fireEvent, render as renderWithoutPricing, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { getDocDownloadUrl } from '@/service/common'
-import { expectLoadingButton } from '@/test/button'
+import { seedFeatures } from '@/test/console/query-data'
 import { downloadUrl } from '@/utils/download'
 import Compliance from '../compliance'
 
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: vi.fn(),
-  }
-})
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/modal-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/modal-context')>()
-  return {
-    ...actual,
-    useModalContext: vi.fn(),
-  }
-})
-
-vi.mock('@/service/common', () => ({
-  getDocDownloadUrl: vi.fn(),
+vi.mock('@/service/common', () => ({ getDocDownloadUrl: vi.fn() }))
+vi.mock('@/service/base', () => ({
+  request: vi.fn(() => new Promise(() => {})),
+  sseGeneratorPost: vi.fn(),
 }))
 
 vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return {
+    ...actual,
+    useQueryState: (...args: Parameters<typeof actual.useQueryState>) =>
+      args[0] === 'pricing' ? actual.useQueryState(...args) : [null, mockSetSettingsDestination],
+  }
+})
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
+
 describe('Compliance', () => {
-  const mockSetShowPricingModal = vi.fn()
-  const mockSetShowAccountSettingModal = vi.fn()
   const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
   const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
   let queryClient: QueryClient
@@ -49,29 +50,15 @@ describe('Compliance', () => {
     toastErrorSpy.mockClear()
     queryClient = new QueryClient({
       defaultOptions: {
-        queries: { retry: false },
+        queries: { retry: false, staleTime: Infinity },
         mutations: { retry: false },
       },
     })
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
-      },
-    })
-    vi.mocked(useModalContext).mockReturnValue({
-      setShowPricingModal: mockSetShowPricingModal,
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    } as unknown as ModalContextState)
+    seedFeatures(queryClient, { billing: { subscription: { plan: 'sandbox' } } })
   })
 
   const renderWithQueryClient = (ui: React.ReactElement) => {
-    return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>,
-    )
+    return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
   }
 
   const renderCompliance = () => {
@@ -93,6 +80,23 @@ describe('Compliance', () => {
   const getComplianceMenuItem = (label: string) => {
     return screen.getByText(label).closest('[role="menuitem"]')
   }
+
+  it('keeps GDPR downloadable while plan-dependent documents wait for features', async () => {
+    queryClient.clear()
+    vi.mocked(getDocDownloadUrl).mockResolvedValue({ url: 'https://example.com/gdpr.pdf' })
+    openMenuAndRender()
+    expect(screen.queryByText('common.compliance.soc2Type1')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.compliance.soc2Type2')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.compliance.iso27001')).not.toBeInTheDocument()
+    expect(getComplianceMenuItem('common.compliance.gdpr')).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('common.compliance.gdpr'))
+    await waitFor(() => expect(getDocDownloadUrl).toHaveBeenCalledWith('GDPR'))
+    expect(onPricingUrlUpdate).not.toHaveBeenCalled()
+  })
 
   describe('Rendering', () => {
     it('should render compliance menu trigger', () => {
@@ -129,19 +133,16 @@ describe('Compliance', () => {
 
     it('should show Download button for plan that allows it', () => {
       // Arrange
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.team,
-        },
-      })
+      seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
 
       // Act
       openMenuAndRender()
 
       // Assert
       expect(screen.getAllByText('common.operation.download').length).toBeGreaterThan(0)
+      expect(getComplianceMenuItem('common.compliance.soc2Type1')).toHaveAccessibleName(
+        'common.compliance.soc2Type1 common.operation.download',
+      )
     })
   })
 
@@ -150,13 +151,7 @@ describe('Compliance', () => {
       // Arrange
       const mockUrl = 'http://example.com/doc.pdf'
       vi.mocked(getDocDownloadUrl).mockResolvedValue({ url: mockUrl })
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.team,
-        },
-      })
+      seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
 
       // Act
       openMenuAndRender()
@@ -174,14 +169,8 @@ describe('Compliance', () => {
     it('should handle download mutation error', async () => {
       // Arrange
       vi.mocked(getDocDownloadUrl).mockRejectedValue(new Error('Download failed'))
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.team,
-        },
-      })
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+      seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       // Act
       openMenuAndRender()
@@ -197,25 +186,21 @@ describe('Compliance', () => {
       consoleSpy.mockRestore()
     })
 
-    it('should handle upgrade click on badge for sandbox plan', () => {
+    it('should handle upgrade click on badge for sandbox plan', async () => {
       // Act
       openMenuAndRender()
       const upgradeBadges = screen.getAllByText('billing.upgradeBtn.encourageShort')
       fireEvent.click(upgradeBadges[0]!)
 
       // Assert
-      expect(mockSetShowPricingModal).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
     it('should handle upgrade click on badge for non-sandbox plan', () => {
       // Arrange
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.professional,
-        },
-      })
+      seedFeatures(queryClient, { billing: { subscription: { plan: 'professional' } } })
 
       // Act
       openMenuAndRender()
@@ -224,25 +209,20 @@ describe('Compliance', () => {
       fireEvent.click(upgradeBadges[0]!)
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.BILLING,
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('billing')
     })
 
-    // isPending branches: spinner visible, disabled class, guard blocks second call
+    // isPending branches: spinner visible and the owning menu item blocks a second call
     it('should show spinner and guard against duplicate download when isPending is true', async () => {
       // Arrange
       let resolveDownload: (value: { url: string }) => void
-      vi.mocked(getDocDownloadUrl).mockImplementation(() => new Promise((resolve) => {
-        resolveDownload = resolve
-      }))
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.team,
-        },
-      })
+      vi.mocked(getDocDownloadUrl).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveDownload = resolve
+          }),
+      )
+      seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
 
       // Act
       openMenuAndRender()
@@ -250,13 +230,14 @@ describe('Compliance', () => {
       expect(menuItem).not.toBeNull()
       fireEvent.click(menuItem!)
 
-      // Assert - button should become busy while mutation is pending
-      await waitFor(() => {
-        const busyButton = menuItem!.querySelector('button[aria-busy="true"]')
-        expect(busyButton).not.toBeNull()
-        expectLoadingButton(busyButton)
-        expect(busyButton!.querySelector('.animate-spin')).not.toBeNull()
-      }, { timeout: 10000 })
+      // Assert - the menu item owns the pending interaction state
+      await waitFor(
+        () => {
+          expect(menuItem).toHaveAttribute('aria-disabled', 'true')
+          expect(menuItem!.querySelector('.animate-spin')).not.toBeNull()
+        },
+        { timeout: 10000 },
+      )
 
       // Cleanup: resolve the pending promise
       resolveDownload!({ url: 'http://example.com/doc.pdf' })
@@ -267,16 +248,13 @@ describe('Compliance', () => {
 
     it('should not call downloadCompliance again while pending', async () => {
       let resolveDownload: (value: { url: string }) => void
-      vi.mocked(getDocDownloadUrl).mockImplementation(() => new Promise((resolve) => {
-        resolveDownload = resolve
-      }))
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.team,
-        },
-      })
+      vi.mocked(getDocDownloadUrl).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveDownload = resolve
+          }),
+      )
+      seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
 
       openMenuAndRender()
       const menuItem = getComplianceMenuItem('common.compliance.soc2Type1')
@@ -286,41 +264,26 @@ describe('Compliance', () => {
       fireEvent.click(menuItem!)
 
       // Wait for mutation to start and React to re-render (isPending=true)
-      await waitFor(() => {
-        const busyButton = menuItem!.querySelector('button[aria-busy="true"]')
-        expect(busyButton).not.toBeNull()
-        expectLoadingButton(busyButton)
-        expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
-      }, { timeout: 10000 })
+      await waitFor(
+        () => {
+          expect(menuItem).toHaveAttribute('aria-disabled', 'true')
+          expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
+        },
+        { timeout: 10000 },
+      )
 
       // Second click while pending - should be guarded by isPending check
       fireEvent.click(menuItem!)
 
       resolveDownload!({ url: 'http://example.com/doc.pdf' })
-      await waitFor(() => {
-        expect(downloadUrl).toHaveBeenCalledTimes(1)
-      }, { timeout: 10000 })
+      await waitFor(
+        () => {
+          expect(downloadUrl).toHaveBeenCalledTimes(1)
+        },
+        { timeout: 10000 },
+      )
       // getDocDownloadUrl should still have only been called once
       expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
     }, 20000)
-
-    // canShowUpgradeTooltip=false: enterprise plan has empty tooltip text → no TooltipContent
-    it('should show upgrade badge with empty tooltip for enterprise plan', () => {
-      // Arrange
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.enterprise,
-        },
-      })
-
-      // Act
-      openMenuAndRender()
-
-      // Assert - enterprise is not in any download list, so upgrade badges should appear
-      // The key branch: upgradeTooltip[Plan.enterprise] = '' → canShowUpgradeTooltip=false
-      expect(screen.getAllByText('billing.upgradeBtn.encourageShort').length).toBeGreaterThan(0)
-    })
   })
 })

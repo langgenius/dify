@@ -1,12 +1,19 @@
 import type { ModalContextState } from '@/context/modal-context'
-import type { ProviderContextState } from '@/context/provider-context'
 import { toast } from '@langgenius/dify-ui/toast'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Plan } from '@/app/components/billing/type'
+import {
+  act,
+  fireEvent,
+  render as renderWithoutPricing,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import { parseParamsSchema } from '@/service/tools'
 import EditCustomCollectionModal from '../index'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', async () => {
   const actual = await vi.importActual<typeof import('ahooks')>('ahooks')
@@ -21,28 +28,17 @@ vi.mock('@/service/tools', () => ({
 }))
 const parseParamsSchemaMock = vi.mocked(parseParamsSchema)
 
-const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: (): ModalContextState => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
+    hasBlockingModalOpen: false,
     setShowModerationSettingModal: vi.fn(),
     setShowExternalDataToolModal: vi.fn(),
-    setShowPricingModal: mockSetShowPricingModal,
     setShowAnnotationFullModal: vi.fn(),
     setShowModelModal: vi.fn(),
     setShowExternalKnowledgeAPIModal: vi.fn(),
-    setShowModelLoadBalancingModal: vi.fn(),
     setShowOpeningModal: vi.fn(),
     setShowUpdatePluginModal: vi.fn(),
-    setShowEducationExpireNoticeModal: vi.fn(),
-    setShowTriggerEventsLimitModal: vi.fn(),
   }),
-}))
-
-const mockUseProviderContext = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
 }))
 
 vi.mock('@/context/i18n', async () => {
@@ -52,6 +48,11 @@ vi.mock('@/context/i18n', async () => {
     useDocLink: () => (path?: string) => `https://docs.example.com${path ?? ''}`,
   }
 })
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
 
 describe('EditCustomCollectionModal', () => {
   const mockOnHide = vi.fn()
@@ -67,40 +68,45 @@ describe('EditCustomCollectionModal', () => {
       parameters_schema: [],
       schema_type: 'openapi',
     })
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: Plan.sandbox,
-      },
-      enableBilling: false,
-      webappCopyrightEnabled: true,
-    } as ProviderContextState)
   })
 
   const renderModal = (props?: {
     payload?: {
       provider: string
-      credentials: { auth_type: AuthType, api_key_header?: string, api_key_header_prefix?: AuthHeaderPrefix, api_key_value?: string }
+      credentials: {
+        auth_type: AuthType
+        api_key_header?: string
+        api_key_header_prefix?: AuthHeaderPrefix
+        api_key_value?: string
+      }
       schema_type: string
       schema: string
-      icon: { content: string, background: string }
+      icon: { content: string; background: string }
       privacy_policy?: string
       custom_disclaimer?: string
       labels?: string[]
-      tools?: Array<{ operation_id: string, summary: string, method: string, server_url: string, parameters: Array<{ name: string, label: { en_US: string, zh_Hans: string } }> }>
+      tools?: Array<{
+        operation_id: string
+        summary: string
+        method: string
+        server_url: string
+        parameters: Array<{ name: string; label: { en_US: string; zh_Hans: string } }>
+      }>
     }
     positionLeft?: boolean
     dialogClassName?: string
-  }) => render(
-    <EditCustomCollectionModal
-      payload={props?.payload}
-      onHide={mockOnHide}
-      onAdd={mockOnAdd}
-      onEdit={mockOnEdit}
-      onRemove={mockOnRemove}
-      positionLeft={props?.positionLeft}
-      dialogClassName={props?.dialogClassName}
-    />,
-  )
+  }) =>
+    render(
+      <EditCustomCollectionModal
+        payload={props?.payload}
+        onHide={mockOnHide}
+        onAdd={mockOnAdd}
+        onEdit={mockOnEdit}
+        onRemove={mockOnRemove}
+        positionLeft={props?.positionLeft}
+        dialogClassName={props?.dialogClassName}
+      />,
+    )
 
   // Tests for Add mode (no payload)
   describe('Add Mode', () => {
@@ -122,7 +128,9 @@ describe('EditCustomCollectionModal', () => {
       fireEvent.click(screen.getByText('common.operation.save'))
 
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith('common.errorMsg.fieldRequired:{"field":"tools.createTool.name"}')
+        expect(toastNotifySpy).toHaveBeenCalledWith(
+          'common.errorMsg.fieldRequired:{"field":"tools.createTool.name"}',
+        )
       })
       expect(mockOnAdd).not.toHaveBeenCalled()
     })
@@ -136,7 +144,9 @@ describe('EditCustomCollectionModal', () => {
       fireEvent.click(screen.getByText('common.operation.save'))
 
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith('common.errorMsg.fieldRequired:{"field":"tools.createTool.schema"}')
+        expect(toastNotifySpy).toHaveBeenCalledWith(
+          'common.errorMsg.fieldRequired:{"field":"tools.createTool.schema"}',
+        )
       })
       expect(mockOnAdd).not.toHaveBeenCalled()
     })
@@ -162,19 +172,21 @@ describe('EditCustomCollectionModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockOnAdd).toHaveBeenCalledWith(expect.objectContaining({
-          provider: 'provider',
-          schema: '{}',
-          schema_type: 'openapi',
-          icon: {
-            content: '🕵️',
-            background: '#FEF7C3',
-          },
-          credentials: {
-            auth_type: 'none',
-          },
-          labels: [],
-        }))
+        expect(mockOnAdd).toHaveBeenCalledWith(
+          expect.objectContaining({
+            provider: 'provider',
+            schema: '{}',
+            schema_type: 'openapi',
+            icon: {
+              content: '🕵️',
+              background: '#FEF7C3',
+            },
+            credentials: {
+              auth_type: 'none',
+            },
+            labels: [],
+          }),
+        )
         expect(toastNotifySpy).not.toHaveBeenCalled()
       })
     })
@@ -204,16 +216,20 @@ describe('EditCustomCollectionModal', () => {
       privacy_policy: 'https://example.com/privacy',
       custom_disclaimer: 'Use at your own risk',
       labels: ['api', 'tools'],
-      tools: [{
-        operation_id: 'getUsers',
-        summary: 'Get all users',
-        method: 'GET',
-        server_url: 'https://api.example.com/users',
-        parameters: [{
-          name: 'limit',
-          label: { en_US: 'Limit', zh_Hans: '限制' },
-        }],
-      }],
+      tools: [
+        {
+          operation_id: 'getUsers',
+          summary: 'Get all users',
+          method: 'GET',
+          server_url: 'https://api.example.com/users',
+          parameters: [
+            {
+              name: 'limit',
+              label: { en_US: 'Limit', zh_Hans: '限制' },
+            },
+          ],
+        },
+      ],
     }
 
     it('should render edit mode title when payload is provided', () => {
@@ -248,10 +264,12 @@ describe('EditCustomCollectionModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockOnEdit).toHaveBeenCalledWith(expect.objectContaining({
-          provider: 'updated-provider',
-          original_provider: 'existing-provider',
-        }))
+        expect(mockOnEdit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            provider: 'updated-provider',
+            original_provider: 'existing-provider',
+          }),
+        )
       })
     })
 
@@ -295,11 +313,13 @@ describe('EditCustomCollectionModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockOnEdit).toHaveBeenCalledWith(expect.objectContaining({
-          credentials: {
-            auth_type: AuthType.none,
-          },
-        }))
+        expect(mockOnEdit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            credentials: {
+              auth_type: AuthType.none,
+            },
+          }),
+        )
         // These fields should NOT be present
         const callArg = mockOnEdit.mock.calls[0]![0]
         expect(callArg.credentials.api_key_header).toBeUndefined()
@@ -313,13 +333,15 @@ describe('EditCustomCollectionModal', () => {
   describe('Schema Parsing', () => {
     it('should parse schema and update params when schema changes', async () => {
       parseParamsSchemaMock.mockResolvedValueOnce({
-        parameters_schema: [{
-          operation_id: 'newOp',
-          summary: 'New operation',
-          method: 'POST',
-          server_url: 'https://api.example.com/new',
-          parameters: [],
-        }],
+        parameters_schema: [
+          {
+            operation_id: 'newOp',
+            summary: 'New operation',
+            method: 'POST',
+            server_url: 'https://api.example.com/new',
+            parameters: [],
+          },
+        ],
         schema_type: 'swagger',
       })
 
@@ -364,7 +386,7 @@ describe('EditCustomCollectionModal', () => {
       fireEvent.change(schemaInput, { target: { value: '' } })
 
       // Wait a bit and check that parseParamsSchema was not called with empty string
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       expect(parseParamsSchemaMock).not.toHaveBeenCalledWith('')
     })
   })
@@ -413,13 +435,15 @@ describe('EditCustomCollectionModal', () => {
       schema_type: 'openapi',
       schema: '{}',
       icon: { content: '🔧', background: '#FFCC00' },
-      tools: [{
-        operation_id: 'testOp',
-        summary: 'Test operation',
-        method: 'POST',
-        server_url: 'https://api.example.com/test',
-        parameters: [],
-      }],
+      tools: [
+        {
+          operation_id: 'testOp',
+          summary: 'Test operation',
+          method: 'POST',
+          server_url: 'https://api.example.com/test',
+          parameters: [],
+        },
+      ],
     }
 
     it('should render test button in available tools table', () => {
@@ -453,7 +477,9 @@ describe('EditCustomCollectionModal', () => {
     it('should update custom disclaimer input', () => {
       renderModal()
 
-      const disclaimerInput = screen.getByPlaceholderText('tools.createTool.customDisclaimerPlaceholder')
+      const disclaimerInput = screen.getByPlaceholderText(
+        'tools.createTool.customDisclaimerPlaceholder',
+      )
       fireEvent.change(disclaimerInput, { target: { value: 'Custom disclaimer text' } })
 
       expect(disclaimerInput)!.toHaveValue('Custom disclaimer text')
@@ -471,7 +497,9 @@ describe('EditCustomCollectionModal', () => {
       const privacyInput = screen.getByPlaceholderText('tools.createTool.privacyPolicyPlaceholder')
       fireEvent.change(privacyInput, { target: { value: 'https://privacy.example.com' } })
 
-      const disclaimerInput = screen.getByPlaceholderText('tools.createTool.customDisclaimerPlaceholder')
+      const disclaimerInput = screen.getByPlaceholderText(
+        'tools.createTool.customDisclaimerPlaceholder',
+      )
       fireEvent.change(disclaimerInput, { target: { value: 'My disclaimer' } })
 
       await waitFor(() => {
@@ -483,10 +511,12 @@ describe('EditCustomCollectionModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockOnAdd).toHaveBeenCalledWith(expect.objectContaining({
-          privacy_policy: 'https://privacy.example.com',
-          custom_disclaimer: 'My disclaimer',
-        }))
+        expect(mockOnAdd).toHaveBeenCalledWith(
+          expect.objectContaining({
+            privacy_policy: 'https://privacy.example.com',
+            custom_disclaimer: 'My disclaimer',
+          }),
+        )
       })
     })
   })
@@ -514,13 +544,15 @@ describe('EditCustomCollectionModal', () => {
       schema_type: 'openapi',
       schema: '{}',
       icon: { content: '🔧', background: '#FFCC00' },
-      tools: [{
-        operation_id: 'testOp',
-        summary: 'Test',
-        method: 'GET',
-        server_url: serverUrl,
-        parameters: [],
-      }],
+      tools: [
+        {
+          operation_id: 'testOp',
+          summary: 'Test',
+          method: 'GET',
+          server_url: serverUrl,
+          parameters: [],
+        },
+      ],
     })
 
     it('should extract path from full URL', () => {
@@ -538,8 +570,6 @@ describe('EditCustomCollectionModal', () => {
     it('should handle empty URL', () => {
       renderModal({ payload: payloadWithVariousUrls('') })
 
-      // Should not crash and show the row
-      // Should not crash and show the row
       expect(screen.getByText('testOp'))!.toBeInTheDocument()
     })
 

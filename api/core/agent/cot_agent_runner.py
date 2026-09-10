@@ -4,12 +4,16 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, TypedDict
 
+from sqlalchemy.orm import Session
+
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.model_context import use_credit_usage_metadata
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.__base.tool import Tool
@@ -46,6 +50,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
     def run(
         self,
+        session: Session,
         message: Message,
         query: str,
         inputs: Mapping[str, str],
@@ -111,7 +116,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             message_file_ids: list[str] = []
 
             agent_thought_id = self.create_agent_thought(
-                message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
+                message_id=message.id,
+                message="",
+                tool_name="",
+                tool_input="",
+                messages_ids=message_file_ids,
             )
 
             if iteration_step > 1:
@@ -122,7 +131,18 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             # recalc llm max tokens
             prompt_messages = self._organize_prompt_messages()
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
+
+            # Release any setup/tool transaction before waiting on the provider stream.
+            session.commit()
+            session.close()
+
             # invoke model
+            request_metadata: dict[str, object] = {
+                "app_id": self.app_config.app_id,
+                "app_type": CreditUsageAppType.AGENT,
+                "created_by": CreditUsageCreatedBy.APP,
+            }
+
             chunks = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
@@ -130,6 +150,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 stop=app_generate_entity.model_conf.stop,
                 stream=True,
                 callbacks=[],
+                request_metadata=request_metadata,
             )
 
             usage_dict: dict[str, LLMUsage | None] = {}
@@ -221,6 +242,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     function_call_state = True
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
+                        session=session,
                         action=scratchpad.action,
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids,
@@ -287,6 +309,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
     def _handle_invoke_action(
         self,
+        session: Session,
         action: AgentScratchpadUnit.Action,
         tool_instances: Mapping[str, Tool],
         message_file_ids: list[str],
@@ -316,16 +339,20 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 pass
 
         # invoke tool
-        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
-            tool=tool_instance,
-            tool_parameters=tool_call_args,
-            user_id=self.user_id,
-            tenant_id=self.tenant_id,
-            message=self.message,
-            invoke_from=self.application_generate_entity.invoke_from,
-            agent_tool_callback=self.agent_callback,
-            trace_manager=trace_manager,
-        )
+        with use_credit_usage_metadata({"app_type": CreditUsageAppType.AGENT}):
+            tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                session=session,
+                tool=tool_instance,
+                tool_parameters=tool_call_args,
+                user_id=self.user_id,
+                tenant_id=self.tenant_id,
+                message=self.message,
+                invoke_from=self.application_generate_entity.invoke_from,
+                agent_tool_callback=self.agent_callback,
+                trace_manager=trace_manager,
+            )
+        session.commit()
+        session.close()
 
         # publish files
         for message_file_id in message_files:

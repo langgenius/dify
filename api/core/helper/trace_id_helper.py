@@ -61,7 +61,7 @@ def get_external_trace_id(request: Any) -> str | None:
     return None
 
 
-def extract_external_trace_id_from_args(args: Mapping[str, Any]):
+def extract_external_trace_id_from_args(args: Mapping[str, Any]) -> dict[str, Any]:
     """
     Extract 'external_trace_id' from args.
 
@@ -144,15 +144,16 @@ def extract_parent_trace_context_from_args(args: Mapping[str, Any]) -> dict[str,
     Returns an empty dict if the context is missing or incomplete.
     """
     parent_trace_context = args.get("parent_trace_context")
-    if isinstance(parent_trace_context, ParentTraceContext):
-        context = parent_trace_context
-    elif isinstance(parent_trace_context, Mapping):
-        try:
-            context = ParentTraceContext.model_validate(parent_trace_context)
-        except ValidationError:
+    match parent_trace_context:
+        case ParentTraceContext():
+            context = parent_trace_context
+        case Mapping():
+            try:
+                context = ParentTraceContext.model_validate(parent_trace_context)
+            except ValidationError:
+                return {}
+        case _:
             return {}
-    else:
-        return {}
 
     if context.parent_node_execution_id is None:
         return {}

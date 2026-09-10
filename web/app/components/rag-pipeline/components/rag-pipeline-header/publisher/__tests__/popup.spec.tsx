@@ -1,32 +1,21 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
+import { Popup } from '../popup'
 
-import Popup from '../popup'
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
-vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({ children, open, onOpenChange }: { children: React.ReactNode, open?: boolean, onOpenChange?: (open: boolean) => void }) => (
-    open
-      ? (
-          <div role="alertdialog">
-            {children}
-            <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
-              Close
-            </button>
-          </div>
-        )
-      : null
-  ),
-  AlertDialogActions: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children?: React.ReactNode }) => <button>{children}</button>,
-  AlertDialogConfirmButton: ({ children, onClick, disabled }: {
-    children?: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-  }) => <button onClick={onClick} disabled={disabled}>{children}</button>,
-  AlertDialogContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-}))
+let mockIsAllowPublishAsCustom = true
+
+const renderWithoutPricing = (ui: React.ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { knowledge_pipeline: { publish_enabled: mockIsAllowPublishAsCustom } },
+  })
+  return renderWithConsoleState(ui, { wrapper })
+}
 
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
 const mockPublishAsCustomizedPipeline = vi.fn().mockResolvedValue({})
@@ -39,20 +28,27 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
   }),
 }))
-const mockPush = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockSetPublishedAt = vi.fn()
 const mockMutateDatasetRes = vi.fn()
-const mockSetShowPricingModal = vi.fn()
+
 const mockInvalidPublishedPipelineInfo = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidCustomizedTemplateList = vi.fn()
@@ -60,17 +56,18 @@ const mockInvalidCustomizedTemplateList = vi.fn()
 let mockPublishedAt: string | undefined = '2024-01-01T00:00:00Z'
 let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
-let mockIsAllowPublishAsCustom = true
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockDatasetMaintainer: string | undefined
+let mockCurrentUserId = 'user-1'
+let mockIsLoadingWorkspacePermissionKeys = false
+let mockWorkspacePermissionKeys: string[] = []
 const mockUseBoolean = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
-  useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
 
 vi.mock('ahooks', () => ({
@@ -101,19 +98,6 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
-    <button
-      onClick={onClick as () => void}
-      disabled={disabled as boolean}
-      data-variant={variant as string}
-      className={className as string}
-    >
-      {children as React.ReactNode}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/base/divider', () => ({
   default: () => <hr />,
 }))
@@ -127,30 +111,46 @@ vi.mock('@/app/components/base/icons/src/public/common', () => ({
 }))
 
 vi.mock('@/app/components/base/premium-badge', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <span data-testid="premium-badge">{children}</span>,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <span data-testid="premium-badge">{children}</span>
+  ),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_API_PREFIX: '/marketplace/api',
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
   }),
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: () => mockMutateDatasetRes,
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      dataset: {
+        permission_keys: mockDatasetPermissionKeys,
+        maintainer: mockDatasetMaintainer,
+      },
+      mutateDatasetRes: mockMutateDatasetRes,
+    }),
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => 'https://docs.dify.ai',
-}))
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: <T,>(selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T) =>
-    selector({ setShowPricingModal: mockSetShowPricingModal }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: () => mockIsAllowPublishAsCustom,
 }))
 
 vi.mock('@/hooks/use-api-access-url', () => ({
@@ -190,12 +190,23 @@ vi.mock('@langgenius/dify-ui/cn', () => ({
 }))
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
-  default: ({ onConfirm, onCancel }: { onConfirm: (name: string, icon: unknown, desc: string) => void, onCancel: () => void }) => (
+  default: ({
+    onConfirm,
+    onCancel,
+  }: {
+    onConfirm: (name: string, icon: unknown, desc: string) => void
+    onCancel: () => void
+  }) => (
     <div data-testid="publish-as-modal">
-      <button data-testid="publish-as-confirm" onClick={() => onConfirm('My Pipeline', { icon_type: 'emoji' }, 'desc')}>
+      <button
+        data-testid="publish-as-confirm"
+        onClick={() => onConfirm('My Pipeline', { icon_type: 'emoji' }, 'desc')}
+      >
         Confirm
       </button>
-      <button data-testid="publish-as-cancel" onClick={onCancel}>Cancel</button>
+      <button data-testid="publish-as-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
@@ -207,6 +218,11 @@ vi.mock('@remixicon/react', () => ({
   RiTerminalBoxLine: () => <span />,
 }))
 
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
+
 describe('Popup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -214,10 +230,18 @@ describe('Popup', () => {
     mockDraftUpdatedAt = '2024-06-01T00:00:00Z'
     mockPipelineId = 'pipeline-123'
     mockIsAllowPublishAsCustom = true
-    mockUseBoolean.mockImplementation((initial: boolean) => [initial, {
-      setFalse: vi.fn(),
-      setTrue: vi.fn(),
-    }])
+    mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockDatasetMaintainer = undefined
+    mockCurrentUserId = 'user-1'
+    mockIsLoadingWorkspacePermissionKeys = false
+    mockWorkspacePermissionKeys = []
+    mockUseBoolean.mockImplementation((initial: boolean) => [
+      initial,
+      {
+        setFalse: vi.fn(),
+        setTrue: vi.fn(),
+      },
+    ])
   })
 
   afterEach(() => {
@@ -247,22 +271,11 @@ describe('Popup', () => {
       expect(container.querySelectorAll('kbd')).toHaveLength(3)
     })
 
-    it('should render "Go to Add Documents" button', () => {
-      render(<Popup />)
-
-      expect(screen.getByText('pipeline.common.goToAddDocuments')).toBeInTheDocument()
-    })
-
-    it('should render "API Reference" button', () => {
-      render(<Popup />)
-
-      expect(screen.getByText('workflow.common.accessAPIReference')).toBeInTheDocument()
-    })
-
     it('should render "Publish As" button', () => {
-      render(<Popup />)
+      const { container } = render(<Popup />)
 
       expect(screen.getByText('pipeline.common.publishAs')).toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
     })
   })
 
@@ -283,18 +296,35 @@ describe('Popup', () => {
   })
 
   describe('Navigation', () => {
-    it('should navigate to add documents page', () => {
+    it('should link to the add documents page', () => {
       render(<Popup />)
 
-      fireEvent.click(screen.getByText('pipeline.common.goToAddDocuments'))
+      expect(
+        screen.getByRole('link', { name: 'pipeline.common.goToAddDocuments' }),
+      ).toHaveAttribute('href', '/datasets/ds-123/documents/create-from-pipeline')
+    })
 
-      expect(mockPush).toHaveBeenCalledWith('/datasets/ds-123/documents/create-from-pipeline')
+    it('should open the API reference safely in a new tab', () => {
+      render(<Popup />)
+
+      const link = screen.getByRole('link', { name: 'workflow.common.accessAPIReference' })
+      expect(link).toHaveAttribute('href', '/api/datasets/ds-123')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })
   })
 
   describe('Button disable states', () => {
     it('should disable add documents button when not published', () => {
       mockPublishedAt = undefined
+      render(<Popup />)
+
+      const btn = screen.getByText('pipeline.common.goToAddDocuments').closest('button')
+      expect(btn).toBeDisabled()
+    })
+
+    it('should disable add documents button when dataset cannot add documents', () => {
+      mockDatasetPermissionKeys = ['dataset.acl.edit']
       render(<Popup />)
 
       const btn = screen.getByText('pipeline.common.goToAddDocuments').closest('button')
@@ -311,7 +341,7 @@ describe('Popup', () => {
   })
 
   describe('Publish As Knowledge Pipeline', () => {
-    it('should show pricing modal when not allowed', () => {
+    it('should show pricing modal when not allowed', async () => {
       mockIsAllowPublishAsCustom = false
       const onRequestClose = vi.fn()
       render(<Popup onRequestClose={onRequestClose} />)
@@ -319,7 +349,9 @@ describe('Popup', () => {
       fireEvent.click(screen.getByText('pipeline.common.publishAs'))
 
       expect(onRequestClose).toHaveBeenCalledTimes(1)
-      expect(mockSetShowPricingModal).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
     it('should request closing the outer popover before opening publish-as modal', () => {
@@ -344,13 +376,22 @@ describe('Popup', () => {
       const hideConfirm = vi.fn()
       mockUseBoolean
         .mockImplementationOnce(() => [true, { setFalse: hideConfirm, setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
+        .mockImplementationOnce((initial: boolean) => [
+          initial,
+          { setFalse: vi.fn(), setTrue: vi.fn() },
+        ])
+        .mockImplementationOnce((initial: boolean) => [
+          initial,
+          { setFalse: vi.fn(), setTrue: vi.fn() },
+        ])
+        .mockImplementationOnce((initial: boolean) => [
+          initial,
+          { setFalse: vi.fn(), setTrue: vi.fn() },
+        ])
 
       render(<Popup />)
 
-      fireEvent.click(screen.getByTestId('alert-dialog-close'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       expect(hideConfirm).toHaveBeenCalledTimes(1)
     })

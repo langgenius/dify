@@ -33,7 +33,7 @@ Flag:
 - Generic color utilities where Dify semantic tokens exist.
 - Hardcoded magic class values for colors, spacing, radius, shadow, z-index, or typography when Dify tokens, component variants, or documented radius mappings exist.
 - `!` important modifiers or important CSS overrides without a narrow, documented reason.
-- Manual string concatenation, template strings, array `.join(' ')`, or custom ternaries for conditional or multi-line classes.
+- Manual class-list assembly through string concatenation, template strings, array `.join(' ')`, or a custom conditional combiner instead of `cn(...)`. Conditional values passed to `cn(...)` remain valid.
 - JS conditional class branches for primitive visual states already exposed by Dify UI/Base UI `data-*` selectors.
 - Incoming `className` placed before default classes in `cn(...)`, preventing call-site overrides.
 - Arbitrary z-index or one-off layering fixes on overlays.

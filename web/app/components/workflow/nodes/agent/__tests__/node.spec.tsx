@@ -18,13 +18,20 @@ vi.mock('../use-config', () => ({
 }))
 
 vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (value: string | { en_US?: string }) => typeof value === 'string' ? value : value.en_US || '',
+  useRenderI18nObject: () => (value: string | { en_US?: string }) =>
+    typeof value === 'string' ? value : value.en_US || '',
 }))
 
 vi.mock('../components/model-bar', () => ({
-  ModelBar: (props: { provider?: string, model?: string, param: string }) => {
+  ModelBar: (props: { provider?: string; model?: string; param: string }) => {
     mockModelBar(props)
-    return <div>{props.provider ? `${props.param}:${props.provider}/${props.model}` : `${props.param}:empty-model`}</div>
+    return (
+      <div>
+        {props.provider
+          ? `${props.param}:${props.provider}/${props.model}`
+          : `${props.param}:empty-model`}
+      </div>
+    )
   },
 }))
 
@@ -36,13 +43,15 @@ vi.mock('../components/tool-icon', () => ({
 }))
 
 vi.mock('../../_base/components/group', () => ({
-  Group: ({ label, children }: { label: ReactNode, children: ReactNode }) => (
+  Group: ({ label, children }: { label: ReactNode; children: ReactNode }) => (
     <div>
       <div>{label}</div>
       {children}
     </div>
   ),
-  GroupLabel: ({ className, children }: { className?: string, children: ReactNode }) => <div className={className}>{children}</div>,
+  GroupLabel: ({ className, children }: { className?: string; children: ReactNode }) => (
+    <div className={className}>{children}</div>
+  ),
 }))
 
 vi.mock('../../_base/components/setting-item', () => ({
@@ -99,16 +108,15 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
     },
     multiToolParam: {
       type: VarType.constant,
-      value: [
-        { provider_name: 'author/tool-b' },
-        { provider_name: 'author/tool-c' },
-      ],
+      value: [{ provider_name: 'author/tool-b' }, { provider_name: 'author/tool-c' }],
     },
   },
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   setInputs: vi.fn(),
@@ -150,11 +158,11 @@ const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {
     isExistInPlugin: false,
   },
   strategyProvider: undefined,
-  pluginDetail: ({
+  pluginDetail: {
     declaration: {
       label: { en_US: 'Plugin Marketplace' } as never,
     },
-  } as never),
+  } as never,
   availableVars: [],
   availableNodesWithParent: [],
   outputSchema: [],
@@ -170,21 +178,18 @@ describe('agent/node', () => {
   })
 
   it('renders the not-set state when no strategy is configured', () => {
-    mockUseConfig.mockReturnValue(createConfigResult({
-      inputs: createData({
-        agent_strategy_name: undefined,
-        agent_strategy_label: undefined,
-        agent_parameters: {},
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        inputs: createData({
+          agent_strategy_name: undefined,
+          agent_strategy_label: undefined,
+          agent_parameters: {},
+        }),
+        currentStrategy: undefined,
       }),
-      currentStrategy: undefined,
-    }))
-
-    render(
-      <Node
-        id="agent-node"
-        data={createData()}
-      />,
     )
+
+    render(<Node id="agent-node" data={createData()} />)
 
     expect(screen.getByText('workflow.nodes.agent.strategyNotSet:normal:')).toBeInTheDocument()
     expect(mockModelBar).not.toHaveBeenCalled()
@@ -192,15 +197,14 @@ describe('agent/node', () => {
   })
 
   it('renders strategy status, required and selected model bars, and tool icons', () => {
-    render(
-      <Node
-        id="agent-node"
-        data={createData()}
-      />,
-    )
+    render(<Node id="agent-node" data={createData()} />)
 
-    expect(screen.getByText(/workflow.nodes.agent.strategy.shortLabel:error:/)).toHaveTextContent('React Agent')
-    expect(screen.getByText(/workflow.nodes.agent.strategy.shortLabel:error:/)).toHaveTextContent('Plugin Marketplace')
+    expect(screen.getByText(/workflow.nodes.agent.strategy.shortLabel:error:/)).toHaveTextContent(
+      'React Agent',
+    )
+    expect(screen.getByText(/workflow.nodes.agent.strategy.shortLabel:error:/)).toHaveTextContent(
+      'Plugin Marketplace',
+    )
     expect(screen.getByText('requiredModel:empty-model')).toBeInTheDocument()
     expect(screen.getByText('optionalModel:openai/gpt-4o')).toBeInTheDocument()
     expect(screen.getByText('tool:author/tool-a')).toBeInTheDocument()
@@ -211,36 +215,33 @@ describe('agent/node', () => {
   })
 
   it('skips optional models and empty tool values when no configuration is provided', () => {
-    mockUseConfig.mockReturnValue(createConfigResult({
-      inputs: createData({
-        agent_parameters: {},
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        inputs: createData({
+          agent_parameters: {},
+        }),
+        currentStrategy: {
+          ...createConfigResult().currentStrategy!,
+          parameters: [
+            createStrategyParam({
+              name: 'optionalModel',
+              required: false,
+            }),
+            createStrategyParam({
+              name: 'toolParam',
+              type: FormTypeEnum.toolSelector,
+              required: false,
+            }),
+          ],
+        },
+        currentStrategyStatus: {
+          plugin: { source: 'marketplace', installed: true },
+          isExistInPlugin: true,
+        },
       }),
-      currentStrategy: {
-        ...createConfigResult().currentStrategy!,
-        parameters: [
-          createStrategyParam({
-            name: 'optionalModel',
-            required: false,
-          }),
-          createStrategyParam({
-            name: 'toolParam',
-            type: FormTypeEnum.toolSelector,
-            required: false,
-          }),
-        ],
-      },
-      currentStrategyStatus: {
-        plugin: { source: 'marketplace', installed: true },
-        isExistInPlugin: true,
-      },
-    }))
-
-    render(
-      <Node
-        id="agent-node"
-        data={createData()}
-      />,
     )
+
+    render(<Node id="agent-node" data={createData()} />)
 
     expect(mockModelBar).not.toHaveBeenCalled()
     expect(mockToolIcon).not.toHaveBeenCalled()

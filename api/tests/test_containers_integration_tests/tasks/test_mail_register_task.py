@@ -5,6 +5,7 @@ This module provides integration tests for email registration tasks
 using TestContainers to ensure real database and service interactions.
 """
 
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -68,7 +69,10 @@ class TestMailRegisterTask:
         mock_mail_dependencies["email_service"].send_email.assert_not_called()
 
     def test_send_email_register_mail_task_exception_handling(
-        self, db_session_with_containers: Session, mock_mail_dependencies
+        self,
+        db_session_with_containers: Session,
+        mock_mail_dependencies,
+        caplog: pytest.LogCaptureFixture,
     ):
         """Test email registration task exception handling."""
         mock_mail_dependencies["email_service"].send_email.side_effect = Exception("Email service error")
@@ -76,10 +80,11 @@ class TestMailRegisterTask:
         fake = Faker()
         to_email = fake.email()
         code = fake.numerify("######")
+        caplog.set_level(logging.ERROR, logger="tasks.mail_register_task")
 
-        with patch("tasks.mail_register_task.logger", autospec=True) as mock_logger:
-            send_email_register_mail_task(language="en-US", to=to_email, code=code)
-            mock_logger.exception.assert_called_once_with("Send email register mail to %s failed", to_email)
+        send_email_register_mail_task(language="en-US", to=to_email, code=code)
+
+        assert caplog.messages.count(f"Send email register mail to {to_email} failed") == 1
 
     def test_send_email_register_mail_task_when_account_exist_success(
         self, db_session_with_containers: Session, mock_mail_dependencies
@@ -121,7 +126,10 @@ class TestMailRegisterTask:
         mock_mail_dependencies["email_service"].send_email.assert_not_called()
 
     def test_send_email_register_mail_task_when_account_exist_exception_handling(
-        self, db_session_with_containers: Session, mock_mail_dependencies
+        self,
+        db_session_with_containers: Session,
+        mock_mail_dependencies,
+        caplog: pytest.LogCaptureFixture,
     ):
         """Test account exist email task exception handling."""
         mock_mail_dependencies["email_service"].send_email.side_effect = Exception("Email service error")
@@ -129,7 +137,8 @@ class TestMailRegisterTask:
         fake = Faker()
         to_email = fake.email()
         account_name = fake.name()
+        caplog.set_level(logging.ERROR, logger="tasks.mail_register_task")
 
-        with patch("tasks.mail_register_task.logger", autospec=True) as mock_logger:
-            send_email_register_mail_task_when_account_exist(language="en-US", to=to_email, account_name=account_name)
-            mock_logger.exception.assert_called_once_with("Send email register mail to %s failed", to_email)
+        send_email_register_mail_task_when_account_exist(language="en-US", to=to_email, account_name=account_name)
+
+        assert caplog.messages.count(f"Send email register mail to {to_email} failed") == 1

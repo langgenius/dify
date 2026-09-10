@@ -33,26 +33,26 @@ export class AppDslClient {
   }
 
   async exportDsl(appId: string, query?: ExportQuery): Promise<string> {
-    const resp = await this.orpc.apps.byAppId.export.get({
+    const resp = await this.orpc.apps.byAppId.dsl.get({
       params: { app_id: appId },
-      query: query !== undefined
-        ? {
-            include_secret: query.includeSecret,
-            workflow_id: query.workflowId,
-          }
-        : undefined,
+      query:
+        query !== undefined
+          ? {
+              include_secret: query.includeSecret,
+              workflow_id: query.workflowId,
+            }
+          : undefined,
     })
     // The response schema is an open object {"data": "<yaml string>"}; the
     // contract generator marks it as loose because the backend annotation
     // does not narrow the shape. Extract `data` directly.
     const data = (resp as Record<string, unknown>).data
-    if (typeof data !== 'string')
-      throw new Error('export response missing data field')
+    if (typeof data !== 'string') throw new Error('export response missing data field')
     return data
   }
 
   async checkDependencies(appId: string): Promise<CheckDependenciesResult> {
-    return this.orpc.apps.byAppId.checkDependencies.get({
+    return this.orpc.apps.byAppId.dependencies.check.get({
       params: { app_id: appId },
     })
   }

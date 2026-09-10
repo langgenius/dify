@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
@@ -22,6 +22,7 @@ from tasks.document_indexing_task import (
     normal_document_indexing_task,
     priority_document_indexing_task,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class _TrackedSessionContext:
@@ -89,7 +90,6 @@ def patched_external_dependencies():
     ):
         mock_runner_instance = mock_indexing_runner.return_value
         mock_features = MagicMock()
-        mock_features.billing.enabled = False
         mock_features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         mock_features.vector_space.limit = 100
         mock_features.vector_space.size = 0
@@ -213,6 +213,10 @@ class TestDatasetIndexingTaskIntegration:
         assert len(opened) >= 2
         assert opened_ids <= closed_ids
 
+    def _runner_documents_arg(self, patched_external_dependencies) -> Sequence[Document]:
+        """Return the document batch passed to the runner."""
+        return patched_external_dependencies["indexing_runner_instance"].run.call_args.args[0]
+
     def test_legacy_document_indexing_task_still_works(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
@@ -241,10 +245,11 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == len(document_ids)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_batch_processing_with_limit_check(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
@@ -256,7 +261,6 @@ class TestDatasetIndexingTaskIntegration:
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
-        features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = 100
         features.vector_space.size = 50
@@ -269,6 +273,7 @@ class TestDatasetIndexingTaskIntegration:
         patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
         self._assert_documents_error_contains(db_session_with_containers, document_ids, "batch upload limit")
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_batch_processing_sandbox_plan_single_document_only(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
@@ -277,7 +282,6 @@ class TestDatasetIndexingTaskIntegration:
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
-        features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.SANDBOX
 
         # Act
@@ -298,7 +302,8 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, [])
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once_with([])
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert self._runner_documents_arg(patched_external_dependencies) == []
 
     def test_tenant_queue_dispatches_next_task_after_completion(
         self, db_session_with_containers: Session, patched_external_dependencies
@@ -370,6 +375,7 @@ class TestDatasetIndexingTaskIntegration:
         task_dispatch_spy.apply_async.assert_not_called()
         delete_key_spy.assert_called_once()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_validation_failure_sets_error_status_when_vector_space_at_limit(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
@@ -378,7 +384,6 @@ class TestDatasetIndexingTaskIntegration:
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
-        features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = 100
         features.vector_space.size = 100
@@ -512,7 +517,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, mixed_ids)
 
         # Assert
-        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == 2
         self._assert_documents_parsing(db_session_with_containers, existing_ids)
 
@@ -585,6 +590,7 @@ class TestDatasetIndexingTaskIntegration:
             call_kwargs = task_dispatch_spy.apply_async.call_args_list[index].kwargs.get("kwargs", {})
             assert call_kwargs.get("document_ids") == expected_task["document_ids"]
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_billing_disabled_skips_limit_checks(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
@@ -596,13 +602,12 @@ class TestDatasetIndexingTaskIntegration:
             document_ids=large_document_ids,
         )
         features = patched_external_dependencies["features"]
-        features.billing.enabled = False
 
         # Act
         _document_indexing(dataset.id, large_document_ids)
 
         # Assert
-        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == 100
         self._assert_documents_parsing(db_session_with_containers, large_document_ids)
 
@@ -662,7 +667,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, [document_id])
 
         # Assert
-        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == 1
         self._assert_documents_parsing(db_session_with_containers, [document_id])
 
@@ -683,6 +688,7 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         self._assert_documents_parsing(db_session_with_containers, [special_document_id])
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_zero_vector_space_limit_allows_unlimited(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
@@ -691,7 +697,6 @@ class TestDatasetIndexingTaskIntegration:
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
-        features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = 0
         features.vector_space.size = 1000
@@ -703,6 +708,7 @@ class TestDatasetIndexingTaskIntegration:
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_negative_vector_space_values_handled_gracefully(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
@@ -711,7 +717,6 @@ class TestDatasetIndexingTaskIntegration:
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
-        features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = -1
         features.vector_space.size = 100
@@ -723,6 +728,7 @@ class TestDatasetIndexingTaskIntegration:
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_large_document_batch_processing(self, db_session_with_containers: Session, patched_external_dependencies):
         """Process a batch exactly at configured upload limit.
 
@@ -736,7 +742,6 @@ class TestDatasetIndexingTaskIntegration:
             document_ids=document_ids,
         )
         features = patched_external_dependencies["features"]
-        features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = 10000
         features.vector_space.size = 0
@@ -746,6 +751,6 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing(dataset.id, document_ids)
 
         # Assert
-        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == batch_limit
         self._assert_documents_parsing(db_session_with_containers, document_ids)

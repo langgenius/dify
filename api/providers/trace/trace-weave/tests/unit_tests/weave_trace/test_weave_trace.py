@@ -251,6 +251,16 @@ class TestInit:
         )
         assert instance.host == "https://my.wandb.host"
 
+    def test_init_with_host_path(self, mock_wandb, mock_weave):
+        """A self-hosted host keeps its path prefix all the way to wandb.login."""
+        config = _make_weave_config(host="https://wandb.internal/api")
+        instance = WeaveDataTrace(config)
+
+        mock_wandb.login.assert_called_once_with(
+            key="wv-api-key", verify=True, relogin=True, host="https://wandb.internal/api"
+        )
+        assert instance.host == "https://wandb.internal/api"
+
     def test_init_without_entity(self, mock_wandb, mock_weave):
         """Test __init__ initializes weave without entity prefix when entity is None."""
         mock_w, weave_client = mock_weave
@@ -307,13 +317,12 @@ class TestGetProjectUrl:
         monkeypatch.setattr(trace_instance, "entity", None)
         monkeypatch.setattr(trace_instance, "project_name", None)
         # Force an error by making string formatting fail
-        with patch("dify_trace_weave.weave_trace.logger") as mock_logger:
-            # Simulate exception via property
-            original_entity = trace_instance.entity
-            trace_instance.entity = None
-            trace_instance.project_name = None
-            url = trace_instance.get_project_url()
-            assert "https://wandb.ai/" in url
+        # Simulate exception via property
+        original_entity = trace_instance.entity
+        trace_instance.entity = None
+        trace_instance.project_name = None
+        url = trace_instance.get_project_url()
+        assert "https://wandb.ai/" in url
 
 
 # ── TestTraceDispatcher ─────────────────────────────────────────────────────

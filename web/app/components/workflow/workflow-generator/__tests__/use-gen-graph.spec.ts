@@ -14,6 +14,24 @@ const makeVersion = (marker: string): GenerateWorkflowResponse => ({
 describe('useGenGraph', () => {
   beforeEach(() => {
     sessionStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  it('should handle undefined versions and index gracefully (e.g. during hydration or bad storage)', () => {
+    // If sessionStorage contains the literal string "null", ahooks returns null
+    sessionStorage.setItem('workflow-gen-workflow-test-versions', 'null')
+    sessionStorage.setItem('workflow-gen-workflow-test-version-index', 'null')
+
+    const { result } = renderHook(() => useGenGraph({ storageKey: 'workflow-test' }))
+
+    expect(result.current.currentVersionIndex).toBe(0)
+    expect(result.current.current).toBeUndefined()
+
+    act(() => {
+      result.current.addVersion(makeVersion('v1'))
+    })
+
+    expect(result.current.versions).toHaveLength(1)
   })
 
   describe('addVersion', () => {

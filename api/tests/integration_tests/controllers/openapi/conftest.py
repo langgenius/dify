@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from flask import Flask
 
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import Account, App, OAuthAccessToken, Tenant, TenantAccountJoin
@@ -21,12 +22,12 @@ def _sha256(token: str) -> str:
 
 
 @pytest.fixture(autouse=True)
-def disable_enterprise(monkeypatch):
+def disable_enterprise(monkeypatch: pytest.MonkeyPatch):
     """Default to CE behaviour for /openapi/v1 tests. Tests that exercise the
     EE branch override this with their own monkeypatch in-test."""
     from configs import dify_config
 
-    monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", False)
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
 
 @pytest.fixture

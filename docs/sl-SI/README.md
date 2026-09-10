@@ -85,7 +85,7 @@ Po zagonu lahko dostopate do nadzorne plošče Dify v brskalniku na [http://loca
 
 #### Iskanje pomoči
 
-Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) če naletite na težave pri nastavitvi Dify. Če imate še vedno težave, se obrnite na [skupnost ali nas](#community--contact).
+Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) če naletite na težave pri nastavitvi Dify. Če imate še vedno težave, se obrnite na [skupnost ali nas](#skupnost-in-stik).
 
 > Če želite prispevati k Difyju ali narediti dodaten razvoj, glejte naš vodnik za [uvajanje iz izvorne kode](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
 
@@ -120,91 +120,44 @@ AVse ponudbe Difyja so opremljene z ustreznimi API-ji, tako da lahko Dify brez t
   Gostimo storitev Dify Cloud za vsakogar, ki jo lahko preizkusite brez nastavitev. Zagotavlja vse zmožnosti različice za samostojno namestitev in vključuje 200 brezplačnih klicev GPT-4 v načrtu peskovnika.
 
 - **Self-hosting Dify Community Edition</br>**
-  Hitro zaženite Dify v svojem okolju s tem [začetnim vodnikom](#quick-start) . Za dodatne reference in podrobnejša navodila uporabite našo [dokumentacijo](https://docs.dify.ai) .
+  Hitro zaženite Dify v svojem okolju s tem [začetnim vodnikom](#hitri-začetek) . Za dodatne reference in podrobnejša navodila uporabite našo [dokumentacijo](https://docs.dify.ai) .
 
 - **Dify za podjetja/organizacije</br>**
   Ponujamo dodatne funkcije, osredotočene na podjetja. Zabeležite svoja vprašanja prek tega klepetalnega robota ali nam pošljite e-pošto, da se pogovorimo o potrebah podjetja. </br>
-
-  > Za novoustanovljena podjetja in mala podjetja, ki uporabljajo AWS, si oglejte Dify Premium na AWS Marketplace in ga z enim klikom uvedite v svoj AWS VPC. To je cenovno ugodna ponudba AMI z možnostjo ustvarjanja aplikacij z logotipom in blagovno znamko po meri.
 
 ## Staying ahead
 
 Star Dify on GitHub and be instantly notified of new releases.
 
-![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
+<img width="1344" height="720" alt="star" src="https://github.com/user-attachments/assets/dcd086d1-af0f-471b-ae52-1ad2fa040595" />
 
 ## Napredne nastavitve
 
-Če morate prilagoditi konfiguracijo, si oglejte komentarje v naši datoteki .env.example in posodobite ustrezne vrednosti v svoji .env datoteki. Poleg tega boste morda morali prilagoditi docker-compose.yamlsamo datoteko, na primer spremeniti različice slike, preslikave vrat ali namestitve nosilca, glede na vaše specifično okolje in zahteve za uvajanje. Po kakršnih koli spremembah ponovno zaženite docker-compose up -d. Celoten seznam razpoložljivih spremenljivk okolja najdete tukaj .
+Za možnosti konfiguracije po meri, opazovanja in namestitve glejte [Napredne nastavitve](ADVANCED_SETUP.md).
 
-### Spremljanje metrik z Grafana
+## Prispevanje
 
-Uvoz nadzorne plošče v Grafana, z uporabo Difyjeve PostgreSQL baze podatkov kot vir podatkov, za spremljanje metrike glede na podrobnost aplikacij, najemnikov, sporočil in drugega.
+Dify pozdravlja vse vrste prispevkov:
 
-- [Nadzorna plošča Grafana avtorja @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
+- **Koda**: preberite [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md), nato pa preglejte [naloge za nove sodelavce](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **Ideje in povratne informacije**: začnite ali se pridružite [razpravi na GitHubu](https://github.com/langgenius/dify/discussions).
+- **Prevodi**: sledite [vodniku za internacionalizacijo](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md), da dodate ali posodobite jezik.
+- **Skupnost**: delite ustvarjene aplikacije, pomagajte drugim uporabnikom in razširite glas o Difyju.
 
-### Namestitev s Kubernetes
+### Sodelavci
 
-Če želite konfigurirati visoko razpoložljivo nastavitev, so na voljo Helm Charts in datoteke YAML, ki jih prispeva skupnost, ki omogočajo uvedbo Difyja v Kubernetes.
-
-- [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
-- [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
-- [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 NEW! YAML files (Supports Dify v1.6.0) by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### Uporaba Terraform za uvajanje
-
-namestite Dify v Cloud Platform z enim klikom z uporabo [terraform](https://www.terraform.io/)
-
-##### Azure Global
-
-- [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
-
-#### Uporaba AWS CDK za uvajanje
-
-Uvedite Dify v AWS z uporabo [CDK](https://aws.amazon.com/cdk/)
-
-##### AWS
-
-- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
-- [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
-
-#### Alibaba Cloud
-
-[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
-
-#### Alibaba Cloud Data Management
-
-Z enim klikom namestite Dify na Alibaba Cloud z [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
-
-#### Uporaba Azure Devops Pipeline za uvajanje v AKS
-
-Z enim klikom namestite Dify v AKS z uporabo [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
-
-## Prispevam
-
-Za tiste, ki bi radi prispevali kodo, si oglejte naš [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). Hkrati vas prosimo, da podprete Dify tako, da ga delite na družbenih medijih ter na dogodkih in konferencah.
-
-> Iščemo sodelavce za pomoč pri prevajanju Difyja v jezike, ki niso mandarinščina ali angleščina. Če želite pomagati, si oglejte i18n README za več informacij in nam pustite komentar v global-userskanalu našega strežnika skupnosti Discord .
+<a href="https://github.com/langgenius/dify/graphs/contributors">
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
+</a>
 
 ## Skupnost in stik
 
-- [GitHub Discussion](https://github.com/langgenius/dify/discussions). Najboljše za: izmenjavo povratnih informacij in postavljanje vprašanj.
-- [GitHub Issues](https://github.com/langgenius/dify/issues). Najboljše za: hrošče, na katere naletite pri uporabi Dify.AI, in predloge funkcij. Oglejte si naš [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-- [Discord](https://discord.gg/FngNHpbcY7). Najboljše za: deljenje vaših aplikacij in druženje s skupnostjo.
-- [X(Twitter)](https://twitter.com/dify_ai). Najboljše za: deljenje vaših aplikacij in druženje s skupnostjo.
+Izberite kanal, ki najbolj ustreza vašemu vprašanju:
 
-**Contributors**
-
-<a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
-</a>
-
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): poiščite pomoč, delite povratne informacije in predlagajte ideje.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): prijavite ponovljive napake in spremljajte razvojno delo. Pred odprtjem težave preberite [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
+- [Discord](https://discord.gg/FngNHpbcY7): klepetajte v živo, delite svoje aplikacije in se povežite z drugimi uporabniki Difyja.
+- [X](https://x.com/dify_ai): spremljajte novice o izdajah in posodobitve projekta.
 ## Star history
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

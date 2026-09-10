@@ -15,13 +15,13 @@ export const useChunkStructure = () => {
     icon: (isActive: boolean) => (
       <GeneralChunk
         className={cn(
-          'h-[18px] w-[18px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-600',
+          'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-indigo-indigo-600',
           isActive && 'text-util-colors-indigo-indigo-600',
         )}
       />
     ),
-    title: t('stepTwo.general', { ns: 'datasetCreation' }),
-    description: t('stepTwo.generalTip', { ns: 'datasetCreation' }),
+    title: t(($) => $['stepTwo.general'], { ns: 'datasetCreation' }),
+    description: t(($) => $['stepTwo.generalTip'], { ns: 'datasetCreation' }),
     effectColor: 'blue',
   }
   const ParentChildOption: Option = {
@@ -29,13 +29,13 @@ export const useChunkStructure = () => {
     icon: (isActive: boolean) => (
       <ParentChildChunk
         className={cn(
-          'h-[18px] w-[18px] text-text-tertiary group-hover:text-util-colors-blue-light-blue-light-500',
+          'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-blue-light-blue-light-500',
           isActive && 'text-util-colors-blue-light-blue-light-500',
         )}
       />
     ),
-    title: t('stepTwo.parentChild', { ns: 'datasetCreation' }),
-    description: t('stepTwo.parentChildTip', { ns: 'datasetCreation' }),
+    title: t(($) => $['stepTwo.parentChild'], { ns: 'datasetCreation' }),
+    description: t(($) => $['stepTwo.parentChildTip'], { ns: 'datasetCreation' }),
     effectColor: 'blue-light',
   }
   const QuestionAnswerOption: Option = {
@@ -43,13 +43,13 @@ export const useChunkStructure = () => {
     icon: (isActive: boolean) => (
       <QuestionAndAnswer
         className={cn(
-          'h-[18px] w-[18px] text-text-tertiary group-hover:text-util-colors-teal-teal-600',
+          'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-teal-teal-600',
           isActive && 'text-util-colors-teal-teal-600',
         )}
       />
     ),
     title: 'Q&A',
-    description: t('stepTwo.qaTip', { ns: 'datasetCreation' }),
+    description: t(($) => $['stepTwo.qaTip'], { ns: 'datasetCreation' }),
     effectColor: 'teal',
   }
 
@@ -59,11 +59,7 @@ export const useChunkStructure = () => {
     [ChunkStructureEnum.question_answer]: QuestionAnswerOption,
   }
 
-  const options = [
-    GeneralOption,
-    ParentChildOption,
-    QuestionAnswerOption,
-  ]
+  const options = [GeneralOption, ParentChildOption, QuestionAnswerOption]
 
   return {
     options,

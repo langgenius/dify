@@ -37,6 +37,9 @@
  *   DIFY_E2E_HITL_EXTERNAL_APP_ID
  *   DIFY_E2E_HITL_SINGLE_ACTION_APP_ID
  *   DIFY_E2E_HITL_MULTI_NODE_APP_ID
+ *   DIFY_E2E_REASONING_APP_ID  Override separated-reasoning chatflow app ID
+ *   DIFY_E2E_REASONING_PROVISION=1  Opt in to auto-provisioning reasoning-chat.yml
+ *                                   (needs a workspace default chat model)
  */
 
 /** Supported edition values. */
@@ -74,6 +77,12 @@ export type E2EEnv = {
   fileAppId: string
   /** Chat app (advanced-chat) with a file input variable */
   fileChatAppId: string
+  /**
+   * Chatflow whose LLM node uses reasoning_format=separated. Empty unless
+   * DIFY_E2E_REASONING_APP_ID is set or the fixture is auto-provisioned; the
+   * run-app-reasoning suite is skipped when empty.
+   */
+  reasoningAppId: string
   /**
    * Secondary workspace ID — EE only ("auto_test1").
    * Empty in CE mode (CE has a single workspace).
@@ -118,6 +127,7 @@ export type E2ECapabilities = {
   workflowAppId: string
   fileAppId: string
   fileChatAppId: string
+  reasoningAppId: string
   hitlAppId: string
   hitlExternalAppId: string
   hitlSingleActionAppId: string
@@ -134,8 +144,7 @@ export function isEnterpriseEdition(): boolean {
 
 /** Load and validate E2E environment variables. Throws if required vars are missing. */
 export function loadE2EEnv(): E2EEnv {
-  if (_cached !== undefined)
-    return _cached
+  if (_cached !== undefined) return _cached
 
   const edition: DifyEdition = isEnterpriseEdition() ? 'ee' : 'ce'
 
@@ -150,9 +159,9 @@ export function loadE2EEnv(): E2EEnv {
   if (missing.length > 0) {
     const list = missing.map(([k, desc]) => `  ${k}  (${desc})`).join('\n')
     throw new Error(
-      `E2E tests require the following environment variables to be set:\n${list}\n\n`
-      + `Edition: ${edition.toUpperCase()}\n`
-      + 'See test/e2e/setup/env.ts for documentation.',
+      `E2E tests require the following environment variables to be set:\n${list}\n\n` +
+        `Edition: ${edition.toUpperCase()}\n` +
+        'See test/e2e/setup/env.ts for documentation.',
     )
   }
 
@@ -171,6 +180,7 @@ export function loadE2EEnv(): E2EEnv {
     hitlMultiNodeAppId: process.env.DIFY_E2E_HITL_MULTI_NODE_APP_ID ?? '',
     fileAppId: process.env.DIFY_E2E_FILE_APP_ID ?? '',
     fileChatAppId: process.env.DIFY_E2E_FILE_CHAT_APP_ID ?? '',
+    reasoningAppId: process.env.DIFY_E2E_REASONING_APP_ID ?? '',
     ws2Id: process.env.DIFY_E2E_WS2_ID ?? '',
     ws2AppId: process.env.DIFY_E2E_WS2_APP_ID ?? '',
     email: process.env.DIFY_E2E_EMAIL!,
@@ -187,8 +197,12 @@ export function isE2ELocalMode(): boolean {
 /**
  * Resolve the E2E environment, merging capabilities (from global-setup) on top
  * of the optional env-var overrides. Capabilities always take priority.
+ *
+ * `caps` may be undefined in local mode (DIFY_E2E_MODE=local), where
+ * global-setup returns early without calling project.provide().
  */
-export function resolveEnv(caps: E2ECapabilities): E2EEnv {
+export function resolveEnv(caps: E2ECapabilities | undefined): E2EEnv {
+  if (!caps) return loadE2EEnv()
   const env = loadE2EEnv()
   return {
     ...env,
@@ -201,6 +215,7 @@ export function resolveEnv(caps: E2ECapabilities): E2EEnv {
     workflowAppId: caps.workflowAppId || env.workflowAppId,
     fileAppId: caps.fileAppId || env.fileAppId,
     fileChatAppId: caps.fileChatAppId || env.fileChatAppId,
+    reasoningAppId: caps.reasoningAppId || env.reasoningAppId,
     hitlAppId: caps.hitlAppId || env.hitlAppId,
     hitlExternalAppId: caps.hitlExternalAppId || env.hitlExternalAppId,
     hitlSingleActionAppId: caps.hitlSingleActionAppId || env.hitlSingleActionAppId,

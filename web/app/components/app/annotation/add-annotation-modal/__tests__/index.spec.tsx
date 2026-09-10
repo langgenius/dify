@@ -1,17 +1,13 @@
-import type { Mock } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { useProviderContext } from '@/context/provider-context'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AddAnnotationModal from '../index'
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
 
 const mockToastNotify = vi.fn()
 vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
-    notify: vi.fn(args => mockToastNotify(args)),
+    notify: vi.fn((args) => mockToastNotify(args)),
   },
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
@@ -25,15 +21,14 @@ vi.mock('@/app/components/billing/annotation-full', () => ({
   default: () => <div data-testid="annotation-full" />,
 }))
 
-const mockUseProviderContext = useProviderContext as Mock
+let annotationQuota = { size: 0, limit: 10 }
 
-const getProviderContext = ({ usage = 0, total = 10, enableBilling = false } = {}) => ({
-  plan: {
-    usage: { annotatedResponse: usage },
-    total: { annotatedResponse: total },
-  },
-  enableBilling,
-})
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { annotation_quota_limit: annotationQuota },
+  })
+}
 
 describe('AddAnnotationModal', () => {
   const baseProps = {
@@ -44,7 +39,7 @@ describe('AddAnnotationModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseProviderContext.mockReturnValue(getProviderContext())
+    annotationQuota = { size: 0, limit: 10 }
   })
 
   const typeQuestion = (value: string) => {
@@ -68,17 +63,21 @@ describe('AddAnnotationModal', () => {
   it('should capture query input text when typing', () => {
     render(<AddAnnotationModal {...baseProps} />)
     typeQuestion('Sample question')
-    expect(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')).toHaveValue('Sample question')
+    expect(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')).toHaveValue(
+      'Sample question',
+    )
   })
 
   it('should capture answer input text when typing', () => {
     render(<AddAnnotationModal {...baseProps} />)
     typeAnswer('Sample answer')
-    expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue('Sample answer')
+    expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue(
+      'Sample answer',
+    )
   })
 
   it('should show annotation full notice and disable submit when quota exceeded', () => {
-    mockUseProviderContext.mockReturnValue(getProviderContext({ usage: 10, total: 10, enableBilling: true }))
+    annotationQuota = { size: 10, limit: 10 }
     render(<AddAnnotationModal {...baseProps} />)
 
     expect(screen.getByTestId('annotation-full')).toBeInTheDocument()
@@ -114,7 +113,9 @@ describe('AddAnnotationModal', () => {
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')).toHaveValue('')
-      expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue('')
+      expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue(
+        '',
+      )
     })
   })
 
@@ -122,10 +123,12 @@ describe('AddAnnotationModal', () => {
     render(<AddAnnotationModal {...baseProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'appAnnotation.errorMessage.queryRequired',
-    }))
+    expect(mockToastNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: 'appAnnotation.errorMessage.queryRequired',
+      }),
+    )
   })
 
   it('should show toast when validation fails for missing answer', () => {
@@ -133,10 +136,12 @@ describe('AddAnnotationModal', () => {
     typeQuestion('Filled question')
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'appAnnotation.errorMessage.answerRequired',
-    }))
+    expect(mockToastNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: 'appAnnotation.errorMessage.answerRequired',
+      }),
+    )
   })
 
   it('should close modal when save completes and create next unchecked', async () => {

@@ -47,7 +47,11 @@ describe('useAsyncWindowOpen', () => {
       })
     })
 
-    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'width=500,noopener,noreferrer')
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://example.com',
+      '_blank',
+      'width=500,noopener,noreferrer',
+    )
     expect(getUrl).not.toHaveBeenCalled()
     expect(mockWindow.opener).toBeNull()
   })
@@ -108,9 +112,12 @@ describe('useAsyncWindowOpen', () => {
 
     const error = new Error('fetch failed')
     await act(async () => {
-      await result.current(async () => {
-        throw error
-      }, { onError })
+      await result.current(
+        async () => {
+          throw error
+        },
+        { onError },
+      )
     })
 
     expect(close).toHaveBeenCalled()

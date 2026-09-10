@@ -45,27 +45,23 @@ const RetryButton: FC<Props> = ({ datasetId }) => {
     if (res.result === 'success') {
       refetchErrorDocs()
       dispatch({ type: 'success' })
-    }
-    else {
+    } else {
       dispatch({ type: 'error' })
     }
   }
 
   useEffect(() => {
-    if (errorDocs?.total === 0)
-      dispatch({ type: 'success' })
-    else
-      dispatch({ type: 'error' })
+    if (errorDocs?.total === 0) dispatch({ type: 'success' })
+    else dispatch({ type: 'error' })
   }, [errorDocs?.total])
 
-  if (isLoading || indexState.value === 'success')
-    return null
+  if (isLoading || indexState.value === 'success') return null
 
   return (
     <StatusWithAction
       type="warning"
-      description={`${errorDocs?.total} ${t('docsFailedNotice', { ns: 'dataset' })}`}
-      actionText={t('retry', { ns: 'dataset' })}
+      description={`${errorDocs?.total} ${t(($) => $.docsFailedNotice, { ns: 'dataset' })}`}
+      actionText={t(($) => $.retry, { ns: 'dataset' })}
       disabled={indexState.value === 'retry'}
       onAction={indexState.value === 'error' ? onRetryErrorDocs : noop}
     />

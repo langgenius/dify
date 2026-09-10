@@ -1,11 +1,8 @@
 /// <reference types="vite/client" />
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { isExcludedCommandPath } from '@/framework/command-fs'
 
-const INDEX_MODULES = import.meta.glob<{ default?: unknown }>(
-  './**/index.ts',
-  { eager: true },
-)
+const INDEX_MODULES = import.meta.glob<{ default?: unknown }>('./**/index.ts', { eager: true })
 
 const COMMAND_MODULES = Object.fromEntries(
   Object.entries(INDEX_MODULES).filter(([path]) => !isExcludedCommandPath(path)),

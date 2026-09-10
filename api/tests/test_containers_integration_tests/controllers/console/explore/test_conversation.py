@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.conversation as conversation_module
@@ -26,6 +27,10 @@ from services.errors.conversation import (
 @dataclass
 class InstalledAppCarrier:
     app: App | None
+
+    def app_with_session(self, *, session: Session) -> App | None:
+        del session
+        return self.app
 
 
 @pytest.fixture
@@ -193,7 +198,13 @@ class TestConversationRenameApi:
                 return_value=conversation,
             ),
         ):
-            result = method(api, user, chat_app, "cid")
+            result = method(
+                api,
+                conversation_module.ConversationRenamePayload.model_validate({"name": "new"}),
+                user,
+                chat_app,
+                "cid",
+            )
 
         assert result["id"] == "cid"
 
@@ -210,7 +221,13 @@ class TestConversationRenameApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, user, chat_app, "cid")
+                method(
+                    api,
+                    conversation_module.ConversationRenamePayload.model_validate({"name": "new"}),
+                    user,
+                    chat_app,
+                    "cid",
+                )
 
 
 class TestConversationPinApi:

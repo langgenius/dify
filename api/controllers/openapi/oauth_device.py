@@ -42,6 +42,7 @@ from controllers.openapi._models import (
     DeviceMutateRequest,
     DeviceMutateResponse,
     DevicePollRequest,
+    DeviceTokenResponse,
     WorkspacePayload,
 )
 from extensions.ext_database import db
@@ -130,6 +131,7 @@ class OAuthDeviceTokenApi(Resource):
     """RFC 8628 poll."""
 
     @openapi_ns.expect(openapi_ns.models[DevicePollRequest.__name__])
+    @openapi_ns.response(200, "Device token", openapi_ns.models[DeviceTokenResponse.__name__])
     def post(self):
         payload = _validate_json(DevicePollRequest)
         device_code = payload.device_code
@@ -245,7 +247,6 @@ class DeviceApproveApi(Resource):
                 raise BadRequest(description=str(e)) from None
             ttl_days = oauth_ttl_days(tenant_id=tenant)
             mint = mint_oauth_token(
-                db.session,
                 redis_client,
                 subject_email=account.email,
                 subject_issuer=ACCOUNT_ISSUER_SENTINEL,
@@ -254,6 +255,7 @@ class DeviceApproveApi(Resource):
                 device_label=state.device_label,
                 prefix=profile.prefix,
                 ttl_days=ttl_days,
+                session=db.session(),
             )
 
             poll_payload = _build_account_poll_payload(account, tenant, mint)
@@ -340,7 +342,7 @@ def _audit_cross_ip_if_needed(state) -> None:
 
 
 def _build_account_poll_payload(account, tenant, mint) -> PollPayload:
-    rows = TenantService.get_workspaces_for_account(db.session, str(account.id))
+    rows = TenantService.get_workspaces_for_account(str(account.id), session=db.session())
     workspaces = [WorkspacePayload(id=str(t.id), name=t.name, role=getattr(m, "role", "")) for t, m in rows]
     # Prefer active session tenant → DB-flagged current join → first membership.
     default_ws_id = None

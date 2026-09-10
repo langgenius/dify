@@ -1,97 +1,92 @@
 'use client'
 import type { MailSendResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Field, FieldError, FieldLabel, FieldValidity } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
+import { useSearchParams } from '@/next/navigation'
 import { useSendMail } from '@/service/use-common'
 
 type Props = {
   onSuccess: (email: string, payload: string) => void
 }
-export default function Form({
-  onSuccess,
-}: Props) {
+
+type SignupEmailFormValues = {
+  email: string
+}
+
+export default function SignupEmailForm({ onSuccess }: Props) {
   const { t } = useTranslation()
-  const [email, setEmail] = useState('')
   const locale = useLocale()
+  const searchParams = useSearchParams()
+  const queryString = searchParams.toString()
+  const signinHref = queryString ? `/signin?${queryString}` : '/signin'
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const { mutateAsync: submitMail, isPending } = useSendMail()
 
-  const handleSubmit = useCallback(async () => {
-    if (isPending)
-      return
-
-    if (!email) {
-      toast.error(t('error.emailEmpty', { ns: 'login' }))
-      return
-    }
-    if (!emailRegex.test(email)) {
-      toast.error(t('error.emailInValid', { ns: 'login' }))
-      return
-    }
+  const handleSubmit = async (email: string) => {
+    if (isPending) return
     const res = await submitMail({ email, language: locale })
     if ((res as MailSendResponse).result === 'success')
       onSuccess(email, (res as MailSendResponse).data)
-  }, [email, locale, submitMail, t, isPending, onSuccess])
+  }
 
   return (
-    <form onSubmit={(e) => {
-      e.preventDefault()
-      handleSubmit()
-    }}
-    >
-      <div className="mb-3">
-        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
-          {t('email', { ns: 'login' })}
-        </label>
-        <div className="mt-1">
-          <Input
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
-            tabIndex={1}
-          />
-        </div>
-      </div>
+    <Form<SignupEmailFormValues> onFormSubmit={({ email }) => void handleSubmit(email)}>
+      <Field
+        name="email"
+        validate={(value) => {
+          const emailValue = String(value)
+          return !emailValue || emailRegex.test(emailValue)
+            ? null
+            : t(($) => $['error.emailInValid'], { ns: 'login' })
+        }}
+        className="mb-3"
+      >
+        <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
+        <Input
+          type="email"
+          required
+          autoComplete="email"
+          spellCheck={false}
+          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+        />
+        <FieldValidity>
+          {({ validity }) => (
+            <FieldError>
+              {t(($) => $[validity.valueMissing ? 'error.emailEmpty' : 'error.emailInValid'], {
+                ns: 'login',
+              })}
+            </FieldError>
+          )}
+        </FieldValidity>
+      </Field>
       <div className="mb-2">
-        <Button
-          tabIndex={2}
-          variant="primary"
-          type="submit"
-          disabled={isPending || !email}
-          className="w-full"
-        >
-          {t('signup.verifyMail', { ns: 'login' })}
+        <Button variant="primary" type="submit" loading={isPending} className="w-full">
+          {t(($) => $['signup.verifyMail'], { ns: 'login' })}
         </Button>
       </div>
       <Split className="mt-4 mb-5" />
 
       <div className="text-[13px] leading-4 font-medium text-text-secondary">
-        <span>{t('signup.haveAccount', { ns: 'login' })}</span>
-        <Link
-          className="text-text-accent"
-          href="/signin"
-        >
-          {t('signup.signIn', { ns: 'login' })}
+        <span>{t(($) => $['signup.haveAccount'], { ns: 'login' })}</span>
+        <Link className="text-text-accent" href={signinHref}>
+          {t(($) => $['signup.signIn'], { ns: 'login' })}
         </Link>
       </div>
 
       {!systemFeatures.branding.enabled && (
         <>
           <div className="mt-3 block w-full system-xs-regular text-text-tertiary">
-            {t('tosDesc', { ns: 'login' })}
+            {t(($) => $.tosDesc, { ns: 'login' })}
             &nbsp;
             <Link
               className="system-xs-medium text-text-secondary hover:underline"
@@ -99,7 +94,7 @@ export default function Form({
               rel="noopener noreferrer"
               href="https://dify.ai/terms"
             >
-              {t('tos', { ns: 'login' })}
+              {t(($) => $.tos, { ns: 'login' })}
             </Link>
             &nbsp;&&nbsp;
             <Link
@@ -108,12 +103,11 @@ export default function Form({
               rel="noopener noreferrer"
               href="https://dify.ai/privacy"
             >
-              {t('pp', { ns: 'login' })}
+              {t(($) => $.pp, { ns: 'login' })}
             </Link>
           </div>
         </>
       )}
-
-    </form>
+    </Form>
   )
 }

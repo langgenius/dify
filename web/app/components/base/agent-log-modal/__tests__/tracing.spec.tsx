@@ -1,6 +1,6 @@
 import type { AgentIteration } from '@/models/log'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import TracingPanel from '../tracing'
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
@@ -8,11 +8,13 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
-  ChevronRight: (props: { className?: string }) => <div data-testid="chevron-right" className={props.className} />,
+  ChevronRight: (props: { className?: string }) => (
+    <div data-testid="chevron-right" className={props.className} />
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
+  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
     <div data-testid="code-editor">
       {title}
       {typeof value === 'string' ? value : JSON.stringify(value)}
@@ -25,7 +27,9 @@ const createIteration = (thought: string, tokens: number): AgentIteration => ({
   files: [],
   thought,
   tokens,
-  tool_calls: [{ tool_name: 'tool1', status: 'success', tool_icon: null, tool_label: { 'en-US': 'Tool 1' } }],
+  tool_calls: [
+    { tool_name: 'tool1', status: 'success', tool_icon: null, tool_label: { 'en-US': 'Tool 1' } },
+  ],
   tool_raw: { inputs: '', outputs: '' },
 })
 

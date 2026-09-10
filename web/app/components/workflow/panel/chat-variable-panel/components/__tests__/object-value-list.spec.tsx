@@ -19,6 +19,8 @@ describe('ObjectValueList', () => {
 
     fireEvent.change(screen.getByDisplayValue('reason'), { target: { value: 'status' } })
 
-    expect(onChange).toHaveBeenCalledWith([{ key: 'status', type: ChatVarType.String, value: 'draft' }])
+    expect(onChange).toHaveBeenCalledWith([
+      { key: 'status', type: ChatVarType.String, value: 'draft' },
+    ])
   })
 })

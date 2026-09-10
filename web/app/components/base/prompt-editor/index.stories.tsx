@@ -2,7 +2,15 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 
 // Mock component to avoid complex initialization issues
-const PromptEditorMock = ({ value, onChange, placeholder, editable, compact, className, wrapperClassName }: any) => {
+const PromptEditorMock = ({
+  value,
+  onChange,
+  placeholder,
+  editable,
+  compact,
+  className,
+  wrapperClassName,
+}: any) => {
   const [content, setContent] = useState(value || '')
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -31,7 +39,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Rich text prompt editor built on Lexical. Supports variable blocks, context blocks, and slash commands for inserting dynamic content. Use `/` or `{` to trigger component picker.\n\n**Note:** This is a simplified version for Storybook. The actual component uses Lexical editor with advanced features.',
+        component:
+          'Rich text prompt editor built on Lexical. Supports variable blocks, context blocks, and slash commands for inserting dynamic content. Use `/` or `{` to trigger component picker.\n\n**Note:** This is a simplified version for Storybook. The actual component uses Lexical editor with advanced features.',
       },
     },
   },
@@ -73,7 +82,7 @@ const PromptEditorDemo = (args: any) => {
 
   return (
     <div style={{ width: '600px' }}>
-      <div className="min-h-[120px] rounded-lg border border-gray-300 p-4">
+      <div className="min-h-30 rounded-lg border border-gray-300 p-4">
         <PromptEditorMock
           {...args}
           value={value}
@@ -86,9 +95,7 @@ const PromptEditorDemo = (args: any) => {
       {value && (
         <div className="mt-4 rounded-lg bg-gray-50 p-3">
           <div className="mb-2 text-xs font-medium text-gray-600">Current Value:</div>
-          <div className="font-mono text-sm whitespace-pre-wrap text-gray-800">
-            {value}
-          </div>
+          <div className="font-mono text-sm whitespace-pre-wrap text-gray-800">{value}</div>
         </div>
       )}
     </div>
@@ -97,7 +104,7 @@ const PromptEditorDemo = (args: any) => {
 
 // Default state
 export const Default: Story = {
-  render: args => <PromptEditorDemo {...args} />,
+  render: (args) => <PromptEditorDemo {...args} />,
   args: {
     placeholder: 'Type / for commands...',
     editable: true,
@@ -107,7 +114,7 @@ export const Default: Story = {
 
 // With initial value
 export const WithInitialValue: Story = {
-  render: args => <PromptEditorDemo {...args} />,
+  render: (args) => <PromptEditorDemo {...args} />,
   args: {
     value: 'Write a summary about the following topic:\n\nPlease include key points and examples.',
     placeholder: 'Type / for commands...',
@@ -117,7 +124,7 @@ export const WithInitialValue: Story = {
 
 // Compact mode
 export const CompactMode: Story = {
-  render: args => <PromptEditorDemo {...args} />,
+  render: (args) => <PromptEditorDemo {...args} />,
   args: {
     value: 'This is a compact editor with smaller text size.',
     placeholder: 'Type / for commands...',
@@ -128,16 +135,17 @@ export const CompactMode: Story = {
 
 // Read-only mode
 export const ReadOnlyMode: Story = {
-  render: args => <PromptEditorDemo {...args} />,
+  render: (args) => <PromptEditorDemo {...args} />,
   args: {
-    value: 'This content is read-only and cannot be edited.\n\nYou can select and copy text, but not modify it.',
+    value:
+      'This content is read-only and cannot be edited.\n\nYou can select and copy text, but not modify it.',
     editable: false,
   },
 }
 
 // With variables example
 export const WithVariablesExample: Story = {
-  render: args => <PromptEditorDemo {...args} />,
+  render: (args) => <PromptEditorDemo {...args} />,
   args: {
     value: 'Hello, please analyze the following data and provide insights.',
     placeholder: 'Type / to insert variables...',
@@ -147,7 +155,7 @@ export const WithVariablesExample: Story = {
 
 // Long content example
 export const LongContent: Story = {
-  render: args => <PromptEditorDemo {...args} />,
+  render: (args) => <PromptEditorDemo {...args} />,
   args: {
     value: `You are a helpful AI assistant. Your task is to provide accurate, helpful, and friendly responses.
 
@@ -165,7 +173,7 @@ Please analyze the user's request and provide a comprehensive response.`,
 
 // Custom placeholder
 export const CustomPlaceholder: Story = {
-  render: args => <PromptEditorDemo {...args} />,
+  render: (args) => <PromptEditorDemo {...args} />,
   args: {
     placeholder: 'Describe the task you want the AI to perform... (Press / for variables)',
     editable: true,
@@ -181,7 +189,7 @@ const MultipleEditorsDemo = () => {
     <div style={{ width: '700px' }} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <label className="text-sm font-medium text-gray-700">System Prompt</label>
-        <div className="min-h-[100px] rounded-lg border border-gray-300 bg-blue-50 p-4">
+        <div className="min-h-25 rounded-lg border border-gray-300 bg-blue-50 p-4">
           <PromptEditorMock
             value={systemPrompt}
             onChange={setSystemPrompt}
@@ -192,7 +200,7 @@ const MultipleEditorsDemo = () => {
       </div>
       <div className="flex flex-col gap-2">
         <label className="text-sm font-medium text-gray-700">User Prompt</label>
-        <div className="min-h-[100px] rounded-lg border border-gray-300 p-4">
+        <div className="min-h-25 rounded-lg border border-gray-300 p-4">
           <PromptEditorMock
             value={userPrompt}
             onChange={setUserPrompt}
@@ -207,17 +215,13 @@ const MultipleEditorsDemo = () => {
           <div className="text-sm whitespace-pre-wrap text-gray-800">
             {systemPrompt && (
               <>
-                <strong>System:</strong>
-                {' '}
-                {systemPrompt}
+                <strong>System:</strong> {systemPrompt}
                 {userPrompt && '\n\n'}
               </>
             )}
             {userPrompt && (
               <>
-                <strong>User:</strong>
-                {' '}
-                {userPrompt}
+                <strong>User:</strong> {userPrompt}
               </>
             )}
           </div>
@@ -260,7 +264,7 @@ The Team`)
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-gray-700">Email Body</label>
-          <div className="min-h-[200px] rounded-lg border border-gray-300 p-4">
+          <div className="min-h-50 rounded-lg border border-gray-300 p-4">
             <PromptEditorMock
               value={body}
               onChange={setBody}
@@ -297,13 +301,9 @@ const ChatPromptBuilderDemo = () => {
     <div style={{ width: '700px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Chat Prompt Builder</h3>
-        <span className="text-xs text-gray-500">
-          {characterCount}
-          {' '}
-          characters
-        </span>
+        <span className="text-xs text-gray-500">{characterCount} characters</span>
       </div>
-      <div className="min-h-[200px] rounded-lg border border-gray-300 bg-gray-50 p-4">
+      <div className="min-h-50 rounded-lg border border-gray-300 bg-gray-50 p-4">
         <PromptEditorMock
           value={prompt}
           onChange={handleChange}
@@ -311,14 +311,7 @@ const ChatPromptBuilderDemo = () => {
         />
       </div>
       <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-        💡
-        {' '}
-        <strong>Tip:</strong>
-        {' '}
-        Type
-        {' '}
-        <code className="rounded-sm bg-blue-100 px-1 py-0.5">/</code>
-        {' '}
+        💡 <strong>Tip:</strong> Type <code className="rounded-sm bg-blue-100 px-1 py-0.5">/</code>{' '}
         to insert variables or templates
       </div>
     </div>
@@ -341,7 +334,7 @@ const APIInstructionEditorDemo = () => {
   return (
     <div style={{ width: '700px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">API Processing Instructions</h3>
-      <div className="min-h-[180px] rounded-lg border-2 border-indigo-300 bg-indigo-50 p-4">
+      <div className="min-h-45 rounded-lg border-2 border-indigo-300 bg-indigo-50 p-4">
         <PromptEditorMock
           value={instructions}
           onChange={setInstructions}
@@ -366,7 +359,7 @@ export const APIInstructionEditor: Story = {
 
 // Interactive playground
 export const Playground: Story = {
-  render: args => <PromptEditorDemo {...args} />,
+  render: (args) => <PromptEditorDemo {...args} />,
   args: {
     value: '',
     placeholder: 'Type / for commands...',

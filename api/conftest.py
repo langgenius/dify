@@ -34,6 +34,18 @@ ensure_backend_test_environment(_REPO_ROOT)
 def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("dify")
     group.addoption(
+        "--shard-index",
+        type=int,
+        default=1,
+        help="One-based index of the test shard to run.",
+    )
+    group.addoption(
+        "--shard-total",
+        type=int,
+        default=1,
+        help="Total number of test shards.",
+    )
+    group.addoption(
         "--start-middleware",
         action="store_true",
         default=False,
@@ -58,7 +70,31 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 def pytest_configure(config: pytest.Config) -> None:
+    shard_index = config.getoption("shard_index")
+    shard_total = config.getoption("shard_total")
+    if shard_total < 1:
+        raise pytest.UsageError("--shard-total must be at least 1")
+    if not 1 <= shard_index <= shard_total:
+        raise pytest.UsageError("--shard-index must be between 1 and --shard-total")
+
     config.stash[_DIFY_COMPOSE_STACKS_KEY] = []
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Select a deterministic, evenly sized slice of collected tests for this shard."""
+    shard_index = config.getoption("shard_index")
+    shard_total = config.getoption("shard_total")
+    if shard_total == 1:
+        return
+
+    selected: list[pytest.Item] = []
+    deselected: list[pytest.Item] = []
+    for item_index, item in enumerate(items):
+        target = selected if item_index % shard_total == shard_index - 1 else deselected
+        target.append(item)
+
+    config.hook.pytest_deselected(items=deselected)
+    items[:] = selected
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

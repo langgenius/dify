@@ -13,15 +13,15 @@ export class MemStore implements TokenStore {
     return `${host} ${email}`
   }
 
-  read(host: string, email: string): string {
+  async read(host: string, email: string): Promise<string> {
     return this.entries.get(this.k(host, email)) ?? ''
   }
 
-  write(host: string, email: string, bearer: string): void {
+  async write(host: string, email: string, bearer: string): Promise<void> {
     this.entries.set(this.k(host, email), bearer)
   }
 
-  remove(host: string, email: string): void {
+  async remove(host: string, email: string): Promise<void> {
     this.entries.delete(this.k(host, email))
   }
 }

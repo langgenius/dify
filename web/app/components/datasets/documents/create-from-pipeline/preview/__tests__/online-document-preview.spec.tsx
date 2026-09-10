@@ -23,7 +23,9 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
 // Mock dataset-detail context - needs mock to control return values
 const mockPipelineId = vi.fn()
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (_selector: (s: { dataset: { pipeline_id: string } }) => string) => {
+  useDatasetDetailContextWithSelector: (
+    _selector: (s: { dataset: { pipeline_id: string } }) => string,
+  ) => {
     return mockPipelineId()
   },
 }))

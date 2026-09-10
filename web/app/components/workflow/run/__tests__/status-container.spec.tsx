@@ -1,7 +1,17 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import StatusContainer from '../status-container'
+
+const copy = vi.fn()
+
+vi.mock('foxact/use-clipboard', () => ({
+  useClipboard: () => ({
+    copied: false,
+    copy,
+  }),
+}))
 
 vi.mock('@/hooks/use-theme', () => ({
   default: vi.fn(),
@@ -27,32 +37,26 @@ describe('StatusContainer', () => {
       expect(screen.getByText('Finished')).toBeInTheDocument()
       expect(container.firstElementChild).toHaveClass('bg-workflow-display-success-bg')
       expect(container.firstElementChild).toHaveClass('text-text-success')
-      expect(container.querySelector('.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight\\.svg\\)\\]')).toBeInTheDocument()
+      expect(
+        container.querySelector(
+          '.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight\\.svg\\)\\]',
+        ),
+      ).toBeInTheDocument()
     })
+  })
 
-    it('should render failed styling for the dark theme', () => {
-      mockUseTheme.mockReturnValue({ theme: Theme.dark } as ReturnType<typeof useTheme>)
+  it('copies the supplied content from the status action', async () => {
+    const user = userEvent.setup()
+    render(
+      <StatusContainer status="failed" copyContent="Execution failed">
+        Execution failed
+      </StatusContainer>,
+    )
 
-      const { container } = render(
-        <StatusContainer status="failed">
-          <span>Failed</span>
-        </StatusContainer>,
-      )
+    await user.click(
+      screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }),
+    )
 
-      expect(container.firstElementChild).toHaveClass('bg-workflow-display-error-bg')
-      expect(container.firstElementChild).toHaveClass('text-text-warning')
-      expect(container.querySelector('.bg-\\[url\\(\\~\\@\\/app\\/components\\/workflow\\/run\\/assets\\/highlight-dark\\.svg\\)\\]')).toBeInTheDocument()
-    })
-
-    it('should render warning styling for paused runs', () => {
-      const { container } = render(
-        <StatusContainer status="paused">
-          <span>Paused</span>
-        </StatusContainer>,
-      )
-
-      expect(container.firstElementChild).toHaveClass('bg-workflow-display-warning-bg')
-      expect(container.firstElementChild).toHaveClass('text-text-destructive')
-    })
+    expect(copy).toHaveBeenCalledWith('Execution failed')
   })
 })

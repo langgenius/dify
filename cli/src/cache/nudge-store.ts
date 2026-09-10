@@ -23,13 +23,12 @@ export async function loadNudgeStore(opts: NudgeStoreOptions = {}): Promise<Nudg
   const store = opts.store ?? getCache(CACHE_NUDGE)
   const intervalMs = opts.intervalMs ?? WARN_INTERVAL_MS
   const clock = opts.now ?? (() => new Date())
-  const memory = readWarned(store)
+  const memory = await readWarned(store)
 
   return {
     canWarn: (host, now) => {
       const last = memory.get(host)
-      if (last === undefined)
-        return true
+      if (last === undefined) return true
       const elapsed = Math.max(0, (now ?? clock()).getTime() - last)
       return elapsed >= intervalMs
     },
@@ -39,33 +38,30 @@ export async function loadNudgeStore(opts: NudgeStoreOptions = {}): Promise<Nudg
       // Re-read disk inside the write cycle so concurrent processes touching
       // different hosts don't clobber each other's stamps. Same-host writers
       // converge on a near-identical timestamp, so order doesn't matter.
-      const onDisk = readWarned(store)
+      const onDisk = await readWarned(store)
       onDisk.set(host, stamp)
-      writeWarned(store, onDisk)
+      await writeWarned(store, onDisk)
     },
   }
 }
 
-function readWarned(store: Store): Map<string, number> {
+async function readWarned(store: Store): Promise<Map<string, number>> {
   const out = new Map<string, number>()
   let raw: Record<string, string>
   try {
-    raw = store.get(WARNED_KEY)
-  }
-  catch {
+    raw = await store.get(WARNED_KEY)
+  } catch {
     return out
   }
   for (const [host, iso] of Object.entries(raw)) {
     const t = Date.parse(iso)
-    if (!Number.isNaN(t))
-      out.set(host, t)
+    if (!Number.isNaN(t)) out.set(host, t)
   }
   return out
 }
 
-function writeWarned(store: Store, state: Map<string, number>): void {
+async function writeWarned(store: Store, state: Map<string, number>): Promise<void> {
   const warned: Record<string, string> = {}
-  for (const [host, t] of state)
-    warned[host] = new Date(t).toISOString()
-  store.set(WARNED_KEY, warned)
+  for (const [host, t] of state) warned[host] = new Date(t).toISOString()
+  await store.set(WARNED_KEY, warned)
 }

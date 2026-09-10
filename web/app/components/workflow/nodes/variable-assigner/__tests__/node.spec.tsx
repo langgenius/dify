@@ -22,13 +22,15 @@ vi.mock('../components/node-group-item', () => ({
     mockNodeGroupItemRender(props)
     return (
       <div>
-        {`${props.item.title}:${props.item.targetHandleId}:${props.item.type}:${props.item.variables.map(variable => variable.join('.')).join('|')}`}
+        {`${props.item.title}:${props.item.targetHandleId}:${props.item.type}:${props.item.variables.map((variable) => variable.join('.')).join('|')}`}
       </div>
     )
   },
 }))
 
-const createData = (overrides: Partial<VariableAssignerNodeType> = {}): VariableAssignerNodeType => ({
+const createData = (
+  overrides: Partial<VariableAssignerNodeType> = {},
+): VariableAssignerNodeType => ({
   title: 'Variable Assigner',
   desc: '',
   type: BlockEnum.VariableAssigner,
@@ -72,12 +74,7 @@ describe('variable-assigner/node', () => {
   })
 
   it('renders grouped node cards when aggregation is enabled', () => {
-    render(
-      <Node
-        {...baseNodeProps}
-        data={createData()}
-      />,
-    )
+    render(<Node {...baseNodeProps} data={createData()} />)
 
     expect(screen.getByText('Group1:group-1:string:source-node.groupVar')).toBeInTheDocument()
     expect(screen.getByText('Group2:group-2:number:')).toBeInTheDocument()
@@ -97,13 +94,17 @@ describe('variable-assigner/node', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.variableAssigner.title:target:string:source-node.rootVar')).toBeInTheDocument()
-    expect(mockNodeGroupItemRender).toHaveBeenCalledWith(expect.objectContaining({
-      item: expect.objectContaining({
-        groupEnabled: false,
-        targetHandleId: 'target',
-        variableAssignerNodeId: 'assigner-node',
+    expect(
+      screen.getByText('workflow.nodes.variableAssigner.title:target:string:source-node.rootVar'),
+    ).toBeInTheDocument()
+    expect(mockNodeGroupItemRender).toHaveBeenCalledWith(
+      expect.objectContaining({
+        item: expect.objectContaining({
+          groupEnabled: false,
+          targetHandleId: 'target',
+          variableAssignerNodeId: 'assigner-node',
+        }),
       }),
-    }))
+    )
   })
 })

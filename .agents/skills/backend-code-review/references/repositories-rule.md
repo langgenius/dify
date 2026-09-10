@@ -8,7 +8,6 @@
 
 ### Introduce repositories abstraction
 - Category: maintainability
-- Severity: suggestion
 - Description: If a table/model already has a repository abstraction, all reads/writes/queries for that table should use the existing repository. If no repository exists, introduce one only when complexity justifies it, such as large/high-volume tables, repeated complex query logic, or likely storage-strategy variation.
 - Suggested fix:
   - First check  `api/repositories`, `api/core/repositories`, and `api/extensions/*/repositories/` to verify whether the table/model already has a repository abstraction. If it exists, route all operations through it and add missing repository methods instead of bypassing it with ad-hoc SQLAlchemy access.
@@ -19,9 +18,7 @@
     # Existing repository is ignored and service uses ad-hoc table queries.
     class AppService:
         def archive_app(self, app_id: str, tenant_id: str) -> None:
-            app = self.session.execute(
-                select(App).where(App.id == app_id, App.tenant_id == tenant_id)
-            ).scalar_one()
+            app = self.session.execute(select(App).where(App.id == app_id, App.tenant_id == tenant_id)).scalar_one()
             app.archived = True
             self.session.commit()
     ```
@@ -33,6 +30,7 @@
             app = self.app_repo.get_by_id(app_id=app_id, tenant_id=tenant_id)
             app.archived = True
             self.app_repo.save(app)
+
 
     # If the query is missing, extend the existing abstraction.
     active_apps = self.app_repo.list_active_for_tenant(tenant_id=tenant_id)
@@ -51,9 +49,10 @@
     class ConversationRepository(Protocol):
         def list_recent_for_app(self, app_id: str, tenant_id: str, limit: int) -> list[Conversation]: ...
 
+
     class SqlAlchemyConversationRepository:
-        def list_recent_for_app(self, app_id: str, tenant_id: str, limit: int) -> list[Conversation]:
-            ...
+        def list_recent_for_app(self, app_id: str, tenant_id: str, limit: int) -> list[Conversation]: ...
+
 
     class ConversationService:
         def __init__(self, conversation_repo: ConversationRepository):

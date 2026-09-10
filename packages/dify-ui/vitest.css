@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+@import './src/styles/styles.css';
+
+@plugin './src/plugins/icons.ts';
+
+@source './src';

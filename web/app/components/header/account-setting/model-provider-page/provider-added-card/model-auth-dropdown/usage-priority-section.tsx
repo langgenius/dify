@@ -15,26 +15,30 @@ const options = [
   { key: PreferredProviderTypeEnum.custom, labelKey: 'modelProvider.card.apiKeyOption' },
 ] as const
 
-export default function UsagePrioritySection({ value, disabled, onSelect }: UsagePrioritySectionProps) {
+export default function UsagePrioritySection({
+  value,
+  disabled,
+  onSelect,
+}: UsagePrioritySectionProps) {
   const { t } = useTranslation()
-  const selectedKey = value === 'credits'
-    ? PreferredProviderTypeEnum.system
-    : PreferredProviderTypeEnum.custom
-  const usagePriorityTip = t('modelProvider.card.usagePriorityTip', { ns: 'common' })
+  const selectedKey =
+    value === 'credits' ? PreferredProviderTypeEnum.system : PreferredProviderTypeEnum.custom
+  const usagePriorityTip = t(($) => $['modelProvider.card.usagePriorityTip'], { ns: 'common' })
 
   return (
     <div className="p-1">
       <div className="flex items-center gap-1 rounded-lg p-1">
         <div className="shrink-0 px-0.5 py-1">
-          <span aria-hidden="true" className="i-ri-arrow-up-double-line block size-4 text-text-tertiary" />
+          <span
+            aria-hidden="true"
+            className="i-ri-arrow-up-double-line block size-4 text-text-tertiary"
+          />
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-0.5 py-0.5">
           <span className="truncate system-sm-medium text-text-secondary">
-            {t('modelProvider.card.usagePriority', { ns: 'common' })}
+            {t(($) => $['modelProvider.card.usagePriority'], { ns: 'common' })}
           </span>
-          <Infotip aria-label={usagePriorityTip}>
-            {usagePriorityTip}
-          </Infotip>
+          <Infotip aria-label={usagePriorityTip}>{usagePriorityTip}</Infotip>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {options.map((option) => {
@@ -54,7 +58,7 @@ export default function UsagePrioritySection({ value, disabled, onSelect }: Usag
                 disabled={disabled}
                 onClick={() => onSelect(option.key)}
               >
-                {t(option.labelKey, { ns: 'common' })}
+                {t(($) => $[option.labelKey], { ns: 'common' })}
               </button>
             )
           })}

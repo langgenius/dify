@@ -14,7 +14,7 @@ const ParentChunkCardSkelton = () => {
       <SkeletonContainer className="gap-y-0 p-1 pb-0">
         <SkeletonContainer className="gap-y-0.5 px-2 pt-1.5">
           <SkeletonRow className="py-0.5">
-            <SkeletonRectangle className="w-[72px] bg-text-quaternary" />
+            <SkeletonRectangle className="w-18 bg-text-quaternary" />
             <SkeletonPoint className="opacity-20" />
             <SkeletonRectangle className="w-24 bg-text-quaternary" />
             <SkeletonPoint className="opacity-20" />
@@ -32,8 +32,12 @@ const ParentChunkCardSkelton = () => {
         </SkeletonContainer>
       </SkeletonContainer>
       <div className="mt-0.5 flex items-center px-3">
-        <button type="button" className="pt-0.5 system-xs-semibold-uppercase text-components-button-secondary-accent-text-disabled" disabled>
-          {t('operation.viewMore', { ns: 'common' })}
+        <button
+          type="button"
+          className="pt-0.5 system-xs-semibold-uppercase text-components-button-secondary-accent-text-disabled"
+          disabled
+        >
+          {t(($) => $['operation.viewMore'], { ns: 'common' })}
         </button>
       </div>
     </div>

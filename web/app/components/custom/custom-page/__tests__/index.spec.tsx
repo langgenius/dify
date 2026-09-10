@@ -1,30 +1,53 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
-import type { AppContextValue } from '@/context/app-context'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import { contactSalesUrl, defaultPlan } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { contactSalesUrl } from '@/app/components/billing/config'
+import { consoleQuery } from '@/service/console'
 import {
-  initialLangGeniusVersionInfo,
-  initialWorkspaceInfo,
-  useAppContext,
-  userProfilePlaceholder,
-} from '@/context/app-context'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithoutPricing,
+} from '@/test/console/query-data'
 import CustomPage from '../index'
 
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    branding: {
-      enabled: true,
-      workspace_logo: 'https://example.com/workspace-logo.png',
-    },
-  },
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
+let deploymentEdition: GetSystemFeaturesResponse['deployment_edition'] = 'COMMUNITY'
+let canReplaceLogo = true
+let plan: CloudPlan = 'professional'
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+  }
 })
+
+function renderWithData(ui: ReactElement) {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.customConfig.get.queryKey(), {
+    remove_webapp_brand: false,
+    replace_webapp_logo: null,
+  })
+
+  return renderWithoutPricing(ui, {
+    queryClient,
+    features: {
+      can_replace_logo: canReplaceLogo,
+      billing: { subscription: { plan } },
+    },
+    systemFeatures: {
+      deployment_edition: deploymentEdition,
+      branding: {
+        enabled: true,
+        workspace_logo: 'https://example.com/workspace-logo.png',
+      },
+    },
+  })
+}
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {
@@ -39,75 +62,22 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-}))
-vi.mock('@/context/app-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/app-context')>()
-  return {
-    ...actual,
-    useAppContext: vi.fn(),
-  }
-})
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-const mockUseProviderContext = vi.mocked(useProviderContext)
-const mockUseModalContext = vi.mocked(useModalContext)
-const mockUseAppContext = vi.mocked(useAppContext)
-
-const createProviderContext = ({
-  enableBilling = false,
-  planType = Plan.professional,
-}: {
-  enableBilling?: boolean
-  planType?: Plan
-} = {}) => {
-  return createMockProviderContextValue({
-    enableBilling,
-    plan: {
-      ...defaultPlan,
-      type: planType,
-    },
-  })
+function render(...args: Parameters<typeof renderWithData>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithData(...args)
 }
 
-const createAppContextValue = (): AppContextValue => ({
-  userProfile: userProfilePlaceholder,
-  mutateUserProfile: vi.fn(),
-  currentWorkspace: {
-    ...initialWorkspaceInfo,
-    custom_config: {
-      replace_webapp_logo: 'https://example.com/replace.png',
-      remove_webapp_brand: false,
-    },
-  },
-  isCurrentWorkspaceManager: true,
-  isCurrentWorkspaceOwner: false,
-  isCurrentWorkspaceEditor: false,
-  isCurrentWorkspaceDatasetOperator: false,
-  mutateCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: initialLangGeniusVersionInfo,
-  useSelector: vi.fn() as unknown as AppContextValue['useSelector'],
-  isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
-})
-
 describe('CustomPage', () => {
-  const setShowPricingModal = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mockUseProviderContext.mockReturnValue(createProviderContext())
-    mockUseModalContext.mockReturnValue({
-      setShowPricingModal,
-    } as unknown as ReturnType<typeof useModalContext>)
-    mockUseAppContext.mockReturnValue(createAppContextValue())
+    deploymentEdition = 'COMMUNITY'
+    canReplaceLogo = true
+    plan = 'professional'
   })
 
   // Integration coverage for the page and its child custom brand section.
@@ -122,11 +92,10 @@ describe('CustomPage', () => {
     })
 
     it('should show the upgrade banner and open pricing modal for sandbox billing', async () => {
+      deploymentEdition = 'CLOUD'
       const user = userEvent.setup()
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.sandbox,
-      }))
+      plan = 'sandbox'
+      canReplaceLogo = false
 
       render(<CustomPage />)
 
@@ -135,14 +104,14 @@ describe('CustomPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
 
-      expect(setShowPricingModal).toHaveBeenCalledTimes(1)
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
     it('should show the contact link for professional workspaces', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.professional,
-      }))
+      deploymentEdition = 'CLOUD'
+      canReplaceLogo = true
 
       render(<CustomPage />)
 
@@ -154,10 +123,9 @@ describe('CustomPage', () => {
     })
 
     it('should show the contact link for team workspaces', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.team,
-      }))
+      plan = 'team'
+      deploymentEdition = 'CLOUD'
+      canReplaceLogo = true
 
       render(<CustomPage />)
 
@@ -165,11 +133,8 @@ describe('CustomPage', () => {
       expect(screen.queryByText('custom.upgradeTip.title')).not.toBeInTheDocument()
     })
 
-    it('should hide both billing sections when billing is disabled', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: false,
-        planType: Plan.sandbox,
-      }))
+    it('should hide both billing sections for Community deployments', () => {
+      canReplaceLogo = false
 
       render(<CustomPage />)
 

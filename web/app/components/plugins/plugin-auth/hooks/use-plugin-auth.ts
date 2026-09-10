@@ -1,5 +1,4 @@
 import type { PluginPayload } from '../types'
-import { useAppContext } from '@/context/app-context'
 import { CredentialTypeEnum } from '../types'
 import {
   useGetPluginCredentialInfoHook,
@@ -11,8 +10,11 @@ export const usePluginAuth = (
   enable?: boolean,
   includeCredentialIds?: string[],
 ) => {
-  const { data } = useGetPluginCredentialInfoHook(pluginPayload, enable, includeCredentialIds)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { data, isLoading } = useGetPluginCredentialInfoHook(
+    pluginPayload,
+    enable,
+    includeCredentialIds,
+  )
   const isAuthorized = !!data?.credentials.length
   const canOAuth = data?.supported_credential_types.includes(CredentialTypeEnum.OAUTH2)
   const canApiKey = data?.supported_credential_types.includes(CredentialTypeEnum.API_KEY)
@@ -22,8 +24,8 @@ export const usePluginAuth = (
     isAuthorized,
     canOAuth,
     canApiKey,
+    isLoading,
     credentials: data?.credentials || [],
-    disabled: !isCurrentWorkspaceManager,
     notAllowCustomCredential: data?.allow_custom_token === false,
     invalidPluginCredentialInfo,
   }

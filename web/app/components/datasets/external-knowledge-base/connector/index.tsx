@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { createExternalKnowledgeBase } from '@/service/datasets'
 
@@ -14,30 +15,31 @@ const ExternalKnowledgeBaseConnector = () => {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { t } = useTranslation()
+  useDocumentTitle(
+    t(($) => $['stepByStepTour.guides.knowledge.empty.connect.title'], { ns: 'common' }),
+  )
 
   const handleConnect = async (formValue: CreateKnowledgeBaseReq) => {
     try {
       setLoading(true)
       const result = await createExternalKnowledgeBase({ body: formValue })
       if (result && result.id) {
-        toast.success(t('externalKnowledgeForm.connectedSuccess', { ns: 'dataset' }))
+        toast.success(t(($) => $['externalKnowledgeForm.connectedSuccess'], { ns: 'dataset' }))
         trackEvent('create_external_knowledge_base', {
           provider: formValue.provider,
           name: formValue.name,
         })
         router.back()
+      } else {
+        throw new Error('Failed to create external knowledge base')
       }
-      else { throw new Error('Failed to create external knowledge base') }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Error creating external knowledge base:', error)
-      toast.error(t('externalKnowledgeForm.connectedFailed', { ns: 'dataset' }))
+      toast.error(t(($) => $['externalKnowledgeForm.connectedFailed'], { ns: 'dataset' }))
     }
     setLoading(false)
   }
-  return (
-    <ExternalKnowledgeBaseCreate onConnect={handleConnect} loading={loading} />
-  )
+  return <ExternalKnowledgeBaseCreate onConnect={handleConnect} loading={loading} />
 }
 
 export default ExternalKnowledgeBaseConnector

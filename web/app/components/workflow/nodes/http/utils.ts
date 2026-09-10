@@ -11,11 +11,11 @@ export const transformToBodyPayload = (old: string, hasKey: boolean): BodyPayloa
     ]
   }
   const bodyPayload = old.split('\n').map((item) => {
-    const [key, value] = item.split(':')
+    const [key, ...others] = item.split(':')
     return {
       key: key || '',
       type: BodyPayloadValueType.text,
-      value: value || '',
+      value: others.join(':'),
     }
   })
   return bodyPayload

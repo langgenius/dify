@@ -5,6 +5,7 @@ This module covers the pre-uninstall plugin hook behavior:
 - API failure: soft-fail (logs and does not re-raise)
 """
 
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -43,18 +44,16 @@ class TestTryPreUninstallPlugin:
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
 
-    def test_try_pre_uninstall_plugin_http_error_soft_fails(self):
+    def test_try_pre_uninstall_plugin_http_error_soft_fails(self, caplog: pytest.LogCaptureFixture):
         body = PreUninstallPluginRequest(
             tenant_id="tenant-456",
             plugin_unique_identifier="com.example.other_plugin",
         )
+        caplog.set_level(logging.ERROR, logger="services.enterprise.plugin_manager_service")
 
-        with (
-            patch(
-                "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
-            ) as mock_send_request,
-            patch("services.enterprise.plugin_manager_service.logger") as mock_logger,
-        ):
+        with patch(
+            "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
+        ) as mock_send_request:
             mock_send_request.side_effect = HTTPStatusError(
                 "502 Bad Gateway",
                 request=None,
@@ -69,20 +68,22 @@ class TestTryPreUninstallPlugin:
                 json={"tenant_id": "tenant-456", "plugin_unique_identifier": "com.example.other_plugin"},
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
-            mock_logger.exception.assert_called_once()
+            assert len(caplog.records) == 1
+            assert caplog.messages[0] == (
+                "failed to perform pre uninstall plugin hook. tenant_id: tenant-456, "
+                "plugin_unique_identifier: com.example.other_plugin"
+            )
 
-    def test_try_pre_uninstall_plugin_generic_exception_soft_fails(self):
+    def test_try_pre_uninstall_plugin_generic_exception_soft_fails(self, caplog: pytest.LogCaptureFixture):
         body = PreUninstallPluginRequest(
             tenant_id="tenant-789",
             plugin_unique_identifier="com.example.failing_plugin",
         )
+        caplog.set_level(logging.ERROR, logger="services.enterprise.plugin_manager_service")
 
-        with (
-            patch(
-                "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
-            ) as mock_send_request,
-            patch("services.enterprise.plugin_manager_service.logger") as mock_logger,
-        ):
+        with patch(
+            "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
+        ) as mock_send_request:
             mock_send_request.side_effect = ConnectionError("network unreachable")
 
             PluginManagerService.try_pre_uninstall_plugin(body)
@@ -93,7 +94,11 @@ class TestTryPreUninstallPlugin:
                 json={"tenant_id": "tenant-789", "plugin_unique_identifier": "com.example.failing_plugin"},
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
-            mock_logger.exception.assert_called_once()
+            assert len(caplog.records) == 1
+            assert caplog.messages[0] == (
+                "failed to perform pre uninstall plugin hook. tenant_id: tenant-789, "
+                "plugin_unique_identifier: com.example.failing_plugin"
+            )
 
 
 class TestCheckCredentialPolicyCompliance:

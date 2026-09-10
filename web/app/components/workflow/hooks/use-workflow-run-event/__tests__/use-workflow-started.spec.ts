@@ -44,9 +44,11 @@ describe('useWorkflowStarted', () => {
     })
 
     act(() => {
-      result.current.handleWorkflowStarted(createStartedResponse({
-        data: { id: 'run-2', workflow_id: 'wf-1', created_at: 2000 },
-      }))
+      result.current.handleWorkflowStarted(
+        createStartedResponse({
+          data: { id: 'run-2', workflow_id: 'wf-1', created_at: 2000 },
+        }),
+      )
     })
 
     expect(store.getState().workflowRunningData!.result.status).toBe(WorkflowRunningStatus.Running)

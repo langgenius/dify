@@ -2,7 +2,7 @@
 name = "dify-vdb-baidu"
 version = "0.0.1"
 dependencies = [
-    "pymochow==2.4.0",
+    "pymochow==2.4.1",
 ]
 description = "Dify vector store backend (dify-vdb-baidu)."
 

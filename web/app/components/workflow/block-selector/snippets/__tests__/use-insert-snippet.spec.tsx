@@ -1,16 +1,38 @@
+import type { SnippetWorkflowResponse } from '@dify/contracts/api/console/snippets/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
+import { NESTED_ELEMENT_Z_INDEX } from '../../../constants'
 import { useInsertSnippet } from '../use-insert-snippet'
 
 type TestNode = {
   id: string
-  position: { x: number, y: number }
+  position: { x: number; y: number }
   selected?: boolean
   parentId?: string
+  zIndex?: number
   data: {
+    type?: string
     selected?: boolean
-    _children?: { nodeId: string, nodeType: string }[]
+    _children?: { nodeId: string; nodeType: string }[]
     _connectedSourceHandleIds?: string[]
     _connectedTargetHandleIds?: string[]
+    variables?: { variable: string; value_selector: string[] }[]
+    items?: {
+      variable_selector: string[]
+      input_type: 'variable' | 'constant'
+      operation: string
+      value: unknown
+    }[]
+    assigned_variable_selector?: string[]
+    input_variable_selector?: string[]
+    iteration_id?: string
+    loop_id?: string
+    start_node_id?: string
+    iterator_selector?: string[]
+    output_selector?: string[]
   }
 }
 
@@ -20,9 +42,16 @@ type TestEdge = {
   sourceHandle?: string
   target: string
   targetHandle?: string
+  zIndex?: number
+  data?: {
+    isInIteration?: boolean
+    iteration_id?: string
+    isInLoop?: boolean
+    loop_id?: string
+  }
 }
 
-const mockFetchQuery = vi.fn()
+const mockRequest = vi.hoisted(() => vi.fn())
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockSaveStateToHistory = vi.fn()
 const mockToastError = vi.fn()
@@ -32,10 +61,9 @@ const mockSetEdges = vi.fn()
 const mockIncrementSnippetUseCount = vi.fn()
 let mockEdges: unknown[] = [{ id: 'existing-edge', source: 'old', target: 'old-2' }]
 
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({
-    fetchQuery: mockFetchQuery,
-  }),
+vi.mock('@/service/base', () => ({
+  request: (...args: unknown[]) => mockRequest(...args),
+  sseGeneratorPost: vi.fn(),
 }))
 
 vi.mock('reactflow', () => ({
@@ -49,10 +77,13 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('../../../hooks/use-workflow-history', () => ({
   useWorkflowHistory: () => ({
     saveStateToHistory: mockSaveStateToHistory,
   }),
@@ -73,9 +104,28 @@ vi.mock('@/service/use-snippets', () => ({
   }),
 }))
 
+type PublishedWorkflow = Pick<SnippetWorkflowResponse, 'graph'>
+
+const seedPublishedWorkflow = (queryClient: QueryClient, workflow: PublishedWorkflow) => {
+  const queryOptions = consoleQuery.snippets.bySnippetId.workflows.publish.get.queryOptions({
+    input: {
+      params: { snippet_id: 'snippet-1' },
+    },
+  })
+
+  queryClient.setQueryData<PublishedWorkflow>(queryOptions.queryKey, workflow)
+}
+
 describe('useInsertSnippet', () => {
+  let queryClient: QueryClient
+  const renderUseInsertSnippet = () =>
+    renderHook(() => useInsertSnippet(), {
+      wrapper: createQueryClientWrapper(queryClient),
+    })
+
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient = createTestQueryClient()
     mockEdges = [{ id: 'existing-edge', source: 'old', target: 'old-2' }]
     mockGetNodes.mockReturnValue([
       {
@@ -86,21 +136,38 @@ describe('useInsertSnippet', () => {
     ])
   })
 
+  afterEach(() => {
+    queryClient.clear()
+  })
+
   describe('Insert Flow', () => {
     it('should append remapped snippet graph into current workflow graph', async () => {
-      mockFetchQuery.mockResolvedValue({
+      seedPublishedWorkflow(queryClient, {
         graph: {
           nodes: [
             {
               id: 'snippet-node-1',
+              zIndex: 1,
               position: { x: 10, y: 20 },
-              data: { selected: false, _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }] },
+              data: {
+                type: 'iteration',
+                selected: false,
+                _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }],
+                start_node_id: 'snippet-node-2',
+                iterator_selector: ['start', 'items'],
+                output_selector: ['snippet-node-2', 'result'],
+              },
             },
             {
               id: 'snippet-node-2',
               parentId: 'snippet-node-1',
+              zIndex: 1002,
               position: { x: 30, y: 40 },
-              data: { selected: false },
+              data: {
+                type: 'code',
+                selected: false,
+                iteration_id: 'snippet-node-1',
+              },
             },
           ],
           edges: [
@@ -110,19 +177,19 @@ describe('useInsertSnippet', () => {
               sourceHandle: 'source',
               target: 'snippet-node-2',
               targetHandle: 'target',
+              zIndex: 1002,
               data: {},
             },
           ],
         },
       })
 
-      const { result } = renderHook(() => useInsertSnippet())
+      const { result } = renderUseInsertSnippet()
 
       await act(async () => {
         await result.current.handleInsertSnippet('snippet-1')
       })
 
-      expect(mockFetchQuery).toHaveBeenCalledTimes(1)
       expect(mockSetNodes).toHaveBeenCalledTimes(1)
       expect(mockSetEdges).toHaveBeenCalledTimes(1)
 
@@ -132,12 +199,19 @@ describe('useInsertSnippet', () => {
       expect(nextNodes).toHaveLength(3)
       expect(nextNodes[1]!.id).not.toBe('snippet-node-1')
       expect(nextNodes[2]!.parentId).toBe(nextNodes[1]!.id)
+      expect(nextNodes[1]!.zIndex).toBe(0)
+      expect(nextNodes[2]!.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
       expect(nextNodes[1]!.data._children![0]!.nodeId).toBe(nextNodes[2]!.id)
+      expect(nextNodes[1]!.data.start_node_id).toBe(nextNodes[2]!.id)
+      expect(nextNodes[1]!.data.iterator_selector).toEqual(['start', 'items'])
+      expect(nextNodes[1]!.data.output_selector).toEqual([nextNodes[2]!.id, 'result'])
+      expect(nextNodes[2]!.data.iteration_id).toBe(nextNodes[1]!.id)
 
       const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
       expect(nextEdges).toHaveLength(2)
       expect(nextEdges[1]!.source).toBe(nextNodes[1]!.id)
       expect(nextEdges[1]!.target).toBe(nextNodes[2]!.id)
+      expect(nextEdges[1]!.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
 
       expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodePaste', {
         nodeId: nextNodes[1]!.id,
@@ -148,115 +222,509 @@ describe('useInsertSnippet', () => {
       })
     })
 
-    it('should connect inserted snippet nodes to the requested edge position', async () => {
-      mockGetNodes.mockReturnValue([
-        {
-          id: 'prev-node',
-          position: { x: 0, y: 0 },
-          width: 240,
-          data: { type: 'start', selected: true, _connectedSourceHandleIds: ['source'] },
-        },
-        {
-          id: 'next-node',
-          position: { x: 300, y: 0 },
-          data: { type: 'answer', selected: false, _connectedTargetHandleIds: ['target'] },
-        },
-      ])
-      mockEdges = [
-        {
-          id: 'prev-node-source-next-node-target',
-          source: 'prev-node',
-          sourceHandle: 'source',
-          target: 'next-node',
-          targetHandle: 'target',
-          data: {
-            sourceType: 'start',
-            targetType: 'answer',
-          },
-        },
-      ]
-      mockFetchQuery.mockResolvedValue({
+    it('should remap variable selectors that reference nodes inside the snippet', async () => {
+      seedPublishedWorkflow(queryClient, {
         graph: {
           nodes: [
             {
-              id: 'snippet-entry',
-              position: { x: 0, y: 0 },
-              data: { type: 'llm', selected: false },
+              id: 'snippet-llm',
+              position: { x: 10, y: 20 },
+              data: {
+                type: 'llm',
+                selected: false,
+                model: { mode: 'chat' },
+                prompt_template: [],
+              },
             },
             {
-              id: 'snippet-exit',
-              position: { x: 300, y: 0 },
-              data: { type: 'code', selected: false },
+              id: 'snippet-code',
+              position: { x: 310, y: 20 },
+              data: {
+                type: 'code',
+                selected: false,
+                variables: [
+                  { variable: 'arg1', value_selector: ['snippet-llm', 'text'] },
+                  { variable: 'arg2', value_selector: ['snippet-llm', 'text'] },
+                ],
+              },
             },
           ],
           edges: [
             {
-              id: 'snippet-entry-source-snippet-exit-target',
-              source: 'snippet-entry',
+              id: 'snippet-llm-source-snippet-code-target',
+              source: 'snippet-llm',
               sourceHandle: 'source',
-              target: 'snippet-exit',
+              target: 'snippet-code',
               targetHandle: 'target',
-              data: {
-                sourceType: 'llm',
-                targetType: 'code',
-              },
+              data: {},
             },
           ],
         },
       })
 
-      const { result } = renderHook(() => useInsertSnippet())
+      const { result } = renderUseInsertSnippet()
 
       await act(async () => {
-        await result.current.handleInsertSnippet('snippet-1', {
-          prevNodeId: 'prev-node',
-          prevNodeSourceHandle: 'source',
-          nextNodeId: 'next-node',
-          nextNodeTargetHandle: 'target',
-        })
+        await result.current.handleInsertSnippet('snippet-1')
       })
 
       const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
-      const insertedEntry = nextNodes.find(node => node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-entry'))!
-      const insertedExit = nextNodes.find(node => node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-exit'))!
-      const shiftedNextNode = nextNodes.find(node => node.id === 'next-node')!
-      expect(insertedEntry.position).toEqual({ x: 300, y: 0 })
-      expect(shiftedNextNode.position.x).toBe(600)
-      expect(nextNodes.find(node => node.id === 'prev-node')!.data._connectedSourceHandleIds).toEqual(['source'])
-      expect(insertedEntry.data._connectedTargetHandleIds).toEqual(['target'])
-      expect(insertedExit.data._connectedSourceHandleIds).toEqual(['source'])
-      expect(shiftedNextNode.data._connectedTargetHandleIds).toEqual(['target'])
+      const insertedLLMNode = nextNodes.find((node) => node.id.includes('snippet-llm'))!
+      const insertedCodeNode = nextNodes.find((node) => node.id.includes('snippet-code'))!
 
-      const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
-      expect(nextEdges).toHaveLength(3)
-      expect(nextEdges.some(edge => edge.id === 'prev-node-source-next-node-target')).toBe(false)
-      expect(nextEdges).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          source: 'prev-node',
-          sourceHandle: 'source',
-          target: insertedEntry.id,
-          targetHandle: 'target',
-        }),
-        expect.objectContaining({
-          source: insertedEntry.id,
-          target: insertedExit.id,
-        }),
-        expect.objectContaining({
-          source: insertedExit.id,
-          sourceHandle: 'source',
-          target: 'next-node',
-          targetHandle: 'target',
-        }),
-      ]))
-      expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
-        params: { snippetId: 'snippet-1' },
-      })
+      expect(insertedLLMNode.id).not.toBe('snippet-llm')
+      expect(insertedCodeNode.data.variables).toEqual([
+        { variable: 'arg1', value_selector: [insertedLLMNode.id, 'text'] },
+        { variable: 'arg2', value_selector: [insertedLLMNode.id, 'text'] },
+      ])
     })
 
-    it('should show error toast when fetching snippet workflow fails', async () => {
-      mockFetchQuery.mockRejectedValue(new Error('insert failed'))
+    it('should remap current and legacy assigner selectors inside a loop snippet', async () => {
+      seedPublishedWorkflow(queryClient, {
+        graph: {
+          nodes: [
+            {
+              id: 'snippet-loop',
+              position: { x: 10, y: 20 },
+              data: {
+                type: 'loop',
+                selected: false,
+                _children: [
+                  { nodeId: 'snippet-loop-start', nodeType: 'loop-start' },
+                  { nodeId: 'snippet-code', nodeType: 'code' },
+                  { nodeId: 'snippet-assigner-v2', nodeType: 'assigner' },
+                  { nodeId: 'snippet-assigner-v1', nodeType: 'assigner' },
+                ],
+                start_node_id: 'snippet-loop-start',
+              },
+            },
+            {
+              id: 'snippet-loop-start',
+              parentId: 'snippet-loop',
+              position: { x: 30, y: 40 },
+              data: {
+                type: 'loop-start',
+                selected: false,
+                loop_id: 'snippet-loop',
+              },
+            },
+            {
+              id: 'snippet-code',
+              parentId: 'snippet-loop',
+              position: { x: 120, y: 40 },
+              data: {
+                type: 'code',
+                selected: false,
+                loop_id: 'snippet-loop',
+                variables: [{ variable: 'current', value_selector: ['snippet-loop', 'current'] }],
+              },
+            },
+            {
+              id: 'snippet-assigner-v2',
+              parentId: 'snippet-loop',
+              position: { x: 360, y: 40 },
+              data: {
+                type: 'assigner',
+                version: '2',
+                selected: false,
+                loop_id: 'snippet-loop',
+                items: [
+                  {
+                    variable_selector: ['snippet-loop', 'steps'],
+                    input_type: 'variable',
+                    operation: 'append',
+                    value: ['snippet-code', 'result'],
+                  },
+                  {
+                    variable_selector: ['snippet-loop', 'current'],
+                    input_type: 'constant',
+                    operation: '-=',
+                    value: 1,
+                  },
+                ],
+              },
+            },
+            {
+              id: 'snippet-assigner-v1',
+              parentId: 'snippet-loop',
+              position: { x: 600, y: 40 },
+              data: {
+                type: 'assigner',
+                version: '1',
+                selected: false,
+                loop_id: 'snippet-loop',
+                assigned_variable_selector: ['snippet-loop', 'legacy-target'],
+                input_variable_selector: ['snippet-code', 'result'],
+                write_mode: 'over-write',
+              },
+            },
+          ],
+          edges: [],
+        },
+      })
 
-      const { result } = renderHook(() => useInsertSnippet())
+      const { result } = renderUseInsertSnippet()
+
+      await act(async () => {
+        await result.current.handleInsertSnippet('snippet-1')
+      })
+
+      const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
+      const insertedLoop = nextNodes.find((node) => node.data.type === 'loop')!
+      const insertedCode = nextNodes.find((node) => node.data.type === 'code')!
+      const insertedAssigners = nextNodes.filter((node) => node.data.type === 'assigner')
+      const insertedV2Assigner = insertedAssigners.find((node) => node.data.items)!
+      const insertedV1Assigner = insertedAssigners.find(
+        (node) => node.data.assigned_variable_selector,
+      )!
+
+      expect(insertedCode.data.variables).toEqual([
+        { variable: 'current', value_selector: [insertedLoop.id, 'current'] },
+      ])
+      expect(insertedV2Assigner.data.items).toEqual([
+        {
+          variable_selector: [insertedLoop.id, 'steps'],
+          input_type: 'variable',
+          operation: 'append',
+          value: [insertedCode.id, 'result'],
+        },
+        {
+          variable_selector: [insertedLoop.id, 'current'],
+          input_type: 'constant',
+          operation: '-=',
+          value: 1,
+        },
+      ])
+      expect(insertedV1Assigner.data.assigned_variable_selector).toEqual([
+        insertedLoop.id,
+        'legacy-target',
+      ])
+      expect(insertedV1Assigner.data.input_variable_selector).toEqual([insertedCode.id, 'result'])
+    })
+
+    it('should preserve external and constant selectors across independent repeated insertions', async () => {
+      const sourceGraph = {
+        nodes: [
+          {
+            id: 'snippet-source',
+            position: { x: 10, y: 20 },
+            data: {
+              type: 'code',
+              selected: false,
+              variables: [{ variable: 'external', value_selector: ['env', 'api_key'] }],
+            },
+          },
+          {
+            id: 'snippet-assigner',
+            position: { x: 310, y: 20 },
+            data: {
+              type: 'assigner',
+              version: '2',
+              selected: false,
+              items: [
+                {
+                  variable_selector: ['conversation', 'latest'],
+                  input_type: 'variable',
+                  operation: 'over-write',
+                  value: ['snippet-source', 'result'],
+                },
+                {
+                  variable_selector: ['conversation', 'api_key'],
+                  input_type: 'variable',
+                  operation: 'over-write',
+                  value: ['env', 'api_key'],
+                },
+                {
+                  variable_selector: ['conversation', 'literal_selector'],
+                  input_type: 'constant',
+                  operation: 'set',
+                  value: ['snippet-source', 'literal'],
+                },
+                {
+                  variable_selector: ['conversation', 'count'],
+                  input_type: 'constant',
+                  operation: 'set',
+                  value: 3,
+                },
+              ],
+            },
+          },
+        ],
+        edges: [],
+      }
+      const originalGraph = structuredClone(sourceGraph)
+      seedPublishedWorkflow(queryClient, { graph: sourceGraph })
+      const { result } = renderUseInsertSnippet()
+
+      await act(async () => {
+        await result.current.handleInsertSnippet('snippet-1')
+      })
+
+      const firstInsertion = mockSetNodes.mock.calls[0]![0] as TestNode[]
+      const firstSource = firstInsertion.find((node) => node.id.includes('snippet-source'))!
+      const firstAssigner = firstInsertion.find((node) => node.id.includes('snippet-assigner'))!
+      mockGetNodes.mockReturnValue(firstInsertion)
+
+      await act(async () => {
+        await result.current.handleInsertSnippet('snippet-1')
+      })
+
+      const secondInsertion = mockSetNodes.mock.calls[1]![0] as TestNode[]
+      const insertedSources = secondInsertion.filter((node) => node.id.includes('snippet-source'))
+      const secondSource = insertedSources.find((node) => node.id !== firstSource.id)!
+      const firstAssignerAfterSecondInsert = secondInsertion.find(
+        (node) => node.id === firstAssigner.id,
+      )!
+      const secondAssigner = secondInsertion.find(
+        (node) => node.id.includes('snippet-assigner') && node.id !== firstAssigner.id,
+      )!
+
+      expect(firstAssignerAfterSecondInsert.data.items![0]).toEqual(
+        expect.objectContaining({
+          variable_selector: ['conversation', 'latest'],
+          value: [firstSource.id, 'result'],
+        }),
+      )
+      expect(secondAssigner.data.items).toEqual([
+        {
+          variable_selector: ['conversation', 'latest'],
+          input_type: 'variable',
+          operation: 'over-write',
+          value: [secondSource.id, 'result'],
+        },
+        {
+          variable_selector: ['conversation', 'api_key'],
+          input_type: 'variable',
+          operation: 'over-write',
+          value: ['env', 'api_key'],
+        },
+        {
+          variable_selector: ['conversation', 'literal_selector'],
+          input_type: 'constant',
+          operation: 'set',
+          value: ['snippet-source', 'literal'],
+        },
+        {
+          variable_selector: ['conversation', 'count'],
+          input_type: 'constant',
+          operation: 'set',
+          value: 3,
+        },
+      ])
+      expect(secondSource.data.variables).toEqual([
+        { variable: 'external', value_selector: ['env', 'api_key'] },
+      ])
+      expect(sourceGraph).toEqual(originalGraph)
+    })
+
+    it('should remap structural node ids inside a loop snippet', async () => {
+      seedPublishedWorkflow(queryClient, {
+        graph: {
+          nodes: [
+            {
+              id: 'snippet-loop',
+              position: { x: 10, y: 20 },
+              data: {
+                type: 'loop',
+                selected: false,
+                _children: [{ nodeId: 'snippet-loop-start', nodeType: 'loop-start' }],
+                start_node_id: 'snippet-loop-start',
+              },
+            },
+            {
+              id: 'snippet-loop-start',
+              parentId: 'snippet-loop',
+              position: { x: 30, y: 40 },
+              data: {
+                type: 'loop-start',
+                selected: false,
+                loop_id: 'snippet-loop',
+              },
+            },
+          ],
+          edges: [],
+        },
+      })
+
+      const { result } = renderUseInsertSnippet()
+
+      await act(async () => {
+        await result.current.handleInsertSnippet('snippet-1')
+      })
+
+      const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
+      const insertedLoopNode = nextNodes.find((node) => node.data.type === 'loop')!
+      const insertedLoopStartNode = nextNodes.find((node) => node.data.type === 'loop-start')!
+
+      expect(insertedLoopNode.data.start_node_id).toBe(insertedLoopStartNode.id)
+      expect(insertedLoopStartNode.data.loop_id).toBe(insertedLoopNode.id)
+    })
+
+    it.each(['iteration', 'loop'] as const)(
+      'should connect inserted snippet nodes inside the %s container',
+      async (containerType) => {
+        mockGetNodes.mockReturnValue([
+          {
+            id: 'container-node',
+            position: { x: 0, y: 0 },
+            data: {
+              type: containerType,
+              selected: false,
+              _children: [
+                { nodeId: 'prev-node', nodeType: 'code' },
+                { nodeId: 'next-node', nodeType: 'code' },
+              ],
+            },
+          },
+          {
+            id: 'prev-node',
+            parentId: 'container-node',
+            position: { x: 0, y: 0 },
+            width: 240,
+            data: { type: 'code', selected: true, _connectedSourceHandleIds: ['source'] },
+          },
+          {
+            id: 'next-node',
+            parentId: 'container-node',
+            position: { x: 300, y: 0 },
+            data: { type: 'code', selected: false, _connectedTargetHandleIds: ['target'] },
+          },
+        ])
+        mockEdges = [
+          {
+            id: 'prev-node-source-next-node-target',
+            source: 'prev-node',
+            sourceHandle: 'source',
+            target: 'next-node',
+            targetHandle: 'target',
+            data: {
+              sourceType: 'code',
+              targetType: 'code',
+            },
+          },
+        ]
+        seedPublishedWorkflow(queryClient, {
+          graph: {
+            nodes: [
+              {
+                id: 'snippet-entry',
+                position: { x: 0, y: 0 },
+                data: {
+                  type: 'llm',
+                  selected: false,
+                  model: { mode: 'chat' },
+                  prompt_template: [],
+                },
+              },
+              {
+                id: 'snippet-exit',
+                position: { x: 300, y: 0 },
+                data: { type: 'code', selected: false },
+              },
+            ],
+            edges: [
+              {
+                id: 'snippet-entry-source-snippet-exit-target',
+                source: 'snippet-entry',
+                sourceHandle: 'source',
+                target: 'snippet-exit',
+                targetHandle: 'target',
+                data: {
+                  sourceType: 'llm',
+                  targetType: 'code',
+                },
+              },
+            ],
+          },
+        })
+
+        const { result } = renderUseInsertSnippet()
+
+        await act(async () => {
+          await result.current.handleInsertSnippet('snippet-1', {
+            prevNodeId: 'prev-node',
+            prevNodeSourceHandle: 'source',
+            nextNodeId: 'next-node',
+            nextNodeTargetHandle: 'target',
+          })
+        })
+
+        const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
+        const insertedEntry = nextNodes.find(
+          (node) =>
+            node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-entry'),
+        )!
+        const insertedExit = nextNodes.find(
+          (node) =>
+            node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-exit'),
+        )!
+        const shiftedNextNode = nextNodes.find((node) => node.id === 'next-node')!
+        expect(insertedEntry.position).toEqual({ x: 300, y: 0 })
+        expect(insertedEntry.parentId).toBe('container-node')
+        expect(insertedExit.parentId).toBe('container-node')
+        expect(shiftedNextNode.position.x).toBe(600)
+        expect(
+          nextNodes.find((node) => node.id === 'prev-node')!.data._connectedSourceHandleIds,
+        ).toEqual(['source'])
+        expect(insertedEntry.data._connectedTargetHandleIds).toEqual(['target'])
+        expect(insertedExit.data._connectedSourceHandleIds).toEqual(['source'])
+        expect(shiftedNextNode.data._connectedTargetHandleIds).toEqual(['target'])
+
+        const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
+        expect(nextEdges).toHaveLength(3)
+        expect(nextEdges.some((edge) => edge.id === 'prev-node-source-next-node-target')).toBe(
+          false,
+        )
+        expect(nextEdges).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              source: 'prev-node',
+              sourceHandle: 'source',
+              target: insertedEntry.id,
+              targetHandle: 'target',
+            }),
+            expect.objectContaining({
+              source: insertedEntry.id,
+              target: insertedExit.id,
+            }),
+            expect.objectContaining({
+              source: insertedExit.id,
+              sourceHandle: 'source',
+              target: 'next-node',
+              targetHandle: 'target',
+            }),
+          ]),
+        )
+        const incomingEdge = nextEdges.find(
+          (edge) => edge.source === 'prev-node' && edge.target === insertedEntry.id,
+        )
+        const insertedInternalEdge = nextEdges.find(
+          (edge) => edge.source === insertedEntry.id && edge.target === insertedExit.id,
+        )
+        const outgoingEdge = nextEdges.find(
+          (edge) => edge.source === insertedExit.id && edge.target === 'next-node',
+        )
+        expect(incomingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+        expect(insertedInternalEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+        expect(outgoingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+        expect(insertedInternalEdge?.data).toEqual(
+          expect.objectContaining({
+            isInIteration: containerType === 'iteration',
+            iteration_id: containerType === 'iteration' ? 'container-node' : undefined,
+            isInLoop: containerType === 'loop',
+            loop_id: containerType === 'loop' ? 'container-node' : undefined,
+          }),
+        )
+        expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
+          params: { snippetId: 'snippet-1' },
+        })
+      },
+    )
+
+    it('should show error toast when fetching snippet workflow fails', async () => {
+      mockRequest.mockRejectedValue(new Error('insert failed'))
+
+      const { result } = renderUseInsertSnippet()
 
       await act(async () => {
         await result.current.handleInsertSnippet('snippet-1')

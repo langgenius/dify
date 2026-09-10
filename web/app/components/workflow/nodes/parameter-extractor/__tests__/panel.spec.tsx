@@ -8,31 +8,41 @@ import Panel from '../panel'
 import { ParamType, ReasoningModeType } from '../types'
 import useConfig from '../use-config'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  __esModule: true,
-  default: ({
-    setModel,
-    onCompletionParamsChange,
-  }: {
-    setModel: (model: { provider: string, modelId: string, mode?: string }) => void
-    onCompletionParamsChange: (params: Record<string, unknown>) => void
-  }) => (
-    <div>
-      <button type="button" onClick={() => setModel({ provider: 'anthropic', modelId: 'claude-3-7-sonnet', mode: AppModeEnum.CHAT })}>set-model</button>
-      <button type="button" onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>set-params</button>
-    </div>
-  ),
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    __esModule: true,
+    default: ({
+      setModel,
+      onCompletionParamsChange,
+    }: {
+      setModel: (model: { provider: string; modelId: string; mode?: string }) => void
+      onCompletionParamsChange: (params: Record<string, unknown>) => void
+    }) => (
+      <div>
+        <button
+          type="button"
+          onClick={() =>
+            setModel({
+              provider: 'anthropic',
+              modelId: 'claude-3-7-sonnet',
+              mode: AppModeEnum.CHAT,
+            })
+          }
+        >
+          set-model
+        </button>
+        <button type="button" onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>
+          set-params
+        </button>
+      </div>
+    ),
+  }),
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
   __esModule: true,
-  FieldCollapse: ({
-    title,
-    children,
-  }: {
-    title: React.ReactNode
-    children: React.ReactNode
-  }) => (
+  FieldCollapse: ({ title, children }: { title: React.ReactNode; children: React.ReactNode }) => (
     <div>
       <div>{title}</div>
       {children}
@@ -43,7 +53,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   __esModule: true,
   default: ({ onChange }: { onChange: (value: string[]) => void }) => (
-    <button type="button" onClick={() => onChange(['node-1', 'query'])}>pick-var</button>
+    <button type="button" onClick={() => onChange(['node-1', 'query'])}>
+      pick-var
+    </button>
   ),
 }))
 
@@ -57,8 +69,12 @@ vi.mock('@/app/components/workflow/nodes/_base/components/config-vision', () => 
     onConfigChange: (value: { detail: string }) => void
   }) => (
     <div>
-      <button type="button" onClick={() => onEnabledChange(true)}>vision-toggle</button>
-      <button type="button" onClick={() => onConfigChange({ detail: 'high' })}>vision-config</button>
+      <button type="button" onClick={() => onEnabledChange(true)}>
+        vision-toggle
+      </button>
+      <button type="button" onClick={() => onConfigChange({ detail: 'high' })}>
+        vision-config
+      </button>
     </div>
   ),
 }))
@@ -66,14 +82,18 @@ vi.mock('@/app/components/workflow/nodes/_base/components/config-vision', () => 
 vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
   __esModule: true,
   default: ({ onChange }: { onChange: (value: string) => void }) => (
-    <button type="button" onClick={() => onChange('Updated instruction')}>instruction-editor</button>
+    <button type="button" onClick={() => onChange('Updated instruction')}>
+      instruction-editor
+    </button>
   ),
 }))
 
 vi.mock('../components/extract-parameter/import-from-tool', () => ({
   __esModule: true,
   default: ({ onImport }: { onImport: (params: unknown[]) => void }) => (
-    <button type="button" onClick={() => onImport([{ name: 'budget' }])}>import-from-tool</button>
+    <button type="button" onClick={() => onImport([{ name: 'budget' }])}>
+      import-from-tool
+    </button>
   ),
 }))
 
@@ -85,28 +105,34 @@ vi.mock('../components/extract-parameter/list', () => ({
 vi.mock('../components/extract-parameter/update', () => ({
   __esModule: true,
   default: ({ onSave }: { onSave: (value: unknown) => void }) => (
-    <button type="button" onClick={() => onSave({ name: 'city' })}>add-parameter</button>
+    <button type="button" onClick={() => onSave({ name: 'city' })}>
+      add-parameter
+    </button>
   ),
 }))
 
 vi.mock('../components/reasoning-mode-picker', () => ({
   __esModule: true,
   default: ({ onChange }: { onChange: (value: ReasoningModeType) => void }) => (
-    <button type="button" onClick={() => onChange(ReasoningModeType.functionCall)}>set-reasoning-mode</button>
+    <button type="button" onClick={() => onChange(ReasoningModeType.functionCall)}>
+      set-reasoning-mode
+    </button>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => ({
   __esModule: true,
   default: ({ onChange }: { onChange: (value: { enabled: boolean }) => void }) => (
-    <button type="button" onClick={() => onChange({ enabled: true })}>memory-config</button>
+    <button type="button" onClick={() => onChange({ enabled: true })}>
+      memory-config
+    </button>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string, type: string }) => <div>{`${name}:${type}`}</div>,
+  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
 }))
 
 vi.mock('../use-config', () => ({
@@ -116,7 +142,9 @@ vi.mock('../use-config', () => ({
 
 const mockUseConfig = vi.mocked(useConfig)
 
-const createData = (overrides: Partial<ParameterExtractorNodeType> = {}): ParameterExtractorNodeType => ({
+const createData = (
+  overrides: Partial<ParameterExtractorNodeType> = {},
+): ParameterExtractorNodeType => ({
   title: 'Parameter Extractor',
   desc: '',
   type: BlockEnum.ParameterExtractor,
@@ -128,12 +156,14 @@ const createData = (overrides: Partial<ParameterExtractorNodeType> = {}): Parame
   } as ParameterExtractorNodeType['model'],
   query: ['node-1', 'query'],
   reasoning_mode: ReasoningModeType.prompt,
-  parameters: [{
-    name: 'city',
-    type: ParamType.string,
-    description: 'City name',
-    required: false,
-  }],
+  parameters: [
+    {
+      name: 'city',
+      type: ParamType.string,
+      description: 'City name',
+      required: false,
+    },
+  ],
   instruction: 'Extract city and budget',
   vision: {
     enabled: false,
@@ -186,13 +216,7 @@ describe('parameter-extractor/panel', () => {
   it('wires model, parameter, instruction, memory, and reasoning actions to use-config', async () => {
     const user = userEvent.setup()
 
-    render(
-      <Panel
-        id="node-1"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<Panel id="node-1" data={createData()} panelProps={panelProps} />)
 
     await user.click(screen.getByRole('button', { name: 'set-model' }))
     await user.click(screen.getByRole('button', { name: 'set-params' }))
@@ -205,7 +229,11 @@ describe('parameter-extractor/panel', () => {
     await user.click(screen.getByRole('button', { name: 'memory-config' }))
     await user.click(screen.getByRole('button', { name: 'set-reasoning-mode' }))
 
-    expect(handleModelChanged).toHaveBeenCalledWith({ provider: 'anthropic', modelId: 'claude-3-7-sonnet', mode: AppModeEnum.CHAT })
+    expect(handleModelChanged).toHaveBeenCalledWith({
+      provider: 'anthropic',
+      modelId: 'claude-3-7-sonnet',
+      mode: AppModeEnum.CHAT,
+    })
     expect(handleCompletionParamsChange).toHaveBeenCalledWith({ temperature: 0.2 })
     expect(handleInputVarChange).toHaveBeenCalledWith(['node-1', 'query'])
     expect(handleVisionResolutionEnabledChange).toHaveBeenCalledWith(true)

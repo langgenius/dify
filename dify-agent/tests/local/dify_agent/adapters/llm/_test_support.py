@@ -12,21 +12,40 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from pydantic import BaseModel
 
+_ZERO_PRICE = Decimal(0)
 
-def make_usage(prompt_tokens: int = 3, completion_tokens: int = 5) -> LLMUsage:
+
+def make_usage(
+    prompt_tokens: int = 3,
+    completion_tokens: int = 5,
+    *,
+    prompt_unit_price: Decimal = _ZERO_PRICE,
+    prompt_price_unit: Decimal = _ZERO_PRICE,
+    prompt_price: Decimal = _ZERO_PRICE,
+    completion_unit_price: Decimal = _ZERO_PRICE,
+    completion_price_unit: Decimal = _ZERO_PRICE,
+    completion_price: Decimal = _ZERO_PRICE,
+    total_price: Decimal = _ZERO_PRICE,
+    currency: str = "USD",
+    latency: float = 0.1,
+    time_to_first_token: float | None = None,
+    time_to_generate: float | None = None,
+) -> LLMUsage:
     return LLMUsage(
         prompt_tokens=prompt_tokens,
-        prompt_unit_price=Decimal("0"),
-        prompt_price_unit=Decimal("0"),
-        prompt_price=Decimal("0"),
+        prompt_unit_price=prompt_unit_price,
+        prompt_price_unit=prompt_price_unit,
+        prompt_price=prompt_price,
         completion_tokens=completion_tokens,
-        completion_unit_price=Decimal("0"),
-        completion_price_unit=Decimal("0"),
-        completion_price=Decimal("0"),
+        completion_unit_price=completion_unit_price,
+        completion_price_unit=completion_price_unit,
+        completion_price=completion_price,
         total_tokens=prompt_tokens + completion_tokens,
-        total_price=Decimal("0"),
-        currency="USD",
-        latency=0.1,
+        total_price=total_price,
+        currency=currency,
+        latency=latency,
+        time_to_first_token=time_to_first_token,
+        time_to_generate=time_to_generate,
     )
 
 

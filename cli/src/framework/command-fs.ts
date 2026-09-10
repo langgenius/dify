@@ -3,12 +3,13 @@ function normalize(p: string): string {
 }
 
 export function isExcludedCommandPath(relPath: string): boolean {
-  return normalize(relPath).split('/').some(seg => seg.startsWith('_'))
+  return normalize(relPath)
+    .split('/')
+    .some((seg) => seg.startsWith('_'))
 }
 
 export function isCommandIndexPath(relPath: string): boolean {
   const n = normalize(relPath)
-  if (!n.endsWith('/index.ts'))
-    return false
+  if (!n.endsWith('/index.ts')) return false
   return !isExcludedCommandPath(n)
 }

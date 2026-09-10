@@ -35,6 +35,18 @@ class TestFirecrawlApp:
         }
         assert app._build_url("/v2/crawl") == "https://custom.firecrawl.dev/v2/crawl"
 
+    def test_requests_use_bounded_timeout(self, mocker: MockerFixture):
+        """Outbound requests must carry a bounded timeout so a hanging endpoint cannot block extraction."""
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
+        mock_post = mocker.patch("httpx.post", return_value=_response(200, {"id": "job-1"}))
+        mock_get = mocker.patch("httpx.get", return_value=_response(200, {"status": "completed"}))
+
+        app._post_request("https://custom.firecrawl.dev/v1/crawl", {}, app._prepare_headers())
+        app._get_request("https://custom.firecrawl.dev/v1/crawl/job-1", app._prepare_headers())
+
+        assert mock_post.call_args.kwargs["timeout"] == firecrawl_module._REQUEST_TIMEOUT
+        assert mock_get.call_args.kwargs["timeout"] == firecrawl_module._REQUEST_TIMEOUT
+
     def test_scrape_url_success(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mocker.patch(

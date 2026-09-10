@@ -98,14 +98,15 @@ def _extract_identifiers_and_literals(query) -> list[Any]:
     values: list[Any] = []
     if isinstance(query, psql.Composed):
         for part in query:
-            if isinstance(part, psql.Identifier):
-                values.append(("ident", part._obj[0] if part._obj else ""))
-            elif isinstance(part, psql.Literal):
-                values.append(("literal", part._obj))
-            elif isinstance(part, psql.Composed):
-                for sub in part:
-                    if isinstance(sub, psql.Literal):
-                        values.append(("literal", sub._obj))
+            match part:
+                case psql.Identifier():
+                    values.append(("ident", part._obj[0] if part._obj else ""))
+                case psql.Literal():
+                    values.append(("literal", part._obj))
+                case psql.Composed():
+                    for sub in part:
+                        if isinstance(sub, psql.Literal):
+                            values.append(("literal", sub._obj))
     return values
 
 

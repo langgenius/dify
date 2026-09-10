@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine, RiNodeTree, RiUploadCloud2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { formatFileSize } from '@/utils/format'
 
 type Props = Readonly<{
@@ -23,8 +23,7 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.target !== dragRef.current)
-      setDragging(true)
+    if (e.target !== dragRef.current) setDragging(true)
   }
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault()
@@ -33,18 +32,16 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
   const handleDragLeave = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.target === dragRef.current)
-      setDragging(false)
+    if (e.target === dragRef.current) setDragging(false)
   }
   const handleDrop = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragging(false)
-    if (!e.dataTransfer)
-      return
+    if (!e.dataTransfer) return
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
-      toast.error(t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }))
+      toast.error(t(($) => $['stepOne.uploader.validation.count'], { ns: 'datasetCreation' }))
       return
     }
     updateFile(files[0])
@@ -59,8 +56,7 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
     }
   }
   const removeFile = () => {
-    if (fileUploader.current)
-      fileUploader.current.value = ''
+    if (fileUploader.current) fileUploader.current.value = ''
     updateFile()
   }
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,20 +78,33 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
   }, [])
   return (
     <div className={cn('mt-6', className)}>
-      <input ref={fileUploader} style={{ display: 'none' }} type="file" id="fileUploader" accept=".pipeline" onChange={fileChangeHandle} />
+      <input
+        ref={fileUploader}
+        style={{ display: 'none' }}
+        type="file"
+        id="fileUploader"
+        accept=".pipeline"
+        onChange={fileChangeHandle}
+      />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
+          <div
+            className={cn(
+              'flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal',
+              dragging &&
+                'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
+            )}
+          >
             <div className="flex w-full items-center justify-center space-x-2">
               <RiUploadCloud2Line className="size-6 text-text-tertiary" />
               <div className="text-text-tertiary">
-                {t('dslUploader.button', { ns: 'app' })}
+                {t(($) => $['dslUploader.button'], { ns: 'app' })}
                 <button
                   type="button"
                   className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={selectHandle}
                 >
-                  {t('dslUploader.browse', { ns: 'app' })}
+                  {t(($) => $['dslUploader.browse'], { ns: 'app' })}
                 </button>
               </div>
             </div>
@@ -111,16 +120,19 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
               <span className="font-inter max-w-[calc(100%-30px)] overflow-hidden text-[12px] leading-4 font-medium text-ellipsis whitespace-nowrap text-text-secondary">
                 {file.name}
               </span>
-              <div className="font-inter flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
+              <div className="font-inter flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase">
                 <span>PIPELINE</span>
                 <span className="text-text-quaternary">·</span>
                 <span>{formatFileSize(file.size)}</span>
               </div>
             </div>
             <div className="hidden items-center pr-3 group-hover:flex">
-              <ActionButton onClick={removeFile}>
-                <RiDeleteBinLine className="size-4 text-text-tertiary" />
-              </ActionButton>
+              <IconButton
+                aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+                onClick={removeFile}
+              >
+                <RiDeleteBinLine aria-hidden="true" className="size-4 text-text-tertiary" />
+              </IconButton>
             </div>
           </div>
         )}
