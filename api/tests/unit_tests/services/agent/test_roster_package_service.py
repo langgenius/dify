@@ -1068,3 +1068,67 @@ def test_manifest_yaml_is_strict() -> None:
 
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
         RosterAgentPackageManifest.model_validate(yaml.safe_load(yaml.safe_dump(manifest)))
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    [
+        ("empty", "package is empty"),
+        ("entries", "too many members"),
+        ("duplicate", "duplicate member paths"),
+        ("directory", "root-level files"),
+        ("control_character", "unsafe path"),
+        ("symlink", "symbolic links"),
+        ("encrypted", "encrypted members"),
+        ("compression", "unsupported compression"),
+    ],
+)
+def test_reader_rejects_invalid_container_before_parsing_manifest(
+    case: str, message: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if case == "empty":
+        content = _zip({})
+    elif case == "entries":
+        apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=1)
+        content = _zip({"manifest.yaml": b"", "app.yaml": b""})
+    elif case == "duplicate":
+        content = _zip({"manifest.yaml": b"", "MANIFEST.YAML": b""})
+    elif case == "directory":
+        content = _zip({"directory/": b""})
+    elif case == "control_character":
+        content = _zip({"bad\nname": b""})
+    elif case == "symlink":
+        output = io.BytesIO()
+        info = zipfile.ZipInfo("manifest.yaml")
+        info.create_system = 3
+        info.external_attr = 0o120777 << 16
+        with zipfile.ZipFile(output, "w") as archive:
+            archive.writestr(info, b"target.yaml")
+        content = output.getvalue()
+    elif case == "encrypted":
+        data = bytearray(_zip({"manifest.yaml": b"manifest"}))
+        directory = data.index(b"PK\x01\x02")
+        data[directory + 8] |= 1
+        content = bytes(data)
+    else:
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_BZIP2) as archive:
+            archive.writestr("manifest.yaml", b"manifest")
+        content = output.getvalue()
+    with pytest.raises(InvalidRosterAgentPackageError, match=message):
+        RosterAgentPackageReader().read(io.BytesIO(content))
+
+
+def test_member_read_reports_closed_prepared_archive() -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    content = _package_bytes(
+        _manifest(skill_payload=skill_payload, file_payload=file_payload),
+        skill_payload=skill_payload,
+        file_payload=file_payload,
+    )
+    reader = RosterAgentPackageReader()
+    prepared = reader.read(io.BytesIO(content))
+    prepared.close()
+    with pytest.raises(InvalidRosterAgentPackageError, match="member is unavailable"):
+        reader.read_member_bytes(prepared, "f_000001.pdf", max_bytes=len(file_payload))
