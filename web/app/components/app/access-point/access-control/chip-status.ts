@@ -32,19 +32,16 @@ export function getInServiceCoverage(
 }
 
 export function getAccessControlChipState({
-  plan,
+  entitled,
   assignment,
   availability,
 }: {
-  plan: string | undefined
+  entitled?: boolean
   assignment: AccessControlAssignment | null
   availability: AccessControlScopeAvailability
 }): AccessControlChipState {
-  if (plan === 'sandbox') {
-    return { kind: 'pro', coveredCount: 0, inServiceCount: 0 }
-  }
-
   if (!assignment) {
+    if (entitled === false) return { kind: 'pro', coveredCount: 0, inServiceCount: 0 }
     return { kind: 'off', coveredCount: 0, inServiceCount: 0 }
   }
 

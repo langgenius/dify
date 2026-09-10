@@ -1,11 +1,13 @@
+import {
+  policyIncludesIp,
+  splitPolicySummary,
+} from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
 import { AppModeEnum } from '@/types/app'
 import {
   canSaveAccessControl,
   createDefaultAccessControlDraft,
   getAccessControlScopeAvailability,
   getAccessControlScopeSupport,
-  policyIncludesIp,
-  splitPolicySummary,
 } from '../draft'
 
 const allScopesAvailable = {
@@ -35,6 +37,7 @@ describe('canSaveAccessControl', () => {
       canSaveAccessControl({
         draft: {
           selectedPolicyId: 'policy-1',
+          enabled: true,
           scopes: {
             webApp: false,
             serviceApi: false,
@@ -61,6 +64,7 @@ describe('canSaveAccessControl', () => {
       canSaveAccessControl({
         draft: {
           selectedPolicyId: 'policy-1',
+          enabled: true,
           scopes: {
             webApp: false,
             serviceApi: false,
@@ -78,6 +82,7 @@ describe('canSaveAccessControl', () => {
       canSaveAccessControl({
         draft: {
           selectedPolicyId: 'policy-1',
+          enabled: true,
           scopes: {
             webApp: false,
             serviceApi: false,
@@ -88,6 +93,26 @@ describe('canSaveAccessControl', () => {
         availability: { ...allScopesAvailable, mcp: false, trigger: false },
       }),
     ).toBe(false)
+  })
+
+  it('disables save when the draft matches the saved baseline', () => {
+    expect(
+      canSaveAccessControl({
+        draft: selectedDraft,
+        availability: { ...allScopesAvailable, trigger: false },
+        baseline: selectedDraft,
+      }),
+    ).toBe(false)
+  })
+
+  it('allows saving a pause when a policy is already selected', () => {
+    expect(
+      canSaveAccessControl({
+        draft: { ...selectedDraft, enabled: false },
+        availability: { ...allScopesAvailable, trigger: false },
+        baseline: selectedDraft,
+      }),
+    ).toBe(true)
   })
 })
 

@@ -1,11 +1,18 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import {
+  createNetworkAccessGroupFixture,
+  seedNetworkAccessGroups,
+} from '@/test/console/network-access'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import IpPoliciesPage from '..'
 
 const translations = vi.hoisted(() => ({
   'operation.cancel': 'Cancel',
   'operation.close': 'Close',
+  'operation.delete': 'Delete',
+  'operation.edit': 'Edit',
   'settings.ipPolicies': 'IP Policies',
   'settings.ipPoliciesDescription':
     'Reusable rules that control which IP addresses or ranges can access your apps',
@@ -14,8 +21,15 @@ const translations = vi.hoisted(() => ({
   'settings.ipPolicyAllowlistHelp':
     'Single addresses (203.0.113.42) or CIDR ranges (10.0.0.0/8). IPv4 and IPv6 are both accepted.',
   'settings.ipPolicyCreate': 'Create',
+  'settings.ipPolicyDeleteBound': 'This policy is in use',
+  'settings.ipPolicyDeleteBoundDescription':
+    '{{name}} is applied to {{count}} apps. Deleting it turns off IP restriction for those apps, so they can be reached from any IP. Other app permissions stay the same.',
+  'settings.ipPolicyDeleteConfirm': 'Delete “{{name}}”?',
+  'settings.ipPolicyEditUsedBy':
+    'This policy is used by {{count}} apps. Saving updates the allowlist for all of them.',
   'settings.ipPolicyDialogDescription':
     'Specify which IP addresses or ranges can access your apps.',
+  'settings.ipPolicyEditTitle': 'Edit IP Policy',
   'settings.ipPolicyName': 'Name',
   'settings.ipPolicyNamePlaceholder': 'e.g. Internal Network',
   'settings.ipPolicyNewTitle': 'New IP Policy',
@@ -23,6 +37,7 @@ const translations = vi.hoisted(() => ({
   'studio.accessControl.emptyPoliciesDescription':
     'A policy is the list of IP addresses allowed in. Create one, then come back to apply it here.',
   'studio.accessControl.emptyPoliciesTitle': 'No IP policies in this workspace yet',
+  'studio.accessControl.policySummaryTwo': 'Allows {{first}} and {{second}}',
 }))
 
 vi.mock('react-i18next', async () => {
@@ -33,11 +48,123 @@ vi.mock('react-i18next', async () => {
 describe('IpPoliciesPage', () => {
   it('opens the new policy dialog from Add', async () => {
     const user = userEvent.setup()
-    render(<IpPoliciesPage />)
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, { entitled: true, groups: [] })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      { queryClient },
+    )
 
     expect(screen.getByText('No IP policies in this workspace yet')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Add' }))
     expect(screen.getByRole('heading', { name: 'New IP Policy' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
+  })
+
+  it('lists existing policies and opens edit from the row', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, {
+      entitled: true,
+      groups: [createNetworkAccessGroupFixture()],
+    })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      { queryClient },
+    )
+
+    expect(screen.getByText('Internal Network')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(screen.getByRole('heading', { name: 'Edit IP Policy' })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Internal Network')).toBeInTheDocument()
+  })
+
+  it('warns that editing a used policy updates every referencing app', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, {
+      entitled: true,
+      groups: [
+        createNetworkAccessGroupFixture({
+          used_by_count: 2,
+          app_ids: ['app-a', 'app-b'],
+          apps: [
+            {
+              id: 'app-a',
+              name: 'Support Bot',
+              icon: null,
+              icon_type: null,
+              icon_background: null,
+            },
+            { id: 'app-b', name: 'Helpdesk', icon: null, icon_type: null, icon_background: null },
+          ],
+        }),
+      ],
+    })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      { queryClient },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(
+      screen.getByText(
+        'This policy is used by 2 apps. Saving updates the allowlist for all of them.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Support Bot' })).toHaveAttribute(
+      'href',
+      '/app/app-a/overview',
+    )
+  })
+
+  it('lets the user delete a referenced policy after confirming the impact', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, {
+      entitled: true,
+      groups: [
+        createNetworkAccessGroupFixture({
+          used_by_count: 2,
+          app_ids: ['app-a', 'app-b'],
+          apps: [
+            {
+              id: 'app-a',
+              name: 'Support Bot',
+              icon: null,
+              icon_type: null,
+              icon_background: null,
+            },
+            { id: 'app-b', name: 'Helpdesk', icon: null, icon_type: null, icon_background: null },
+          ],
+        }),
+      ],
+    })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      { queryClient },
+    )
+
+    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0] as HTMLElement)
+    expect(screen.getByRole('heading', { name: 'Delete “Internal Network”?' })).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Internal Network is applied to 2 apps. Deleting it turns off IP restriction for those apps, so they can be reached from any IP. Other app permissions stay the same.',
+      ),
+    ).toBeInTheDocument()
+    const dialog = screen.getByRole('alertdialog')
+    expect(within(dialog).getByRole('button', { name: 'Delete' })).toBeEnabled()
+    expect(within(dialog).getByRole('link', { name: 'Support Bot' })).toHaveAttribute(
+      'href',
+      '/app/app-a/overview',
+    )
   })
 })

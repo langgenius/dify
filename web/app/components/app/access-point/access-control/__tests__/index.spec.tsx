@@ -1,11 +1,17 @@
+import type { AppNetworkAccessGroupBindingResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useModalContext } from '@/context/modal-context'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createNetworkAccessGroupFixture,
+  seedAppNetworkAccessGroup,
+  seedNetworkAccessGroups,
+} from '@/test/console/network-access'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AccessControlEntry } from '..'
 
-const mockSetShowPricingModal = vi.fn()
+const mockSetPricing = vi.fn()
 const mockSetSettingsDestination = vi.fn()
 const accessControlTranslations = vi.hoisted(() => ({
   'operation.cancel': 'Cancel',
@@ -35,16 +41,35 @@ const accessControlTranslations = vi.hoisted(() => ({
   'studio.accessControl.tooltipOff': 'Not set up',
   'studio.accessControl.tooltipPro': 'Access control requires the Pro plan',
   'studio.accessControl.turnOn': 'Turn on Access Control',
+  'studio.accessControl.restrictByIp': 'Restrict by IP address',
+  'studio.accessControl.restrictedTo': 'Restricted to {{name}}',
+  'studio.accessControl.protectingAll': 'Protecting all {{count}} access points in service.',
+  'studio.accessControl.policySummaryTwo': 'Allows {{first}} and {{second}}',
+  'operation.edit': 'Edit',
+  'studio.accessControl.turnOffTitle': 'Turn off access control?',
+  'studio.accessControl.turnOffDescription': '{{points}} will be reachable from any IP.',
+  'studio.accessControl.turnOffConfirm': 'Turn off',
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-  useModalContextSelector: vi.fn(),
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { appDetail: { id: string; mode: string } }) => unknown) =>
+    selector({
+      appDetail: {
+        id: 'app-1',
+        mode: 'chat',
+      },
+    }),
 }))
 
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+  return {
+    ...actual,
+    useQueryState: (name: string) => {
+      if (name === 'pricing') return [null, mockSetPricing]
+      return [null, mockSetSettingsDestination]
+    },
+  }
 })
 
 vi.mock('react-i18next', async () => {
@@ -55,11 +80,21 @@ vi.mock('react-i18next', async () => {
 const renderEntry = ({
   plan,
   deploymentEdition = 'CLOUD',
+  groups = [],
+  binding = null,
 }: {
   plan?: CloudPlan
   deploymentEdition?: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+  groups?: NetworkAccessGroupResponse[]
+  binding?: AppNetworkAccessGroupBindingResponse | null
 } = {}) => {
+  const queryClient = createConsoleQueryClient()
+  const entitled = plan === 'professional' || plan === 'team'
+  seedNetworkAccessGroups(queryClient, { entitled, groups })
+  seedAppNetworkAccessGroup(queryClient, 'app-1', { entitled, binding })
+
   return renderWithConsoleQuery(<AccessControlEntry />, {
+    queryClient,
     systemFeatures: { deployment_edition: deploymentEdition },
     features: plan
       ? {
@@ -76,17 +111,6 @@ const getChip = () => screen.getByRole('button', { name: /Access Control/ })
 describe('AccessControlEntry', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useModalContext).mockReturnValue({
-      hasBlockingModalOpen: false,
-      setShowModerationSettingModal: vi.fn(),
-      setShowExternalDataToolModal: vi.fn(),
-      setShowPricingModal: mockSetShowPricingModal,
-      setShowAnnotationFullModal: vi.fn(),
-      setShowModelModal: vi.fn(),
-      setShowExternalKnowledgeAPIModal: vi.fn(),
-      setShowOpeningModal: vi.fn(),
-      setShowUpdatePluginModal: vi.fn(),
-    })
   })
 
   it('does not render on community edition', () => {
@@ -99,6 +123,31 @@ describe('AccessControlEntry', () => {
     renderEntry({ deploymentEdition: 'ENTERPRISE', plan: 'sandbox' })
 
     expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
+  })
+
+  it('shows a saved assignment on Cloud sandbox instead of hiding it behind the paywall', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'sandbox',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: {
+        id: 'binding-1',
+        tenant_id: 'workspace-1',
+        app_id: 'app-1',
+        enabled: true,
+        group_id: 'group-1',
+        access_points: ['webapp', 'service_api', 'mcp'],
+        version: 2,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    })
+
+    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+    await user.click(getChip())
+    expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Turn on Access Control' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 
   it('renders a single chip with a non-interactive PRO badge for Cloud sandbox', () => {
@@ -138,7 +187,7 @@ describe('AccessControlEntry', () => {
     expect(turnOn).not.toHaveTextContent('PRO')
     await user.click(turnOn)
 
-    expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
+    expect(mockSetPricing).toHaveBeenCalledWith('open')
   })
 
   it('closes the paywall on Escape without side effects', async () => {
@@ -155,7 +204,7 @@ describe('AccessControlEntry', () => {
         screen.queryByText('Restrict this app to IP addresses you trust.'),
       ).not.toBeInTheDocument()
     })
-    expect(mockSetShowPricingModal).not.toHaveBeenCalled()
+    expect(mockSetPricing).not.toHaveBeenCalled()
   })
 
   it('opens the first-time config popover for paid workspaces without a back control', async () => {
@@ -209,6 +258,56 @@ describe('AccessControlEntry', () => {
       expect(screen.queryByText('No IP policies in this workspace yet')).not.toBeInTheDocument()
     })
     expect(mockSetSettingsDestination).not.toHaveBeenCalled()
-    expect(mockSetShowPricingModal).not.toHaveBeenCalled()
+    expect(mockSetPricing).not.toHaveBeenCalled()
+  })
+
+  it('shows the saved binding status for a paid workspace', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: {
+        id: 'binding-1',
+        tenant_id: 'workspace-1',
+        app_id: 'app-1',
+        enabled: true,
+        group_id: 'group-1',
+        access_points: ['webapp', 'service_api', 'mcp'],
+        version: 2,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    })
+
+    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+    await user.click(getChip())
+    expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
+  })
+
+  it('keeps the saved chip state until a turned-off draft is saved', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: {
+        id: 'binding-1',
+        tenant_id: 'workspace-1',
+        app_id: 'app-1',
+        enabled: true,
+        group_id: 'group-1',
+        access_points: ['webapp', 'service_api', 'mcp'],
+        version: 2,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+    await user.click(screen.getByRole('button', { name: 'Turn off' }))
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
   })
 })

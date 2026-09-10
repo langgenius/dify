@@ -100,13 +100,17 @@ export function validateIpEntry(raw: string): IpEntryValidation {
   return { kind: 'invalid', code: 'unsupported' }
 }
 
+export const IP_POLICY_NAME_MAX_LENGTH = 100
+export const IP_POLICY_CIDR_MAX_COUNT = 100
+
 export function canSubmitIpPolicy(name: string, entries: readonly string[]) {
-  if (name.trim() === '') return false
+  const trimmedName = name.trim()
+  if (trimmedName === '' || trimmedName.length > IP_POLICY_NAME_MAX_LENGTH) return false
 
-  const trimmed = entries.map((entry) => entry.trim())
-  if (trimmed.every((entry) => entry === '')) return false
+  const cidrs = collectAllowedCidrs(entries)
+  if (cidrs.length === 0 || cidrs.length > IP_POLICY_CIDR_MAX_COUNT) return false
 
-  return trimmed.every((entry) => {
+  return entries.every((entry) => {
     const result = validateIpEntry(entry)
     return result.kind === 'empty' || result.kind === 'valid'
   })
@@ -114,4 +118,60 @@ export function canSubmitIpPolicy(name: string, entries: readonly string[]) {
 
 export function collectIpAddresses(entries: readonly string[]) {
   return entries.map((entry) => entry.trim()).filter((entry) => entry.length > 0)
+}
+
+export function toAllowedCidr(entry: string): string {
+  const value = entry.trim()
+  if (value.includes('/')) return value
+  if (value.includes(':')) return `${value}/128`
+  return `${value}/32`
+}
+
+export function collectAllowedCidrs(entries: readonly string[]) {
+  return collectIpAddresses(entries).map(toAllowedCidr)
+}
+
+export function splitPolicySummary(addresses: readonly string[]): {
+  listed: readonly string[]
+  moreCount: number
+} {
+  if (addresses.length <= 2) return { listed: addresses, moreCount: 0 }
+  return { listed: addresses.slice(0, 2), moreCount: addresses.length - 2 }
+}
+
+function ipv4ToInt(ip: string): number | null {
+  const parts = ip.split('.')
+  if (parts.length !== 4) return null
+
+  let value = 0
+  for (const part of parts) {
+    if (!/^\d+$/.test(part)) return null
+    const octet = Number(part)
+    if (octet > 255) return null
+    value = (value << 8) + octet
+  }
+
+  return value >>> 0
+}
+
+function ipv4InCidr(ip: string, network: string, prefix: number): boolean {
+  const ipInt = ipv4ToInt(ip)
+  const networkInt = ipv4ToInt(network)
+  if (ipInt === null || networkInt === null) return false
+  if (prefix === 0) return true
+  const mask = prefix === 32 ? 0xffffffff : ~((1 << (32 - prefix)) - 1) >>> 0
+  return (ipInt & mask) === (networkInt & mask)
+}
+
+export function policyIncludesIp(addresses: readonly string[], ip: string): boolean {
+  return addresses.some((entry) => {
+    const cidr = toAllowedCidr(entry)
+    const slash = cidr.indexOf('/')
+    const network = slash === -1 ? cidr : cidr.slice(0, slash)
+    const prefix = slash === -1 ? (cidr.includes(':') ? 128 : 32) : Number(cidr.slice(slash + 1))
+    if (network.includes(':')) return cidr === ip || network === ip
+    if (entry === ip || network === ip) return true
+    if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) return false
+    return ipv4InCidr(ip, network, prefix)
+  })
 }
