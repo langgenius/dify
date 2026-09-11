@@ -31,7 +31,7 @@ from graphon.runtime import GraphRuntimeState
 logger = logging.getLogger(__name__)
 
 
-def _is_broken_pipe_error(error: BaseException) -> bool:
+def is_broken_pipe_error(error: BaseException) -> bool:
     current_error: BaseException | None = error
     while current_error is not None:
         if isinstance(current_error, BrokenPipeError):
@@ -225,7 +225,7 @@ class AppQueueManager(ABC):
         try:
             result = redis_client.get(stopped_cache_key)
         except (BrokenPipeError, RedisError) as exc:
-            if not _is_broken_pipe_error(exc):
+            if not is_broken_pipe_error(exc):
                 raise
             logger.warning(
                 "Ignoring broken pipe while checking task stop flag; task=%s key=%s",
