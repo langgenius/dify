@@ -137,37 +137,51 @@ class Localizer:
             return
         if model is None:
             return
+        # Correlate translations by numeric INDEX, not by echoing the source strings
+        # back as keys: short index keys survive across models where long verbatim
+        # string-keys get normalized/truncated. The reply is accepted as an
+        # index-keyed object or a positional array, optionally wrapped one level.
         system = (
-            f"You are a translation engine. Translate each string into the language "
-            f"with BCP-47 code {language}. Preserve any {{placeholder}} tokens EXACTLY. "
-            "Do not translate proper nouns or code. Reply with ONLY a flat JSON object whose "
-            "keys are the original strings VERBATIM and whose values are the translations. "
-            "Do not nest, wrap, or rename the keys."
+            f"You are a translation engine. Translate each numbered string into the language "
+            f"with BCP-47 code {language}. Preserve any {{placeholder}} tokens EXACTLY. Do not "
+            "translate proper nouns or code. Reply with ONLY a JSON object whose keys are the "
+            'SAME index numbers (as strings) and whose values are the translations, e.g. '
+            '{"0": "<translation of item 0>", "1": "<translation of item 1>"}.'
         )
-        user = json.dumps({"strings": misses}, ensure_ascii=False)
+        user = json.dumps({str(i): s for i, s in enumerate(misses)}, ensure_ascii=False)
         try:
-            table = llm.invoke_json(model, system=system, user=user)
+            raw = llm.invoke_json(model, system=system, user=user)
         except Exception:
             logger.exception("dify_builder: batch translation failed; leaving strings in English")
             return
-        mapping = self._unwrap_translation_table(table, misses)
-        for src in misses:
-            out = mapping.get(src)
-            _TRANSLATION_CACHE[(src, language)] = out if isinstance(out, str) and out else src
+        translations = self._translations_by_index(raw, len(misses))
+        for i, src in enumerate(misses):
+            out = translations.get(i)
+            # Cache only real translations; leave a miss UNCACHED so a later turn
+            # retries (self-heals) instead of sticking on the English original.
+            if isinstance(out, str) and out.strip():
+                _TRANSLATION_CACHE[(src, language)] = out
 
     @staticmethod
-    def _unwrap_translation_table(table: dict, misses: list[str]) -> dict:
-        """Return the dict that actually maps sources -> translations.
+    def _translations_by_index(raw: object, count: int) -> dict[int, str]:
+        """Map a model translation reply to ``{index: translation}``, tolerant of shape.
 
-        The model sometimes wraps the mapping under a single key (e.g. echoing
-        the ``{"strings": ...}`` request envelope): ``{"strings": {src: tr}}``.
-        If none of the sources are top-level keys, descend one level into the
-        first nested dict that carries them."""
-        if not isinstance(table, dict):
-            return {}
-        if any(s in table for s in misses):
-            return table
-        for value in table.values():
-            if isinstance(value, dict) and any(s in value for s in misses):
-                return value
-        return table
+        Accepts an index-keyed object (``{"0": "..", "1": ".."}``), a positional
+        array (``["..", ".."]``), or either wrapped one level under a single key
+        (a model echoing the request envelope). Unrecognized or missing entries are
+        simply absent, so the caller keeps them untranslated (and uncached)."""
+        container: object = raw
+        # Unwrap one level when the top level is neither index-keyed nor a list.
+        if isinstance(raw, dict) and not any(str(i) in raw for i in range(count)):
+            container = next((v for v in raw.values() if isinstance(v, (dict, list))), raw)
+        out: dict[int, str] = {}
+        if isinstance(container, dict):
+            for i in range(count):
+                value = container.get(str(i))
+                if isinstance(value, str):
+                    out[i] = value
+        elif isinstance(container, list):
+            for i in range(min(count, len(container))):
+                if isinstance(container[i], str):
+                    out[i] = container[i]
+        return out
