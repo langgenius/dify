@@ -6,7 +6,6 @@ from collections.abc import Sequence
 from typing import assert_never, override
 
 import sqlalchemy as sa
-from pydantic import BaseModel, ConfigDict, NaiveDatetime
 from sqlalchemy.orm import Session
 
 from core.human_input_v2.shared.values import ContactId, NormalizedEmail, RecipientId, TenantId
@@ -35,38 +34,25 @@ def _subject_columns(subject: RecipientSubject) -> tuple[RecipientSubjectType, s
             assert_never(subject)
 
 
-class _StoredRecipient(BaseModel):
-    model_config = ConfigDict(from_attributes=True, strict=True)
-
-    id: RecipientId
-    tenant_id: TenantId
-    form_id: str
-    subject_type: RecipientSubjectType
-    subject_value: str
-    sources: RecipientSources
-    snapshot: RecipientSnapshot
-    created_at: NaiveDatetime
-    updated_at: NaiveDatetime
-
-    def to_recipient(self) -> Recipient:
-        subject: RecipientSubject
-        match self.subject_type:
-            case RecipientSubjectType.CONTACT:
-                subject = ContactRecipientSubject(ContactId(self.subject_value))
-            case RecipientSubjectType.EMAIL:
-                subject = EmailRecipientSubject(NormalizedEmail(self.subject_value))
-            case RecipientSubjectType.END_USER:
-                subject = EndUserRecipientSubject(self.subject_value)
-        return Recipient(
-            id=self.id,
-            tenant_id=self.tenant_id,
-            form_id=self.form_id,
-            subject=subject,
-            sources=tuple(self.sources.root),
-            name=self.snapshot.name,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-        )
+def _to_recipient(record: HumanInputRecipient) -> Recipient:
+    subject: RecipientSubject
+    match record.subject_type:
+        case RecipientSubjectType.CONTACT:
+            subject = ContactRecipientSubject(ContactId(record.subject_value))
+        case RecipientSubjectType.EMAIL:
+            subject = EmailRecipientSubject(NormalizedEmail(record.subject_value))
+        case RecipientSubjectType.END_USER:
+            subject = EndUserRecipientSubject(record.subject_value)
+    return Recipient(
+        id=RecipientId(record.id),
+        tenant_id=TenantId(record.tenant_id),
+        form_id=record.form_id,
+        subject=subject,
+        sources=tuple(record.sources.root),
+        name=record.snapshot.name,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    )
 
 
 class SQLAlchemyRecipientRepository(RecipientRepository):
@@ -117,7 +103,7 @@ class SQLAlchemyRecipientRepository(RecipientRepository):
             self._session.add_all(new_records)
             self._session.flush(new_records)
         recipients = {
-            (record.subject_type, record.subject_value): _StoredRecipient.model_validate(record).to_recipient()
+            (record.subject_type, record.subject_value): _to_recipient(record)
             for record in self._session.scalars(query)
         }
         return tuple(recipients[subject] for subject in subjects)
@@ -125,9 +111,9 @@ class SQLAlchemyRecipientRepository(RecipientRepository):
     @override
     def list_recipients(self) -> tuple[Recipient, ...]:
         records = self._session.scalars(self._query().order_by(HumanInputRecipient.id))
-        return tuple(_StoredRecipient.model_validate(record).to_recipient() for record in records)
+        return tuple(_to_recipient(record) for record in records)
 
     @override
     def get_recipient(self, recipient_id: RecipientId) -> Recipient | None:
         record = self._session.scalars(self._query().where(HumanInputRecipient.id == recipient_id)).one_or_none()
-        return _StoredRecipient.model_validate(record).to_recipient() if record is not None else None
+        return _to_recipient(record) if record is not None else None

@@ -344,7 +344,6 @@ def test_owner_scoped_writes_and_global_token_lookup(delivery_engine: Engine, te
         attempts = SQLAlchemyDeliveryAttemptRepository(session, tenant, form)
         assert recipients.list_recipients() == ()
         assert recipients.get_recipient(recipient.id) is None
-        assert deliveries.create_delivery(tenant_id=tenant, form_id=form, params=_delivery_params(recipient.id)) is None
         assert deliveries.get_delivery_by_token_hash(_HASH) == delivery
         assert attempts.record_attempt(delivery.id, _attempt_params()) is None
         assert session.scalars(sa.select(HumanInputDeliveryAttempt.id)).all() == [attempt.id]
@@ -371,18 +370,22 @@ def test_owner_scoped_writes_and_global_token_lookup(delivery_engine: Engine, te
         assert SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash("b" * 64) == own_delivery
 
 
-def test_missing_membership_does_not_create_delivery_or_attempt(delivery_engine: Engine) -> None:
+def test_delivery_creation_trusts_caller_supplied_recipient(delivery_engine: Engine) -> None:
+    recipient_id = RecipientId(str(uuid4()))
     with Session(delivery_engine) as session, session.begin():
         deliveries = SQLAlchemyDeliveryRepository(session)
+        delivery = deliveries.create_delivery(tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient_id))
+        assert delivery is not None
+        assert delivery.recipient_id == recipient_id
+        assert delivery.tenant_id == _TENANT
+        assert delivery.form_id == _FORM
+    with Session(delivery_engine) as session:
+        assert SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(_HASH) == delivery
+
+
+def test_missing_delivery_does_not_create_attempt(delivery_engine: Engine) -> None:
+    with Session(delivery_engine) as session, session.begin():
         attempts = SQLAlchemyDeliveryAttemptRepository(session, _TENANT, _FORM)
-        assert (
-            deliveries.create_delivery(
-                tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(RecipientId(str(uuid4())))
-            )
-            is None
-        )
-        assert deliveries.get_delivery_by_token_hash(_HASH) is None
-        assert session.scalar(sa.select(HumanInputDelivery.id)) is None
         assert attempts.record_attempt(str(uuid4()), _attempt_params()) is None
         assert session.scalar(sa.select(HumanInputDeliveryAttempt.id)) is None
 

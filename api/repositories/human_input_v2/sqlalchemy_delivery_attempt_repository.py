@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import override
 
 import sqlalchemy as sa
-from pydantic import BaseModel, ConfigDict, NaiveDatetime
 from sqlalchemy.orm import Session
 
 from core.human_input_v2.shared.values import TenantId
@@ -17,35 +16,7 @@ from .delivery_attempt_repository import (
     DeliveryAttempt,
     DeliveryAttemptCreateParams,
     DeliveryAttemptRepository,
-    DeliveryStatus,
 )
-
-
-class _StoredAttempt(BaseModel):
-    model_config = ConfigDict(from_attributes=True, strict=True)
-
-    id: str
-    tenant_id: TenantId
-    form_id: str
-    delivery_id: str
-    status: DeliveryStatus
-    error_message: str | None
-    response: DeliveryResponse
-    created_at: NaiveDatetime
-    updated_at: NaiveDatetime
-
-    def to_attempt(self) -> DeliveryAttempt:
-        return DeliveryAttempt(
-            id=self.id,
-            tenant_id=self.tenant_id,
-            form_id=self.form_id,
-            delivery_id=self.delivery_id,
-            status=self.status,
-            error_message=self.error_message,
-            response=self.response.root,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-        )
 
 
 class SQLAlchemyDeliveryAttemptRepository(DeliveryAttemptRepository):
@@ -92,4 +63,16 @@ class SQLAlchemyDeliveryAttemptRepository(DeliveryAttemptRepository):
             sa.insert(HumanInputDeliveryAttempt).from_select(list(values), candidate).execution_options(autoflush=False)
         )
         record = self._session.scalars(self._query().where(HumanInputDeliveryAttempt.id == attempt_id)).one_or_none()
-        return _StoredAttempt.model_validate(record).to_attempt() if record is not None else None
+        if record is None:
+            return None
+        return DeliveryAttempt(
+            id=record.id,
+            tenant_id=TenantId(record.tenant_id),
+            form_id=record.form_id,
+            delivery_id=record.delivery_id,
+            status=record.status,
+            error_message=record.error_message,
+            response=record.response.root,
+            created_at=record.created_at,
+            updated_at=record.updated_at,
+        )

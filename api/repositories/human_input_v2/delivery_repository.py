@@ -102,18 +102,18 @@ class DeliveryRepository(Protocol):
     """Delivery creation and token-based lookup of frozen access information.
 
     The caller owns the transaction; implementations never commit or roll it
-    back. Creation requires a caller-verified tenant and form and checks
-    recipient membership using both owner predicates. Token lookup establishes
+    back. Callers guarantee that the recipient exists and belongs to the supplied
+    tenant and form; creation does not recheck membership. Token lookup establishes
     the candidate delivery's owner context from storage. Targets and authentication
     facts are frozen at creation; this repository does not resolve recipients,
     select endpoints, authenticate actors, generate tokens, or send messages.
     All timestamps are naive UTC.
     """
 
-    def create_delivery(self, *, tenant_id: TenantId, form_id: str, params: DeliveryCreateParams) -> Delivery | None:
+    def create_delivery(self, *, tenant_id: TenantId, form_id: str, params: DeliveryCreateParams) -> Delivery:
         """Create one delivery with generated ID and timestamps.
 
-        Return None if its recipient is absent from the supplied tenant/form.
+        The caller guarantees recipient existence and tenant/form membership.
         Each call creates a separate delivery; callers plan endpoint deduplication
         and reuse persisted deliveries for subsequent send attempts.
         """
