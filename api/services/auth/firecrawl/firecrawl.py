@@ -11,9 +11,7 @@ from services.auth.errors import (
 )
 from services.entities.data_source_api_key_auth_entities import DataSourceApiKeyAuthCredentials
 
-# Explicit bounded timeout for credential-validation requests so a slow or
-# hanging Firecrawl endpoint cannot block the worker indefinitely.
-_CREDENTIAL_TIMEOUT = httpx.Timeout(10.0)
+FIRECRAWL_AUTH_REQUEST_TIMEOUT: httpx.Timeout = httpx.Timeout(10.0, connect=3.0)
 
 
 class FirecrawlAuth:
@@ -49,7 +47,7 @@ class FirecrawlAuth:
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _post_request(self, url, data, headers):
-        return httpx.post(url, headers=headers, json=data, timeout=_CREDENTIAL_TIMEOUT)
+        return httpx.post(url, headers=headers, json=data, timeout=FIRECRAWL_AUTH_REQUEST_TIMEOUT)
 
     def _handle_error(self, response) -> Never:
         if (
