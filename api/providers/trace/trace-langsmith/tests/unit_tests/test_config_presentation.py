@@ -2,10 +2,17 @@ from unittest.mock import Mock, patch
 
 import httpx
 import pytest
+from dify_trace_langsmith.config import LangSmithConfig
 from dify_trace_langsmith.langsmith_trace import LangSmithTraceClient
+from pydantic import ValidationError
 
 from services.app_tracing_config_gateway import TraceProviderConfigChecks
 from services.app_tracing_config_service import AppTracingConfigVerificationFailedError
+
+
+def test_langsmith_rejects_file_endpoint() -> None:
+    with pytest.raises(ValidationError):
+        LangSmithConfig.model_validate({"api_key": "key", "project": "project", "endpoint": "file:///tmp/trace"})
 
 
 @pytest.mark.parametrize(

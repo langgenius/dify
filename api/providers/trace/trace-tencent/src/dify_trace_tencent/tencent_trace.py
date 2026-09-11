@@ -34,6 +34,46 @@ class TencentTraceClient(OtlpTraceClient):
         self, completed_trace: CompletedTrace, span: TraceSpan, parent_span: dict[str, JsonValue] | None = None
     ) -> Span:
         model_labels = self._model_labels(span)
+        native_type = span.span_type
+        if span.node_execution_id and isinstance(node_type := span.attributes.get("node_type"), str):
+            native_type = {"llm": "llm", "tool": "tool", "knowledge-retrieval": "retrieval"}.get(node_type, "node")
+        inputs = json_text(
+            span.attributes.get("original_inputs", span.inputs) if native_type == "node" else span.inputs
+        )
+        outputs = json_text(span.outputs)
+        operation_type = span.attributes.get("operation_type")
+        if operation_type == "message":
+            inputs, outputs = str(span.inputs or ""), str(span.outputs or "")
+        elif native_type == "llm":
+            completion = span.outputs
+            if isinstance(completion, dict) and ("text" in completion or span.attributes.get("node_type") == "llm"):
+                completion = completion.get("text", "")
+            outputs = completion if isinstance(completion, str) else json_text(completion)
+        elif operation_type == "tool" and not span.node_execution_id:
+            outputs = str(span.outputs)
+        elif native_type == "retrieval":
+            query = span.inputs.get("query", "") if isinstance(span.inputs, dict) else span.inputs
+            inputs = str(query or "")
+            documents = span.outputs
+            if isinstance(documents, dict):
+                if "documents" in documents:
+                    native_documents: list[JsonValue] = []
+                    for document in documents["documents"] if isinstance(documents["documents"], list) else []:
+                        if not isinstance(document, dict):
+                            continue
+                        metadata = document.get("metadata")
+                        metadata = metadata if isinstance(metadata, dict) else {}
+                        native_documents.append(
+                            {
+                                "content": document.get("page_content", document.get("content")),
+                                "metadata": {key: metadata.get(key) for key in ("dataset_id", "doc_id", "document_id")},
+                                "score": metadata.get("score"),
+                            }
+                        )
+                    documents = native_documents
+                else:
+                    documents = documents.get("result", [])
+            outputs = json_text(documents)
         attributes = {
             **span_attributes(completed_trace, span),
             **model_labels,
@@ -48,37 +88,38 @@ class TencentTraceClient(OtlpTraceClient):
                 "tool": "TOOL",
                 "retrieval": "RETRIEVER",
                 "agent": "AGENT",
-            }.get(span.span_type, "TASK"),
+            }.get(native_type, "TASK"),
             "gen_ai.is_entry": "true" if span.span_id == completed_trace.root_span_id else "false",
-            "gen_ai.entity.input": json_text(span.inputs),
-            "gen_ai.entity.output": json_text(span.outputs),
+            "gen_ai.entity.input": inputs,
+            "gen_ai.entity.output": outputs,
             "gen_ai.usage.input_tokens": span.usage.get("prompt_tokens"),
             "gen_ai.usage.output_tokens": span.usage.get("completion_tokens"),
             "gen_ai.usage.total_tokens": span.usage.get("total_tokens"),
         }
-        if span.span_type == "llm":
+        if native_type == "llm":
             attributes.update(
                 {
                     "gen_ai.prompt": json_text(span.inputs),
-                    "gen_ai.completion": json_text(span.outputs),
+                    "gen_ai.completion": outputs,
                     "gen_ai.response.finish_reason": span.outputs.get("finish_reason")
                     if isinstance(span.outputs, dict)
                     else None,
                     "llm.is_streaming": self._is_streaming(span),
                 }
             )
-        elif span.span_type == "tool":
+        elif native_type == "tool":
+            metadata = span.attributes.get("metadata")
+            tool_info = metadata.get("tool_info", {}) if isinstance(metadata, dict) else {}
             attributes.update(
                 {
                     "tool.name": span.attributes.get("tool_name") or span.span_name,
-                    "tool.description": span.attributes.get("tool_description"),
+                    "tool.description": span.attributes.get("tool_description")
+                    or (json_text(tool_info) if span.node_execution_id else ""),
                     "tool.parameters": json_text(span.attributes.get("tool_parameters", span.inputs)),
                 }
             )
-        elif span.span_type == "retrieval":
-            attributes.update(
-                {"retrieval.query": json_text(span.inputs), "retrieval.document": json_text(span.outputs)}
-            )
+        elif native_type == "retrieval":
+            attributes.update({"retrieval.query": inputs, "retrieval.document": outputs})
         for field, key, legacy in (
             ("time_to_first_token", "gen_ai.server.time_to_first_token", "gen_ai_server_time_to_first_token"),
             ("time_to_generate", "gen_ai.streaming.time_to_generate", "llm_streaming_time_to_generate"),

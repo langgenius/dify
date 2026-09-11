@@ -597,7 +597,11 @@ class EnterpriseTraceClient:
         if request_type in {"workflow", "message"}:
             request_labels["invoke_from"] = invocation_source(captured, operation_type) or ""
         metrics.append(counter("dify.requests.total", 1, span, request_labels))
-        if span.status == "error" or (span.status == "handled_error" and operation_type != "workflow"):
+        if (
+            span.status == "error"
+            or (span.status == "handled_error" and operation_type != "workflow")
+            or (operation_type == "workflow" and span.status == "cancelled" and span.error)
+        ):
             metrics.append(counter("dify.errors.total", 1, span, {**operation_labels, "type": request_type}))
         duration_name = {
             "workflow": "workflow",
