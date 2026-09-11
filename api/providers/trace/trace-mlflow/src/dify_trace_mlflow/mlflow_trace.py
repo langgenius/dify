@@ -295,6 +295,8 @@ class MLflowTraceClient:
         attributes = span_attributes(completed_trace, span)
         native_span_type = _native_span_type(span)
         inputs, outputs = _format_llm_io(span) if native_span_type == "LLM" else (span.inputs, span.outputs)
+        if span.node_execution_id and span.attributes.get("node_type") == "http-request":
+            inputs = span.attributes.get("process_data") or inputs
         if span.span_type == "retrieval" and isinstance(outputs, dict):
             documents = outputs.get("result", outputs.get("documents"))
             if isinstance(documents, list):

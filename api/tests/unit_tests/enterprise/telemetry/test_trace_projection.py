@@ -22,6 +22,56 @@ from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, wor
 
 
 @pytest.mark.parametrize("include_content", [True, False])
+@pytest.mark.parametrize("node_type", ["llm", "question-classifier", "parameter-extractor", "code"])
+def test_recorded_node_inputs_keep_variables_separate_from_prompts(
+    include_content: bool, node_type: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
+    submitted: list[CompletedTrace] = []
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="draft",
+        inputs={},
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    node = workflow_node(source, node_type=node_type)
+    start_node(recorder, node)
+    variables = {"query": "private query", "parameters": ["category"]}
+    prompts = [{"role": "user", "text": "Rendered private query with instructions"}]
+    started = datetime.now(UTC)
+    recorder.on_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type=node_type,
+            start_at=started,
+            finished_at=started + timedelta(seconds=1),
+            node_run_result=NodeRunResult(inputs=variables, process_data={"prompts": prompts}, outputs={}),
+        )
+    )
+    recorder.on_event(GraphRunSucceededEvent())
+    assert recorder.finish_workflow_trace()
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": include_content})
+    send_traces, log = Mock(), Mock()
+    monkeypatch.setattr(client.otlp, "send_traces", send_traces)
+    monkeypatch.setattr(client.otlp, "send_metrics", Mock())
+    monkeypatch.setattr(client.logger, "info", log)
+    client.export_trace(CompletedTrace.model_validate_json(submitted[0].model_dump_json()))
+    exported = send_traces.call_args.args[0].resource_spans[0].scope_spans[0].spans[-1]
+    for fields in (
+        {item.key: item.value.string_value for item in exported.attributes},
+        log.call_args.kwargs["extra"]["attributes"],
+    ):
+        if include_content:
+            assert json.loads(fields["dify.node.inputs"]) == variables
+            assert json.loads(fields["dify.node.process_data"]) == {"prompts": prompts}
+        else:
+            assert fields["dify.node.inputs"] == f"ref:node_execution_id={node.execution_id}"
+            assert "private" not in str(fields)
+
+
+@pytest.mark.parametrize("include_content", [True, False])
 def test_recorded_workflow_stop_keeps_its_error_counter(include_content: bool, monkeypatch: pytest.MonkeyPatch) -> None:
     source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()), actor_id="user")
     submitted: list[CompletedTrace] = []

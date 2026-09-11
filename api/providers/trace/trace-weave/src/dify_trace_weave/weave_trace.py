@@ -142,6 +142,12 @@ class WeaveTraceClient:
         for span in spans:
             assert span.started_at is not None
             assert span.ended_at is not None
+            inputs = span.inputs
+            if span.node_execution_id and span.attributes.get("node_type") in (
+                "question-classifier",
+                "parameter-extractor",
+            ):
+                inputs = span.attributes.get("original_inputs", inputs)
             has_error = span.status == "error" or (
                 span.status == "cancelled" and span.span_type == "workflow" and bool(span.error)
             )
@@ -158,7 +164,7 @@ class WeaveTraceClient:
                     **span_attributes(completed_trace, span),
                     "tags": _make_span_tags(completed_trace, span),
                 },
-                "inputs": span.inputs if isinstance(span.inputs, dict) else {"input": span.inputs},
+                "inputs": inputs if isinstance(inputs, dict) else {"input": inputs},
                 "wb_user_id": None,
             }
             summary: dict[str, JsonValue] = {
