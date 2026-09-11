@@ -1,11 +1,13 @@
 import json
 import os
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from unittest.mock import Mock
 from uuid import uuid4
 
 import httpx
 import pytest
+from dify_trace_weave.config import WeaveConfig
 from dify_trace_weave.weave_trace import WeaveTraceClient
 
 from core.ops.provider_export import TraceExportError, basic_auth
@@ -97,15 +99,18 @@ def test_weave_verification_and_export_use_saved_destination(
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
-        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+        lambda *, ssl_context: httpx.Client(
+            verify=ssl_context, transport=httpx.MockTransport(respond), trust_env=False
+        ),
     )
+    config: dict[str, Any] = {"api_key": "saved-key", "entity": entity, "project": "project", "host": host}
+    if endpoint is not None:
+        config["endpoint"] = endpoint
+    config["_runtime_settings"] = WeaveConfig.load_runtime_settings(config)
     for name in ("WANDB_BASE_URL", "WANDB_PUBLIC_BASE_URL", "WF_TRACE_SERVER_URL"):
         monkeypatch.setenv(name, "https://unrelated.example")
     monkeypatch.setenv("WANDB_API_KEY", "unrelated-key")
     environment = dict(os.environ)
-    config = {"api_key": "saved-key", "entity": entity, "project": "project", "host": host}
-    if endpoint is not None:
-        config["endpoint"] = endpoint
     client = WeaveTraceClient(config)
 
     assert client.verify_credentials() is True
@@ -123,6 +128,47 @@ def test_weave_verification_and_export_use_saved_destination(
     assert dict(os.environ) == environment
 
 
+def test_weave_native_usage_counts_generations_without_container_aggregates(monkeypatch: pytest.MonkeyPatch) -> None:
+    trace = make_trace()
+    root, generation = trace.spans
+    root = root.model_copy(update={"usage": generation.usage})
+    wrapper = generation.model_copy(
+        update={
+            "span_id": make_span_id(trace.source.tenant_id, trace.source.operation_id, "retry-wrapper"),
+            "span_type": "node",
+            "usage": {},
+            "attributes": {"aggregate_usage": generation.usage},
+        }
+    )
+    generation = generation.model_copy(
+        update={
+            "parent_span_id": wrapper.span_id,
+            "attributes": {
+                **generation.attributes,
+                "metrics_from_parent": True,
+            },
+        }
+    )
+    trace = trace.model_copy(update={"spans": (root, wrapper, generation)})
+    client, request = make_client_with_transport(monkeypatch)
+    client.export_trace(trace)
+    calls = [call.kwargs["json"]["batch"][0] for call in request.call_args_list]
+    assert "usage" not in calls[0]["summary"]
+    assert "usage" not in calls[1]["summary"]
+    assert calls[0]["attributes"]["dify.usage"]["total_tokens"] == 8
+    assert calls[2]["summary"]["usage"]["gpt-4o"]["total_tokens"] == 8
+    request.reset_mock()
+    client.export_trace(
+        trace.model_copy(
+            update={
+                "root_span_id": generation.span_id,
+                "spans": (generation.model_copy(update={"parent_span_id": None}),),
+            }
+        )
+    )
+    assert request.call_args.kwargs["json"]["batch"][0]["summary"]["usage"]["gpt-4o"]["total_tokens"] == 8
+
+
 @pytest.mark.parametrize("operation", ["verify_credentials", "export_trace"])
 def test_weave_self_hosted_failure_never_falls_back_to_cloud(monkeypatch: pytest.MonkeyPatch, operation: str) -> None:
     requests: list[httpx.Request] = []
@@ -133,7 +179,9 @@ def test_weave_self_hosted_failure_never_falls_back_to_cloud(monkeypatch: pytest
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
-        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+        lambda *, ssl_context: httpx.Client(
+            verify=ssl_context, transport=httpx.MockTransport(respond), trust_env=False
+        ),
     )
     client = WeaveTraceClient(
         {"api_key": "saved-key", "entity": "entity", "project": "project", "host": "https://wandb.example"}
@@ -241,7 +289,9 @@ def test_weave_exports_complete_calls_and_falls_back_for_legacy_servers(
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
-        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+        lambda *, ssl_context: httpx.Client(
+            verify=ssl_context, transport=httpx.MockTransport(respond), trust_env=False
+        ),
     )
     trace = make_trace()
     client = WeaveTraceClient(

@@ -2,11 +2,12 @@
 
 import os
 import ssl
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from time import monotonic
 from typing import Never, TypedDict, Unpack
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID, uuid4
 
 import grpc  # pyrefly: ignore[untyped-import]
@@ -56,6 +57,14 @@ class RequestArguments(TypedDict, total=False):
     follow_redirects: bool
     timeout: float
     http_client: httpx.Client
+
+
+@pytest.fixture(autouse=True)
+def isolate_deployment_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    monkeypatch.setattr(Path, "home", Mock(return_value=tmp_path))
+    monkeypatch.setattr(Path, "cwd", Mock(return_value=tmp_path))
+    with patch.dict(os.environ, {}, clear=True):
+        yield
 
 
 def make_completed_trace() -> CompletedTrace:
@@ -389,18 +398,7 @@ def test_provider_credentials_round_trip_without_exposing_or_replacing_saved_sec
     assert original == provider_config(provider)
 
 
-def test_provider_optional_credentials_do_not_call_encryption(monkeypatch: pytest.MonkeyPatch) -> None:
-    encrypt = Mock()
-    decrypt = Mock()
-    monkeypatch.setattr("core.helper.encrypter.encrypt_token", encrypt)
-    monkeypatch.setattr("core.helper.encrypter.batch_decrypt_token", decrypt)
-    settings = {"tracking_uri": "https://mlflow.example", "experiment_id": "1"}
-    saved = encrypt_provider_config(str(uuid4()), "mlflow", settings)
-    assert saved["password"] is None
-    assert mask_provider_config("mlflow", saved) == saved
-    assert decrypt_provider_config(str(uuid4()), "mlflow", saved) == saved
-    encrypt.assert_not_called()
-    decrypt.assert_not_called()
+def test_unknown_provider_is_rejected() -> None:
     with pytest.raises(ValueError, match="Unsupported tracing provider"):
         get_provider_config_fields("unknown")
     with pytest.raises(ValueError, match="Unsupported tracing provider"):

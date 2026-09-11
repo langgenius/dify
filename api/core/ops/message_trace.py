@@ -122,7 +122,7 @@ class MessageTraceRecorder:
             workflow_version=workflow_version,
             inputs=inputs,
             attributes={**self.attributes, **(attributes or {})},
-            submit_completed_trace=self.submit_completed_trace,
+            submit_completed_trace=self._submit_trace_with_message_parent,
             provider_settings=self.provider_settings,
             pause_state=workflow_trace_state,
             resumed_without_state=resumed_without_state,
@@ -242,22 +242,32 @@ class MessageTraceRecorder:
             root_span_id=root.span_id,
             spans=(root,),
         )
-        for settings in self.provider_settings:
-            submitted_trace = trace
-            if source.message_id:
-                parent_source = TraceSource.model_validate({**source.model_dump(), "operation_id": source.message_id})
-                parent_id = make_span_id(source.tenant_id, source.message_id, "message")
-                parent_trace = CompletedTrace(
-                    source=parent_source,
-                    trace_id=make_trace_id(source.tenant_id, source.message_id),
-                    root_span_id=parent_id,
-                    spans=(TraceSpan(span_id=parent_id, span_name="message"),),
-                )
-                parent_export = QueuedTrace.from_trace(parent_trace, settings)
-                submitted_trace = trace.model_copy(
-                    update={"parent": ParentSpanReference(export_id=parent_export.export_id, span_id=parent_id)}
-                )
-            self.submit_completed_trace(submitted_trace, (settings,))
+        self._submit_trace_with_message_parent(trace)
+
+    def _submit_trace_with_message_parent(
+        self, completed_trace: CompletedTrace, provider_settings: Sequence[TraceProviderSettings] | None = None
+    ) -> bool:
+        """Attach message operations and Chatflow workflows to their exact destination's message root."""
+        source = completed_trace.source
+        if source.message_id is None:
+            return self.submit_completed_trace(completed_trace, provider_settings)
+        settings = self.provider_settings if provider_settings is None else provider_settings
+        parent_source = TraceSource.model_validate({**source.model_dump(), "operation_id": source.message_id})
+        parent_id = make_span_id(source.tenant_id, source.message_id, "message")
+        parent_trace = CompletedTrace(
+            source=parent_source,
+            trace_id=make_trace_id(source.tenant_id, source.message_id),
+            root_span_id=parent_id,
+            spans=(TraceSpan(span_id=parent_id, span_name="message"),),
+        )
+        submitted = False
+        for destination in settings:
+            parent_export = QueuedTrace.from_trace(parent_trace, destination)
+            trace = completed_trace.model_copy(
+                update={"parent": ParentSpanReference(export_id=parent_export.export_id, span_id=parent_id)}
+            )
+            submitted = self.submit_completed_trace(trace, (destination,)) or submitted
+        return submitted
 
     def record_saved_message(self, message_id: str) -> None:
         if self._load_message_fields is None:

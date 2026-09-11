@@ -440,6 +440,10 @@ class EnterpriseTraceClient:
         sampled = UUID(trace_id).int / 2**128 < self.sampling_rate
         exported_spans = []
         metrics: list[Metric] = []
+        # Independent child views share execution measurements with the outer trace.
+        metrics_from_outer_workflow = (
+            completed_trace.spans[0].attributes.get("workflow_run_status_source") == "workflow_tool_invocation"
+        )
         for span in completed_trace.spans:
             operation_type = self._operation_type(span)
             attributes = self._attributes(completed_trace, span, operation_type)
@@ -479,7 +483,7 @@ class EnterpriseTraceClient:
                     "user_id": completed_trace.source.actor_id,
                 },
             )
-            if not span.attributes.get("metrics_from_parent"):
+            if not metrics_from_outer_workflow and not span.attributes.get("metrics_from_parent"):
                 metrics.extend(self._metrics(completed_trace, span, operation_type))
         if exported_spans:
             self.otlp.send_traces(

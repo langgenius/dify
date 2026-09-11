@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import JsonValue
 
+from core.helper.ssl_context import create_ssl_context
 from core.ops.provider_export import TraceExportError, TraceProviderHttpClient, export_span_id, span_attributes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_opik.config import OpikConfig
@@ -57,12 +58,25 @@ def _make_opik_id(identifier: str, started_at: datetime | None) -> str:
 class OpikTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
         self.config = OpikConfig.model_validate(provider_config)
+        runtime_settings = (
+            provider_config["_runtime_settings"]
+            if "_runtime_settings" in provider_config
+            else OpikConfig.load_runtime_settings(provider_config)
+        )
+        self.config = self.config.model_copy(
+            update={
+                key: runtime_settings[key] for key in ("api_key", "workspace", "project") if key in runtime_settings
+            }
+        )
         self.http = TraceProviderHttpClient(
             self.config.url,
             {
                 **({"Authorization": self.config.api_key} if self.config.api_key else {}),
                 "Comet-Workspace": self.config.workspace or "default",
             },
+            ssl_context=create_ssl_context(
+                runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)
+            ),
         )
 
     def verify_credentials(self) -> bool:

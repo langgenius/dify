@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 from pydantic import JsonValue
 
+from core.helper.ssl_context import create_ssl_context
 from core.ops.provider_export import (
     TraceExportError,
     TraceProviderHttpClient,
@@ -47,12 +48,23 @@ def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
 class WeaveTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
         self.config = WeaveConfig.model_validate(provider_config)
-        host = (self.config.host or "https://api.wandb.ai").rstrip("/")
-        endpoint = self.config.endpoint.rstrip("/")
-        # Weave 0.52.36 derives self-hosted ingestion from the saved W&B host.
-        if endpoint == "https://trace.wandb.ai" and host != "https://api.wandb.ai":
-            endpoint = f"{host}/traces"
-        self.http = TraceProviderHttpClient(endpoint, {"Authorization": basic_auth("api", self.config.api_key)})
+        runtime_settings = (
+            provider_config["_runtime_settings"]
+            if "_runtime_settings" in provider_config
+            else WeaveConfig.load_runtime_settings(provider_config)
+        )
+        self.config = self.config.model_copy(
+            update={key: runtime_settings[key] for key in ("host", "endpoint", "entity") if key in runtime_settings}
+        )
+        self.project_host = runtime_settings.get("project_host", self.config.host or "https://wandb.ai")
+        self.account_ssl_context = create_ssl_context(runtime_settings.get("account_tls", {}))
+        self.http = TraceProviderHttpClient(
+            self.config.endpoint,
+            {"Authorization": basic_auth("api", self.config.api_key)},
+            ssl_context=create_ssl_context(
+                runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)
+            ),
+        )
 
     def _project_id(self) -> str:
         entity = self.config.entity
@@ -62,7 +74,9 @@ class WeaveTraceClient:
             if not entity:
                 raise TraceExportError("weave_project_invalid")
         if not entity:
-            account = TraceProviderHttpClient(self.config.host or "https://api.wandb.ai", self.http.headers)
+            account = TraceProviderHttpClient(
+                self.config.host or "https://api.wandb.ai", self.http.headers, ssl_context=self.account_ssl_context
+            )
             account.deadline = self.http.deadline
             response = account.request("POST", "graphql", json={"query": "query { viewer { entity } }"}).json()
             entity = (response.get("data", {}).get("viewer") or {}).get("entity")
@@ -77,7 +91,7 @@ class WeaveTraceClient:
         return True
 
     def get_project_url(self) -> str:
-        host = (self.config.host or "https://wandb.ai").rstrip("/")
+        host = self.project_host.rstrip("/")
         try:
             return f"{host}/{quote(self._project_id(), safe='/')}/weave"
         except Exception:
@@ -116,22 +130,19 @@ class WeaveTraceClient:
                 "inputs": span.inputs if isinstance(span.inputs, dict) else {"input": span.inputs},
                 "wb_user_id": None,
             }
+            summary: dict[str, JsonValue] = {
+                "status_counts": {"error": int(has_error), "success": int(not has_error)},
+                "weave": {"latency_ms": (span.ended_at - span.started_at).total_seconds() * 1000},
+            }
+            if span.span_type == "llm":
+                summary["usage"] = {str(span.attributes.get("model_name", "unknown")): span.usage}
             end: dict[str, JsonValue] = {
                 "project_id": project_id,
                 "id": start["id"],
                 "ended_at": span.ended_at.isoformat(),
                 "exception": span.error if has_error else None,
                 "output": span.outputs,
-                "summary": {
-                    "usage": {str(span.attributes.get("model_name", "unknown")): span.usage},
-                    "status_counts": {
-                        "error": int(has_error),
-                        "success": int(not has_error),
-                    },
-                    "weave": {
-                        "latency_ms": (span.ended_at - span.started_at).total_seconds() * 1000,
-                    },
-                },
+                "summary": summary,
             }
             if use_complete_calls:
                 try:

@@ -91,7 +91,9 @@ def test_opik_sends_workspace_for_verification_and_export(
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
-        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+        lambda *, ssl_context: httpx.Client(
+            verify=ssl_context, transport=httpx.MockTransport(respond), trust_env=False
+        ),
     )
     client = OpikTraceClient({"api_key": "secret", **workspace_settings})
 
@@ -105,7 +107,9 @@ def test_opik_sends_workspace_for_verification_and_export(
         ("POST", "/opik/api/v1/private/spans"),
     ]
     assert all(request.headers["Authorization"] == "secret" for request in requests)
-    assert client.config.workspace == workspace_settings.get("workspace")
+    assert client.config.workspace == (
+        workspace_settings["workspace"] if workspace_settings.get("workspace") is not None else "default"
+    )
 
 
 def test_opik_project_url_uses_configured_host_and_escapes_project_name(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -130,7 +134,7 @@ def test_opik_project_url_resolves_default_workspace_only_for_settings(monkeypat
 
     assert client.get_project_url() == "https://www.comet.com/opik/my%2Fteam/redirect/projects?name=Default+Project"
     request.assert_called_once_with("GET", "v1/private/auth/workspace")
-    assert client.config.workspace is None
+    assert client.config.workspace == "default"
 
     request.reset_mock()
     client.export_trace(make_trace())

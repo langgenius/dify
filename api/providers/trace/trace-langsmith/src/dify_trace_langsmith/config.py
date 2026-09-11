@@ -1,7 +1,11 @@
-from typing import override
+import json
+import os
+from pathlib import Path
+from typing import Any, override
 
 from pydantic import ValidationInfo, field_validator
 
+from core.helper.ssl_context import read_tls_files
 from core.ops.provider_config import BaseTracingConfig
 from core.ops.utils import validate_url_with_path
 
@@ -19,6 +23,35 @@ class LangSmithConfig(BaseTracingConfig):
     @override
     def secret_fields(cls) -> tuple[str, ...]:
         return ("api_key",)
+
+    @classmethod
+    @override
+    def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
+        cls.model_validate(provider_config)
+        workspace_id = next(
+            (
+                value
+                for prefix in ("LANGSMITH", "LANGCHAIN")
+                if (value := os.environ.get(f"{prefix}_WORKSPACE_ID")) and value.strip()
+            ),
+            None,
+        )
+        if workspace_id is None:
+            path = Path(os.environ.get("LANGSMITH_CONFIG_FILE") or Path.home() / ".langsmith" / "config.json")
+            try:
+                profile_config = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                profile_config = {}
+            if isinstance(profile_config, dict) and isinstance(profiles := profile_config.get("profiles"), dict):
+                profile_name = os.environ.get("LANGSMITH_PROFILE") or profile_config.get("current_profile") or "default"
+                profile = profiles.get(profile_name) if isinstance(profile_name, str) else None
+                if isinstance(profile, dict) and isinstance(profile.get("workspace_id"), str):
+                    workspace_id = profile["workspace_id"]
+        certificate = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("CURL_CA_BUNDLE")
+        return {
+            "workspace_id": workspace_id.strip().strip('"').strip("'") if workspace_id else None,
+            "tls": read_tls_files({"certificate": certificate}, allow_ca_directory=True),
+        }
 
     @field_validator("endpoint")
     @classmethod

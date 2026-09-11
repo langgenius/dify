@@ -271,7 +271,9 @@ def test_blank_ca_bundle_environment_keeps_http_tls_verification_enabled(monkeyp
     assert all(settings["tls"] == {} for settings in configuration["signals"].values())
     assert all(settings.get("verify", True) for settings in configuration["signals"].values())
     client = enterprise_trace.EnterpriseTraceClient(configuration)
-    assert client.otlp.http.ssl_context is None
+    assert client.otlp.http.ssl_context is not None
+    assert client.otlp.http.ssl_context.verify_mode == ssl.CERT_REQUIRED
+    assert client.otlp.http.ssl_context.check_hostname is True
 
 
 @pytest.mark.parametrize("protocol", ["http/protobuf", "grpc"])
@@ -300,3 +302,23 @@ def test_http_ca_directory_rotation_changes_the_configuration_fingerprint(
     assert rotated is not None
     assert _settings_hash("tenant", rotated) != fingerprint
     assert _settings_hash("tenant", captured) == fingerprint
+
+
+def test_enterprise_config_respects_enablement_and_parses_headers(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION="ENTERPRISE", ENTERPRISE_TELEMETRY_ENABLED=False)
+    assert enterprise_trace.load_enterprise_config() is None
+    config_overrides(
+        ENTERPRISE_TELEMETRY_ENABLED=True,
+        ENTERPRISE_OTLP_ENDPOINT="https://collector.example",
+        ENTERPRISE_OTLP_HEADERS="authorization=Bearer%20token",
+        ENTERPRISE_OTLP_API_KEY="private-key",
+        ENTERPRISE_INCLUDE_CONTENT=False,
+        ENTERPRISE_OTEL_SAMPLING_RATE=0.25,
+    )
+    settings = enterprise_trace.load_enterprise_config()
+    assert settings is not None
+    assert settings["endpoint"] == "https://collector.example"
+    assert settings["headers"] == {"authorization": "Bearer token"}
+    assert settings["api_key"] == "private-key"
+    assert settings["include_content"] is False
+    assert settings["sampling_rate"] == 0.25

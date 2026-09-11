@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import JsonValue
 
+from core.helper.ssl_context import create_ssl_context
 from core.ops.provider_export import TraceExportError, TraceProviderHttpClient, export_span_id, span_attributes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_langsmith.config import LangSmithConfig
@@ -154,7 +155,18 @@ def _map_run_type_and_tags(span: TraceSpan) -> tuple[str, list[str]]:
 class LangSmithTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
         self.config = LangSmithConfig.model_validate(provider_config)
-        self.http = TraceProviderHttpClient(self.config.endpoint, {"x-api-key": self.config.api_key})
+        runtime_settings = (
+            provider_config["_runtime_settings"]
+            if "_runtime_settings" in provider_config
+            else LangSmithConfig.load_runtime_settings(provider_config)
+        )
+        api_key = self.config.api_key.strip().strip('"').strip("'")
+        headers = {"x-api-key": api_key} if api_key else {}
+        if workspace_id := runtime_settings.get("workspace_id"):
+            headers["X-Tenant-Id"] = workspace_id
+        self.http = TraceProviderHttpClient(
+            self.config.endpoint, headers, ssl_context=create_ssl_context(runtime_settings.get("tls", {}))
+        )
 
     def verify_credentials(self) -> bool:
         self.http.request("GET", "sessions", params={"name": self.config.project, "limit": 1})

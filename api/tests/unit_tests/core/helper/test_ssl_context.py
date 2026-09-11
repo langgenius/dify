@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
+from core.helper import ssrf_proxy
 from core.helper.ssl_context import create_ssl_context, read_tls_files
 
 
@@ -30,7 +31,10 @@ def test_tls_settings_capture_file_contents_and_report_unreadable_files(tmp_path
 
 
 def test_tls_verification_requires_an_explicit_boolean_and_owns_each_context() -> None:
-    assert create_ssl_context({}) is None
+    default_context = create_ssl_context({})
+    assert default_context.verify_mode == ssl.CERT_REQUIRED
+    assert default_context.check_hostname is True
+    assert create_ssl_context({}) is not default_context
     ssl_context = create_ssl_context({}, verify=False)
     assert ssl_context is not None
     assert ssl_context.verify_mode == ssl.CERT_NONE
@@ -42,6 +46,18 @@ def test_tls_verification_requires_an_explicit_boolean_and_owns_each_context() -
         create_ssl_context({"client_key": base64.b64encode(b"private key").decode()})
     with pytest.raises(ValueError, match="CA certificate is empty"):
         create_ssl_context({"certificate": ""})
+
+
+def test_default_http_trust_does_not_read_uncaptured_ca_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    default_certificates = ssl.create_default_context(cafile=certifi.where()).get_ca_certs(binary_form=True)
+    monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / "uncaptured.pem"))
+    monkeypatch.setenv("SSL_CERT_DIR", str(tmp_path / "uncaptured-ca-directory"))
+    ssl_context = create_ssl_context({})
+    assert ssl_context.get_ca_certs(binary_form=True) == default_certificates
+    with ssrf_proxy.create_http_client(ssl_context=ssl_context):
+        pass
 
 
 def test_http_client_certificate_uses_certifi_only_without_an_explicit_ca(monkeypatch: pytest.MonkeyPatch) -> None:
