@@ -5,6 +5,7 @@ from bisect import bisect_left
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from ipaddress import ip_address, ip_network
+from ssl import SSLContext
 from time import monotonic
 from typing import Any
 from urllib.parse import urlsplit
@@ -194,8 +195,13 @@ class OtlpTraceClient:
         project_url: str,
         *,
         protocol: str = "http/protobuf",
+        ssl_context: SSLContext | None = None,
+        metrics_http: TraceProviderHttpClient | None = None,
+        grpc_credentials: Mapping[str, Any] | None = None,
     ):
-        self.http = TraceProviderHttpClient(endpoint, headers)
+        self.http = TraceProviderHttpClient(endpoint, headers, ssl_context=ssl_context)
+        self.metrics_http = metrics_http
+        self.grpc_credentials = dict(grpc_credentials or {})
         self.resource = Resource(attributes=otlp_attributes(resource_attributes))
         self.project_url = project_url
         self.protocol = protocol
@@ -230,12 +236,15 @@ class OtlpTraceClient:
             raise TraceExportError("provider_rejected_metrics")
 
     def _send(self, signal: str, serialized: bytes) -> bytes:
+        client = self.metrics_http if signal == "metrics" and self.metrics_http is not None else self.http
+        client.deadline = self.http.deadline
         if self.protocol == "grpc":
-            return self._send_grpc(signal, serialized)
-        endpoint = self.http.endpoint
-        if signal == "metrics":
+            return self._send_grpc(signal, serialized, http_client=client)
+        endpoint = client.endpoint
+        if signal == "metrics" and self.metrics_http is None:
             endpoint = endpoint.rsplit("/", 1)[0] + "/metrics"
-        client = self.http if endpoint == self.http.endpoint else TraceProviderHttpClient(endpoint, self.http.headers)
+        if endpoint != client.endpoint:
+            client = TraceProviderHttpClient(endpoint, client.headers, ssl_context=client.ssl_context)
         client.deadline = self.http.deadline
         response = client.request("POST", content=serialized, headers={"Content-Type": "application/x-protobuf"})
         return response.content
@@ -246,12 +255,15 @@ class OtlpTraceClient:
             raise TraceExportError("export_deadline_exceeded", retryable=True)
         return min(30.0, remaining)
 
-    def _send_grpc(self, signal: str, serialized: bytes) -> bytes:
+    def _send_grpc(
+        self, signal: str, serialized: bytes, *, http_client: TraceProviderHttpClient | None = None
+    ) -> bytes:
         import grpc  # pyrefly: ignore[untyped-import]
 
         from configs import dify_config
 
-        endpoint = urlsplit(self.http.endpoint)
+        http_client = http_client if http_client is not None else self.http
+        endpoint = urlsplit(http_client.endpoint)
         target = endpoint.netloc if endpoint.port else f"{endpoint.hostname}:4317"
         # gRPC supports an explicit HTTP CONNECT proxy option. Use Dify's SSRF
         # proxy policy instead of inheriting a user's process proxy environment.
@@ -274,8 +286,11 @@ class OtlpTraceClient:
                 if matches:
                     raise TraceExportError("grpc_proxy_bypass_disabled")
         options = [("grpc.http_proxy", proxy)] if proxy else [("grpc.enable_http_proxy", 0)]
+        credentials = self.grpc_credentials.get(signal)
         channel = (
-            grpc.secure_channel(target, grpc.ssl_channel_credentials(), options=options)
+            grpc.secure_channel(
+                target, credentials if credentials is not None else grpc.ssl_channel_credentials(), options=options
+            )
             if endpoint.scheme == "https"
             else grpc.insecure_channel(target, options=options)
         )
@@ -283,7 +298,7 @@ class OtlpTraceClient:
         try:
             with channel:
                 send = channel.unary_unary(f"/opentelemetry.proto.collector.{signal}.v1.{service}/Export")
-                return send(serialized, timeout=self._remaining_seconds(), metadata=tuple(self.http.headers.items()))
+                return send(serialized, timeout=self._remaining_seconds(), metadata=tuple(http_client.headers.items()))
         except grpc.RpcError as error:
             raise TraceExportError(
                 "provider_grpc_rejected",

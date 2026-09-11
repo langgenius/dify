@@ -105,3 +105,28 @@ def test_enterprise_metrics_keep_root_and_model_usage_distinct(monkeypatch: pyte
     for span in spans:
         inputs = next(attribute.value.string_value for attribute in span.attributes if attribute.key == "input.value")
         assert inputs.startswith("ref:")
+
+
+def test_enterprise_resources_and_counter_units_keep_the_existing_instrument_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("enterprise.telemetry.enterprise_trace.socket.gethostname", lambda: "ops-worker")
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "service_name": "dify"})
+    assert {field.key: field.value.string_value for field in client.otlp.resource.attributes} == {
+        "service.name": "dify",
+        "host.name": "ops-worker",
+    }
+    trace = make_completed_trace()
+    root = trace.spans[0].model_copy(
+        update={"status": "error", "usage": {"prompt_tokens": 5, "completion_tokens": 3, "total_tokens": 8}}
+    )
+    retrieval = root.model_copy(update={"outputs": {"documents": [{"metadata": {"dataset_id": "dataset"}}]}})
+    metrics = client._metrics(trace, root, "workflow") + client._metrics(trace, retrieval, "dataset_retrieval")
+    assert {metric.name: metric.unit for metric in metrics if metric.HasField("sum")} == {
+        "dify.tokens.input": "{token}",
+        "dify.tokens.output": "{token}",
+        "dify.tokens.total": "{token}",
+        "dify.requests.total": "{request}",
+        "dify.errors.total": "{error}",
+        "dify.dataset.retrievals.total": "{retrieval}",
+    }
