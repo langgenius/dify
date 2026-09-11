@@ -71,18 +71,26 @@ def test_nested_retry_pause_resume_is_owned_and_sealed() -> None:
         return node_mock
 
     parent_id, child_id = str(uuid4()), str(uuid4())
+    recorder.record_node_execution_index("unknown-execution", 99)
     with recorder.node_run_context(node(parent_id)):
         recorder.record_workflow_event(
             NodeRunStartedEvent(
                 id=parent_id, node_id="reused-node-id", node_type="llm", node_title="Node", start_at=started
             )
         )
+        recorder.record_node_execution_index(parent_id, 7)
     with recorder.node_run_context(node(child_id), parent_execution_id=parent_id):
         recorder.record_workflow_event(
             NodeRunStartedEvent(
-                id=child_id, node_id="reused-node-id", node_type="llm", node_title="Node", start_at=started
+                id=child_id,
+                node_id="reused-node-id",
+                node_type="llm",
+                node_title="Node",
+                start_at=started,
+                predecessor_node_id="previous-node",
             )
         )
+        recorder.record_node_execution_index(child_id, 13)
         recorder.record_workflow_event(
             NodeRunRetryEvent(
                 id=child_id,
@@ -96,6 +104,8 @@ def test_nested_retry_pause_resume_is_owned_and_sealed() -> None:
         )
     recorder.record_workflow_event(GraphRunPausedEvent())
     checkpoint = recorder.save_pause_state()
+    recorder.record_node_execution_index(child_id, 99)
+    assert recorder.save_pause_state() == checkpoint
     recorder.record_workflow_event(GraphRunSucceededEvent(outputs={"ignored": True}))
     assert not recorder.finish_workflow_trace()
     assert not completed
@@ -107,6 +117,9 @@ def test_nested_retry_pause_resume_is_owned_and_sealed() -> None:
         inputs={},
         submit_completed_trace=lambda trace: completed.append(trace) is None,
         pause_state=checkpoint,
+    )
+    resumed.record_workflow_event(
+        NodeRunStartedEvent(id=child_id, node_id="reused-node-id", node_type="llm", node_title="Node", start_at=started)
     )
     outputs = {"answer": ["original"]}
     for execution_id in (child_id, parent_id):
@@ -138,6 +151,9 @@ def test_nested_retry_pause_resume_is_owned_and_sealed() -> None:
     last_attempt = next(span for span in trace.spans if span.parent_span_id == child.span_id and span.attempt == 1)
     assert last_attempt.outputs == {"answer": ["original"]}
     assert last_attempt.attributes["metrics_from_parent"] is True
+    assert parent.attributes["index"] == 7
+    assert {span.attributes["index"] for span in (child, retry, last_attempt)} == {13}
+    assert {span.attributes["predecessor_node_id"] for span in (child, retry, last_attempt)} == {"previous-node"}
     assert len(trace.spans) == 5
 
     foreign_source = source.model_copy(update={"tenant_id": str(uuid4())})
@@ -153,10 +169,15 @@ def test_nested_retry_pause_resume_is_owned_and_sealed() -> None:
     foreign = WorkflowTraceRecorder(
         source=source, workflow_id=workflow_id, workflow_version="1", inputs={}, submit_completed_trace=lambda _: True
     )
+    with foreign.node_run_context(node(parent_id)):
+        pass
+    foreign.record_node_execution_index(parent_id, 7)
     with foreign.node_run_context(node(str(uuid4()), tenant_id=str(uuid4()))):
         pass
+    foreign.record_node_execution_index(parent_id, 99)
     foreign.record_workflow_event(GraphRunAbortedEvent(reason="stop"))
     assert not foreign.finish_workflow_trace()
+    assert foreign.save_pause_state()["spans"][1]["attributes"]["index"] == 7
 
 
 @pytest.mark.parametrize("include_loop", [False, True])
@@ -173,6 +194,7 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
     from graphon.engine import Engine
     from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
     from graphon.runtime import RuntimeState, VariablePool
+    from tests.unit_tests.core.ops.test_workflow_trace_compatibility import make_persistence_layer
     from tests.unit_tests.core.workflow.test_workflow_tool_container import (
         _outer_graph,
         _source_workflow,
@@ -235,6 +257,8 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
         environment_variables=[],
         workflow_kind="standard",
     )
+    persistence, node_repository = make_persistence_layer(recorder, state)
+    event_listeners = {}
     engine = Engine(
         graph=_outer_graph(tool),
         runtime_state=state,
@@ -245,16 +269,20 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
                 handler_factory=LoopContainerHandler,
                 hidden_event_listener=recorder.record_workflow_event,
                 execution_event_listener=recorder.record_workflow_event,
+                event_listeners=event_listeners,
             ),
             partial(
                 WorkflowToolContainerHandler,
                 source_repository=repository,
                 workflow_trace=recorder,
                 hidden_event_listener=recorder.record_workflow_event,
+                event_listener_factory=persistence.create_workflow_tool_event_listener,
+                event_listeners=event_listeners,
             ),
         ),
     )
     engine.add_layer(recorder)
+    engine.add_layer(persistence)
     public_events = list(engine.run())
     recorder.finish_workflow_trace()
 
@@ -276,6 +304,22 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
     else:
         assert {span.node_id for span in child_trace.spans} == {"tool", "source-start", "source-end"}
     assert parent_trace.complete
+    persisted_nodes = {call.args[0].id: call.args[0] for call in node_repository.save.call_args_list}
+    child_repository = node_repository.for_workflow_tool.return_value
+    persisted_child_nodes = {call.args[0].id: call.args[0] for call in child_repository.save.call_args_list}
+    assert sorted(execution.index for execution in persisted_child_nodes.values()) == list(
+        range(1, len(persisted_child_nodes) + 1)
+    )
+    assert persisted_child_nodes
+    persisted_nodes.update(persisted_child_nodes)
+    for trace in (parent_trace, child_trace):
+        for span in trace.spans:
+            if span.node_execution_id in persisted_nodes:
+                execution = persisted_nodes[span.node_execution_id]
+                assert span.attributes["index"] == execution.index
+                assert span.attributes.get("predecessor_node_id") == execution.predecessor_node_id
+                if span.span_id != trace.root_span_id:
+                    assert span.source_workflow_id == execution.workflow_id
 
 
 def test_pause_destinations_cannot_switch_tenants_and_budget_releases() -> None:
