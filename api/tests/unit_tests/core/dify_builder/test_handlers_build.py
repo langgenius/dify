@@ -555,6 +555,32 @@ def test_test_and_repair_config_failure_still_routes_to_repair_gate():
     assert result.context.test_input_ref == "ti-1"  # untouched on the config path
 
 
+def test_test_and_repair_model_config_failure_surfaces_without_repair():
+    """A model-config failure (the workflow references a model that isn't
+    configured/available) must be surfaced -- NOT sent through diagnose+repair,
+    which would thrash proposing node-structure changes. No repair is staged."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    env, _ = _new_env(agent=StubAgent())  # StubAgent WOULD propose a repair if diagnose ran
+    env.dify = FakeBuildDifyPort()
+    env.dify.verify_pass = False
+    env.dify.fail_error = "Model gpt-5.6 does not exist."  # model-config error, not a logic bug
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(test_input_ref="ti-1")
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
+    assert result.context.staged_repair == []  # NO node-mutation repair proposed (no thrashing)
+    kinds = [i.kind for i in result.items]
+    assert "change_set" not in kinds  # no repair change-set offered
+    error = next(i for i in result.items if i.kind == "error")
+    assert "model" in error.payload["body"].lower()  # diagnosis names the model-config issue
+
+
 def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed():
     """run_draft raising must not crash the advance -- the try/except degrade
     path converts the exception into a failed run and still routes to the
