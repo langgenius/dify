@@ -137,20 +137,21 @@ class AliyunTraceClient(OtlpTraceClient):
             if isinstance(ttft, (int, float)) and not isinstance(ttft, bool):
                 attributes["gen_ai.response.time_to_first_token"] = int(ttft * 1_000_000_000)
         if native_type == "llm":
-            # Aliyun's existing ReAct projection identifies plugin thought entries
-            # by this label suffix; keep that compatibility at the destination.
+            # Plugin thought details have no node execution ID; concrete LLM titles
+            # can use the same suffix without changing their native projection.
+            is_agent_thought = not span.node_execution_id and span.span_name.endswith(" Thought")
             original_inputs = captured.get("original_inputs", span.inputs)
             original_inputs = original_inputs if isinstance(original_inputs, dict) else {}
             model_name = (
                 captured.get("model_name")
                 or original_inputs.get("model_name")
-                or (span.span_name.removesuffix(" Thought") if span.span_name.endswith(" Thought") else None)
+                or (span.span_name.removesuffix(" Thought") if is_agent_thought else None)
             )
             completion = span.outputs
             if isinstance(completion, dict):
                 completion = (
                     str(completion.get("thought") or completion.get("action") or completion.get("text") or "")
-                    if span.span_name.endswith(" Thought")
+                    if is_agent_thought
                     else str(completion.get("text") or completion.get("error_message") or span.error or "")
                 )
             elif span.node_execution_id and captured.get("node_type") == "llm":
@@ -164,7 +165,7 @@ class AliyunTraceClient(OtlpTraceClient):
                     or original_inputs.get("model_provider"),
                     "gen_ai.prompt": json_text(span.inputs),
                     "gen_ai.completion": completion,
-                    "output.value": completion,
+                    "output.value": json_text(span.outputs) if is_agent_thought else completion,
                     "gen_ai.input.messages": json_text(gen_ai_messages(span.inputs, "user")),
                     "gen_ai.output.messages": json_text(gen_ai_messages(span.outputs, "assistant")),
                 }

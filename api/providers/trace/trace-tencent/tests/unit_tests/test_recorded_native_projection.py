@@ -12,6 +12,7 @@ from opentelemetry.proto.trace.v1.trace_pb2 import Span
 from pydantic import JsonValue
 
 from core.ops.basic_chat_trace import record_basic_chat_result
+from core.ops.completion_trace import record_completion_result
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource
 from core.ops.workflow_trace import WorkflowTraceRecorder
@@ -154,3 +155,57 @@ def test_recorded_message_tool_and_dataset_retrieval_native_values(
     assert json.loads(retrieval_attributes["retrieval.document"]) == [
         {"content": "world", "metadata": {"dataset_id": "dataset", "doc_id": None, "document_id": None}, "score": 0.0}
     ]
+
+
+@pytest.mark.parametrize("mode", ["basic", "completion"])
+@pytest.mark.parametrize(
+    ("stream", "ttft", "message_streaming", "generation_streaming"),
+    [
+        (True, None, True, True),
+        (True, 0.0, True, True),
+        (False, None, False, False),
+        (False, 0.5, False, True),
+        (False, 0.0, False, True),
+        (False, False, False, False),
+        (None, None, False, False),
+        (None, 0.5, True, True),
+        (None, 0.0, True, True),
+        (None, False, True, True),
+    ],
+)
+def test_recorded_message_streaming_marker_preserves_request_flag(
+    mode: str,
+    stream: bool | None,
+    ttft: float | None,
+    message_streaming: bool,
+    generation_streaming: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
+    queue = RecordingQueue()
+    recorder = MessageTraceRecorder(
+        source,
+        queue,
+        (
+            TraceProviderSettings(
+                tenant_id=source.tenant_id, app_id=source.app_id, provider_name="tencent", config_id=str(uuid4())
+            ),
+        ),
+        attributes={"is_streaming_request": stream} if stream is not None else {},
+    )
+    recorder.bind_message(str(uuid4()), str(uuid4()))
+    record_result = record_basic_chat_result if mode == "basic" else record_completion_result
+    record_result(recorder, {**message_fields(recorder), "metadata": {"usage": {"time_to_first_token": ttft}}})
+    trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+    root, generation = export_spans(trace, monkeypatch)
+    root_attributes = {item.key: item.value for item in root.attributes}
+    assert root_attributes["gen_ai.is_entry"].string_value == "true"
+    assert trace.spans[0].attributes["is_streaming_request"] is message_streaming
+    if message_streaming:
+        assert root_attributes["llm.is_streaming"].WhichOneof("value") == "string_value"
+        assert root_attributes["llm.is_streaming"].string_value == "true"
+    else:
+        assert "llm.is_streaming" not in root_attributes
+    generation_attributes = {item.key: item.value for item in generation.attributes}
+    assert generation_attributes["llm.is_streaming"].WhichOneof("value") == "bool_value"
+    assert generation_attributes["llm.is_streaming"].bool_value is generation_streaming

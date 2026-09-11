@@ -167,6 +167,7 @@ def test_agent_round_tool_and_skill_fields_survive_generic_capture() -> None:
     thought = trace.spans[-1].model_copy(
         update={
             "span_name": "model-name Thought",
+            "node_execution_id": None,
             "attributes": {"provider": "plugin-provider", "metrics_from_parent": True},
             "outputs": {"thought": "Thinking"},
         }
@@ -179,14 +180,14 @@ def test_agent_round_tool_and_skill_fields_survive_generic_capture() -> None:
 @pytest.mark.parametrize(
     ("data", "completion"),
     [
-        ({"thought": "Thinking", "action": "search"}, "Thinking"),
+        ({"thought": "Thinking", "action": "search", "action_input": {"query": "document"}}, "Thinking"),
         ({"thought": "", "action": "search"}, "search"),
         ({"action": {"tool": "search"}}, "{'tool': 'search'}"),
         ({"text": "Answer"}, "Answer"),
         ({}, ""),
     ],
 )
-def test_recorded_agent_thought_preserves_completion_aliases(
+def test_recorded_agent_thought_preserves_output_and_completion_aliases(
     data: dict[str, JsonValue], completion: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()), actor_id="user")
@@ -237,5 +238,6 @@ def test_recorded_agent_thought_preserves_completion_aliases(
     exported = next(span for span in request.resource_spans[0].scope_spans[0].spans if span.name == "model Thought")
     attributes = {item.key: item.value.string_value for item in exported.attributes}
     assert attributes["gen_ai.completion"] == completion
+    assert json.loads(attributes["output.value"]) == data
     assert attributes["gen_ai.request.model"] == "model"
     assert attributes["gen_ai.provider.name"] == "plugin-provider"

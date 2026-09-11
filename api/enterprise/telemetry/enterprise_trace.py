@@ -387,7 +387,9 @@ class EnterpriseTraceClient:
             {
                 "input.value": json_text(span.inputs) if self.include_content else reference,
                 "output.value": json_text(span.outputs) if self.include_content else reference,
-                f"{prefix}.inputs": content(span.inputs),
+                f"{prefix}.inputs": content(
+                    captured.get("original_inputs", span.inputs) if operation_type == "node_execution" else span.inputs
+                ),
                 f"{prefix}.outputs": content(span.outputs),
             }
         )
