@@ -10,6 +10,7 @@ from extensions.ext_redis import (
     _get_cluster_connection_health_params,
     _get_connection_health_params,
     _normalize_redis_key_prefix,
+    _parse_redis_nodes,
     _serialize_redis_name,
     redis_fallback,
 )
@@ -76,6 +77,14 @@ class TestGetBaseRedisParams:
         # Existing params still present
         assert params["db"] == 0
         assert params["encoding"] == "utf-8"
+
+
+class TestParseRedisNodes:
+    def test_trims_nodes(self):
+        assert _parse_redis_nodes("redis-a:6379, redis-b:6380") == [("redis-a", 6379), ("redis-b", 6380)]
+
+    def test_supports_bracketed_ipv6(self):
+        assert _parse_redis_nodes("[2001:db8::10]:6379") == [("2001:db8::10", 6379)]
 
 
 class TestRedisFallback:

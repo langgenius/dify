@@ -7,14 +7,6 @@ import HomeSearch from '../home-search'
 import { HomeShell } from '../home-shell'
 import styles from '../home-sticky.module.css'
 
-vi.mock('@/public/marketplace/dify-marketplace-logo-dark.svg', () => ({
-  default: { src: '/marketplace/dify-marketplace-logo-dark.svg' },
-}))
-
-vi.mock('@/public/marketplace/dify-marketplace-logo.svg', () => ({
-  default: { src: '/marketplace/dify-marketplace-logo.svg' },
-}))
-
 vi.mock('../home-catalog-tabs', () => ({
   default: () => null,
 }))

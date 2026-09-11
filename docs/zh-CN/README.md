@@ -66,7 +66,7 @@
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | 趋势转变" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-Dify 是一个开源的 LLM 应用开发平台。其直观的界面结合了 AI 工作流、RAG 管道、Agent、模型管理、可观测性功能等，让您可以快速从原型到生产。以下是其核心功能列表：
+Dify 是一个开源的 LLM 应用开发平台。其直观的界面结合了 AI 工作流、RAG 管道、Agent、模型管理、可观测性功能（包括 [Opik](https://www.comet.com/docs/opik/integrations/dify)、[Langfuse](https://docs.langfuse.com) 和 [Arize Phoenix](https://docs.arize.com/phoenix)）等，让您可以快速从原型到生产。以下是其核心功能列表：
 </br> </br>
 
 **1. 工作流**:
@@ -130,6 +130,12 @@ docker compose up -d
 ```
 
 运行后，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 Dify 控制台并开始初始化安装操作。
+
+#### 获取帮助
+
+如果在安装 Dify 时遇到问题，请参阅我们的[常见问题](https://docs.dify.ai/getting-started/install-self-hosted/faqs)。如果问题仍未解决，请联系[社区和我们](#%E7%A4%BE%E5%8C%BA%E4%B8%8E%E6%94%AF%E6%8C%81)。
+
+> 如果您希望为 Dify 贡献代码或进行额外的开发，请参阅我们的[源码部署指南](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
 
 ### 高级设置
 

@@ -308,19 +308,11 @@
   "web/app/components/app/configuration/config-var/config-modal/form-fields.tsx": {
     "jsx-a11y/anchor-has-content": {
       "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/app/configuration/config-var/config-modal/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/app/configuration/config-var/config-string/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/app/configuration/config-var/index.tsx": {
@@ -4180,11 +4172,6 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-number.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
