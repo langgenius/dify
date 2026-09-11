@@ -16,3 +16,18 @@ Use `TraceProviderHttpClient` for HTTP. It creates and closes an SSRF-aware HTTP
 Return `ExportedParentSpans` keyed by internal span ID, with the provider IDs needed to append a later operation. The delivery worker retains only the root receipt. Databricks uses a separate linked trace for late operations because updating a completed trace artifact would overwrite sibling work. Raise `TraceExportError` with a safe reason and an explicit retry classification; never include credentials or trace content in errors.
 
 The ten choices remain Langfuse, LangSmith, Opik, Weave, Arize, Phoenix, Aliyun, MLflow, Databricks and Tencent. Their existing configuration APIs and encrypted credentials remain supported. There is one OPS runtime; the former unified/legacy switch is removed.
+
+## Langfuse v4
+
+Langfuse uses SDK v4 attribute builders and its propagation span processor with local OpenTelemetry spans, following the [v4 migration workflow](https://raw.githubusercontent.com/langfuse/skills/main/skills/langfuse/references/v4-project-migration.md). Each export owns its tracer provider and span collector; it sends the completed tree synchronously through `TraceProviderHttpClient` to `/api/public/otel/v1/traces`. No global Langfuse client or global OpenTelemetry provider is configured. The SDK is pinned to `4.15.2` because preserving historical timestamps and isolating concurrent destinations requires internal SDK helpers; recheck the adapter before changing that pin.
+
+Trace name, user, session and Dify metadata propagate to observations. Input and output belong to observations; deprecated trace-level input/output are not emitted. Model usage and cost belong to generation observations.
+
+Complete these deployment checks after the code-only migration:
+
+1. Confirm the destination is Langfuse Cloud or self-hosted v4. Upgrade self-hosted v3 before deploying this adapter. Omitted or blank hosts now default to `https://cloud.langfuse.com`, matching the SDK and UI. Explicitly saved hosts are preserved; replace obsolete `https://api.langfuse.com` settings with the verified project's regional host.
+2. Inspect project evaluations and variable mappings. The root observation is a candidate for whole-workflow evaluation; consolidate the required variables on the chosen observation. No project data or evaluator configuration was inspected during the code-only migration. Evaluation and export/read-path checks remain blocked until project access is available.
+3. Send a canary workflow with root, tool and generation observations. Verify their hierarchy, observation input/output, user/session correlation, timestamps, model tokens and cost in the project before cutover. Confirm the evaluator reads its chosen observation and project exports retain the needed fields.
+4. Quiesce producers and drain pending exports and workflows that retain old Langfuse parent receipts before rollout. Old receipts use UUIDs; new receipts use 32-character trace IDs and 16-character span IDs in hexadecimal. The adapter rejects legacy receipts instead of attaching them to an incompatible parent.
+5. Account for at-least-once delivery. A synchronous send confirms the response for the whole tree, but a timeout after remote acceptance can trigger a retry. Deterministic IDs do not guarantee server deduplication; do not dual-send or replay spans already accepted by Langfuse.
+6. Roll back only after quiescing producers and draining or explicitly retiring new deliveries and parent-dependent workflows. Confirm the destination still supports the old ingestion API before restoring the old exporter; rollback must not replay accepted spans.

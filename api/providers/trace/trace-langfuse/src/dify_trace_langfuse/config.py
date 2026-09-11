@@ -11,9 +11,9 @@ class LangfuseConfig(BaseTracingConfig):
 
     public_key: str
     secret_key: str
-    host: str = "https://api.langfuse.com"
+    host: str = "https://cloud.langfuse.com"
 
     @field_validator("host")
     @classmethod
     def host_validator(cls, v, info: ValidationInfo):
-        return validate_url_with_path(v, "https://api.langfuse.com")
+        return validate_url_with_path(v, "https://cloud.langfuse.com")

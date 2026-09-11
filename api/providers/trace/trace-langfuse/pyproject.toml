@@ -1,7 +1,7 @@
 [project]
 name = "dify-trace-langfuse"
 version = "0.0.1"
-dependencies = ["pydantic"]
+dependencies = ["langfuse==4.15.2", "pydantic"]
 description = "Dify ops tracing provider (Langfuse)."
 
 [tool.setuptools.packages.find]
