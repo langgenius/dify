@@ -29,6 +29,9 @@ function NormalForm() {
   const searchParams = useSearchParams()
   const queryString = searchParams.toString()
   const signupHref = queryString ? `/signup?${queryString}` : '/signup'
+  // Read before the probe below so any timestamp the probe reports from this render is
+  // ordered at or after it. See isProbeConfirmed.
+  const [mountedAt] = useState(() => Date.now())
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
   // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
   // prevents the redirect loop on 401.
@@ -36,12 +39,21 @@ function NormalForm() {
     isPending: isCheckLoading,
     data: userResp,
     error: probeError,
+    isFetching: isProbeFetching,
+    dataUpdatedAt: probeUpdatedAt,
+    errorUpdatedAt: probeErrorUpdatedAt,
   } = useQuery({
     ...userProfileQueryOptions(),
     throwOnError: (err) => !isLegacyBase401(err),
     refetchOnWindowFocus: false,
   })
-  const isLoggedIn = !!userResp && !probeError
+  // A soft navigation into /signin (a guarded page's server component bounced us here)
+  // replays the cached probe synchronously: `data` is set, `error` is not, and the redirect
+  // below unmounts us before the revalidation can land, so the in-flight query is cancelled
+  // and never corrects the cache. A session the server already rejected then looks live
+  // forever and / <-> /signin ping-pongs. Only act on a probe that settled in this mount.
+  const isProbeConfirmed = Math.max(probeUpdatedAt ?? 0, probeErrorUpdatedAt ?? 0) >= mountedAt
+  const isLoggedIn = isProbeConfirmed && !!userResp && !probeError
   const message = decodeURIComponent(searchParams.get('message') || '')
   const inviteToken = decodeURIComponent(searchParams.get('invite_token') || '')
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -93,7 +105,13 @@ function NormalForm() {
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
   const shouldRedirectLoggedInUser = isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
   const isLoading =
-    isCheckLoading || shouldRedirectLoggedInUser || (isInviteLink && isInviteCheckLoading)
+    isCheckLoading
+    // Keep the spinner up while the revalidation that will confirm (or refute) a cached
+    // probe is still in flight, so a live session never flashes the login form. Gated on
+    // isProbeFetching so an idle unconfirmed probe renders the form instead of hanging.
+    || (!isProbeConfirmed && isProbeFetching)
+    || shouldRedirectLoggedInUser
+    || (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
     if (!isLoggedIn) return

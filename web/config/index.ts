@@ -119,6 +119,17 @@ export const CSRF_COOKIE_NAME = () => {
   const isSecure = API_PREFIX.startsWith('https://')
   return isSecure ? '__Host-csrf_token' : 'csrf_token'
 }
+// Mirrors the backend's `_real_cookie_name` in api/libs/token.py.
+export const REFRESH_TOKEN_COOKIE_NAME = () => {
+  if (COOKIE_DOMAIN) return 'refresh_token'
+  const isSecure = API_PREFIX.startsWith('https://')
+  return isSecure ? '__Host-refresh_token' : 'refresh_token'
+}
+export const ACCESS_TOKEN_COOKIE_NAME = () => {
+  if (COOKIE_DOMAIN) return 'access_token'
+  const isSecure = API_PREFIX.startsWith('https://')
+  return isSecure ? '__Host-access_token' : 'access_token'
+}
 export const CSRF_HEADER_NAME = 'X-CSRF-Token'
 export const ACCESS_TOKEN_LOCAL_STORAGE_NAME = 'access_token'
 export const PASSPORT_LOCAL_STORAGE_NAME = (appCode: string) => `passport-${appCode}`
