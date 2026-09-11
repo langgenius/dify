@@ -1,11 +1,12 @@
 """Arize and Phoenix export the same complete OpenInference/OTLP span tree."""
 
 from typing import Any, override
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from opentelemetry.proto.trace.v1.trace_pb2 import Span
 from pydantic import JsonValue
 
+from core.helper.ssl_context import create_grpc_credentials, create_ssl_context
 from core.ops.otlp_trace import OtlpTraceClient, otlp_span
 from core.ops.provider_export import json_text, span_attributes
 from core.ops.trace_data import CompletedTrace, TraceSpan
@@ -135,7 +136,13 @@ class OpenInferenceTraceClient(OtlpTraceClient):
 
 
 def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> OpenInferenceTraceClient:
-    config = (ArizeConfig if provider_name == "arize" else PhoenixConfig).model_validate(provider_config)
+    config_class = ArizeConfig if provider_name == "arize" else PhoenixConfig
+    config = config_class.model_validate(provider_config)
+    runtime_settings = (
+        provider_config["_runtime_settings"]
+        if "_runtime_settings" in provider_config
+        else config_class.load_runtime_settings(provider_config)
+    )
     headers = {"authorization": f"Bearer {config.api_key}"} if config.api_key else {}
     resource_attributes = {
         "openinference.project.name": config.project or "default",
@@ -148,7 +155,25 @@ def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> 
         headers["api_key"] = config.api_key or ""
         project_url = config.endpoint.rstrip("/") + "/projects/"
     project_url += f"?redirect_project_name={quote(config.project or 'default', safe='')}"
+    if isinstance(config, ArizeConfig):
+        parsed_endpoint = urlsplit(config.endpoint)
+        target = parsed_endpoint.netloc if parsed_endpoint.port else f"{parsed_endpoint.netloc}:443"
+        scheme = "http" if runtime_settings.get("insecure", parsed_endpoint.scheme == "http") else "https"
+        return OpenInferenceTraceClient(
+            f"{scheme}://{target}",
+            headers,
+            resource_attributes,
+            project_url,
+            protocol="grpc",
+            grpc_credentials={"trace": create_grpc_credentials(runtime_settings.get("tls", {}))},
+        )
     endpoint = config.endpoint.rstrip("/")
     if not endpoint.endswith("/v1/traces"):
         endpoint += "/v1/traces"
-    return OpenInferenceTraceClient(endpoint, headers, resource_attributes, project_url)
+    return OpenInferenceTraceClient(
+        endpoint,
+        headers,
+        resource_attributes,
+        project_url,
+        ssl_context=create_ssl_context(runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)),
+    )
