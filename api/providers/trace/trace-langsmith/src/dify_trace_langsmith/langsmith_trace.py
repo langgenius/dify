@@ -219,7 +219,9 @@ class LangSmithTraceClient:
                 "end_time": span.ended_at.isoformat() if span.ended_at else None,
                 "inputs": inputs,
                 "outputs": outputs,
-                "error": span.error if span.status == "error" else None,
+                "error": span.error
+                if span.status == "error" or (span.status == "cancelled" and span.span_type == "workflow")
+                else None,
                 "parent_run_id": parent["span_id"] if parent else None,
                 "dotted_order": dotted_order,
                 "session_name": self.config.project,

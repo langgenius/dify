@@ -139,10 +139,11 @@ def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> 
     }
     if isinstance(config, ArizeConfig):
         headers.update({"api_key": config.api_key or "", "space_id": config.space_id or ""})
-        project_url = f"https://app.arize.com/organizations/{quote(config.space_id or '', safe='')}/models"
+        project_url = "https://app.arize.com/"
     else:
         headers["api_key"] = config.api_key or ""
         project_url = config.endpoint.rstrip("/") + "/projects/"
+    project_url += f"?redirect_project_name={quote(config.project or 'default', safe='')}"
     endpoint = config.endpoint.rstrip("/")
     if not endpoint.endswith("/v1/traces"):
         endpoint += "/v1/traces"

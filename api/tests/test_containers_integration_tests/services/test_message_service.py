@@ -759,10 +759,16 @@ class TestMessageService:
         mock_external_service_dependencies["create_message_trace"].assert_called_once_with(
             tenant_id=app.tenant_id,
             app_id=app.id,
+            user_id=account.id,
             message_id=message.id,
             conversation_id=conversation.id,
         )
-        mock_external_service_dependencies["trace_recorder_instance"].record_operation.assert_called_once()
+        assert (
+            mock_external_service_dependencies[
+                "llm_generator"
+            ].generate_suggested_questions_after_answer.call_args.kwargs["trace_recorder"]
+            is (mock_external_service_dependencies["trace_recorder_instance"])
+        )
 
     def test_get_suggested_questions_after_answer_no_user(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -890,7 +896,13 @@ class TestMessageService:
         mock_external_service_dependencies["create_message_trace"].assert_called_once_with(
             tenant_id=app.tenant_id,
             app_id=app.id,
+            user_id=account.id,
             message_id=message.id,
             conversation_id=conversation.id,
         )
-        mock_external_service_dependencies["trace_recorder_instance"].record_operation.assert_called_once()
+        assert (
+            mock_external_service_dependencies[
+                "llm_generator"
+            ].generate_suggested_questions_after_answer.call_args.kwargs["trace_recorder"]
+            is (mock_external_service_dependencies["trace_recorder_instance"])
+        )

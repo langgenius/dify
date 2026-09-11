@@ -225,3 +225,33 @@ def test_langsmith_preserves_operation_tags_and_native_run_types(
     assert run["tags"] == ["dify", *expected_tags]
     if span_type == "llm":
         assert run["outputs"]["usage_metadata"]["total_tokens"] == 8
+
+
+@pytest.mark.parametrize(
+    ("span_type", "status", "error", "expected_error"),
+    [
+        ("workflow", "cancelled", "User stopped workflow", "User stopped workflow"),
+        ("workflow", "cancelled", None, None),
+        ("llm", "cancelled", "User stopped workflow", None),
+        ("workflow", "handled_error", None, None),
+        ("llm", "handled_error", "Node failure was handled", None),
+        ("workflow", "incomplete", None, None),
+        ("workflow", "ok", None, None),
+    ],
+)
+def test_langsmith_preserves_cancelled_workflow_reason_without_inventing_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    span_type: str,
+    status: str,
+    error: str | None,
+    expected_error: str | None,
+) -> None:
+    trace = make_trace()
+    span = trace.spans[0].model_copy(update={"span_type": span_type, "status": status, "error": error})
+    trace = trace.model_copy(update={"spans": (span,), "complete": False, "truncation": {"reasons": ["capture_error"]}})
+    client, request = make_client_with_transport(monkeypatch)
+
+    client.export_trace(trace)
+
+    run = request.call_args.kwargs["json"]["post"][0]
+    assert run["error"] == expected_error

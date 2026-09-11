@@ -83,6 +83,18 @@ def make_trace() -> CompletedTrace:
     )
 
 
+@pytest.mark.parametrize("provider_name", ["mlflow", "databricks"])
+def test_project_url_opens_the_provider_trace_view(provider_name: str) -> None:
+    config = (
+        {"host": "https://tracing.example/", "personal_access_token": "secret", "experiment_id": "7"}
+        if provider_name == "databricks"
+        else {"tracking_uri": "https://tracing.example/", "experiment_id": "7"}
+    )
+    client = MLflowTraceClient(provider_name, config)
+    expected_path = "/ml/experiments/7/traces" if provider_name == "databricks" else "/#/experiments/7/traces"
+    assert client.get_project_url() == "https://tracing.example" + expected_path
+
+
 def test_mlflow_native_llm_format_usage_cost_model_and_grouping(monkeypatch: pytest.MonkeyPatch) -> None:
     trace = make_trace()
     external_id = str(uuid4())
@@ -156,6 +168,54 @@ def test_databricks_native_grouping_and_valid_parent_link(monkeypatch: pytest.Mo
     assert base64.b64decode(root["span_id"]) == span_id_bytes(root_receipt_id)
     assert base64.b64decode(spans[-1]["parent_span_id"]) == span_id_bytes(export_span_id(trace, trace.root_span_id))
     assert trace_info["trace_id"] != metadata["dify.linked_trace_id"]
+
+
+@pytest.mark.parametrize("provider_name", ["mlflow", "databricks"])
+@pytest.mark.parametrize(
+    ("status", "complete", "expected_errors"),
+    [("handled_error", True, [False, True]), ("cancelled", True, [True, True]), ("ok", False, [False, False])],
+)
+def test_native_status_preserves_handled_node_and_cancelled_workflow_errors(
+    provider_name: str, status: str, complete: bool, expected_errors: list[bool], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    trace = make_trace()
+    trace = trace.model_copy(
+        update={
+            "spans": tuple(
+                span.model_copy(update={"status": status, "error": "execution stopped" if status != "ok" else None})
+                for span in trace.spans
+            ),
+            "complete": complete,
+            "truncation": {} if complete else {"reasons": ["span_limit"]},
+        }
+    )
+    config = (
+        {"host": "https://tracing.example", "personal_access_token": "secret", "experiment_id": "7"}
+        if provider_name == "databricks"
+        else {"tracking_uri": "https://tracing.example", "experiment_id": "7"}
+    )
+    client = MLflowTraceClient(provider_name, config)
+    if provider_name == "databricks":
+        request = Mock(
+            side_effect=[
+                httpx.Response(200, json={}),
+                httpx.Response(200, json={"credential_info": {"signed_uri": "https://storage.example/trace"}}),
+            ]
+        )
+        upload = Mock()
+        monkeypatch.setattr(client.http, "request", request)
+        monkeypatch.setattr(client, "_upload_spans", upload)
+        client.export_trace(trace)
+        info = request.call_args_list[0].kwargs["json"]["trace"]["trace_info"]
+        assert info["state"] == ("ERROR" if expected_errors[0] else "OK")
+        spans = json.loads(upload.call_args.args[1])["spans"]
+        assert [span["status"]["code"] == "STATUS_CODE_ERROR" for span in spans] == expected_errors
+    else:
+        send = Mock()
+        monkeypatch.setattr(OtlpTraceClient, "send_traces", send)
+        client.export_trace(trace)
+        exported_spans = send.call_args.args[0].resource_spans[0].scope_spans[0].spans
+        assert [span.status.code == 2 for span in exported_spans] == expected_errors
 
 
 def test_databricks_external_request_id_is_native_and_internal_identity_is_retained(

@@ -11,6 +11,9 @@ from core.ops.provider_export import json_text, span_attributes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_tencent.config import TencentConfig
 
+# Preserve the explicit buckets used by the previous Tencent SDK histograms.
+HISTOGRAM_BOUNDS = (0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000)
+
 
 def usage_seconds(span: TraceSpan, field: str, *legacy_attributes: str) -> float | None:
     value = span.usage.get(field)
@@ -134,7 +137,11 @@ class TencentTraceClient(OtlpTraceClient):
                     }
                 )
                 if seconds > 0:
-                    metrics.append(histogram("gen_ai.trace.duration", seconds, span, trace_labels))
+                    metrics.append(
+                        histogram(
+                            "gen_ai.trace.duration", seconds, span, trace_labels, explicit_bounds=HISTOGRAM_BOUNDS
+                        )
+                    )
             # Message roots already carry the call aggregate. Retry/agent detail spans
             # must not count the same logical call again in the existing metric series.
             if span.attributes.get("metrics_from_parent") or (span.span_type != "llm" and not is_message):
@@ -152,6 +159,7 @@ class TencentTraceClient(OtlpTraceClient):
                             "gen_ai.response.model": labels["gen_ai.response.model"],
                             "stream": "true" if self._is_streaming(span) else "false",
                         },
+                        explicit_bounds=HISTOGRAM_BOUNDS,
                     )
                 )
             for field, token_type in (("prompt_tokens", "input"), ("completion_tokens", "output")):
@@ -168,6 +176,7 @@ class TencentTraceClient(OtlpTraceClient):
                                 "server.address": labels["gen_ai.system"],
                             },
                             "token",
+                            explicit_bounds=HISTOGRAM_BOUNDS,
                         )
                     )
             for field, key, legacy in (
@@ -176,7 +185,11 @@ class TencentTraceClient(OtlpTraceClient):
             ):
                 streaming_seconds = usage_seconds(span, field, legacy, key)
                 if streaming_seconds is not None and streaming_seconds > 0:
-                    metrics.append(histogram(key, streaming_seconds, span, {**labels, "stream": "true"}))
+                    metrics.append(
+                        histogram(
+                            key, streaming_seconds, span, {**labels, "stream": "true"}, explicit_bounds=HISTOGRAM_BOUNDS
+                        )
+                    )
         return metrics
 
 

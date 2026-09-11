@@ -202,11 +202,16 @@ class LangfuseTraceClient:
                 metadata={"dify.tenant_id": completed_trace.source.tenant_id},
             ):
                 for span in spans:
+                    observation_failed = (
+                        span.status == "error"
+                        or (span.status == "handled_error" and span.span_type != "workflow")
+                        or (span.status == "cancelled" and bool(span.error))
+                    )
                     attributes = create_span_attributes(
                         input=_normalize_messages(span.inputs) if span.span_type == "llm" else span.inputs,
                         output=span.outputs,
                         metadata={**root.attributes, **span_attributes(completed_trace, span)},
-                        level="ERROR" if span.status == "error" else "DEFAULT",
+                        level="ERROR" if observation_failed else "DEFAULT",
                         status_message=span.error,
                     )
                     # SDK propagation caps strings at 200 characters; keep Dify's
@@ -270,7 +275,7 @@ class LangfuseTraceClient:
                     )
                     if parent is not None and span.span_id == completed_trace.root_span_id:
                         observation.set_attribute("langfuse.internal.is_app_root", False)
-                    if span.status == "error":
+                    if observation_failed:
                         observation.set_status(trace.StatusCode.ERROR, span.error)
                     observations[span.span_id] = observation
                 # Keep parents alive until their children have inherited the SDK root scope.

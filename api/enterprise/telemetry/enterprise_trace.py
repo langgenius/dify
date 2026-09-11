@@ -14,6 +14,9 @@ from core.ops.otlp_trace import OtlpTraceClient, counter, histogram, otlp_span, 
 from core.ops.provider_export import export_span_id, json_text, span_attributes, span_id_bytes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 
+# Preserve the explicit buckets used by the previous enterprise SDK histograms.
+HISTOGRAM_BOUNDS = (0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000)
+
 
 def load_enterprise_config() -> dict[str, Any] | None:
     from configs import dify_config
@@ -77,6 +80,10 @@ class EnterpriseTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
         endpoint = str(provider_config["endpoint"]).rstrip("/")
         protocol = str(provider_config.get("protocol", "grpc"))
+        if protocol == "grpc" and "://" not in endpoint:
+            # The previous gRPC exporter accepted bare host:port as insecure.
+            # Normalize before the shared endpoint validation and SSRF proxy policy.
+            endpoint = f"http://{endpoint}"
         headers = dict(provider_config.get("headers") or {})
         if provider_config.get("api_key"):
             headers["authorization"] = f"Bearer {provider_config['api_key']}"
@@ -477,13 +484,25 @@ class EnterpriseTraceClient:
                 duration_labels["status"] = status
             if is_node and node_type in {"tool", "knowledge-retrieval"} and captured.get("plugin_name"):
                 duration_labels["plugin_name"] = captured["plugin_name"]
-            metrics.append(histogram(f"dify.{duration_name}.duration", duration, span, duration_labels))
+            metrics.append(
+                histogram(
+                    f"dify.{duration_name}.duration", duration, span, duration_labels, explicit_bounds=HISTOGRAM_BOUNDS
+                )
+            )
         ttft = usage.get(
             "time_to_first_token",
             captured.get("gen_ai_server_time_to_first_token", captured.get("gen_ai.server.time_to_first_token")),
         )
         if operation_type == "message" and isinstance(ttft, (int, float)) and not isinstance(ttft, bool):
-            metrics.append(histogram("dify.message.time_to_first_token", float(ttft), span, {**labels, **model_labels}))
+            metrics.append(
+                histogram(
+                    "dify.message.time_to_first_token",
+                    float(ttft),
+                    span,
+                    {**labels, **model_labels},
+                    explicit_bounds=HISTOGRAM_BOUNDS,
+                )
+            )
         if operation_type in {"retrieval", "dataset_retrieval"}:
             dataset_models = captured.get("dataset_models", captured.get("embedding_models", {}))
             dataset_models = dataset_models if isinstance(dataset_models, dict) else {}

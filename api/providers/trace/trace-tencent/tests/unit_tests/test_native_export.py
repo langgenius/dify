@@ -6,11 +6,53 @@ from uuid import uuid4
 
 import pytest
 from dify_trace_tencent.tencent_trace import create_trace_client
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import Histogram as SdkHistogram
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
 from core.ops.basic_chat_trace import record_basic_chat_result
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace, provider_config
+
+
+def test_histogram_distributions_match_the_previous_sdk_instruments() -> None:
+    trace = make_completed_trace()
+    model = trace.spans[-1].model_copy(
+        update={
+            "usage": {
+                "prompt_tokens": 5,
+                "completion_tokens": 10001,
+                "latency": 10,
+                "time_to_first_token": 0.25,
+                "time_to_generate": 25,
+            }
+        }
+    )
+    trace = trace.model_copy(update={"spans": (*trace.spans[:-1], model)})
+    metrics = create_trace_client(provider_config("tencent")).build_metrics(trace)
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader])
+    try:
+        meter = provider.get_meter("previous-tencent-exporter")
+        for index, metric in enumerate(metrics):
+            meter.create_histogram(f"comparison.{index}", unit=metric.unit).record(metric.histogram.data_points[0].sum)
+        data = reader.get_metrics_data()
+        assert data is not None
+        previous_metrics = data.resource_metrics[0].scope_metrics[0].metrics
+        assert len(metrics) == len(previous_metrics) == 6
+        for metric, previous_metric in zip(metrics, previous_metrics, strict=True):
+            assert isinstance(previous_metric.data, SdkHistogram)
+            expected = previous_metric.data.data_points[0]
+            point = metric.histogram.data_points[0]
+            assert tuple(point.explicit_bounds) == expected.explicit_bounds
+            assert tuple(point.bucket_counts) == expected.bucket_counts
+            assert len(point.explicit_bounds) == 15
+            assert len(point.bucket_counts) == 16
+            assert point.count == expected.count
+            assert point.sum == expected.sum
+    finally:
+        provider.shutdown()
 
 
 def test_workflow_metrics_use_model_usage_timings_and_legacy_dimensions() -> None:
