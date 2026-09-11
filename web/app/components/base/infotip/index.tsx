@@ -1,5 +1,6 @@
 'use client'
 
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { MouseEvent, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -56,6 +57,8 @@ type InfotipProps = {
   iconSize?: InfotipIconSize
   /** Extra classes on the popup body (width / padding / whitespace overrides). */
   popupClassName?: string
+  /** Preferred placement of the popup. Defaults to `top`. */
+  placement?: PopoverContentProps['placement']
   /** Distance between the trigger and popup. */
   sideOffset?: number
 }
@@ -67,6 +70,7 @@ export function Infotip({
   iconVariant = 'question',
   iconSize = 'medium',
   popupClassName,
+  placement = 'top',
   sideOffset,
 }: InfotipProps) {
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
@@ -92,7 +96,7 @@ export function Infotip({
         />
       </PopoverTrigger>
       <PopoverContent
-        placement="top"
+        placement={placement}
         sideOffset={sideOffset}
         className={cn(
           'max-w-75 rounded-md px-3 py-2 system-xs-regular text-text-tertiary',

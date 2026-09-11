@@ -135,6 +135,77 @@ describe('DifyBuilderPanel', () => {
     }
   })
 
+  it('opens accessible help without changing the conversation or composer draft', async () => {
+    const user = userEvent.setup()
+    renderPanel(sessionView, (store) => {
+      store.set(difyBuilderDraftAtom, 'Pending request')
+    })
+    const help = screen.getByRole('button', { name: 'workflow.difyBuilder.helpTitle' })
+
+    await user.click(help)
+
+    const explanation = await screen.findByRole('dialog', {
+      name: 'workflow.difyBuilder.helpTitle',
+    })
+    expect(explanation).toHaveAccessibleDescription('workflow.difyBuilder.helpDescription')
+    expect(explanation).toHaveTextContent('workflow.difyBuilder.helpDescription')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(help).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+    expect(
+      await screen.findByRole('dialog', { name: 'workflow.difyBuilder.helpTitle' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Fix the workflow')).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).toHaveValue('Pending request')
+    expect(mocks.reset).not.toHaveBeenCalled()
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('keeps the debug log export available from the header menu', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+
+    expect(
+      await screen.findByRole('menuitem', { name: 'workflow.difyBuilder.exportDebugLog' }),
+    ).toBeEnabled()
+  })
+
+  it('closes the panel without resetting the session or losing the draft', async () => {
+    const user = userEvent.setup()
+    const { store } = renderPanel(sessionView, (store) => {
+      store.set(difyBuilderDraftAtom, 'Pending request')
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(mocks.closePanel).toHaveBeenCalledWith(false)
+    expect(mocks.reset).not.toHaveBeenCalled()
+    expect(store.get(difyBuilderSessionViewAtom)).toEqual(sessionView)
+    expect(store.get(difyBuilderDraftAtom)).toBe('Pending request')
+  })
+
+  it.each(['empty', 'processing'])('disables reset for an %s session', async (state) => {
+    const user = userEvent.setup()
+    renderPanel(sessionView, (store) => {
+      store.set(
+        difyBuilderSessionViewAtom,
+        state === 'empty' ? null : { ...sessionView, run_status: 'processing' },
+      )
+    })
+    const reset = screen.getByRole('button', { name: 'workflow.difyBuilder.reset' })
+
+    expect(reset).toBeDisabled()
+    await user.click(reset)
+    expect(mocks.reset).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeEnabled()
+  })
+
   it('keeps actions below the conversation and above a text-only composer', async () => {
     const user = userEvent.setup()
     renderPanel()
