@@ -166,11 +166,6 @@ class MLflowTraceClient:
                 "mlflow.spanOutputs": outputs,
                 "user.id": completed_trace.source.actor_id,
                 "session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
-                "mlflow.chat.tokenUsage": {
-                    "input_tokens": span.usage.get("prompt_tokens"),
-                    "output_tokens": span.usage.get("completion_tokens"),
-                    "total_tokens": span.usage.get("total_tokens"),
-                },
             }
         )
         if span.span_type == "llm":
@@ -179,6 +174,11 @@ class MLflowTraceClient:
                     "mlflow.llm.model": span.attributes.get("model_name"),
                     "mlflow.llm.provider": span.attributes.get("model_provider"),
                     "mlflow.message.format": "openai",
+                    "mlflow.chat.tokenUsage": {
+                        "input_tokens": span.usage.get("prompt_tokens"),
+                        "output_tokens": span.usage.get("completion_tokens"),
+                        "total_tokens": span.usage.get("total_tokens"),
+                    },
                 }
             )
             costs: dict[str, JsonValue] = {

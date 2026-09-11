@@ -142,6 +142,9 @@ class MessageTraceRecorder:
         error: str | None = None,
         attributes: Mapping[str, Any] | None = None,
         usage: Mapping[str, Any] | None = None,
+        workflow_id: str | None = None,
+        node_execution_id: str | None = None,
+        node_id: str | None = None,
         message_id: str | None = None,
         independent: bool = False,
     ) -> None:
@@ -155,6 +158,9 @@ class MessageTraceRecorder:
                 error=error,
                 attributes=attributes,
                 usage=usage,
+                workflow_id=workflow_id,
+                node_execution_id=node_execution_id,
+                node_id=node_id,
                 message_id=message_id,
                 independent=independent,
             )
@@ -175,6 +181,9 @@ class MessageTraceRecorder:
         error: str | None = None,
         attributes: Mapping[str, Any] | None = None,
         usage: Mapping[str, Any] | None = None,
+        workflow_id: str | None = None,
+        node_execution_id: str | None = None,
+        node_id: str | None = None,
         message_id: str | None = None,
         independent: bool = False,
     ) -> None:
@@ -187,6 +196,9 @@ class MessageTraceRecorder:
             span_type=span_type,
             source_app_id=self.source.app_id,
             source_pipeline_id=self.source.pipeline_id,
+            source_workflow_id=workflow_id,
+            node_execution_id=node_execution_id,
+            node_id=node_id,
             started_at=timer.get("start"),
             ended_at=timer.get("end"),
             inputs=copy_trace_value(inputs),
@@ -376,6 +388,9 @@ class MessageTraceRecorder:
                         error=span.error,
                         attributes=span.attributes,
                         usage=span.usage,
+                        workflow_id=span.source_workflow_id,
+                        node_execution_id=span.node_execution_id,
+                        node_id=span.node_id,
                         independent=True,
                     )
         finally:

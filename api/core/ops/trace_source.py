@@ -369,12 +369,16 @@ def record_enterprise_operation(event) -> None:
         recorder.record_operation(
             node.get("title") or "draft_node",
             span_type=str(node.get("node_type") or "operation"),
+            workflow_id=node["workflow_id"],
+            node_execution_id=node.get("node_execution_id"),
+            node_id=node.get("node_id"),
             inputs=node.get("node_inputs"),
             outputs=node.get("node_outputs"),
             error=node.get("error"),
             timer={"start": node.get("created_at"), "end": node.get("finished_at")},
             attributes={
                 "operation_type": "draft_node_execution",
+                "business_status": node.get("status"),
                 **{
                     name: node.get(name)
                     for name in (
@@ -385,6 +389,14 @@ def record_enterprise_operation(event) -> None:
                         "model_name",
                         "model_provider",
                         "tool_name",
+                        "index",
+                        "predecessor_node_id",
+                        "iteration_id",
+                        "iteration_index",
+                        "loop_id",
+                        "loop_index",
+                        "parallel_id",
+                        "process_data",
                     )
                 },
             },
