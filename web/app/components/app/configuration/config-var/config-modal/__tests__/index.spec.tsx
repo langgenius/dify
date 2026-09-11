@@ -117,9 +117,9 @@ describe('ConfigModal', () => {
     expect(screen.getByRole('textbox', { name: 'appDebug.variableConfig.labelName' })).toHaveValue(
       'Question',
     )
-    expect(
-      screen.getByRole('spinbutton', { name: 'appDebug.variableConfig.maxLength' }),
-    ).toHaveValue(32)
+    expect(screen.getByRole('textbox', { name: 'appDebug.variableConfig.maxLength' })).toHaveValue(
+      '32',
+    )
     const defaultInput = screen.getByRole('textbox', {
       name: 'appDebug.variableConfig.defaultValue',
     })
