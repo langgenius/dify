@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
 from extensions.storage.storage_type import StorageType
-from models.dataset import Whitelist
+from models.dataset import Dataset, Whitelist
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from tests.unit_tests.config_override import apply_config_overrides
@@ -379,6 +379,7 @@ def test_create_multimodal_filters_missing_uploads(
     vector._embeddings.embed_multimodal_documents.return_value = [[0.1, 0.2]]
     vector._vector_processor = MagicMock()
     vector._session = sqlite_session
+    vector._dataset = Dataset(tenant_id=upload_file.tenant_id, name="dataset", created_by=upload_file.created_by)
     monkeypatch.setattr(vector_factory_module.storage, "load_once", MagicMock(return_value=b"abc"))
 
     docs = [

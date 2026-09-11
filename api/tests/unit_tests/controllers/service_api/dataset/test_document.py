@@ -62,10 +62,10 @@ from models.enums import (
     SegmentStatus,
 )
 from models.model import ApiToken, UploadFile
-from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.config_override import config_overrides_context
 
 

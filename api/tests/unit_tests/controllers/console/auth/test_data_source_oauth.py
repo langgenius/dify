@@ -13,12 +13,12 @@ from controllers.console.auth.data_source_oauth import (
 )
 from extensions.ext_application_services import ApplicationServices
 from machinery.context import RequestContext
-from services.data_source_oauth_service import (
+from services.data_source.oauth_service import (
     DataSourceOAuthError,
     InvalidDataSourceOAuthCodeError,
     InvalidDataSourceOAuthProviderError,
 )
-from services.entities.data_source_oauth_entities import DataSourceOAuthCallback
+from services.entities.data_source.oauth import DataSourceOAuthCallback
 from tests.unit_tests.config_override import config_overrides_context
 
 
@@ -33,7 +33,7 @@ def _request_context() -> RequestContext:
 
 def _services(service: MagicMock) -> MagicMock:
     services = create_autospec(ApplicationServices, instance=True, spec_set=True)
-    services.resolve_data_source_oauth.return_value = service
+    services.data_sources.resolve_oauth.return_value = service
     return services
 
 
@@ -55,7 +55,7 @@ def test_get_delegates_to_application_service_and_serializes_response() -> None:
 def test_get_maps_unknown_provider_to_bad_request() -> None:
     service = MagicMock()
     services = _services(service)
-    services.resolve_data_source_oauth.side_effect = InvalidDataSourceOAuthProviderError
+    services.data_sources.resolve_oauth.side_effect = InvalidDataSourceOAuthProviderError
 
     with patch(
         "controllers.console.auth.data_source_oauth.application_services",

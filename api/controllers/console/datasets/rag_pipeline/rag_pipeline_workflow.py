@@ -45,6 +45,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from factories import variable_factory
 from fields.base import ResponseModel
@@ -290,7 +291,13 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
 
         try:
             response = PipelineGenerateService.generate_single_iteration(
-                pipeline=pipeline, user=current_user, node_id=node_id, args=args, session=db.session(), streaming=True
+                generator=application_services().knowledge.pipeline_generator,
+                pipeline=pipeline,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session(),
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -325,7 +332,13 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 
         try:
             response = PipelineGenerateService.generate_single_loop(
-                pipeline=pipeline, user=current_user, node_id=node_id, args=args, session=db.session(), streaming=True
+                generator=application_services().knowledge.pipeline_generator,
+                pipeline=pipeline,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session(),
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -361,6 +374,7 @@ class DraftRagPipelineRunApi(Resource):
 
         try:
             response = PipelineGenerateService.generate(
+                generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
                 user=current_user,
@@ -396,6 +410,7 @@ class PublishedRagPipelineRunApi(Resource):
 
         try:
             response = PipelineGenerateService.generate(
+                generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
                 user=current_user,

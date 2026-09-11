@@ -139,12 +139,13 @@ class TestParentChildIndexProcessor:
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
             ),
-            patch.object(processor, "_split_child_nodes", return_value=child_docs),
+            patch.object(processor, "split_child_nodes", return_value=child_docs),
         ):
             result = processor.transform(
                 [parent_document],
                 process_rule={"mode": "custom", "rules": {"enabled": True}},
                 preview=False,
+                tenant_id="tenant-1",
                 session=self.session,
             )
 
@@ -176,12 +177,13 @@ class TestParentChildIndexProcessor:
                 return_value="hash",
             ),
             patch.object(processor, "_get_content_files", return_value=[]),
-            patch.object(processor, "_split_child_nodes", return_value=[]),
+            patch.object(processor, "split_child_nodes", return_value=[]),
         ):
             result = processor.transform(
                 documents,
                 process_rule={"mode": "custom", "rules": {"enabled": True}},
                 preview=True,
+                tenant_id="tenant-1",
                 session=self.session,
             )
 
@@ -202,7 +204,7 @@ class TestParentChildIndexProcessor:
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
             ),
-            patch.object(processor, "_split_child_nodes", return_value=child_docs),
+            patch.object(processor, "split_child_nodes", return_value=child_docs),
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
                 return_value="hash",
@@ -213,6 +215,7 @@ class TestParentChildIndexProcessor:
                 docs,
                 process_rule={"mode": "hierarchical", "rules": {"enabled": True}},
                 preview=True,
+                tenant_id="tenant-1",
                 session=self.session,
             )
 
@@ -362,7 +365,7 @@ class TestParentChildIndexProcessor:
         rules = Rule(subchunk_segmentation=None)
 
         with pytest.raises(ValueError, match="No subchunk segmentation found"):
-            processor._split_child_nodes(Document(page_content="parent", metadata={}), rules, "custom", None)
+            processor.split_child_nodes(Document(page_content="parent", metadata={}), rules, "custom", None)
 
     def test_split_child_nodes_generates_child_documents(self, processor: ParentChildIndexProcessor) -> None:
         rules = Rule(subchunk_segmentation=Segmentation(max_tokens=200, chunk_overlap=10, separator="\n"))
@@ -379,7 +382,7 @@ class TestParentChildIndexProcessor:
                 return_value="hash",
             ),
         ):
-            child_docs = processor._split_child_nodes(
+            child_docs = processor.split_child_nodes(
                 Document(page_content="parent", metadata={}), rules, "custom", None
             )
 

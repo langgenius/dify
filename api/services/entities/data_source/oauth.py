@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,4 +22,15 @@ class DataSourceOAuthCallback:
 class DataSourceOAuthBindingRecord:
     id: str
     access_token: str
+    source_info: Mapping[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class DataSourceBindingSummary:
+    """Secret-free management view of a data-source OAuth binding."""
+
+    id: str
+    provider: str
+    created_at: datetime
+    disabled: bool
     source_info: Mapping[str, object]

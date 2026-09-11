@@ -10,7 +10,7 @@ from services.auth.errors import (
     DataSourceApiKeyAuthProviderUnavailableError,
     InvalidDataSourceApiKeyAuthCredentialsError,
 )
-from services.entities.data_source_api_key_auth_entities import DataSourceApiKeyAuthCredentials
+from services.entities.data_source.api_key_auth import DataSourceApiKeyAuthCredentials
 
 # Explicit bounded timeout for credential-validation requests so a slow or
 # hanging WaterCrawl endpoint cannot block the worker indefinitely.

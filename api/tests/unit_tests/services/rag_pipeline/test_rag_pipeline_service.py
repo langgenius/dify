@@ -10,6 +10,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from graphon.enums import (
@@ -35,6 +36,11 @@ from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo,
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_ref_service import WorkflowRef
+
+
+@pytest.fixture
+def pipeline_generator(mocker: MockerFixture):
+    return mocker.create_autospec(PipelineGenerator, instance=True, spec_set=True)
 
 
 @dataclass
@@ -979,7 +985,7 @@ def test_get_datasource_plugins_success(
 
 
 def test_retry_error_document_success(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext, pipeline_generator
 ) -> None:
     dataset = _make_dataset()
     document = _make_document()
@@ -1002,12 +1008,11 @@ def test_retry_error_document_success(
     _persist(rag_pipeline_service.session, log, pipeline, workflow)
 
     # Mock PipelineGenerator
-    mock_gen_instance = mocker.Mock()
-    mocker.patch("services.rag_pipeline.rag_pipeline.PipelineGenerator", return_value=mock_gen_instance)
+    mock_gen_instance = pipeline_generator
 
     # 2. Run test
     user = mocker.Mock()
-    rag_pipeline_service.service.retry_error_document(dataset, document, user)
+    rag_pipeline_service.service.retry_error_document(dataset, document, user, generator=pipeline_generator)
 
     # 3. Assertions
     mock_gen_instance.generate.assert_called_once()
@@ -1757,9 +1762,12 @@ def test_get_second_step_parameters_filters_first_step_variables(
 
 def test_retry_error_document_raises_when_execution_log_not_found(
     rag_pipeline_service: RagPipelineServiceTestContext,
+    pipeline_generator,
 ) -> None:
     with pytest.raises(ValueError, match="Document pipeline execution log not found"):
-        rag_pipeline_service.service.retry_error_document(_make_dataset(), _make_document(), _make_account())
+        rag_pipeline_service.service.retry_error_document(
+            _make_dataset(), _make_document(), _make_account(), generator=pipeline_generator
+        )
 
 
 def test_get_datasource_plugins_raises_when_workflow_not_found(
@@ -2256,6 +2264,7 @@ def test_get_recommended_plugins_skips_manifest_when_missing(
 
 def test_retry_error_document_raises_when_pipeline_missing(
     rag_pipeline_service: RagPipelineServiceTestContext,
+    pipeline_generator,
 ) -> None:
     exec_log = DocumentPipelineExecutionLog(
         pipeline_id="p1",
@@ -2269,11 +2278,14 @@ def test_retry_error_document_raises_when_pipeline_missing(
     _persist(rag_pipeline_service.session, exec_log)
 
     with pytest.raises(ValueError, match="Pipeline not found"):
-        rag_pipeline_service.service.retry_error_document(_make_dataset(), _make_document(), _make_account())
+        rag_pipeline_service.service.retry_error_document(
+            _make_dataset(), _make_document(), _make_account(), generator=pipeline_generator
+        )
 
 
 def test_retry_error_document_raises_when_workflow_missing(
     rag_pipeline_service: RagPipelineServiceTestContext,
+    pipeline_generator,
 ) -> None:
     exec_log = DocumentPipelineExecutionLog(
         pipeline_id="p1",
@@ -2288,7 +2300,9 @@ def test_retry_error_document_raises_when_workflow_missing(
     _persist(rag_pipeline_service.session, exec_log, pipeline)
 
     with pytest.raises(ValueError, match="Workflow not found"):
-        rag_pipeline_service.service.retry_error_document(_make_dataset(), _make_document(), _make_account())
+        rag_pipeline_service.service.retry_error_document(
+            _make_dataset(), _make_document(), _make_account(), generator=pipeline_generator
+        )
 
 
 def test_get_datasource_plugins_returns_empty_for_non_datasource_nodes(

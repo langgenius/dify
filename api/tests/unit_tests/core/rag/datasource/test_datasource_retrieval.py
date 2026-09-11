@@ -744,12 +744,19 @@ class TestRetrievalServiceInternals:
     ):
         dataset_doc_parent = SimpleNamespace(
             id="doc-parent",
+            tenant_id="tenant-id",
             doc_form=IndexStructureType.PARENT_CHILD_INDEX,
             dataset_id="dataset-id",
         )
-        dataset_doc_text = SimpleNamespace(id="doc-text", doc_form="paragraph", dataset_id="dataset-id")
+        dataset_doc_text = SimpleNamespace(
+            id="doc-text",
+            tenant_id="tenant-id",
+            doc_form="paragraph",
+            dataset_id="dataset-id",
+        )
         dataset_doc_parent_summary = SimpleNamespace(
             id="doc-parent-summary",
+            tenant_id="tenant-id",
             doc_form=IndexStructureType.PARENT_CHILD_INDEX,
             dataset_id="dataset-id",
         )
@@ -868,7 +875,7 @@ class TestRetrievalServiceInternals:
         monkeypatch.setattr(
             RetrievalService,
             "get_segment_attachment_infos",
-            lambda attachment_ids, session: [
+            lambda attachment_ids, *, dataset_refs, session: [
                 {
                     "attachment_id": "attach-node-1",
                     "attachment_info": {
@@ -1125,7 +1132,11 @@ class TestRetrievalServiceInternals:
         session = Mock()
         session.scalars.return_value = scalars_result
 
-        result = RetrievalService.get_segment_attachment_infos(["upload-1"], session)
+        result = RetrievalService.get_segment_attachment_infos(
+            ["upload-1"],
+            dataset_refs=(("tenant-id", "dataset-id"),),
+            session=session,
+        )
 
         assert result == []
 
@@ -1144,7 +1155,11 @@ class TestRetrievalServiceInternals:
         session = Mock()
         session.scalars.side_effect = [upload_scalars, binding_scalars]
 
-        result = RetrievalService.get_segment_attachment_infos(["upload-1"], session)
+        result = RetrievalService.get_segment_attachment_infos(
+            ["upload-1"],
+            dataset_refs=(("tenant-id", "dataset-id"),),
+            session=session,
+        )
 
         assert result == []
 
@@ -1173,7 +1188,11 @@ class TestRetrievalServiceInternals:
         session = Mock()
         session.scalars.side_effect = [upload_scalars, binding_scalars]
 
-        result = RetrievalService.get_segment_attachment_infos(["upload-1", "upload-2"], session)
+        result = RetrievalService.get_segment_attachment_infos(
+            ["upload-1", "upload-2"],
+            dataset_refs=(("tenant-id", "dataset-id"),),
+            session=session,
+        )
 
         assert result == [
             {

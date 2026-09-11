@@ -21,9 +21,10 @@ from models.dataset import (
     DatasetPermissionEnum,
 )
 from models.enums import DataSourceType
-from services.dataset_ref_service import DatasetRef, DatasetRefService
+from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
 from services.errors.account import NoPermissionError
+from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.config_override import config_overrides_context
 
 

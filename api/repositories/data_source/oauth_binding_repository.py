@@ -1,16 +1,19 @@
 """SQLAlchemy repository for OAuth data-source bindings."""
 
 from collections.abc import Mapping
-from typing import override
+from typing import cast, override
 
 from pydantic import TypeAdapter
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
 from models.source import DataSourceOauthBinding
-from services.data_source_oauth_service import DataSourceOAuthBindingRepository
-from services.entities.data_source_oauth_entities import (
+from services.data_source.binding_application_service import BindingMutationResult, DataSourceBindingStore
+from services.data_source.oauth_service import DataSourceOAuthBindingRepository
+from services.entities.data_source.oauth import (
+    DataSourceBindingSummary,
     DataSourceOAuthAuthorization,
     DataSourceOAuthBindingRecord,
 )
@@ -18,7 +21,7 @@ from services.entities.data_source_oauth_entities import (
 _SOURCE_INFO_ADAPTER = TypeAdapter(dict[str, object])
 
 
-class SQLAlchemyDataSourceOAuthBindingRepository(DataSourceOAuthBindingRepository):
+class SQLAlchemyDataSourceOAuthBindingRepository(DataSourceOAuthBindingRepository, DataSourceBindingStore):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -68,7 +71,7 @@ class SQLAlchemyDataSourceOAuthBindingRepository(DataSourceOAuthBindingRepositor
                     DataSourceOauthBinding.tenant_id == workspace_id,
                     DataSourceOauthBinding.provider == provider,
                     DataSourceOauthBinding.id == binding_id,
-                    DataSourceOauthBinding.disabled.is_(False),
+                    DataSourceOauthBinding.disabled.is_not(True),
                 )
             )
             if binding is None:
@@ -96,7 +99,7 @@ class SQLAlchemyDataSourceOAuthBindingRepository(DataSourceOAuthBindingRepositor
                     DataSourceOauthBinding.tenant_id == workspace_id,
                     DataSourceOauthBinding.provider == provider,
                     DataSourceOauthBinding.id == binding_id,
-                    DataSourceOauthBinding.disabled.is_(False),
+                    DataSourceOauthBinding.disabled.is_not(True),
                 )
             )
             if binding is None:
@@ -105,3 +108,59 @@ class SQLAlchemyDataSourceOAuthBindingRepository(DataSourceOAuthBindingRepositor
             binding.source_info = validated_source_info
             binding.updated_at = naive_utc_now()
             return True
+
+    @override
+    def list_enabled_bindings(self, *, workspace_id: str) -> tuple[DataSourceBindingSummary, ...]:
+        with self._session_factory() as session:
+            bindings = session.scalars(
+                select(DataSourceOauthBinding).where(
+                    DataSourceOauthBinding.tenant_id == workspace_id,
+                    DataSourceOauthBinding.disabled.is_not(True),
+                )
+            ).all()
+            return tuple(
+                DataSourceBindingSummary(
+                    id=binding.id,
+                    provider=binding.provider,
+                    created_at=binding.created_at,
+                    disabled=False,
+                    source_info=_SOURCE_INFO_ADAPTER.validate_python(binding.source_info),
+                )
+                for binding in bindings
+            )
+
+    @override
+    def change_disabled_state(
+        self,
+        *,
+        workspace_id: str,
+        binding_id: str,
+        disabled: bool,
+    ) -> BindingMutationResult:
+        state_predicate = (
+            DataSourceOauthBinding.disabled.is_not(True) if disabled else DataSourceOauthBinding.disabled.is_(True)
+        )
+        with self._session_factory.begin() as session:
+            result = session.execute(
+                update(DataSourceOauthBinding)
+                .where(
+                    DataSourceOauthBinding.tenant_id == workspace_id,
+                    DataSourceOauthBinding.id == binding_id,
+                    state_predicate,
+                )
+                .values(disabled=disabled, updated_at=naive_utc_now())
+            )
+            if cast(CursorResult[object], result).rowcount == 1:
+                return "updated"
+
+            binding_exists = session.scalar(
+                select(DataSourceOauthBinding.id)
+                .where(
+                    DataSourceOauthBinding.tenant_id == workspace_id,
+                    DataSourceOauthBinding.id == binding_id,
+                )
+                .limit(1)
+            )
+            if binding_exists is None:
+                return "not_found"
+            return "already_disabled" if disabled else "already_enabled"
