@@ -329,6 +329,29 @@ def test_otlp_grpc_preserves_signal_destination_authentication_and_credentials(
     assert metrics.deadline == client.http.deadline
 
 
+def test_otlp_can_send_grpc_traces_and_http_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    metrics = TraceProviderHttpClient("https://metrics.example/exact")
+    client = OtlpTraceClient(
+        "https://traces.example:4317",
+        {},
+        {},
+        "",
+        protocol="grpc",
+        metrics_http=metrics,
+        metrics_protocol="http/protobuf",
+    )
+    send_grpc = Mock(return_value=b"")
+    send_http = Mock(return_value=httpx.Response(200, content=b""))
+    monkeypatch.setattr(client, "_send_grpc", send_grpc)
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", send_http)
+    assert client._send("trace", b"traces") == b""
+    assert client._send("metrics", b"metrics") == b""
+    send_grpc.assert_called_once_with("trace", b"traces", http_client=client.http)
+    assert send_http.call_args.args[:2] == ("POST", "https://metrics.example/exact")
+    assert send_http.call_args.kwargs["content"] == b"metrics"
+    assert metrics.deadline == client.http.deadline
+
+
 @pytest.mark.parametrize(
     "provider",
     ["langsmith", "langfuse", "opik", "weave", "phoenix", "arize", "aliyun", "tencent", "mlflow", "databricks"],

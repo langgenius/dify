@@ -197,10 +197,12 @@ class OtlpTraceClient:
         protocol: str = "http/protobuf",
         ssl_context: SSLContext | None = None,
         metrics_http: TraceProviderHttpClient | None = None,
+        metrics_protocol: str | None = None,
         grpc_credentials: Mapping[str, Any] | None = None,
     ):
         self.http = TraceProviderHttpClient(endpoint, headers, ssl_context=ssl_context)
         self.metrics_http = metrics_http
+        self.metrics_protocol = metrics_protocol or protocol
         self.grpc_credentials = dict(grpc_credentials or {})
         self.resource = Resource(attributes=otlp_attributes(resource_attributes))
         self.project_url = project_url
@@ -238,7 +240,8 @@ class OtlpTraceClient:
     def _send(self, signal: str, serialized: bytes) -> bytes:
         client = self.metrics_http if signal == "metrics" and self.metrics_http is not None else self.http
         client.deadline = self.http.deadline
-        if self.protocol == "grpc":
+        protocol = self.metrics_protocol if signal == "metrics" else self.protocol
+        if protocol == "grpc":
             return self._send_grpc(signal, serialized, http_client=client)
         endpoint = client.endpoint
         if signal == "metrics" and self.metrics_http is None:

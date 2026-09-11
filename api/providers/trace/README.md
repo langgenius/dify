@@ -13,9 +13,17 @@ To add a provider:
 
 Use `TraceProviderHttpClient` for HTTP. It creates and closes an SSRF-aware HTTP client per request, disables redirects, and limits the overall export duration. Use the shared OTLP builder for OTLP providers. gRPC exports use an explicit channel and the configured SSRF proxy; they fail closed if proxy bypass rules would skip that proxy.
 
-Return `ExportedParentSpans` keyed by internal span ID, with the provider IDs needed to append a later operation. The delivery worker retains only the root receipt. Databricks uses a separate linked trace for late operations because updating a completed trace artifact would overwrite sibling work. Raise `TraceExportError` with a safe reason and an explicit retry classification; never include credentials or trace content in errors.
+Providers that support deployment-level transport settings implement `Config.load_runtime_settings(provider_config)`. Keep environment names and precedence in the provider directory, return JSON-safe copied values, and use the shared TLS helpers to capture certificate contents. OPS includes those values in the destination fingerprint and passes the checked snapshot as `_runtime_settings` to the client. A client receiving that key must use its contents without rereading environment variables or certificate files. Direct verification resolves a fresh snapshot. Runtime credentials are never saved in trace bodies or configuration API responses.
+
+Return `ExportedParentSpans` keyed by internal span ID, with the provider IDs needed to append a later operation. The delivery worker retains only the root receipt. Databricks and MLflow artifact exports use a separate linked trace for late operations because updating a completed trace artifact would overwrite sibling work. Raise `TraceExportError` with a safe reason and an explicit retry classification; never include credentials or trace content in errors.
 
 The ten choices remain Langfuse, LangSmith, Opik, Weave, Arize, Phoenix, Aliyun, MLflow, Databricks and Tencent. Their existing configuration APIs and encrypted credentials remain supported. There is one OPS runtime; the former unified/legacy switch is removed.
+
+## MLflow artifacts
+
+MLflow falls back to completed-trace metadata and artifact uploads when its OTLP endpoint is unavailable, including FileStore-backed tracking servers. Servers without the V3 trace API use the V2 API and retain their allocated trace IDs across retries. Artifacts must be served over HTTP or HTTPS. `mlflow-artifacts:/` locations use the tracking server's artifact proxy; configure MLflow with `--serve-artifacts` and an experiment artifact location served by that proxy or another HTTP artifact server. The tracking server's credentials and client certificate are sent only to its own origin.
+
+Direct `file:`, `s3:` and `gs:` artifact locations are intentionally unsupported and fail with `mlflow_artifact_requires_http`. Before rollout, expose those stores through MLflow's HTTP artifact serving. This keeps local file writes and cloud storage credentials on the artifact server. Databricks continues to use its authenticated signed-upload API.
 
 ## Langfuse v4
 

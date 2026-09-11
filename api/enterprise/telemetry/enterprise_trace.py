@@ -1,12 +1,9 @@
 """Enterprise signal contracts projected from captured executions without record lookups."""
 
-import base64
 import logging
 import os
 import socket
 import ssl
-from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
@@ -18,6 +15,7 @@ from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans
 from opentelemetry.util.re import _LIBERAL_HEADER_PATTERN, parse_env_headers
 from pydantic import JsonValue
 
+from core.helper.ssl_context import create_grpc_credentials, create_ssl_context, read_tls_files
 from core.ops.otlp_trace import OtlpTraceClient, counter, histogram, otlp_span, otlp_trace_id
 from core.ops.provider_export import TraceProviderHttpClient, export_span_id, json_text, span_attributes, span_id_bytes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
@@ -82,11 +80,15 @@ def resolve_enterprise_signal_settings(provider_config: dict[str, Any]) -> dict[
             header for header in raw_headers.split(",") if _LIBERAL_HEADER_PATTERN.fullmatch(header.strip())
         )
         headers = configured_headers or parse_env_headers(valid_headers, liberal=True)
-        tls: dict[str, str] = {}
+        tls_files: dict[str, str | None] = {}
+        verify = True
         if urlsplit(endpoint).scheme == "https":
-            # gRPC selects the complete signal-specific credential set when its CA is set.
+            # The previous factory enabled signal credentials only for an explicitly configured HTTPS endpoint.
             tls_prefix = (
-                prefix if protocol != "grpc" or os.environ.get(prefix + "CERTIFICATE") else "OTEL_EXPORTER_OTLP_"
+                prefix
+                if protocol != "grpc"
+                or (configured_endpoint.startswith("https://") and os.environ.get(prefix + "CERTIFICATE") is not None)
+                else "OTEL_EXPORTER_OTLP_"
             )
             for field in ("certificate", "client_key", "client_certificate"):
                 if protocol == "grpc" and not os.environ.get(tls_prefix + "CERTIFICATE"):
@@ -94,33 +96,22 @@ def resolve_enterprise_signal_settings(provider_config: dict[str, Any]) -> dict[
                 filename = os.environ.get(tls_prefix + field.upper())
                 if protocol != "grpc" and filename is None:
                     filename = os.environ.get("OTEL_EXPORTER_OTLP_" + field.upper())
+                if protocol != "grpc" and field == "certificate" and filename is None:
+                    filename = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("CURL_CA_BUNDLE") or None
+                if protocol != "grpc" and field == "certificate" and filename == "":
+                    verify = False
                 if filename:
-                    try:
-                        # Contents, not mutable filenames, enter the settings HMAC and authorized export.
-                        tls[field] = base64.b64encode(Path(filename).read_bytes()).decode("ascii")
-                    except OSError:
-                        raise ValueError("Cannot read enterprise TLS configuration") from None
-        signals[signal] = {"endpoint": endpoint, "headers": dict(headers), "tls": tls}
+                    tls_files[field] = filename
+        if protocol != "grpc" and not tls_files.get("client_certificate"):
+            tls_files.pop("client_key", None)
+        signals[signal] = {
+            "endpoint": endpoint,
+            "headers": dict(headers),
+            "tls": read_tls_files(tls_files, allow_ca_directory=protocol != "grpc"),
+        }
+        if not verify:
+            signals[signal]["verify"] = False
     return signals
-
-
-def create_enterprise_http_ssl_context(tls: dict[str, str]) -> ssl.SSLContext | None:
-    if not tls:
-        return None
-    certificate = base64.b64decode(tls["certificate"]) if tls.get("certificate") else None
-    context = ssl.create_default_context(
-        cadata=certificate.decode("ascii") if certificate and b"-----BEGIN" in certificate else certificate
-    )
-    if tls.get("client_certificate"):
-        # SSLContext only accepts filenames for a client chain. Private temporary files are removed after loading.
-        with NamedTemporaryFile() as certificate_file, NamedTemporaryFile() as key_file:
-            certificate_file.write(base64.b64decode(tls["client_certificate"]))
-            certificate_file.flush()
-            if tls.get("client_key"):
-                key_file.write(base64.b64decode(tls["client_key"]))
-                key_file.flush()
-            context.load_cert_chain(certificate_file.name, key_file.name if tls.get("client_key") else None)
-    return context
 
 
 def business_status(span: TraceSpan, operation_type: str) -> str:
@@ -174,17 +165,9 @@ class EnterpriseTraceClient:
         for signal, settings in signals.items():
             tls = settings["tls"]
             if protocol == "grpc" and tls:
-                import grpc  # pyrefly: ignore[untyped-import]
-
-                grpc_credentials[signal] = grpc.ssl_channel_credentials(
-                    root_certificates=base64.b64decode(tls["certificate"]) if tls.get("certificate") else None,
-                    private_key=base64.b64decode(tls["client_key"]) if tls.get("client_key") else None,
-                    certificate_chain=base64.b64decode(tls["client_certificate"])
-                    if tls.get("client_certificate")
-                    else None,
-                )
+                grpc_credentials[signal] = create_grpc_credentials(tls)
             elif protocol != "grpc":
-                ssl_contexts[signal] = create_enterprise_http_ssl_context(tls)
+                ssl_contexts[signal] = create_ssl_context(tls, verify=settings.get("verify", True))
         self.otlp = OtlpTraceClient(
             trace_settings["endpoint"],
             trace_settings["headers"],

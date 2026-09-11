@@ -84,7 +84,7 @@ def test_signal_tls_contents_reach_the_transport_and_client_key_files_are_remove
 ) -> None:
     contexts = [MagicMock(), MagicMock()]
     ssl_context = Mock(side_effect=contexts)
-    monkeypatch.setattr("enterprise.telemetry.enterprise_trace.ssl.create_default_context", ssl_context)
+    monkeypatch.setattr("core.helper.ssl_context.ssl.create_default_context", ssl_context)
     credentials = Mock(side_effect=["trace-credentials", "metric-credentials"])
     monkeypatch.setattr(grpc, "ssl_channel_credentials", credentials)
     signals = {

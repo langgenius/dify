@@ -1,13 +1,16 @@
-"""Aliyun receives every captured span directly, including nested agent operations."""
+"""Send captured spans to Aliyun with explicitly captured HTTP and TLS settings."""
 
 import json
 import re
+import socket
 from typing import Any, override
 from urllib.parse import quote, urljoin, urlsplit
 
 from opentelemetry.proto.trace.v1.trace_pb2 import Span
 from pydantic import JsonValue
 
+from configs import dify_config
+from core.helper.ssl_context import create_ssl_context
 from core.ops.otlp_trace import OtlpTraceClient, otlp_span
 from core.ops.provider_export import json_text, span_attributes
 from core.ops.trace_data import CompletedTrace, TraceSpan
@@ -245,6 +248,11 @@ class AliyunTraceClient(OtlpTraceClient):
 
 def create_trace_client(provider_config: dict[str, Any]) -> AliyunTraceClient:
     config = AliyunConfig.model_validate(provider_config)
+    runtime_settings = (
+        provider_config["_runtime_settings"]
+        if "_runtime_settings" in provider_config
+        else AliyunConfig.load_runtime_settings(provider_config)
+    )
     hostname = urlsplit(config.endpoint).hostname or ""
     path = (
         "api/v1/traces"
@@ -254,7 +262,14 @@ def create_trace_client(provider_config: dict[str, Any]) -> AliyunTraceClient:
     endpoint = urljoin(config.endpoint, f"adapt_{quote(config.license_key, safe='')}/{path}")
     return AliyunTraceClient(
         endpoint,
-        {},
-        {"service.name": config.app_name, "acs.arms.service.feature": "genai_app"},
-        "https://arms.console.aliyun.com/",
+        runtime_settings["headers"],
+        {
+            "service.name": config.app_name,
+            "service.version": f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
+            "deployment.environment": f"{dify_config.DEPLOY_ENV}-{dify_config.DEPLOYMENT_EDITION.value}",
+            "host.name": socket.gethostname(),
+            "acs.arms.service.feature": "genai_app",
+        },
+        "https://arms.console.aliyun.com/#/llm",
+        ssl_context=create_ssl_context(runtime_settings["tls"], verify=runtime_settings["verify"]),
     )

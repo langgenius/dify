@@ -1,4 +1,4 @@
-"""Explicit MLflow/Databricks REST requests; no tracking setters or environment credentials."""
+"""Operation-owned MLflow/Databricks HTTP clients with explicitly captured deployment TLS."""
 
 import base64
 import json
@@ -11,6 +11,7 @@ from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
 from pydantic import JsonValue
 
+from core.helper.ssl_context import create_ssl_context
 from core.ops.otlp_trace import OtlpTraceClient, otlp_span
 from core.ops.provider_export import (
     TraceExportError,
@@ -99,6 +100,11 @@ class MLflowTraceClient:
         if isinstance(self.config, DatabricksConfig):
             self.http = TraceProviderHttpClient(self.config.host)
         else:
+            runtime_settings = (
+                provider_config["_runtime_settings"]
+                if "_runtime_settings" in provider_config
+                else self.config.load_runtime_settings(provider_config)
+            )
             self.http = TraceProviderHttpClient(
                 self.config.tracking_uri,
                 {
@@ -108,6 +114,9 @@ class MLflowTraceClient:
                         else {}
                     ),
                 },
+                ssl_context=create_ssl_context(
+                    runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)
+                ),
             )
 
     def _authenticate_databricks(self) -> None:
@@ -203,9 +212,12 @@ class MLflowTraceClient:
                 trace_id = _parse_trace_uuid(external_id)
             except ValueError:
                 pass
-        if self.provider_name == "databricks":
+        own_trace_id = trace_id
+        native_trace_id: str | None = None
+        artifact_trace = self.provider_name == "databricks" or bool(parent_span and parent_span.get("artifact_trace"))
+        if artifact_trace:
             self._authenticate_databricks()
-            self._export_databricks(completed_trace, trace_id, parent_span)
+            native_trace_id = self._export_artifact_trace(completed_trace, trace_id, parent_span)
         else:
             trace_id = _parse_trace_uuid(str(parent_span["trace_id"])) if parent_span else trace_id
             spans = []
@@ -231,31 +243,48 @@ class MLflowTraceClient:
                 },
                 {"service.name": "dify"},
                 self.get_project_url(),
+                ssl_context=self.http.ssl_context,
             )
             client.http.deadline = self.http.deadline
-            client.send_traces(
-                ExportTraceServiceRequest(
-                    resource_spans=[
-                        ResourceSpans(
-                            resource=client.resource,
-                            scope_spans=[ScopeSpans(scope=InstrumentationScope(name="dify.ops"), spans=spans)],
-                        )
-                    ]
+            try:
+                client.send_traces(
+                    ExportTraceServiceRequest(
+                        resource_spans=[
+                            ResourceSpans(
+                                resource=client.resource,
+                                scope_spans=[ScopeSpans(scope=InstrumentationScope(name="dify.ops"), spans=spans)],
+                            )
+                        ]
+                    )
                 )
-            )
+            except TraceExportError as error:
+                if str(error) not in {"provider_http_404", "provider_http_501"}:
+                    raise
+                # FileStore and older servers accept complete traces through the
+                # metadata/artifact APIs instead of OTLP span logging.
+                artifact_trace = True
+                trace_id = own_trace_id
+                native_trace_id = self._export_artifact_trace(completed_trace, trace_id, parent_span)
+        if native_trace_id is not None:
+            trace_id = _parse_trace_uuid(native_trace_id)
         return ExportedParentSpans(
             spans={
-                span.span_id: {"trace_id": trace_id, "span_id": export_span_id(completed_trace, span.span_id)}
+                span.span_id: {
+                    "trace_id": trace_id,
+                    "span_id": export_span_id(completed_trace, span.span_id),
+                    **({"artifact_trace": True} if artifact_trace else {}),
+                    **({"native_trace_id": native_trace_id} if native_trace_id is not None else {}),
+                }
                 for span in completed_trace.spans
             }
         )
 
-    def _export_databricks(
+    def _export_artifact_trace(
         self, completed_trace: CompletedTrace, trace_id: str, parent_span: dict[str, JsonValue] | None
-    ) -> None:
+    ) -> str:
         root = completed_trace.spans[0]
         if root.started_at is None or root.ended_at is None:
-            raise TraceExportError("databricks_trace_time_missing")
+            raise TraceExportError(f"{self.provider_name}_trace_time_missing")
         request_id = "tr-" + UUID(trace_id).hex
         # An experiment trace owns one immutable artifact. Late operations get a
         # linked trace: appending by rewriting the parent's artifact loses siblings.
@@ -268,9 +297,25 @@ class MLflowTraceClient:
             metadata["mlflow.trace.user"] = completed_trace.source.actor_id
         if session_id := completed_trace.source.session_id or completed_trace.source.conversation_id:
             metadata["mlflow.trace.session"] = session_id
+        token_usage = {
+            target: sum(
+                count
+                for span in completed_trace.spans
+                if span.span_type == "llm" and isinstance(count := span.usage.get(source), int)
+            )
+            for source, target in (
+                ("prompt_tokens", "input_tokens"),
+                ("completion_tokens", "output_tokens"),
+                ("total_tokens", "total_tokens"),
+            )
+        }
+        if any(token_usage.values()):
+            metadata["mlflow.trace.tokenUsage"] = json_text(token_usage)
         links = []
         if parent_span:
-            linked_trace_id = "tr-" + UUID(_parse_trace_uuid(str(parent_span["trace_id"]))).hex
+            linked_trace_id = str(
+                parent_span.get("native_trace_id") or "tr-" + UUID(_parse_trace_uuid(str(parent_span["trace_id"]))).hex
+            )
             linked_span_id = span_id_bytes(str(parent_span["span_id"])).hex()
             metadata.update(
                 {
@@ -296,23 +341,25 @@ class MLflowTraceClient:
             "trace_metadata": metadata,
             "tags": {"mlflow.traceName": root.span_name},
         }
-        try:
-            self.http.request("POST", "api/3.0/mlflow/traces", json={"trace": {"trace_info": trace_info}})
-        except TraceExportError as error:
-            if str(error) != "provider_http_409":
-                raise
-            # A previous attempt may have created the metadata before its upload
-            # failed. Verify identity before reusing this deterministic record.
-            existing = self.http.request("GET", f"api/3.0/mlflow/traces/{request_id}").json()["trace"]["trace_info"]
-            if (
-                existing.get("client_request_id") != trace_info["client_request_id"]
-                or existing.get("trace_metadata", {}).get("dify.operation_id") != completed_trace.source.operation_id
-                or existing.get("trace_metadata", {}).get("dify.tenant_id") != completed_trace.source.tenant_id
-                or existing.get("trace_metadata", {}).get("dify.app_id") != completed_trace.source.app_id
-                or existing.get("trace_location", {}).get("mlflow_experiment", {}).get("experiment_id")
-                != self.config.experiment_id
-            ):
-                raise TraceExportError("databricks_trace_identity_mismatch") from error
+        # FileStore does not reliably return 409 for a repeated create. Read its
+        # deterministic record first so an upload retry cannot overwrite metadata.
+        saved_trace_info = self._read_existing_trace(trace_info) if self.provider_name == "mlflow" else None
+        if saved_trace_info is None:
+            try:
+                created = self.http.request("POST", "api/3.0/mlflow/traces", json={"trace": {"trace_info": trace_info}})
+                saved_trace_info = created.json().get("trace", {}).get("trace_info", {})
+            except TraceExportError as error:
+                if self.provider_name == "mlflow" and str(error) == "provider_http_404":
+                    # The SDK also falls back to V2 on servers without StartTraceV3.
+                    saved_trace_info = self._create_trace_v2(completed_trace, trace_info)
+                elif str(error) == "provider_http_409":
+                    saved_trace_info = self._read_existing_trace(trace_info)
+                    if saved_trace_info is None:
+                        raise
+                else:
+                    raise
+        request_id = saved_trace_info.get("trace_id", request_id)
+        trace_id = _parse_trace_uuid(request_id)
         spans = [
             {
                 "trace_id": base64.b64encode(UUID(trace_id).bytes).decode(),
@@ -342,10 +389,131 @@ class MLflowTraceClient:
             }
             for span in completed_trace.spans
         ]
-        upload = self.http.request("GET", f"api/3.0/mlflow/traces/{request_id}/credentials-for-data-upload").json()[
-            "credential_info"
-        ]
-        self._upload_spans(upload, json_text({"spans": spans}).encode())
+        trace_json = json_text({"spans": spans}).encode()
+        if self.provider_name == "mlflow":
+            self._upload_mlflow_artifact(saved_trace_info.get("tags", {}).get("mlflow.artifactLocation"), trace_json)
+        else:
+            upload = self.http.request("GET", f"api/3.0/mlflow/traces/{request_id}/credentials-for-data-upload").json()[
+                "credential_info"
+            ]
+            self._upload_spans(upload, trace_json)
+        return request_id
+
+    def _create_trace_v2(self, completed_trace: CompletedTrace, trace_info: dict[str, Any]) -> dict[str, Any]:
+        # V2 allocates a server ID. Find the operation before creating so a retry
+        # after a lost response or artifact upload reuses the same native trace.
+        tags = {**trace_info["tags"], "dify.trace_id": trace_info["trace_id"]}
+        metadata = {**trace_info["trace_metadata"], "dify.client_request_id": trace_info["client_request_id"]}
+        fields = {
+            "request_metadata": [{"key": key, "value": value} for key, value in metadata.items()],
+            "tags": [{"key": key, "value": value} for key, value in tags.items()],
+        }
+        result = self.http.request(
+            "GET",
+            "api/2.0/mlflow/traces",
+            params={
+                "experiment_ids": [self.config.experiment_id],
+                "filter": f"tags.`dify.trace_id` = '{trace_info['trace_id']}'",
+                "max_results": 2,
+            },
+        ).json()
+        existing = result.get("traces", [])
+        if len(existing) > 1 or result.get("next_page_token"):
+            raise TraceExportError("mlflow_trace_identity_ambiguous")
+        saved = (
+            existing[0]
+            if existing
+            else self.http.request(
+                "POST",
+                "api/2.0/mlflow/traces",
+                json={
+                    "experiment_id": self.config.experiment_id,
+                    "timestamp_ms": str(timestamp_ns(completed_trace.spans[0].started_at) // 1_000_000),
+                    **fields,
+                },
+            ).json()["trace_info"]
+        )
+        saved_metadata = {entry["key"]: entry["value"] for entry in saved.get("request_metadata", [])}
+        saved_tags = {entry["key"]: entry["value"] for entry in saved.get("tags", [])}
+        if (
+            saved.get("experiment_id") != self.config.experiment_id
+            or saved_tags.get("dify.trace_id") != tags["dify.trace_id"]
+            or any(
+                saved_metadata.get(key) != metadata[key]
+                for key in ("dify.tenant_id", "dify.app_id", "dify.operation_id", "dify.client_request_id")
+            )
+        ):
+            raise TraceExportError("mlflow_trace_identity_mismatch")
+        request_id = saved.get("request_id")
+        try:
+            if not isinstance(request_id, str):
+                raise ValueError("Missing native trace ID")
+            _parse_trace_uuid(request_id)
+        except ValueError as error:
+            raise TraceExportError("mlflow_trace_id_invalid") from error
+        self.http.request(
+            "PATCH",
+            f"api/2.0/mlflow/traces/{quote(request_id, safe='')}",
+            json={
+                "request_id": request_id,
+                "timestamp_ms": str(timestamp_ns(completed_trace.spans[0].ended_at) // 1_000_000),
+                "status": trace_info["state"],
+                **fields,
+            },
+        )
+        return {"trace_id": request_id, "tags": saved_tags}
+
+    def _read_existing_trace(self, trace_info: dict[str, Any]) -> dict[str, Any] | None:
+        try:
+            existing = self.http.request("GET", f"api/3.0/mlflow/traces/{trace_info['trace_id']}").json()["trace"][
+                "trace_info"
+            ]
+        except TraceExportError as error:
+            if str(error) == "provider_http_404":
+                return None
+            raise
+        if (
+            existing.get("client_request_id") != trace_info["client_request_id"]
+            or any(
+                existing.get("trace_metadata", {}).get(key) != trace_info["trace_metadata"][key]
+                for key in ("dify.operation_id", "dify.tenant_id", "dify.app_id")
+            )
+            or existing.get("trace_location", {}).get("mlflow_experiment", {}).get("experiment_id")
+            != self.config.experiment_id
+        ):
+            raise TraceExportError(f"{self.provider_name}_trace_identity_mismatch")
+        return existing
+
+    def _upload_mlflow_artifact(self, artifact_uri: str | None, trace_json: bytes) -> None:
+        if not artifact_uri:
+            raise TraceExportError("mlflow_artifact_location_missing")
+        artifact = urlsplit(artifact_uri)
+        tracking = urlsplit(self.http.endpoint)
+        if artifact.scheme == "mlflow-artifacts":
+            path = f"{tracking.path.rstrip('/')}/api/2.0/mlflow-artifacts/artifacts/{artifact.path.lstrip('/')}"
+            artifact = artifact._replace(scheme=tracking.scheme, netloc=artifact.netloc or tracking.netloc, path=path)
+        if artifact.scheme not in {"http", "https"}:
+            # ponytail: HTTP-served artifacts only; direct stores need explicit destination credentials and bounds.
+            raise TraceExportError("mlflow_artifact_requires_http")
+        # Only the configured tracking origin receives its credentials. Separate
+        # artifact servers must authorize their own URL, never inherit the API key.
+        same_origin = (
+            artifact.scheme,
+            artifact.hostname,
+            artifact.port if artifact.port is not None else (443 if artifact.scheme == "https" else 80),
+        ) == (
+            tracking.scheme,
+            tracking.hostname,
+            tracking.port if tracking.port is not None else (443 if tracking.scheme == "https" else 80),
+        )
+        headers = self.http.headers if same_origin else {}
+        client = TraceProviderHttpClient(
+            urlunsplit(artifact._replace(path=artifact.path.rstrip("/") + "/traces.json")),
+            headers,
+            ssl_context=self.http.ssl_context if same_origin else None,
+        )
+        client.deadline = self.http.deadline
+        client.request("PUT", content=trace_json, headers={"Content-Type": "application/json"})
 
     def _upload_spans(self, upload: dict[str, Any], trace_json: bytes) -> None:
         signed_url = str(upload["signed_uri"])

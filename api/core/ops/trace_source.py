@@ -11,7 +11,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from core.ops.provider_config import decrypt_provider_config
+from core.ops.provider_config import decrypt_provider_config, resolve_provider_config
 from core.ops.trace_data import TraceProviderSettings, TraceSource
 
 if TYPE_CHECKING:
@@ -49,6 +49,8 @@ def get_trace_provider_settings(tenant_id: str, app_id: str | None = None) -> tu
     from models.model import App, TraceAppConfig
 
     destinations: list[TraceProviderSettings] = []
+    app_settings: TraceProviderSettings | None = None
+    app_provider_config: dict[str, Any] = {}
     with Session(db.engine) as session:
         if session.scalar(select(Tenant.id).where(Tenant.id == tenant_id)) is None:
             raise ValueError("Trace tenant not found")
@@ -72,16 +74,19 @@ def get_trace_provider_settings(tenant_id: str, app_id: str | None = None) -> tu
                     (row[1] for row in rows if row[1] is not None and row[1].tracing_provider == provider_name), None
                 )
                 if config is not None and config.tracing_config is not None:
-                    destinations.append(
-                        TraceProviderSettings(
-                            tenant_id=tenant_id,
-                            app_id=app_id,
-                            provider_name=provider_name,
-                            config_id=config.id,
-                            config_revision=app.tracing_destination_revision,
-                            destination_settings_hash=_settings_hash(tenant_id, config.tracing_config),
-                        )
+                    app_provider_config = dict(config.tracing_config)
+                    app_settings = TraceProviderSettings(
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        provider_name=provider_name,
+                        config_id=config.id,
+                        config_revision=app.tracing_destination_revision,
                     )
+    if app_settings is not None:
+        resolved_config = resolve_provider_config(app_settings.provider_name, app_provider_config)
+        destinations.append(
+            app_settings.model_copy(update={"destination_settings_hash": _settings_hash(tenant_id, resolved_config)})
+        )
     enterprise_config = _enterprise_config()
     if enterprise_config is not None:
         settings_hash = _settings_hash(tenant_id, enterprise_config)
@@ -151,11 +156,15 @@ def load_trace_provider_config(settings: TraceProviderSettings) -> dict[str, Any
         if not selected.get("enabled") or selected.get("tracing_provider") != settings.provider_name:
             raise ValueError("configuration_changed")
         encrypted = dict(config.tracing_config or {})
-        if not hmac.compare_digest(
-            _settings_hash(settings.tenant_id, encrypted).encode(), settings.destination_settings_hash.encode()
-        ):
-            raise ValueError("configuration_changed")
-    return decrypt_provider_config(settings.tenant_id, settings.provider_name, encrypted)
+    resolved_config = resolve_provider_config(settings.provider_name, encrypted)
+    if not hmac.compare_digest(
+        _settings_hash(settings.tenant_id, resolved_config).encode(), settings.destination_settings_hash.encode()
+    ):
+        raise ValueError("configuration_changed")
+    decrypted = decrypt_provider_config(settings.tenant_id, settings.provider_name, encrypted)
+    if "_runtime_settings" in resolved_config:
+        decrypted["_runtime_settings"] = resolved_config["_runtime_settings"]
+    return decrypted
 
 
 def create_message_trace(
