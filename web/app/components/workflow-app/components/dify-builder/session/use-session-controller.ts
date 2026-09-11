@@ -13,7 +13,11 @@ import type {
 } from '../types'
 import type { SessionCommandOptions, SessionStreamOutcome } from './types'
 import { useSetAtom, useStore } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
 import {
   createBuildSession,
   createChecklistFixSession,
@@ -26,6 +30,7 @@ import {
   sendSessionMessage,
 } from './client'
 import {
+  requestErrorCode,
   requestErrorMessage,
   requestErrorStatus,
   streamErrorMessage,
@@ -39,6 +44,7 @@ import {
   difyBuilderConversationLoadingAtom,
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
+  difyBuilderSessionErrorCodeAtom,
   difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
@@ -459,6 +465,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       abortRef.current = controller
       setIsBusy(true)
       setLastError('')
+      store.set(difyBuilderSessionErrorCodeAtom, null)
       if (startsSession) {
         setActiveSessionId(null)
         setView(null)
@@ -558,7 +565,20 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         reasoningBuffer.clear()
         streamingTurnBuffer.clear()
         const message = await requestErrorMessage(error)
+        const code = await requestErrorCode(error)
         if (controller.signal.aborted) return false
+        store.set(difyBuilderSessionErrorCodeAtom, code)
+        if (code === 'model_unavailable') {
+          const queryClient = store.get(queryClientAtom)
+          void queryClient.invalidateQueries({
+            queryKey: commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration),
+          })
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+              input: { params: { model_type: ModelTypeEnum.textGeneration } },
+            }),
+          })
+        }
         setLastError(message)
         if (knownSessionId) await reconcileSession(knownSessionId, controller)
         if (!controller.signal.aborted) setLastError(message)
@@ -663,6 +683,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       setActiveSessionId(normalizedSessionId)
       setIsBusy(true)
       setLastError('')
+      store.set(difyBuilderSessionErrorCodeAtom, null)
       try {
         const outcome = await reconcileSession(normalizedSessionId, controller, true)
         if (controller.signal.aborted) return false
@@ -847,6 +868,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     setConversationLoading(false)
     setView(null)
     setLastError('')
+    store.set(difyBuilderSessionErrorCodeAtom, null)
     setLastCanvasEvent(null)
     canvasCursorRef.current = undefined
     traceRef.current.clear()
@@ -863,6 +885,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     setLastError,
     setRetryableMessage,
     setView,
+    store,
     streamingTurnBuffer,
   ])
 

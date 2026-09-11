@@ -615,11 +615,10 @@ class DifyBuilderService:
         self._get_authorized_session(session_id, actor)
 
     @staticmethod
-    def _validate_model_config(actor: Actor, model_config: dict | None) -> None:
+    def _validate_model_config(actor: Actor, model_config: dict | None) -> dict:
         if model_config is not None and not isinstance(model_config, dict):
             raise BadRequestError("model_config must be an object")
-        if model_config:
-            validate_model_config(actor.tenant_id, model_config)
+        return validate_model_config(actor.tenant_id, model_config)
 
     @staticmethod
     def _parse_checklist_errors(
@@ -696,8 +695,8 @@ class DifyBuilderService:
         checklist_errors = self._parse_checklist_errors(checklist_errors)
         if not failed_run_id and not checklist_errors:
             raise BadRequestError("failed_run_id or checklist_errors is required")
-        self._validate_model_config(actor, model_config)
         app_id = self._authorize_app(app_id, actor)
+        model_config = self._validate_model_config(actor, model_config)
         app_revision = self._get_app_revision(app_id, actor)
         failed_run: Run | None = None
         if checklist_errors:
@@ -705,7 +704,7 @@ class DifyBuilderService:
             fc = DifyBuilderContext(
                 source="checklist",
                 checklist_errors=checklist_errors,
-                model_config=model_config or {},
+                model_config=model_config,
                 last_snapshot_hash=app_revision,
             )
         else:
@@ -720,7 +719,7 @@ class DifyBuilderService:
             fc = DifyBuilderContext(
                 failed_run_id=failed_run.id,
                 source="run",
-                model_config=model_config or {},
+                model_config=model_config,
                 last_snapshot_hash=app_revision,
             )
 
@@ -787,14 +786,14 @@ class DifyBuilderService:
         the ``send_goal`` dispatch."""
         if not isinstance(goal_text, str) or not (goal_text := goal_text.strip()):
             raise BadRequestError("goal_text is required")
-        self._validate_model_config(actor, model_config)
         app_id = self._authorize_app(app_id, actor)
+        model_config = self._validate_model_config(actor, model_config)
         app_revision = self._get_app_revision(app_id, actor)
         policy = FeatureService.get_features(actor.tenant_id).skill_learning_policy
         fc = DifyBuilderContext(
             goal_text=goal_text,
             skill_learning_policy=policy,
-            model_config=model_config or {},
+            model_config=model_config,
             last_snapshot_hash=app_revision,
         )
         s = Session(
@@ -856,12 +855,12 @@ class DifyBuilderService:
         """
         if not isinstance(goal_text, str) or not (goal_text := goal_text.strip()):
             raise BadRequestError("goal_text is required")
-        self._validate_model_config(actor, model_config)
         app_id = self._authorize_app(app_id, actor)
+        model_config = self._validate_model_config(actor, model_config)
         app_revision = self._get_app_revision(app_id, actor)
         fc = DifyBuilderContext(
             goal_text=goal_text,
-            model_config=model_config or {},
+            model_config=model_config,
             last_snapshot_hash=app_revision,
         )
         s = Session(
@@ -1095,8 +1094,7 @@ class DifyBuilderService:
             model_config = action.payload.get("model_config")
             if not isinstance(model_config, dict) or not model_config:
                 raise BadRequestError("model_config is required")
-            validate_model_config(actor.tenant_id, model_config)
-            fc.model_config = model_config
+            fc.model_config = validate_model_config(actor.tenant_id, model_config)
             item = NoticeItem(text=f"Model changed to {model_config.get('name', '')}").to_item(
                 seq=fc.next_seq,
                 at_version=s.version + 1,

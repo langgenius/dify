@@ -16,7 +16,7 @@ export const createFixSession = (
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
     },
-    { signal },
+    { context: { silent: true }, signal },
   )
 
 export const createChecklistFixSession = (
@@ -34,7 +34,7 @@ export const createChecklistFixSession = (
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
     },
-    { signal },
+    { context: { silent: true }, signal },
   )
 
 export const createBuildSession = (
@@ -52,7 +52,7 @@ export const createBuildSession = (
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
     },
-    { signal },
+    { context: { silent: true }, signal },
   )
 
 export const createEditSession = (
@@ -70,7 +70,7 @@ export const createEditSession = (
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
     },
-    { signal },
+    { context: { silent: true }, signal },
   )
 
 export const getSession = (sessionId: string, signal: AbortSignal) =>

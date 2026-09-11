@@ -361,7 +361,12 @@ describe('Dify Builder store', () => {
       createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
     )
 
-    expect(await store.set(difyBuilderStartPromptAtom, 'Make the change smaller')).toBe(true)
+    expect(
+      await store.set(difyBuilderStartPromptAtom, {
+        text: 'Make the change smaller',
+        model: builderModel,
+      }),
+    ).toBe(true)
     expect(runtime.onSyncDraft).toHaveBeenCalledOnce()
     expect(runtime.session.sendMessage).toHaveBeenCalledWith('Make the change smaller')
   })
@@ -423,6 +428,31 @@ describe('Dify Builder store', () => {
     expect(runtime.session.sendMessage).not.toHaveBeenCalled()
   })
 
+  it.each(['', 'A newer request'])(
+    'restores a rejected creation prompt without replacing a newer draft: %s',
+    async (newerDraft) => {
+      const store = createStore()
+      const runtime = createRuntime(vi.fn(async () => true))
+      let finishStarting!: (started: boolean) => void
+      runtime.session.startBuild = vi.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            finishStarting = resolve
+          }),
+      )
+      store.set(difyBuilderRuntimeAtom, runtime)
+      store.set(difyBuilderDraftAtom, 'Build an expense assistant')
+
+      const sending = store.set(difyBuilderSendDraftAtom, builderModel)
+      await vi.waitFor(() => expect(runtime.session.startBuild).toHaveBeenCalledOnce())
+      store.set(difyBuilderDraftAtom, newerDraft)
+      finishStarting(false)
+
+      expect(await sending).toBe(false)
+      expect(store.get(difyBuilderDraftAtom)).toBe(newerDraft || 'Build an expense assistant')
+    },
+  )
+
   it('clears the composer draft when resetting the session', () => {
     const store = createStore()
     const runtime = createRuntime(vi.fn(async () => true))
@@ -442,7 +472,12 @@ describe('Dify Builder store', () => {
     store.set(difyBuilderSessionViewAtom, createSessionView())
     store.set(difyBuilderCanvasRefreshingAtom, true)
 
-    expect(await store.set(difyBuilderStartPromptAtom, 'Build a support bot')).toBe(false)
+    expect(
+      await store.set(difyBuilderStartPromptAtom, {
+        text: 'Build a support bot',
+        model: builderModel,
+      }),
+    ).toBe(false)
     expect(runtime.onSyncDraft).not.toHaveBeenCalled()
     expect(runtime.session.startBuild).not.toHaveBeenCalled()
   })

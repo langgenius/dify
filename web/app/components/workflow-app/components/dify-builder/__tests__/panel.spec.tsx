@@ -1,11 +1,16 @@
 import type { ConversationItem, SessionModel, SessionView } from '../types'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import DifyBuilderPanel from '../panel'
 import {
   difyBuilderConversationAtom,
   difyBuilderRetryableMessageAtom,
+  difyBuilderSessionErrorCodeAtom,
+  difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
 } from '../session/state'
 import {
@@ -13,6 +18,7 @@ import {
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderDraftAtom,
+  difyBuilderLocalErrorAtom,
   difyBuilderRuntimeAtom,
 } from '../store'
 
@@ -71,7 +77,15 @@ vi.mock('../model-selector', () => ({
 }))
 
 vi.mock('../use-dify-builder-model', () => ({
-  useDifyBuilderModel: () => ({ model: mocks.model, modelList: [] }),
+  useDifyBuilderModel: () => ({
+    model: mocks.model,
+    selection: mocks.model,
+    modelList: [],
+    isLoading: false,
+    isError: false,
+    hasAvailableModels: true,
+    retry: vi.fn(),
+  }),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -90,6 +104,8 @@ const renderPanel = (
   conversation: ConversationItem[] = sessionConversation,
 ) => {
   const store = createStore()
+  const queryClient = createConsoleQueryClient()
+  store.set(queryClientAtom, queryClient)
   store.set(difyBuilderSessionViewAtom, view)
   store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: view.session_id, version: view.version })
   store.set(difyBuilderConversationAtom, conversation)
@@ -116,10 +132,14 @@ const renderPanel = (
     setShowPanel: mocks.closePanel,
   })
   initializeStore?.(store)
-  const result = render(
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  const result = renderWithConsoleQuery(
     <Provider store={store}>
-      <DifyBuilderPanel />
+      <NuqsWrapper>
+        <DifyBuilderPanel />
+      </NuqsWrapper>
     </Provider>,
+    { queryClient },
   )
   return { ...result, store }
 }
@@ -260,7 +280,8 @@ describe('DifyBuilderPanel', () => {
     }
   })
 
-  it('disables the composer and blocks submission when no model is available', () => {
+  it('keeps the draft editable and blocks submission when no model is available', async () => {
+    const user = userEvent.setup()
     mocks.model = null
     renderPanel(sessionView, (store) => {
       store.set(difyBuilderDraftAtom, 'Do not submit this draft')
@@ -274,8 +295,8 @@ describe('DifyBuilderPanel', () => {
     })
     const form = composer.closest('form')
 
-    expect(composer).toBeDisabled()
-    expect(composer).toHaveAttribute('placeholder', 'workflow.workflowGenerator.modelRequired')
+    expect(composer).toBeEnabled()
+    expect(composer).toHaveAccessibleDescription('workflow.workflowGenerator.modelRequired')
     expect(sendButton).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Model selector' })).toBeEnabled()
     expect(form).not.toBeNull()
@@ -285,6 +306,25 @@ describe('DifyBuilderPanel', () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled()
     expect(mocks.startBuild).not.toHaveBeenCalled()
     expect(composer).toHaveValue('Do not submit this draft')
+    await user.type(composer, ' yet')
+    expect(composer).toHaveValue('Do not submit this draft yet')
+  })
+
+  it('shows model recovery guidance and still reports a later draft synchronization error', () => {
+    const { store } = renderPanel(sessionView, (store) => {
+      store.set(difyBuilderSessionErrorCodeAtom, 'model_unavailable')
+      store.set(
+        difyBuilderSessionLastErrorAtom,
+        'HTTP 400: model_unavailable: Builder model is unavailable',
+      )
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent('workflow.difyBuilder.modelUnavailable')
+    expect(screen.queryByText(/HTTP 400/)).not.toBeInTheDocument()
+
+    act(() => store.set(difyBuilderLocalErrorAtom, 'Workflow draft sync failed.'))
+
+    expect(screen.getAllByRole('alert')).toHaveLength(2)
+    expect(screen.getByText('Workflow draft sync failed.')).toBeInTheDocument()
   })
 
   it('renders failed user messages without message actions', () => {

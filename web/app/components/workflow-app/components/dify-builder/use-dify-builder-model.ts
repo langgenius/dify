@@ -1,6 +1,6 @@
 import type { SessionModel } from './types'
 import { useAtomValue } from 'jotai'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   ModelStatusEnum,
   ModelTypeEnum,
@@ -11,28 +11,55 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { difyBuilderSelectedModelAtom, difyBuilderSessionModelAtom } from './store'
 
-export const useDifyBuilderModel = () => {
+export const useDifyBuilderModel = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const selectedModel = useAtomValue(difyBuilderSelectedModelAtom)
   const sessionModel = useAtomValue(difyBuilderSessionModelAtom)
-  const { data: defaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
-  const { activeTextGenerationModelList } = useTextGenerationCurrentProviderAndModelAndModelList()
+  const explicitModel = selectedModel ?? sessionModel
+  const {
+    data: defaultModel,
+    isLoading: defaultLoading,
+    isError: defaultError,
+    mutate: refetchDefault,
+  } = useDefaultModel(ModelTypeEnum.textGeneration, { enabled: enabled && !explicitModel })
+  const {
+    activeTextGenerationModelList,
+    isLoading: modelsLoading,
+    isError: modelsError,
+    refetch: refetchModels,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(undefined, { enabled })
   const model = useMemo<SessionModel | null>(() => {
-    if (selectedModel) return selectedModel
-    if (sessionModel) return sessionModel
-    if (!defaultModel) return null
-
-    const provider = defaultModel.provider.provider
+    const candidate =
+      explicitModel ??
+      (defaultModel ? { provider: defaultModel.provider.provider, name: defaultModel.model } : null)
+    if (!candidate) return null
+    const { provider, name } = candidate
     const targetProvider = activeTextGenerationModelList.find((item) => item.provider === provider)
-    const targetModel = targetProvider?.models.find((item) => item.model === defaultModel.model)
+    const targetModel = targetProvider?.models.find((item) => item.model === name)
     if (!targetModel || targetModel.status !== ModelStatusEnum.active) return null
 
+    if (explicitModel) return explicitModel
     return {
       provider,
-      name: defaultModel.model,
+      name,
       mode: String(targetModel.model_properties.mode ?? ''),
       completion_params: {},
     }
-  }, [activeTextGenerationModelList, defaultModel, selectedModel, sessionModel])
+  }, [activeTextGenerationModelList, defaultModel, explicitModel])
 
-  return { model, modelList: activeTextGenerationModelList }
+  const retry = useCallback(async () => {
+    await Promise.all([explicitModel ? undefined : refetchDefault(), refetchModels()])
+  }, [explicitModel, refetchDefault, refetchModels])
+  const isError = defaultError || modelsError
+
+  return {
+    model,
+    selection: explicitModel ?? model,
+    modelList: activeTextGenerationModelList,
+    isLoading: !isError && (defaultLoading || modelsLoading),
+    isError,
+    hasAvailableModels: activeTextGenerationModelList.some((provider) =>
+      provider.models.some((model) => model.status === ModelStatusEnum.active),
+    ),
+    retry,
+  }
 }

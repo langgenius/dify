@@ -582,7 +582,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           scenario: 'build',
         },
       },
-      { signal: expect.any(AbortSignal) },
+      { context: { silent: true }, signal: expect.any(AbortSignal) },
     )
     expect(mocks.action).toHaveBeenCalledWith(
       {

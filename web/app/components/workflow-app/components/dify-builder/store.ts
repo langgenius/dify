@@ -11,6 +11,7 @@ import { requestErrorMessage } from './session/errors'
 import {
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
+  difyBuilderSessionErrorCodeAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
 } from './session/state'
@@ -164,7 +165,11 @@ export const difyBuilderRecheckReadyAtom = atom(
       get(difyBuilderCanvasRefreshGenerationAtom),
 )
 export const difyBuilderErrorAtom = atom(
-  (get) => get(difyBuilderLocalErrorAtom) || get(difyBuilderSessionLastErrorAtom),
+  (get) =>
+    get(difyBuilderLocalErrorAtom) ||
+    (get(difyBuilderSessionErrorCodeAtom) === 'model_unavailable'
+      ? ''
+      : get(difyBuilderSessionLastErrorAtom)),
 )
 export const difyBuilderCanStartFixAtom = atom((get) => {
   const runtime = get(difyBuilderRuntimeAtom)
@@ -202,7 +207,7 @@ const prepareDifyBuilderSessionAtom = atom(null, async (get, set) => {
 
 const startDifyBuilderPromptAtom = atom(
   null,
-  async (get, set, { model, text }: { model?: SessionModel; text: string }) => {
+  async (get, set, { model, text }: { model: SessionModel; text: string }) => {
     const prompt = text.trim()
     const runtime = get(difyBuilderRuntimeAtom)
     const view = get(difyBuilderSessionViewAtom)
@@ -224,15 +229,16 @@ const startDifyBuilderPromptAtom = atom(
     if (!(await set(prepareDifyBuilderSessionAtom))) return false
 
     const { nodes, edgeCount } = runtime.getCanvasSnapshot()
-    const selectedModel = model ?? get(difyBuilderSelectedModelAtom) ?? undefined
     return shouldStartBuildSession(nodes, edgeCount)
-      ? runtime.session.startBuild(runtime.appId, prompt, selectedModel)
-      : runtime.session.startEdit(runtime.appId, prompt, selectedModel)
+      ? runtime.session.startBuild(runtime.appId, prompt, model)
+      : runtime.session.startEdit(runtime.appId, prompt, model)
   },
 )
 
-export const difyBuilderStartPromptAtom = atom(null, (_get, set, text: string) =>
-  set(startDifyBuilderPromptAtom, { text }),
+export const difyBuilderStartPromptAtom = atom(
+  null,
+  (_get, set, input: { text: string; model: SessionModel }) =>
+    set(startDifyBuilderPromptAtom, input),
 )
 
 export const difyBuilderSendDraftAtom = atom(null, async (get, set, model: SessionModel | null) => {
@@ -240,8 +246,12 @@ export const difyBuilderSendDraftAtom = atom(null, async (get, set, model: Sessi
   const prompt = draft.trim()
   if (!model || !prompt || !get(difyBuilderCanComposeAtom)) return false
 
+  const view = get(difyBuilderSessionViewAtom)
+  const isNewSession = !view || isTerminalStatus(view.run_status)
   set(difyBuilderDraftAtom, '')
-  return set(startDifyBuilderPromptAtom, { model, text: prompt })
+  const started = await set(startDifyBuilderPromptAtom, { model, text: prompt })
+  if (!started && isNewSession && !get(difyBuilderDraftAtom)) set(difyBuilderDraftAtom, draft)
+  return started
 })
 
 const startDifyBuilderFixAtom = atom(
@@ -300,6 +310,10 @@ export const difyBuilderSelectModelAtom = atom(null, async (get, set, model: Ses
     return false
 
   set(difyBuilderSelectedModelAtom, model)
+  if (get(difyBuilderSessionErrorCodeAtom) === 'model_unavailable') {
+    set(difyBuilderSessionErrorCodeAtom, null)
+    set(difyBuilderSessionLastErrorAtom, '')
+  }
   if (!view || isTerminalStatus(view.run_status)) return true
 
   const updated = await runtime.session.updateModel(model)

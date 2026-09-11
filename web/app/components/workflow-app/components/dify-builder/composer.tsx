@@ -1,7 +1,9 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import DifyBuilderModelSelector from './model-selector'
+import { DifyBuilderModelStatus } from './model-status'
+import { difyBuilderSessionErrorCodeAtom } from './session/state'
 import {
   difyBuilderCanComposeAtom,
   difyBuilderCanSendDraftAtom,
@@ -12,10 +14,10 @@ import { useDifyBuilderModel } from './use-dify-builder-model'
 
 const COMPOSITION_END_DELAY = 50
 
-const DifyBuilderPromptInput = ({ hasModel }: { hasModel: boolean }) => {
+const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) => {
   const { t } = useTranslation()
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
-  const canCompose = useAtomValue(difyBuilderCanComposeAtom) && hasModel
+  const canCompose = useAtomValue(difyBuilderCanComposeAtom)
   const isComposingRef = useRef(false)
   const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -30,12 +32,11 @@ const DifyBuilderPromptInput = ({ hasModel }: { hasModel: boolean }) => {
       value={draft}
       disabled={!canCompose}
       aria-label={t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })}
+      aria-describedby={descriptionId}
       placeholder={
-        !hasModel
-          ? t(($) => $['workflowGenerator.modelRequired'], { ns: 'workflow' })
-          : canCompose
-            ? t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })
-            : t(($) => $['difyBuilder.useActions'], { ns: 'workflow' })
+        canCompose
+          ? t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })
+          : t(($) => $['difyBuilder.useActions'], { ns: 'workflow' })
       }
       className="block min-h-10 w-full grow resize-none bg-transparent px-2 py-1 text-sm leading-5 tracking-[-0.07px] text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder disabled:cursor-not-allowed"
       onChange={(event) => setDraft(event.currentTarget.value)}
@@ -79,27 +80,34 @@ const DifyBuilderSendButton = ({ hasModel }: { hasModel: boolean }) => {
 const DifyBuilderComposer = () => {
   const { t } = useTranslation()
   const sendDraft = useSetAtom(difyBuilderSendDraftAtom)
-  const { model, modelList } = useDifyBuilderModel()
+  const modelState = useDifyBuilderModel()
+  const { model } = modelState
   const hasModel = model !== null
+  const rejected = useAtomValue(difyBuilderSessionErrorCodeAtom) === 'model_unavailable'
+  const statusId = useId()
+  const showStatus = !hasModel || rejected
 
   return (
-    <form
-      aria-label={t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })}
-      className="mx-4 h-21 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (!model) return
-        void sendDraft(model)
-      }}
-    >
-      <div className="flex h-full flex-col items-end justify-end p-1.5">
-        <DifyBuilderPromptInput hasModel={hasModel} />
-        <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 pl-1">
-          <DifyBuilderModelSelector model={model} modelList={modelList} />
-          <DifyBuilderSendButton hasModel={hasModel} />
+    <>
+      {showStatus && <DifyBuilderModelStatus {...modelState} id={statusId} rejected={rejected} />}
+      <form
+        aria-label={t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })}
+        className="mx-4 h-21 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (!model) return
+          void sendDraft(model)
+        }}
+      >
+        <div className="flex h-full flex-col items-end justify-end p-1.5">
+          <DifyBuilderPromptInput descriptionId={showStatus ? statusId : undefined} />
+          <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 pl-1">
+            <DifyBuilderModelSelector {...modelState} />
+            <DifyBuilderSendButton hasModel={hasModel} />
+          </div>
         </div>
-      </div>
-    </form>
+      </form>
+    </>
   )
 }
 
