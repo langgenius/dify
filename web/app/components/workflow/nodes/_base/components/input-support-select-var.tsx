@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -24,6 +24,8 @@ type Props = Readonly<{
   onFocusChange?: (value: boolean) => void
   readOnly?: boolean
   justVar?: boolean
+  singleLine?: boolean
+  onCommit?: () => void
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   insertVarTipToLeft?: boolean
@@ -42,6 +44,8 @@ const Editor: FC<Props> = ({
   nodesOutputVars,
   availableNodes = [],
   insertVarTipToLeft,
+  singleLine = false,
+  onCommit,
 }) => {
   const { t } = useTranslation()
 
@@ -54,8 +58,37 @@ const Editor: FC<Props> = ({
   const pipelineId = useStore((s) => s.pipelineId)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
+  const handleKeyDownCapture = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!singleLine || e.key !== 'Enter') return
+      // When the variable-insert menu is open, Enter must select the highlighted
+      // variable — let the editor handle it. The menu exposes its open state as
+      // a data attribute (set from isPositioned) instead of relying on the
+      // inline visibility style, so the check survives styling changes.
+      const menuOpen = document.querySelector(
+        '[data-prompt-editor-typeahead-menu] > div[data-visible="true"]',
+      )
+      if (menuOpen) return
+      // Capture phase is required here: Lexical registers a native keydown
+      // listener directly on the contentEditable, which runs before React's
+      // delegated (bubble-phase) synthetic handlers on Chromium and inserts the
+      // paragraph synchronously — too late for a bubble-phase preventDefault.
+      // Intercepting in the capture phase stops the event before it ever
+      // reaches Lexical, so no newline is inserted. WebKit happened to order
+      // the handlers differently, which is why this only misbehaved on Chromium.
+      e.preventDefault()
+      e.stopPropagation()
+      onCommit?.()
+    },
+    [singleLine, onCommit],
+  )
+
   return (
-    <div className={cn(className, 'relative min-h-8')}>
+    <div
+      className={cn(className, 'relative min-h-8')}
+      role="presentation"
+      onKeyDownCapture={handleKeyDownCapture}
+    >
       <>
         <PromptEditor
           instanceId={instanceId}
