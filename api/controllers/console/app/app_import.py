@@ -94,7 +94,7 @@ class AppImportApi(Resource):
             "payload": {
                 "required": True,
                 "content": {
-                    "application/json": {"schema": AppImportPayload.model_json_schema()},
+                    "application/json": {"schema": {"$ref": "#/definitions/AppImportPayload"}},
                     "multipart/form-data": {
                         "schema": {
                             "type": "object",

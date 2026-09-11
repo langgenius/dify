@@ -261,7 +261,7 @@ const filterContractOperations = (document: SwaggerDocument) => {
   }
 }
 
-const includeEventStreamInJsonResponseSchemas = (document: SwaggerDocument) => {
+const includeNonJsonResponseSchemas = (document: SwaggerDocument) => {
   for (const pathItem of Object.values(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!operationMethods.has(method) || !isObject(operation)) continue
@@ -272,21 +272,22 @@ const includeEventStreamInJsonResponseSchemas = (document: SwaggerDocument) => {
         if (!/^2\d\d$/.test(status) || !isObject(response) || !isObject(response.content)) continue
 
         const jsonMedia = response.content['application/json']
-        const eventStreamMedia = response.content['text/event-stream']
-        if (
-          !isObject(jsonMedia) ||
-          !isObject(jsonMedia.schema) ||
-          !isObject(eventStreamMedia) ||
-          !isObject(eventStreamMedia.schema)
-        ) {
-          continue
+        if (!isObject(jsonMedia) || !isObject(jsonMedia.schema)) continue
+
+        const alternatives: SwaggerSchema[] = []
+        for (const [mediaType, media] of Object.entries(response.content)) {
+          if (mediaType === 'application/json' || !isObject(media) || !isObject(media.schema))
+            continue
+          if (mediaType === 'text/event-stream' || media.schema.format === 'binary')
+            alternatives.push(media.schema)
         }
+        if (alternatives.length === 0) continue
 
         // hey-api selects the JSON schema when one status advertises multiple
-        // response media types. Preserve the SSE transport in the generated
+        // response media types. Preserve SSE and binary transports in the generated
         // TypeScript and Zod contracts by making that selected schema a union.
         jsonMedia.schema = {
-          anyOf: [jsonMedia.schema, eventStreamMedia.schema],
+          anyOf: [jsonMedia.schema, ...alternatives],
         }
       }
     }
@@ -369,7 +370,7 @@ const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
-  includeEventStreamInJsonResponseSchemas(document)
+  includeNonJsonResponseSchemas(document)
   // OpenAPI defaults describe server behavior. Keep them in the exported specs,
   // but do not let Zod synthesize omitted transport fields during client-side
   // request or response validation. Non-null defaults remain useful for query
