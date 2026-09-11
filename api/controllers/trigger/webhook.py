@@ -89,7 +89,7 @@ def handle_webhook(webhook_id: str):
         raise
     except Exception as e:
         logger.exception("Webhook processing failed for %s", webhook_id)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @bp.route("/webhook-debug/<string:webhook_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
