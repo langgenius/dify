@@ -47,6 +47,67 @@ describe('useGetApi', () => {
     })
   })
 
+  describe('tool category with a non-builtin provider type', () => {
+    // A custom API / MCP / workflow provider is keyed by a UUID, not a plugin id.
+    // Sending it to the builtin credential routes makes the plugin daemon fail the
+    // lookup, which surfaces to the user as a 500 on the agent configure page.
+    it.each(['api', 'mcp', 'workflow'] as const)(
+      'does not build builtin credential paths for a %s provider',
+      (providerType) => {
+        const api = useGetApi({ category: AuthCategory.tool, provider, providerType })
+
+        expect(api.getCredentialInfo).toBe('')
+        expect(api.setDefaultCredential).toBe('')
+        expect(api.getCredentials).toBe('')
+        expect(api.addCredential).toBe('')
+        expect(api.updateCredential).toBe('')
+        expect(api.deleteCredential).toBe('')
+        expect(api.getOauthUrl).toBe('')
+        expect(api.getCredentialSchema(CredentialTypeEnum.API_KEY)).toBe('')
+      },
+    )
+
+    // A plugin-backed tool provider serves its credentials from the builtin routes:
+
+    // tool-provider-catalog registers 'plugin' alongside 'builtin' for the same list.
+
+    it.each(['builtin', 'plugin'] as const)(
+      'still builds builtin paths for a %s provider',
+
+      (providerType) => {
+        const api = useGetApi({ category: AuthCategory.tool, provider, providerType })
+
+        expect(api.getCredentialInfo).toBe(
+          `/workspaces/current/tool-provider/builtin/${provider}/credential/info`,
+        )
+
+        expect(api.getCredentialSchema(CredentialTypeEnum.API_KEY)).toBe(
+          `/workspaces/current/tool-provider/builtin/${provider}/credential/schema/api-key`,
+        )
+      },
+    )
+
+    it('still builds builtin paths when providerType is explicitly builtin', () => {
+      const api = useGetApi({ category: AuthCategory.tool, provider, providerType: 'builtin' })
+      expect(api.getCredentialInfo).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/credential/info`,
+      )
+      expect(api.getCredentialSchema(CredentialTypeEnum.API_KEY)).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/credential/schema/api-key`,
+      )
+    })
+
+    it('still builds builtin paths when providerType is omitted', () => {
+      const api = useGetApi({ category: AuthCategory.tool, provider })
+      expect(api.getCredentialInfo).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/credential/info`,
+      )
+      expect(api.getCredentialSchema(CredentialTypeEnum.API_KEY)).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/credential/schema/api-key`,
+      )
+    })
+  })
+
   describe('datasource category', () => {
     it('returns correct API paths for datasource category', () => {
       const api = useGetApi({ category: AuthCategory.datasource, provider })
