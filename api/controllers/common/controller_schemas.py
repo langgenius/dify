@@ -203,6 +203,18 @@ class WorkflowUpdatePayload(BaseModel):
 
 
 DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
+DOCUMENT_BATCH_RETRY_MAX_DOCS = 100
+
+
+class DocumentBatchRetryPayload(BaseModel):
+    """Request payload for retrying document indexing."""
+
+    document_ids: list[UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=DOCUMENT_BATCH_RETRY_MAX_DOCS,
+        description="List of document IDs to retry.",
+    )
 
 
 class ChildChunkCreatePayload(BaseModel):

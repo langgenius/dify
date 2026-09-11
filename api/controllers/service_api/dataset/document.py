@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
+from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload, DocumentBatchRetryPayload
 from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
@@ -50,6 +50,7 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
     ArchivedDocumentImmutableError,
+    DocumentAlreadyFinishedError,
     DocumentIndexingError,
     InvalidMetadataError,
 )
@@ -77,7 +78,8 @@ from libs.helper import dump_response
 from libs.login import current_user
 from libs.pagination import paginate_query
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import SegmentStatus
+from models.enums import IndexingStatus, SegmentStatus
+from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocForm,
@@ -374,6 +376,7 @@ register_schema_models(
     DocumentListQuery,
     DocumentGetQuery,
     DocumentBatchDownloadZipPayload,
+    DocumentBatchRetryPayload,
     Rule,
     PreProcessingRule,
     Segmentation,
@@ -1055,6 +1058,71 @@ class DocumentListApi(DatasetApiResource):
         }
 
         return dump_response(DocumentListResponse, response)
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/retry")
+class DocumentBatchRetryApi(DatasetApiResource):
+    """Retry indexing for existing documents without re-uploading their source."""
+
+    @service_api_ns.doc(
+        summary="Retry Document Indexing",
+        description=(
+            "Retry indexing for up to `100` existing documents in a knowledge base. Documents are "
+            "processed asynchronously; poll their indexing status until they reach `completed` or `error`. "
+            "Completed and archived documents are rejected."
+        ),
+        tags=["Documents"],
+        responses={
+            204: "Document retry started successfully.",
+            400: "`document_indexing` : A document is already being retried.",
+            404: "`not_found` : Knowledge base or document not found.",
+        },
+    )
+    @service_api_ns.expect(service_api_ns.models[DocumentBatchRetryPayload.__name__])
+    @service_api_ns.doc("retry_documents")
+    @service_api_ns.doc(description="Retry indexing for existing documents")
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
+    @service_api_ns.doc(
+        responses={
+            204: "Document retry started successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset or document not found",
+        }
+    )
+    @service_api_ns.response(204, "Document retry started successfully")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    @with_session
+    @model_validate(DocumentBatchRetryPayload)
+    def post(self, payload: DocumentBatchRetryPayload, session: Session, tenant_id, dataset_id: UUID):
+        dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), str(tenant_id), session=session)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        document_ids = [str(document_id) for document_id in payload.document_ids]
+        documents = DocumentService.get_documents_by_ids(
+            DatasetRefService.create_dataset_ref(dataset), document_ids, session
+        )
+        documents_by_id = {str(document.id): document for document in documents}
+
+        missing_document_ids = set(document_ids) - set(documents_by_id)
+        if missing_document_ids:
+            raise NotFound("Document not found.")
+
+        retry_documents = []
+        for document_id in document_ids:
+            document = documents_by_id[document_id]
+            if DocumentService.check_archived(document):
+                raise ArchivedDocumentImmutableError()
+            if document.indexing_status == IndexingStatus.COMPLETED:
+                raise DocumentAlreadyFinishedError()
+            retry_documents.append(document)
+
+        try:
+            DocumentService.retry_document(str(dataset_id), retry_documents, session)
+        except ValueError as exc:
+            raise DocumentIndexingError(str(exc)) from exc
+
+        return "", 204
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")

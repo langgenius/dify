@@ -337,6 +337,11 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     pipeline_operation = payload["paths"]["/datasets/{dataset_id}/pipeline/run"]["post"]
     assert pipeline_operation["operationId"] == "run_pipeline"
 
+    retry_operation = payload["paths"]["/datasets/{dataset_id}/documents/retry"]["post"]
+    assert retry_operation["operationId"] == "retry_documents"
+    assert _request_schema(retry_operation)["$ref"] == "#/components/schemas/DocumentBatchRetryPayload"
+    assert retry_operation["responses"]["204"]["description"] == "Document retry started successfully."
+
     chat_error_content = chat_operation["responses"]["401"]["content"]
     assert chat_error_content == {"application/json": {}}
     chat_success_content = chat_operation["responses"]["200"]["content"]
