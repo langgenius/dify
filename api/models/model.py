@@ -2119,10 +2119,10 @@ class EndUser(Base, UserMixin):
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    app_id = mapped_column(StringUUID, nullable=True)
+    app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type: Mapped[EndUserType] = mapped_column(EnumText(EndUserType, length=255), nullable=False)
-    external_user_id = mapped_column(String(255), nullable=True)
-    name = mapped_column(String(255))
+    external_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     _is_anonymous: Mapped[bool] = mapped_column("is_anonymous", sa.Boolean, nullable=False, server_default=sa.true())
 
     @property
@@ -2136,8 +2136,8 @@ class EndUser(Base, UserMixin):
         self._is_anonymous = value
 
     session_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
@@ -2298,13 +2298,13 @@ class ApiToken(Base):
         sa.Index("api_token_tenant_idx", "tenant_id", "type"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=True)
-    tenant_id = mapped_column(StringUUID, nullable=True)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type: Mapped[ApiTokenType] = mapped_column(EnumText(ApiTokenType, length=16), nullable=False)
     token: Mapped[str] = mapped_column(String(255), nullable=False)
-    last_used_at = mapped_column(sa.DateTime, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @staticmethod
     def generate_api_key(prefix: str, n: int, *, session: Session) -> str:
