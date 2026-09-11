@@ -22,10 +22,7 @@ export const DifyBuilderConversation = memo(
     onActionPayloadChange,
     onActionValidityChange,
     onActiveFormSubmit,
-    onRetryMessage,
     onStreamingContentChange,
-    retryableTurnId,
-    retryingTurnId,
   }: {
     busy: boolean
     activeInteraction: SessionView['active_interaction']
@@ -36,10 +33,7 @@ export const DifyBuilderConversation = memo(
     onActionPayloadChange: DifyBuilderActionPayloadChange
     onActionValidityChange?: DifyBuilderActionValidityChange
     onActiveFormSubmit?: () => void
-    onRetryMessage?: (turnId: string) => void
     onStreamingContentChange?: () => void
-    retryableTurnId?: string
-    retryingTurnId?: string | null
   }) => {
     const { t } = useTranslation()
     const groups = useMemo(() => groupConversationItems(items), [items])
@@ -75,9 +69,6 @@ export const DifyBuilderConversation = memo(
                   invalidated={false}
                   onActionPayloadChange={onActionPayloadChange}
                   onActionValidityChange={onActionValidityChange}
-                  onRetryMessage={onRetryMessage}
-                  retryableTurnId={retryableTurnId}
-                  retryingTurnId={retryingTurnId}
                 />
               )
             }
@@ -100,9 +91,6 @@ export const DifyBuilderConversation = memo(
                   invalidated={group.invalidated}
                   onActionPayloadChange={onActionPayloadChange}
                   onActionValidityChange={onActionValidityChange}
-                  onRetryMessage={onRetryMessage}
-                  retryableTurnId={retryableTurnId}
-                  retryingTurnId={retryingTurnId}
                 />
                 {group.cards
                   .filter((item) => item.seq !== activeCard?.seq)
@@ -115,9 +103,6 @@ export const DifyBuilderConversation = memo(
                       invalidated={group.invalidated}
                       onActionPayloadChange={onActionPayloadChange}
                       onActionValidityChange={onActionValidityChange}
-                      onRetryMessage={onRetryMessage}
-                      retryableTurnId={retryableTurnId}
-                      retryingTurnId={retryingTurnId}
                     />
                   ))}
               </div>
@@ -135,9 +120,6 @@ export const DifyBuilderConversation = memo(
             onActionPayloadChange={onActionPayloadChange}
             onActionValidityChange={onActionValidityChange}
             onFormSubmit={onActiveFormSubmit}
-            onRetryMessage={onRetryMessage}
-            retryableTurnId={retryableTurnId}
-            retryingTurnId={retryingTurnId}
           />
         )}
         <StreamingAssistantTurn busy={busy} onContentChange={onStreamingContentChange} />
