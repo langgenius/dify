@@ -797,7 +797,35 @@ def test_launch_error_text_prefers_message_falls_back_to_type():
 
     assert launch_error_text(ValueError("query is required in input form")) == "query is required in input form"
 
-    class _Empty(Exception):
+    class _EmptyError(Exception):
         pass
 
-    assert launch_error_text(_Empty()) == "_Empty"
+    assert launch_error_text(_EmptyError()) == "_EmptyError"
+
+
+# ---- model-config failure classification (ModelNotExistError etc.) ----
+
+
+def _run_with_node_error(err: str) -> Run:
+    from core.dify_builder.models import NodeOutput
+
+    return Run(status="failed", per_node=[NodeOutput(node_id="n", status="failed", error=err)])
+
+
+def test_model_config_error_text_matches_model_and_provider_not_exist():
+    from core.dify_builder.handlers_fix import model_config_error_text
+
+    model_err = "Model gpt-5.6 does not exist."
+    assert model_config_error_text(_run_with_node_error(model_err)) == model_err
+    assert model_config_error_text(_run_with_node_error("Provider openai does not exist.")) is not None
+    # exception class name, surfaced as a launch error (empty per_node)
+    assert model_config_error_text(Run(status="failed", per_node=[], error="ModelNotExistError: x")) is not None
+
+
+def test_model_config_error_text_ignores_non_model_errors():
+    from core.dify_builder.handlers_fix import model_config_error_text
+
+    # a real node-logic error is NOT a model-config failure
+    assert model_config_error_text(_run_with_node_error("NameError: x is not defined")) is None
+    # a generic 'does not exist' without model/provider/credential context is not matched
+    assert model_config_error_text(_run_with_node_error("node 'foo' does not exist")) is None
