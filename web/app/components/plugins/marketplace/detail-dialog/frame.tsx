@@ -109,6 +109,7 @@ export default function MarketplaceDetailDialogFrame({
             // While loading, remove the invisible frame from focus, pointer,
             // and accessibility interaction until its content is presentable.
             inert={isLoading}
+            allow="clipboard-write"
             className={cn(
               'size-full border-0 bg-background-default transition-opacity',
               isLoading ? 'pointer-events-none opacity-0' : 'opacity-100',

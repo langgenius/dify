@@ -13,7 +13,13 @@ vi.mock('@/config', () => ({
 
 // Mock var utils
 vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: (path: string) => `https://marketplace.dify.ai${path}`,
+  getMarketplaceUrl: (path: string, params?: Record<string, string | undefined>) => {
+    const url = new URL(path, 'https://marketplace.dify.ai')
+    for (const [key, value] of Object.entries(params ?? {})) {
+      if (value !== undefined) url.searchParams.set(key, value)
+    }
+    return url.toString()
+  },
 }))
 
 // Mock marketplace client
@@ -139,30 +145,68 @@ describe('getPluginDetailLinkInMarketplace', () => {
 })
 
 describe('getTemplateDetailLinkInMarketplace', () => {
-  it('should return the local template detail link', async () => {
+  it('keeps the same local link after a title change and prefers the unique handle', async () => {
     const { getTemplateDetailLinkInMarketplace } = await import('../utils')
+    const template = {
+      id: '5d107b52-8d4d-447b-9bad-1c5c16b01721',
+      template_name: 'Legal Research Agent',
+      publisher_handle: 'Dify Display Name',
+      publisher_unique_handle: 'dify-unique',
+    }
 
-    expect(
-      getTemplateDetailLinkInMarketplace({
-        id: 'template-1',
-        template_name: 'Legal Research Agent',
-        publisher_handle: 'dify',
-        publisher_unique_handle: 'dify-unique',
-      }),
-    ).toBe('/template/dify/Legal%20Research%20Agent?templateId=template-1')
+    const link = getTemplateDetailLinkInMarketplace(template)
+    expect(link).toBe('/template/dify-unique/5d107b52-8d4d-447b-9bad-1c5c16b01721')
+    const renamedTemplate = { ...template, template_name: 'Renamed research agent' }
+    expect(getTemplateDetailLinkInMarketplace(renamedTemplate)).toBe(link)
   })
 
-  it('should fall back to the unique publisher handle', async () => {
+  it('encodes both path segments and falls back to the publisher handle', async () => {
     const { getTemplateDetailLinkInMarketplace } = await import('../utils')
 
     expect(
       getTemplateDetailLinkInMarketplace({
-        id: 'template-2',
-        template_name: 'Inbox',
-        publisher_handle: '',
-        publisher_unique_handle: 'langgenius',
+        id: 'template/one',
+        publisher_handle: 'Research / 团队',
+        publisher_unique_handle: '',
       }),
-    ).toBe('/template/langgenius/Inbox?templateId=template-2')
+    ).toBe('/template/Research%20%2F%20%E5%9B%A2%E9%98%9F/template%2Fone')
+  })
+
+  it('uses the template fallback when publisher handles are absent', async () => {
+    const { getTemplateDetailLinkInMarketplace } = await import('../utils')
+
+    expect(getTemplateDetailLinkInMarketplace({ id: 'template-2' })).toBe(
+      '/template/template/template-2',
+    )
+  })
+})
+
+describe('getTemplateLinkInMarketplace', () => {
+  it('preserves embedded context while dropping legacy identity parameters', async () => {
+    const { getTemplateLinkInMarketplace } = await import('../utils')
+
+    const link = new URL(
+      getTemplateLinkInMarketplace(
+        { id: 'template-1', publisher_handle: 'Display Name', publisher_unique_handle: 'dify' },
+        {
+          tid: 'legacy-short-id',
+          templateId: 'legacy-id',
+          creationType: 'templates',
+          language: 'zh-Hans',
+          theme: 'dark',
+          source: 'https://cloud.dify.ai',
+          view: 'modal',
+        },
+      ),
+    )
+
+    expect(link.origin + link.pathname).toBe('https://marketplace.dify.ai/template/dify/template-1')
+    expect(Object.fromEntries(link.searchParams)).toEqual({
+      language: 'zh-Hans',
+      theme: 'dark',
+      source: 'https://cloud.dify.ai',
+      view: 'modal',
+    })
   })
 })
 
