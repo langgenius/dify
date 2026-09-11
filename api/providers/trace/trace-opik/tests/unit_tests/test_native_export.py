@@ -70,6 +70,44 @@ def make_client_with_transport(monkeypatch: pytest.MonkeyPatch) -> tuple[OpikTra
     return client, request
 
 
+@pytest.mark.parametrize(
+    ("workspace_settings", "workspace"),
+    [
+        ({}, "default"),
+        ({"workspace": None}, "default"),
+        ({"workspace": ""}, "default"),
+        ({"workspace": "default"}, "default"),
+        ({"workspace": "team"}, "team"),
+    ],
+)
+def test_opik_sends_workspace_for_verification_and_export(
+    workspace_settings: dict[str, str | None], workspace: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200 if request.headers.get("Comet-Workspace") == workspace else 403, json={})
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+    )
+    client = OpikTraceClient({"api_key": "secret", **workspace_settings})
+
+    assert client.verify_credentials()
+    client.export_trace(make_trace())
+
+    assert [(request.method, request.url.path) for request in requests] == [
+        ("GET", "/opik/api/v1/private/projects"),
+        ("POST", "/opik/api/v1/private/traces"),
+        ("POST", "/opik/api/v1/private/spans"),
+        ("POST", "/opik/api/v1/private/spans"),
+    ]
+    assert all(request.headers["Authorization"] == "secret" for request in requests)
+    assert client.config.workspace == workspace_settings.get("workspace")
+
+
 def test_opik_project_url_uses_configured_host_and_escapes_project_name(monkeypatch: pytest.MonkeyPatch) -> None:
     project = "Dify & traces/#?客户"
     client = OpikTraceClient({"url": "https://tracing.example/opik/api/", "workspace": "team/name", "project": project})

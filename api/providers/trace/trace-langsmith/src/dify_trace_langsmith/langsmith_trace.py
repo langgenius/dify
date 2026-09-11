@@ -166,7 +166,7 @@ class LangSmithTraceClient:
             if sessions and isinstance(sessions, list) and sessions[0].get("id"):
                 tenant_id = quote(str(sessions[0].get("tenant_id", "")), safe="")
                 project_id = quote(str(sessions[0]["id"]), safe="")
-                endpoint = urlsplit(self.config.endpoint)
+                endpoint = urlsplit(self.http.endpoint)
                 web_url = "https://smith.langchain.com"
                 # Match the SDK's self-hosted API suffix and cloud region mappings.
                 if endpoint.path.endswith(("/api", "/api/v1")):

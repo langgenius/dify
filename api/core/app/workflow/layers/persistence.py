@@ -9,6 +9,7 @@ allowing presentation layers to remain read-only observers of repository
 state.
 """
 
+import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -77,12 +78,14 @@ class WorkflowPersistenceLayer(Layer):
         workflow_info: PersistenceWorkflowInfo,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        record_node_execution_index: Callable[[str, int], None] | None = None,
     ) -> None:
         super().__init__()
         self._application_generate_entity = application_generate_entity
         self._workflow_info = workflow_info
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._record_node_execution_index = record_node_execution_index
 
         self._workflow_execution: WorkflowExecution | None = None
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
@@ -107,6 +110,7 @@ class WorkflowPersistenceLayer(Layer):
                 workflow_node_execution_repository=self._workflow_node_execution_repository.for_workflow_tool(
                     source.app_id
                 ),
+                record_node_execution_index=self._record_node_execution_index,
             )
             self._workflow_tool_layers[key] = tool_layer
 
@@ -275,6 +279,15 @@ class WorkflowPersistenceLayer(Layer):
         )
 
         self._node_execution_cache[event.id] = domain_execution
+        if self._record_node_execution_index is not None:
+            try:
+                self._record_node_execution_index(event.id, domain_execution.index)
+            except Exception:
+                logging.getLogger(__name__).warning(
+                    "Cannot record node execution index: workflow_id=%s node_execution_id=%s",
+                    self._workflow_info.workflow_id,
+                    event.id,
+                )
         if event.node_type == BuiltinNodeTypes.AGENT and event.node_version == "2":
             self._workflow_node_execution_repository.save_synchronously(domain_execution)
         else:
