@@ -1,6 +1,5 @@
 import type { DocumentProcessingTask, DocumentProcessingTaskEvent } from '../models'
-import { consoleClient } from '@/service/console'
-import { documentTaskFromApi } from '../models'
+import { findBackgroundTasks } from './recovery'
 
 type ProcessingTaskEventWithId<T extends DocumentProcessingTaskEvent> = T & {
   id: string
@@ -50,7 +49,6 @@ type TaskSubscription = {
 }
 
 const POLL_INTERVAL_MS = 5000
-const TASK_PAGE_SIZE = 100
 const taskPollingHubs = new Map<string, TaskPollingHub>()
 
 function abortError(signal: AbortSignal) {
@@ -176,28 +174,16 @@ function readSubscriptionEvent(
 }
 
 async function getTasks(hub: TaskPollingHub, subscriptions: readonly TaskSubscription[]) {
-  const remaining = new Set(subscriptions)
+  const snapshots = await findBackgroundTasks(
+    hub.knowledgeSpaceId,
+    new Set(subscriptions.map((subscription) => subscription.input.taskId)),
+    hub.controller.signal,
+  )
   const tasks = new Map<TaskSubscription, DocumentProcessingTask>()
-  let cursor: string | undefined
-  do {
-    const response = await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get(
-      {
-        params: { control_space_id: hub.knowledgeSpaceId },
-        query: { ...(cursor ? { cursor } : {}), limit: TASK_PAGE_SIZE },
-      },
-      { context: { silent: true }, signal: hub.controller.signal },
-    )
-    const candidatesById = new Map(response.data.map((candidate) => [candidate.id, candidate]))
-    for (const subscription of remaining) {
-      const candidate = candidatesById.get(subscription.input.taskId)
-      if (!candidate || candidate.document_id !== subscription.input.documentId) continue
-      const task = documentTaskFromApi(candidate)
-      if (!task) continue
-      tasks.set(subscription, task)
-      remaining.delete(subscription)
-    }
-    cursor = response.next_cursor ?? undefined
-  } while (cursor && remaining.size > 0)
+  for (const subscription of subscriptions) {
+    const task = snapshots.get(subscription.input.taskId)
+    if (task?.documentId === subscription.input.documentId) tasks.set(subscription, task)
+  }
   return tasks
 }
 

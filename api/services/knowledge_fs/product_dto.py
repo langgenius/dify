@@ -727,6 +727,12 @@ class KnowledgeFSSourceListQuery(KnowledgeFSCursorQuery):
 
 
 class KnowledgeFSBackgroundTaskListQuery(BaseModel):
+    task_ids: str | None = Field(
+        default=None,
+        max_length=3699,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,99}$",
+        description="Comma-separated document or document_bulk task IDs for an exact lookup",
+    )
     cursor: str | None = Field(default=None, min_length=1, max_length=8_192)
     limit: int = Field(default=50, ge=1, le=100)
 
@@ -1630,6 +1636,9 @@ class KnowledgeFSDocumentRevisionResponse(ResponseModel):
 
 
 class KnowledgeFSLogicalDocumentResponse(ResponseModel):
+    latest_task: KnowledgeFSBackgroundTaskResponse | None = Field(
+        default=None, validation_alias=AliasChoices("latest_task", "latestTask")
+    )
     active: KnowledgeFSDocumentRevisionResponse | None
     active_revision: int | None = Field(
         default=None, ge=1, validation_alias=AliasChoices("active_revision", "activeRevision")

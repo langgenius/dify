@@ -40,18 +40,17 @@ import {
   useRetryDocumentTaskAction,
   useToggleDocumentAvailabilityAction,
 } from './row-actions/use-document-row-actions'
-import { createDocumentRowActionFactsAtom, selectionResultsUnavailableAtom } from './state/results'
-import { documentCanDownloadAtom, documentCanWriteAtom } from './state/runtime'
+import { createDocumentRowActionFactsAtom, createDocumentRowCanEditAtom } from './state/results'
+import { documentCanDownloadAtom } from './state/runtime'
 
 function useDocumentActionFacts(documentId: string) {
   const factsAtom = useMemo(() => createDocumentRowActionFactsAtom(documentId), [documentId])
   return useAtomValueRawSync(factsAtom)
 }
 
-function useDocumentCanEdit() {
-  const permissionAllowsWrite = useAtomValueRawSync(documentCanWriteAtom)
-  const selectionResultsUnavailable = useAtomValueRawSync(selectionResultsUnavailableAtom)
-  return permissionAllowsWrite && !selectionResultsUnavailable
+function useDocumentCanEdit(documentId: string) {
+  const canEditAtom = useMemo(() => createDocumentRowCanEditAtom(documentId), [documentId])
+  return useAtomValueRawSync(canEditAtom)
 }
 
 function RenameDocumentMenuItem({
@@ -62,7 +61,7 @@ function RenameDocumentMenuItem({
   onOpen: () => void
 }) {
   const { t: tCommon } = useTranslation('common')
-  const canEdit = useDocumentCanEdit()
+  const canEdit = useDocumentCanEdit(document.id)
   const busy = useDocumentRowActionBusy(document.id)
 
   return (
@@ -144,7 +143,7 @@ function RenameDocumentDialog({
 
 function RetryDocumentMenuItem({ document }: { document: LogicalDocument }) {
   const { t } = useTranslation('knowledgeSpace')
-  const canEdit = useDocumentCanEdit()
+  const canEdit = useDocumentCanEdit(document.id)
   const { task } = useDocumentActionFacts(document.id)
   const { busy, run } = useRetryDocumentTaskAction(document.id, task)
   const disabled = !canEdit || !task || !taskCanRetry(task)
@@ -165,7 +164,7 @@ function RetryDocumentMenuItem({ document }: { document: LogicalDocument }) {
 
 function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
   const { t } = useTranslation('knowledgeSpace')
-  const canEdit = useDocumentCanEdit()
+  const canEdit = useDocumentCanEdit(document.id)
   const { status } = useDocumentActionFacts(document.id)
   const { busy, run } = useReindexDocumentAction(document, status)
   const disabled = !canEdit || !documentCanReindex(status)
@@ -195,9 +194,9 @@ function ReprocessDocumentMenuItem({ document }: { document: LogicalDocument }) 
 function DownloadDocumentMenuItem({ document }: { document: LogicalDocument }) {
   const { t } = useTranslation('knowledgeSpace')
   const canDownload = useAtomValueRawSync(documentCanDownloadAtom)
-  const { status, tasksPending } = useDocumentActionFacts(document.id)
-  const { busy, run } = useDownloadDocumentAction(document, status, tasksPending)
-  const disabled = !canDownload || tasksPending || !documentCanDownload(document, status)
+  const { status, documentSnapshotPending } = useDocumentActionFacts(document.id)
+  const { busy, run } = useDownloadDocumentAction(document, status, documentSnapshotPending)
+  const disabled = !canDownload || documentSnapshotPending || !documentCanDownload(document, status)
 
   return (
     <DropdownMenuItem
@@ -214,7 +213,7 @@ function DownloadDocumentMenuItem({ document }: { document: LogicalDocument }) {
 
 function ToggleDocumentAvailabilityMenuItem({ document }: { document: LogicalDocument }) {
   const { t } = useTranslation('knowledgeSpace')
-  const canEdit = useDocumentCanEdit()
+  const canEdit = useDocumentCanEdit(document.id)
   const { status } = useDocumentActionFacts(document.id)
   const { busy, run } = useToggleDocumentAvailabilityAction(document, status)
   if (!documentShowsAvailabilityAction(status)) return null
@@ -248,7 +247,7 @@ function RemoveDocumentMenuItem({
   onOpen: () => void
 }) {
   const { t: tCommon } = useTranslation('common')
-  const canEdit = useDocumentCanEdit()
+  const canEdit = useDocumentCanEdit(document.id)
   const busy = useDocumentRowActionBusy(document.id)
   const disabled = !canEdit || document.status === 'deleting'
 

@@ -1419,6 +1419,7 @@ export const zKnowledgeFsLogicalDocumentResponse = z.object({
   enabled: z.boolean().optional().default(true),
   id: z.string(),
   knowledge_space_id: z.string(),
+  latest_task: zKnowledgeFsBackgroundTaskResponse.nullish(),
   provider_item_id: z.string().nullish(),
   row_version: z.int().gte(0),
   source_id: z.string().nullish(),
@@ -3398,6 +3399,13 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksPath = z.object
 export const zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksQuery = z.object({
   cursor: z.string().min(1).max(8192).optional(),
   limit: z.int().gte(1).lte(100).optional().default(50),
+  task_ids: z
+    .string()
+    .max(3699)
+    .regex(
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,99}$/,
+    )
+    .optional(),
 })
 
 /**

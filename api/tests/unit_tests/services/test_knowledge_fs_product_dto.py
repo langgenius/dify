@@ -28,6 +28,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSGrepResponse,
     KnowledgeFSListQuery,
     KnowledgeFSListResponse,
+    KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewHealthResponse,
     KnowledgeFSOverviewInventoryResponse,
@@ -1745,3 +1746,48 @@ def test_retrieval_test_response_exposes_the_recorded_history_trace_id() -> None
         ).answer_trace_id
         == "018f0d60-7a49-7cc2-9c1b-5b36f18f2c60"
     )
+
+
+def test_background_task_exact_lookup_query_is_bounded() -> None:
+    task_id = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42"
+    assert KnowledgeFSBackgroundTaskListQuery.model_validate({"task_ids": task_id}).task_ids == task_id
+    for value in ("", "invalid", ",".join([task_id] * 101)):
+        with pytest.raises(ValidationError):
+            KnowledgeFSBackgroundTaskListQuery.model_validate({"task_ids": value})
+
+
+def test_logical_document_serializes_its_latest_task_snapshot() -> None:
+    response = KnowledgeFSLogicalDocumentResponse.model_validate(
+        {
+            "active": None,
+            "id": "document-1",
+            "knowledgeSpaceId": "space-1",
+            "createdAt": "2026-07-23T12:00:00Z",
+            "updatedAt": "2026-07-23T12:01:00Z",
+            "rowVersion": 1,
+            "status": "pending",
+            "title": "Document",
+            "userMetadata": {},
+            "latestTask": {
+                "id": "task-1",
+                "documentId": "document-1",
+                "documentRevision": 1,
+                "knowledgeSpaceId": "space-1",
+                "taskKind": "document",
+                "operation": "document_processing",
+                "state": "running",
+                "canCancel": True,
+                "canRetry": False,
+                "progressTotal": 1,
+                "progressCompleted": 0,
+                "progressFailed": 0,
+                "progressPercent": 25,
+                "createdAt": "2026-07-23T12:00:00Z",
+                "updatedAt": "2026-07-23T12:01:00Z",
+            },
+        }
+    )
+    serialized = response.model_dump(mode="json")
+    assert serialized["latest_task"]["document_id"] == serialized["id"]
+    assert serialized["latest_task"]["state"] == "running"
+    assert "latestTask" not in serialized

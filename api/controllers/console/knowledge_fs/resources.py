@@ -2394,6 +2394,7 @@ class KnowledgeFSSpaceBackgroundTasksApi(Resource):
             control_space_id=control_space_id,
             cursor=query.cursor,
             limit=query.limit,
+            task_ids=query.task_ids,
         )
         return dump_response(KnowledgeFSBackgroundTaskListResponse, result)
 

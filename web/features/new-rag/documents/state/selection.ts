@@ -8,11 +8,12 @@ import {
 } from '../model'
 import { documentsAtom } from './queries'
 import {
+  createDocumentRowResultsUnavailableAtom,
+  documentResultsUnavailableByIdAtom,
   documentStatusesAtom,
   filteredDocumentsAtom,
   filteredResultsIncompleteAtom,
   selectionResultsUnavailableAtom,
-  taskResultsIncompleteAtom,
 } from './results'
 import { documentCanDownloadAtom, documentCanWriteAtom } from './runtime'
 import { selectedDocumentIdsAtom } from './scoped'
@@ -45,6 +46,11 @@ export const documentBulkActionsVisibleAtom = atom(
 export const selectedDocumentsAtom = atom((get) => {
   const selectedDocumentIds = get(validSelectedDocumentIdsAtom)
   return get(documentsAtom).filter((document) => selectedDocumentIds.has(document.id))
+})
+
+export const selectedDocumentResultsUnavailableAtom = atom((get) => {
+  const unavailable = get(documentResultsUnavailableByIdAtom)
+  return get(selectedDocumentsAtom).some((document) => unavailable.get(document.id) ?? true)
 })
 
 const selectedStatusesAtom = atom((get) => {
@@ -103,7 +109,7 @@ export const downloadableDocumentIdsAtom = atom((get) => {
   const statuses = get(documentStatusesAtom)
   if (
     get(documentSelectionInvalidAtom) ||
-    get(taskResultsIncompleteAtom) ||
+    get(selectedDocumentResultsUnavailableAtom) ||
     selectedDocuments.some((document) => {
       const status = statuses.get(document.id)
       return !status || !documentCanDownload(document, status)
@@ -132,10 +138,11 @@ export const documentTableSelectionFactsAtom = atom((get) => {
 })
 
 export const createDocumentRowSelectionFactsAtom = (documentId: string) => {
+  const resultsUnavailableAtom = createDocumentRowResultsUnavailableAtom(documentId)
   const factsAtom = atom((get) => {
     const canWrite = get(documentCanWriteAtom)
     const canSelect = canWrite || get(documentCanDownloadAtom)
-    const resultsUnavailable = get(selectionResultsUnavailableAtom)
+    const resultsUnavailable = get(resultsUnavailableAtom)
     return {
       canSelect,
       readOnlyReasonId: get(documentReadOnlyReasonIdAtom),

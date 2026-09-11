@@ -29,28 +29,22 @@ export async function findBackgroundTasks(
   taskIds: ReadonlySet<string>,
   signal?: AbortSignal,
 ) {
-  const remainingTaskIds = new Set(taskIds)
+  const ids = [...taskIds]
   const tasks = new Map<string, DocumentProcessingTask>()
-  if (!remainingTaskIds.size) return tasks
-  let cursor: string | undefined
-  for (let page = 0; page < MAX_AUTO_CURSOR_PAGES; page += 1) {
+  for (let offset = 0; offset < ids.length; offset += TASK_PAGE_SIZE) {
+    signal?.throwIfAborted()
     const response = await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get(
       {
         params: { control_space_id: knowledgeSpaceId },
-        query: { ...(cursor ? { cursor } : {}), limit: TASK_PAGE_SIZE },
+        query: { task_ids: ids.slice(offset, offset + TASK_PAGE_SIZE).join(',') },
       },
-      { signal },
+      { signal, context: { silent: true } },
     )
     for (const candidate of response.data) {
-      if (!remainingTaskIds.has(candidate.id)) continue
+      if (!taskIds.has(candidate.id)) continue
       const task = documentTaskFromApi(candidate)
-      if (!task) continue
-      tasks.set(task.id, task)
-      remainingTaskIds.delete(task.id)
+      if (task) tasks.set(task.id, task)
     }
-    if (!remainingTaskIds.size) return tasks
-    cursor = response.next_cursor ?? undefined
-    if (!cursor) return tasks
   }
   return tasks
 }

@@ -276,6 +276,7 @@ export type KnowledgeFsLogicalDocumentResponse = {
   enabled?: boolean
   id: string
   knowledge_space_id: string
+  latest_task?: KnowledgeFsBackgroundTaskResponse | null
   provider_item_id?: string | null
   row_version: number
   source_id?: string | null
@@ -2737,6 +2738,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksData = {
   query?: {
     cursor?: string
     limit?: number
+    task_ids?: string
   }
   url: '/knowledge-fs/spaces/{control_space_id}/background-tasks'
 }

@@ -213,23 +213,6 @@ const revisionApiResponse = vi.hoisted(
     state: revision.state,
   }),
 )
-const documentApiResponse = vi.hoisted(() => (item: LogicalDocument) => ({
-  active: item.active ? revisionApiResponse(item.active) : null,
-  active_revision: item.activeRevision ?? null,
-  created_at: item.createdAt,
-  disabled_at: item.enabled ? null : item.updatedAt,
-  disabled_by_subject_id: item.enabled ? null : 'account-1',
-  enabled: item.enabled,
-  id: item.id,
-  knowledge_space_id: item.knowledgeSpaceId,
-  provider_item_id: item.providerItemId ?? null,
-  row_version: item.rowVersion,
-  source_id: item.sourceId ?? null,
-  status: item.status,
-  title: item.title,
-  updated_at: item.updatedAt,
-  user_metadata: item.userMetadata,
-}))
 const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   can_cancel: item.canCancel ?? true,
   can_retry: item.canRetry ?? item.state === 'failed',
@@ -261,6 +244,24 @@ const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
           : item.state,
   task_kind: item.taskKind ?? 'document',
   updated_at: item.updatedAt,
+}))
+const documentApiResponse = vi.hoisted(() => (item: LogicalDocument) => ({
+  active: item.active ? revisionApiResponse(item.active) : null,
+  active_revision: item.activeRevision ?? null,
+  latest_task: item.latestTask ? taskApiResponse(item.latestTask) : null,
+  created_at: item.createdAt,
+  disabled_at: item.enabled ? null : item.updatedAt,
+  disabled_by_subject_id: item.enabled ? null : 'account-1',
+  enabled: item.enabled,
+  id: item.id,
+  knowledge_space_id: item.knowledgeSpaceId,
+  provider_item_id: item.providerItemId ?? null,
+  row_version: item.rowVersion,
+  source_id: item.sourceId ?? null,
+  status: item.status,
+  title: item.title,
+  updated_at: item.updatedAt,
+  user_metadata: item.userMetadata,
 }))
 const sourceApiResponse = vi.hoisted(() => (item: Source) => ({
   connection_id: item.connectionId ?? null,
@@ -1057,7 +1058,15 @@ describe('DocumentsPage', () => {
         {
           items: [
             document({ id: 'ready-document', title: 'Ready handbook.pdf' }),
-            document({ id: 'failed-document', title: 'Failed report.pdf' }),
+            document({
+              id: 'failed-document',
+              title: 'Failed report.pdf',
+              latestTask: task({
+                documentId: 'failed-document',
+                id: 'failed-task',
+                state: 'failed',
+              }),
+            }),
           ],
         },
       ],
@@ -1120,26 +1129,27 @@ describe('DocumentsPage', () => {
 
   it('reveals the latest document task failure reason from the failed status', async () => {
     const user = userEvent.setup()
+    const latestTask = task({
+      documentId: 'failed-document',
+      failure: {
+        action: 'configure_model',
+        category: 'configuration',
+        code: 'MODEL_SELECTION_NOT_FOUND',
+        message: 'Select another model.',
+        retryPolicy: 'after_configuration',
+      },
+      id: 'failed-task',
+      state: 'failed',
+    })
     documentsQuery.data = {
-      pages: [{ items: [document({ id: 'failed-document', title: 'Failed report.pdf' })] }],
+      pages: [
+        { items: [document({ id: 'failed-document', title: 'Failed report.pdf', latestTask })] },
+      ],
     }
     tasksQuery.data = {
       pages: [
         {
-          items: [
-            task({
-              documentId: 'failed-document',
-              failure: {
-                action: 'configure_model',
-                category: 'configuration',
-                code: 'MODEL_SELECTION_NOT_FOUND',
-                message: 'Select another model.',
-                retryPolicy: 'after_configuration',
-              },
-              id: 'failed-task',
-              state: 'failed',
-            }),
-          ],
+          items: [latestTask],
         },
       ],
     }
@@ -1160,27 +1170,28 @@ describe('DocumentsPage', () => {
 
   it('shows actionable task failures without technical identifiers', async () => {
     const user = userEvent.setup()
+    const latestTask = task({
+      documentId: 'failed-document',
+      failure: {
+        action: 'contact_admin',
+        category: 'internal',
+        code: 'DOCUMENT_COMPILATION_FAILED',
+        message: 'Safe server fallback',
+        retryPolicy: 'manual',
+        traceId: 'cef52296-3aa7-41ec-9953-2bbe030fdf6c',
+      },
+      id: 'failed-task',
+      state: 'failed',
+    })
     documentsQuery.data = {
-      pages: [{ items: [document({ id: 'failed-document', title: 'Failed report.pdf' })] }],
+      pages: [
+        { items: [document({ id: 'failed-document', title: 'Failed report.pdf', latestTask })] },
+      ],
     }
     tasksQuery.data = {
       pages: [
         {
-          items: [
-            task({
-              documentId: 'failed-document',
-              failure: {
-                action: 'contact_admin',
-                category: 'internal',
-                code: 'DOCUMENT_COMPILATION_FAILED',
-                message: 'Safe server fallback',
-                retryPolicy: 'manual',
-                traceId: 'cef52296-3aa7-41ec-9953-2bbe030fdf6c',
-              },
-              id: 'failed-task',
-              state: 'failed',
-            }),
-          ],
+          items: [latestTask],
         },
       ],
     }
@@ -1322,33 +1333,20 @@ describe('DocumentsPage', () => {
     expect(downloadDocumentsMutation).not.toHaveBeenCalled()
   })
 
-  it('keeps row and selected-document downloads disabled until task status loads', async () => {
+  it('keeps downloads available from the document snapshot while task history loads', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
-      pages: [{ items: [document({ id: 'report', title: 'Report.pdf' })] }],
+      pages: [{ items: [document({ latestTask: task({ state: 'succeeded' }) })] }],
     }
-
-    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('checkbox', { name: 'Report.pdf' }))
-
     tasksQuery.data = undefined
     tasksQuery.isPending = true
-    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-
-    const bulkActions = screen.getByRole('group', {
-      name: 'knowledgeSpace.bulkDocumentActions',
-    })
-    expect(
-      within(bulkActions).getByRole('button', {
-        name: 'knowledgeSpace.downloadDocuments',
-      }),
-    ).toBeDisabled()
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.downloadDocuments' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
     expect(
-      await screen.findByRole('menuitem', {
-        name: 'knowledgeSpace.downloadDocuments',
-      }),
-    ).toHaveAttribute('aria-disabled', 'true')
+      await screen.findByRole('menuitem', { name: 'knowledgeSpace.downloadDocuments' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('creates a metadata field without scanning or rewriting documents', async () => {
@@ -1629,7 +1627,17 @@ describe('DocumentsPage', () => {
     async (_status, taskState) => {
       const user = userEvent.setup()
       documentsQuery.data = {
-        pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
+        pages: [
+          {
+            items: [
+              document({
+                id: 'one',
+                title: 'One.pdf',
+                latestTask: task({ documentId: 'one', state: taskState }),
+              }),
+            ],
+          },
+        ],
       }
       tasksQuery.data = {
         pages: [{ items: [task({ documentId: 'one', state: taskState })] }],
@@ -1692,7 +1700,18 @@ describe('DocumentsPage', () => {
   it('retries a failed document from its row action', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
-      pages: [{ items: [document({ id: 'one', status: 'failed', title: 'One.pdf' })] }],
+      pages: [
+        {
+          items: [
+            document({
+              id: 'one',
+              status: 'failed',
+              title: 'One.pdf',
+              latestTask: task({ documentId: 'one', id: 'failed-task', state: 'failed' }),
+            }),
+          ],
+        },
+      ],
     }
     tasksQuery.data = {
       pages: [
@@ -1734,6 +1753,111 @@ describe('DocumentsPage', () => {
       }),
     )
     expect(await screen.findByText('knowledgeSpace.documentStatus.queued')).toBeInTheDocument()
+  })
+
+  it.each(['document', 'document_bulk'] as const)(
+    'keeps a historical %s failure in the drawer without changing the document row',
+    async (taskKind) => {
+      const user = userEvent.setup()
+      documentsQuery.data = {
+        pages: [
+          { items: [document({ latestTask: task({ id: 'current-task', state: 'succeeded' }) })] },
+        ],
+      }
+      tasksQuery.data = {
+        pages: [
+          {
+            items: [
+              task({
+                id: 'history-task',
+                taskKind,
+                state: 'failed',
+                documentRevision: 1,
+                updatedAt: '2026-07-21T10:00:00Z',
+              }),
+            ],
+          },
+        ],
+      }
+      render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+      const row = within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ }))
+      expect(row.getByText('knowledgeSpace.documentStatus.ready')).toBeInTheDocument()
+      await user.click(row.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
+      expect(
+        await screen.findByRole('menuitem', { name: 'knowledgeSpace.reindexDocument' }),
+      ).not.toHaveAttribute('aria-disabled', 'true')
+      expect(
+        screen.queryByRole('menuitem', { name: 'knowledgeSpace.retryTask' }),
+      ).not.toBeInTheDocument()
+      await user.keyboard('{Escape}')
+
+      await user.click(
+        screen.getByRole('button', { name: 'knowledgeSpace.tasksWithAttention:{"count":1}' }),
+      )
+      expect(
+        within(screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })).getByRole(
+          'button',
+          { name: 'knowledgeSpace.retryTask' },
+        ),
+      ).toBeInTheDocument()
+    },
+  )
+
+  it('does not infer a document task from history when its snapshot has no task', () => {
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ state: 'failed' })] }] }
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(
+      within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ })).getByText(
+        'knowledgeSpace.documentStatus.ready',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps a ready document selectable and editable while another document is processing and history is incomplete', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document(),
+            document({
+              id: 'document-b',
+              title: 'Pending.pdf',
+              latestTask: task({ documentId: 'document-b', id: 'task-b', state: 'running' }),
+            }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.data = { pages: [{ items: [task({ state: 'succeeded' })], nextCursor: 'next' }] }
+    tasksQuery.hasNextPage = true
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const readyRow = within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ }))
+    expect(readyRow.getByText('knowledgeSpace.documentStatus.ready')).toBeInTheDocument()
+    expect(readyRow.getByRole('checkbox')).not.toHaveAttribute('aria-disabled')
+    expect(screen.getByRole('checkbox', { name: 'Pending.pdf' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(
+      screen.getByRole('checkbox', { name: 'knowledgeSpace.selectAllDocuments' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(readyRow.getByRole('checkbox'))
+    expect(readyRow.getByRole('checkbox')).toBeChecked()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' })).toBeEnabled()
+    await user.click(readyRow.getByRole('button', { name: /knowledgeSpace\.documentActions/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'common.operation.rename' }))
+    const input = screen.getByRole('textbox', { name: 'knowledgeSpace.documentColumn' })
+    await user.clear(input)
+    await user.type(input, 'Renamed.pdf')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(renameDocumentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      }),
+    )
   })
 
   it('renames a document through its user-facing display metadata', async () => {
@@ -1883,7 +2007,12 @@ describe('DocumentsPage', () => {
               title: 'Disabled.xlsx',
               userMetadata: { sourceName: 'Archive' },
             }),
-            document({ id: 'processing', status: 'pending', title: 'Processing.md' }),
+            document({
+              id: 'processing',
+              status: 'pending',
+              title: 'Processing.md',
+              latestTask: task({ documentId: 'processing', id: 'processing-task' }),
+            }),
           ],
         },
       ],
@@ -2819,37 +2948,30 @@ describe('DocumentsPage', () => {
   it('keeps a blocking dependency retry stable while its first page refetches', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
-    tasksQuery.data = undefined
-    tasksQuery.error = new Error('task first page failed')
-    sourcesQuery.error = new Error('source background refresh failed')
+    sourcesQuery.data = undefined
+    sourcesQuery.error = new Error('task first page failed')
+
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const retry = screen.getByRole('button', {
-      name: 'common.operation.retry · knowledgeSpace.tasksErrorDescription',
+      name: 'common.operation.retry · knowledgeSpace.sourcesErrorDescription',
     })
 
     await user.click(retry)
-    expect(tasksQuery.refetch).toHaveBeenCalledOnce()
-    tasksQuery.error = null
-    tasksQuery.isFetching = true
-    tasksQuery.isPending = true
+    expect(sourcesQuery.refetch).toHaveBeenCalledOnce()
+    sourcesQuery.error = null
+    sourcesQuery.isFetching = true
+    sourcesQuery.isPending = true
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(retry).toBeInTheDocument()
     expect(retry).toHaveFocus()
     expect(retry).toHaveAttribute('aria-disabled', 'true')
 
-    tasksQuery.data = { pages: [{ items: [] }] }
-    tasksQuery.isFetching = false
-    tasksQuery.isPending = false
+    sourcesQuery.data = { pages: [{ items: [] }] }
+    sourcesQuery.isFetching = false
+    sourcesQuery.isPending = false
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', {
-          name: 'common.operation.retry · knowledgeSpace.sourcesErrorDescription',
-        }),
-      ).toHaveFocus(),
-    )
 
     sourcesQuery.error = null
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -3135,33 +3257,13 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('continues remote task pagination from an empty cached drawer after the automatic cap', async () => {
-    const user = userEvent.setup()
+  it('does not scan history when a document has no task', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
-    tasksQuery.data = {
-      pages: Array.from({ length: 20 }, () => ({
-        items: [],
-        nextCursor: 'next',
-      })),
-    }
+    tasksQuery.data = { pages: [{ items: [], nextCursor: 'history' }] }
     tasksQuery.hasNextPage = true
-
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    const taskTrigger = screen.getByRole('button', {
-      name: 'knowledgeSpace.tasksWithAttention:{"count":0} · knowledgeSpace.taskHistoryIncomplete',
-    })
-    expect(taskTrigger).toHaveTextContent('0+')
-    await user.click(taskTrigger)
-    expect(
-      within(screen.getByRole('dialog')).queryByText('knowledgeSpace.noBackgroundTasks'),
-    ).not.toBeInTheDocument()
-    await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'knowledgeSpace.loadMore',
-      }),
-    )
-
-    expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(screen.getByText('knowledgeSpace.documentStatus.ready')).toBeInTheDocument()
   })
 
   it('loads document titles for tasks whose documents are on a later cursor page', async () => {
@@ -3273,7 +3375,7 @@ describe('DocumentsPage', () => {
 
     expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.tasksErrorDescription')
-    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).not.toHaveAttribute(
       'aria-disabled',
       'true',
     )
@@ -3325,30 +3427,23 @@ describe('DocumentsPage', () => {
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('keeps document status and selection pending until the first task page arrives', () => {
-    documentsQuery.data = { pages: [{ items: [document()] }] }
+  it('shows the embedded document task before the first history page arrives', () => {
+    documentsQuery.data = {
+      pages: [{ items: [document({ latestTask: task({ state: 'running' }) })] }],
+    }
     tasksQuery.data = undefined
     tasksQuery.isPending = true
-
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-
-    const documentRow = screen.getByRole('row', { name: /sso-enterprise\.pdf/ })
-    expect(
-      within(documentRow).queryByText('knowledgeSpace.documentStatus.ready'),
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+    expect(screen.getByText('knowledgeSpace.documentStatus.processing')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).not.toHaveAttribute(
       'aria-disabled',
-      'true',
-    )
-    expect(screen.getByRole('region', { name: 'knowledgeSpace.documents' })).toHaveAttribute(
-      'aria-busy',
       'true',
     )
   })
 
   it('keeps document state actionable while an older task page is loading', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
-    tasksQuery.data = { pages: [{ items: [], nextCursor: 'next' }] }
+    tasksQuery.data = { pages: [{ items: [task({ state: 'succeeded' })], nextCursor: 'next' }] }
     tasksQuery.hasNextPage = true
     tasksQuery.isFetchingNextPage = true
 
@@ -3512,7 +3607,17 @@ describe('DocumentsPage', () => {
     async (_status, taskState) => {
       const user = userEvent.setup()
       documentsQuery.data = {
-        pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
+        pages: [
+          {
+            items: [
+              document({
+                id: 'one',
+                title: 'One.pdf',
+                latestTask: task({ documentId: 'one', state: taskState }),
+              }),
+            ],
+          },
+        ],
       }
       tasksQuery.data = {
         pages: [{ items: [task({ documentId: 'one', state: taskState })] }],
@@ -3907,8 +4012,7 @@ describe('DocumentsPage', () => {
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
 
-    tasksQuery.data = undefined
-    tasksQuery.isPending = true
+    documentsQuery.error = new Error('document refresh failed')
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const actions = screen.getByRole('group', {
@@ -3918,11 +4022,12 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }),
     ).toHaveAttribute('aria-describedby', 'document-reindex-unavailable')
     expect(
-      within(actions).getByText('knowledgeSpace.reindexDocuments · common.loading'),
+      within(actions).getByText(
+        'knowledgeSpace.reindexDocuments · knowledgeSpace.documentsErrorDescription',
+      ),
     ).toBeVisible()
 
-    tasksQuery.data = { pages: [{ items: [] }] }
-    tasksQuery.isPending = false
+    documentsQuery.error = null
     sourcesQuery.data = { pages: [{ items: [] }] }
     sourcesQuery.error = new Error('source refresh failed')
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -4448,7 +4553,9 @@ describe('DocumentsPage', () => {
   it('retries a failed task once and reports mutation errors in the panel', async () => {
     const user = userEvent.setup()
     retryMutation.mutateAsync.mockRejectedValueOnce(new Error('retry failed'))
-    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    documentsQuery.data = {
+      pages: [{ items: [document({ latestTask: task({ id: 'failed', state: 'failed' }) })] }],
+    }
     tasksQuery.data = { pages: [{ items: [task({ id: 'failed', state: 'failed' })] }] }
 
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -4469,6 +4576,7 @@ describe('DocumentsPage', () => {
             task({
               id: 'failed',
               state: 'running',
+              updatedAt: '2026-07-20T10:02:00Z',
             }),
           ],
         },
@@ -6583,7 +6691,21 @@ describe('DocumentsPage', () => {
 
   it('rejects stale active progress and backs off repeated stale reconnects', async () => {
     vi.useFakeTimers()
-    documentsQuery.data = { pages: [{ items: [document()] }] }
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({
+              latestTask: task({
+                id: 'stale-active-progress',
+                state: 'queued',
+                updatedAt: '2026-07-20T10:05:00Z',
+              }),
+            }),
+          ],
+        },
+      ],
+    }
     tasksQuery.data = {
       pages: [
         {
@@ -6804,6 +6926,94 @@ describe('DocumentsPage', () => {
       rendered.unmount()
       vi.useRealTimers()
     }
+  })
+
+  it.each(['running', 'failed'] as const)(
+    'observes newer %s history while the document still has a canceled snapshot',
+    async (state) => {
+      vi.useFakeTimers()
+      const taskId = 'external-retry'
+      const updatedAt = '2026-07-20T10:03:00Z'
+      documentsQuery.data = {
+        pages: [
+          {
+            items: [
+              document({
+                latestTask: task({
+                  id: taskId,
+                  state: 'canceled',
+                  updatedAt: '2026-07-20T09:00:00Z',
+                }),
+              }),
+            ],
+          },
+        ],
+      }
+      tasksQuery.data = { pages: [{ items: [task({ id: taskId, state, updatedAt })] }] }
+      getTaskSnapshot.mockResolvedValue(task({ id: taskId, state: 'running', updatedAt }))
+      streamProcessingTaskEvents.mockImplementation(async function* () {
+        yield {
+          data: {
+            progressPercent: 30,
+            stage: 'parsed' as const,
+            state: 'running' as const,
+            updatedAt,
+          },
+          event: 'progress' as const,
+          id: `${taskId}:progress`,
+        }
+        await new Promise<void>(() => {})
+      })
+
+      const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      try {
+        openTasksDrawer()
+        await act(async () => vi.advanceTimersByTime(5000))
+        if (state === 'failed') expect(getTaskSnapshot).toHaveBeenCalledOnce()
+        expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+        vi.useRealTimers()
+        await userEvent.setup().keyboard('{Escape}')
+        expect(
+          within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ })).getByText(
+            'knowledgeSpace.documentStatus.processing',
+          ),
+        ).toBeInTheDocument()
+      } finally {
+        rendered.unmount()
+        vi.useRealTimers()
+      }
+    },
+  )
+
+  it('keeps a confirmed task failure when the document refresh fails with an older running snapshot', async () => {
+    const running = task({ id: 'confirmed-failure', state: 'running' })
+    documentsQuery.data = { pages: [{ items: [document({ latestTask: running })] }] }
+    tasksQuery.data = { pages: [{ items: [running] }] }
+    getTaskSnapshot.mockImplementation(() => new Promise(() => {}))
+    streamFailedTaskThenWait(running.id)
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const row = within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ }))
+    expect(await row.findByText('knowledgeSpace.documentStatus.failed')).toBeInTheDocument()
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: running.id,
+              state: 'failed',
+              updatedAt: '2026-07-20T10:03:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    documentsQuery.error = { status: 503 }
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(await row.findByText('knowledgeSpace.documentStatus.failed')).toBeInTheDocument()
+    expect(row.queryByText('knowledgeSpace.documentStatus.processing')).not.toBeInTheDocument()
   })
 
   it('keeps one failed-task poll in flight and ignores it after a local retry', async () => {
@@ -7334,9 +7544,11 @@ describe('DocumentsPage', () => {
     documentsQuery.data = {
       pages: [{ items: [document({ sourceId: 'source-on-later-page' })] }],
     }
-    tasksQuery.data = { pages: [{ items: [], nextCursor: 'next' }] }
+    tasksQuery.data = { pages: [{ items: [task({ state: 'succeeded' })], nextCursor: 'next' }] }
     tasksQuery.hasNextPage = true
-    sourcesQuery.data = { pages: [{ items: [], nextCursor: 'source-next' }] }
+    sourcesQuery.data = {
+      pages: [{ items: [], nextCursor: 'source-next' }],
+    }
     sourcesQuery.hasNextPage = true
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -7345,21 +7557,43 @@ describe('DocumentsPage', () => {
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('treats the first task page as authoritative for document status', async () => {
+  it.each(['running', 'failed'] as const)(
+    'uses the embedded %s snapshot without loading history',
+    (state) => {
+      documentsQuery.data = { pages: [{ items: [document({ latestTask: task({ state }) })] }] }
+      tasksQuery.data = { pages: [{ items: [], nextCursor: 'older-tasks' }] }
+      tasksQuery.hasNextPage = true
+      render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      expect(
+        screen.getByText(
+          `knowledgeSpace.documentStatus.${state === 'running' ? 'processing' : 'failed'}`,
+        ),
+      ).toBeInTheDocument()
+      expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
+    },
+  )
+
+  it('retries task history without blocking the document snapshot', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
-    tasksQuery.data = {
-      pages: Array.from({ length: 20 }, () => ({ items: [], nextCursor: 'next' })),
-    }
+    tasksQuery.data = { pages: [{ items: [], nextCursor: 'older-tasks' }] }
     tasksQuery.hasNextPage = true
-
+    tasksQuery.error = new Error('task page failed')
+    tasksQuery.isFetchNextPageError = true
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('combobox'))
-    await user.click(screen.getByRole('option', { name: 'knowledgeSpace.documentStatus.failed' }))
-
-    expect(screen.getByText('knowledgeSpace.noMatchingDocuments')).toBeInTheDocument()
-    expect(screen.queryByText('knowledgeSpace.partialDocumentResults')).not.toBeInTheDocument()
     expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(
+      within(screen.getByRole('row', { name: /sso-enterprise\.pdf/ })).getByText(
+        'knowledgeSpace.documentStatus.ready',
+      ),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.retry · knowledgeSpace.tasksErrorDescription',
+      }),
+    )
+    expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(tasksQuery.refetch).not.toHaveBeenCalled()
   })
 
   it('keeps source-name searches partial while unresolved sources have more pages', async () => {
@@ -7386,7 +7620,7 @@ describe('DocumentsPage', () => {
     expect(screen.getByText('knowledgeSpace.partialDocumentResults')).toBeInTheDocument()
   })
 
-  it('bounds automatic cursor exhaustion and leaves all further loading explicit', async () => {
+  it('bounds document and source pagination without scanning task history', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: Array.from({ length: 20 }, (_, index) => ({
@@ -7434,7 +7668,10 @@ describe('DocumentsPage', () => {
   it('keeps task-history pagination out of document result pagination', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = {
-      pages: Array.from({ length: 20 }, () => ({ items: [], nextCursor: 'next' })),
+      pages: Array.from({ length: 20 }, () => ({
+        items: [task({ state: 'succeeded' })],
+        nextCursor: 'next',
+      })),
     }
     tasksQuery.hasNextPage = true
     tasksQuery.isFetchingNextPage = true
@@ -7452,7 +7689,10 @@ describe('DocumentsPage', () => {
   it('keeps known documents actionable while older task and source pages remain', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = {
-      pages: Array.from({ length: 20 }, () => ({ items: [], nextCursor: 'next' })),
+      pages: Array.from({ length: 20 }, () => ({
+        items: [task({ state: 'succeeded' })],
+        nextCursor: 'next',
+      })),
     }
     tasksQuery.hasNextPage = true
     sourcesQuery.data = {

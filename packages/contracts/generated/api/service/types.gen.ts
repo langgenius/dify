@@ -1282,6 +1282,51 @@ export type KnowledgeFsAnswerTraceStepResponse = {
   status: 'error' | 'ok' | 'skipped'
 }
 
+export type KnowledgeFsBackgroundTaskFailureResponse = {
+  document_id: string
+  document_title?: string | null
+  error_code: string
+  error_message: string
+  failure: KnowledgeFsPublicFailureResponse
+  job_id?: string | null
+}
+
+export type KnowledgeFsBackgroundTaskResponse = {
+  can_cancel: boolean
+  can_retry: boolean
+  completed_at?: string | null
+  created_at: string
+  document_id?: string | null
+  document_revision?: number | null
+  document_title?: string | null
+  error_code?: string | null
+  error_message?: string | null
+  failure?: KnowledgeFsPublicFailureResponse | null
+  failures?: Array<KnowledgeFsBackgroundTaskFailureResponse> | null
+  id: string
+  knowledge_space_id: string
+  operation:
+    | 'document_delete'
+    | 'document_processing'
+    | 'document_reindex'
+    | 'document_upload'
+    | 'source_bulk'
+    | 'source_crawl_import'
+    | 'source_crawl_preview'
+    | 'source_online_document_import'
+    | 'source_online_drive_import'
+    | 'source_sync'
+  progress_completed: number
+  progress_failed: number
+  progress_percent: number
+  progress_total: number
+  source_id?: string | null
+  source_title?: string | null
+  state: 'canceled' | 'completed' | 'failed' | 'queued' | 'running'
+  task_kind: 'document' | 'document_bulk' | 'source'
+  updated_at: string
+}
+
 export type KnowledgeFsBulkDeletionAcceptedItemResponse = {
   document_id: string
   document_title?: string | null
@@ -1566,6 +1611,7 @@ export type KnowledgeFsLogicalDocumentResponse = {
   enabled?: boolean
   id: string
   knowledge_space_id: string
+  latest_task?: KnowledgeFsBackgroundTaskResponse | null
   provider_item_id?: string | null
   row_version: number
   source_id?: string | null

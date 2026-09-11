@@ -10,22 +10,19 @@ import {
 } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
 import { consoleQuery } from '@/service/console'
-import { newestTaskByDocument } from '../../model'
 import { backgroundTaskListFromApi, documentTaskListFromApi } from '../../models'
+import { resolveDocumentTask } from '../../tasks/snapshot'
 import { responseStatus } from '../model'
 import { documentDetailDocumentIdAtom, documentDetailKnowledgeSpaceIdAtom } from './inputs'
 import { documentDetailDocumentAtom } from './queries'
 
 const TASK_PAGE_SIZE = 100
-const TASK_LOOKUP_PAGE_BATCH = 3
 const ACTIVE_TASK_REFRESH_INTERVAL = 5000
-const SUBMISSION_DISCOVERY_REFRESH_INTERVAL = 2000
 const REINDEX_STORAGE_PREFIX = 'dify-new-rag-reindex'
 
 export const DOCUMENT_REINDEX_RESTRICTION_ID = 'document-reindex-restriction'
 
 type SubmittedReindex = {
-  baselineRevision: number
   taskId: string
 }
 
@@ -36,7 +33,6 @@ type DocumentWorkflowState = {
   identity: string
   initialized: boolean
   invalidatedTerminalTask?: string
-  lookupPageLimit: number
   permissionRecoveryBusy: boolean
   permissionRecoveryNeeded: boolean
   previousTaskState?: string
@@ -46,6 +42,7 @@ type DocumentWorkflowState = {
 }
 
 export const documentHasEditPermissionAtom = atom(false)
+export const documentTaskDrawerOpenAtom = atom(false)
 
 function workflowIdentity(get: Getter) {
   return `${get(documentDetailKnowledgeSpaceIdAtom)}:${get(documentDetailDocumentIdAtom)}`
@@ -57,7 +54,6 @@ function initialWorkflowState(identity: string): DocumentWorkflowState {
     documentMissing: false,
     identity,
     initialized: false,
-    lookupPageLimit: TASK_LOOKUP_PAGE_BATCH,
     permissionRecoveryBusy: false,
     permissionRecoveryNeeded: false,
     reindexBusy: false,
@@ -69,6 +65,7 @@ const documentWorkflowStateAtom = atom(initialWorkflowState(''))
 
 export const documentWorkflowScopedAtoms = [
   documentHasEditPermissionAtom,
+  documentTaskDrawerOpenAtom,
   documentWorkflowStateAtom,
 ] as const
 
@@ -104,14 +101,8 @@ function submittedReindexStorageKey(get: Getter) {
 function readSubmittedReindex(storageKey: string): SubmittedReindex | undefined {
   try {
     const value = JSON.parse(globalThis.sessionStorage.getItem(storageKey) ?? 'null')
-    if (
-      !value ||
-      typeof value !== 'object' ||
-      typeof value.baselineRevision !== 'number' ||
-      typeof value.taskId !== 'string'
-    )
-      return
-    return { baselineRevision: value.baselineRevision, taskId: value.taskId }
+    if (!value || typeof value !== 'object' || typeof value.taskId !== 'string') return
+    return { taskId: value.taskId }
   } catch {
     return undefined
   }
@@ -140,9 +131,9 @@ function documentTaskIsActive(state: string | undefined) {
 }
 
 const documentTasksQueryOptionsAtom = atom((get) => {
-  const documentId = get(documentDetailDocumentIdAtom)
-  const submittedReindex = get(currentSubmittedReindexAtom)
+  const drawerOpen = get(documentTaskDrawerOpenAtom)
   return consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
+    enabled: drawerOpen,
     input: (pageParam) => ({
       params: { control_space_id: get(documentDetailKnowledgeSpaceIdAtom) },
       query: {
@@ -153,11 +144,12 @@ const documentTasksQueryOptionsAtom = atom((get) => {
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     initialPageParam: null as string | null,
     refetchInterval: (query) => {
-      const tasks =
-        query.state.data?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? []
-      if (tasks.some((task) => task.documentId === documentId && documentTaskIsActive(task.state)))
-        return ACTIVE_TASK_REFRESH_INTERVAL
-      return submittedReindex ? SUBMISSION_DISCOVERY_REFRESH_INTERVAL : false
+      if (!drawerOpen || responseStatus(query.state.error) === 403) return false
+      // The drawer also shows bulk and source tasks, which the document snapshot cannot update.
+      const hasActiveTasks = query.state.data?.pages.some((page) =>
+        page.data.some((task) => documentTaskIsActive(task.state)),
+      )
+      return hasActiveTasks ? ACTIVE_TASK_REFRESH_INTERVAL : false
     },
   })
 })
@@ -193,57 +185,56 @@ export const documentBackgroundTasksAtom = atom(
     ) ?? [],
 )
 
-const documentProcessingTasksAtom = atom(
-  (get) =>
-    get(documentTasksQueryDataAtom)?.pages.flatMap((page) => documentTaskListFromApi(page).items) ??
-    [],
+const documentTaskSnapshotQueryAtom = atomWithQuery((get) => {
+  const submitted = get(currentSubmittedReindexAtom)
+  const document = get(documentDetailDocumentAtom)
+  const documentTask = document.latestTask
+  const taskId = submitted?.taskId ?? documentTask?.id
+  return consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.queryOptions({
+    input: taskId
+      ? {
+          params: { control_space_id: get(documentDetailKnowledgeSpaceIdAtom) },
+          query: { task_ids: taskId },
+        }
+      : skipToken,
+    refetchInterval: (query) => {
+      if (responseStatus(query.state.error) === 403) return false
+      const task = resolveDocumentTask(
+        document,
+        query.state.data ? documentTaskListFromApi(query.state.data).items[0] : undefined,
+        submitted?.taskId,
+      )
+      return submitted || documentTaskIsActive(task?.state) ? ACTIVE_TASK_REFRESH_INTERVAL : false
+    },
+  })
+})
+
+const documentTaskSnapshotDataAtom = selectAtom(
+  documentTaskSnapshotQueryAtom,
+  (query) => query.data,
+)
+
+export const documentTaskSnapshotErrorAtom = selectAtom(
+  documentTaskSnapshotQueryAtom,
+  (query) => query.error,
+)
+export const retryDocumentTaskSnapshotAtom = atom(null, (get) =>
+  get(documentTaskSnapshotQueryAtom).refetch(),
 )
 
 export const documentLatestTaskAtom = atom((get) => {
-  const documentId = get(documentDetailDocumentIdAtom)
+  const submitted = get(currentSubmittedReindexAtom)
   const document = get(documentDetailDocumentAtom)
-  const submittedReindex = get(currentSubmittedReindexAtom)
-  const tasks = get(documentProcessingTasksAtom)
-  const acceptedTask = submittedReindex
-    ? tasks.find((candidate) => candidate.id === submittedReindex.taskId)
-    : undefined
-  if (acceptedTask) return acceptedTask
-  const minimumRevision = submittedReindex
-    ? submittedReindex.baselineRevision + 1
-    : (document.activeRevision ?? document.active?.revision ?? 0)
-  const task = newestTaskByDocument(
-    tasks.filter(
-      (candidate) =>
-        candidate.documentId === documentId && candidate.documentRevision >= minimumRevision,
-    ),
-  ).get(documentId)
-  return task && task.documentRevision >= minimumRevision ? task : undefined
+  const snapshot = get(documentTaskSnapshotDataAtom)
+  return resolveDocumentTask(
+    document,
+    snapshot ? documentTaskListFromApi(snapshot).items[0] : undefined,
+    submitted?.taskId,
+  )
 })
 
 const documentTaskIsActiveAtom = atom((get) =>
   documentTaskIsActive(get(documentLatestTaskAtom)?.state),
-)
-
-const documentTaskLookupSatisfiedAtom = atom((get) => {
-  const submittedReindex = get(currentSubmittedReindexAtom)
-  const latestTask = get(documentLatestTaskAtom)
-  return submittedReindex ? latestTask?.id === submittedReindex.taskId : Boolean(latestTask)
-})
-
-export const documentTaskLookupExhaustedAtom = atom((get) => {
-  const state = workflowState(get)
-  return Boolean(
-    !get(documentTaskLookupSatisfiedAtom) &&
-    get(documentTasksQueryHasNextPageAtom) &&
-    (get(documentTasksQueryDataAtom)?.pages.length ?? 0) >= state.lookupPageLimit,
-  )
-})
-
-export const documentTaskIsLookingUpAtom = atom(
-  (get) =>
-    !get(documentTaskLookupSatisfiedAtom) &&
-    get(documentTasksQueryHasNextPageAtom) &&
-    !get(documentTaskLookupExhaustedAtom),
 )
 
 const submittedJobQueryAtom = atomWithQuery((get) => {
@@ -311,7 +302,10 @@ function workflowQueryKeys(get: Getter) {
       ).queryKey,
     revisions:
       consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.get.key(),
-    tasks: get(documentTasksQueryOptionsAtom).queryKey,
+    // Match both history and exact snapshots in this space after task controls.
+    tasks: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key({
+      input: { params: { control_space_id: knowledgeSpaceId } },
+    }),
   }
 }
 
@@ -430,20 +424,15 @@ export const loadNextDocumentTaskPageAtom = atom(null, (get) =>
   get(documentTasksQueryAtom).fetchNextPage(),
 )
 
-export const continueDocumentTaskLookupAtom = atom(null, (get, set) => {
-  updateWorkflowState(get, set, (state) => ({
-    ...state,
-    lookupPageLimit: state.lookupPageLimit + TASK_LOOKUP_PAGE_BATCH,
-  }))
-})
-
 export const retryDocumentTasksAtom = atom(null, (get) => {
   const query = get(documentTasksQueryAtom)
   if (query.isFetchNextPageError) return query.fetchNextPage()
   return query.refetch()
 })
 
-export const refreshDocumentTasksAtom = atom(null, (get) => get(documentTasksQueryAtom).refetch())
+export const refreshDocumentTasksAtom = atom(null, (get) =>
+  get(queryClientAtom).invalidateQueries({ queryKey: workflowQueryKeys(get).tasks }),
+)
 
 export const retryDocumentWritePermissionAtom = atom(
   null,
@@ -457,8 +446,6 @@ export const reindexDocumentAtom = atom(
     const state = workflowState(get)
     if (state.reindexBusy) return 'unavailable' as const
     updateWorkflowState(get, set, (current) => ({ ...current, reindexBusy: true }))
-    const document = get(documentDetailDocumentAtom)
-    const activeRevision = document.activeRevision ?? document.active?.revision ?? 0
     try {
       const result = await get(reindexDocumentMutationAtom).mutateAsync({
         body: { documentIds: [get(documentDetailDocumentIdAtom)] },
@@ -480,16 +467,9 @@ export const reindexDocumentAtom = atom(
       const taskId =
         typeof item.compilation_job?.id === 'string' ? item.compilation_job.id : undefined
       if (!taskId) throw new Error('Re-index response did not include a compilation task id')
-      const latestTask = get(documentLatestTaskAtom)
       updateWorkflowState(get, set, (current) => ({
         ...current,
-        submittedReindex: {
-          baselineRevision: Math.max(
-            activeRevision,
-            latestTask?.documentRevision ?? activeRevision,
-          ),
-          taskId,
-        },
+        submittedReindex: { taskId },
       }))
       await invalidateDocumentWorkflow(get)
       return 'started' as const
@@ -562,7 +542,7 @@ export const documentCanCancelReindexAtom = atom(
     get(documentCanEditAtom) &&
     get(documentReindexInProgressAtom) &&
     (get(documentSubmissionPendingAtom) || get(documentLatestTaskAtom)?.canCancel !== false) &&
-    !get(documentTasksQueryErrorAtom),
+    !get(documentTaskSnapshotErrorAtom),
 )
 export const documentReindexFailedAtom = atom(
   (get) => get(documentLatestTaskAtom)?.state === 'failed',
@@ -575,12 +555,9 @@ export const documentReindexDisabledAtom = atom((get) => {
   return (
     !get(documentCanEditAtom) ||
     get(documentTaskIsActiveAtom) ||
-    get(documentTasksQueryIsPendingAtom) ||
-    get(documentTasksQueryIsFetchingNextPageAtom) ||
-    get(documentTaskIsLookingUpAtom) ||
-    get(documentTaskLookupExhaustedAtom) ||
+    get(documentSubmissionPendingAtom) ||
     !document.enabled ||
     document.status === 'deleting' ||
-    Boolean(get(documentTasksQueryErrorAtom))
+    Boolean(get(documentTaskSnapshotErrorAtom))
   )
 })

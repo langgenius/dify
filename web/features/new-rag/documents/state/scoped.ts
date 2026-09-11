@@ -19,7 +19,7 @@ import { documentUploadingAtom } from './upload'
 
 export const documentTasksOpenAtom = atom(false)
 export const documentTaskDrawerVisibleLimitAtom = atom(TASK_DRAWER_LIMIT)
-export const documentDependencyRetryRequestAtom = atom({ sources: false, tasks: false })
+export const documentDependencyRetryRequestAtom = atom({ sources: false })
 export const documentPermissionRecoveryFocusRequestAtom = atom<string | undefined>()
 export const selectedDocumentIdsAtom = atom<Set<string>>(new Set<string>())
 export const taskRuntimeStateAtom = atomWithLazy(createTaskRuntimeState)

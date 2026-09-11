@@ -1,9 +1,9 @@
 import { atom } from 'jotai'
 import { taskIsActive } from '../model'
-import { backgroundTasksAtom, baseTasksAtom } from '../state/queries'
+import { backgroundTasksAtom, baseTasksAtom, documentsAtom } from '../state/queries'
 import { taskRuntimeStateAtom } from '../state/scoped'
 import { transitionTaskRuntimeState } from './runtime-state'
-import { effectiveDocumentTasks } from './snapshot'
+import { effectiveDocumentTasks, resolveDocumentTask } from './snapshot'
 import { dismissedBackgroundTaskIdsAtom } from './storage'
 
 export const applyTaskRuntimeEventAtom = atom(
@@ -38,6 +38,19 @@ export const effectiveTasksAtom = atom((get) => {
 })
 
 export const activeTasksAtom = atom((get) => get(effectiveTasksAtom).filter(taskIsActive))
+
+export const documentTaskByDocumentAtom = atom((get) => {
+  const snapshots = new Map(get(effectiveTasksAtom).map((task) => [task.id, task]))
+  return new Map(
+    get(documentsAtom).flatMap((document) => {
+      const task = resolveDocumentTask(
+        document,
+        document.latestTask ? snapshots.get(document.latestTask.id) : undefined,
+      )
+      return task ? [[document.id, task] as const] : []
+    }),
+  )
+})
 
 export const drawerTasksAtom = atom((get) => {
   const effectiveTaskById = new Map(get(effectiveTasksAtom).map((task) => [task.id, task]))

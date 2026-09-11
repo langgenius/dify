@@ -1664,27 +1664,6 @@ export const zKnowledgeFsEmbeddingSettingsResponse = z.object({
 })
 
 /**
- * KnowledgeFSLogicalDocumentResponse
- */
-export const zKnowledgeFsLogicalDocumentResponse = z.object({
-  active: zKnowledgeFsDocumentRevisionResponse.nullable(),
-  active_revision: z.int().gte(1).nullish(),
-  created_at: z.iso.datetime(),
-  disabled_at: z.iso.datetime().nullish(),
-  disabled_by_subject_id: z.string().nullish(),
-  enabled: z.boolean().optional().default(true),
-  id: z.string(),
-  knowledge_space_id: z.string(),
-  provider_item_id: z.string().nullish(),
-  row_version: z.int().gte(0),
-  source_id: z.string().nullish(),
-  status: z.enum(['deleting', 'failed', 'pending', 'ready']),
-  title: z.string(),
-  updated_at: z.iso.datetime(),
-  user_metadata: z.record(z.string(), z.unknown()),
-})
-
-/**
  * KnowledgeFSOnlineDocumentWorkflowImportItemPayload
  */
 export const zKnowledgeFsOnlineDocumentWorkflowImportItemPayload = z.object({
@@ -1885,6 +1864,80 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     .max(128)
     .regex(/^[A-Za-z0-9._:-]{1,128}$/)
     .nullish(),
+})
+
+/**
+ * KnowledgeFSBackgroundTaskFailureResponse
+ */
+export const zKnowledgeFsBackgroundTaskFailureResponse = z.object({
+  document_id: z.string(),
+  document_title: z.string().nullish(),
+  error_code: z.string(),
+  error_message: z.string(),
+  failure: zKnowledgeFsPublicFailureResponse,
+  job_id: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSBackgroundTaskResponse
+ */
+export const zKnowledgeFsBackgroundTaskResponse = z.object({
+  can_cancel: z.boolean(),
+  can_retry: z.boolean(),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  document_id: z.string().nullish(),
+  document_revision: z.int().gte(1).nullish(),
+  document_title: z.string().nullish(),
+  error_code: z.string().nullish(),
+  error_message: z.string().nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  failures: z.array(zKnowledgeFsBackgroundTaskFailureResponse).nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  operation: z.enum([
+    'document_delete',
+    'document_processing',
+    'document_reindex',
+    'document_upload',
+    'source_bulk',
+    'source_crawl_import',
+    'source_crawl_preview',
+    'source_online_document_import',
+    'source_online_drive_import',
+    'source_sync',
+  ]),
+  progress_completed: z.int().gte(0),
+  progress_failed: z.int().gte(0),
+  progress_percent: z.int().gte(0).lte(100),
+  progress_total: z.int().gte(0),
+  source_id: z.string().nullish(),
+  source_title: z.string().nullish(),
+  state: z.enum(['canceled', 'completed', 'failed', 'queued', 'running']),
+  task_kind: z.enum(['document', 'document_bulk', 'source']),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSLogicalDocumentResponse
+ */
+export const zKnowledgeFsLogicalDocumentResponse = z.object({
+  active: zKnowledgeFsDocumentRevisionResponse.nullable(),
+  active_revision: z.int().gte(1).nullish(),
+  created_at: z.iso.datetime(),
+  disabled_at: z.iso.datetime().nullish(),
+  disabled_by_subject_id: z.string().nullish(),
+  enabled: z.boolean().optional().default(true),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  latest_task: zKnowledgeFsBackgroundTaskResponse.nullish(),
+  provider_item_id: z.string().nullish(),
+  row_version: z.int().gte(0),
+  source_id: z.string().nullish(),
+  status: z.enum(['deleting', 'failed', 'pending', 'ready']),
+  title: z.string(),
+  updated_at: z.iso.datetime(),
+  user_metadata: z.record(z.string(), z.unknown()),
 })
 
 /**

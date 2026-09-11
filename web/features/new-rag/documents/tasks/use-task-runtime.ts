@@ -70,10 +70,11 @@ export function useTaskRuntimeController({
   const listSnapshot = useMemo(
     () => ({
       data: tasksQuery.data,
+      tasks: baseTasks,
       dataUpdateCount: taskDataUpdateCount,
       dataUpdatedAt: tasksQuery.dataUpdatedAt,
     }),
-    [taskDataUpdateCount, tasksQuery.data, tasksQuery.dataUpdatedAt],
+    [baseTasks, taskDataUpdateCount, tasksQuery.data, tasksQuery.dataUpdatedAt],
   )
   const taskPermissionDenied = useAtomValue(taskPermissionDeniedAtom)
   const permissionDenied = externalPermissionDenied || taskPermissionDenied
@@ -87,6 +88,7 @@ export function useTaskRuntimeController({
   const taskListSnapshotRef = useRef<typeof listSnapshot | null>(null)
   useLayoutEffect(() => {
     if (
+      taskListSnapshotRef.current?.tasks === baseTasks &&
       taskListSnapshotRef.current?.dataUpdateCount === listSnapshot.dataUpdateCount &&
       taskListSnapshotRef.current.dataUpdatedAt === listSnapshot.dataUpdatedAt &&
       taskListSnapshotRef.current.data === listSnapshot.data

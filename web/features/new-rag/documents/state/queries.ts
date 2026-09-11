@@ -2,6 +2,7 @@ import { atom } from 'jotai'
 import { atomWithInfiniteQuery } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
 import { sourceFromApi } from '../../sources/source-models'
+import { taskVersionIsAfter } from '../model'
 import {
   backgroundTaskListFromApi,
   documentTaskListFromApi,
@@ -128,10 +129,23 @@ export const tasksQueryAtom = atomWithInfiniteQuery((get) =>
 
 const tasksQueryDataAtom = selectAtom(tasksQueryAtom, (query) => query.data)
 
-export const baseTasksAtom = atom(
-  (get) =>
-    get(tasksQueryDataAtom)?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? [],
+const documentTasksAtom = atom((get) =>
+  get(documentsAtom).flatMap((document) => (document.latestTask ? [document.latestTask] : [])),
 )
+
+export const baseTasksAtom = atom((get) => {
+  const history =
+    get(tasksQueryDataAtom)?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? []
+  // Rows, observers, and the drawer share the newest known version of each task.
+  // The document snapshot still determines which task ID belongs to its row.
+  const tasks = new Map(history.map((task) => [task.id, task]))
+  for (const task of get(documentTasksAtom)) {
+    const historical = tasks.get(task.id)
+    if (!historical || !taskVersionIsAfter(historical.updatedAt, task.updatedAt))
+      tasks.set(task.id, task)
+  }
+  return [...tasks.values()]
+})
 
 export const backgroundTasksAtom = atom(
   (get) =>

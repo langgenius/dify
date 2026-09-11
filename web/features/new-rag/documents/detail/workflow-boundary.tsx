@@ -11,13 +11,8 @@ import {
   documentSubmissionPendingAtom,
   documentSubmittedJobMissingAtom,
   documentSubmittedJobTerminalAtom,
-  documentTaskIsLookingUpAtom,
-  documentTasksQueryErrorAtom,
-  documentTasksQueryIsFetchingNextPageAtom,
-  documentTasksQueryIsPendingAtom,
   documentWorkflowInitializedAtom,
   initializeDocumentWorkflowAtom,
-  loadNextDocumentTaskPageAtom,
   persistDocumentWorkflowAtom,
   reconcileDocumentTaskAtom,
   reconcileSubmittedDocumentJobAtom,
@@ -35,12 +30,7 @@ export function DocumentWorkflowBoundary({ children }: { children: ReactNode }) 
   const submissionPending = useAtomValueRawSync(documentSubmissionPendingAtom)
   const submittedJobTerminal = useAtomValueRawSync(documentSubmittedJobTerminalAtom)
   const submittedJobMissing = useAtomValueRawSync(documentSubmittedJobMissingAtom)
-  const taskError = useAtomValueRawSync(documentTasksQueryErrorAtom)
-  const taskIsLookingUp = useAtomValueRawSync(documentTaskIsLookingUpAtom)
-  const taskIsFetchingNextPage = useAtomValueRawSync(documentTasksQueryIsFetchingNextPageAtom)
-  const taskIsPending = useAtomValueRawSync(documentTasksQueryIsPendingAtom)
   const initializeWorkflow = useSetAtom(initializeDocumentWorkflowAtom)
-  const loadNextTaskPage = useSetAtom(loadNextDocumentTaskPageAtom)
   const persistWorkflow = useSetAtom(persistDocumentWorkflowAtom)
   const reconcileTask = useSetAtom(reconcileDocumentTaskAtom)
   const reconcileSubmittedJob = useSetAtom(reconcileSubmittedDocumentJobAtom)
@@ -60,19 +50,6 @@ export function DocumentWorkflowBoundary({ children }: { children: ReactNode }) 
   useEffect(() => {
     if (initialized && (submittedJobTerminal || submittedJobMissing)) void reconcileSubmittedJob()
   }, [initialized, reconcileSubmittedJob, submittedJobMissing, submittedJobTerminal])
-
-  useEffect(() => {
-    if (!initialized || taskIsPending || taskIsFetchingNextPage || taskError || !taskIsLookingUp)
-      return
-    void loadNextTaskPage()
-  }, [
-    initialized,
-    loadNextTaskPage,
-    taskError,
-    taskIsFetchingNextPage,
-    taskIsLookingUp,
-    taskIsPending,
-  ])
 
   return children
 }
