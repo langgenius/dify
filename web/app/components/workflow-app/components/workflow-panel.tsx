@@ -1,17 +1,15 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import {
   isChatflowAtom,
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
-import { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
 import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
 import {
   difyBuilderAvailableAtom,
@@ -68,8 +66,6 @@ const WorkflowPanelOnRight = () => {
   const difyBuilderAvailable = useAtomValue(difyBuilderAvailableAtom)
   const canStartFix = useAtomValue(difyBuilderCanStartFixAtom)
   const startRunFix = useSetAtom(difyBuilderStartRunFixAtom)
-  const workflowStore = useWorkflowStore()
-  const { handleLoadBackupDraft } = useWorkflowRun()
   const isChatflow = useAtomValue(isChatflowAtom)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
@@ -79,23 +75,21 @@ const WorkflowPanelOnRight = () => {
 
   return (
     <>
-      {historyWorkflowData && !isChatflow && (
-        <Record
+      {historyWorkflowData && !isChatflow && <Record />}
+      {historyWorkflowData && isChatflow && <ChatRecord />}
+      {showDebugAndPreviewPanel && isChatflow && <DebugAndPreview />}
+      {showDebugAndPreviewPanel && !isChatflow && (
+        <WorkflowPreview
           fixWithBuilderDisabled={!canStartFix}
           onFixRun={
-            difyBuilderAvailable
+            difyBuilderAvailable && !historyWorkflowData
               ? (runId: string) => {
-                  handleLoadBackupDraft()
-                  workflowStore.setState({ historyWorkflowData: undefined })
                   void startRunFix(runId)
                 }
               : undefined
           }
         />
       )}
-      {historyWorkflowData && isChatflow && <ChatRecord />}
-      {showDebugAndPreviewPanel && isChatflow && <DebugAndPreview />}
-      {showDebugAndPreviewPanel && !isChatflow && <WorkflowPreview />}
       {showChatVariablePanel && isChatflow && <ChatVariablePanel />}
       {showGlobalVariablePanel && <GlobalVariablePanel />}
       {controlMode === 'comment' && <CommentsPanel />}

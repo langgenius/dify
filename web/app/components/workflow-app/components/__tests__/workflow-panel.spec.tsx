@@ -210,12 +210,12 @@ beforeEach(() => {
     versions = []
   })
 
-  it('should hide run Fix when Builder is disabled and start it when enabled', async () => {
+  it('should hide live run Fix when Builder is disabled and start it when enabled', async () => {
     const user = userEvent.setup()
-    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+    workflowStoreState.showDebugAndPreviewPanel = true
 
     const { unmount } = renderWorkflowPanel({ enabled: false })
-    await screen.findByTestId('record-panel')
+    await screen.findByTestId('workflow-preview-panel')
     expect(
       screen.queryByRole('button', { name: 'Fix failed run with App Builder' }),
     ).not.toBeInTheDocument()
@@ -230,7 +230,7 @@ beforeEach(() => {
   })
 
   it('should keep run Fix disabled without edit access or while the Builder session is busy', async () => {
-    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+    workflowStoreState.showDebugAndPreviewPanel = true
 
     const { unmount } = renderWorkflowPanel({ canEdit: false, enabled: true })
     expect(
@@ -244,22 +244,17 @@ beforeEach(() => {
     ).toBeDisabled()
   })
 
-  it('restores the editing draft and exits history before syncing and starting Fix', async () => {
-    const user = userEvent.setup()
+  it('should hide run Fix while viewing history even when the live preview is open', async () => {
     workflowStoreState.historyWorkflowData = { id: 'history-1' }
-    const preparation: string[] = []
-    mockLoadBackupDraft.mockImplementationOnce(() => preparation.push('restore'))
-    mockSyncDraft.mockImplementationOnce(async () => {
-      if (workflowStoreState.historyWorkflowData) throw new Error('Workflow draft sync failed.')
-      preparation.push('sync')
-    })
+    workflowStoreState.showDebugAndPreviewPanel = true
     renderWorkflowPanel({ enabled: true })
 
-    await user.click(await screen.findByRole('button', { name: 'Fix failed run with App Builder' }))
-
-    expect(preparation).toEqual(['restore', 'sync'])
-    expect(workflowStoreState.historyWorkflowData).toBeUndefined()
-    expect(mockStartFix).toHaveBeenCalledExactlyOnceWith('app-123', 'failed-run-1', undefined)
+    await screen.findByTestId('record-panel')
+    await screen.findByTestId('workflow-preview-panel')
+    expect(
+      screen.queryByRole('button', { name: 'Fix failed run with App Builder' }),
+    ).not.toBeInTheDocument()
+    expect(mockStartFix).not.toHaveBeenCalled()
   })
 })
 afterEach(() => {
