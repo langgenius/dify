@@ -118,8 +118,11 @@ function AllStartBlocks({
   const { data: marketplacePluginsData, isFetching: isMarketplaceFetching } =
     useMarketplacePlugins(marketplaceSearchParams)
   const marketplacePlugins = useMemo(
-    () => marketplacePluginsData?.pages.flatMap((page) => page.plugins) ?? [],
-    [marketplacePluginsData?.pages],
+    () =>
+      marketplacePluginsData?.pages.flatMap((page) =>
+        page.plugins.filter((plugin) => !providerMap.has(plugin.plugin_id)),
+      ) ?? [],
+    [marketplacePluginsData?.pages, providerMap],
   )
 
   const shouldShowFeatured = enableTriggerPlugin && enable_marketplace && !hasFilter
