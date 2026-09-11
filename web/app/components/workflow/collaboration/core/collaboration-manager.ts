@@ -576,7 +576,7 @@ export class CollaborationManager {
     this.undoManager = new UndoManager(this.doc, {
       maxUndoSteps: 100,
       mergeInterval: 500,
-      excludeOriginPrefixes: [],
+      excludeOriginPrefixes: ['server-draft'],
       onPush: (_isUndo, _range, _event) => {
         const selectedNode = this.reactFlowStore
           ?.getState()
@@ -878,6 +878,18 @@ export class CollaborationManager {
       request.generation === this.crdtGeneration &&
       request.token === this.graphReloadToken
     )
+  }
+
+  replaceGraphFromServer(graph: { nodes: Node[]; edges: Edge[] }): boolean {
+    if (!this.currentAppId || this.canUseLocalDraftFallback()) return true
+    if (!this.doc || !this.canApplyLocalGraphMutation()) return false
+
+    // Commit the server baseline to CRDT too, so pending imports and visibility
+    // restores cannot put the previous graph back into ReactFlow.
+    this.syncNodes(this.getNodes(), graph.nodes)
+    this.syncEdges(this.getEdges(), graph.edges)
+    this.doc.commit({ origin: 'server-draft' })
+    return true
   }
 
   replaceGraphFromReactFlow(request: GraphReloadRequest): boolean {

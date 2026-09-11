@@ -43,7 +43,6 @@ import ReactFlow, {
   useEdgesState,
   useNodes,
   useNodesState,
-  useOnViewportChange,
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
@@ -127,6 +126,8 @@ type WorkflowDataUpdatePayload = {
   features?: unknown
   conversation_variables?: ConversationVariable[]
   environment_variables?: EnvironmentVariable[]
+  syncToCollaboration?: boolean
+  onApplied?: () => void
 }
 
 export type WorkflowProps = {
@@ -351,9 +352,12 @@ export const Workflow: FC<WorkflowProps> = memo(
     eventEmitter?.useSubscription((v: EventEmitterValue) => {
       if (typeof v === 'object' && v.type === WORKFLOW_DATA_UPDATE) {
         const payload = v.payload as WorkflowDataUpdatePayload
+        if (payload.syncToCollaboration && !collaborationManager.replaceGraphFromServer(payload))
+          return
         setNodes(payload.nodes)
         store.getState().setNodes(payload.nodes)
         setEdges(payload.edges)
+        store.getState().setEdges(payload.edges)
         workflowStore.setState({ contextMenuTarget: undefined })
 
         if (payload.viewport) reactflow.setViewport(payload.viewport)
@@ -361,6 +365,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         if (payload.hash) setSyncWorkflowDraftHash(payload.hash)
 
         onWorkflowDataUpdate?.(payload)
+        payload.onApplied?.()
 
         setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
       }
@@ -580,12 +585,6 @@ export const Workflow: FC<WorkflowProps> = memo(
     const { handlePaneContextMenu } = usePanelInteractions()
     const { isValidConnection } = useWorkflow()
 
-    useOnViewportChange({
-      onEnd: () => {
-        handleSyncWorkflowDraft()
-      },
-    })
-
     useWorkflowHotkeys()
     // Initialize workflow node search functionality
     useWorkflowSearch()
@@ -771,6 +770,10 @@ export const Workflow: FC<WorkflowProps> = memo(
             nodes={nodes}
             edges={edges}
             onKeyDownCapture={handleNodeKeyDown}
+            onMoveEnd={(event) => {
+              // Loading a draft or focusing a Builder node is not a user edit.
+              if (event) handleSyncWorkflowDraft()
+            }}
             className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
             onNodeDragStart={handleNodeDragStart}
             onNodeDrag={handleNodeDrag}

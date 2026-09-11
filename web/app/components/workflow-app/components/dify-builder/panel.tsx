@@ -18,6 +18,7 @@ import {
 import {
   difyBuilderActionsAtom,
   difyBuilderActiveInteractionAtom,
+  difyBuilderCanvasReadyAtom,
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderErrorAtom,
@@ -122,6 +123,7 @@ const DifyBuilderPanel = () => {
   const hasSession = useAtomValue(difyBuilderHasSessionAtom)
   const interaction = useAtomValue(difyBuilderInteractionAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
+  const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
   const interrupted = useAtomValue(difyBuilderInterruptedAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
   const recovery = useAtomValue(difyBuilderRecoveryAtom)
@@ -220,7 +222,13 @@ const DifyBuilderPanel = () => {
 
   const handleAction = useCallback(
     async (action: Action) => {
-      if (interactionBusy || pendingActionId !== null || actionValidity[action.id] === false) return
+      if (
+        interactionBusy ||
+        !canvasReady ||
+        pendingActionId !== null ||
+        actionValidity[action.id] === false
+      )
+        return
 
       setPendingActionId(action.id)
       try {
@@ -246,6 +254,7 @@ const DifyBuilderPanel = () => {
       actionValidity,
       activeInteraction,
       activeInteractionKey,
+      canvasReady,
       interactionBusy,
       pendingActionId,
       submitAction,
@@ -260,7 +269,7 @@ const DifyBuilderPanel = () => {
 
   const handleRetryMessage = useCallback(
     async (turnId: string) => {
-      if (interactionBusy || retryingTurnId !== null) return
+      if (interactionBusy || !canvasReady || retryingTurnId !== null) return
       setRetryingTurnId(turnId)
       try {
         await retryMessage(turnId)
@@ -268,7 +277,7 @@ const DifyBuilderPanel = () => {
         setRetryingTurnId((current) => (current === turnId ? null : current))
       }
     },
-    [interactionBusy, retryMessage, retryingTurnId],
+    [canvasReady, interactionBusy, retryMessage, retryingTurnId],
   )
 
   const handleReset = () => {
@@ -343,7 +352,7 @@ const DifyBuilderPanel = () => {
                 activeInteraction={interaction}
                 viewVersion={viewVersion}
                 items={conversation}
-                busy={interactionBusy}
+                busy={interactionBusy || !canvasReady}
                 interrupted={interrupted}
                 activeFormId={activeFormId}
                 onActionPayloadChange={handleActionPayloadChange}
@@ -357,7 +366,7 @@ const DifyBuilderPanel = () => {
               <DifyBuilderActionBar
                 actionValidity={actionValidity}
                 actions={actions}
-                busy={interactionBusy}
+                busy={interactionBusy || !canvasReady}
                 formActionId={activeFormActionId}
                 formId={activeFormId}
                 pendingActionId={pendingActionId}

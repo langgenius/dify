@@ -25,6 +25,7 @@ const mockReplaceGraphFromReactFlow = vi.hoisted(() => vi.fn())
 const mockCanPersistLocalGraph = vi.hoisted(() => vi.fn())
 const mockIsGraphReloadCurrent = vi.hoisted(() => vi.fn())
 const mockRetryGraphReload = vi.hoisted(() => vi.fn())
+const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
 const mockUseCollaboration = vi.hoisted(() => vi.fn())
 const mockFitView = vi.hoisted(() => vi.fn())
 const mockSetCanvasReadOnly = vi.hoisted(() => vi.fn())
@@ -32,7 +33,7 @@ const mockSetShowDifyBuilderPanel = vi.hoisted(() => vi.fn())
 const mockDifyBuilderProvider = vi.hoisted(() => ({
   callbacks: null as null | {
     onFocusCanvas: () => void
-    onRefreshCanvas: () => Promise<boolean>
+    onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
   },
   identity: null as null | { appId?: string; tenantId?: string; userId?: string },
 }))
@@ -169,7 +170,7 @@ vi.mock('../dify-builder/provider', () => ({
     appId?: string
     children: ReactNode
     onFocusCanvas: () => void
-    onRefreshCanvas: () => Promise<boolean>
+    onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
     tenantId?: string
     userId?: string
   }) => {
@@ -230,6 +231,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     canPersistLocalGraph: mockCanPersistLocalGraph,
     isGraphReloadCurrent: mockIsGraphReloadCurrent,
     retryGraphReload: mockRetryGraphReload,
+    emitWorkflowUpdate: mockEmitWorkflowUpdate,
     getIsLeader: mockGetIsLeader,
   },
 }))
@@ -602,7 +604,8 @@ describe('WorkflowMain', () => {
     const callbacks = mockDifyBuilderProvider.callbacks
     if (!callbacks) throw new Error('Dify Builder provider callbacks were not registered')
 
-    await expect(callbacks.onRefreshCanvas()).resolves.toBe(false)
+    await expect(callbacks.onRefreshCanvas(() => true)).resolves.toBe(false)
+    expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
   })
 
   it('focuses the Builder canvas without animation when reduced motion is preferred', () => {
@@ -726,10 +729,8 @@ describe('WorkflowMain', () => {
     await waitFor(() => {
       expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
       expect(mockSetFeatures).toHaveBeenCalled()
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'n-1' }],
-        edges: [{ id: 'e-1' }],
-        viewport: { x: 3, y: 4, zoom: 1.2 },
+      expect(hookFns.handleRefreshWorkflowDraft).toHaveBeenCalledWith(false, {
+        shouldApply: expect.any(Function),
       })
     })
   })
@@ -1010,6 +1011,7 @@ describe('WorkflowMain', () => {
 
     expect(hookFns.handleRefreshWorkflowDraft).toHaveBeenCalledWith(false, {
       shouldApply: expect.any(Function),
+      syncToCollaboration: false,
     })
     expect(mockReplaceGraphFromReactFlow).toHaveBeenCalledWith(request)
   })
@@ -1049,29 +1051,34 @@ describe('WorkflowMain', () => {
     }
   })
 
-  it('restores a local start placeholder for empty collaboration workflow updates', async () => {
+  it('stops applying collaboration workflow updates after the editor unmounts', async () => {
     collaborationRuntime.isEnabled = true
-    mockFetchWorkflowDraft.mockResolvedValue({
-      features: {},
-      conversation_variables: [],
-      environment_variables: [],
-      graph: {
-        nodes: [],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      },
-    })
 
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+    const { unmount } = render(
+      <WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />,
+    )
 
     await collaborationListeners.workflowUpdate?.()
+    const shouldApply = hookFns.handleRefreshWorkflowDraft.mock.calls[0]![1].shouldApply
+    expect(shouldApply()).toBe(true)
+    unmount()
+    expect(shouldApply()).toBe(false)
+    expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
+  })
 
-    await waitFor(() => {
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      })
-    })
+  it('notifies collaborators only after the generated graph is applied', async () => {
+    collaborationRuntime.isEnabled = true
+    let resolveRefresh!: (value: boolean) => void
+    hookFns.handleRefreshWorkflowDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRefresh = resolve
+      }),
+    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+    const refresh = mockDifyBuilderProvider.callbacks!.onRefreshCanvas(() => true)
+    expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
+    resolveRefresh(true)
+    expect(await refresh).toBe(true)
+    expect(mockEmitWorkflowUpdate).toHaveBeenCalledExactlyOnceWith('app-1')
   })
 })

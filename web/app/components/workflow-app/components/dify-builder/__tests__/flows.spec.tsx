@@ -3,7 +3,10 @@ import type { ConversationItem, SessionView } from '../types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useSetAtom } from 'jotai'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import DifyBuilderPanel from '../panel'
 import { DifyBuilderProvider } from '../provider'
 import { difyBuilderStartRunFixAtom } from '../store'
@@ -18,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   stream: vi.fn(),
   refreshCanvas: vi.fn(async () => true),
   setCanvasReadOnly: vi.fn(),
+  invalidateWorkflowDraftSync: vi.fn(),
   setShowPanel: vi.fn(),
   syncDraft: vi.fn(async () => undefined),
 }))
@@ -56,11 +60,13 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(
     selector: (state: {
       setCanvasReadOnly: typeof mocks.setCanvasReadOnly
+      invalidateWorkflowDraftSync: typeof mocks.invalidateWorkflowDraftSync
       setShowDifyBuilderPanel: typeof mocks.setShowPanel
     }) => T,
   ) =>
     selector({
       setCanvasReadOnly: mocks.setCanvasReadOnly,
+      invalidateWorkflowDraftSync: mocks.invalidateWorkflowDraftSync,
       setShowDifyBuilderPanel: mocks.setShowPanel,
     }),
 }))
@@ -150,8 +156,50 @@ const FixEntry = () => {
   )
 }
 
-const renderFlow = (edgeCount = 0) =>
-  renderWithConsoleQuery(
+const builderModel = { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} }
+const renderFlow = (edgeCount = 0) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
+    data: {
+      model: 'gpt-4o',
+      model_type: 'llm',
+      provider: {
+        provider: 'openai',
+        label: { en_US: 'OpenAI' },
+        supported_model_types: ['llm'],
+        tenant_id: 'workspace-1',
+      },
+    },
+  })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: { params: { model_type: 'llm' } },
+    }),
+    {
+      data: [
+        {
+          provider: 'openai',
+          label: { en_US: 'OpenAI' },
+          status: 'active',
+          tenant_id: 'workspace-1',
+          models: [
+            {
+              model: 'gpt-4o',
+              label: { en_US: 'gpt-4o' },
+              model_type: 'llm',
+              status: 'active',
+              model_properties: { mode: 'chat' },
+              fetch_from: 'predefined-model',
+              deprecated: false,
+              has_invalid_load_balancing_configs: false,
+              load_balancing_enabled: false,
+            },
+          ],
+        },
+      ],
+    },
+  )
+  return renderWithConsoleQuery(
     <DifyBuilderProvider
       appId="app-1"
       canEdit
@@ -165,8 +213,9 @@ const renderFlow = (edgeCount = 0) =>
       <FixEntry />
       <DifyBuilderPanel />
     </DifyBuilderProvider>,
-    { features: { dify_builder_enabled: true } },
+    { features: { dify_builder_enabled: true }, queryClient },
   )
+}
 
 const getComposer = () =>
   screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' })
@@ -522,6 +571,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         body: {
           app_id: 'app-1',
           goal_text: 'Build a support workflow',
+          model_config: builderModel,
           scenario: 'build',
         },
       },
@@ -583,6 +633,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       body: {
         app_id: 'app-1',
         goal_text: 'Add an approval step',
+        model_config: builderModel,
         scenario: 'edit',
       },
     })

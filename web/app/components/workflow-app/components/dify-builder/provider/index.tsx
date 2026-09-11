@@ -23,7 +23,7 @@ type DifyBuilderProviderProps = {
   children: ReactNode
   getCanvasSnapshot: () => { nodes: DifyBuilderCanvasNode[]; edgeCount: number }
   onFocusCanvas: () => void
-  onRefreshCanvas: () => Promise<boolean>
+  onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
   onSyncDraft: () => Promise<unknown>
   tenantId?: string
   userId?: string

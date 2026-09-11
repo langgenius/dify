@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -7,18 +7,21 @@ import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-c
 
 type RefreshWorkflowDraftOptions = {
   shouldApply?: () => boolean
+  syncToCollaboration?: boolean
 }
 
 export const useWorkflowRefreshDraft = () => {
   const appDetail = useAppStore((s) => s.appDetail)
   const workflowStore = useWorkflowStore()
-  const refreshSequenceRef = useRef(0)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
 
   const handleRefreshWorkflowDraft = useCallback(
     (notUpdateCanvas?: boolean, options?: RefreshWorkflowDraftOptions) => {
       if (options?.shouldApply && !options.shouldApply()) return Promise.resolve(false)
+      // A visibility-triggered metadata refresh must not cancel a full graph reload.
+      if (notUpdateCanvas && workflowStore.getState().isSyncingWorkflowDraft)
+        return Promise.resolve(false)
 
       const {
         appId,
@@ -28,24 +31,35 @@ export const useWorkflowRefreshDraft = () => {
         setEnvSecrets,
         setConversationVariables,
         setIsWorkflowDataLoaded,
-        isWorkflowDataLoaded,
-        debouncedSyncWorkflowDraft,
+        invalidateWorkflowDraftSync,
       } = workflowStore.getState()
 
-      debouncedSyncWorkflowDraft?.cancel?.()
-
-      const wasLoaded = isWorkflowDataLoaded
-      if (wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(false)
-      const refreshSequence = ++refreshSequenceRef.current
+      const generation = invalidateWorkflowDraftSync()
+      const isCurrent = () => {
+        const state = workflowStore.getState()
+        return (
+          state.appId === appId &&
+          state.workflowDraftGeneration === generation &&
+          (options?.shouldApply?.() ?? true)
+        )
+      }
       setIsSyncingWorkflowDraft(true)
       return fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
         .then((response) => {
-          if (options?.shouldApply && !options.shouldApply()) return false
+          if (!isCurrent()) return false
 
-          // Ensure we have a valid workflow structure with viewport
-          if (!notUpdateCanvas)
-            handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
-          setSyncWorkflowDraftHash(response.hash)
+          if (!notUpdateCanvas) {
+            const applied = handleUpdateWorkflowCanvas(
+              getWorkflowDraftGraphForCanvas(response.graph),
+              {
+                syncToCollaboration: options?.syncToCollaboration ?? true,
+                features: response.features,
+              },
+            )
+            if (!applied) return false
+            // The hash is a baseline for this graph, never for a metadata-only refresh.
+            setSyncWorkflowDraftHash(response.hash)
+          }
           setEnvSecrets(
             (response.environment_variables || [])
               .filter((env) => env.value_type === 'secret')
@@ -63,15 +77,13 @@ export const useWorkflowRefreshDraft = () => {
             ) || [],
           )
           setConversationVariables(response.conversation_variables || [])
-          setIsWorkflowDataLoaded(true)
+          if (!notUpdateCanvas) setIsWorkflowDataLoaded(true)
           return true
         })
-        .catch(() => {
-          if (wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(true)
-          return false
-        })
+        .catch(() => false)
         .finally(() => {
-          if (refreshSequence === refreshSequenceRef.current) setIsSyncingWorkflowDraft(false)
+          if (workflowStore.getState().workflowDraftGeneration === generation)
+            setIsSyncingWorkflowDraft(false)
         })
     },
     [getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],

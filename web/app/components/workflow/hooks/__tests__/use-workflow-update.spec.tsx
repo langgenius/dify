@@ -3,7 +3,6 @@ import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { useWorkflowUpdate } from '../use-workflow-update'
 
-const mockSetViewport = vi.hoisted(() => vi.fn())
 const mockEventEmit = vi.hoisted(() => vi.fn())
 const mockInitialNodes = vi.hoisted(() => vi.fn((nodes: unknown[], _edges: unknown[]) => nodes))
 const mockInitialEdges = vi.hoisted(() => vi.fn((edges: unknown[], _nodes: unknown[]) => edges))
@@ -15,9 +14,6 @@ vi.mock('reactflow', () => ({
     Top: 'top',
     Bottom: 'bottom',
   },
-  useReactFlow: () => ({
-    setViewport: mockSetViewport,
-  }),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -39,7 +35,7 @@ describe('useWorkflowUpdate', () => {
     vi.clearAllMocks()
   })
 
-  it('emits initialized data and only sets a valid viewport', () => {
+  it('includes initialized data and a valid viewport in the same canvas update', () => {
     const { result } = renderWorkflowHook(() => useWorkflowUpdate())
 
     act(() => {
@@ -62,7 +58,27 @@ describe('useWorkflowUpdate', () => {
         type: 'WORKFLOW_DATA_UPDATE',
       }),
     )
-    expect(mockSetViewport).toHaveBeenCalledTimes(1)
-    expect(mockSetViewport).toHaveBeenCalledWith({ x: 10, y: 20, zoom: 0.5 })
+    expect(mockEventEmit).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        payload: expect.objectContaining({ viewport: { x: 10, y: 20, zoom: 0.5 } }),
+      }),
+    )
+    expect(mockEventEmit).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        payload: expect.objectContaining({ viewport: undefined }),
+      }),
+    )
+  })
+
+  it('reports success only when the canvas acknowledges the update', () => {
+    const { result } = renderWorkflowHook(() => useWorkflowUpdate())
+    const graph = { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }
+    expect(result.current.handleUpdateWorkflowCanvas(graph)).toBe(false)
+    mockEventEmit.mockImplementationOnce((event: { payload: { onApplied: () => void } }) => {
+      event.payload.onApplied()
+    })
+    expect(result.current.handleUpdateWorkflowCanvas(graph)).toBe(true)
   })
 })

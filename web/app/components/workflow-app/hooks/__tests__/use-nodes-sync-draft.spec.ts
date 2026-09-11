@@ -28,6 +28,8 @@ let reactFlowState: {
 let workflowStoreState: {
   appId: string
   isWorkflowDataLoaded: boolean
+  isSyncingWorkflowDraft: boolean
+  workflowDraftGeneration: number
   syncWorkflowDraftHash: string | null
   conversationVariables: Array<Record<string, unknown>>
   setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
@@ -117,6 +119,8 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     workflowStoreState = {
       appId: 'app-1',
       isWorkflowDataLoaded: true,
+      isSyncingWorkflowDraft: false,
+      workflowDraftGeneration: 0,
       syncWorkflowDraftHash: 'hash-123',
       conversationVariables: [],
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
@@ -302,6 +306,85 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
         }),
       }),
     )
+  })
+
+  it('drops a queued old graph when a server refresh changes the draft generation', async () => {
+    const { result } = renderUseNodesSyncDraft()
+    const pending = result.current.doSyncWorkflowDraft()
+    workflowStoreState.workflowDraftGeneration += 1
+    workflowStoreState.syncWorkflowDraftHash = 'generated-hash'
+    mockGetNodes.mockReturnValue([{ id: 'generated', data: { type: BlockEnum.End } }])
+
+    expect(await pending).toBeNull()
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+  })
+
+  it('never borrows an externally updated hash for a queued graph', async () => {
+    const { result } = renderUseNodesSyncDraft()
+    const pending = result.current.doSyncWorkflowDraft()
+    workflowStoreState.syncWorkflowDraftHash = 'external-hash'
+
+    expect(await pending).toBeNull()
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('advances the hash between its own successful serial saves', async () => {
+    mockSetSyncWorkflowDraftHash.mockImplementation((hash: string) => {
+      workflowStoreState.syncWorkflowDraftHash = hash
+    })
+    mockSyncWorkflowDraft
+      .mockResolvedValueOnce({ hash: 'saved-1', updated_at: 1 })
+      .mockResolvedValueOnce({ hash: 'saved-2', updated_at: 2 })
+    const { result } = renderUseNodesSyncDraft()
+    const first = result.current.doSyncWorkflowDraft()
+    mockGetNodes.mockReturnValue([{ id: 'next-edit', data: { type: BlockEnum.End } }])
+    const second = result.current.doSyncWorkflowDraft()
+    await first
+    await second
+
+    expect(mockSyncWorkflowDraft).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        params: expect.objectContaining({
+          hash: 'saved-1',
+          graph: expect.objectContaining({
+            nodes: [expect.objectContaining({ id: 'next-edit' })],
+          }),
+        }),
+      }),
+    )
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('saved-2')
+  })
+
+  it('ignores a save response that arrives after a newer draft was loaded', async () => {
+    let resolveResponse!: (value: { hash: string; updated_at: number }) => void
+    mockSyncWorkflowDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveResponse = resolve
+      }),
+    )
+    const onSuccess = vi.fn()
+    const { result } = renderUseNodesSyncDraft()
+    const pending = result.current.doSyncWorkflowDraft(false, { onSuccess })
+    await vi.waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+    workflowStoreState.workflowDraftGeneration += 1
+    workflowStoreState.syncWorkflowDraftHash = 'generated-hash'
+    resolveResponse({ hash: 'outdated-save', updated_at: 1 })
+
+    expect(await pending).toBeNull()
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('generated-hash')
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+    expect(onSuccess).not.toHaveBeenCalled()
+  })
+
+  it('blocks normal and keepalive saves while a draft is being applied', async () => {
+    workflowStoreState.isSyncingWorkflowDraft = true
+    const { result } = renderUseNodesSyncDraft()
+    expect(await result.current.doSyncWorkflowDraft()).toBeNull()
+    result.current.syncWorkflowDraftWhenPageClose()
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
   })
 
   it('should strip temp entities and private data, use the latest hash, and invoke success callbacks', async () => {

@@ -6,7 +6,7 @@ import type {
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -28,14 +28,18 @@ import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
 
-const shouldSkipDraftSync = (appId: string | undefined, isWorkflowDataLoaded: boolean) =>
-  !appId || !isWorkflowDataLoaded || isAppDeletingOrDeleted(appId)
+const shouldSkipDraftSync = (
+  appId: string | undefined,
+  isWorkflowDataLoaded: boolean,
+  isSyncingWorkflowDraft: boolean,
+) => !appId || !isWorkflowDataLoaded || isSyncingWorkflowDraft || isAppDeletingOrDeleted(appId)
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const lastLocalSaveRef = useRef<{ appId: string; generation: number; hash: string } | null>(null)
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_collaboration_mode,
@@ -63,10 +67,17 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         .map((node) => node.id),
     )
     const [x, y, zoom] = transform
-    const { appId, conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
-      workflowStore.getState()
+    const {
+      appId,
+      conversationVariables,
+      syncWorkflowDraftHash,
+      isWorkflowDataLoaded,
+      isSyncingWorkflowDraft,
+      workflowDraftGeneration,
+    } = workflowStore.getState()
 
-    if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
+    if (!appId || shouldSkipDraftSync(appId, isWorkflowDataLoaded, isSyncingWorkflowDraft))
+      return null
 
     const features = featuresStore!.getState().features
     const producedNodes = produce(nodes, (draft) => {
@@ -105,6 +116,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     }
 
     return {
+      appId,
+      generation: workflowDraftGeneration,
       url: `/apps/${appId}/workflows/draft`,
       params: {
         graph: {
@@ -146,8 +159,19 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
-      const { appId, isWorkflowDataLoaded } = workflowStore.getState()
-      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
+      const isCurrent = () => {
+        const state = workflowStore.getState()
+        return (
+          state.appId === baseParams.appId &&
+          state.workflowDraftGeneration === baseParams.generation &&
+          !shouldSkipDraftSync(
+            state.appId,
+            state.isWorkflowDataLoaded,
+            state.isSyncingWorkflowDraft,
+          )
+        )
+      }
+      if (!isCurrent()) {
         callback?.onSettled?.()
         return null
       }
@@ -160,13 +184,22 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
 
       try {
-        const latestHash = workflowStore.getState().syncWorkflowDraftHash
+        const currentHash = workflowStore.getState().syncWorkflowDraftHash
+        const lastSave = lastLocalSaveRef.current
+        // Only a successful save from this queue may advance a captured graph's
+        // hash. A server refresh must never lend its hash to an older graph.
+        const canUseLastSave =
+          lastSave !== null &&
+          lastSave.appId === baseParams.appId &&
+          lastSave.generation === baseParams.generation &&
+          lastSave.hash === currentHash
+        if (currentHash !== baseParams.params.hash && !canUseLastSave) return null
 
         const postParams = {
-          ...baseParams,
+          url: baseParams.url,
           params: {
             ...baseParams.params,
-            hash: latestHash || null,
+            hash: (canUseLastSave ? lastSave.hash : baseParams.params.hash) || null,
             ...(options?.environmentVariablePatch
               ? {
                   environment_variable_patch: {
@@ -180,13 +213,19 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         }
 
         const res = await syncWorkflowDraft(postParams)
+        if (!isCurrent() || workflowStore.getState().syncWorkflowDraftHash !== currentHash)
+          return null
+        lastLocalSaveRef.current = {
+          appId: baseParams.appId,
+          generation: baseParams.generation,
+          hash: res.hash,
+        }
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
         return { hash: res.hash, updatedAt: res.updated_at }
       } catch (error: unknown) {
-        const { appId, isWorkflowDataLoaded } = workflowStore.getState()
-        if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
+        if (!isCurrent()) return null
 
         const responseError = error as {
           bodyUsed?: boolean
@@ -195,7 +234,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         if (responseError.json && !responseError.bodyUsed) {
           try {
             const err = await responseError.json()
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            if (isCurrent() && err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
               handleRefreshWorkflowDraft(true)
           } catch {
             // Non-JSON upstream errors should not surface as unhandled promise rejections.
@@ -218,8 +257,9 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
-      const { appId, isWorkflowDataLoaded } = workflowStore.getState()
-      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
+      const { appId, isWorkflowDataLoaded, isSyncingWorkflowDraft, workflowDraftGeneration } =
+        workflowStore.getState()
+      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded, isSyncingWorkflowDraft)) {
         callback?.onSettled?.()
         return null
       }
@@ -243,14 +283,28 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
       try {
         const result = await collaborationManager.requestWorkflowSync()
+        if (
+          workflowStore.getState().appId !== appId ||
+          workflowStore.getState().workflowDraftGeneration !== workflowDraftGeneration
+        )
+          return null
         const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
         setSyncWorkflowDraftHash(result.hash)
         setDraftUpdatedAt(result.updatedAt)
         callback?.onSuccess?.()
         return result
       } catch {
-        const { appId, isWorkflowDataLoaded } = workflowStore.getState()
-        if (!shouldSkipDraftSync(appId, isWorkflowDataLoaded)) callback?.onError?.()
+        const state = workflowStore.getState()
+        if (
+          state.appId === appId &&
+          state.workflowDraftGeneration === workflowDraftGeneration &&
+          !shouldSkipDraftSync(
+            state.appId,
+            state.isWorkflowDataLoaded,
+            state.isSyncingWorkflowDraft,
+          )
+        )
+          callback?.onError?.()
         return null
       } finally {
         callback?.onSettled?.()

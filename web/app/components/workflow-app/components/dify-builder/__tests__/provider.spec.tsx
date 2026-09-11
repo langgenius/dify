@@ -7,6 +7,7 @@ import { difyBuilderPendingCreationAtom } from '../creation'
 import { DifyBuilderProvider } from '../provider'
 import {
   difyBuilderActiveSessionIdAtom,
+  difyBuilderSessionBusyAtom,
   difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionViewAtom,
 } from '../session/state'
@@ -26,12 +27,13 @@ import {
 const mocks = vi.hoisted(() => ({
   controllerHook: vi.fn(),
   focusCanvas: vi.fn(),
-  refreshCanvas: vi.fn<() => Promise<boolean>>(async () => true),
+  refreshCanvas: vi.fn<(shouldApply: () => boolean) => Promise<boolean>>(async () => true),
   reset: vi.fn(),
   restore: vi.fn(async () => true),
   runAction: vi.fn(async () => true),
   sendMessage: vi.fn(async () => true),
   setCanvasReadOnly: vi.fn(),
+  invalidateWorkflowDraftSync: vi.fn(),
   setShowPanel: vi.fn(),
   selectWorkflowNode: vi.fn(),
   startBuild: vi.fn(async () => true),
@@ -69,11 +71,13 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(
     selector: (state: {
       setCanvasReadOnly: typeof mocks.setCanvasReadOnly
+      invalidateWorkflowDraftSync: typeof mocks.invalidateWorkflowDraftSync
       setShowDifyBuilderPanel: typeof mocks.setShowPanel
     }) => T,
   ) =>
     selector({
       setCanvasReadOnly: mocks.setCanvasReadOnly,
+      invalidateWorkflowDraftSync: mocks.invalidateWorkflowDraftSync,
       setShowDifyBuilderPanel: mocks.setShowPanel,
     }),
 }))
@@ -88,12 +92,22 @@ const Probe = () => {
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
   const setLastCanvasEvent = useSetAtom(difyBuilderSessionLastCanvasEventAtom)
   const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
+  const setBusy = useSetAtom(difyBuilderSessionBusyAtom)
   const setSessionView = useSetAtom(difyBuilderSessionViewAtom)
   const startPrompt = useSetAtom(difyBuilderStartPromptAtom)
   const startRunFix = useSetAtom(difyBuilderStartRunFixAtom)
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
   return (
     <>
+      <button type="button" onClick={() => setBusy(true)}>
+        Start command
+      </button>
+      <button type="button" onClick={() => setBusy(false)}>
+        Finish command
+      </button>
+      <button type="button" onClick={() => setSessionView(null)}>
+        Reset view
+      </button>
       <button type="button" onClick={() => void startPrompt('Build a support bot')}>
         Send prompt
       </button>
@@ -493,6 +507,49 @@ describe('DifyBuilderProvider', () => {
     expect(mocks.syncDraft).not.toHaveBeenCalled()
     expect(mocks.startBuild).not.toHaveBeenCalled()
     expect(mocks.startFix).not.toHaveBeenCalled()
+  })
+
+  it('invalidates queued draft saves when a Builder command takes the canvas lock', async () => {
+    const user = userEvent.setup()
+    renderProvider()
+    await user.click(screen.getByRole('button', { name: 'Start command' }))
+    expect(mocks.invalidateWorkflowDraftSync).toHaveBeenCalledOnce()
+    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
+  })
+
+  it('prevents an in-flight canvas refresh from applying after session reset', async () => {
+    let resolveResponse!: (value: boolean) => void
+    mocks.refreshCanvas.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveResponse = resolve
+      }),
+    )
+    const user = userEvent.setup()
+    renderProvider()
+    await user.click(screen.getByRole('button', { name: 'Refresh update' }))
+    const shouldApply = mocks.refreshCanvas.mock.calls[0]![0]
+    expect(shouldApply()).toBe(true)
+    await user.click(screen.getByRole('button', { name: 'Reset view' }))
+    expect(shouldApply()).toBe(false)
+    await act(async () => resolveResponse(true))
+    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
+  })
+
+  it('retries an interrupted refresh even when the command returns the same session version', async () => {
+    let resolveRefresh!: (value: boolean) => void
+    mocks.refreshCanvas.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRefresh = resolve
+      }),
+    )
+    const user = userEvent.setup()
+    renderProvider()
+    await user.click(screen.getByRole('button', { name: 'Refresh update' }))
+    await user.click(screen.getByRole('button', { name: 'Start command' }))
+    await act(async () => resolveRefresh(false))
+    await user.click(screen.getByRole('button', { name: 'Finish command' }))
+    await waitFor(() => expect(mocks.refreshCanvas).toHaveBeenCalledTimes(2))
+    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
   })
 
   it('does not rerender the controller boundary for streamed session updates', async () => {

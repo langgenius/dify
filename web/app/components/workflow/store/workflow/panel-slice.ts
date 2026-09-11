@@ -65,6 +65,5 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = (set) => ({
   activeCommentId: null,
   setActiveCommentId: (commentId: string | null) => set(() => ({ activeCommentId: commentId })),
   showDifyBuilderPanel: false,
-  setShowDifyBuilderPanel: (showDifyBuilderPanel) =>
-    set(() => ({ showDifyBuilderPanel })),
+  setShowDifyBuilderPanel: (showDifyBuilderPanel) => set(() => ({ showDifyBuilderPanel })),
 })
