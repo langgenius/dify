@@ -36,10 +36,13 @@ def _localizer(monkeypatch, *, detect="zh-Hans", table=None):
 
     def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
         model.translate_calls += 1
-        # translate every requested source string via the table (default: prefix)
+        # translate every requested source string via the table (default: prefix).
+        # Mirror the REAL model behavior observed in the live stack: it wraps the
+        # mapping under a "strings" key (echoing the request envelope). The
+        # Localizer must unwrap this; a flat fake would hide that bug.
         import json
         srcs = json.loads(user)["strings"] if user.strip().startswith("{") else []
-        return {s: table.get(s, f"<{s}>") for s in srcs}
+        return {"strings": {s: table.get(s, f"<{s}>") for s in srcs}}
 
     monkeypatch.setattr(mod.llm, "invoke_text", fake_invoke_text)
     monkeypatch.setattr(mod.llm, "invoke_json", fake_invoke_json)
@@ -117,7 +120,7 @@ def test_localize_shares_cache_across_instances(monkeypatch):
     assert fake2.translate_calls == 0  # second instance reused the module-level cache
 
 
-def test_detect_language_provider_raising_falls_back_to_en(monkeypatch):
+def test_detect_language_provider_raising_falls_back_to_en():
     # Env callbacks must not raise (see localize.Localizer usage in the engine
     # Env); a model_provider that raises must degrade to the "en" fallback
     # instead of propagating out of detect_language.
@@ -128,7 +131,7 @@ def test_detect_language_provider_raising_falls_back_to_en(monkeypatch):
     assert loc.detect_language("hello") == "en"
 
 
-def test_fill_cache_provider_raising_leaves_strings_untranslated(monkeypatch):
+def test_fill_cache_provider_raising_leaves_strings_untranslated():
     # Same contract for the translate path: a raising model_provider must not
     # propagate out of localize_items -- it should degrade to a no-op (original
     # strings kept).
@@ -139,3 +142,26 @@ def test_fill_cache_provider_raising_leaves_strings_untranslated(monkeypatch):
     items = [ConversationItem(kind="summary", payload={"title": "Review"})]
     out = loc.localize_items(items, "zh-Hans")
     assert out[0].payload["title"] == "Review"
+
+
+def test_unwrap_translation_table():
+    misses = ["Review", "Test run"]
+    flat = {"Review": "评审", "Test run": "测试运行"}
+    # flat mapping: returned as-is
+    assert Localizer._unwrap_translation_table(flat, misses) == flat
+    # wrapped envelope (real model behavior): descend one level
+    wrapped = {"strings": flat}
+    assert Localizer._unwrap_translation_table(wrapped, misses) == flat
+    # differently-named wrapper key still unwraps by content
+    assert Localizer._unwrap_translation_table({"translations": flat}, misses) == flat
+    # non-dict / unrecognizable: returns a dict with no matching keys (safe fallback to English upstream)
+    assert Localizer._unwrap_translation_table([], misses) == {}
+
+
+def test_localize_translates_when_model_wraps_response(monkeypatch):
+    # End-to-end within the Localizer: the fake now mirrors the real model's
+    # {"strings": {...}} envelope, so this only passes if _fill_cache unwraps it.
+    loc, _ = _localizer(monkeypatch, table={"Let's clarify the requirements.": "让我们明确一下需求。"})
+    items = [ConversationItem(kind="assistant_turn", payload={"reply_text": "Let's clarify the requirements."})]
+    out = loc.localize_items(items, "zh-Hans")
+    assert out[0].payload["reply_text"] == "让我们明确一下需求。"
