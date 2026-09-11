@@ -5,12 +5,11 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
-from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import BinaryIO, Protocol
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
@@ -46,7 +45,6 @@ from services.agent.errors import (
     RosterAgentPackageResourceUnavailableError,
     RosterAgentPackageTooLargeError,
 )
-from services.agent.roster_package_cleanup import CleanupResource, PackageCleanupJob, RosterPackageCleanup
 from services.agent.roster_package_dependencies import check_package_dependencies
 from services.agent.roster_package_entities import PreparedRosterAgentPackage
 from services.agent.roster_package_reader import RosterAgentPackageReader
@@ -64,14 +62,6 @@ logger = logging.getLogger(__name__)
 class _Storage(Protocol):
     def save(self, filename: str, data: bytes) -> None: ...
 
-    def delete(self, filename: str) -> None: ...
-
-
-@dataclass(frozen=True)
-class _StagedResource:
-    storage_key: str
-    row: ToolFile | UploadFile
-
 
 @dataclass(frozen=True)
 class RosterAgentPackageImportResult:
@@ -81,18 +71,16 @@ class RosterAgentPackageImportResult:
 
 
 class RosterAgentPackageImporter:
-    """Import one package with storage and database compensation boundaries."""
+    """Commit uploaded file records before creating the Agent in a separate transaction."""
 
     def __init__(
         self,
         *,
         storage_backend: _Storage = storage,
-        cleanup: RosterPackageCleanup | None = None,
     ) -> None:
         self._reader = RosterAgentPackageReader()
         self._skill_packages = SkillPackageService()
         self._storage = storage_backend
-        self._cleanup = cleanup or RosterPackageCleanup(storage_backend=storage_backend)
 
     def import_package(
         self,
@@ -114,18 +102,13 @@ class RosterAgentPackageImporter:
                 raise InvalidRosterAgentPackageError("Roster Agent package Soul is invalid") from exc
 
             check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=app_dsl.dependencies)
-            app_id = str(uuid4())
-            staged: list[_StagedResource] = []
-            skill_warnings: list[DslImportWarning] = []
             try:
                 self._ensure_name_available(tenant_id=tenant_id, name=agent_package.metadata.name)
-                soul = self._stage_resources(
+                soul, skill_warnings = self._upload_resources(
                     package=package,
                     agent_package=agent_package,
                     tenant_id=tenant_id,
                     account_id=account.id,
-                    staged=staged,
-                    warnings=skill_warnings,
                 )
                 with session_factory.create_session() as session:
                     resolved_soul, warnings = AgentDslService(session).resolve_package_soul(
@@ -134,27 +117,13 @@ class RosterAgentPackageImporter:
                         package_path="agent",
                     )
                 warnings = [*skill_warnings, *warnings]
-                agent_id = self._persist_import(
-                    app_id=app_id,
+                app_id, agent_id = self._persist_import(
                     tenant_id=tenant_id,
                     account=account,
                     metadata=agent_package.metadata,
                     soul=resolved_soul,
-                    staged=staged,
-                )
-                self._finalize_app(
-                    app_id=app_id,
-                    agent_id=agent_id,
-                    tenant_id=tenant_id,
-                    account=account,
-                )
-                return RosterAgentPackageImportResult(
-                    app_id=app_id,
-                    agent_id=agent_id,
-                    warnings=warnings,
                 )
             except Exception as exc:
-                self._cleanup_failed_import(app_id=app_id, tenant_id=tenant_id, staged=staged)
                 if isinstance(exc, IntegrityError) and "roster_unique_name" in str(exc):
                     raise AgentNameConflictError() from exc
                 if isinstance(
@@ -168,6 +137,17 @@ class RosterAgentPackageImporter:
                 ):
                     raise
                 raise RosterAgentPackageImportFailedError() from exc
+
+            try:
+                self._finalize_app(app_id=app_id, agent_id=agent_id, tenant_id=tenant_id, account=account)
+            except Exception:
+                logger.warning(
+                    "Imported Agent App post-commit initialization failed: tenant_id=%s app_id=%s",
+                    tenant_id,
+                    app_id,
+                    exc_info=True,
+                )
+            return RosterAgentPackageImportResult(app_id=app_id, agent_id=agent_id, warnings=warnings)
 
     @classmethod
     def _validate_supported_resources(cls, package: PreparedRosterAgentPackage, *, soul: AgentSoulConfig) -> None:
@@ -208,16 +188,17 @@ class RosterAgentPackageImporter:
         if exists is not None:
             raise AgentNameConflictError()
 
-    def _stage_resources(
+    def _upload_resources(
         self,
         *,
         package: PreparedRosterAgentPackage,
         agent_package: AgentPackage,
         tenant_id: str,
         account_id: str,
-        staged: list[_StagedResource],
-        warnings: list[DslImportWarning],
-    ) -> AgentSoulConfig:
+    ) -> tuple[AgentSoulConfig, list[DslImportWarning]]:
+        """Upload outside database transactions, then commit all file records together."""
+        files: list[ToolFile | UploadFile] = []
+        warnings: list[DslImportWarning] = []
         soul_data = agent_package.soul.model_dump(mode="json")
         skill_refs_by_package_id = {
             item["file_id"]: item for item in soul_data["config_skills"] if not item["is_missing"]
@@ -282,7 +263,7 @@ class RosterAgentPackageImporter:
                 size=len(normalized.archive_bytes),
                 original_url=None,
             )
-            self._save_resource(storage_key=storage_key, payload=normalized.archive_bytes, staged=staged, row=tool_file)
+            self._save_resource(storage_key=storage_key, payload=normalized.archive_bytes, files=files, row=tool_file)
             target_ref.update(
                 {
                     "description": normalized.manifest.description,
@@ -326,13 +307,11 @@ class RosterAgentPackageImporter:
                     created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=account_id,
                     created_at=now,
-                    used=True,
-                    used_by=account_id,
-                    used_at=now,
+                    used=False,
                     hash=hashlib.sha3_256(payload).hexdigest(),
                 )
                 hash_value = row.hash
-            self._save_resource(storage_key=storage_key, payload=payload, staged=staged, row=row)
+            self._save_resource(storage_key=storage_key, payload=payload, files=files, row=row)
             package_ref.update(
                 {
                     "file_id": row.id,
@@ -343,37 +322,36 @@ class RosterAgentPackageImporter:
                 }
             )
 
-        return AgentSoulConfig.model_validate(soul_data)
+        soul = AgentSoulConfig.model_validate(soul_data)
+        with session_factory.create_session() as session, session.begin():
+            session.add_all(files)
+        return soul, warnings
 
     def _save_resource(
         self,
         *,
         storage_key: str,
         payload: bytes,
-        staged: list[_StagedResource],
+        files: list[ToolFile | UploadFile],
         row: ToolFile | UploadFile,
     ) -> None:
-        staged_resource = _StagedResource(storage_key=storage_key, row=row)
-        staged.append(staged_resource)
         try:
             self._storage.save(storage_key, payload)
         except Exception as exc:
             raise RosterAgentPackageResourceUnavailableError() from exc
+        files.append(row)
 
     @staticmethod
     def _persist_import(
         *,
-        app_id: str,
         tenant_id: str,
         account: Account,
         metadata: AgentPackageMetadata,
         soul: AgentSoulConfig,
-        staged: Sequence[_StagedResource],
-    ) -> str:
+    ) -> tuple[str, str]:
         with session_factory.create_session() as session, session.begin():
-            session.add_all([item.row for item in staged])
             app = App(**default_app_templates[AppMode.AGENT]["app"])
-            app.id = app_id
+            app.id = str(uuid4())
             app.tenant_id = tenant_id
             app.name = metadata.name
             app.description = metadata.description
@@ -421,9 +399,18 @@ class RosterAgentPackageImporter:
                 )
             )
             agent.active_config_is_published = False
+            upload_file_ids = [
+                item.file_id for item in soul.config_files if item.file_kind == "upload_file" and not item.is_missing
+            ]
+            if upload_file_ids:
+                session.execute(
+                    update(UploadFile)
+                    .where(UploadFile.tenant_id == tenant_id, UploadFile.id.in_(upload_file_ids))
+                    .values(used=True, used_by=account.id, used_at=naive_utc_now())
+                )
             create_site_record(app=app, account=account, session=session)
             create_installed_app_record(app=app, session=session)
-            return agent.id
+            return app.id, agent.id
 
     @staticmethod
     def _finalize_app(*, app_id: str, agent_id: str, tenant_id: str, account: Account) -> None:
@@ -437,31 +424,6 @@ class RosterAgentPackageImporter:
                 account=account,
                 session=session,
                 created_records_initialized=True,
-            )
-
-    def _cleanup_failed_import(self, *, app_id: str, tenant_id: str, staged: Sequence[_StagedResource]) -> None:
-        job = PackageCleanupJob(
-            app_id=app_id,
-            tenant_id=tenant_id,
-            resources=[
-                CleanupResource(
-                    id=item.row.id,
-                    kind="tool_file" if isinstance(item.row, ToolFile) else "upload_file",
-                    storage_key=item.storage_key,
-                )
-                for item in staged
-            ],
-        )
-        try:
-            self._cleanup.cache.save(job)
-            self._cleanup.run(job.key)
-        except Exception:
-            # The cached job is retried by the periodic worker. In particular,
-            # keep every blob when database deletion or its checkpoint fails.
-            logger.exception(
-                "Roster Agent package cleanup remains pending: tenant_id=%s app_id=%s",
-                tenant_id,
-                app_id,
             )
 
     @staticmethod

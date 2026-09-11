@@ -182,12 +182,6 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
-    if dify_config.ENABLE_ROSTER_PACKAGE_CLEANUP_TASK:
-        imports.append("tasks.cleanup_roster_package_task")
-        beat_schedule["cleanup_roster_packages"] = {
-            "task": "tasks.cleanup_roster_package_task.cleanup_roster_packages",
-            "schedule": timedelta(minutes=1),
-        }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
         imports.append("tasks.delete_conversation_task")
         beat_schedule["conversation_cleanup_sweeper"] = {
