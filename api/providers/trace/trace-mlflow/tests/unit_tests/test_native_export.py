@@ -9,13 +9,19 @@ from uuid import UUID, uuid4
 
 import httpx
 import pytest
-from dify_trace_mlflow.config import MLflowConfig
+from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from dify_trace_mlflow.mlflow_trace import MLflowTraceClient
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue
 from pydantic import JsonValue
 
 from core.ops.otlp_trace import OtlpTraceClient
-from core.ops.provider_config import decrypt_provider_config, encrypt_provider_config, mask_provider_config
+from core.ops.provider_config import (
+    decrypt_provider_config,
+    encrypt_provider_config,
+    mask_provider_config,
+    resolve_provider_config,
+)
 from core.ops.provider_export import TraceExportError, basic_auth, export_span_id, span_id_bytes
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, copy_trace_value, make_span_id, make_trace_id
 from core.rag.models.document import Document
@@ -105,6 +111,30 @@ def test_project_url_opens_the_provider_trace_view(provider_name: str) -> None:
 
 
 @pytest.mark.parametrize(
+    ("host", "endpoint"),
+    [
+        ("adb-123.azuredatabricks.net", "https://adb-123.azuredatabricks.net"),
+        ("workspace.cloud.databricks.com:443/prefix/", "https://workspace.cloud.databricks.com/prefix"),
+        ("https://workspace.cloud.databricks.com:443/", "https://workspace.cloud.databricks.com"),
+        ("http://workspace.example:8080/prefix/", "http://workspace.example:8080/prefix"),
+    ],
+)
+def test_databricks_saved_hosts_preserve_sdk_normalization(host: str, endpoint: str) -> None:
+    client = MLflowTraceClient("databricks", {"host": host, "experiment_id": "7", "personal_access_token": "secret"})
+    assert client.http.endpoint == endpoint
+    assert client.get_project_url() == endpoint + "/ml/experiments/7/traces"
+    assert isinstance(client.config, DatabricksConfig)
+    assert client.config.host == host
+
+
+@pytest.mark.parametrize("host", ["", "https:///workspace", "ftp://workspace.example", "user:secret@workspace.example"])
+def test_databricks_host_normalization_keeps_endpoint_validation(host: str) -> None:
+    with pytest.raises(ValueError):
+        MLflowTraceClient("databricks", {"host": host, "experiment_id": "7", "personal_access_token": "secret"})
+
+
+@pytest.mark.parametrize("host", ["https://databricks.example/", "databricks.example"])
+@pytest.mark.parametrize(
     ("response", "error_reason"),
     [
         (httpx.Response(401), "provider_http_401"),
@@ -114,11 +144,11 @@ def test_project_url_opens_the_provider_trace_view(provider_name: str) -> None:
     ],
 )
 def test_databricks_saved_oauth_config_is_readable_but_authentication_failures_reject_writes(
-    response: httpx.Response | httpx.RequestError, error_reason: str, monkeypatch: pytest.MonkeyPatch
+    host: str, response: httpx.Response | httpx.RequestError, error_reason: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     workspace_id = str(uuid4())
     settings = {
-        "host": "https://databricks.example/",
+        "host": host,
         "experiment_id": "7",
         "client_id": "client",
         "client_secret": "secret",
@@ -195,6 +225,196 @@ def test_databricks_authenticated_operations_prefer_complete_oauth_credentials(
     assert api_request.kwargs["headers"]["Authorization"] == ("Bearer oauth-token" if oauth else "Bearer pat")
 
 
+@pytest.mark.parametrize("oauth", [False, True])
+@pytest.mark.parametrize("requests_ca", [False, True])
+@pytest.mark.parametrize("scheme", ["http", "https"])
+def test_databricks_ca_snapshot_covers_api_authentication_and_signed_uploads(
+    oauth: bool, requests_ca: bool, scheme: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    requests_bundle, curl_bundle = tmp_path / "requests.pem", tmp_path / "curl.pem"
+    requests_bundle.write_bytes(b"Requests private CA")
+    curl_bundle.write_bytes(b"cURL private CA")
+    monkeypatch.setenv("CURL_CA_BUNDLE", str(curl_bundle))
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(requests_bundle) if requests_ca else "")
+    config = {
+        "host": f"{scheme}://workspace.databricks.example",
+        "experiment_id": "7",
+        **({"client_id": "client", "client_secret": "secret"} if oauth else {"personal_access_token": "pat"}),
+    }
+    first = resolve_provider_config("databricks", config)
+    tls = first["_runtime_settings"]["tls"]
+    assert base64.b64decode(tls["certificate"]) == (b"Requests private CA" if requests_ca else b"cURL private CA")
+    requests_bundle.write_bytes(b"rotated Requests CA")
+    curl_bundle.write_bytes(b"rotated cURL CA")
+    assert resolve_provider_config("databricks", config) != first
+    requests_bundle.unlink()
+    curl_bundle.unlink()
+    monkeypatch.setattr(DatabricksConfig, "load_runtime_settings", Mock(side_effect=AssertionError("snapshot reread")))
+    api_context, upload_context = ssl.create_default_context(), ssl.create_default_context()
+    build_context = Mock(side_effect=[api_context, upload_context] if scheme == "http" else [api_context])
+    monkeypatch.setattr("dify_trace_mlflow.mlflow_trace.create_ssl_context", build_context)
+    responses = [httpx.Response(200, json={"access_token": "oauth-token"})] if oauth else []
+    responses.extend(
+        [
+            httpx.Response(200, json={}),
+            httpx.Response(
+                200,
+                json={
+                    "credential_info": {
+                        "signed_uri": "https://storage.example/trace?signature=signed",
+                        "headers": [{"name": "x-storage-auth", "value": "upload-secret"}],
+                    }
+                },
+            ),
+            httpx.Response(200),
+        ]
+    )
+    requests: list[httpx.Request] = []
+    contexts: list[ssl.SSLContext | None] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return responses.pop(0)
+
+    def create_http_client(*, ssl_context: ssl.SSLContext | None = None) -> httpx.Client:
+        contexts.append(ssl_context)
+        return httpx.Client(transport=httpx.MockTransport(respond), verify=ssl_context or True)
+
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.create_http_client", create_http_client)
+    client = MLflowTraceClient("databricks", first)
+    client.export_trace(make_trace())
+    assert [call.args for call in build_context.call_args_list] == ([({},), (tls,)] if scheme == "http" else [(tls,)])
+    assert all(context is api_context for context in contexts[:-1])
+    assert contexts[-1] is (upload_context if scheme == "http" else api_context)
+    assert requests[-1].headers["x-storage-auth"] == "upload-secret"
+    assert "Authorization" not in requests[-1].headers
+    assert str(requests[-1].url) == "https://storage.example/trace?signature=signed"
+    assert requests[int(oauth)].headers["Authorization"] == ("Bearer oauth-token" if oauth else "Bearer pat")
+
+
+def test_databricks_empty_tls_snapshot_prevents_later_environment_reads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = resolve_provider_config("databricks", {"host": "workspace.example", "experiment_id": "7"})
+    assert config["_runtime_settings"] == {"tls": {}}
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(tmp_path / "not-readable.pem"))
+    client = MLflowTraceClient("databricks", config)
+    assert client.http.ssl_context is not None
+
+
+def test_databricks_captures_requests_ca_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "deadbeef.0").write_bytes(b"private CA")
+    (tmp_path / "unrelated.txt").write_text("not a certificate")
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(tmp_path))
+    settings = DatabricksConfig.load_runtime_settings({"host": "workspace.example", "experiment_id": "7"})
+    assert json.loads(settings["tls"]["certificate_directory"]) == {
+        "deadbeef.0": base64.b64encode(b"private CA").decode()
+    }
+
+
+@pytest.mark.parametrize("ca_error", ["unreadable", "invalid"])
+def test_databricks_http_verification_defers_captured_ca_errors_until_https_upload(
+    ca_error: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bundle = tmp_path / "ca.pem"
+    if ca_error == "invalid":
+        bundle.write_bytes(b"invalid certificate")
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(bundle))
+    config = resolve_provider_config(
+        "databricks", {"host": "http://workspace.example", "experiment_id": "7", "personal_access_token": "pat"}
+    )
+    if ca_error == "unreadable":
+        assert config["_runtime_settings"] == {"tls_read_failed": True}
+    assert str(bundle) not in json.dumps(config["_runtime_settings"])
+    monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / "missing-ambient-ca.pem"))
+    monkeypatch.setattr(DatabricksConfig, "load_runtime_settings", Mock(side_effect=AssertionError("snapshot reread")))
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200)
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda *, ssl_context=None: httpx.Client(transport=httpx.MockTransport(respond), verify=ssl_context or True),
+    )
+    client = MLflowTraceClient("databricks", config)
+    assert client.http.ssl_context is not None
+    assert client.verify_credentials()
+    with pytest.raises(ValueError if ca_error == "unreadable" else ssl.SSLError):
+        client._upload_spans({"signed_uri": "https://storage.example/upload"}, b"{}")
+    assert len(requests) == 1
+    assert requests[0].url.scheme == "http"
+
+
+@pytest.mark.parametrize("root_type", ["workflow", "llm"])
+@pytest.mark.parametrize("registration_response", [200, 409, 503])
+def test_mlflow_native_metadata_registration_retries_preserve_identity_and_attached_children(
+    root_type: str, registration_response: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    trace = make_trace()
+    external_id = str(uuid4())
+    trace = trace.model_copy(
+        update={
+            "source": trace.source.model_copy(update={"external_trace_id": external_id}),
+            "spans": (trace.spans[0].model_copy(update={"span_type": root_type}), *trace.spans[1:]),
+        }
+    )
+    requests: list[httpx.Request] = []
+    saved: dict[str, Any] = {}
+    sent: list[ExportTraceServiceRequest] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path.endswith("/v1/traces"):
+            assert saved["trace_metadata"]["mlflow.trace.user"] == "customer-7"
+            assert saved["trace_metadata"]["mlflow.trace.session"] == "session-5"
+            assert "mlflow.trace.tokenUsage" not in saved["trace_metadata"]
+            sent.append(ExportTraceServiceRequest.FromString(request.content))
+            return httpx.Response(200)
+        if request.method == "GET":
+            return httpx.Response(200, json={"trace": {"trace_info": saved}}) if saved else httpx.Response(404)
+        assert request.method == "POST"
+        assert request.url.path == "/api/3.0/mlflow/traces"
+        assert not saved, "Retrying a registered trace must preserve its metadata"
+        saved.update(json.loads(request.content)["trace"]["trace_info"])
+        return httpx.Response(registration_response, json={"trace": {"trace_info": saved}})
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda *, ssl_context=None: httpx.Client(transport=httpx.MockTransport(respond), verify=ssl_context or True),
+    )
+    client = MLflowTraceClient("mlflow", {"tracking_uri": "https://mlflow.example", "experiment_id": "7"})
+    if registration_response == 503:
+        with pytest.raises(TraceExportError, match="provider_http_503"):
+            client.export_trace(trace)
+        assert not sent
+    receipt = client.export_trace(trace)
+    assert saved["trace_id"] == "tr-" + UUID(external_id).hex
+    assert saved["client_request_id"] == external_id
+    assert saved["trace_metadata"]["dify.operation_id"] == trace.source.operation_id
+    assert len(sent) == 1
+    assert receipt.spans[trace.root_span_id]["trace_id"] == external_id
+    assert client.export_trace(trace) == receipt
+    assert len(sent) == 2
+
+    late = make_trace()
+    late = late.model_copy(update={"source": late.source.model_copy(update={"actor_id": "other-actor"})})
+    requests.clear()
+    late_receipt = client.export_trace(late, receipt.spans[trace.root_span_id])
+    assert len(requests) == 1
+    assert requests[0].url.path == "/v1/traces"
+    assert late_receipt.spans[late.root_span_id]["trace_id"] == external_id
+    assert all(span.trace_id == UUID(external_id).bytes for span in sent[-1].resource_spans[0].scope_spans[0].spans)
+
+    saved["trace_metadata"]["dify.tenant_id"] = str(uuid4())
+    requests.clear()
+    with pytest.raises(TraceExportError, match="mlflow_trace_identity_mismatch"):
+        client.export_trace(trace)
+    assert len(requests) == 1
+    assert requests[0].method == "GET"
+
+
 def test_mlflow_native_llm_format_usage_cost_model_and_grouping(monkeypatch: pytest.MonkeyPatch) -> None:
     trace = make_trace()
     external_id = str(uuid4())
@@ -202,7 +422,15 @@ def test_mlflow_native_llm_format_usage_cost_model_and_grouping(monkeypatch: pyt
     send = Mock()
     monkeypatch.setattr(OtlpTraceClient, "send_traces", send)
     client = MLflowTraceClient("mlflow", {"tracking_uri": "https://mlflow.example", "experiment_id": "1"})
+    request = Mock(side_effect=[TraceExportError("provider_http_404"), httpx.Response(200)])
+    monkeypatch.setattr(client.http, "request", request)
     receipt = client.export_trace(trace)
+    info = request.call_args.kwargs["json"]["trace"]["trace_info"]
+    assert info["trace_id"] == "tr-" + UUID(external_id).hex
+    assert info["client_request_id"] == external_id
+    assert info["trace_metadata"]["mlflow.trace.user"] == "customer-7"
+    assert info["trace_metadata"]["mlflow.trace.session"] == "session-5"
+    assert "mlflow.trace.tokenUsage" not in info["trace_metadata"]
     spans = send.call_args.args[0].resource_spans[0].scope_spans[0].spans
     assert all(span.trace_id == UUID(external_id).bytes for span in spans)
     assert receipt.spans[trace.root_span_id]["trace_id"] == external_id
@@ -289,6 +517,9 @@ def test_native_token_usage_counts_model_calls_without_root_or_container_aggrega
     else:
         send = Mock()
         monkeypatch.setattr(OtlpTraceClient, "send_traces", send)
+        monkeypatch.setattr(
+            client.http, "request", Mock(side_effect=[TraceExportError("provider_http_404"), httpx.Response(200)])
+        )
         client.export_trace(trace)
         exported_spans = send.call_args.args[0].resource_spans[0].scope_spans[0].spans
         span_attributes = [
@@ -370,6 +601,9 @@ def test_retrieval_exports_native_documents(
     else:
         send = Mock()
         monkeypatch.setattr(OtlpTraceClient, "send_traces", send)
+        monkeypatch.setattr(
+            client.http, "request", Mock(side_effect=[TraceExportError("provider_http_404"), httpx.Response(200)])
+        )
         client.export_trace(trace)
         exported_span = send.call_args.args[0].resource_spans[0].scope_spans[0].spans[-1]
         attributes = {item.key: read_attribute_value(item.value) for item in exported_span.attributes}
@@ -469,6 +703,9 @@ def test_native_status_preserves_handled_node_and_cancelled_workflow_errors(
     else:
         send = Mock()
         monkeypatch.setattr(OtlpTraceClient, "send_traces", send)
+        monkeypatch.setattr(
+            client.http, "request", Mock(side_effect=[TraceExportError("provider_http_404"), httpx.Response(200)])
+        )
         client.export_trace(trace)
         exported_spans = send.call_args.args[0].resource_spans[0].scope_spans[0].spans
         assert [span.status.code == 2 for span in exported_spans] == expected_errors
@@ -525,7 +762,16 @@ def test_mlflow_filestore_upload_retry_and_late_operations(otlp_status: int, mon
         if path == "/prefix/api/3.0/mlflow/traces" and request.method == "POST":
             info = json.loads(request.content)["trace"]["trace_info"]
             trace_id = info["trace_id"]
-            assert trace_id not in saved_traces, "A retry must reuse existing trace metadata"
+            if trace_id in saved_traces:
+                # FileStore fallback completes token metadata after native preregistration.
+                existing = saved_traces[trace_id]["trace_metadata"]
+                assert "mlflow.trace.tokenUsage" not in existing
+                assert info["trace_metadata"] == {
+                    **existing,
+                    "mlflow.trace.tokenUsage": json.dumps(
+                        {"input_tokens": 3, "output_tokens": 5, "total_tokens": 8}, separators=(",", ":")
+                    ),
+                }
             info["tags"]["mlflow.artifactLocation"] = f"mlflow-artifacts:/7/traces/{trace_id}/artifacts"
             saved_traces[trace_id] = info
             return httpx.Response(200, json={"trace": {"trace_info": info}})
@@ -750,7 +996,9 @@ def test_mlflow_does_not_fallback_after_other_otlp_failures(status: int, monkeyp
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(status)
+        if request.url.path.endswith("/v1/traces"):
+            return httpx.Response(status)
+        return httpx.Response(404 if request.method == "GET" else 200)
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
@@ -761,7 +1009,8 @@ def test_mlflow_does_not_fallback_after_other_otlp_failures(status: int, monkeyp
     client = MLflowTraceClient("mlflow", {"tracking_uri": "https://mlflow.example"})
     with pytest.raises(TraceExportError, match=f"provider_http_{status}"):
         client.export_trace(make_trace())
-    assert len(requests) == 1
+    assert len(requests) == 3
+    assert requests[-1].url.path == "/v1/traces"
 
 
 @pytest.mark.parametrize(
@@ -837,7 +1086,9 @@ def test_mlflow_uses_captured_tls_for_verification_otlp_and_same_origin_artifact
     def create_http_client(*, ssl_context: ssl.SSLContext | None = None) -> httpx.Client:
         contexts.append(ssl_context)
         return httpx.Client(
-            transport=httpx.MockTransport(lambda _: httpx.Response(200, content=b"")),
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(404 if "/api/3.0/mlflow/traces/" in request.url.path else 200)
+            ),
             verify=ssl_context or True,
             trust_env=False,
         )
@@ -852,7 +1103,7 @@ def test_mlflow_uses_captured_tls_for_verification_otlp_and_same_origin_artifact
     client._upload_mlflow_artifact("mlflow-artifacts:/trace", b"{}")
     client._upload_mlflow_artifact("https://MLFLOW.example:443/trace", b"{}")
     client._upload_mlflow_artifact("https://artifacts.example/trace", b"{}")
-    assert contexts == [context, context, context, context, None]
+    assert contexts == [context, context, context, context, context, context, None]
 
 
 @pytest.mark.parametrize("insecure", ["true", "TRUE", "1", "false", "FALSE", "0"])

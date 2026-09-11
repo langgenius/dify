@@ -108,9 +108,11 @@ class MessageTraceRecorder:
     ):
         from core.ops.workflow_trace import WorkflowTraceRecorder
 
-        source = TraceSource.model_validate(
-            {**self.source.model_dump(), "operation_id": workflow_run_id, "workflow_run_id": workflow_run_id}
-        )
+        with self._lock:
+            source = TraceSource.model_validate(
+                {**self.source.model_dump(), "operation_id": workflow_run_id, "workflow_run_id": workflow_run_id}
+            )
+            self.source = self.source.model_copy(update={"workflow_run_id": source.workflow_run_id})
         if workflow_trace_state is not None:
             self.provider_settings = tuple(
                 TraceProviderSettings.model_validate(settings)
@@ -301,9 +303,11 @@ class MessageTraceRecorder:
                     **self.source.model_dump(),
                     "message_id": message_fields["message_id"],
                     "conversation_id": message_fields["conversation_id"],
-                    "workflow_run_id": message_fields.get("workflow_run_id"),
+                    "workflow_run_id": message_fields.get("workflow_run_id") or self.source.workflow_run_id,
                 }
             )
+            with self._lock:
+                self.source = source
             root_id = make_span_id(source.tenant_id, source.operation_id, "message")
             metadata = message_fields.get("metadata") or {}
             usage = dict(metadata.get("usage") or {})

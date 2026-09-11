@@ -101,9 +101,11 @@ def test_parallel_operations_are_copied_and_message_submission_releases_budget(
         assert span.parent_span_id == trace.root_span_id
 
 
-def test_late_operation_references_original_destination_and_message_root() -> None:
+@pytest.mark.parametrize("has_workflow", [False, True])
+def test_late_operation_references_original_destination_and_message_root(has_workflow: bool) -> None:
     recorder, queue = make_recorder()
-    recorder.finish_message_trace(message_fields(recorder))
+    workflow_run_id = str(uuid4()) if has_workflow else None
+    recorder.finish_message_trace({**message_fields(recorder), "workflow_run_id": workflow_run_id})
     first = queue.items[0]
     recorder.record_operation("suggested_questions", outputs=["next?"], independent=True)
     late = CompletedTrace.model_validate_json(queue.items[1].trace_json)
@@ -111,6 +113,8 @@ def test_late_operation_references_original_destination_and_message_root() -> No
     assert late.parent.export_id == first.export_id
     assert late.parent.span_id == CompletedTrace.model_validate_json(first.trace_json).root_span_id
     assert late.source.operation_id != recorder.source.operation_id
+    assert late.source.workflow_run_id == workflow_run_id
+    assert recorder.source.workflow_run_id == workflow_run_id
     with pytest.raises(ValueError, match="different tenants"):
         QueuedTrace.from_trace(late, recorder.provider_settings[0].model_copy(update={"tenant_id": str(uuid4())}))
 
@@ -128,6 +132,7 @@ def test_chatflow_and_late_operations_reference_each_destination_message(workflo
     workflow = recorder.create_workflow_trace(
         workflow_id=str(uuid4()), workflow_version="1", workflow_run_id=run_id, inputs={"query": "hello"}
     )
+    assert recorder.source.workflow_run_id == run_id
     recorder.record_operation("moderation", outputs="allowed")
     title_recorder = MessageTraceRecorder(recorder.source, queue, recorder.provider_settings)
     title_recorder.record_operation("generate_conversation_name", outputs="Title", independent=True)
@@ -160,6 +165,7 @@ def test_chatflow_and_late_operations_reference_each_destination_message(workflo
             assert child.source.message_id == message.source.message_id
             assert child.source.external_trace_id == message.source.external_trace_id
             assert child.source.session_id == message.source.session_id
+            assert child.source.workflow_run_id == message.source.workflow_run_id == run_id
     assert queue.reserved == 0
 
 
@@ -182,6 +188,7 @@ def test_chatflow_delivery_waits_for_its_message_receipt() -> None:
     attempt = repository.claim_delivery(message.tenant_id, message.id)
     assert attempt is not None
     root = CompletedTrace.model_validate_json(queue.items[1].trace_json)
+    assert root.source.workflow_run_id == workflow.source.workflow_run_id
     receipt = {"trace_id": "exported-trace", "span_id": "exported-message"}
     assert repository.finish_attempt(attempt, "succeeded", parent_references={root.root_span_id: receipt})
     assert repository.read_parent_reference(child) == (True, receipt)

@@ -35,12 +35,11 @@ class OpikConfig(BaseTracingConfig):
         settings_file.read(Path(config_path).expanduser() if config_path is not None else Path.home() / ".opik.config")
         defaults = dict(settings_file.items("opik")) if settings_file.has_section("opik") else {}
         settings: dict[str, Any] = {}
-        for field, sdk_field, default in (
-            ("api_key", "api_key", None),
-            ("workspace", "workspace", "default"),
-            ("project", "project_name", "Default Project"),
+        for field, saved, sdk_field, default in (
+            ("api_key", config.api_key, "api_key", None),
+            ("workspace", config.workspace, "workspace", "default"),
+            ("project", config.project, "project_name", "Default Project"),
         ):
-            saved = getattr(config, field)
             if saved is None:
                 settings[field] = os.environ.get(f"OPIK_{sdk_field.upper()}", defaults.get(sdk_field, default))
         verify = TypeAdapter(bool).validate_python(

@@ -188,6 +188,7 @@ def create_message_trace(
     operation_id: str | None = None,
     message_id: str | None = None,
     conversation_id: str | None = None,
+    workflow_run_id: str | None = None,
     external_trace_id: str | None = None,
     session_id: str | None = None,
     record_message_result: Callable[[MessageTraceRecorder, Mapping[str, Any]], None] | None = None,
@@ -210,6 +211,7 @@ def create_message_trace(
             operation_id=operation_id or message_id or str(uuid4()),
             message_id=message_id,
             conversation_id=conversation_id,
+            workflow_run_id=workflow_run_id,
             external_trace_id=external_trace_id,
             session_id=session_id,
         )

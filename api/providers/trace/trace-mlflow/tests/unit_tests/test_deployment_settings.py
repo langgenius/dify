@@ -74,7 +74,7 @@ def test_deployment_authentication_is_captured_and_isolated(monkeypatch: pytest.
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(200, content=b"")
+        return httpx.Response(404 if "/api/3.0/mlflow/traces/" in request.url.path else 200)
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
@@ -87,6 +87,8 @@ def test_deployment_authentication_is_captured_and_isolated(monkeypatch: pytest.
     first_client._upload_mlflow_artifact("mlflow-artifacts:/trace", b"{}")
     assert [request.headers["Authorization"] for request in requests] == [
         "Bearer first-secret",
+        "Bearer second-secret",
+        "Bearer second-secret",
         "Bearer second-secret",
         "Bearer first-secret",
     ]
