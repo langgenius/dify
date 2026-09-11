@@ -481,6 +481,36 @@ class FileUploadConfig(BaseSettings):
         default=50,
     )
 
+    SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES: PositiveInt = Field(
+        description="Maximum total uncompressed size of a Skill package in bytes",
+        default=200 * 1024 * 1024,
+    )
+
+    SKILL_PACKAGE_MAX_ENTRIES: PositiveInt = Field(
+        description="Maximum number of entries in a Skill package",
+        default=5000,
+    )
+
+    SKILL_PACKAGE_MAX_SKILL_MD_BYTES: PositiveInt = Field(
+        description="Maximum allowed SKILL.md size in bytes",
+        default=1 * 1024 * 1024,
+    )
+
+    AGENT_PACKAGE_MAX_BYTES: PositiveInt = Field(
+        description="Maximum allowed Agent package size in bytes",
+        default=512 * 1024 * 1024,
+    )
+
+    AGENT_PACKAGE_MAX_MANIFEST_BYTES: PositiveInt = Field(
+        description="Maximum allowed size of each Agent package YAML document in bytes",
+        default=5 * 1024 * 1024,
+    )
+
+    AGENT_PACKAGE_MAX_ENTRIES: PositiveInt = Field(
+        description="Maximum number of entries in an Agent package",
+        default=5000,
+    )
+
     BATCH_UPLOAD_LIMIT: NonNegativeInt = Field(
         description="Maximum number of files allowed in a batch upload operation",
         default=20,

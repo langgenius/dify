@@ -47,7 +47,8 @@ from models import Account, App, AppMode
 from models.agent import AgentScope
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
-from services.agent.dsl_service import AgentDslService, AgentPackage
+from services.agent.dsl_entities import AgentPackage, make_agent_app_dsl
+from services.agent.dsl_service import AgentDslService
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
@@ -60,6 +61,7 @@ from services.entities.dsl_entities import (
     ImportMode,
     ImportStatus,
     PendingImportOwner,
+    make_app_dsl,
 )
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
@@ -762,44 +764,29 @@ class AppDslService:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        export_data: dict[str, Any] = {
-            "version": CURRENT_DSL_VERSION,
-            "kind": "app",
-            "app": {
-                "name": app_model.name,
-                "mode": app_model.mode.value if isinstance(app_model.mode, AppMode) else app_model.mode,
-                "icon": app_model.icon,
-                "icon_type": (
-                    app_model.icon_type.value if isinstance(app_model.icon_type, IconType) else app_model.icon_type
-                ),
-                "icon_background": app_model.icon_background,
-                "description": app_model.description,
-                "use_icon_as_answer_icon": app_model.use_icon_as_answer_icon,
-            },
-        }
-
-        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            cls._append_workflow_export_data(
-                export_data=export_data,
-                app_model=app_model,
-                include_secret=include_secret,
-                workflow_id=workflow_id,
-                session=session,
-            )
-        elif app_mode == AppMode.AGENT:
+        if app_mode == AppMode.AGENT:
             package_ref, packages = AgentDslService(session).export_agent_app(app=app_model)
-            export_data["agent"] = {"package_ref": package_ref}
-            export_data["agent_packages"] = {key: package.model_dump(mode="json") for key, package in packages.items()}
             dependencies = AgentDslService(session).extract_package_dependencies(packages)
-            export_data["dependencies"] = [
-                jsonable_encoder(item.model_dump())
-                for item in DependenciesAnalysisService.generate_dependencies(
-                    tenant_id=app_model.tenant_id,
-                    dependencies=dependencies,
-                )
-            ]
+            export_data = make_agent_app_dsl(
+                app_model,
+                package_ref=package_ref,
+                packages=packages,
+                dependencies=DependenciesAnalysisService.generate_dependencies(
+                    tenant_id=app_model.tenant_id, dependencies=dependencies
+                ),
+            ).model_dump(mode="json")
         else:
-            cls._append_model_config_export_data(export_data, app_model, session=session)
+            export_data = make_app_dsl(app_model)
+            if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+                cls._append_workflow_export_data(
+                    export_data=export_data,
+                    app_model=app_model,
+                    include_secret=include_secret,
+                    workflow_id=workflow_id,
+                    session=session,
+                )
+            else:
+                cls._append_model_config_export_data(export_data, app_model, session=session)
 
         return yaml.dump(export_data, allow_unicode=True)
 
