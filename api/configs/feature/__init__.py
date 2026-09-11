@@ -1424,9 +1424,6 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
-    ENABLE_ROSTER_PACKAGE_CLEANUP_TASK: bool = Field(
-        default=True, description="Retry failed Roster Agent package imports from the cleanup journal."
-    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,
