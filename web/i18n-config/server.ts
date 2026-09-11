@@ -1,4 +1,4 @@
-import type { i18n as I18nInstance, Resource, ResourceLanguage } from 'i18next'
+import type { Resource, ResourceLanguage } from 'i18next'
 import type { Locale } from '.'
 import type { Namespace, NamespaceInFileName } from './resources'
 import { match } from '@formatjs/intl-localematcher'
@@ -16,13 +16,9 @@ import { namespacesInFileName } from './resources'
 import { getInitOptions } from './settings'
 
 const [getLocaleCache, setLocaleCache] = serverOnlyContext<Locale | null>(null)
-const [getI18nInstance, setI18nInstance] = serverOnlyContext<I18nInstance | null>(null)
 
-const getOrCreateI18next = async (lng: Locale) => {
-  let instance = getI18nInstance()
-  if (instance) return instance
-
-  instance = createInstance()
+const getOrCreateI18next = cache(async (lng: Locale) => {
+  const instance = createInstance()
   await instance
     .use(initReactI18next)
     .use(
@@ -34,9 +30,8 @@ const getOrCreateI18next = async (lng: Locale) => {
       ...getInitOptions(),
       lng,
     })
-  setI18nInstance(instance)
   return instance
-}
+})
 
 export async function getTranslation<T extends Namespace>(lng: Locale, ns?: T) {
   const i18nextInstance = await getOrCreateI18next(lng)
