@@ -4299,7 +4299,12 @@ export const zPostAppsBody = zCreateAppPayload
  */
 export const zPostAppsResponse = zAppDetailWithSite
 
-export const zPostAppsImportsBody = zAppImportPayload
+export const zPostAppsImportsBody = z.union([
+  zAppImportPayload,
+  z.object({
+    file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  }),
+])
 
 /**
  * Import completed

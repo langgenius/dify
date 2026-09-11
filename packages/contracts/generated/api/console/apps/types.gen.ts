@@ -3187,7 +3187,11 @@ export type PostAppsResponses = {
 export type PostAppsResponse = PostAppsResponses[keyof PostAppsResponses]
 
 export type PostAppsImportsData = {
-  body: AppImportPayload
+  body:
+    | AppImportPayload
+    | {
+        file: Blob | File
+      }
   path?: never
   query?: never
   url: '/apps/imports'
