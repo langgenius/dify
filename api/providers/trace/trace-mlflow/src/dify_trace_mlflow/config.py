@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, override
 from urllib.parse import urlsplit
 
+from opentelemetry.sdk.trace import SpanLimits
 from pydantic import ValidationInfo, field_validator
 
 from core.helper.ssl_context import read_tls_files
@@ -12,12 +13,27 @@ from core.ops.provider_config import BaseTracingConfig
 from core.ops.utils import validate_integer_id, validate_url_with_path
 from dify_trace_mlflow.deployment_auth import resolve_aws_credentials, resolve_deployment_auth
 from dify_trace_mlflow.request_auth import capture_netrc_auth, capture_request_auth_provider
+from dify_trace_mlflow.request_headers import capture_request_headers
 
 
 def _load_sampling_ratio() -> float:
     ratio = float(os.environ.get("MLFLOW_TRACE_SAMPLING_RATIO", "1"))
     # The pinned SDK ignores out-of-range and NaN ratios, restoring default sampling.
     return ratio if 0 <= ratio <= 1 else 1.0
+
+
+def _load_span_attribute_limits() -> dict[str, int | None]:
+    count_configured = "OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT" in os.environ or "OTEL_ATTRIBUTE_COUNT_LIMIT" in os.environ
+    length_configured = (
+        "OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ or "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ
+    )
+    if not count_configured and not length_configured:
+        return {}
+    limits = SpanLimits()
+    return {
+        "max_attributes": limits.max_span_attributes if count_configured else None,
+        "max_value_length": limits.max_span_attribute_length if length_configured else None,
+    }
 
 
 class MLflowConfig(BaseTracingConfig):
@@ -69,6 +85,8 @@ class MLflowConfig(BaseTracingConfig):
             "sampling_ratio": _load_sampling_ratio(),
             "request_timeout": request_timeout,
             "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
+            "request_headers": capture_request_headers(),
+            "span_attribute_limits": _load_span_attribute_limits(),
         }
         if os.environ.get("MLFLOW_TRACKING_AUTH") in {"kubernetes", "kubernetes-namespaced"}:
             # These built-in Requests auth objects suppress netrc and URL authentication.
@@ -90,6 +108,7 @@ class MLflowConfig(BaseTracingConfig):
         if aws_credentials is None and settings.get("use_implicit_auth", True):
             if netrc_auth := capture_netrc_auth():
                 settings["netrc_auth"] = netrc_auth
+        settings["default_authorization"] = settings.get("use_implicit_auth") is False and not settings.get("headers")
         if headers := resolve_deployment_auth(
             settings.get("headers", {}),
             aws_sigv4=aws_credentials is not None,
@@ -165,7 +184,30 @@ class DatabricksConfig(BaseTracingConfig):
         settings: dict[str, Any] = {
             "sampling_ratio": _load_sampling_ratio(),
             "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
+            "request_headers": capture_request_headers(),
+            "span_attribute_limits": _load_span_attribute_limits(),
         }
+        sdk_enabled = os.environ.get("MLFLOW_ENABLE_DB_SDK", "true").lower()
+        if sdk_enabled not in {"true", "false", "1", "0"}:
+            raise ValueError("Invalid Databricks SDK setting")
+        verify = True
+        if sdk_enabled in {"false", "0"}:
+            insecure = os.environ.get("DATABRICKS_INSECURE")
+            if profile := os.environ.get("DATABRICKS_CONFIG_PROFILE"):
+                profiles = configparser.ConfigParser()
+                profiles.read(os.environ.get("DATABRICKS_CONFIG_FILE", str(Path.home() / ".databrickscfg")))
+                # Native named profiles do not inherit DEFAULT options or environment values.
+                sections = profiles._sections  # type: ignore[attr-defined]  # pyrefly: ignore[missing-attribute]
+                insecure = sections.get(profile, {}).get("insecure")
+                if insecure is not None:
+                    insecure = profiles.get(profile, "insecure")
+                if profile == "DEFAULT":
+                    insecure = profiles.get("DEFAULT", "insecure", fallback=None)
+            # The legacy SDK uses string truthiness, including nonempty "false" and "0".
+            verify = not bool(insecure)
+        settings["verify"] = verify
+        if workspace := os.environ.get("MLFLOW_WORKSPACE", "").strip():
+            settings["headers"] = {"X-MLFLOW-WORKSPACE": workspace}
         # The Databricks SDK uses Requests for both API calls and signed uploads.
         try:
             settings["tls"] = read_tls_files(
@@ -173,9 +215,9 @@ class DatabricksConfig(BaseTracingConfig):
                 allow_ca_directory=True,
             )
         except ValueError:
-            if urlsplit(cls.model_validate(provider_config).host).scheme != "http":
+            if verify and urlsplit(cls.model_validate(provider_config).host).scheme != "http":
                 raise
-            # HTTP verification ignores CA files; preserve the failure for HTTPS uploads.
+            # Unverified and HTTP tracking ignore CA files; signed uploads still require them.
             settings["tls_read_failed"] = True
         return settings
 
