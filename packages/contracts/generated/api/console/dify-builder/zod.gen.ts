@@ -30,6 +30,7 @@ export const zBuilderErrorCode = z.enum([
   'bad_request',
   'conflict',
   'feature_unavailable',
+  'model_unavailable',
   'not_found',
   'session_busy',
 ])

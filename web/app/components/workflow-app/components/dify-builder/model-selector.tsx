@@ -6,9 +6,15 @@ import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { difyBuilderModelReadonlyAtom, difyBuilderSelectModelAtom } from './store'
 
-type DifyBuilderModelSelectorProps = ReturnType<typeof useDifyBuilderModel>
+type DifyBuilderModelSelectorProps = Pick<
+  ReturnType<typeof useDifyBuilderModel>,
+  'modelList' | 'selection'
+>
 
-const DifyBuilderModelSelector = ({ model, modelList }: DifyBuilderModelSelectorProps) => {
+const DifyBuilderModelSelector = ({
+  selection: model,
+  modelList,
+}: DifyBuilderModelSelectorProps) => {
   const { t } = useTranslation()
   const readonly = useAtomValue(difyBuilderModelReadonlyAtom)
   const selectModel = useSetAtom(difyBuilderSelectModelAtom)

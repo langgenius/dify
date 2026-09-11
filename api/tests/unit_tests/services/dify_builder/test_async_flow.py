@@ -33,6 +33,7 @@ from core.dify_builder.errors import BusyError
 from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Run, Session
 from core.dify_builder.state import PcState
 from models.base import Base
+from services.dify_builder import service as service_mod
 from services.dify_builder import session_lock
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
@@ -94,6 +95,13 @@ def _wire(monkeypatch, repo: SqlDifyBuilderRepository) -> tuple[DifyBuilderServi
     monkeypatch.setattr(task_mod, "_build_repo", lambda: repo)  # task uses the SAME repo
     monkeypatch.setattr(task_mod, "WorkflowServiceDifyPort", FakeDifyPort)
     monkeypatch.setattr(task_mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
+    monkeypatch.setattr(
+        service_mod,
+        "validate_model_config",
+        lambda _tenant, config: (
+            config or {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
+        ),
+    )
 
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(task_mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
