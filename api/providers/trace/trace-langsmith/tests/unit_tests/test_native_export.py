@@ -63,6 +63,33 @@ def make_trace() -> CompletedTrace:
     )
 
 
+@pytest.mark.parametrize("session_id", [None, "custom-session"])
+@pytest.mark.parametrize("has_conversation", [False, True])
+def test_native_thread_metadata_uses_session_or_conversation(
+    monkeypatch: pytest.MonkeyPatch, session_id: str | None, has_conversation: bool
+) -> None:
+    trace = make_trace()
+    conversation_id = str(uuid4()) if has_conversation else None
+    trace = trace.model_copy(
+        update={
+            "source": trace.source.model_copy(update={"session_id": session_id, "conversation_id": conversation_id})
+        }
+    )
+    client = LangSmithTraceClient({"api_key": "key", "project": "project"})
+    request = Mock(return_value=httpx.Response(200, json={}))
+    monkeypatch.setattr(client.http, "request", request)
+
+    client.export_trace(trace)
+
+    for call in request.call_args_list:
+        for run in call.kwargs["json"]["post"]:
+            metadata = run["extra"]["metadata"]
+            if expected_session := session_id or conversation_id:
+                assert metadata["session_id"] == expected_session
+            else:
+                assert "session_id" not in metadata
+
+
 def make_client_with_transport(monkeypatch: pytest.MonkeyPatch) -> tuple[LangSmithTraceClient, Mock]:
     client = LangSmithTraceClient({"api_key": "secret", "project": "project"})
     request = Mock(return_value=httpx.Response(202, json={}))

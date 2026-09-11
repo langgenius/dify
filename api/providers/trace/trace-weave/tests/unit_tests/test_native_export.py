@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 from uuid import uuid4
@@ -6,7 +7,7 @@ import httpx
 import pytest
 from dify_trace_weave.weave_trace import WeaveTraceClient
 
-from core.ops.provider_export import TraceExportError
+from core.ops.provider_export import TraceExportError, basic_auth
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, make_span_id, make_trace_id
 
 
@@ -67,6 +68,83 @@ def make_client_with_transport(monkeypatch: pytest.MonkeyPatch) -> tuple[WeaveTr
     request = Mock(return_value=httpx.Response(200, json={}))
     monkeypatch.setattr(client.http, "request", request)
     return client, request
+
+
+@pytest.mark.parametrize("entity", [None, "entity"])
+@pytest.mark.parametrize(
+    ("host", "endpoint", "trace_endpoint"),
+    [
+        (None, None, "https://trace.wandb.ai"),
+        ("", "https://trace.wandb.ai", "https://trace.wandb.ai"),
+        ("https://api.wandb.ai/", "https://trace.wandb.ai/", "https://trace.wandb.ai"),
+        ("https://wandb.example", None, "https://wandb.example/traces"),
+        ("https://wandb.example/", "https://trace.wandb.ai", "https://wandb.example/traces"),
+        ("http://wandb.example:8080/prefix/", "https://trace.wandb.ai/", "http://wandb.example:8080/prefix/traces"),
+        ("https://api.wandb.ai/prefix/", None, "https://api.wandb.ai/prefix/traces"),
+        ("https://wandb.example/prefix/", "https://ingest.example/weave/", "https://ingest.example/weave"),
+        (None, "https://ingest.example/weave/", "https://ingest.example/weave"),
+    ],
+)
+def test_weave_verification_and_export_use_saved_destination(
+    monkeypatch: pytest.MonkeyPatch, entity: str | None, host: str | None, endpoint: str | None, trace_endpoint: str
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"data": {"viewer": {"entity": "entity"}}})
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+    )
+    for name in ("WANDB_BASE_URL", "WANDB_PUBLIC_BASE_URL", "WF_TRACE_SERVER_URL"):
+        monkeypatch.setenv(name, "https://unrelated.example")
+    monkeypatch.setenv("WANDB_API_KEY", "unrelated-key")
+    environment = dict(os.environ)
+    config = {"api_key": "saved-key", "entity": entity, "project": "project", "host": host}
+    if endpoint is not None:
+        config["endpoint"] = endpoint
+    client = WeaveTraceClient(config)
+
+    assert client.verify_credentials() is True
+    trace = make_trace()
+    client.export_trace(trace)
+
+    discovery = [f"{(host or 'https://api.wandb.ai').rstrip('/')}/graphql"] if entity is None else []
+    assert [str(request.url) for request in requests] == [
+        *discovery,
+        f"{trace_endpoint}/calls/query_stats",
+        *discovery,
+        *[f"{trace_endpoint}/call/{event}" for _span in trace.spans for event in ("start", "end")],
+    ]
+    assert all(request.headers["Authorization"] == basic_auth("api", "saved-key") for request in requests)
+    assert dict(os.environ) == environment
+
+
+@pytest.mark.parametrize("operation", ["verify_credentials", "export_trace"])
+def test_weave_self_hosted_failure_never_falls_back_to_cloud(monkeypatch: pytest.MonkeyPatch, operation: str) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(503)
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+    )
+    client = WeaveTraceClient(
+        {"api_key": "saved-key", "entity": "entity", "project": "project", "host": "https://wandb.example"}
+    )
+    send_to_provider = (
+        client.verify_credentials if operation == "verify_credentials" else lambda: client.export_trace(make_trace())
+    )
+    with pytest.raises(TraceExportError, match="provider_http_503"):
+        send_to_provider()
+    assert len(requests) == 1
+    assert requests[0].url.host == "wandb.example"
+    assert requests[0].url.path.startswith("/traces/")
 
 
 @pytest.mark.parametrize("missing", [{"started_at": None, "ended_at": None}, {"ended_at": None}])

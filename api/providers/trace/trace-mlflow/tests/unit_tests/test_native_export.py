@@ -1,7 +1,7 @@
 import base64
 import json
 from datetime import UTC, datetime, timedelta
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
 
 import httpx
@@ -11,10 +11,12 @@ from opentelemetry.proto.common.v1.common_pb2 import AnyValue
 from pydantic import JsonValue
 
 from core.ops.otlp_trace import OtlpTraceClient
-from core.ops.provider_export import export_span_id, span_id_bytes
+from core.ops.provider_export import TraceExportError, basic_auth, export_span_id, span_id_bytes
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, copy_trace_value, make_span_id, make_trace_id
 from core.rag.models.document import Document
 from graphon.variables.segments import ArrayObjectSegment
+from services.app_tracing_config_gateway import TraceProviderConfigChecks
+from services.app_tracing_config_service import AppTracingConfigVerificationFailedError
 
 
 def read_attribute_value(value: AnyValue) -> JsonValue:
@@ -95,6 +97,97 @@ def test_project_url_opens_the_provider_trace_view(provider_name: str) -> None:
     client = MLflowTraceClient(provider_name, config)
     expected_path = "/ml/experiments/7/traces" if provider_name == "databricks" else "/#/experiments/7/traces"
     assert client.get_project_url() == "https://tracing.example" + expected_path
+
+
+@pytest.mark.parametrize(
+    ("response", "error_reason"),
+    [
+        (httpx.Response(401), "provider_http_401"),
+        (httpx.Response(503), "provider_http_503"),
+        (httpx.ConnectError("provider unavailable"), "provider_unreachable"),
+        (httpx.Response(200, json={"access_token": ""}), "databricks_token_missing"),
+    ],
+)
+def test_databricks_saved_oauth_config_is_readable_but_authentication_failures_reject_writes(
+    response: httpx.Response | httpx.RequestError, error_reason: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace_id = str(uuid4())
+    settings = {
+        "host": "https://databricks.example/",
+        "experiment_id": "7",
+        "client_id": "client",
+        "client_secret": "secret",
+        "personal_access_token": None,
+    }
+    encrypted = {**settings, "client_secret": "cipher-secret"}
+    request = Mock(side_effect=response) if isinstance(response, Exception) else Mock(return_value=response)
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
+    checks = TraceProviderConfigChecks()
+    with patch("core.helper.encrypter.batch_decrypt_token", return_value=["secret"]) as decrypt:
+        presented = checks.present_config(
+            workspace_id=workspace_id, tracing_provider="databricks", tracing_config=encrypted
+        )
+    decrypt.assert_called_once_with(workspace_id, ["cipher-secret"])
+    assert presented == {
+        **settings,
+        "client_secret": "*" * 20,
+        "project_url": "https://databricks.example/ml/experiments/7/traces",
+    }
+    assert encrypted["client_secret"] == "cipher-secret"
+    request.assert_not_called()
+    with patch("core.helper.encrypter.encrypt_token") as encrypt:
+        with pytest.raises(AppTracingConfigVerificationFailedError) as failure:
+            checks.prepare_new_config(workspace_id=workspace_id, tracing_provider="databricks", tracing_config=settings)
+    assert isinstance(failure.value.__cause__, TraceExportError)
+    assert str(failure.value.__cause__) == error_reason
+    encrypt.assert_not_called()
+    client = MLflowTraceClient("databricks", settings)
+    with pytest.raises(TraceExportError, match=error_reason):
+        client.export_trace(make_trace())
+    assert request.call_count == 2
+    assert all(call.args[:2] == ("POST", "https://databricks.example/oidc/v1/token") for call in request.call_args_list)
+
+
+@pytest.mark.parametrize("operation", ["verify", "export"])
+@pytest.mark.parametrize(
+    ("credentials", "oauth"),
+    [
+        ({"client_id": "client", "client_secret": "secret"}, True),
+        ({"client_id": "client", "client_secret": "secret", "personal_access_token": "pat"}, True),
+        ({"personal_access_token": "pat"}, False),
+        ({"client_id": "client", "personal_access_token": "pat"}, False),
+    ],
+)
+def test_databricks_authenticated_operations_prefer_complete_oauth_credentials(
+    operation: str, credentials: dict[str, str], oauth: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    responses = [httpx.Response(200, json={"access_token": "oauth-token"})] if oauth else []
+    responses.append(httpx.Response(200, json={}))
+    if operation == "export":
+        responses.extend(
+            [
+                httpx.Response(200, json={"credential_info": {"signed_uri": "https://storage.example/trace"}}),
+                httpx.Response(200),
+            ]
+        )
+    request = Mock(side_effect=responses)
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
+    client = MLflowTraceClient(
+        "databricks", {"host": "https://databricks.example", "experiment_id": "7", **credentials}
+    )
+    request.assert_not_called()
+    if operation == "verify":
+        assert client.verify_credentials()
+    else:
+        client.export_trace(make_trace())
+    assert request.call_count == len(responses)
+    if oauth:
+        token_request = request.call_args_list[0]
+        assert token_request.args[:2] == ("POST", "https://databricks.example/oidc/v1/token")
+        assert token_request.kwargs["headers"]["Authorization"] == basic_auth("client", "secret")
+        assert token_request.kwargs["data"] == {"grant_type": "client_credentials", "scope": "all-apis"}
+    api_request = request.call_args_list[int(oauth)]
+    assert api_request.kwargs["headers"]["Authorization"] == ("Bearer oauth-token" if oauth else "Bearer pat")
 
 
 def test_mlflow_native_llm_format_usage_cost_model_and_grouping(monkeypatch: pytest.MonkeyPatch) -> None:

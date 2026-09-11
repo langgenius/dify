@@ -98,25 +98,6 @@ class MLflowTraceClient:
         )
         if isinstance(self.config, DatabricksConfig):
             self.http = TraceProviderHttpClient(self.config.host)
-            token = self.config.personal_access_token
-            if not token:
-                if not self.config.client_id or not self.config.client_secret:
-                    raise TraceExportError("databricks_credentials_missing")
-                token = (
-                    self.http.request(
-                        "POST",
-                        "oidc/v1/token",
-                        headers={
-                            "Authorization": basic_auth(self.config.client_id, self.config.client_secret),
-                        },
-                        data={"grant_type": "client_credentials", "scope": "all-apis"},
-                    )
-                    .json()
-                    .get("access_token")
-                )
-            if not isinstance(token, str) or not token:
-                raise TraceExportError("databricks_token_missing")
-            self.http.headers["Authorization"] = f"Bearer {token}"
         else:
             self.http = TraceProviderHttpClient(
                 self.config.tracking_uri,
@@ -129,7 +110,30 @@ class MLflowTraceClient:
                 },
             )
 
+    def _authenticate_databricks(self) -> None:
+        if not isinstance(self.config, DatabricksConfig):
+            return
+        if self.config.client_id and self.config.client_secret:
+            token = (
+                self.http.request(
+                    "POST",
+                    "oidc/v1/token",
+                    headers={"Authorization": basic_auth(self.config.client_id, self.config.client_secret)},
+                    data={"grant_type": "client_credentials", "scope": "all-apis"},
+                )
+                .json()
+                .get("access_token")
+            )
+        elif self.config.personal_access_token:
+            token = self.config.personal_access_token
+        else:
+            raise TraceExportError("databricks_credentials_missing")
+        if not isinstance(token, str) or not token:
+            raise TraceExportError("databricks_token_missing")
+        self.http.headers["Authorization"] = f"Bearer {token}"
+
     def verify_credentials(self) -> bool:
+        self._authenticate_databricks()
         self.http.request("GET", "api/2.0/mlflow/experiments/get", params={"experiment_id": self.config.experiment_id})
         return True
 
@@ -200,6 +204,7 @@ class MLflowTraceClient:
             except ValueError:
                 pass
         if self.provider_name == "databricks":
+            self._authenticate_databricks()
             self._export_databricks(completed_trace, trace_id, parent_span)
         else:
             trace_id = _parse_trace_uuid(str(parent_span["trace_id"])) if parent_span else trace_id

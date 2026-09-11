@@ -2,6 +2,7 @@ from unittest.mock import Mock, patch
 
 import httpx
 import pytest
+from dify_trace_langsmith.langsmith_trace import LangSmithTraceClient
 
 from services.app_tracing_config_gateway import TraceProviderConfigChecks
 from services.app_tracing_config_service import AppTracingConfigVerificationFailedError
@@ -55,3 +56,26 @@ def test_saved_config_stays_readable_when_project_discovery_fails(
         assert request.call_count == 2
     else:
         request.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "web_url"),
+    [
+        ("https://api.smith.langchain.com", "https://smith.langchain.com"),
+        ("https://eu.api.smith.langchain.com", "https://eu.smith.langchain.com"),
+        ("https://aws.api.smith.langchain.com", "https://aws.smith.langchain.com"),
+        ("https://apac.api.smith.langchain.com", "https://apac.smith.langchain.com"),
+        ("https://dev.api.smith.langchain.com", "https://dev.smith.langchain.com"),
+        ("https://beta.api.smith.langchain.com", "https://beta.smith.langchain.com"),
+        ("https://langsmith.example/api", "https://langsmith.example"),
+        ("https://langsmith.example/prefix/api", "https://langsmith.example/prefix"),
+        ("https://langsmith.example/prefix/api/v1", "https://langsmith.example/prefix"),
+    ],
+)
+def test_project_url_uses_endpoint_web_host(endpoint: str, web_url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = LangSmithTraceClient({"api_key": "secret", "project": "project", "endpoint": endpoint})
+    request = Mock(return_value=httpx.Response(200, json=[{"id": "project-id", "tenant_id": "tenant-id"}]))
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
+
+    assert client.get_project_url() == f"{web_url}/o/tenant-id/projects/p/project-id"
+    assert request.call_args.args == ("GET", f"{endpoint}/sessions")

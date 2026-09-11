@@ -47,9 +47,12 @@ def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
 class WeaveTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
         self.config = WeaveConfig.model_validate(provider_config)
-        self.http = TraceProviderHttpClient(
-            self.config.endpoint, {"Authorization": basic_auth("api", self.config.api_key)}
-        )
+        host = (self.config.host or "https://api.wandb.ai").rstrip("/")
+        endpoint = self.config.endpoint.rstrip("/")
+        # Weave 0.52.36 derives self-hosted ingestion from the saved W&B host.
+        if endpoint == "https://trace.wandb.ai" and host != "https://api.wandb.ai":
+            endpoint = f"{host}/traces"
+        self.http = TraceProviderHttpClient(endpoint, {"Authorization": basic_auth("api", self.config.api_key)})
 
     def _project_id(self) -> str:
         entity = self.config.entity

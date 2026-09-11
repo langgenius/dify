@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from uuid import UUID
 
 from pydantic import JsonValue
@@ -70,9 +70,23 @@ class OpikTraceClient:
         return True
 
     def get_project_url(self) -> str:
+        workspace = self.config.workspace or "default"
+        if workspace == "default":
+            try:
+                workspace_details = self.http.request("GET", "v1/private/auth/workspace").json()
+                if (
+                    isinstance(workspace_details, dict)
+                    and isinstance(workspace_name := workspace_details.get("workspace_name"), str)
+                    and workspace_name
+                ):
+                    workspace = workspace_name
+            except (TraceExportError, ValueError):
+                # An unavailable default-workspace lookup must not prevent reading saved settings.
+                pass
         return (
             self.config.url.removesuffix("api/").rstrip("/")
-            + f"/{quote(self.config.workspace or 'default', safe='')}/projects"
+            + f"/{quote(workspace, safe='')}/redirect/projects?"
+            + urlencode({"name": self.config.project or "Default Project"})
         )
 
     def export_trace(
