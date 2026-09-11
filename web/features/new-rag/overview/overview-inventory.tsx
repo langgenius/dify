@@ -2,7 +2,7 @@
 
 import type { KnowledgeFsOverviewInventoryResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { EmptyInline, OverviewErrorInline, Panel, Skeleton } from './overview-panel'
 import {
@@ -15,12 +15,12 @@ import {
 
 export function InventoryPanel() {
   const { t } = useTranslation('knowledgeSpace')
-  const empty = useAtomValue(overviewShowEmptyModulesAtom)
-  const error = useAtomValue(overviewInventoryErrorAtom)
-  const indexing = useAtomValue(overviewShowIndexingAtom)
+  const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
+  const error = useAtomValueRawSync(overviewInventoryErrorAtom)
+  const indexing = useAtomValueRawSync(overviewShowIndexingAtom)
   const inventory: KnowledgeFsOverviewInventoryResponse | undefined =
-    useAtomValue(overviewInventoryDataAtom)
-  const loading = useAtomValue(overviewInventoryPendingAtom)
+    useAtomValueRawSync(overviewInventoryDataAtom)
+  const loading = useAtomValueRawSync(overviewInventoryPendingAtom)
   const categories = inventory
     ? [
         {

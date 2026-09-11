@@ -16,7 +16,7 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -75,7 +75,7 @@ function responseStatus(error: unknown): number | undefined {
 function DocumentsTaskDrawerHeader() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const canWrite = useAtomValue(documentCanWriteAtom)
+  const canWrite = useAtomValueRawSync(documentCanWriteAtom)
 
   return (
     <header className="relative shrink-0 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-3.5 pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
@@ -106,8 +106,8 @@ function DocumentsTaskDrawerHeader() {
 function DocumentsTaskQueryRecovery() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const open = useAtomValue(taskDrawerOpenAtom)
-  const recovery = useAtomValue(taskDrawerQueryRecoveryFactsAtom)
+  const open = useAtomValueRawSync(taskDrawerOpenAtom)
+  const recovery = useAtomValueRawSync(taskDrawerQueryRecoveryFactsAtom)
   const retryDocuments = useSetAtom(retryTaskDrawerDocumentsAtom)
   const retryTasks = useSetAtom(retryTaskDrawerTasksAtom)
   const taskRetryButtonRef = useRef<HTMLButtonElement>(null)
@@ -190,7 +190,7 @@ function useDocumentsTaskRowTitle(task: BackgroundTask) {
     documentTitle: resolvedDocumentTitle,
     documentTitlePending,
     sourceTitle,
-  } = useAtomValue(rowLabelsAtom)
+  } = useAtomValueRawSync(rowLabelsAtom)
   const documentTitle =
     resolvedDocumentTitle ??
     (task.documentId
@@ -298,7 +298,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   const queryClient = useQueryClient()
   const title = useDocumentsTaskRowTitle(task)
   const { canRead, canWrite, includeCancelTarget, includeRetryTarget, knowledgeSpaceId } =
-    useAtomValue(taskDrawerActionFactsAtom)
+    useAtomValueRawSync(taskDrawerActionFactsAtom)
   const onTaskUpdated = useSetAtom(acceptDocumentTaskSnapshotAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
   const dismissTask = useSetAtom(dismissBackgroundTaskAtom)
@@ -485,7 +485,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
 }
 
 function DocumentsTaskRow({ task: baseTask }: { task: BackgroundTask }) {
-  const progressStore = useAtomValue(taskProgressStoreAtom)
+  const progressStore = useAtomValueRawSync(taskProgressStoreAtom)
   const subscribeToProgress = useCallback(
     (listener: () => void) => progressStore.subscribeTask(baseTask.id, listener),
     [baseTask.id, progressStore],
@@ -510,9 +510,9 @@ function DocumentsTaskRow({ task: baseTask }: { task: BackgroundTask }) {
 
 function DocumentsTaskRows() {
   const { t } = useTranslation('knowledgeSpace')
-  const open = useAtomValue(taskDrawerOpenAtom)
-  const orderedTasks = useAtomValue(taskDrawerOrderedBaseTasksAtom)
-  const rowsState = useAtomValue(taskDrawerRowsStateAtom)
+  const open = useAtomValueRawSync(taskDrawerOpenAtom)
+  const orderedTasks = useAtomValueRawSync(taskDrawerOrderedBaseTasksAtom)
+  const rowsState = useAtomValueRawSync(taskDrawerRowsStateAtom)
   const focusedTaskActionRef = useRef<HTMLButtonElement | null>(null)
   const focusedTaskActionCloseRef = useRef<HTMLButtonElement | null>(null)
 
@@ -562,8 +562,8 @@ function DocumentsTaskRows() {
 
 function DocumentsTaskLoadMore() {
   const { t } = useTranslation('knowledgeSpace')
-  const open = useAtomValue(taskDrawerOpenAtom)
-  const pagination = useAtomValue(taskDrawerLoadMoreFactsAtom)
+  const open = useAtomValueRawSync(taskDrawerOpenAtom)
+  const pagination = useAtomValueRawSync(taskDrawerLoadMoreFactsAtom)
   const showMore = useSetAtom(showMoreTaskDrawerResultsAtom)
   const loadMoreRequestedRef = useRef(false)
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
@@ -602,7 +602,7 @@ function DocumentsTaskLoadMore() {
 }
 
 export function DocumentsProcessingTasksDrawer() {
-  const open = useAtomValue(taskDrawerOpenAtom)
+  const open = useAtomValueRawSync(taskDrawerOpenAtom)
   const setOpen = useSetAtom(documentTasksOpenAtom)
   const resetResultsWindow = useSetAtom(resetTaskDrawerResultsWindowAtom)
 

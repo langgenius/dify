@@ -1,18 +1,17 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { atom, createStore, Provider, useAtomValue } from 'jotai'
-import { NuqsJotaiBridge } from 'nuqs-jotai'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { atom, createStore, Provider, useAtomValueRawSync } from 'jotai'
 import { useState } from 'react'
-import { overviewKnowledgeSpaceIdAtom, overviewLocationQuery, overviewWindowAtom } from '../state'
+import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
+import { overviewKnowledgeSpaceIdAtom, overviewWindowAtom } from '../state'
 import { OverviewStateBoundary } from '../state-boundary'
 
 const parentValueAtom = atom('missing')
 
 function OverviewInputs({ label }: { label: string }) {
-  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
-  const window = useAtomValue(overviewWindowAtom)
-  const parentValue = useAtomValue(parentValueAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
+  const window = useAtomValueRawSync(overviewWindowAtom)
+  const parentValue = useAtomValueRawSync(parentValueAtom)
   return <p>{`${label}:${knowledgeSpaceId}:${window}:${parentValue}`}</p>
 }
 
@@ -28,16 +27,14 @@ describe('OverviewStateBoundary', () => {
 
     render(
       <Provider store={store}>
-        <NuqsTestingAdapter searchParams="?window=7d">
-          <NuqsJotaiBridge config={overviewLocationQuery}>
-            <OverviewStateBoundary knowledgeSpaceId="space-a">
-              <OverviewInputs label="first" />
-            </OverviewStateBoundary>
-            <OverviewStateBoundary knowledgeSpaceId="space-b">
-              <OverviewInputs label="second" />
-            </OverviewStateBoundary>
-          </NuqsJotaiBridge>
-        </NuqsTestingAdapter>
+        <QueryTestingAdapter searchParams="?window=7d">
+          <OverviewStateBoundary knowledgeSpaceId="space-a">
+            <OverviewInputs label="first" />
+          </OverviewStateBoundary>
+          <OverviewStateBoundary knowledgeSpaceId="space-b">
+            <OverviewInputs label="second" />
+          </OverviewStateBoundary>
+        </QueryTestingAdapter>
       </Provider>,
     )
 
@@ -48,13 +45,11 @@ describe('OverviewStateBoundary', () => {
   it('resets owner-local sessions when the knowledge space identity changes', async () => {
     const user = userEvent.setup()
     const rendered = render(
-      <NuqsTestingAdapter searchParams="?window=24h">
-        <NuqsJotaiBridge config={overviewLocationQuery}>
-          <OverviewStateBoundary knowledgeSpaceId="space-a">
-            <LocalSession />
-          </OverviewStateBoundary>
-        </NuqsJotaiBridge>
-      </NuqsTestingAdapter>,
+      <QueryTestingAdapter searchParams="?window=24h">
+        <OverviewStateBoundary knowledgeSpaceId="space-a">
+          <LocalSession />
+        </OverviewStateBoundary>
+      </QueryTestingAdapter>,
     )
 
     await user.click(screen.getByRole('button', { name: '0' }))
@@ -62,13 +57,11 @@ describe('OverviewStateBoundary', () => {
 
     act(() =>
       rendered.rerender(
-        <NuqsTestingAdapter searchParams="?window=24h">
-          <NuqsJotaiBridge config={overviewLocationQuery}>
-            <OverviewStateBoundary knowledgeSpaceId="space-b">
-              <LocalSession />
-            </OverviewStateBoundary>
-          </NuqsJotaiBridge>
-        </NuqsTestingAdapter>,
+        <QueryTestingAdapter searchParams="?window=24h">
+          <OverviewStateBoundary knowledgeSpaceId="space-b">
+            <LocalSession />
+          </OverviewStateBoundary>
+        </QueryTestingAdapter>,
       ),
     )
 

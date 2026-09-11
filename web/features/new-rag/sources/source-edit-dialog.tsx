@@ -199,6 +199,7 @@ function ConnectedSourceEditDialogContent({
     fetchNextPage,
     hasNextPage,
     isError: connectionsError,
+    isFetchNextPageError,
     isFetchingNextPage,
     isPending: connectionsPending,
   } = useInfiniteQuery(
@@ -253,9 +254,22 @@ function ConnectedSourceEditDialogContent({
     [bindingReady, credentialId, datasource, installedProviderOption, pluginId, provider],
   )
   useEffect(() => {
-    if (source.connectionId && !connection && hasNextPage && !isFetchingNextPage)
+    if (
+      source.connectionId &&
+      !connection &&
+      hasNextPage &&
+      !isFetchingNextPage &&
+      !isFetchNextPageError
+    )
       void fetchNextPage()
-  }, [connection, fetchNextPage, hasNextPage, isFetchingNextPage, source.connectionId])
+  }, [
+    connection,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    source.connectionId,
+  ])
 
   const submitEdit = async (submission: ConnectedInitialSource) => {
     if (pending) return false
@@ -304,11 +318,24 @@ function ConnectedSourceEditDialogContent({
             />
           </div>
         ) : unavailable || !installedProviderOption || !previewBinding ? (
-          <p role="alert" className="py-8 system-sm-regular text-text-destructive">
-            {datasourcePluginsQuery.isError || connectionsError
-              ? t(($) => $.providerLoadFailed)
-              : t(($) => $.providerUnavailable)}
-          </p>
+          <div className="py-8">
+            <p role="alert" className="system-sm-regular text-text-destructive">
+              {datasourcePluginsQuery.isError || connectionsError
+                ? t(($) => $.providerLoadFailed)
+                : t(($) => $.providerUnavailable)}
+            </p>
+            {isFetchNextPageError && !connection && (
+              <Button
+                className="mt-3"
+                disabled={pending}
+                loading={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+                type="button"
+              >
+                {tCommon(($) => $['operation.retry'])}
+              </Button>
+            )}
+          </div>
         ) : (
           <ConnectedSourceEditForm
             disabled={pending}
@@ -460,6 +487,7 @@ function WebsiteSourceEditDialogContent({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       context: { silent: true },
@@ -551,10 +579,18 @@ function WebsiteSourceEditDialogContent({
       initialSource.connectionId &&
       !connection &&
       hasNextPage &&
-      !isFetchingNextPage
+      !isFetchingNextPage &&
+      !isFetchNextPageError
     )
       void fetchNextPage()
-  }, [connection, fetchNextPage, hasNextPage, initialSource, isFetchingNextPage])
+  }, [
+    connection,
+    fetchNextPage,
+    hasNextPage,
+    initialSource,
+    isFetchingNextPage,
+    isFetchNextPageError,
+  ])
 
   useEffect(
     () => () => {
@@ -731,6 +767,22 @@ function WebsiteSourceEditDialogContent({
           </div>
         ) : (
           <div className="mt-5">{sourceNameField}</div>
+        )}
+        {initialSource.connectionId && !connection && isFetchNextPageError && (
+          <div className="mt-4">
+            <p role="alert" className="system-sm-regular text-text-destructive">
+              {t(($) => $.providerLoadFailed)}
+            </p>
+            <Button
+              className="mt-3"
+              disabled={pending}
+              loading={isFetchingNextPage}
+              onClick={() => void fetchNextPage()}
+              type="button"
+            >
+              {tCommon(($) => $['operation.retry'])}
+            </Button>
+          </div>
         )}
         {initialSource.type === 'web' && providerConfigurationReady && (
           <div className="mt-4">

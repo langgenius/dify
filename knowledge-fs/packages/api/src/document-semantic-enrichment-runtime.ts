@@ -1,3 +1,4 @@
+import { runWithAbortSignal } from "./bounded-concurrency";
 import type {
   DocumentSemanticEnrichmentProcessor,
   DocumentSemanticEnrichmentProcessorResult,
@@ -118,6 +119,11 @@ export function createDocumentSemanticEnrichmentRuntime({
       });
     };
     let heartbeatLost = false;
+    const controller = new AbortController();
+    const loseLease = () => {
+      heartbeatLost = true;
+      controller.abort(new Error("Semantic enrichment execution lease was lost"));
+    };
     const heartbeat = setInterval(() => {
       const timestamp = now();
       void repository
@@ -127,10 +133,10 @@ export function createDocumentSemanticEnrichmentRuntime({
           now: iso(timestamp),
         })
         .then((renewed) => {
-          if (!renewed) heartbeatLost = true;
+          if (!renewed) loseLease();
         })
         .catch(() => {
-          heartbeatLost = true;
+          loseLease();
         });
     }, heartbeatIntervalMs);
     heartbeat.unref?.();
@@ -163,7 +169,10 @@ export function createDocumentSemanticEnrichmentRuntime({
         return "superseded";
       }
 
-      const result = await processor.process(job);
+      const result = await runWithAbortSignal(
+        () => processor.process(job, { signal: controller.signal }),
+        controller.signal,
+      );
       if (heartbeatLost) throw new Error("Semantic enrichment execution lease was lost");
       const released = await repository.release({
         ...lease,

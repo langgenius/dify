@@ -494,6 +494,7 @@ export function WebsiteCrawlPreview({
   const pageCursorRef = useRef<string | undefined>(undefined)
   const submittedRef = useRef(false)
   const discardRequestedRef = useRef(false)
+  const previewLifecycleRef = useRef({ generation: 0 })
   const pendingWorkflowPromiseRef = useRef<Promise<SourceWorkflowRun | undefined> | undefined>(
     undefined,
   )
@@ -646,8 +647,11 @@ export function WebsiteCrawlPreview({
     onInteractionLockChange?.(locked)
   }, [locked, onInteractionLockChange])
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const lifecycle = previewLifecycleRef.current
+    const generation = ++lifecycle.generation
+    discardRequestedRef.current = false
+    return () => {
       onInteractionLockChange?.(false)
       if (submittedRef.current) return
       discardRequestedRef.current = true
@@ -657,7 +661,7 @@ export function WebsiteCrawlPreview({
         } catch {
           // Continue best-effort cleanup even if the in-flight workflow request rejected.
         }
-        if (submittedRef.current) return
+        if (lifecycle.generation !== generation || submittedRef.current) return
         const draft = draftRef.current
         if (!draft) return
         try {
@@ -666,9 +670,8 @@ export function WebsiteCrawlPreview({
           // A route or provider switch cannot surface cleanup errors after this owner unmounts.
         }
       })()
-    },
-    [deletePreviewDraftSource, onInteractionLockChange],
-  )
+    }
+  }, [deletePreviewDraftSource, onInteractionLockChange])
   const togglePreviewPage = useCallback((pageId: string) => {
     setSelectedPageIds((current) => {
       const next = new Set(current)

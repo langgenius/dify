@@ -85,6 +85,8 @@ describe("database schema catalog", () => {
       "answer_trace_steps",
       "graph_entities",
       "graph_relations",
+      "graph_entity_semantic_projections",
+      "graph_relation_semantic_projections",
       "failed_queries",
       "quality_replay_runs",
       "quality_replay_items",

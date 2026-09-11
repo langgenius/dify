@@ -430,6 +430,7 @@ function multimodalAnswerMessages(
           (item, index) =>
             `[E${index + 1}] node=${item.nodeId} page=${item.citation.pageNumber ?? "unknown"} section=${item.citation.sectionPath.join(" / ") || "Document"}\n${item.text}`,
         ),
+        ...(input.graphPathEvidence ? [input.graphPathEvidence] : []),
         "",
         "Multimodal attachments:",
         ...input.multimodalEvidence.map(
@@ -518,6 +519,7 @@ function multimodalContentBlockMessages({
               (item, index) =>
                 `[E${index + 1}] node=${item.nodeId} page=${item.citation.pageNumber ?? "unknown"} section=${item.citation.sectionPath.join(" / ") || "Document"}\n${item.text}`,
             ),
+            ...(input.graphPathEvidence ? [input.graphPathEvidence] : []),
             "",
             "Multimodal attachment metadata:",
           ].join("\n"),

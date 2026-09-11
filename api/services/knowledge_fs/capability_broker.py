@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import uuid
 from datetime import UTC, datetime
 from typing import NamedTuple, Protocol, cast
@@ -56,6 +58,7 @@ class KnowledgeFSIssuedProductCapability(NamedTuple):
     knowledge_space_id: str
     knowledge_space_revision: int
     trace_id: str
+    authorization_fingerprint: str | None = None
 
 
 class KnowledgeFSAuthorizationSnapshot(NamedTuple):
@@ -366,6 +369,18 @@ class KnowledgeFSCapabilityBroker:
             knowledge_space_id=knowledge_space_id,
             knowledge_space_revision=knowledge_space_revision,
             trace_id=request.trace_id,
+            authorization_fingerprint=hashlib.sha256(
+                json.dumps(
+                    {
+                        "actor": request.actor,
+                        "caller_kind": request.caller_kind,
+                        "authz": request.authz_revision.model_dump(),
+                        "content_policy_revision": request.content_policy_revision,
+                        "content_scope_ids": sorted(request.content_scope_ids),
+                    },
+                    sort_keys=True,
+                ).encode()
+            ).hexdigest(),
         )
 
 

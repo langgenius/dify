@@ -695,13 +695,13 @@ function graphSourceNodeOverlapSql(
     .join(" OR ")})`;
 }
 
-function publishedGraphEntitySelectSql(database: DatabaseAdapter, alias: string): string {
+export function publishedGraphEntitySelectSql(database: DatabaseAdapter, alias: string): string {
   return graphEntityColumns
     .map((name) => `${column(database, alias, name)} AS ${quoted(database, `entity_${name}`)}`)
     .join(", ");
 }
 
-function publishedGraphRelationSelectSql(database: DatabaseAdapter, alias: string): string {
+export function publishedGraphRelationSelectSql(database: DatabaseAdapter, alias: string): string {
   return graphRelationColumns
     .map((name) => `${column(database, alias, name)} AS ${quoted(database, `relation_${name}`)}`)
     .join(", ");
@@ -740,7 +740,7 @@ const graphRelationColumns = [
   "updated_at",
 ] as const;
 
-function mapGraphEntityRow(row: DatabaseRow): GraphEntity {
+export function mapGraphEntityRow(row: DatabaseRow): GraphEntity {
   return cloneGraphEntity({
     aliases: jsonStringArrayColumn(row, "aliases"),
     canonicalKey: stringColumn(row, "canonical_key"),
@@ -759,7 +759,7 @@ function mapGraphEntityRow(row: DatabaseRow): GraphEntity {
   });
 }
 
-function mapPublishedGraphEntityRow(row: DatabaseRow): GraphEntity {
+export function mapPublishedGraphEntityRow(row: DatabaseRow): GraphEntity {
   return cloneGraphEntity({
     aliases: jsonStringArrayColumn(row, "entity_aliases"),
     canonicalKey: stringColumn(row, "entity_canonical_key"),
@@ -778,7 +778,7 @@ function mapPublishedGraphEntityRow(row: DatabaseRow): GraphEntity {
   });
 }
 
-function mapPublishedGraphRelationRow(row: DatabaseRow): GraphRelation {
+export function mapPublishedGraphRelationRow(row: DatabaseRow): GraphRelation {
   return cloneGraphRelation({
     confidence: numberColumn(row, "relation_confidence"),
     createdAt: stringColumn(row, "relation_created_at"),

@@ -69,7 +69,7 @@ class KnowledgeFSConfig(BaseSettings):
         gt=60.0,
         le=120.0,
         allow_inf_nan=False,
-        description="Timeout for interactive retrieval tests, which have a 60-second KnowledgeFS execution budget.",
+        description="Timeout for retrieval tests and Agent investigation triage, which have a 60-second model budget.",
     )
 
     @field_validator(

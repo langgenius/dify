@@ -32,6 +32,8 @@ describe("createLlmMultimodalAnswerProvider", () => {
 
     await expect(
       provider.generate({
+        graphPathEvidence:
+          'Retrieved graph paths: [{"subject":"A","relation":"depends_on","object":"B","evidence":["E1"]}]',
         evidence: [
           {
             citation: {
@@ -77,6 +79,7 @@ describe("createLlmMultimodalAnswerProvider", () => {
       temperature: 0,
     });
     expect(calls[0]?.messages[1]?.content).toContain("OCR says revenue increased 12%");
+    expect(calls[0]?.messages[1]?.content).toContain('"evidence":["E1"]');
     expect(calls[0]?.messages[1]?.content).toContain(
       "/knowledge-spaces/space-1/documents/doc-1/multimodal/item-1/asset",
     );
@@ -127,6 +130,8 @@ describe("createContentBlockMultimodalAnswerProvider", () => {
 
     await expect(
       provider.generate({
+        graphPathEvidence:
+          'Retrieved graph paths: [{"subject":"A","relation":"depends_on","object":"B","evidence":["E1"]}]',
         evidence: [
           {
             citation: {
@@ -192,6 +197,9 @@ describe("createContentBlockMultimodalAnswerProvider", () => {
     expect(calls[0]?.messages[1]?.content[1]).toMatchObject({
       text: expect.stringContaining('bbox={"height":120,"width":240,"x":10,"y":20}'),
       type: "text",
+    });
+    expect(calls[0]?.messages[1]?.content[0]).toMatchObject({
+      text: expect.stringContaining('"evidence":["E1"]'),
     });
   });
 

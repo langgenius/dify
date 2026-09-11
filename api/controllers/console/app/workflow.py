@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, NotRequired, Self, TypedDict
 
 from flask import abort, request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import (
     AliasChoices,
     BaseModel,
@@ -586,14 +586,14 @@ class DraftWorkflowApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
+    def get(self, session: Session, app_model: App):
         """
         Get draft workflow
         """
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
-        session = db.session()
         workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
 
         if not workflow:
@@ -1489,11 +1489,12 @@ class PublishedAllWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
+    @with_session(write=False)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @model_validate(WorkflowListQuery)
-    def get(self, args: WorkflowListQuery, current_user: Account, app_model: App):
+    def get(self, args: WorkflowListQuery, session: Session, current_user: Account, app_model: App):
         """
         Get published workflows
         """
@@ -1508,23 +1509,22 @@ class PublishedAllWorkflowApi(Resource):
                 raise Forbidden()
 
         workflow_service = WorkflowService()
-        with sessionmaker(db.engine).begin() as session:
-            workflows, has_more = workflow_service.get_all_published_workflow(
-                session=session,
-                app_model=app_model,
-                page=page,
-                limit=limit,
-                user_id=user_id,
-                named_only=named_only,
-            )
-            return WorkflowPaginationResponse.model_validate(
-                {
-                    "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
-                    "page": page,
-                    "limit": limit,
-                    "has_more": has_more,
-                }
-            ).model_dump(mode="json")
+        workflows, has_more = workflow_service.get_all_published_workflow(
+            session=session,
+            app_model=app_model,
+            page=page,
+            limit=limit,
+            user_id=user_id,
+            named_only=named_only,
+        )
+        return WorkflowPaginationResponse.model_validate(
+            {
+                "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
+                "page": page,
+                "limit": limit,
+                "has_more": has_more,
+            }
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>/restore")
@@ -1698,14 +1698,7 @@ class DraftWorkflowTriggerRunApi(Resource):
     @console_ns.doc("poll_draft_workflow_trigger_run")
     @console_ns.doc(description="Poll for trigger events and execute full workflow when event arrives")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "DraftWorkflowTriggerRunRequest",
-            {
-                "node_id": fields.String(required=True, description="Node ID"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[DraftWorkflowTriggerRunPayload.__name__])
     @console_ns.response(
         200,
         "Trigger event received and workflow executed successfully",

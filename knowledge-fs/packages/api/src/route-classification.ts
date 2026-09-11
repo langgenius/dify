@@ -1,4 +1,7 @@
 export function getTraceRoute(path: string): string {
+  if (/^\/knowledge-spaces\/[^/]+\/agent-investigations$/.test(path)) {
+    return "/knowledge-spaces/{id}/agent-investigations";
+  }
   if (path === "/internal/knowledge-spaces/product-summaries/batch") return path;
   if (
     path === "/health" ||
@@ -239,6 +242,9 @@ export function getTraceRoute(path: string): string {
 }
 
 export function getRateLimitTool(method: string, path: string): string {
+  if (/^\/knowledge-spaces\/[^/]+\/agent-investigations$/.test(path)) {
+    return "queries.agent_investigation.capture";
+  }
   const normalizedMethod = method.toUpperCase();
   if (path === "/internal/knowledge-spaces/product-summaries/batch") {
     return "knowledge-spaces.product-summaries.batch";

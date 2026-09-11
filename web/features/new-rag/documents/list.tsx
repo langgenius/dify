@@ -21,8 +21,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { useQueryState } from 'nuqs'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -34,11 +33,12 @@ import { newKnowledgeDocumentDetailPath } from '../routes'
 import { DocumentActionsDropdown } from './actions-dropdown'
 import { DocumentBulkActionsToolbar } from './bulk/toolbar'
 import { DocumentPermissionRecoveryBulkRegion } from './permission-recovery/recovery-boundary'
-import { documentMetadataParser, documentUploadParser } from './query-state'
 import {
   documentFilterAtom,
+  documentMetadataAtom,
   documentSearchAtom,
   documentsKnowledgeSpaceIdAtom,
+  documentUploadAtom,
 } from './state/inputs'
 import { documentsQueryFetchNextPageAtom, sourcesQueryFetchNextPageAtom } from './state/queries'
 import {
@@ -136,7 +136,7 @@ function TaskTrigger() {
   const { t } = useTranslation('knowledgeSpace')
   const setTasksOpen = useSetAtom(documentTasksOpenAtom)
   const { activeTaskCount, attentionTaskCount, hasTaskError, historyIncomplete } =
-    useAtomValue(taskTriggerFactsAtom)
+    useAtomValueRawSync(taskTriggerFactsAtom)
   const incompleteTaskHistoryHint = historyIncomplete
     ? ` · ${t(($) => $.taskHistoryIncomplete)}`
     : ''
@@ -201,7 +201,7 @@ function DocumentSelectionCell({ document }: { document: LogicalDocument }) {
     [document.id],
   )
   const { canSelect, readOnlyReasonId, resultsIncomplete, selected, selectionDisabled } =
-    useAtomValue(selectionFactsAtom)
+    useAtomValueRawSync(selectionFactsAtom)
   const onSelectedChange = useSetAtom(toggleDocumentSelectionAtom)
   const titleId = `new-document-${document.id}`
 
@@ -228,7 +228,7 @@ function DocumentSelectionCell({ document }: { document: LogicalDocument }) {
 }
 
 function DocumentTitleCell({ document }: { document: LogicalDocument }) {
-  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const documentHref = newKnowledgeDocumentDetailPath(knowledgeSpaceId, document.id)
   const revision = document.activeRevision ?? document.active?.revision
 
@@ -257,7 +257,7 @@ function DocumentSourceCell({ documentId }: { documentId: string }) {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const sourceFactsAtom = useMemo(() => createDocumentRowSourceFactsAtom(documentId), [documentId])
-  const { pending, source } = useAtomValue(sourceFactsAtom)
+  const { pending, source } = useAtomValueRawSync(sourceFactsAtom)
 
   return (
     <td className="hidden w-58.5 pr-6 align-middle system-xs-regular text-text-secondary lg:table-cell">
@@ -280,7 +280,7 @@ function DocumentStatusCell({ documentId }: { documentId: string }) {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const statusFactsAtom = useMemo(() => createDocumentRowStatusFactsAtom(documentId), [documentId])
-  const { failureMessageKey, status, statusPending } = useAtomValue(statusFactsAtom)
+  const { failureMessageKey, status, statusPending } = useAtomValueRawSync(statusFactsAtom)
   const failureReason = failureMessageKey ? t(($) => $[failureMessageKey]) : undefined
 
   return (
@@ -325,11 +325,11 @@ const DocumentRow = memo(({ document }: { document: LogicalDocument }) => (
 
 export function DocumentsEmpty() {
   const { t } = useTranslation('knowledgeSpace')
-  const [_metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
-  const [_uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
-  const canWrite = useAtomValue(documentCanWriteAtom)
-  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
-  const uploading = useAtomValue(documentUploadingAtom)
+  const setMetadataRequest = useSetAtom(documentMetadataAtom)
+  const setUploadRequest = useSetAtom(documentUploadAtom)
+  const canWrite = useAtomValueRawSync(documentCanWriteAtom)
+  const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
+  const uploading = useAtomValueRawSync(documentUploadingAtom)
   const { canUpload, restrictionReasonId: uploadRestrictionReasonId } = documentUploadAvailability(
     canWrite,
     uploadAvailable,
@@ -372,14 +372,16 @@ export function DocumentsEmpty() {
 
 function DocumentsToolbar() {
   const { t } = useTranslation('knowledgeSpace')
-  const [filter, setFilter] = useAtom(documentFilterAtom)
-  const [search, setSearch] = useAtom(documentSearchAtom)
-  const [_metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
-  const [_uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
-  const { showTasks, statusPending } = useAtomValue(documentsToolbarFactsAtom)
-  const canWrite = useAtomValue(documentCanWriteAtom)
-  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
-  const uploading = useAtomValue(documentUploadingAtom)
+  const filter = useAtomValueRawSync(documentFilterAtom)
+  const setFilter = useSetAtom(documentFilterAtom)
+  const search = useAtomValueRawSync(documentSearchAtom)
+  const setSearch = useSetAtom(documentSearchAtom)
+  const setMetadataRequest = useSetAtom(documentMetadataAtom)
+  const setUploadRequest = useSetAtom(documentUploadAtom)
+  const { showTasks, statusPending } = useAtomValueRawSync(documentsToolbarFactsAtom)
+  const canWrite = useAtomValueRawSync(documentCanWriteAtom)
+  const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
+  const uploading = useAtomValueRawSync(documentUploadingAtom)
   const { canUpload, restrictionReasonId: uploadRestrictionReasonId } = documentUploadAvailability(
     canWrite,
     uploadAvailable,
@@ -451,7 +453,7 @@ function DocumentsTableHeader() {
     resultsIncomplete,
     selectionDisabled,
     someSelected,
-  } = useAtomValue(documentTableSelectionFactsAtom)
+  } = useAtomValueRawSync(documentTableSelectionFactsAtom)
   const toggleAllFilteredDocuments = useSetAtom(toggleAllFilteredDocumentsAtom)
 
   return (
@@ -493,10 +495,10 @@ function DocumentsTableHeader() {
 function DocumentsTable() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const { documents, resultsIncomplete, sourcesPending, tasksPending } = useAtomValue(
+  const { documents, resultsIncomplete, sourcesPending, tasksPending } = useAtomValueRawSync(
     documentTableContentFactsAtom,
   )
-  const renderWindowKey = useAtomValue(documentRenderWindowIdentityAtom)
+  const renderWindowKey = useAtomValueRawSync(documentRenderWindowIdentityAtom)
   const {
     completingResults,
     filterActive,
@@ -507,9 +509,9 @@ function DocumentsTable() {
     isFetchingNextPage,
     isFetchingNextSourcePage,
     isFetchNextPageError,
-  } = useAtomValue(documentListPaginationAtom)
-  const fetchNextDocumentPage = useAtomValue(documentsQueryFetchNextPageAtom)
-  const fetchNextSourcePage = useAtomValue(sourcesQueryFetchNextPageAtom)
+  } = useAtomValueRawSync(documentListPaginationAtom)
+  const fetchNextDocumentPage = useAtomValueRawSync(documentsQueryFetchNextPageAtom)
+  const fetchNextSourcePage = useAtomValueRawSync(sourcesQueryFetchNextPageAtom)
   const [renderWindow, setRenderWindow] = useState({
     key: renderWindowKey,
     limit: DOCUMENT_RENDER_BATCH_SIZE,

@@ -14,6 +14,7 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -128,115 +129,6 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
 
   return (
     <div className="overflow-x-auto">
-      <table className={cn('mt-2 w-full min-w-110 border-collapse border-0')}>
-        <thead className="system-xs-medium-uppercase text-text-tertiary">
-          <tr>
-            <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              <button
-                type="button"
-                className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                onClick={handleSort}
-              >
-                {t(($) => $['table.header.startTime'], { ns: 'appLog' })}
-                <ArrowDownIcon
-                  className={cn(
-                    'ml-0.5 size-3 stroke-current stroke-2 transition-all',
-                    'text-text-tertiary',
-                    sortOrder === 'asc' ? 'rotate-180' : '',
-                  )}
-                  aria-hidden="true"
-                />
-              </button>
-            </td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              {t(($) => $['table.header.status'], { ns: 'appLog' })}
-            </td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              {t(($) => $['table.header.runtime'], { ns: 'appLog' })}
-            </td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              {t(($) => $['table.header.tokens'], { ns: 'appLog' })}
-            </td>
-            <td
-              className={cn(
-                'bg-background-section-burn py-1.5 pl-3 whitespace-nowrap',
-                !isWorkflow ? 'rounded-r-lg' : '',
-              )}
-            >
-              {t(($) => $['table.header.user'], { ns: 'appLog' })}
-            </td>
-            {isWorkflow && (
-              <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-                {t(($) => $['table.header.triggered_from'], { ns: 'appLog' })}
-              </td>
-            )}
-          </tr>
-        </thead>
-        <tbody className="system-sm-regular text-text-secondary">
-          {localLogs.map((log: WorkflowAppLogDetail) => {
-            const endUser = log.created_by_end_user
-              ? log.created_by_end_user.session_id
-              : log.created_by_account
-                ? log.created_by_account.name
-                : defaultValue
-            return (
-              <tr
-                key={log.id}
-                className={cn(
-                  'cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover',
-                  currentLog?.id !== log.id ? '' : 'bg-background-default-hover',
-                )}
-                onClick={() => {
-                  setCurrentLog(log)
-                  setShowDrawer(true)
-                }}
-              >
-                <td className="h-4">
-                  {!log.read_at && (
-                    <div className="flex items-center p-3 pr-0.5">
-                      <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
-                    </div>
-                  )}
-                </td>
-                <td className="w-45 p-3 pr-2">
-                  {formatTime(
-                    log.created_at,
-                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                  )}
-                </td>
-                <td className="p-3 pr-2">{statusTdRender(log.workflow_run.status)}</td>
-                <td className="p-3 pr-2">
-                  <div
-                    className={cn(log.workflow_run.elapsed_time === 0 && 'text-text-quaternary')}
-                  >
-                    {`${log.workflow_run.elapsed_time.toFixed(3)}s`}
-                  </div>
-                </td>
-                <td className="p-3 pr-2">{log.workflow_run.total_tokens}</td>
-                <td className="p-3 pr-2">
-                  <div
-                    className={cn(
-                      endUser === defaultValue ? 'text-text-quaternary' : 'text-text-secondary',
-                      'truncate',
-                    )}
-                  >
-                    {endUser}
-                  </div>
-                </td>
-                {isWorkflow && (
-                  <td className="p-3 pr-2">
-                    <TriggerByDisplay
-                      triggeredFrom={log.workflow_run.triggered_from as WorkflowRunTriggeredFrom}
-                      triggerMetadata={log.details?.trigger_metadata}
-                    />
-                  </td>
-                )}
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
       <Drawer
         open={showDrawer}
         modal
@@ -245,6 +137,127 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
           if (!open) onCloseDrawer()
         }}
       >
+        <table className={cn('mt-2 w-full min-w-110 border-collapse border-0')}>
+          <thead className="system-xs-medium-uppercase text-text-tertiary">
+            <tr>
+              <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                <button
+                  type="button"
+                  className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={handleSort}
+                >
+                  {t(($) => $['table.header.startTime'], { ns: 'appLog' })}
+                  <ArrowDownIcon
+                    className={cn(
+                      'ml-0.5 size-3 stroke-current stroke-2 transition-all',
+                      'text-text-tertiary',
+                      sortOrder === 'asc' ? 'rotate-180' : '',
+                    )}
+                    aria-hidden="true"
+                  />
+                </button>
+              </td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                {t(($) => $['table.header.status'], { ns: 'appLog' })}
+              </td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                {t(($) => $['table.header.runtime'], { ns: 'appLog' })}
+              </td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                {t(($) => $['table.header.tokens'], { ns: 'appLog' })}
+              </td>
+              <td
+                className={cn(
+                  'bg-background-section-burn py-1.5 pl-3 whitespace-nowrap',
+                  !isWorkflow ? 'rounded-r-lg' : '',
+                )}
+              >
+                {t(($) => $['table.header.user'], { ns: 'appLog' })}
+              </td>
+              {isWorkflow && (
+                <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                  {t(($) => $['table.header.triggered_from'], { ns: 'appLog' })}
+                </td>
+              )}
+            </tr>
+          </thead>
+          <tbody className="system-sm-regular text-text-secondary">
+            {localLogs.map((log: WorkflowAppLogDetail) => {
+              const endUser = log.created_by_end_user
+                ? log.created_by_end_user.session_id
+                : log.created_by_account
+                  ? log.created_by_account.name
+                  : defaultValue
+              return (
+                <tr
+                  key={log.id}
+                  className={cn(
+                    'cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover',
+                    currentLog?.id !== log.id ? '' : 'bg-background-default-hover',
+                  )}
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest('button, a')) return
+                    event.currentTarget
+                      .querySelector<HTMLButtonElement>('button[data-log-detail-trigger]')
+                      ?.click()
+                  }}
+                >
+                  <td className="h-4">
+                    {!log.read_at && (
+                      <div className="flex items-center p-3 pr-0.5">
+                        <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="w-45 p-3 pr-2">
+                    <DrawerTrigger
+                      data-log-detail-trigger
+                      className="w-full cursor-pointer rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setCurrentLog(log)
+                        setShowDrawer(true)
+                      }}
+                    >
+                      {formatTime(
+                        log.created_at,
+                        t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                      )}
+                    </DrawerTrigger>
+                  </td>
+                  <td className="p-3 pr-2">{statusTdRender(log.workflow_run.status)}</td>
+                  <td className="p-3 pr-2">
+                    <div
+                      className={cn(log.workflow_run.elapsed_time === 0 && 'text-text-quaternary')}
+                    >
+                      {`${log.workflow_run.elapsed_time.toFixed(3)}s`}
+                    </div>
+                  </td>
+                  <td className="p-3 pr-2">{log.workflow_run.total_tokens}</td>
+                  <td className="p-3 pr-2">
+                    <div
+                      className={cn(
+                        endUser === defaultValue ? 'text-text-quaternary' : 'text-text-secondary',
+                        'truncate',
+                      )}
+                    >
+                      {endUser}
+                    </div>
+                  </td>
+                  {isWorkflow && (
+                    <td className="p-3 pr-2">
+                      <TriggerByDisplay
+                        triggeredFrom={log.workflow_run.triggered_from as WorkflowRunTriggeredFrom}
+                        triggerMetadata={log.details?.trigger_metadata}
+                      />
+                    </td>
+                  )}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
         <DrawerPortal>
           <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
           <DrawerViewport>

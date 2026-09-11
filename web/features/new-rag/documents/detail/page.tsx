@@ -1,13 +1,11 @@
 'use client'
 
-import { useAtomValue, useSetAtom } from 'jotai'
-import { NuqsJotaiBridge } from 'nuqs-jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { DocumentErrorState } from './error-state'
 import { responseStatus } from './model'
 import { DocumentDetailStateBoundary } from './state/boundary'
-import { documentDetailLocationQuery } from './state/location'
 import {
   documentDetailQueryDataAtom,
   documentDetailQueryErrorAtom,
@@ -20,9 +18,9 @@ import { DocumentDetailWorkspace } from './workspace'
 function DocumentDetailContent() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const document = useAtomValue(documentDetailQueryDataAtom)
-  const documentError = useAtomValue(documentDetailQueryErrorAtom)
-  const documentIsPending = useAtomValue(documentDetailQueryIsPendingAtom)
+  const document = useAtomValueRawSync(documentDetailQueryDataAtom)
+  const documentError = useAtomValueRawSync(documentDetailQueryErrorAtom)
+  const documentIsPending = useAtomValueRawSync(documentDetailQueryIsPendingAtom)
   const refreshDocument = useSetAtom(refreshDocumentDetailAtom)
   useDocumentDetailTitle()
   const documentErrorStatus = responseStatus(documentError)
@@ -64,13 +62,8 @@ export function DocumentDetailPage({
   knowledgeSpaceId: string
 }) {
   return (
-    <NuqsJotaiBridge
-      key={`document:${knowledgeSpaceId}:${documentId}`}
-      config={documentDetailLocationQuery}
-    >
-      <DocumentDetailStateBoundary documentId={documentId} knowledgeSpaceId={knowledgeSpaceId}>
-        <DocumentDetailContent />
-      </DocumentDetailStateBoundary>
-    </NuqsJotaiBridge>
+    <DocumentDetailStateBoundary documentId={documentId} knowledgeSpaceId={knowledgeSpaceId}>
+      <DocumentDetailContent />
+    </DocumentDetailStateBoundary>
   )
 }

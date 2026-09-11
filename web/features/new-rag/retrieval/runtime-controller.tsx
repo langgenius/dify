@@ -5,7 +5,7 @@ import type { RetrievalTestMode } from './model'
 import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
 import type { RetrievalComposerImage } from './state/scoped'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient } from '@/service/console'
@@ -95,19 +95,19 @@ async function queryFailure(error: unknown) {
 
 export function RetrievalRuntimeController() {
   const { t } = useTranslation('knowledgeSpace')
-  const canQuery = useAtomValue(retrievalCanQueryAtom)
-  const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
-  const linkedSelection = useAtomValue(retrievalLinkedSelectionAtom)
+  const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
+  const linkedSelection = useAtomValueRawSync(retrievalLinkedSelectionAtom)
   const updateLocation = useSetAtom(retrievalLinkedSelectionAtom)
-  const query = useAtomValue(retrievalComposerQueryAtom)
-  const queryImages = useAtomValue(retrievalComposerQueryImagesAtom)
-  const selectedQueryImages = useAtomValue(retrievalSelectedQueryImagesAtom)
-  const retainedImages = useAtomValue(retrievalRetainedImagesAtom)
-  const mode = useAtomValue(retrievalComposerModeAtom)
-  const localRun = useAtomValue(retrievalLocalRunAtom)
-  const selected = useAtomValue(retrievalSelectedAtom)
-  const selectedResearchTask = useAtomValue(retrievalSelectedResearchTaskAtom)
-  const { refetchResearchPartials, refetchResearchTasks, refetchTraces } = useAtomValue(
+  const query = useAtomValueRawSync(retrievalComposerQueryAtom)
+  const queryImages = useAtomValueRawSync(retrievalComposerQueryImagesAtom)
+  const selectedQueryImages = useAtomValueRawSync(retrievalSelectedQueryImagesAtom)
+  const retainedImages = useAtomValueRawSync(retrievalRetainedImagesAtom)
+  const mode = useAtomValueRawSync(retrievalComposerModeAtom)
+  const localRun = useAtomValueRawSync(retrievalLocalRunAtom)
+  const selected = useAtomValueRawSync(retrievalSelectedAtom)
+  const selectedResearchTask = useAtomValueRawSync(retrievalSelectedResearchTaskAtom)
+  const { refetchResearchPartials, refetchResearchTasks, refetchTraces } = useAtomValueRawSync(
     retrievalRuntimeQueryFactsAtom,
   )
   const setRuntimeBridge = useSetAtom(retrievalRuntimeBridgeAtom)
@@ -126,20 +126,25 @@ export function RetrievalRuntimeController() {
     modelSetupDialogOpen,
     setModelSetupDialogOpen,
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
+  const sessionControllerRef = useRef<AbortController>(undefined)
   const queryAbortControllerRef = useRef<AbortController>(undefined)
   const consumedRetestTraceIdRef = useRef<string | undefined>(undefined)
   const runInFlightRef = useRef(false)
   const selectedResearchActive = researchTaskIsActive(selectedResearchTask)
-  const selectedResearchActiveRef = useRef(selectedResearchActive)
   const refreshedTerminalPartialsTaskIdRef = useRef<string | undefined>(undefined)
   const previousSelectedResearchTaskRef = useRef<KnowledgeFsResearchTaskResponse | undefined>(
     undefined,
   )
   const retainedPreviewUrlsRef = useRef(new Set<string>())
 
-  useEffect(() => {
-    selectedResearchActiveRef.current = selectedResearchActive
-  }, [selectedResearchActive])
+  // The URL provider survives page navigation; asynchronous commands do not.
+  useLayoutEffect(() => {
+    const controller = new AbortController()
+    sessionControllerRef.current = controller
+    return () => controller.abort()
+  }, [])
+
+  const isSelectedResearchActive = useEffectEvent(() => selectedResearchActive)
 
   // Preview URLs are object URLs. Release one only once neither the composer nor any run in
   // this session references it any more, and release everything when the page goes away.
@@ -228,7 +233,7 @@ export function RetrievalRuntimeController() {
                 event.stage === 'canceled' ||
                 event.stage === 'completed' ||
                 event.stage === 'failed'
-              if (!terminal || !selectedResearchActiveRef.current) return
+              if (!terminal || !isSelectedResearchActive()) return
               if (event.stage === 'completed')
                 refreshedTerminalPartialsTaskIdRef.current = selectedResearchTaskId
               void Promise.all([refetchResearchTasks(), refetchResearchPartials()])
@@ -258,6 +263,8 @@ export function RetrievalRuntimeController() {
       mode: RetrievalTestMode
       query: string
     }) => {
+      const session = sessionControllerRef.current
+      if (!session || session.signal.aborted) return
       const cleanQuery = (input?.query ?? query).trim()
       const activeImages = input ? (input.images ?? []) : queryImages
       if (!canQuery || (!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
@@ -273,6 +280,10 @@ export function RetrievalRuntimeController() {
           })
         ).status !== 'ready'
       ) {
+        runInFlightRef.current = false
+        return
+      }
+      if (session.signal.aborted) {
         runInFlightRef.current = false
         return
       }
@@ -386,6 +397,8 @@ export function RetrievalRuntimeController() {
 
   const startResearch = useCallback(
     async (input?: { images?: RetrievalComposerImage[]; query: string }) => {
+      const session = sessionControllerRef.current
+      if (!session || session.signal.aborted) return
       const cleanQuery = (input?.query ?? query).trim()
       const activeImages = input ? (input.images ?? []) : queryImages
       if (!canQuery || (!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
@@ -397,6 +410,7 @@ export function RetrievalRuntimeController() {
           'ready'
         )
           return
+        if (session.signal.aborted) return
         const plan =
           await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post({
             body: {
@@ -406,6 +420,7 @@ export function RetrievalRuntimeController() {
             },
             params: { control_space_id: knowledgeSpaceId },
           })
+        if (session.signal.aborted) return
         const task = await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.post({
           body: {
             budgetUsd: plan.budget.budget_usd,
@@ -416,6 +431,7 @@ export function RetrievalRuntimeController() {
           },
           params: { control_space_id: knowledgeSpaceId },
         })
+        if (session.signal.aborted) return
         setAdmittedResearchTasks((current) => ({ ...current, [task.id]: task }))
         setResearchPlans((current) => ({ ...current, [task.id]: plan }))
         if (activeImages.length > 0)
@@ -432,6 +448,7 @@ export function RetrievalRuntimeController() {
         )
         await refetchResearchTasks()
       } catch {
+        if (session.signal.aborted) return
         toast.error(t(($) => $['retrievalTest.failedDescription']))
       } finally {
         runInFlightRef.current = false

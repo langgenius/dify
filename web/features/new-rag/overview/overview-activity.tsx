@@ -27,7 +27,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
@@ -160,12 +160,12 @@ function ActivityActor({
 function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
   const { t, i18n } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const activities = useAtomValue(overviewActivityPreviewDataAtom)
-  const empty = useAtomValue(overviewShowEmptyModulesAtom)
-  const error = useAtomValue(overviewActivityPreviewErrorAtom)
-  const indexing = useAtomValue(overviewShowIndexingAtom)
-  const loading = useAtomValue(overviewActivityPreviewPendingAtom)
-  const retrying = useAtomValue(overviewActivityPreviewRefetchingAtom)
+  const activities = useAtomValueRawSync(overviewActivityPreviewDataAtom)
+  const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
+  const error = useAtomValueRawSync(overviewActivityPreviewErrorAtom)
+  const indexing = useAtomValueRawSync(overviewShowIndexingAtom)
+  const loading = useAtomValueRawSync(overviewActivityPreviewPendingAtom)
+  const retrying = useAtomValueRawSync(overviewActivityPreviewRefetchingAtom)
   const retry = useSetAtom(retryOverviewActivityPreviewAtom)
   const members = useMembers().data?.accounts ?? []
   const formatWhen = (value: string) => {
@@ -402,7 +402,7 @@ function ActivityDrawer({
   const { t, i18n } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { t: tActivityLog } = useTranslation('appLog')
-  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
   const members = useMembers().data?.accounts ?? []
   const [range, setRange] = useState<ActivityRange>('today')
   const [dates, setDates] = useState<ActivityDateRange>(() => activityDatesForRange('today'))

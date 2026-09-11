@@ -2,13 +2,19 @@ import { createHash } from "node:crypto";
 
 import {
   type KnowledgeNode,
+  type KnowledgeSpaceEmbeddingProfile,
   type KnowledgeSpaceModelSelection,
   type KnowledgeSpaceRetrievalProfile,
   PublicationGenerationIdSchema,
   stableJson,
 } from "@knowledge/core";
 
-import { type ConcurrencyGate, mapWithConcurrency } from "./bounded-concurrency";
+import {
+  type ConcurrencyGate,
+  mapWithConcurrency,
+  runWithAbortSignal,
+} from "./bounded-concurrency";
+import type { DocumentModelBudget } from "./document-model-budget";
 import type {
   DocumentSemanticEnrichmentCheckpointScope,
   DocumentSemanticEnrichmentJob,
@@ -22,6 +28,7 @@ import {
 import { createExtractionQualityControlFlow } from "./extraction-quality-control-flow";
 import type { GraphIndexRepository } from "./graph-index-repository";
 import { createGraphIndexWriter } from "./graph-index-writer";
+import type { GraphSemanticIndexer } from "./graph-semantic-index";
 import type { IngestionModelCallOperationalMetrics } from "./ingestion-model-observability";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import {
@@ -55,11 +62,18 @@ export interface DocumentSemanticEnrichmentProcessorResult {
 }
 
 export interface DocumentSemanticEnrichmentProcessor {
-  process(job: DocumentSemanticEnrichmentJob): Promise<DocumentSemanticEnrichmentProcessorResult>;
+  process(
+    job: DocumentSemanticEnrichmentJob,
+    options?: { readonly signal?: AbortSignal },
+  ): Promise<DocumentSemanticEnrichmentProcessorResult>;
 }
 
 export interface JointSemanticGraphMaterializer {
   materialize(input: {
+    readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
+    readonly tenantId?: string | undefined;
+    readonly signal?: AbortSignal | undefined;
+    readonly modelBudget?: DocumentModelBudget | undefined;
     readonly createdAt: string;
     readonly knowledgeSpaceId: string;
     readonly parseArtifactId: string;
@@ -69,6 +83,7 @@ export interface JointSemanticGraphMaterializer {
 }
 
 export interface JointSemanticGraphMaterializerOptions {
+  readonly semanticIndex?: GraphSemanticIndexer | undefined;
   readonly graph: GraphIndexRepository;
   readonly maxEntitiesPerNode: number;
   readonly maxNodesPerArtifact: number;
@@ -79,6 +94,10 @@ export interface JointSemanticGraphMaterializerOptions {
 }
 
 export interface DocumentSemanticEnrichmentProcessorOptions {
+  readonly semanticIndex?: GraphSemanticIndexer | undefined;
+  readonly resolveEmbeddingProfile?:
+    | ((job: DocumentSemanticEnrichmentJob) => Promise<KnowledgeSpaceEmbeddingProfile | undefined>)
+    | undefined;
   readonly checkpoints: DocumentSemanticExtractionCheckpointRepository;
   readonly graph: GraphIndexRepository;
   readonly maxConcurrentBatches: number;
@@ -98,7 +117,7 @@ export interface DocumentSemanticEnrichmentProcessorOptions {
 }
 
 const entityPromptVersion = "entity-extraction-v1";
-const relationPromptVersion = "relation-extraction-v1";
+const relationPromptVersion = "relation-extraction-v2";
 const defaultNodeListPageSize = 100;
 
 /**
@@ -106,6 +125,8 @@ const defaultNodeListPageSize = 100;
  * immutable; each successful provider batch is durable before the next retry boundary.
  */
 export function createDocumentSemanticEnrichmentProcessor({
+  semanticIndex,
+  resolveEmbeddingProfile,
   checkpoints,
   graph,
   maxConcurrentBatches,
@@ -136,7 +157,18 @@ export function createDocumentSemanticEnrichmentProcessor({
   }
 
   return {
-    process: async (job) => {
+    process: async (job, options) => {
+      const signal = options?.signal;
+      signal?.throwIfAborted();
+      const semanticIndexScope =
+        semanticIndex && resolveEmbeddingProfile
+          ? {
+              semanticIndex,
+              embeddingProfile: await resolveEmbeddingProfile(job),
+              tenantId: job.tenantId,
+              signal,
+            }
+          : { signal };
       const generationId = PublicationGenerationIdSchema.parse(job.publicationGenerationId);
       const originalNodes = await listArtifactNodesWithinBound({
         countExceededMessage: `Document semantic enrichment node count exceeds maxNodesPerArtifact=${maxNodesPerArtifact}`,
@@ -181,6 +213,7 @@ export function createDocumentSemanticEnrichmentProcessor({
           );
         }
         return indexPreparedSemanticNodes({
+          ...semanticIndexScope,
           graph,
           job,
           maxEntitiesPerNode,
@@ -197,8 +230,12 @@ export function createDocumentSemanticEnrichmentProcessor({
       const provider: DocumentSemanticEnrichmentTextProvider = {
         ...(resolvedProvider.kind ? { kind: resolvedProvider.kind } : {}),
         generate: async (input) => {
+          signal?.throwIfAborted();
           semanticProviderCalls += 1;
-          return resolvedProvider.generate(input);
+          return runWithAbortSignal(
+            () => resolvedProvider.generate({ ...input, ...(signal ? { signal } : {}) }),
+            signal,
+          );
         },
       };
       const entityProvider = createLlmEntityExtractionProvider({
@@ -250,6 +287,7 @@ export function createDocumentSemanticEnrichmentProcessor({
         (node) => extractedEntitiesFromNodeMetadata(node).length >= 2,
       ).length;
       return indexPreparedSemanticNodes({
+        ...semanticIndexScope,
         graph,
         job,
         maxEntitiesPerNode,
@@ -268,6 +306,7 @@ export function createDocumentSemanticEnrichmentProcessor({
 
 /** Materializes only the joint facts already frozen by semantic chunking; it never calls an LLM. */
 export function createJointSemanticGraphMaterializer({
+  semanticIndex,
   graph,
   maxEntitiesPerNode,
   maxNodesPerArtifact,
@@ -322,6 +361,11 @@ export function createJointSemanticGraphMaterializer({
         throw new Error("Joint semantic Graph metadata does not match the frozen reasoning model");
       }
       return indexPreparedSemanticNodes({
+        ...(semanticIndex ? { semanticIndex } : {}),
+        modelBudget: input.modelBudget,
+        embeddingProfile: input.embeddingProfile,
+        tenantId: input.tenantId,
+        signal: input.signal,
         graph,
         job: {
           createdAt: input.createdAt,
@@ -384,6 +428,11 @@ function jointSemanticModelSelection(node: KnowledgeNode): unknown {
 }
 
 async function indexPreparedSemanticNodes({
+  semanticIndex,
+  modelBudget,
+  embeddingProfile,
+  tenantId,
+  signal,
   graph,
   job,
   maxEntitiesPerNode,
@@ -394,6 +443,11 @@ async function indexPreparedSemanticNodes({
   semanticProviderCalls,
   semanticProviderCallsMaximum,
 }: {
+  readonly semanticIndex?: GraphSemanticIndexer | undefined;
+  readonly modelBudget?: DocumentModelBudget | undefined;
+  readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
+  readonly tenantId?: string | undefined;
+  readonly signal?: AbortSignal | undefined;
   readonly graph: GraphIndexRepository;
   readonly job: Pick<
     DocumentSemanticEnrichmentJob,
@@ -407,6 +461,7 @@ async function indexPreparedSemanticNodes({
   readonly semanticProviderCalls: number;
   readonly semanticProviderCallsMaximum: number;
 }): Promise<DocumentSemanticEnrichmentProcessorResult> {
+  signal?.throwIfAborted();
   const generationId = PublicationGenerationIdSchema.parse(job.publicationGenerationId);
   const qualityRepository = await temporaryNodeRepository(nodes);
   const controlled = await createExtractionQualityControlFlow({
@@ -423,6 +478,7 @@ async function indexPreparedSemanticNodes({
   if (controlled.missingNodeIds.length > 0) {
     throw new Error("Document semantic enrichment quality stage lost immutable nodes");
   }
+  signal?.throwIfAborted();
   const indexed = await createGraphIndexWriter({
     extractionVersion: 1,
     graph,
@@ -436,6 +492,20 @@ async function indexPreparedSemanticNodes({
   });
   if (indexed.missingNodeIds.length > 0) {
     throw new Error("Document semantic enrichment graph stage lost immutable nodes");
+  }
+  signal?.throwIfAborted();
+  if (semanticIndex && embeddingProfile && tenantId) {
+    await semanticIndex.index({
+      knowledgeSpaceId: job.knowledgeSpaceId,
+      tenantId,
+      publicationGenerationId: generationId,
+      embeddingProfile,
+      entities: indexed.entities,
+      relations: indexed.relations,
+      nodes: controlled.controlledNodes,
+      ...(signal ? { signal } : {}),
+      modelBudget,
+    });
   }
   return {
     entitiesExtracted: controlled.controlledNodes.reduce(

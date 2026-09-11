@@ -17,6 +17,7 @@ export interface ResearchModelCallDescriptor {
     | "pageindex.whole-tree"
     | "research.judge"
     | "research.plan"
+    | "graph.plan"
     | "query.answer"
     | "query.image-expand";
 }

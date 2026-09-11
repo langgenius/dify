@@ -2,7 +2,7 @@
 
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useLayoutEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
@@ -18,9 +18,9 @@ import { useTaskRuntimeController } from './use-task-runtime'
 export function DocumentTaskRuntimeController() {
   const { t } = useTranslation('knowledgeSpace')
   const queryClient = useQueryClient()
-  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
-  const tasksOpen = useAtomValue(documentTasksOpenAtom)
-  const permissionQueryFacts = useAtomValue(documentTaskPermissionGuardFactsAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
+  const tasksOpen = useAtomValueRawSync(documentTasksOpenAtom)
+  const permissionQueryFacts = useAtomValueRawSync(documentTaskPermissionGuardFactsAtom)
   const { documentPermissionDenied, sourcePermissionDenied } = permissionQueryFacts
   const {
     deny: denyAuxiliaryTaskRead,

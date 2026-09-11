@@ -10,6 +10,7 @@ import {
   queryRetrievalProfileMetadata,
   traceStepEvent,
 } from "./gateway-sse-responses";
+import { graphPathEvidenceText } from "./graph-path-evidence";
 import { type MultimodalAnswerProvider, hybridItemCitation } from "./hybrid-query-generator";
 import { cloneJsonObject } from "./json-utils";
 import {
@@ -448,10 +449,12 @@ export function createLlmAnswerQueryGenerator({
         effectiveMultimodalAnswerProvider &&
         (multimodalEvidence.length > 0 || (input.resolvedQueryImages?.length ?? 0) > 0)
       ) {
+        const graphPathEvidence = graphPathEvidenceText(retrieval.items, "E");
         const multimodalCall = {
           callId: `query-answer:${input.traceId}:${input.researchExecutionAttempt ?? 0}:multimodal`,
           estimatedPromptTokens: estimateResearchModelPromptTokens({
             evidence: retrieval.items.map((item) => evidenceTextFromHybridItem(item)),
+            ...(graphPathEvidence ? { graphPathEvidence } : {}),
             query: input.query || retrievalQuery,
           }),
           maxOutputTokens: maxOutputTokens ?? 1_024,
@@ -462,6 +465,7 @@ export function createLlmAnswerQueryGenerator({
         try {
           await notifyResearchModelCallBefore(input.researchModelCallObserver, multimodalCall);
           const generated = await effectiveMultimodalAnswerProvider.generate({
+            ...(graphPathEvidence ? { graphPathEvidence } : {}),
             evidence: retrieval.items.map((item) => ({
               citation: item.citation,
               nodeId: item.nodeId,
@@ -545,6 +549,7 @@ export function createLlmAnswerQueryGenerator({
 
       const evidenceSection = [
         evidencePrompt(retrieval.items, maxEvidenceCharsPerItem),
+        graphPathEvidenceText(retrieval.items),
         ...multimodalEvidenceAnswerLines(multimodalEvidence),
       ].join("\n");
       const messages: readonly LlmAnswerMessage[] = [

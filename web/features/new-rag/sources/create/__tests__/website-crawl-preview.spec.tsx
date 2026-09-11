@@ -1,6 +1,7 @@
 import type { Source, SourceWorkflowRun } from '../../source-models'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { StrictMode } from 'react'
 import { render } from '@/test/console/render'
 import { WebsiteCrawlPreview } from '../website-crawl-preview'
 
@@ -262,7 +263,11 @@ describe('WebsiteCrawlPreview', () => {
 
   it('validates the URL and starts a real crawl preview with a provisional source', async () => {
     const user = userEvent.setup()
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <StrictMode>
+        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
+      </StrictMode>,
+    )
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'knowledgeSpace.providerConnected:{"provider":"Firecrawl"}',

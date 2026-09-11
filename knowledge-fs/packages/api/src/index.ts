@@ -1,5 +1,13 @@
 import { randomUUID } from "node:crypto";
 
+export * from "./graph-relation-catalog";
+export * from "./graph-query-contracts";
+export * from "./graph-query-executor";
+export * from "./graph-query-database-repository";
+export * from "./graph-query-planner";
+export * from "./graph-semantic-index";
+export * from "./graph-semantic-query";
+
 export * from "./a2a-adapter";
 export * from "./agent-workspace-snapshot";
 export * from "./agent-workspace-snapshot-handlers";
@@ -204,6 +212,7 @@ export * from "./failed-query-recorder";
 export * from "./failed-query-repository";
 export * from "./failed-query-routes";
 export * from "./workflow-failed-retrieval";
+export * from "./agent-knowledge-investigation";
 export * from "./workflow-failed-retrieval-handlers";
 export * from "./workflow-failed-retrieval-routes";
 export * from "./final-rerank-retrieval";
@@ -670,6 +679,8 @@ export {
   parseOnlineDriveRemoteMetadata,
   type OnlineDriveRemoteMetadata,
 } from "./source-file-verification";
+import { createAgentKnowledgeInvestigationService } from "./agent-knowledge-investigation";
+import { registerAgentKnowledgeInvestigationHandlers } from "./agent-knowledge-investigation-handlers";
 import { createSourceSyncScheduler } from "./source-sync-scheduler";
 import { createInMemoryStagedCommitRepository } from "./staged-commit-repository";
 import { type StorageQuotaRepository, createStaticStorageQuotaRepository } from "./storage-quota";
@@ -879,6 +890,7 @@ export function createKnowledgeGateway({
   visualEmbeddingProvider,
   websiteCrawlConnector,
   workflowFailedRetrievalTriage,
+  agentKnowledgeInvestigationTriage,
 }: KnowledgeGatewayOptions) {
   if (allowLocalQueryFallback && process.env.NODE_ENV === "production") {
     throw new Error("Local query fallback is forbidden in production");
@@ -1955,6 +1967,22 @@ export function createKnowledgeGateway({
     now,
     nodes,
     spaces,
+  });
+
+  registerAgentKnowledgeInvestigationHandlers({
+    app,
+    spaces,
+    ...(agentKnowledgeInvestigationTriage
+      ? {
+          service: createAgentKnowledgeInvestigationService({
+            answerTraceRecorder,
+            answerTraces: answerTraceRepository,
+            failedQueries: failedQueryRepository,
+            ...(qualityControl?.repository ? { qualityControl: qualityControl.repository } : {}),
+            triage: agentKnowledgeInvestigationTriage,
+          }),
+        }
+      : {}),
   });
 
   registerWorkflowFailedRetrievalHandlers({

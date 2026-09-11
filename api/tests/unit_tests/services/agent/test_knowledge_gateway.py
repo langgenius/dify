@@ -94,7 +94,9 @@ def request(
 def authorized_gateway(monkeypatch: pytest.MonkeyPatch) -> tuple[gateway.AgentKnowledgeGateway, Mock]:
     monkeypatch.setattr(gateway.AgentKnowledgeGateway, "_authorize_context", staticmethod(lambda _: SOUL))
     apply_config_overrides(monkeypatch, KNOWLEDGE_FS_BASE_URL="http://kfs:8000")
-    issued = SimpleNamespace(token="private-token", knowledge_space_id=SPACE, trace_id="trace")
+    issued = SimpleNamespace(
+        token="private-token", knowledge_space_id=SPACE, trace_id="trace", authorization_fingerprint="a" * 64
+    )
     runtime = Mock(spec=KnowledgeFSRuntime)
     runtime.broker.issue_interactive.return_value = issued
     runtime.app_capabilities.issue.return_value = issued
@@ -333,3 +335,44 @@ def test_workflow_space_union_reads_frozen_snapshots_not_graph_soul() -> None:
     sql = str(session.scalars.call_args.args[0])
     assert "workflow_agent_node_bindings.current_snapshot_id" in sql
     assert "workflow_agent_node_bindings.workflow_version" in sql
+
+
+def test_investigation_capture_reauthorizes_agent_and_keeps_stable_id(authorized_gateway):
+    from dify_agent.protocol.knowledge_investigation import KnowledgeAttempt, KnowledgeInvestigationPayload
+
+    service, runtime = authorized_gateway
+    report = KnowledgeInvestigationPayload(
+        investigation_id=uuid4(),
+        execution_context=CONTEXT,
+        bindings=[BINDING],
+        query="refund",
+        answer="unknown",
+        status="completed",
+        attempts=[
+            KnowledgeAttempt(
+                command_id=uuid4(),
+                control_space_id=SPACE,
+                command="search",
+                query="refund",
+                outcome="empty",
+                started_at_ms=1,
+                elapsed_ms=4,
+                delivered=True,
+                authorization_fingerprint="a" * 64,
+            )
+        ],
+    )
+    service.capture_investigation(report, SPACE)
+    first = runtime.app_capabilities.capture_agent_investigation.call_args.kwargs["payload"]
+    service.capture_investigation(report, SPACE)
+    assert runtime.app_capabilities.capture_agent_investigation.call_args.kwargs["payload"] == first
+    assert first["query"] == "refund"
+    assert len(first["attempts"]) == 1
+    assert runtime.app_capabilities.issue.call_args.kwargs["caller_kind"] == KnowledgeFSAppSpaceJoinType.AGENT
+    assert runtime.app_capabilities.issue.call_args.kwargs["operation_id"] == "captureAgentKnowledgeInvestigation"
+    runtime.app_capabilities.issue.return_value.authorization_fingerprint = "b" * 64
+    with pytest.raises(KnowledgeFsError, match="authorization changed"):
+        service.capture_investigation(report, SPACE)
+    assert runtime.app_capabilities.capture_agent_investigation.call_count == 2
+    with pytest.raises(KnowledgeFsError, match="not bound"):
+        service.capture_investigation(report, str(uuid4()))

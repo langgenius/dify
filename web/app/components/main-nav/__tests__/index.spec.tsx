@@ -747,7 +747,7 @@ describe('MainNav', () => {
     )
   })
 
-  it('hides the roster entry when the user lacks agent.acl.preview', () => {
+  it('shows the roster entry when the user lacks agent.acl.preview', () => {
     mockConsoleState.current = {
       ...consoleState,
       workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(
@@ -755,12 +755,6 @@ describe('MainNav', () => {
       ),
     }
 
-    renderMainNav()
-
-    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
-  })
-
-  it('shows the roster entry when the user has agent.acl.preview', () => {
     renderMainNav()
 
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
@@ -842,7 +836,7 @@ describe('MainNav', () => {
     expect(screen.getAllByText('team')).toHaveLength(1)
   })
 
-  it('keeps unrestricted main routes visible for dataset operators while hiding roster', () => {
+  it('keeps unrestricted main routes and roster visible for dataset operators', () => {
     mockConsoleState.current = {
       ...consoleState,
       currentWorkspace: {
@@ -859,7 +853,7 @@ describe('MainNav', () => {
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
-    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('href', '/agents')
     expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
       'href',
@@ -888,7 +882,7 @@ describe('MainNav', () => {
       isCurrentWorkspaceDatasetOperator: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
-      workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.acl.preview'],
+      workspacePermissionKeys: ['app_library.access', 'tool.manage'],
     }
 
     renderMainNav({ branding: { enabled: false } })

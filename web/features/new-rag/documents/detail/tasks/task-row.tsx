@@ -3,7 +3,7 @@
 import type { BackgroundTask } from '../../models'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { useMutation } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -58,8 +58,8 @@ export function DocumentTaskRow({
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
-  const canEdit = useAtomValue(documentCanEditAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
+  const canEdit = useAtomValueRawSync(documentCanEditAtom)
   const retryWritePermission = useSetAtom(retryDocumentWritePermissionAtom)
   const refreshWritePermission = useRefreshDocumentWritePermission()
   const actionButtonRef = useRef<HTMLButtonElement>(null)

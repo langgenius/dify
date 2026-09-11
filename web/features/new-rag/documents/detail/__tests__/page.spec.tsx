@@ -2,7 +2,7 @@ import type {
   KnowledgeFsDocumentMultimodalManifestResponse,
   KnowledgeFsDocumentOutlineResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { ReactElement } from 'react'
+import type { ComponentProps, ReactElement } from 'react'
 import type { DocumentMetadataField } from '../../metadata/editor-model'
 import type {
   BackgroundTask,
@@ -16,7 +16,8 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { createStore, Provider } from 'jotai'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { render as renderWithConsole } from '@/test/console/render'
+import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { DocumentDetailPage } from '../page'
 
 const knowledgeSpacePermissionState = vi.hoisted(() => ({
@@ -423,8 +424,12 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
   }
 })
 
-function render(ui: ReactElement, options?: Parameters<typeof renderWithNuqs>[1]) {
+function render(
+  ui: ReactElement,
+  options?: Omit<ComponentProps<typeof QueryTestingAdapter>, 'children'>,
+) {
   const store = createStore()
+  const onUrlUpdate = options?.onUrlUpdate ?? vi.fn()
   const testQueryClient = new QueryClient({
     defaultOptions: { queries: { gcTime: 0, retry: false } },
   })
@@ -433,15 +438,20 @@ function render(ui: ReactElement, options?: Parameters<typeof renderWithNuqs>[1]
   }
   const withStore = (content: ReactElement) => (
     <QueryClientProvider client={testQueryClient}>
-      <Provider store={store}>{content}</Provider>
+      <Provider store={store}>
+        <QueryTestingAdapter {...options} onUrlUpdate={onUrlUpdate}>
+          {content}
+        </QueryTestingAdapter>
+      </Provider>
     </QueryClientProvider>
   )
 
   refreshQueryAtoms()
-  const rendered = renderWithNuqs(withStore(ui), options)
+  const rendered = renderWithConsole(withStore(ui))
 
   return {
     ...rendered,
+    onUrlUpdate,
     rerender(nextUi: ReactElement) {
       act(refreshQueryAtoms)
       rendered.rerender(withStore(nextUi))
@@ -2267,6 +2277,26 @@ describe('DocumentDetailPage', () => {
       },
       query: {},
     })
+  })
+
+  it('offers retry when loading a later URL revision page fails', async () => {
+    const user = userEvent.setup()
+    revisionsQuery.data = {
+      pages: [{ items: [activeRevision({ revision: 3 })], nextCursor: 'older' }],
+    }
+    revisionsQuery.hasNextPage = true
+    revisionsQuery.isFetchNextPageError = true
+    revisionsQuery.error = new Error('Older revisions unavailable')
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      searchParams: '?revision=2',
+    })
+
+    expect(screen.getByText('knowledgeSpace.documentRevisionsLoadError')).toBeVisible()
+    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
+    expect(revisionsQuery.fetchNextPage).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(revisionsQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
   it('keeps document actions available when a URL revision is missing', () => {

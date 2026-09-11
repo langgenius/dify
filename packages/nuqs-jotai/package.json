@@ -7,6 +7,10 @@
     ".": {
       "types": "./src/index.tsx",
       "import": "./src/index.tsx"
+    },
+    "./testing": {
+      "types": "./src/testing.tsx",
+      "import": "./src/testing.tsx"
     }
   },
   "scripts": {
@@ -16,8 +20,8 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@testing-library/react": "catalog:",
-    "@testing-library/user-event": "catalog:",
     "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@typescript/native": "catalog:",
     "happy-dom": "catalog:",
     "jotai": "catalog:",

@@ -39,6 +39,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         "cancelResearchTask",
         "cancelSourceWorkflow",
         "captureWorkflowFailedRetrieval",
+        "captureAgentKnowledgeInvestigation",
         "catKnowledgeFs",
         "completeUploadSession",
         "crawlSource",

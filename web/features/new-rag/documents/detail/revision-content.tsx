@@ -1,6 +1,6 @@
 'use client'
 
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 import { DocumentFactsSidebar, DocumentReadingPane } from './chunk-detail'
 import { DocumentChunkTreePanel } from './chunk-tree'
@@ -15,11 +15,11 @@ import { documentDetailRequestedChunkIdAtom } from './state/inputs'
 import { documentDetailRevisionSessionKeyAtom } from './state/revisions'
 
 function RequestedChunkPageLoader() {
-  const selectedChunkId = useAtomValue(documentDetailRequestedChunkIdAtom)
-  const selectedChunkKnown = useAtomValue(documentDetailSelectedChunkKnownAtom)
-  const hasNextPage = useAtomValue(documentChunksQueryHasNextPageAtom)
-  const isFetchNextPageError = useAtomValue(documentChunksQueryIsFetchNextPageErrorAtom)
-  const isFetchingNextPage = useAtomValue(documentChunksQueryIsFetchingNextPageAtom)
+  const selectedChunkId = useAtomValueRawSync(documentDetailRequestedChunkIdAtom)
+  const selectedChunkKnown = useAtomValueRawSync(documentDetailSelectedChunkKnownAtom)
+  const hasNextPage = useAtomValueRawSync(documentChunksQueryHasNextPageAtom)
+  const isFetchNextPageError = useAtomValueRawSync(documentChunksQueryIsFetchNextPageErrorAtom)
+  const isFetchingNextPage = useAtomValueRawSync(documentChunksQueryIsFetchingNextPageAtom)
   const loadNextPage = useSetAtom(loadNextDocumentChunkPageAtom)
 
   useEffect(() => {
@@ -45,7 +45,7 @@ function RequestedChunkPageLoader() {
 }
 
 export function DocumentRevisionData() {
-  const revisionSessionKey = useAtomValue(documentDetailRevisionSessionKeyAtom)
+  const revisionSessionKey = useAtomValueRawSync(documentDetailRevisionSessionKeyAtom)
   if (!revisionSessionKey) return null
 
   return (

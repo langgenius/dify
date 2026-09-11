@@ -6,6 +6,40 @@ import { createDocumentSemanticEnrichmentRuntime } from "./document-semantic-enr
 const startedAt = Date.parse("2026-08-09T10:00:00.000Z");
 
 describe("createDocumentSemanticEnrichmentRuntime", () => {
+  it("aborts graph indexing promptly when its durable lease cannot be renewed", async () => {
+    vi.useFakeTimers();
+    try {
+      const repository = createInMemoryDocumentSemanticEnrichmentRepository({
+        generateLeaseToken: () => uuid(25),
+      });
+      await repository.enqueue(jobInput(uuid(14), 1));
+      repository.heartbeat = async () => null;
+      let signal: AbortSignal | undefined;
+      const runtime = createDocumentSemanticEnrichmentRuntime({
+        claimLimit: 1,
+        generationGuard: { status: async () => "current" },
+        heartbeatIntervalMs: 10,
+        intervalMs: 1000,
+        leaseMs: 100,
+        now: () => startedAt,
+        repository,
+        retryBaseMs: 1000,
+        workerId: "worker",
+        processor: {
+          process: async (_job, options) => {
+            signal = options?.signal;
+            return new Promise(() => {});
+          },
+        },
+      });
+      const pending = runtime.tick();
+      await vi.advanceTimersByTimeAsync(20);
+      expect(signal?.aborted).toBe(true);
+      expect(await pending).toMatchObject({ failed: 1, succeeded: 0 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("waits for publication without consuming model execution attempts", async () => {
     let now = startedAt;
     let generationStatus: "pending" | "superseded" = "pending";

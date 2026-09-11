@@ -5,7 +5,7 @@ import type { MouseEvent, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
@@ -24,8 +24,8 @@ import {
 } from './state'
 
 export function OverviewOnboarding() {
-  const empty = useAtomValue(overviewEmptyAtom)
-  const showIndexing = useAtomValue(overviewShowIndexingAtom)
+  const empty = useAtomValueRawSync(overviewEmptyAtom)
+  const showIndexing = useAtomValueRawSync(overviewShowIndexingAtom)
   let content: ReactNode = null
   if (showIndexing) content = <IndexingProgress />
   else if (empty) content = <EmptyKnowledgeOnboarding />
@@ -34,8 +34,8 @@ export function OverviewOnboarding() {
 
 function IndexingProgress() {
   const { t } = useTranslation('knowledgeSpace')
-  const indexingTask = useAtomValue(overviewIndexingTaskAtom)
-  const indexingSourceName = useAtomValue(overviewIndexingSourceNameAtom)
+  const indexingTask = useAtomValueRawSync(overviewIndexingTaskAtom)
+  const indexingSourceName = useAtomValueRawSync(overviewIndexingSourceNameAtom)
   if (!indexingTask) return null
 
   const progressKnown = indexingTask.progress_total > 0
@@ -76,8 +76,8 @@ function IndexingProgress() {
 
 function EmptyKnowledgeOnboarding() {
   const { t } = useTranslation('knowledgeSpace')
-  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
-  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
+  const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
   const canManageDocuments = useKnowledgeSpacePermission('knowledge_space_document_write')
   const [pendingAction, setPendingAction] = useState<'source' | 'upload'>()
   const canConnectSource = canManageDocuments
@@ -200,8 +200,8 @@ function EmptyKnowledgeOnboarding() {
 }
 
 export function FirstSourceTaskFailureBanner() {
-  const empty = useAtomValue(overviewEmptyAtom)
-  const failedTask = useAtomValue(overviewFailedFirstSourceTaskAtom)
+  const empty = useAtomValueRawSync(overviewEmptyAtom)
+  const failedTask = useAtomValueRawSync(overviewFailedFirstSourceTaskAtom)
   if (!empty || !failedTask) return null
   return <FirstSourceTaskFailureSession key={failedTask.id} failedTask={failedTask} />
 }
@@ -212,7 +212,7 @@ function FirstSourceTaskFailureSession({
   failedTask: KnowledgeFsBackgroundTaskResponse
 }) {
   const { t } = useTranslation('knowledgeSpace')
-  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
   const refreshBackgroundTasks = useSetAtom(refreshOverviewBackgroundTasksAtom)
   const retryTaskMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(),

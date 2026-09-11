@@ -459,7 +459,9 @@ class HTTPKnowledgeFSProductRemoteClient:
             "headers": headers,
             "params": query,
             "timeout": (
-                self._retrieval_test_timeout_seconds if operation_id == "retrieveEvidence" else self._timeout_seconds
+                self._retrieval_test_timeout_seconds
+                if operation_id in {"retrieveEvidence", "captureAgentKnowledgeInvestigation"}
+                else self._timeout_seconds
             ),
             "follow_redirects": False,
         }

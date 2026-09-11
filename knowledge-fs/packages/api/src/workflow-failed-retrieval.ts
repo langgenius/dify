@@ -84,7 +84,7 @@ export function createWorkflowFailedRetrievalCaptureService({
         traceCapabilityGrantId = trace.capabilityGrantId;
         answerTraceId = trace.id;
       }
-      failedQuery = await failedQueries.captureWorkflowFailedRetrieval({
+      failedQuery = await failedQueries.captureFailedRetrieval({
         actorSubjectId: input.actorSubjectId,
         answerTraceId,
         candidateGrants: input.candidateGrants,
@@ -109,7 +109,7 @@ export function createWorkflowFailedRetrievalCaptureService({
             tenantId: input.tenantId,
           })
         ).verdict;
-        const completed = await failedQueries.completeWorkflowFailedRetrievalTriage({
+        const completed = await failedQueries.completeFailedRetrievalTriage({
           actorSubjectId: input.actorSubjectId,
           candidateGrants: input.candidateGrants,
           capabilityGrantId: input.capabilityGrantId,

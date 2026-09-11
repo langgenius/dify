@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { documentBulkPendingActionAtom } from '../state/bulk'
@@ -35,9 +35,9 @@ import {
 function BulkReindexAction() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const disabled = useAtomValue(selectionResultsUnavailableAtom)
-  const reindexDisabled = useAtomValue(selectionReindexDisabledAtom)
-  const unavailableReason = useAtomValue(reindexUnavailabilityAtom)
+  const disabled = useAtomValueRawSync(selectionResultsUnavailableAtom)
+  const reindexDisabled = useAtomValueRawSync(selectionReindexDisabledAtom)
+  const unavailableReason = useAtomValueRawSync(reindexUnavailabilityAtom)
   const { busy, pending, run } = useBulkReindexAction()
   const disabledReason =
     unavailableReason === 'tasks'
@@ -81,8 +81,8 @@ function BulkReindexAction() {
 
 function BulkDownloadAction() {
   const { t } = useTranslation('knowledgeSpace')
-  const canDownload = useAtomValue(documentCanDownloadAtom)
-  const downloadableDocumentIds = useAtomValue(downloadableDocumentIdsAtom)
+  const canDownload = useAtomValueRawSync(documentCanDownloadAtom)
+  const downloadableDocumentIds = useAtomValueRawSync(downloadableDocumentIdsAtom)
   const disabled = !canDownload || !downloadableDocumentIds.length
   const { busy, pending, run } = useBulkDownloadAction()
 
@@ -108,10 +108,10 @@ function BulkDownloadAction() {
 function BulkAvailabilityAction() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tDataset } = useTranslation('dataset')
-  const actionVisible = useAtomValue(selectionAvailabilityActionVisibleAtom)
-  const actionDisabled = useAtomValue(selectionAvailabilityDisabledAtom)
-  const targetEnabled = useAtomValue(selectionAvailabilityTargetEnabledAtom)
-  const resultsUnavailable = useAtomValue(selectionResultsUnavailableAtom)
+  const actionVisible = useAtomValueRawSync(selectionAvailabilityActionVisibleAtom)
+  const actionDisabled = useAtomValueRawSync(selectionAvailabilityDisabledAtom)
+  const targetEnabled = useAtomValueRawSync(selectionAvailabilityTargetEnabledAtom)
+  const resultsUnavailable = useAtomValueRawSync(selectionResultsUnavailableAtom)
   const { busy, pending, run } = useBulkAvailabilityAction()
 
   if (!actionVisible) return null
@@ -132,7 +132,7 @@ function BulkAvailabilityAction() {
 function BulkRemoveAction() {
   const { t: tCommon } = useTranslation('common')
   const [open, setOpen] = useState(false)
-  const resultsUnavailable = useAtomValue(selectionResultsUnavailableAtom)
+  const resultsUnavailable = useAtomValueRawSync(selectionResultsUnavailableAtom)
   const { busy, pending, run } = useBulkRemoveAction()
 
   return (
@@ -182,11 +182,11 @@ function BulkRemoveAction() {
 
 export function DocumentBulkActionsToolbar() {
   const { t } = useTranslation('knowledgeSpace')
-  const canDownload = useAtomValue(documentCanDownloadAtom)
-  const canWrite = useAtomValue(documentCanWriteAtom)
-  const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
+  const canDownload = useAtomValueRawSync(documentCanDownloadAtom)
+  const canWrite = useAtomValueRawSync(documentCanWriteAtom)
+  const selectedDocumentIds = useAtomValueRawSync(validSelectedDocumentIdsAtom)
   const clearSelectedDocuments = useSetAtom(clearDocumentSelectionAtom)
-  const busy = Boolean(useAtomValue(documentBulkPendingActionAtom))
+  const busy = Boolean(useAtomValueRawSync(documentBulkPendingActionAtom))
 
   if ((!canWrite && !canDownload) || !selectedDocumentIds.size) return null
 

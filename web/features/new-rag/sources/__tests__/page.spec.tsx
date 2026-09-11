@@ -131,6 +131,7 @@ const jotaiQueryMocks = vi.hoisted(() => ({
   bump: undefined as undefined | (() => void),
 }))
 const connectionsQuery = vi.hoisted(() => ({
+  isFetchNextPageError: false,
   data: undefined as
     | {
         pages: Array<{
@@ -147,7 +148,7 @@ const connectionsQuery = vi.hoisted(() => ({
             updated_at: string
             version: number
           }>
-          next_cursor: null
+          next_cursor: string | null
         }>
       }
     | undefined,
@@ -636,6 +637,7 @@ describe('SourcesPage', () => {
     connectionsQuery.data = undefined
     connectionsQuery.error = null
     connectionsQuery.hasNextPage = false
+    connectionsQuery.isFetchNextPageError = false
     connectionsQuery.isError = false
     connectionsQuery.isFetchingNextPage = false
     connectionsQuery.isPending = false
@@ -2123,6 +2125,46 @@ describe('SourcesPage', () => {
       screen.queryByRole('textbox', { name: 'knowledgeSpace.rootUrl' }),
     ).not.toBeInTheDocument()
   })
+
+  it.each(['web', 'connector'] as const)(
+    'allows manual connection pagination retry after an error while editing a %s source',
+    async (type) => {
+      const user = userEvent.setup()
+      connectionsQuery.data = { pages: [{ data: [], next_cursor: 'next' }] }
+      connectionsQuery.hasNextPage = true
+      connectionsQuery.isFetchNextPageError = true
+      connectionsQuery.isError = true
+      connectionsQuery.error = new Error('Connections unavailable')
+      sourcesQuery.data = {
+        pages: [
+          {
+            items: [
+              source({
+                connectionId: 'connection-1',
+                metadata: type === 'connector' ? { providerKind: 'online-document' } : {},
+                type,
+              }),
+            ],
+          },
+        ],
+      }
+
+      render(<SourcesPage knowledgeSpaceId="space-1" />)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
+        }),
+      )
+      await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+
+      expect(screen.getByRole('dialog')).toBeVisible()
+      expect(connectionsQuery.fetchNextPage).not.toHaveBeenCalled()
+      const dialog = within(screen.getByRole('dialog'))
+      expect(dialog.getByText('knowledgeSpace.providerLoadFailed')).toBeVisible()
+      await user.click(dialog.getByRole('button', { name: 'common.operation.retry' }))
+      expect(connectionsQuery.fetchNextPage).toHaveBeenCalledOnce()
+    },
+  )
 
   it('loads edit connections with the current control space instead of the remote space id', async () => {
     const user = userEvent.setup()

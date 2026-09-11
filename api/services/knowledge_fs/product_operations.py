@@ -1060,6 +1060,17 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             max_response_bytes=4 * 1024 * 1024,
             stream_kind="json",
         ),
+        "captureAgentKnowledgeInvestigation": _operation(
+            "POST",
+            "captureAgentKnowledgeInvestigation",
+            KnowledgeFSProductPermission.QUERY,
+            "/knowledge-spaces/{id}/agent-investigations",
+            "json",
+            resource_resolver="knowledge_space",
+            max_request_bytes=4 * 1024 * 1024,
+            max_response_bytes=64 * 1024,
+            stream_kind="json",
+        ),
         "captureWorkflowFailedRetrieval": _operation(
             "POST",
             "captureWorkflowFailedRetrieval",

@@ -32,6 +32,7 @@ there are no separate output or snapshot events to correlate.
 """
 
 import asyncio
+import json
 from collections.abc import AsyncIterable, Callable, Mapping
 from collections import Counter
 from dataclasses import dataclass
@@ -233,6 +234,7 @@ class AgentRunRunner:
         self.stream_text_delta_max_chars = stream_text_delta_max_chars
         self._terminal_session_snapshot = None
         self._terminal_usage = None
+        self._knowledge_layers: list[DifyKnowledgeFsLayer] = []
 
     @property
     def terminal_session_snapshot(self) -> CompositorSessionSnapshot | None:
@@ -268,12 +270,14 @@ class AgentRunRunner:
                 usage=self._terminal_usage,
             )
             if finalization.applied:
+                for layer in self._knowledge_layers:
+                    await layer.publish_investigation(self.dify_api_http_client, status="interrupted")
                 raise
             return
 
         if self.is_cancelled():
             return
-        _ = await emit_run_succeeded(
+        finalization = await emit_run_succeeded(
             self.sink,
             run_id=self.run_id,
             **(
@@ -284,6 +288,15 @@ class AgentRunRunner:
             session_snapshot=outcome.session_snapshot,
             usage=outcome.usage,
         )
+        if finalization.applied and outcome.result_kind == "output":
+            for layer in self._knowledge_layers:
+                await layer.publish_investigation(
+                    self.dify_api_http_client,
+                    status="completed",
+                    answer=outcome.output
+                    if isinstance(outcome.output, str)
+                    else json.dumps(outcome.output, ensure_ascii=False),
+                )
 
     async def _run_agent(self) -> RunSuccessOutcome:
         """Run the normalized request through the model path.
@@ -337,8 +350,13 @@ class AgentRunRunner:
                 apply_layer_exit_signals(run, self.request.on_exit)
                 for slot in run.slots.values():
                     if isinstance(slot.layer, DifyKnowledgeFsLayer):
+                        self._knowledge_layers.append(slot.layer)
+                        # Only text user content is used for semantic quality review; never serialize images.
+                        query = "\n".join(part for part in run.user_prompts if isinstance(part, str))
                         await slot.layer.start(
-                            run_id=self.run_id, resume=self.request.deferred_tool_results is not None
+                            run_id=self.run_id,
+                            resume=self.request.deferred_tool_results is not None,
+                            query=query[:8000],
                         )
                 user_prompts = run.user_prompts
                 deferred_tool_results = _resolve_deferred_tool_results(self.request)

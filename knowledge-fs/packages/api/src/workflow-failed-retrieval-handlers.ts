@@ -3,7 +3,7 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { currentCandidateGrants } from "./candidate-content-authorization";
 import { CapabilityPublicationFencedError } from "./capability-grant-provenance";
 import {
-  FailedQueryWorkflowReplayConflictError,
+  FailedRetrievalReplayConflictError,
   WORKFLOW_FAILED_RETRIEVAL_CAPTURE_ACTION,
 } from "./failed-query-repository";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
@@ -70,7 +70,7 @@ export function registerWorkflowFailedRetrievalHandlers({
     } catch (error) {
       if (
         error instanceof WorkflowFailedRetrievalReplayConflictError ||
-        error instanceof FailedQueryWorkflowReplayConflictError
+        error instanceof FailedRetrievalReplayConflictError
       ) {
         return context.json({ error: error.message }, 409);
       }

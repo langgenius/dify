@@ -3,7 +3,7 @@
 import type { MetricChange } from './overview-format'
 import { cn } from '@langgenius/dify-ui/cn'
 import ReactECharts from 'echarts-for-react'
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
@@ -96,9 +96,9 @@ export function MetricCard({
 }
 
 export function OverviewMetrics() {
-  const empty = useAtomValue(overviewShowEmptyModulesAtom)
-  const loading = useAtomValue(overviewStatsPendingAtom)
-  const stats = useAtomValue(overviewStatsDataAtom)
+  const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
+  const loading = useAtomValueRawSync(overviewStatsPendingAtom)
+  const stats = useAtomValueRawSync(overviewStatsDataAtom)
   const { i18n, t } = useTranslation('knowledgeSpace')
   const percentFormat = new Intl.NumberFormat(i18n.language, {
     maximumFractionDigits: 0,
@@ -158,10 +158,10 @@ export function OverviewMetrics() {
 }
 
 export function QueryOutcomesChart() {
-  const outcomes = useAtomValue(overviewOutcomesDataAtom)
-  const empty = useAtomValue(overviewShowEmptyModulesAtom)
-  const error = useAtomValue(overviewOutcomesErrorAtom)
-  const loading = useAtomValue(overviewOutcomesPendingAtom)
+  const outcomes = useAtomValueRawSync(overviewOutcomesDataAtom)
+  const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
+  const error = useAtomValueRawSync(overviewOutcomesErrorAtom)
+  const loading = useAtomValueRawSync(overviewOutcomesPendingAtom)
   const buckets = outcomes?.buckets
   const { t, i18n } = useTranslation('knowledgeSpace')
   const chartOptions = useMemo(

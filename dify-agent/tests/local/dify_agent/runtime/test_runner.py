@@ -3269,3 +3269,45 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
 
     assert [event.type for event in sink.events["run-invalid-shell-offset"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-invalid-shell-offset"] == "failed"
+
+
+@pytest.mark.parametrize("paused", [False, True])
+def test_quality_report_only_follows_final_answer_not_human_pause(monkeypatch, paused):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from dify_agent.protocol.schemas import DeferredToolCallPayload
+
+    async def scenario():
+        sink = InMemoryRunEventSink()
+        layer = SimpleNamespace(publish_investigation=AsyncMock())
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="quality-run",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+
+            async def execute():
+                runner._knowledge_layers = [layer]
+                return RunSuccessOutcome(
+                    result_kind="deferred_tool_call" if paused else "output",
+                    output=None if paused else "answer",
+                    deferred_tool_call=DeferredToolCallPayload(
+                        tool_call_id="human-1", tool_name="ask_human", args={"question": "Which product?"}
+                    )
+                    if paused
+                    else None,
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                    usage=None,
+                )
+
+            monkeypatch.setattr(runner, "_run_agent", execute)
+            await runner.run()
+            if paused:
+                layer.publish_investigation.assert_not_awaited()
+            else:
+                layer.publish_investigation.assert_awaited_once_with(client, status="completed", answer="answer")
+
+    asyncio.run(scenario())

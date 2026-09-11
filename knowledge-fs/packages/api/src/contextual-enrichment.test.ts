@@ -8,6 +8,7 @@ import {
 } from "@knowledge/core";
 import { describe, expect, it } from "vitest";
 
+import { GRAPH_RELATION_TYPES } from "./graph-relation-catalog";
 import {
   type ContextualEnrichmentProvider,
   type EntityExtractionProvider,
@@ -1296,7 +1297,7 @@ describe("relation extraction", () => {
         relationExtraction: {
           extractedAt: "2026-05-12T15:00:00.000Z",
           model: "relation-model",
-          promptVersion: "relation-extraction-v1",
+          promptVersion: "relation-extraction-v2",
           provider: "static",
           relationCount: 4,
           requestId: "relation-request-1",
@@ -1343,10 +1344,13 @@ describe("relation extraction", () => {
       maxRelations: 6,
       model: "relation-model",
       node: first,
-      promptVersion: "relation-extraction-v1",
+      promptVersion: "relation-extraction-v2",
     });
+    for (const relationType of GRAPH_RELATION_TYPES) {
+      expect(provider.calls[0]?.prompt).toContain(relationType);
+    }
     expect(provider.calls[0]?.prompt).toContain(
-      "mentions, defines, references, depends_on, supersedes, and contradicts",
+      "never turn co-occurrence or similarity into a fact",
     );
 
     const extractedNode = result.extractedNodes[0];

@@ -475,3 +475,49 @@ The repository includes simple consumers that print observed output/events:
 
 The create-run examples submit Dify plugin model layers, so they require Redis,
 the Agent server, Dify API gateway settings, and a configured model provider in Dify.
+
+### Automatic KnowledgeFS quality reporting
+
+Knowledge CLI calls now contribute bounded, server-owned investigation observations.
+The Stub records command IDs, queries/paths, outcomes, error codes, timing, small text
+snippets and receipt IDs. The runtime separately marks which observations were delivered
+to the model. This ledger survives the consumable tool-result queue and session cleanup.
+It shares the knowledge budget's two-hour retention and identity boundary. A human-input
+pause retains the investigation; a resumed run continues it. A new user turn gets a fresh
+investigation. Images and bearer capabilities are never included in these observations.
+
+After the authoritative final-answer event, the runtime submits the original question,
+final answer and observations to the private Dify API. Failed runs submit an interrupted
+report; cancellation leaves a bounded diagnostic ledger and does not create quality cases.
+A human-input pause does not submit a final report. Queue admission is retried with the same
+investigation ID, and submission failures do not change the completed Agent result.
+
+The existing `dataset` Celery workers process one job per investigated knowledge space.
+Each attempt reconstructs the Agent/app/configuration ownership and reissues a capability.
+An authorization fingerprint binds observations to the original caller, ACL/content policy
+revisions and content scopes; a changed scope rejects publication of old observations.
+Agent applications, Workflow Agent nodes and interactive previews use their actual caller
+identities and a dedicated `queries.agent_investigation.capture` action.
+
+KnowledgeFS makes one batched assessment of the space's complete investigation using its
+configured reasoning model with a 60-second model budget. The worker uses the existing
+`KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS` transport timeout for this operation.
+Query rewrites and recovered empty searches are grouped. An
+unresolved subquestion produces a failed-query record; only `retrieval-miss` produces a
+quality bad case tagged `agent`, `auto-captured`, `retrieval-miss`. Coverage gaps, unrelated
+questions and uncertain issues do not become retrieval bad cases. Tool errors, directory
+probing, unobserved results, image-only investigations and interruptions cannot by themselves
+produce a bad case. If the model is unavailable or returns an invalid assessment, the trace
+is retained as uncertain without automatic cases.
+
+The committed assessment and stable child IDs fence retries, so projection retries do not
+create duplicate failed queries/cases or repeat the committed judgment. Separate unanswered
+subquestions remain separate, with at most eight issues per space. The original question and
+bounded command history remain linked to each issue trace. The final answer is used for
+assessment but is not copied into a knowledge space's shared trace, since it may contain
+content from other spaces. Document snippets likewise remain transient classifier input;
+shared traces retain command metadata and receipt IDs without copying document text outside
+the existing evidence permission projection. Reports are best-effort: after bounded dispatch retries, an
+undelivered report remains only in the expiring runtime ledger. Deploy matching Agent,
+Dify API/worker and KnowledgeFS versions to enable the complete path; no new environment
+variable or Agent tool is required.

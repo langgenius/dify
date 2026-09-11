@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { createContext, use, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
@@ -53,7 +53,7 @@ function ScorePill({ score }: { score: number }) {
 function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
   const { t } = useTranslation('knowledgeSpace')
   const router = useRouter()
-  const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const [isResolving, setIsResolving] = useState(false)
   if (evidence.availability === 'unavailable') return null
   const actionClassName =

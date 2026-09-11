@@ -10,6 +10,7 @@ import io
 import json
 import logging
 import re
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from uuid import uuid4
@@ -32,6 +33,7 @@ from dify_agent.protocol.knowledge_fs import (
     KnowledgeFsPreparedRequest,
     KnowledgeFsPrepareRequest,
 )
+from dify_agent.protocol.knowledge_investigation import KnowledgeAttempt
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,10 @@ class AgentStubKnowledgeHandler:
                 "KNOWLEDGE_SCOPE_MISMATCH", "Knowledge session does not match the execution context.", 403
             )
         await store.reserve(session, str(command.command_id))
+        started = time.time()
+        result = None
+        delivery = None
+        failure_code = "KNOWLEDGE_INTERRUPTED"
         task = asyncio.create_task(self._execute(session, command))
 
         async def monitor() -> None:
@@ -77,19 +83,92 @@ class AgentStubKnowledgeHandler:
                 # Closing the run or losing its lease while upstream was in flight
                 # must prevent stale evidence from being returned or persisted.
                 await store.deliver(session, delivery)
-                return delivery.result
+                result = delivery.result
+                return result
+        except KnowledgeFsError as exc:
+            failure_code = exc.code
+            raise
         except TimeoutError as exc:
+            failure_code = "KNOWLEDGE_TIMEOUT"
             raise KnowledgeFsError("KNOWLEDGE_TIMEOUT", "Knowledge command exceeded 60 seconds.", 504) from exc
         finally:
             task.cancel()
             watchdog.cancel()
             await asyncio.gather(task, watchdog, return_exceptions=True)
+            await self._record_attempt(session, command, result, failure_code, started, delivery)
             try:
                 await store.release(session, str(command.command_id))
             except RedisError:
                 # The reservation retains its worst-case charge and expires.
                 # Do not replace a cancellation/authorization error with cleanup.
                 logger.warning("Knowledge budget release failed; reservation remains charged")
+
+    async def _record_attempt(
+        self,
+        session: KnowledgeFsSession,
+        command: KnowledgeFsCommand,
+        result: KnowledgeFsCommandResult | None,
+        failure_code: str,
+        started: float,
+        delivery: KnowledgeFsDelivery | None,
+    ) -> None:
+        binding = next((b for b in session.bindings if command.space in (b.id, b.name)), None)
+        if binding is None or command.command in {"spaces", "capabilities"}:
+            return
+        try:
+            data = result.data if result and isinstance(result.data, dict) else {}
+            snippets = []
+            raw_items = data.get("items", data.get("matches"))
+            items = raw_items if isinstance(raw_items, list) else []
+            for item in items:
+                if isinstance(item, dict):
+                    text = item.get("text") or item.get("snippet") or item.get("path")
+                    if isinstance(text, str):
+                        snippets.append(text)
+            text = data.get("text") or data.get("content")
+            if isinstance(text, str):
+                snippets.append(text)
+            snippet_text = "\n".join(snippets)
+            evidence = snippet_text[:2000]
+            # Directory entries are exploration signals, not proof of answerability.
+            result_count = len(items)
+            if data.get("text") or data.get("content") or (result and result.citations):
+                result_count = max(1, result_count)
+            has_content = result_count > 0
+            await self.get_store().record_attempt(
+                session,
+                KnowledgeAttempt(
+                    command_id=command.command_id,
+                    control_space_id=binding.control_space_id,
+                    command=command.command,
+                    query=command.query or "",
+                    path=(
+                        command.path
+                        or command.node_id
+                        or command.receipt_id
+                        or (f"{command.old_path} -> {command.new_path}" if command.old_path else "")
+                    )[:4096],
+                    outcome=("evidence" if has_content else "empty") if result else "error",
+                    code=None if result else failure_code,
+                    started_at_ms=int(started * 1000),
+                    elapsed_ms=max(0, int((time.time() - started) * 1000)),
+                    evidence=evidence,
+                    result_count=result_count,
+                    truncated=bool(
+                        len(snippet_text) > 2000
+                        or data.get("truncated")
+                        or data.get("text_truncated")
+                        or data.get("has_more")
+                        or data.get("nextCursor")
+                        or any(item.get("text_truncated") for item in items if isinstance(item, dict))
+                    ),
+                    receipt_ids=[c.id for c in result.citations] if result else [],
+                    trace_id=result.trace_id if result else None,
+                    authorization_fingerprint=delivery.authorization_fingerprint if delivery else None,
+                ),
+            )
+        except Exception:
+            logger.warning("Knowledge investigation observation could not be saved", exc_info=True)
 
     async def _prepare(
         self, session: KnowledgeFsSession, command: KnowledgeFsCommand, citation: KnowledgeFsCitation | None
@@ -158,6 +237,7 @@ class AgentStubKnowledgeHandler:
                     },
                     citations=[citation] if citation else [],
                 ),
+                authorization_fingerprint=plan.authorization_fingerprint,
                 image_base64=base64.b64encode(image_bytes).decode(),
                 image_media_type=media_type,
             )
@@ -174,7 +254,7 @@ class AgentStubKnowledgeHandler:
                 "Result exceeds the output budget; narrow the path/query or lower --limit.",
                 413,
             )
-        return KnowledgeFsDelivery(result=result)
+        return KnowledgeFsDelivery(result=result, authorization_fingerprint=plan.authorization_fingerprint)
 
     @staticmethod
     def _assert_artifact(raw: dict, citation: KnowledgeFsCitation | None) -> None:

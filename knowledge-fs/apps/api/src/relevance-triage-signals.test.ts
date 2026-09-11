@@ -295,3 +295,61 @@ describe("createApiAnswerabilityJudge", () => {
     });
   });
 });
+
+// Provider boundary: completed investigations use bounded context and a structured verdict.
+describe("Agent investigation batch triage", () => {
+  it.each(["resolved", "invalid-json", "wrong-model"])(
+    "handles %s without manufacturing issues",
+    async (outcome) => {
+      const { createApiAgentKnowledgeInvestigationTriage } = await import(
+        "./relevance-triage-signals"
+      );
+      const generate = vi.fn(async () => ({
+        finishReason: "stop",
+        metadata: { model: "reasoning", provider: "static" as const },
+        model: outcome === "wrong-model" ? "other" : "reasoning",
+        text:
+          outcome === "invalid-json"
+            ? "please create a case"
+            : JSON.stringify({ outcome: "resolved", issues: [] }),
+      }));
+      const triage = createApiAgentKnowledgeInvestigationTriage({
+        maxOutputTokens: 512,
+        loadCorpus: async () => ({
+          entityTokens: new Set(),
+          summaryTokens: new Set(),
+          topics: ["Refund policy"],
+        }),
+        manifests: {
+          get: vi.fn(async () => ({
+            retrievalProfile: {
+              reasoningModel: {
+                model: "reasoning",
+                provider: "provider",
+                pluginId: "plugin",
+              },
+            },
+          })) as never,
+        },
+        providerFactory: () => ({ generate }) as unknown as LlmProvider,
+      });
+      const result = await triage.triage({
+        investigationId: KS,
+        ...INPUT,
+        candidateGrants: ["tenant:t"],
+        query: "refund",
+        answer: "Found it after rephrasing",
+        status: "completed",
+        attempts: [],
+      });
+      expect(result).toEqual({
+        outcome: outcome === "resolved" ? "resolved" : "uncertain",
+        issues: [],
+      });
+      expect(generate).toHaveBeenCalledTimes(1);
+      expect(generate).toHaveBeenCalledWith(
+        expect.objectContaining({ maxOutputTokens: 512, signal: expect.any(AbortSignal) }),
+      );
+    },
+  );
+});

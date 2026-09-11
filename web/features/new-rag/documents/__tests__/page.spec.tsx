@@ -6,7 +6,7 @@ import { hashKey } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { getDefaultStore } from 'jotai'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { renderWithQueryState } from '@/test/query-state-testing'
 import { DocumentsPage } from '../page'
 
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
@@ -295,13 +295,15 @@ vi.mock('jotai', async (importOriginal) => {
   const original = await importOriginal<typeof import('jotai')>()
   return {
     ...original,
-    useAtomValue: (atom: unknown) => {
+    useAtomValueRawSync: (atom: unknown) => {
       if (atom === permissionStateMock.datasetAtom) return permissionStateMock.datasetKeys
       if (atom === permissionStateMock.errorAtom) return permissionStateMock.error
       if (atom === permissionStateMock.fetchingAtom) return permissionStateMock.fetching
       if (atom === permissionStateMock.loadingAtom) return permissionStateMock.loading
       if (atom === systemFeaturesStateMock.atom) return systemFeaturesStateMock.uploadEnabled
-      return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
+      return original.useAtomValueRawSync(
+        atom as Parameters<typeof original.useAtomValueRawSync>[0],
+      )
     },
     useSetAtom: (atom: unknown) =>
       atom === permissionStateMock.retryAtom
@@ -424,11 +426,11 @@ function syncInfiniteQueryAtoms() {
 }
 
 function render(
-  ui: Parameters<typeof renderWithNuqs>[0],
-  options?: Parameters<typeof renderWithNuqs>[1],
+  ui: Parameters<typeof renderWithQueryState>[0],
+  options?: Parameters<typeof renderWithQueryState>[1],
 ) {
   syncInfiniteQueryAtoms()
-  const rendered = renderWithNuqs(ui, options)
+  const rendered = renderWithQueryState(ui, options)
   const rerender = rendered.rerender
 
   return {

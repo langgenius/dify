@@ -548,13 +548,26 @@ export type AdminGraphEntityType =
   | "product"
   | "term";
 
-export type AdminGraphRelationType =
-  | "contradicts"
-  | "defines"
-  | "depends_on"
-  | "mentions"
-  | "references"
-  | "supersedes";
+// This standalone client intentionally has no server dependency. The contract test checks every
+// predicate in the server catalog so additions cannot silently break graph responses here.
+const adminGraphRelationTypes = [
+  "contradicts",
+  "defines",
+  "depends_on",
+  "mentions",
+  "references",
+  "supersedes",
+  "responsible_for",
+  "member_of",
+  "reports_to",
+  "part_of",
+  "owns",
+  "provides",
+  "uses",
+  "collaborates_with",
+] as const;
+
+export type AdminGraphRelationType = (typeof adminGraphRelationTypes)[number];
 
 export interface AdminGraphEntity {
   readonly aliases: readonly string[];
@@ -3923,12 +3936,7 @@ function isGraphEntityType(value: unknown): value is AdminGraphEntityType {
 
 function isGraphRelationType(value: unknown): value is AdminGraphRelationType {
   return (
-    value === "contradicts" ||
-    value === "defines" ||
-    value === "depends_on" ||
-    value === "mentions" ||
-    value === "references" ||
-    value === "supersedes"
+    typeof value === "string" && adminGraphRelationTypes.includes(value as AdminGraphRelationType)
   );
 }
 

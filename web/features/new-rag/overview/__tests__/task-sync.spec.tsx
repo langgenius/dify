@@ -4,7 +4,7 @@ import type {
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
-import { createStore, Provider, useAtomValue } from 'jotai'
+import { createStore, Provider, useAtomValueRawSync } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { OverviewTaskSync } from '../overview-task-sync'
 import { overviewActivityPreviewDataAtom, overviewAttentionDataAtom } from '../state'
@@ -86,8 +86,8 @@ function task(
   }
 }
 function Snapshot() {
-  const attention = useAtomValue(overviewAttentionDataAtom)
-  const activity = useAtomValue(overviewActivityPreviewDataAtom)
+  const attention = useAtomValueRawSync(overviewAttentionDataAtom)
+  const activity = useAtomValueRawSync(overviewActivityPreviewDataAtom)
   return (
     <div>
       {attention.map((issue) => (

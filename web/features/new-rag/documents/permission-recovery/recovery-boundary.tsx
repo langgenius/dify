@@ -2,11 +2,10 @@
 
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useQueryState } from 'nuqs'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { documentMetadataParser } from '../query-state'
+import { documentMetadataAtom } from '../state/inputs'
 import { retryDocumentReadAtom } from '../state/runtime'
 import { documentPermissionRecoveryFocusRequestAtom, documentTasksOpenAtom } from '../state/scoped'
 import { documentPermissionBoundaryFactsAtom, documentReadRecoveryFactsAtom } from './state'
@@ -23,14 +22,14 @@ export function DocumentPermissionRecoveryBoundary({ children }: { children: Rea
     pendingReadRecoveryFocus,
     tasksOpen,
     writeStatus,
-  } = useAtomValue(documentPermissionBoundaryFactsAtom)
+  } = useAtomValueRawSync(documentPermissionBoundaryFactsAtom)
   const setTasksOpen = useSetAtom(documentTasksOpenAtom)
   const setPendingReadRecoveryFocus = useSetAtom(documentPermissionRecoveryFocusRequestAtom)
-  const [metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
+  const metadataRequest = useAtomValueRawSync(documentMetadataAtom)
+  const setMetadataRequest = useSetAtom(documentMetadataAtom)
   const readSurfaceOpen = tasksOpen || metadataRequest === '1'
   const closeReadSurfaces = useCallback(() => {
     setTasksOpen(false)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Permission loss closes the route-owned metadata overlay before focus restoration.
     void setMetadataRequest(null)
   }, [setMetadataRequest, setTasksOpen])
   const rootRef = useRef<HTMLDivElement>(null)
@@ -117,7 +116,9 @@ export function DocumentPermissionRecoveryBulkRegion({ children }: { children: R
 export function DocumentReadPermissionRecovery() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const { canRetryRead, denialIdentity, fetching } = useAtomValue(documentReadRecoveryFactsAtom)
+  const { canRetryRead, denialIdentity, fetching } = useAtomValueRawSync(
+    documentReadRecoveryFactsAtom,
+  )
   const requestReadRecoveryFocus = useSetAtom(documentPermissionRecoveryFocusRequestAtom)
   const retryRead = useSetAtom(retryDocumentReadAtom)
 

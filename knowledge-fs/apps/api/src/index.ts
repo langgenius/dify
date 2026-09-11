@@ -9,6 +9,7 @@ import {
   RETRIEVAL_MAX_TOP_K,
   createBackgroundRuntimeController,
   createDatabaseDeletionObjectWriteAdmission,
+  createDatabaseGraphQueryRepository,
   createDatabaseHybridRetrievalRepository,
   createDatabasePublishedGraphIndexRepository,
   createDatabasePublishedKnowledgeSpaceRuntimeSnapshotResolver,
@@ -17,6 +18,8 @@ import {
   createDeletionLifecycleFenceGuard,
   createDocumentMultimodalCandidateResolver,
   createGoldenQuestionEvidenceMatcher,
+  createGraphQueryPlanner,
+  createGraphSemanticQueryService,
   createHybridQueryGenerator,
   createInMemoryKnowledgeSpaceManifestRepository,
   createJointCasSourceLogicalRevisionPublisher,
@@ -97,6 +100,7 @@ import { createApiQueryImageExpansionProvider } from "./query-image-expansion-op
 import { createApiQueryImageResolver } from "./query-image-options";
 import { createApiDeploymentReadinessChecks } from "./readiness-options";
 import {
+  createApiAgentKnowledgeInvestigationTriage,
   createApiRelevanceTriageOptions,
   createApiTriageCorpusLoader,
   createApiWorkflowFailedRetrievalTriage,
@@ -522,6 +526,20 @@ const workflowFailedRetrievalTriage = createApiWorkflowFailedRetrievalTriage({
   maxOutputTokens: Math.min(profileReasoningCapability.maxOutputTokens, 32),
   providerFactory: profileReasoningCapability.providerFactory,
 });
+const agentKnowledgeInvestigationTriage = createApiAgentKnowledgeInvestigationTriage({
+  loadCorpus: createApiTriageCorpusLoader({
+    ...(repositoryOptions.documentAssets
+      ? { documentAssets: repositoryOptions.documentAssets }
+      : {}),
+    ...(repositoryOptions.documentOutlines
+      ? { documentOutlines: repositoryOptions.documentOutlines }
+      : {}),
+    ...(repositoryOptions.graphIndex ? { graphIndex: repositoryOptions.graphIndex } : {}),
+  }),
+  manifests: knowledgeSpaceManifests,
+  maxOutputTokens: Math.min(profileReasoningCapability.maxOutputTokens, 1600),
+  providerFactory: profileReasoningCapability.providerFactory,
+});
 const publishedPageIndex =
   repositoryOptions.projectionSetPublications && repositoryOptions.projectionSetPublicationMembers
     ? createDatabasePublishedPageIndexRepository({
@@ -752,6 +770,18 @@ const retriever = retrievalRepository
             graph: repositoryOptions.graphIndex,
             graphExpansion: graphExpansionOptions,
             ...(publishedGraph ? { publishedGraph } : {}),
+            ...(publishedGraph && embeddingResolver
+              ? {
+                  graphSemanticQuery: createGraphSemanticQueryService({
+                    repository: createDatabaseGraphQueryRepository(adapter.database),
+                    planner: createGraphQueryPlanner({
+                      providerFactory: profileReasoningCapability.providerFactory,
+                      maxOutputTokens: Math.min(profileReasoningCapability.maxOutputTokens, 2048),
+                      modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
+                    }),
+                  }),
+                }
+              : {}),
           }
         : {}),
       ...(publishedPageIndex
@@ -1135,6 +1165,7 @@ const app = createKnowledgeGateway({
   ...sourceCredentialTesterOptions,
   ...relevanceTriageOptions,
   workflowFailedRetrievalTriage,
+  agentKnowledgeInvestigationTriage,
   ...(tracingOptions ?? {}),
 });
 

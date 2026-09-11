@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -45,12 +45,12 @@ import { documentCanDownloadAtom, documentCanWriteAtom } from './state/runtime'
 
 function useDocumentActionFacts(documentId: string) {
   const factsAtom = useMemo(() => createDocumentRowActionFactsAtom(documentId), [documentId])
-  return useAtomValue(factsAtom)
+  return useAtomValueRawSync(factsAtom)
 }
 
 function useDocumentCanEdit() {
-  const permissionAllowsWrite = useAtomValue(documentCanWriteAtom)
-  const selectionResultsUnavailable = useAtomValue(selectionResultsUnavailableAtom)
+  const permissionAllowsWrite = useAtomValueRawSync(documentCanWriteAtom)
+  const selectionResultsUnavailable = useAtomValueRawSync(selectionResultsUnavailableAtom)
   return permissionAllowsWrite && !selectionResultsUnavailable
 }
 
@@ -194,7 +194,7 @@ function ReprocessDocumentMenuItem({ document }: { document: LogicalDocument }) 
 
 function DownloadDocumentMenuItem({ document }: { document: LogicalDocument }) {
   const { t } = useTranslation('knowledgeSpace')
-  const canDownload = useAtomValue(documentCanDownloadAtom)
+  const canDownload = useAtomValueRawSync(documentCanDownloadAtom)
   const { status, tasksPending } = useDocumentActionFacts(document.id)
   const { busy, run } = useDownloadDocumentAction(document, status, tasksPending)
   const disabled = !canDownload || tasksPending || !documentCanDownload(document, status)

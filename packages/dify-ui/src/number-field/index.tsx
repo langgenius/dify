@@ -60,7 +60,7 @@ const numberFieldInputVariants = cva(
     variants: {
       size: {
         medium: 'px-3 py-1.75 system-sm-regular',
-        large: 'px-4 py-2 system-md-regular',
+        large: 'px-4 py-1.75 system-md-regular',
       },
     },
     defaultVariants: {
@@ -106,7 +106,7 @@ function NumberFieldUnit({ className, size = 'medium', ...props }: NumberFieldUn
 }
 
 const numberFieldControlsVariants = cva(
-  'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
+  'flex w-6 shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
 type NumberFieldControlsProps = React.ComponentProps<'div'>
@@ -117,7 +117,7 @@ function NumberFieldControls({ className, ...props }: NumberFieldControlsProps) 
 
 const numberFieldControlButtonVariants = cva(
   [
-    'flex touch-manipulation items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors select-none',
+    'flex touch-manipulation items-center justify-center text-text-tertiary outline-hidden transition-colors select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
     'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
@@ -140,22 +140,22 @@ const numberFieldControlButtonVariants = cva(
       {
         size: 'medium',
         direction: 'increment',
-        className: 'pt-1',
+        className: 'pt-0.75',
       },
       {
         size: 'medium',
         direction: 'decrement',
-        className: 'pb-1',
+        className: 'pb-0.75',
       },
       {
         size: 'large',
         direction: 'increment',
-        className: 'pt-1.5',
+        className: 'pt-1.25',
       },
       {
         size: 'large',
         direction: 'decrement',
-        className: 'pb-1.5',
+        className: 'pb-1.25',
       },
     ],
     defaultVariants: {

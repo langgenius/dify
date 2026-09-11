@@ -139,6 +139,8 @@ export interface RetrieveHybridInput extends SearchDenseInput {
   readonly researchOpenGate?: ConcurrencyGate | undefined;
   /** Internal Research V3 routing decision; false suppresses the graph leg for direct queries. */
   readonly researchGraphEnabled?: boolean | undefined;
+  /** Only the primary Research leg may perform grounded semantic graph planning. */
+  readonly researchGraphSemanticEnabled?: boolean | undefined;
   readonly researchModelCallObserver?: ResearchModelCallObserver | undefined;
   /**
    * Durable Research progress boundary. V3 calls this after planning and after initial recall so

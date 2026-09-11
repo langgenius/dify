@@ -152,7 +152,10 @@ def create_default_layer_providers(
             LayerProvider.from_factory(
                 layer_type=DifyKnowledgeFsLayer,
                 create=lambda config: DifyKnowledgeFsLayer(
-                    config=DifyKnowledgeFsLayerConfig.model_validate(config), get_store=knowledge_session_store
+                    config=DifyKnowledgeFsLayerConfig.model_validate(config),
+                    get_store=knowledge_session_store,
+                    inner_api_url=inner_api_url,
+                    inner_api_key=inner_api_key,
                 ),
             )
         )

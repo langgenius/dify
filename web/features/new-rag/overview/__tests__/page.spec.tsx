@@ -2,7 +2,7 @@ import type { Getter } from 'jotai'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { renderWithQueryState } from '@/test/query-state-testing'
 import { formatMetricChange } from '../overview-format'
 import { MetricCard } from '../overview-metrics'
 import { KnowledgeOverviewPage } from '../page'
@@ -209,12 +209,14 @@ vi.mock('jotai', async (importOriginal) => {
   const original = await importOriginal<typeof import('jotai')>()
   return {
     ...original,
-    useAtomValue: (atom: unknown) => {
+    useAtomValueRawSync: (atom: unknown) => {
       if (atom === permissionState.datasetKeysAtom) return permissionState.datasetKeys
       if (atom === permissionState.workspaceKeysAtom) return permissionState.workspaceKeys
       if (atom === systemFeaturesState.uploadAvailableAtom)
         return systemFeaturesState.uploadAvailable
-      return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
+      return original.useAtomValueRawSync(
+        atom as Parameters<typeof original.useAtomValueRawSync>[0],
+      )
     },
   }
 })
@@ -364,11 +366,11 @@ vi.mock('@/service/console', () => {
 })
 
 function renderOverviewWithNuqs(
-  ui: Parameters<typeof renderWithNuqs>[0],
-  options?: Parameters<typeof renderWithNuqs>[1],
+  ui: Parameters<typeof renderWithQueryState>[0],
+  options?: Parameters<typeof renderWithQueryState>[1],
 ) {
   jotaiQueryMocks.bump?.()
-  const rendered = renderWithNuqs(ui, options)
+  const rendered = renderWithQueryState(ui, options)
   return {
     ...rendered,
     rerender: (nextUi: Parameters<typeof rendered.rerender>[0]) => {

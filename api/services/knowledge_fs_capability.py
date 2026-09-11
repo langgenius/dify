@@ -1006,6 +1006,13 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/retrieval-tests",
             "knowledge_space",
         ),
+        "captureAgentKnowledgeInvestigation": KnowledgeFSCapabilityOperation(
+            "queries.agent_investigation.capture",
+            ("agent", "workflow", "interactive"),
+            "POST",
+            "/knowledge-spaces/{id}/agent-investigations",
+            "knowledge_space",
+        ),
         "captureWorkflowFailedRetrieval": KnowledgeFSCapabilityOperation(
             "queries.failed_retrieval.capture",
             _WORKFLOW_CALLERS,

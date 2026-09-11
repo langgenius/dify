@@ -1,8 +1,40 @@
 import { describe, expect, it } from "vitest";
 
+import { graphRelation } from "./graph-query.fixtures";
+import { GRAPH_RELATION_TYPES } from "./graph-relation-catalog";
+import { GraphRelationResponseSchema } from "./graph-traversal-responses";
 import { createLlmRelationExtractionProvider } from "./llm-relation-extraction-provider";
 
 describe("createLlmRelationExtractionProvider", () => {
+  it.each(GRAPH_RELATION_TYPES)(
+    "accepts %s from extraction through the HTTP relation contract",
+    async (type) => {
+      const provider = createLlmRelationExtractionProvider({
+        provider: {
+          generate: async () => ({
+            text: JSON.stringify({
+              relations: [{ confidence: 0.9, subject: "A", object: "B", type }],
+            }),
+          }),
+        },
+      });
+      const result = await provider.extract({
+        entities: [],
+        maxRelations: 5,
+        model: "relation-llm",
+        node: {} as never,
+        prompt: "Relationship evidenced between A and B",
+        promptVersion: "relation-extraction-v2",
+      });
+      expect(result.relations).toEqual([
+        expect.objectContaining({ subject: "A", object: "B", type }),
+      ]);
+      expect(
+        GraphRelationResponseSchema.safeParse({ ...graphRelation(20, 10, 11, { type }), depth: 1 })
+          .success,
+      ).toBe(true);
+    },
+  );
   it("extracts multiple nodes in one strict batch request", async () => {
     let calls = 0;
     const provider = createLlmRelationExtractionProvider({

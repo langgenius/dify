@@ -4,7 +4,6 @@ import type {
   SkillDetailResponse,
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-/* oxlint-disable eslint-react/set-state-in-effect -- The builder resets its local transcript when the authoritative detail snapshot changes. */
 import type { BuilderChatMessage, SkillBuilderAttachment, SkillBuilderModel } from './shared'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Button } from '@langgenius/dify-ui/button'

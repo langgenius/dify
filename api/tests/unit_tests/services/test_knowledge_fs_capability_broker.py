@@ -683,6 +683,37 @@ def test_workflow_app_issuance_uses_the_workflow_caller_kind(sqlite_session: Ses
     assert issuer.requests[0].caller_kind == "workflow"
 
 
+@pytest.mark.parametrize("changed_revision", ["space_acl_epoch", "content_policy_revision"])
+@pytest.mark.parametrize("sqlite_session", [_ISSUANCE_FENCE_MODELS], indirect=True)
+def test_investigation_authorization_matches_retrieval_until_scope_changes(
+    sqlite_session: Session, changed_revision: str
+) -> None:
+    space, _, profile = _seed_external_principals(sqlite_session)
+    broker = KnowledgeFSCapabilityBroker(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        cutover_gate=FakeCutoverGate(),
+        product=FakeProduct(space),  # type: ignore[arg-type]
+        issuer=FakeIssuer(),  # type: ignore[arg-type]
+    )
+    retrieved = broker.issue_app(
+        profile=profile._replace(action="queries.retrieval_test"),
+        operation_id="retrieveEvidence",
+    )
+    capture_profile = profile._replace(action="queries.agent_investigation.capture")
+    captured = broker.issue_app(profile=capture_profile, operation_id="captureAgentKnowledgeInvestigation")
+    assert retrieved.authorization_fingerprint
+    assert captured.authorization_fingerprint == retrieved.authorization_fingerprint
+
+    revision = sqlite_session.scalar(
+        sa.select(KnowledgeFSAuthorizationRevision).where(KnowledgeFSAuthorizationRevision.control_space_id == space.id)
+    )
+    assert revision is not None
+    setattr(revision, changed_revision, getattr(revision, changed_revision) + 1)
+    sqlite_session.commit()
+    changed = broker.issue_app(profile=capture_profile, operation_id="captureAgentKnowledgeInvestigation")
+    assert changed.authorization_fingerprint != retrieved.authorization_fingerprint
+
+
 @pytest.mark.parametrize("principal_kind", ["service", "app"])
 @pytest.mark.parametrize("sqlite_session", [_ISSUANCE_FENCE_MODELS], indirect=True)
 def test_external_issuance_uses_fresh_authorization_revision(

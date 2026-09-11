@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { GRAPH_RELATION_TYPES } from "./graph-relation-catalog";
 
 import type {
   GraphTraversalEntity,
@@ -36,7 +37,7 @@ export const GraphRelationResponseSchema = z.object({
   permissionScope: z.array(z.string()),
   sourceNodeIds: z.array(z.string()),
   subjectEntityId: z.string(),
-  type: z.enum(["contradicts", "defines", "depends_on", "mentions", "references", "supersedes"]),
+  type: z.enum(GRAPH_RELATION_TYPES),
   updatedAt: z.string(),
 });
 

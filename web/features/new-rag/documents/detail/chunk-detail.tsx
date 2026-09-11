@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
@@ -125,10 +125,10 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
 export function DocumentReadingPane() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const contentBlocks = useAtomValue(documentDetailContentBlocksAtom)
-  const isLoadingMore = useAtomValue(documentChunksQueryIsFetchingNextPageAtom)
-  const multimodalItems = useAtomValue(documentDetailMultimodalItemsAtom)
-  const selectedChunkId = useAtomValue(documentDetailSelectedChunkIdAtom)
+  const contentBlocks = useAtomValueRawSync(documentDetailContentBlocksAtom)
+  const isLoadingMore = useAtomValueRawSync(documentChunksQueryIsFetchingNextPageAtom)
+  const multimodalItems = useAtomValueRawSync(documentDetailMultimodalItemsAtom)
+  const selectedChunkId = useAtomValueRawSync(documentDetailSelectedChunkIdAtom)
   const contentScrollRef = useRef<HTMLDivElement>(null)
   const contentChunks = useMemo(() => contentBlocks.map((block) => block.chunk), [contentBlocks])
   const multimodalPlacement = useMemo(
@@ -277,10 +277,10 @@ export function DocumentReadingPane() {
 export function DocumentFactsSidebar() {
   const { i18n, t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const chunksComplete = useAtomValue(documentDetailChunksCompleteAtom)
-  const document = useAtomValue(documentDetailDocumentAtom)
-  const indexChunks = useAtomValue(documentDetailIndexChunksAtom)
-  const revision = useAtomValue(documentDetailRevisionAtom)
+  const chunksComplete = useAtomValueRawSync(documentDetailChunksCompleteAtom)
+  const document = useAtomValueRawSync(documentDetailDocumentAtom)
+  const indexChunks = useAtomValueRawSync(documentDetailIndexChunksAtom)
+  const revision = useAtomValueRawSync(documentDetailRevisionAtom)
   const locale = i18n.resolvedLanguage ?? i18n.language
   const characterCount = useMemo(
     () => indexChunks.reduce((total, chunk) => total + chunkCharacterCount(chunk.text), 0),

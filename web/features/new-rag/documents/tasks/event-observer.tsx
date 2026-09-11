@@ -1,7 +1,7 @@
 'use client'
 
 import type { ProcessingTaskEvent } from './events'
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { taskVersionIsAfter } from '../model'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
@@ -56,7 +56,7 @@ export function TaskEventObserver({
   taskId: string
   taskVersion: string
 }) {
-  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const resumeEventIdRef = useRef(lastEventId)
   useLayoutEffect(() => {
     resumeEventIdRef.current = lastEventId

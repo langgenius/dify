@@ -223,6 +223,34 @@ class KnowledgeFSAppExecutionCapabilityService:
         )
         return KnowledgeFSMetadataFieldListResponse.model_validate(raw)
 
+    def capture_agent_investigation(
+        self,
+        *,
+        issued: KnowledgeFSIssuedProductCapability,
+        tenant_id: str,
+        payload: dict[str, JsonValue],
+    ) -> JsonValue:
+        operation_id = "captureAgentKnowledgeInvestigation"
+        operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
+        if (
+            issued.operation_id != operation_id
+            or not is_product_operation_ready(operation_id)
+            or not operation.kfs_path
+        ):
+            raise KnowledgeFSOperationUnavailableError("Agent investigation capture is unavailable")
+        return self._remote.execute_json(
+            KnowledgeFSRemoteJSONRequest(
+                operation_id=operation_id,
+                method="POST",
+                path=operation.kfs_path.replace("{id}", issued.knowledge_space_id),
+                namespace_id=tenant_id,
+                knowledge_space_id=issued.knowledge_space_id,
+                capability_token=issued.token,
+                trace_id=issued.trace_id,
+                payload=payload,
+            )
+        )
+
     def capture_workflow_failed_retrieval(
         self,
         *,
