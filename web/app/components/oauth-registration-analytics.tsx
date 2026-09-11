@@ -11,7 +11,10 @@ import {
   markOAuthRegistrationGASent,
 } from './base/amplitude/registration-session-state'
 import { rememberRegistrationSuccess } from './base/amplitude/registration-tracking'
-import { OAUTH_NEW_USER_PARAM, readOAuthRegistrationAttribution } from './oauth-registration-attribution'
+import {
+  OAUTH_NEW_USER_PARAM,
+  readOAuthRegistrationAttribution,
+} from './oauth-registration-attribution'
 
 const removeOAuthNewUserParam = () => {
   const url = new URL(window.location.href)
