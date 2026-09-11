@@ -1,7 +1,8 @@
 """Short SQL transactions own staging uploads and export leases."""
 
-from collections.abc import Callable
-from datetime import datetime, timedelta
+import base64
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import cast
 from uuid import UUID, uuid4
@@ -12,12 +13,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from configs import dify_config
+from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import CompletedTrace, QueuedTrace, TraceProviderSettings
+from core.ops.trace_export_state import accumulate_metric, metric_destination_key, serialize_metric_snapshot
 from libs.datetime_utils import ensure_naive_utc
 from models.account import Tenant
 from models.dataset import Pipeline
 from models.model import App, Conversation, Message
-from models.ops_trace import OpsTraceDelivery
+from models.ops_trace import OpsTraceDelivery, OpsTraceMetricSeries
 from models.workflow import Workflow, WorkflowRun
 
 
@@ -369,6 +372,131 @@ class OpsTraceDeliveryRepository:
             config_revision=delivery.config_revision,
             destination_settings_hash=delivery.destination_settings_hash,
         )
+
+    def _lock_export_delivery(self, session: Session, delivery: OpsTraceDelivery, now: datetime) -> OpsTraceDelivery:
+        # The write both fences stale attempts and obtains a lock on SQLite, which
+        # does not implement SELECT FOR UPDATE. No network work runs under this lock.
+        result = session.execute(
+            sa.update(OpsTraceDelivery)
+            .where(
+                OpsTraceDelivery.tenant_id == delivery.tenant_id,
+                OpsTraceDelivery.id == delivery.id,
+                OpsTraceDelivery.status == "sending",
+                OpsTraceDelivery.attempt_token == delivery.attempt_token,
+                OpsTraceDelivery.lease_expires_at > now,
+            )
+            .values(updated_at=now)
+        )
+        if cast(CursorResult, result).rowcount != 1:
+            raise TraceExportError("trace_attempt_expired", retryable=True)
+        persisted = session.scalar(
+            sa.select(OpsTraceDelivery).where(
+                OpsTraceDelivery.tenant_id == delivery.tenant_id, OpsTraceDelivery.id == delivery.id
+            )
+        )
+        if persisted is None or self.provider_settings(persisted) != self.provider_settings(delivery):
+            raise ValueError("trace_export_state_owner_mismatch")
+        return persisted
+
+    def completed_export_signals(self, delivery: OpsTraceDelivery) -> set[str]:
+        with self.session_factory() as session:
+            now = self.database_time(session)
+            persisted = self._lock_export_delivery(session, delivery, now)
+            signals = set((persisted.export_state or {}).get("completed_signals", []))
+            session.commit()
+            return signals
+
+    def complete_export_signal(self, delivery: OpsTraceDelivery, name: str) -> None:
+        if not name or len(name) > 64:
+            raise ValueError("invalid_export_signal")
+        with self.session_factory() as session:
+            now = self.database_time(session)
+            persisted = self._lock_export_delivery(session, delivery, now)
+            state = dict(persisted.export_state or {})
+            state["completed_signals"] = sorted({*state.get("completed_signals", []), name})
+            persisted.export_state = state
+            session.commit()
+
+    def prepare_metric_snapshot(
+        self, delivery: OpsTraceDelivery, *, resource: bytes, scope_name: str, increments: Mapping[str, bytes]
+    ) -> bytes:
+        """Accumulate a delivery once and atomically save its immutable retry snapshot."""
+        with self.session_factory() as session:
+            now = self.database_time(session)
+            persisted = self._lock_export_delivery(session, delivery, now)
+            state = dict(persisted.export_state or {})
+            if state.get("metric_snapshot") is not None:
+                snapshot = base64.b64decode(state["metric_snapshot"], validate=True)
+                session.commit()
+                return snapshot
+            destination_key = metric_destination_key(self.provider_settings(persisted))
+            observed_at_ns = int(now.replace(tzinfo=UTC).timestamp() * 1_000_000_000)
+            metrics: list[bytes] = []
+            # Consistent lock order prevents deliveries touching several common series
+            # from acquiring their rows in opposite orders.
+            for series_key, increment in sorted(increments.items()):
+                statement = (
+                    sa.select(OpsTraceMetricSeries)
+                    .where(
+                        OpsTraceMetricSeries.tenant_id == persisted.tenant_id,
+                        OpsTraceMetricSeries.destination_key == destination_key,
+                        OpsTraceMetricSeries.series_key == series_key,
+                    )
+                    .with_for_update()
+                )
+                series = session.scalar(statement)
+                if series is None:
+                    try:
+                        with session.begin_nested():
+                            series = OpsTraceMetricSeries(
+                                tenant_id=persisted.tenant_id,
+                                destination_key=destination_key,
+                                series_key=series_key,
+                                metric_data=accumulate_metric(None, increment, observed_at_ns),
+                                updated_at=now,
+                            )
+                            session.add(series)
+                            session.flush()
+                    except IntegrityError:
+                        # Another delivery created the series before this insert.
+                        series = session.scalar(statement)
+                        if series is None:
+                            raise
+                        series.metric_data = accumulate_metric(series.metric_data, increment, observed_at_ns)
+                else:
+                    series.metric_data = accumulate_metric(series.metric_data, increment, observed_at_ns)
+                series.updated_at = now
+                metrics.append(series.metric_data)
+            snapshot = serialize_metric_snapshot(resource, scope_name, metrics)
+            state["metric_snapshot"] = base64.b64encode(snapshot).decode()
+            persisted.export_state = state
+            session.commit()
+            return snapshot
+
+    def delete_idle_metric_series(self, limit: int = 100) -> None:
+        """Reset streams after 30 idle days; delivery snapshots still fence all retries."""
+        with self.session_factory() as session:
+            cutoff = self.database_time(session) - timedelta(days=30)
+            rows = session.execute(
+                sa.select(
+                    OpsTraceMetricSeries.tenant_id,
+                    OpsTraceMetricSeries.destination_key,
+                    OpsTraceMetricSeries.series_key,
+                )
+                .where(OpsTraceMetricSeries.updated_at < cutoff)
+                .order_by(OpsTraceMetricSeries.updated_at)
+                .limit(limit)
+            ).all()
+            for tenant_id, destination_key, series_key in rows:
+                session.execute(
+                    sa.delete(OpsTraceMetricSeries).where(
+                        OpsTraceMetricSeries.tenant_id == tenant_id,
+                        OpsTraceMetricSeries.destination_key == destination_key,
+                        OpsTraceMetricSeries.series_key == series_key,
+                        OpsTraceMetricSeries.updated_at < cutoff,
+                    )
+                )
+            session.commit()
 
     def cancel_expired_uploads(self, limit: int = 100) -> None:
         with self.session_factory() as session:
