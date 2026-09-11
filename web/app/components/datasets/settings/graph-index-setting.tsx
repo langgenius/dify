@@ -10,11 +10,12 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { consoleQuery } from '@/service/console'
 
 const MIN_MAX_DEPTH = 1
 const MAX_MAX_DEPTH = 4
@@ -32,7 +33,12 @@ const GraphIndexSetting = ({
   readonly = false,
 }: GraphIndexSettingProps) => {
   const { t } = useTranslation()
-  const { data: textGenerationModelList } = useModelList(ModelTypeEnum.textGeneration)
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
 
   const graphModelConfig = useMemo(() => {
     if (!graphIndexSetting?.model_name || !graphIndexSetting?.model_provider_name) return undefined
