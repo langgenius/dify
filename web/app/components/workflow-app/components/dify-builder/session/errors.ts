@@ -1,7 +1,4 @@
-import type {
-  DifyBuilderErrorResponse,
-  DifyBuilderStreamEventResponse,
-} from '@dify/contracts/api/console/dify-builder/types.gen'
+import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 
 export const UNEXPECTED_EOF_ERROR = 'Builder stream ended before a terminal event.'
 
@@ -15,15 +12,30 @@ export const requestErrorStatus = (error: unknown): number | undefined => {
   }
 }
 
-export const requestErrorMessage = (error: unknown): string => {
+export const requestErrorMessage = async (error: unknown): Promise<string> => {
   const status = requestErrorStatus(error)
+  let body: unknown = error
+  if (error instanceof Response) {
+    try {
+      body = await error.clone().json()
+    } catch {
+      return `HTTP ${error.status}${error.statusText ? `: ${error.statusText}` : ''}`
+    }
+  }
   if (typeof error === 'object' && error !== null && 'data' in error) {
     const data = error.data
-    const body = typeof data === 'object' && data !== null && 'body' in data ? data.body : data
-    const response = body as Partial<DifyBuilderErrorResponse> | undefined
-    if (typeof response?.code === 'string')
-      return status ? `HTTP ${status}: ${response.code}` : response.code
+    body = typeof data === 'object' && data !== null && 'body' in data ? data.body : data
   }
+  if (typeof body === 'object' && body !== null) {
+    const details = [
+      'code' in body ? body.code : undefined,
+      'message' in body ? body.message : undefined,
+      'error' in body ? body.error : undefined,
+    ].filter((value): value is string => typeof value === 'string' && value.length > 0)
+    const message = [...new Set(details)].join(': ')
+    if (message) return status ? `HTTP ${status}: ${message}` : message
+  }
+  if (status) return `HTTP ${status}`
   return error instanceof Error ? error.message : String(error)
 }
 

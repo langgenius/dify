@@ -143,6 +143,8 @@ const renderSyncDraft = <R>(
     transform,
     initialStoreState: {
       isWorkflowDataLoaded: true,
+      isSyncingWorkflowDraft: false,
+      workflowDraftGeneration: 0,
       syncWorkflowDraftHash: 'hash-123',
       ...initialStoreState,
     },
