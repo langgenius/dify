@@ -12,7 +12,9 @@ from pydantic import JsonValue
 
 from core.ops.otlp_trace import OtlpTraceClient
 from core.ops.provider_export import export_span_id, span_id_bytes
-from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, make_span_id, make_trace_id
+from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, copy_trace_value, make_span_id, make_trace_id
+from core.rag.models.document import Document
+from graphon.variables.segments import ArrayObjectSegment
 
 
 def read_attribute_value(value: AnyValue) -> JsonValue:
@@ -121,6 +123,80 @@ def test_mlflow_native_llm_format_usage_cost_model_and_grouping(monkeypatch: pyt
         "total_tokens": 8,
     }
     assert read_attribute_value(attributes["mlflow.llm.cost"]) == {"total_cost": 0.02}
+
+
+@pytest.mark.parametrize("provider_name", ["mlflow", "databricks"])
+@pytest.mark.parametrize("output_shape", ["workflow", "message", "native"])
+@pytest.mark.parametrize("empty", [False, True])
+def test_retrieval_exports_native_documents(
+    provider_name: str, output_shape: str, empty: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    documents = (
+        []
+        if empty
+        else [
+            Document(
+                page_content="检索内容\nSecond line",
+                metadata={"dataset_id": str(uuid4()), "document_id": str(uuid4()), "score": 0.0, "position": 0},
+            ),
+            Document(page_content="", metadata={}),
+        ]
+    )
+    expected_outputs = [
+        {"page_content": document.page_content, "metadata": document.metadata} for document in documents
+    ]
+    if output_shape == "workflow":
+        outputs = copy_trace_value(
+            {
+                "result": ArrayObjectSegment(
+                    value=[
+                        {"content": document.page_content, "metadata": document.metadata, "title": "Knowledge"}
+                        for document in documents
+                    ]
+                )
+            }
+        )
+    elif output_shape == "message":
+        outputs = copy_trace_value({"documents": documents})
+    else:
+        outputs = copy_trace_value(expected_outputs)
+    trace = make_trace()
+    retrieval = trace.spans[1].model_copy(
+        update={"span_name": "Knowledge retrieval", "span_type": "retrieval", "outputs": outputs}
+    )
+    trace = trace.model_copy(update={"spans": (trace.spans[0], retrieval)})
+    config = (
+        {"host": "https://tracing.example", "personal_access_token": "secret", "experiment_id": "7"}
+        if provider_name == "databricks"
+        else {"tracking_uri": "https://tracing.example", "experiment_id": "7"}
+    )
+    client = MLflowTraceClient(provider_name, config)
+    if provider_name == "databricks":
+        monkeypatch.setattr(
+            client.http,
+            "request",
+            Mock(
+                side_effect=[
+                    httpx.Response(200, json={}),
+                    httpx.Response(200, json={"credential_info": {"signed_uri": "https://storage.example/trace"}}),
+                ]
+            ),
+        )
+        upload = Mock()
+        monkeypatch.setattr(client, "_upload_spans", upload)
+        client.export_trace(trace)
+        span = json.loads(upload.call_args.args[1])["spans"][-1]
+        attributes = {key: json.loads(value) for key, value in span["attributes"].items()}
+    else:
+        send = Mock()
+        monkeypatch.setattr(OtlpTraceClient, "send_traces", send)
+        client.export_trace(trace)
+        exported_span = send.call_args.args[0].resource_spans[0].scope_spans[0].spans[-1]
+        attributes = {item.key: read_attribute_value(item.value) for item in exported_span.attributes}
+    assert attributes["mlflow.spanType"] == "RETRIEVER"
+    assert attributes["mlflow.spanOutputs"] == expected_outputs
+    assert json.loads(client._attributes(trace, retrieval, trace.trace_id)["dify.outputs"]) == outputs
+    assert retrieval.outputs == outputs
 
 
 def test_databricks_native_grouping_and_valid_parent_link(monkeypatch: pytest.MonkeyPatch) -> None:

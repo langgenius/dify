@@ -113,6 +113,10 @@ class EnterpriseTraceClient:
 
     def _attributes(self, trace: CompletedTrace, span: TraceSpan, operation_type: str) -> dict[str, Any]:
         captured = captured_fields(span)
+        if operation_type == "moderation" and isinstance(span.outputs, dict):
+            for field in ("flagged", "action", "query", "preset_response"):
+                if field in span.outputs:
+                    captured[field] = span.outputs[field]
         usage = span_usage(span)
         attributes: dict[str, Any] = span_attributes(trace, span)
         if not self.include_content:
