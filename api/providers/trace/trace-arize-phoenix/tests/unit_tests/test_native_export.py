@@ -1,11 +1,25 @@
 """OpenInference's native message and model fields are provider-owned."""
 
 import json
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from dify_trace_arize_phoenix.arize_phoenix_trace import create_trace_client
 
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace, provider_config
+
+
+@pytest.mark.parametrize(
+    ("provider", "expected_location"),
+    [("arize", "https://app.arize.com/"), ("phoenix", "https://phoenix.example/projects/")],
+)
+def test_project_link_redirects_by_project_name(provider: str, expected_location: str) -> None:
+    project = "Support / production & 研发"
+    client = create_trace_client(provider, {**provider_config(provider), "project": project})
+    url = urlsplit(client.get_project_url())
+    assert f"{url.scheme}://{url.netloc}{url.path}" == expected_location
+    assert parse_qs(url.query) == {"redirect_project_name": [project]}
+    assert not url.fragment
 
 
 @pytest.mark.parametrize("provider", ["arize", "phoenix"])
