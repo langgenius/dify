@@ -1,10 +1,13 @@
 import type { CanvasEventData } from '../types'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useRef } from 'react'
+import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useStore } from '@/app/components/workflow/store'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
+import { requestErrorMessage } from '../session/errors'
 import { difyBuilderSessionBusyAtom, difyBuilderSessionLastCanvasEventAtom } from '../session/state'
 import {
+  DIFY_BUILDER_CANVAS_REFRESH_PHASES,
+  difyBuilderCanvasAppliedViewAtom,
   difyBuilderCanvasLockedAtom,
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshGenerationAtom,
@@ -15,8 +18,6 @@ import {
   difyBuilderSessionIdAtom,
   difyBuilderViewVersionAtom,
 } from '../store'
-
-const CANVAS_REFRESH_PHASES = new Set(['modify', 'test', 'review', 'publish', 'complete'])
 
 type CanvasInstruction = {
   focus: 'canvas' | 'node_now' | 'node_after_refresh' | 'none'
@@ -62,10 +63,16 @@ const getCanvasInstruction = (data: CanvasEventData): CanvasInstruction => {
 export const DifyBuilderCanvasLockSync = () => {
   const locked = useAtomValue(difyBuilderCanvasLockedAtom)
   const setCanvasReadOnly = useStore((state) => state.setCanvasReadOnly)
+  const busy = useAtomValue(difyBuilderSessionBusyAtom)
+  const invalidateWorkflowDraftSync = useStore((state) => state.invalidateWorkflowDraftSync)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setCanvasReadOnly(locked)
   }, [locked, setCanvasReadOnly])
+
+  useLayoutEffect(() => {
+    if (busy) invalidateWorkflowDraftSync()
+  }, [busy, invalidateWorkflowDraftSync])
 
   useEffect(() => {
     return () => setCanvasReadOnly(false)
@@ -79,8 +86,9 @@ export const DifyBuilderCanvasRefreshSync = ({
   onRefreshCanvas,
 }: {
   onFocusCanvas: () => void
-  onRefreshCanvas: () => Promise<boolean>
+  onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
 }) => {
+  const sessionStore = useJotaiStore()
   const busy = useAtomValue(difyBuilderSessionBusyAtom)
   const lastCanvasEvent = useAtomValue(difyBuilderSessionLastCanvasEventAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
@@ -88,6 +96,7 @@ export const DifyBuilderCanvasRefreshSync = ({
   const phase = useAtomValue(difyBuilderPhaseAtom)
   const retryRequest = useAtomValue(difyBuilderCanvasRefreshRetryRequestAtom)
   const setCanvasRefreshFailed = useSetAtom(difyBuilderCanvasRefreshFailedAtom)
+  const setCanvasAppliedView = useSetAtom(difyBuilderCanvasAppliedViewAtom)
   const setCanvasRefreshGeneration = useSetAtom(difyBuilderCanvasRefreshGenerationAtom)
   const setCanvasRefreshing = useSetAtom(difyBuilderCanvasRefreshingAtom)
   const setLocalError = useSetAtom(difyBuilderLocalErrorAtom)
@@ -98,6 +107,14 @@ export const DifyBuilderCanvasRefreshSync = ({
   const pendingRefreshRef = useRef(false)
   const refreshQueueRef = useRef<Promise<boolean>>(Promise.resolve(true))
   const refreshRequestIdRef = useRef(0)
+
+  useEffect(
+    () => () => {
+      refreshRequestIdRef.current += 1
+      lastRefreshRef.current = null
+    },
+    [],
+  )
 
   useEffect(() => {
     if (lastCanvasEvent && lastCanvasEvent.id > lastCanvasEventIdRef.current) {
@@ -120,6 +137,14 @@ export const DifyBuilderCanvasRefreshSync = ({
       pendingRefreshRef.current = false
       setCanvasRefreshing(false)
       setCanvasRefreshFailed(false)
+      setCanvasAppliedView(null)
+      return
+    }
+
+    if (busy) {
+      refreshRequestIdRef.current += 1
+      lastRefreshRef.current = null
+      if (sessionStore.get(difyBuilderCanvasRefreshingAtom)) pendingRefreshRef.current = true
       return
     }
 
@@ -127,9 +152,9 @@ export const DifyBuilderCanvasRefreshSync = ({
     const versionNeedsRefresh =
       (!lastRefresh || lastRefresh.sessionId !== sessionId || version > lastRefresh.version) &&
       !!phase &&
-      CANVAS_REFRESH_PHASES.has(phase)
+      DIFY_BUILDER_CANVAS_REFRESH_PHASES.has(phase)
     const retryRequested = retryRequest > lastRetryRequestRef.current
-    if (busy || (!retryRequested && !pendingRefreshRef.current && !versionNeedsRefresh)) return
+    if (!retryRequested && !pendingRefreshRef.current && !versionNeedsRefresh) return
 
     lastRefreshRef.current = { sessionId, version }
     lastRetryRequestRef.current = retryRequest
@@ -139,26 +164,35 @@ export const DifyBuilderCanvasRefreshSync = ({
     setCanvasRefreshing(true)
     setLocalError('')
 
-    const refreshPromise = refreshQueueRef.current.catch(() => false).then(onRefreshCanvas)
+    const shouldApply = () =>
+      requestId === refreshRequestIdRef.current &&
+      sessionStore.get(difyBuilderSessionIdAtom) === sessionId &&
+      sessionStore.get(difyBuilderViewVersionAtom) === version &&
+      !sessionStore.get(difyBuilderSessionBusyAtom)
+    const refreshPromise = refreshQueueRef.current
+      .catch(() => false)
+      .then(() => (shouldApply() ? onRefreshCanvas(shouldApply) : false))
     refreshQueueRef.current = refreshPromise
     void refreshPromise
       .then((refreshed) => {
-        if (requestId !== refreshRequestIdRef.current) return
+        if (!shouldApply()) return
         if (!refreshed) {
           setCanvasRefreshFailed(true)
           setLocalError('Workflow canvas refresh failed.')
           return
         }
         setCanvasRefreshGeneration((generation) => generation + 1)
+        setCanvasAppliedView({ sessionId, version })
         setCanvasRefreshFailed(false)
         const nodeId = pendingFocusNodeIdRef.current
         pendingFocusNodeIdRef.current = null
         if (nodeId) selectWorkflowNode(nodeId, true)
       })
-      .catch((error) => {
-        if (requestId !== refreshRequestIdRef.current) return
+      .catch(async (error: unknown) => {
+        const message = await requestErrorMessage(error)
+        if (!shouldApply()) return
         setCanvasRefreshFailed(true)
-        setLocalError(String(error))
+        setLocalError(message)
       })
       .finally(() => {
         if (requestId === refreshRequestIdRef.current) setCanvasRefreshing(false)
@@ -171,6 +205,8 @@ export const DifyBuilderCanvasRefreshSync = ({
     phase,
     retryRequest,
     sessionId,
+    sessionStore,
+    setCanvasAppliedView,
     setCanvasRefreshFailed,
     setCanvasRefreshGeneration,
     setCanvasRefreshing,

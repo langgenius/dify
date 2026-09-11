@@ -11,7 +11,9 @@ import {
   difyBuilderActiveInteractionAtom,
   difyBuilderCanComposeAtom,
   difyBuilderCanStartFixAtom,
+  difyBuilderCanvasAppliedViewAtom,
   difyBuilderCanvasLockedAtom,
+  difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderDraftAtom,
@@ -72,6 +74,34 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
   }) satisfies DifyBuilderRuntime
 
 describe('Dify Builder store', () => {
+  it.each(['provide_testdata', 'start_test', 'publish'])(
+    'blocks %s until the current canvas version has been applied',
+    async (actionId) => {
+      const store = createStore()
+      const runAction = vi.fn(async () => true)
+      store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+      store.set(
+        difyBuilderSessionViewAtom,
+        createSessionView({ phase: 'test', run_status: 'waiting_input', version: 2 }),
+      )
+      expect(store.get(difyBuilderCanvasLockedAtom)).toBe(true)
+      expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId)).toBe(false)
+
+      store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId)).toBe(false)
+      store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 2 })
+      store.set(difyBuilderCanvasRefreshFailedAtom, true)
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId)).toBe(false)
+      expect(store.get(difyBuilderCanvasLockedAtom)).toBe(true)
+
+      store.set(difyBuilderCanvasRefreshFailedAtom, false)
+      expect(store.get(difyBuilderCanvasLockedAtom)).toBe(false)
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId)).toBe(true)
+      expect(runAction).toHaveBeenCalledExactlyOnceWith(actionId, {})
+    },
+  )
+
   it('exposes only an interaction fenced to the current session version', () => {
     const store = createStore()
     const card = {

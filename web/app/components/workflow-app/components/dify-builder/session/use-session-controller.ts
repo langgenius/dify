@@ -367,7 +367,9 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         }
       } catch (error) {
         if (!controller.signal.aborted) {
-          outcome.transportError = requestErrorMessage(error)
+          const message = await requestErrorMessage(error)
+          if (controller.signal.aborted) return outcome
+          outcome.transportError = message
           outcome.transportStatus = requestErrorStatus(error)
         }
       }
@@ -418,11 +420,13 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         } catch (error) {
           // A reconnect is best-effort. A later attempt may observe the
           // durable state after a worker or transport boundary settles.
+          const message = await requestErrorMessage(error)
+          if (controller.signal.aborted) return latestOutcome
           latestOutcome = {
             sessionId,
             sawCommandStarted: false,
             terminalEvent: null,
-            transportError: requestErrorMessage(error),
+            transportError: message,
             transportStatus: requestErrorStatus(error),
           }
         }
@@ -551,7 +555,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         executionProgress.clear()
         reasoningBuffer.clear()
         streamingTurnBuffer.clear()
-        const message = requestErrorMessage(error)
+        const message = await requestErrorMessage(error)
+        if (controller.signal.aborted) return false
         setLastError(message)
         if (knownSessionId) await reconcileSession(knownSessionId, controller)
         if (!controller.signal.aborted) setLastError(message)
@@ -669,7 +674,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         return false
       } catch (error) {
         if (!controller.signal.aborted) {
-          const message = requestErrorMessage(error)
+          const message = await requestErrorMessage(error)
+          if (controller.signal.aborted) return false
           setLastError(message)
         }
         return false
@@ -726,7 +732,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       setConversationHasMore(page.has_more)
       return page.data.length > 0
     } catch (error) {
-      if (!controller.signal.aborted) setLastError(requestErrorMessage(error))
+      const message = await requestErrorMessage(error)
+      if (!controller.signal.aborted) setLastError(message)
       return false
     } finally {
       if (abortRef.current === controller) abortRef.current = null
