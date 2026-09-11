@@ -5,7 +5,11 @@ import { createEditor } from 'lexical'
 import RosterReferenceBlockComponent from '../component'
 import { RosterReferenceBlockContext } from '../context'
 import { $createRosterReferenceBlockNode, RosterReferenceBlockNode } from '../node'
-import { getRosterReferenceFileIconType, parseRosterReferenceToken } from '../utils'
+import {
+  getRosterReferenceFileIconType,
+  getRosterReferenceIconClassName,
+  parseRosterReferenceToken,
+} from '../utils'
 
 describe('RosterReferenceBlockNode', () => {
   let editor: LexicalEditor
@@ -32,6 +36,13 @@ describe('RosterReferenceBlockNode', () => {
       id: '1f0ad3e2',
       label: 'qna_report:final.pdf',
     })
+    const human = parseRosterReferenceToken('[§human:member-1:Alice§]')
+    expect(human).toEqual({
+      kind: 'human',
+      id: 'member-1',
+      label: 'Alice',
+    })
+    expect(human && getRosterReferenceIconClassName(human)).toContain('i-ri-user-3-line')
     expect(parseRosterReferenceToken('[§unknown:1:item§]')).toBeNull()
     expect(getRosterReferenceFileIconType('qna_report.pdf')).toBe('pdf')
   })

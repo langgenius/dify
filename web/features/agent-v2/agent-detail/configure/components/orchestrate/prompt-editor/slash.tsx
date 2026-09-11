@@ -13,8 +13,10 @@ import type {
   AgentTool,
 } from '@/features/agent-v2/agent-composer/form-state'
 import type { AgentProviderToolDefaultValue } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import type { Member } from '@/models/common'
 import { cn } from '@langgenius/dify-ui/cn'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
+import { useSetAtom } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
@@ -25,7 +27,13 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
+import {
+  createAgentHumanMention,
+  memberToAgentHumanContact,
+} from '@/features/agent-v2/agent-composer/human-contacts'
+import { addHumanContactAtom } from '@/features/agent-v2/agent-composer/store-modules/human-contacts'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { useMembers } from '@/service/use-common'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -34,7 +42,7 @@ import {
 } from '@/service/use-tools'
 import { useAgentPromptToolIconResolver } from './hooks'
 
-export type SlashMenuView = 'main' | 'skills' | 'files' | 'tools' | 'knowledge'
+export type SlashMenuView = 'main' | 'skills' | 'files' | 'tools' | 'knowledge' | 'humans'
 
 export type SlashMenuCategory = {
   key: Exclude<SlashMenuView, 'main'>
@@ -103,7 +111,15 @@ export function AgentPromptSlashMenu({
   onInsertToken,
 }: AgentPromptSlashMenuProps) {
   const { t } = useTranslation('agentV2')
-  const title = categories.find((category) => category.key === view)?.label
+  const humanCategory: SlashMenuCategory = {
+    key: 'humans',
+    label: t(($) => $['agentDetail.configure.humanContacts.label']),
+    icon: 'i-ri-user-3-line',
+  }
+  const resolvedCategories = categories.some((category) => category.key === 'humans')
+    ? categories
+    : [...categories, humanCategory]
+  const title = resolvedCategories.find((category) => category.key === view)?.label
   const handleAddFromFooter = (skillSource?: 'library' | 'upload') => {
     if (view === 'skills') {
       onAddSkill?.({
@@ -142,7 +158,7 @@ export function AgentPromptSlashMenu({
     return (
       <AgentPromptSlashPanel className="w-50">
         <div className="flex flex-col gap-px p-1">
-          {categories.map((category) => (
+          {resolvedCategories.map((category) => (
             <button
               key={category.key}
               type="button"
@@ -199,6 +215,7 @@ export function AgentPromptSlashMenu({
             onInsertToken={onInsertToken}
           />
         )}
+        {view === 'humans' && <AgentPromptHumanRows onInsertToken={onInsertToken} />}
       </div>
       {view === 'tools' ? (
         <AgentPromptToolFooter
@@ -230,7 +247,7 @@ export function AgentPromptSlashMenu({
             onClick={() => handleAddFromFooter('upload')}
           />
         </div>
-      ) : (
+      ) : view === 'files' || view === 'knowledge' ? (
         <div className="border-t border-divider-subtle p-1">
           <button
             type="button"
@@ -245,7 +262,7 @@ export function AgentPromptSlashMenu({
             </span>
           </button>
         </div>
-      )}
+      ) : null}
     </AgentPromptSlashPanel>
   )
 }
@@ -303,6 +320,31 @@ function AgentPromptSkillRows({
           icon="i-ri-box-3-line"
           label={skill.name}
           onClick={() => onInsertToken(createConfigReferenceToken('skill', skill.id, skill.name))}
+        />
+      ))}
+    </>
+  )
+}
+
+function AgentPromptHumanRows({ onInsertToken }: { onInsertToken: (token: string) => void }) {
+  const addHumanContact = useSetAtom(addHumanContactAtom)
+  const { data: members } = useMembers()
+  const accounts = members?.accounts ?? []
+
+  const handleSelect = (member: Member) => {
+    const contact = memberToAgentHumanContact(member)
+    addHumanContact(contact)
+    onInsertToken(createAgentHumanMention(contact))
+  }
+
+  return (
+    <>
+      {accounts.map((member) => (
+        <AgentPromptSubmenuRow
+          key={member.id}
+          icon="i-ri-user-3-line"
+          label={member.name || member.email || member.id}
+          onClick={() => handleSelect(member)}
         />
       ))}
     </>
