@@ -1,7 +1,7 @@
 """Create LangSmith runs synchronously, with explicit IDs and ancestor order."""
 
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from uuid import UUID
 
 from pydantic import JsonValue
@@ -166,7 +166,14 @@ class LangSmithTraceClient:
             if sessions and isinstance(sessions, list) and sessions[0].get("id"):
                 tenant_id = quote(str(sessions[0].get("tenant_id", "")), safe="")
                 project_id = quote(str(sessions[0]["id"]), safe="")
-                return f"https://smith.langchain.com/o/{tenant_id}/projects/p/{project_id}"
+                endpoint = urlsplit(self.config.endpoint)
+                web_url = "https://smith.langchain.com"
+                # Match the SDK's self-hosted API suffix and cloud region mappings.
+                if endpoint.path.endswith(("/api", "/api/v1")):
+                    web_url = endpoint._replace(path=endpoint.path.rsplit("/api", 1)[0]).geturl()
+                elif (region := endpoint.netloc.split(".", 1)[0]) in {"eu", "aws", "apac", "dev", "beta"}:
+                    web_url = f"https://{region}.smith.langchain.com"
+                return f"{web_url}/o/{tenant_id}/projects/p/{project_id}"
         except Exception:
             # Project discovery must not prevent reading saved settings.
             return "https://smith.langchain.com/"
@@ -199,6 +206,8 @@ class LangSmithTraceClient:
             inputs = span.inputs if isinstance(span.inputs, dict) else {"input": span.inputs}
             outputs = span.outputs if isinstance(span.outputs, dict) else {"output": span.outputs}
             metadata = span_attributes(completed_trace, span)
+            if session_id := completed_trace.source.session_id or completed_trace.source.conversation_id:
+                metadata["session_id"] = session_id
             if span.span_type == "llm":
                 inputs, outputs = _format_llm_inputs(span.inputs), _format_llm_outputs(span.outputs)
                 outputs["usage_metadata"] = _map_usage_metadata(span)

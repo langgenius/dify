@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
+from urllib.parse import parse_qs, urlsplit
 from uuid import UUID, uuid4
 
 import httpx
@@ -67,6 +68,55 @@ def make_client_with_transport(monkeypatch: pytest.MonkeyPatch) -> tuple[OpikTra
     request = Mock(return_value=httpx.Response(200, json={}))
     monkeypatch.setattr(client.http, "request", request)
     return client, request
+
+
+def test_opik_project_url_uses_configured_host_and_escapes_project_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    project = "Dify & traces/#?客户"
+    client = OpikTraceClient({"url": "https://tracing.example/opik/api/", "workspace": "team/name", "project": project})
+    request = Mock()
+    monkeypatch.setattr(client.http, "request", request)
+
+    url = urlsplit(client.get_project_url())
+
+    assert url.netloc == "tracing.example"
+    assert url.path == "/opik/team%2Fname/redirect/projects"
+    assert parse_qs(url.query) == {"name": [project]}
+    assert not url.fragment
+    request.assert_not_called()
+
+
+def test_opik_project_url_resolves_default_workspace_only_for_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = OpikTraceClient({"api_key": "secret"})
+    request = Mock(return_value=httpx.Response(200, json={"workspace_name": "my/team"}))
+    monkeypatch.setattr(client.http, "request", request)
+
+    assert client.get_project_url() == "https://www.comet.com/opik/my%2Fteam/redirect/projects?name=Default+Project"
+    request.assert_called_once_with("GET", "v1/private/auth/workspace")
+    assert client.config.workspace is None
+
+    request.reset_mock()
+    client.export_trace(make_trace())
+    assert all(call.args[0] == "POST" for call in request.call_args_list)
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(200, text="invalid json"),
+        httpx.Response(200, json=[]),
+        httpx.Response(200, json={"workspace_name": None}),
+        TraceExportError("provider_unreachable", retryable=True),
+    ],
+)
+def test_opik_project_url_keeps_settings_readable_when_workspace_lookup_fails(
+    response: httpx.Response | TraceExportError, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = OpikTraceClient({"workspace": "default", "project": "project"})
+    request = Mock(side_effect=response) if isinstance(response, TraceExportError) else Mock(return_value=response)
+    monkeypatch.setattr(client.http, "request", request)
+
+    assert client.get_project_url() == "https://www.comet.com/opik/default/redirect/projects?name=project"
+    request.assert_called_once_with("GET", "v1/private/auth/workspace")
 
 
 def test_opik_uses_repeatable_uuid7_ids_and_native_cost(monkeypatch: pytest.MonkeyPatch) -> None:
