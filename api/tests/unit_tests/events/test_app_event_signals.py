@@ -176,16 +176,19 @@ class TestAppWasUpdatedSignal:
         assert received == [app_model]
         assert sqlite_session.get(App, app_model.id).enable_site is True  # type: ignore[union-attr]
 
-    def test_update_app_site_status_skips_when_unchanged(self, app_model: App, sqlite_session: Session) -> None:
+    def test_update_app_site_status_skips_when_unchanged(
+        self, app_model: App, account: Account, sqlite_session: Session
+    ) -> None:
         app_model.enable_site = True
         sqlite_session.commit()
         received: list[App] = []
         handler = _make_collector(received)
         app_was_updated.connect(handler)
-        try:
-            AppService().update_app_site_status(app_model, True, session=sqlite_session)
-        finally:
-            app_was_updated.disconnect(handler)
+        with patch("services.app_service.current_user", account):
+            try:
+                AppService().update_app_site_status(app_model, True, session=sqlite_session)
+            finally:
+                app_was_updated.disconnect(handler)
 
         assert received == []
         assert sqlite_session.get(App, app_model.id).enable_site is True  # type: ignore[union-attr]
@@ -206,16 +209,19 @@ class TestAppWasUpdatedSignal:
         assert received == [app_model]
         assert sqlite_session.get(App, app_model.id).enable_api is True  # type: ignore[union-attr]
 
-    def test_update_app_api_status_skips_when_unchanged(self, app_model: App, sqlite_session: Session) -> None:
+    def test_update_app_api_status_skips_when_unchanged(
+        self, app_model: App, account: Account, sqlite_session: Session
+    ) -> None:
         app_model.enable_api = True
         sqlite_session.commit()
         received: list[App] = []
         handler = _make_collector(received)
         app_was_updated.connect(handler)
-        try:
-            AppService().update_app_api_status(app_model, True, session=sqlite_session)
-        finally:
-            app_was_updated.disconnect(handler)
+        with patch("services.app_service.current_user", account):
+            try:
+                AppService().update_app_api_status(app_model, True, session=sqlite_session)
+            finally:
+                app_was_updated.disconnect(handler)
 
         assert received == []
         assert sqlite_session.get(App, app_model.id).enable_api is True  # type: ignore[union-attr]
