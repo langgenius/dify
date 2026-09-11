@@ -1,0 +1,21 @@
+{
+  "circularInvocationTip": "Cari iş axınında alətlərin/düyünlərin dövri çağırışı var.",
+  "detail": "Təfərrüatlar",
+  "input": "Giriş",
+  "meta.executor": "İcraçı",
+  "meta.startTime": "Başlama vaxtı",
+  "meta.status": "Vəziyyət",
+  "meta.steps": "İcra addımları",
+  "meta.time": "Keçən vaxt",
+  "meta.title": "Metaməlumatlar",
+  "meta.tokens": "Ümumi token sayı",
+  "result": "Nəticə",
+  "resultEmpty.link": "təfərrüatlar panelini aç",
+  "resultEmpty.tipLeft": "Nəticəyə baxmaq üçün ",
+  "resultEmpty.tipRight": "ın.",
+  "resultEmpty.title": "Bu icra yalnız JSON formatında nəticə verdi.",
+  "resultPanel.status": "Vəziyyət",
+  "resultPanel.time": "Keçən vaxt",
+  "resultPanel.tokens": "Ümumi token sayı",
+  "tracing": "İzləmə"
+}

@@ -1,0 +1,17 @@
+{
+  "apply": "Tətbiq et",
+  "change": "Dəyiş",
+  "custom": "Fərdiləşdirmə",
+  "customize.contactUs": " bizimlə əlaqə saxlayın ",
+  "customize.prefix": "Tətbiqdə brend loqosunu fərdiləşdirmək üçün",
+  "customize.suffix": "və korporativ versiyaya keçin.",
+  "restore": "Standart parametrləri bərpa et",
+  "upgradeTip.des": "Brendinizi fərdiləşdirmək üçün planınızı yüksəldin",
+  "upgradeTip.title": "Planın yüksəldilməsi",
+  "upload": "Yüklə",
+  "uploadedFail": "Şəkli yükləmək mümkün olmadı, yenidən yükləyin.",
+  "uploading": "Yüklənir",
+  "webapp.changeLogo": "Təminatçı brendinin şəklini dəyiş",
+  "webapp.changeLogoTip": "Ən azı 40x40px ölçülü SVG və ya PNG formatı",
+  "webapp.removeBrand": "“Dify tərəfindən təmin edilir” yazısını çıxar"
+}
