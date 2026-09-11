@@ -732,8 +732,8 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
     Agent Soul DTO validation owns malformed set rejection. Runtime mapping is
     intentionally lossless: every configured set is forwarded with its query
     policy, dataset refs, retrieval controls, and metadata-filtering controls.
-    ``score_threshold=None`` means disabled threshold filtering and maps to the
-    inner retrieval request's ``0.0`` default through the Agent backend DTO.
+    ``score_threshold=None`` means disabled threshold filtering and remains
+    disabled in the inner retrieval request.
     """
     if not agent_soul.knowledge.sets:
         return None
@@ -788,7 +788,7 @@ def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> Dif
     return DifyKnowledgeRetrievalConfig(
         mode=retrieval.mode,
         top_k=retrieval.top_k,
-        score_threshold=retrieval.score_threshold or 0.0,
+        score_threshold=retrieval.score_threshold,
         reranking_mode=retrieval.reranking_mode,
         reranking_enable=retrieval.reranking_enable,
         reranking_model=DifyKnowledgeRerankingModelConfig(

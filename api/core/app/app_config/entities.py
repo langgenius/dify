@@ -149,7 +149,7 @@ class DatasetRetrieveConfigEntity(BaseModel):
 
     retrieve_strategy: RetrieveStrategy
     top_k: int | None = None
-    score_threshold: float | None = 0.0
+    score_threshold: float | None = None
     rerank_mode: str | None = "reranking_model"
     reranking_model: RerankingModelDict | None = None
     weights: WeightsDict | None = None

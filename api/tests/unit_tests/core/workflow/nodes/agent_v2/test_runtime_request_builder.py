@@ -856,7 +856,7 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
             "retrieval": {
                 "mode": "single",
                 "top_k": None,
-                "score_threshold": 0.0,
+                "score_threshold": None,
                 "reranking_mode": "reranking_model",
                 "reranking_enable": True,
                 "reranking_model": None,
@@ -884,7 +884,7 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
     assert knowledge_layer["config"]["max_observation_chars"] == 12000
 
 
-def test_build_knowledge_layer_maps_disabled_score_threshold_to_zero():
+def test_build_knowledge_layer_preserves_disabled_score_threshold():
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -923,7 +923,7 @@ def test_build_knowledge_layer_maps_disabled_score_threshold_to_zero():
 
     dumped = result.request.model_dump(mode="json")
     knowledge_layer = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "knowledge")
-    assert knowledge_layer["config"]["sets"][0]["retrieval"]["score_threshold"] == 0.0
+    assert knowledge_layer["config"]["sets"][0]["retrieval"]["score_threshold"] is None
 
 
 def test_build_skips_knowledge_layer_when_agent_soul_has_no_sets():
