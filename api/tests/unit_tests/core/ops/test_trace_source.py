@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops import trace_source
 from core.ops.message_trace import MessageTraceRecorder
+from core.ops.provider_config import BaseTracingConfig
 from core.ops.trace_data import TraceProviderSettings
 from core.ops.trace_queue import TraceQueue
 from core.telemetry.events import (
@@ -93,6 +94,38 @@ def test_settings_hash_is_keyed_tenant_scoped_and_detects_credential_changes(
     config_overrides(SECRET_KEY="")
     with pytest.raises(ValueError, match="require SECRET_KEY"):
         trace_source._settings_hash(tenant_id, settings)
+
+
+def test_runtime_credentials_are_bound_to_owner_without_persisting_or_rereading_after_authorization(
+    trace_owner: tuple[Tenant, App, TraceAppConfig], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tenant, app, config = trace_owner
+    runtime_settings = {"authorization": "original-runtime-secret"}
+    load_runtime = Mock(side_effect=lambda _config: dict(runtime_settings))
+    monkeypatch.setattr(
+        BaseTracingConfig, "load_runtime_settings", classmethod(lambda _cls, settings: load_runtime(settings))
+    )
+    decrypt = Mock(side_effect=lambda _tenant, _provider, settings: dict(settings))
+    monkeypatch.setattr(trace_source, "decrypt_provider_config", decrypt)
+
+    settings = trace_source.get_trace_provider_settings(tenant.id, app.id)[0]
+    resolved = trace_source.load_trace_provider_config(settings)
+
+    assert resolved["_runtime_settings"] == runtime_settings
+    assert "_runtime_settings" not in (config.tracing_config or {})
+    assert runtime_settings["authorization"] not in settings.model_dump_json()
+    assert trace_source.get_trace_provider_settings(tenant.id, app.id)[0] == settings
+    runtime_settings["authorization"] = "rotated-runtime-secret"
+    assert resolved["_runtime_settings"]["authorization"] == "original-runtime-secret"
+    decrypt.reset_mock()
+    with pytest.raises(ValueError, match="configuration_changed"):
+        trace_source.load_trace_provider_config(settings)
+    decrypt.assert_not_called()
+
+    load_runtime.reset_mock()
+    with pytest.raises(ValueError, match="configuration_changed"):
+        trace_source.load_trace_provider_config(settings.model_copy(update={"tenant_id": str(uuid4())}))
+    load_runtime.assert_not_called()
 
 
 def test_noop_and_inactive_config_changes_preserve_pending_destination(

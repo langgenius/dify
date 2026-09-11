@@ -1,13 +1,17 @@
-"""Tencent's configured OTLP/gRPC endpoint receives spans and delta metrics synchronously."""
+"""Send Tencent spans and delta metrics through their explicitly captured transports."""
 
+import socket
 from typing import Any, override
 
 from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 from opentelemetry.proto.trace.v1.trace_pb2 import Span
+from opentelemetry.sdk.version import __version__ as otel_sdk_version
 from pydantic import JsonValue
 
+from configs import dify_config
+from core.helper.ssl_context import create_grpc_credentials, create_ssl_context
 from core.ops.otlp_trace import OtlpTraceClient, histogram, otlp_span
-from core.ops.provider_export import json_text, span_attributes
+from core.ops.provider_export import TraceProviderHttpClient, json_text, span_attributes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_tencent.config import TencentConfig
 
@@ -202,10 +206,37 @@ class TencentTraceClient(OtlpTraceClient):
 
 def create_trace_client(provider_config: dict[str, Any]) -> TencentTraceClient:
     config = TencentConfig.model_validate(provider_config)
+    runtime_settings = (
+        provider_config["_runtime_settings"]
+        if "_runtime_settings" in provider_config
+        else TencentConfig.load_runtime_settings(provider_config)
+    )
+    http_metrics = runtime_settings["metrics_protocol"] == "http/protobuf"
+    headers = {"authorization": f"Bearer {config.token}"}
     return TencentTraceClient(
         config.endpoint,
-        {"authorization": f"Bearer {config.token}"},
-        {"service.name": config.service_name},
+        headers,
+        {
+            "service.name": config.service_name,
+            "service.version": f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
+            "deployment.environment": f"{dify_config.DEPLOY_ENV}-{dify_config.DEPLOYMENT_EDITION.value}",
+            "host.name": socket.gethostname(),
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": otel_sdk_version,
+        },
         "https://console.cloud.tencent.com/apm",
         protocol="grpc",
+        metrics_http=TraceProviderHttpClient(
+            config.endpoint,
+            headers,
+            ssl_context=create_ssl_context(runtime_settings["metrics_tls"], verify=runtime_settings["metrics_verify"]),
+        )
+        if http_metrics
+        else None,
+        metrics_protocol=runtime_settings["metrics_protocol"],
+        grpc_credentials={
+            "trace": create_grpc_credentials(runtime_settings["trace_tls"]),
+            **({"metrics": create_grpc_credentials(runtime_settings["metrics_tls"])} if not http_metrics else {}),
+        },
     )

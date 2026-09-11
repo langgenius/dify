@@ -1,11 +1,15 @@
 import base64
 import json
+import ssl
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import Any
 from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
 
 import httpx
 import pytest
+from dify_trace_mlflow.config import MLflowConfig
 from dify_trace_mlflow.mlflow_trace import MLflowTraceClient
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue
 from pydantic import JsonValue
@@ -496,3 +500,461 @@ def test_databricks_external_request_id_is_native_and_internal_identity_is_retai
     assert info["trace_id"] == info["client_request_id"] == external_id
     assert info["trace_metadata"]["dify.tenant_id"] == trace.source.tenant_id
     assert info["trace_metadata"]["dify.operation_id"] == trace.source.operation_id
+
+
+@pytest.mark.parametrize("otlp_status", [404, 501])
+def test_mlflow_filestore_upload_retry_and_late_operations(otlp_status: int, monkeypatch: pytest.MonkeyPatch) -> None:
+    # MLflow 3.11.1's FileStore supports start_trace + artifact upload but
+    # inherits AbstractStore.log_spans, which the OTLP route translates to 501.
+    trace = make_trace()
+    requests: list[httpx.Request] = []
+    saved_traces: dict[str, dict[str, Any]] = {}
+    artifacts: dict[str, bytes] = {}
+    fail_upload = True
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        nonlocal fail_upload
+        requests.append(request)
+        assert request.headers["Authorization"] == basic_auth("user", "secret")
+        path = request.url.path
+        if path.endswith("/v1/traces"):
+            return httpx.Response(otlp_status, json={"detail": "REST OTLP span logging is not supported by FileStore"})
+        if path.endswith("/experiments/get"):
+            return httpx.Response(200, json={"experiment": {"experiment_id": "7"}})
+        if path == "/prefix/api/3.0/mlflow/traces" and request.method == "POST":
+            info = json.loads(request.content)["trace"]["trace_info"]
+            trace_id = info["trace_id"]
+            assert trace_id not in saved_traces, "A retry must reuse existing trace metadata"
+            info["tags"]["mlflow.artifactLocation"] = f"mlflow-artifacts:/7/traces/{trace_id}/artifacts"
+            saved_traces[trace_id] = info
+            return httpx.Response(200, json={"trace": {"trace_info": info}})
+        if path.startswith("/prefix/api/3.0/mlflow/traces/") and request.method == "GET":
+            info = saved_traces.get(path.rsplit("/", 1)[-1])
+            return httpx.Response(200, json={"trace": {"trace_info": info}}) if info else httpx.Response(404)
+        if path.startswith("/prefix/api/2.0/mlflow-artifacts/artifacts/") and request.method == "PUT":
+            if fail_upload:
+                fail_upload = False
+                return httpx.Response(503)
+            assert path.endswith("/artifacts/traces.json")
+            assert request.headers["Content-Type"] == "application/json"
+            artifacts[path] = request.content
+            return httpx.Response(200, json={})
+        pytest.fail(f"Unexpected provider request: {request.method} {path}")
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+    )
+    client = MLflowTraceClient(
+        "mlflow",
+        {
+            "tracking_uri": "https://mlflow.example/prefix",
+            "experiment_id": "7",
+            "username": "user",
+            "password": "secret",
+        },
+    )
+    assert client.verify_credentials()
+    with pytest.raises(TraceExportError, match="provider_http_503"):
+        client.export_trace(trace)
+    receipt = client.export_trace(trace)
+    original_artifacts = dict(artifacts)
+    assert len(saved_traces) == len(artifacts) == 1
+    assert json.loads(next(iter(saved_traces.values()))["trace_metadata"]["mlflow.trace.tokenUsage"]) == {
+        "input_tokens": 3,
+        "output_tokens": 5,
+        "total_tokens": 8,
+    }
+    exported_spans = json.loads(next(iter(artifacts.values())))["spans"]
+    assert len(exported_spans) == 2
+    assert base64.b64decode(exported_spans[1]["parent_span_id"]) == base64.b64decode(exported_spans[0]["span_id"])
+    assert json.loads(exported_spans[1]["attributes"]["mlflow.chat.tokenUsage"])["total_tokens"] == 8
+    parent = receipt.spans[trace.root_span_id]
+    assert parent["artifact_trace"] is True
+
+    late = make_trace()
+    late = late.model_copy(
+        update={
+            "source": late.source.model_copy(
+                update={"tenant_id": trace.source.tenant_id, "app_id": trace.source.app_id}
+            )
+        }
+    )
+    requests.clear()
+    late_receipt = client.export_trace(late, parent)
+    assert not any(request.url.path.endswith("/v1/traces") for request in requests)
+    assert parent["trace_id"] != late_receipt.spans[late.root_span_id]["trace_id"]
+    assert len(saved_traces) == len(artifacts) == 2
+    assert all(artifacts[path] == content for path, content in original_artifacts.items())
+    late_info = saved_traces["tr-" + UUID(late.trace_id).hex]
+    assert late_info["trace_metadata"]["dify.linked_trace_id"] == "tr-" + UUID(str(parent["trace_id"])).hex
+
+    # An external-ID collision must not rewrite another tenant's trace artifact.
+    saved_traces["tr-" + UUID(trace.trace_id).hex]["trace_metadata"]["dify.tenant_id"] = str(uuid4())
+    requests.clear()
+    with pytest.raises(TraceExportError, match="mlflow_trace_identity_mismatch"):
+        client.export_trace(trace)
+    assert not any(request.method == "PUT" for request in requests)
+
+
+@pytest.mark.parametrize("failure_stage", ["create", "end", "upload"])
+def test_mlflow_v2_server_ids_retries_and_late_links(failure_stage: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    trace = make_trace()
+    requests: list[httpx.Request] = []
+    saved_traces: dict[str, dict[str, Any]] = {}
+    artifacts: dict[str, bytes] = {}
+    failure_pending = True
+
+    def reply(stage: str, info: dict[str, Any]) -> httpx.Response:
+        nonlocal failure_pending
+        if failure_pending and failure_stage == stage:
+            failure_pending = False
+            return httpx.Response(503)
+        return httpx.Response(200, json={"trace_info": info})
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.headers["Authorization"] == basic_auth("user", "secret")
+        path = request.url.path
+        if path.endswith("/v1/traces") or "/api/3.0/" in path:
+            return httpx.Response(404)
+        if path == "/prefix/api/2.0/mlflow/traces" and request.method == "GET":
+            assert request.url.params.get_list("experiment_ids") == ["7"]
+            assert request.url.params["max_results"] == "2"
+            matched = []
+            for info in saved_traces.values():
+                tags = {entry["key"]: entry["value"] for entry in info["tags"]}
+                if request.url.params["filter"] == f"tags.`dify.trace_id` = '{tags['dify.trace_id']}'":
+                    matched.append(info)
+            return httpx.Response(200, json={"traces": matched})
+        if path == "/prefix/api/2.0/mlflow/traces" and request.method == "POST":
+            info = json.loads(request.content)
+            assert info["timestamp_ms"] == "1788940800000"
+            assert info["experiment_id"] == "7"
+            request_id = uuid4().hex
+            info.update(request_id=request_id, status="IN_PROGRESS", execution_time_ms="0")
+            info["tags"].append(
+                {"key": "mlflow.artifactLocation", "value": f"mlflow-artifacts:/7/traces/{request_id}/artifacts"}
+            )
+            saved_traces[request_id] = info
+            return reply("create", info)
+        if path.startswith("/prefix/api/2.0/mlflow/traces/") and request.method == "PATCH":
+            body = json.loads(request.content)
+            request_id = path.rsplit("/", 1)[-1]
+            assert body["request_id"] == request_id
+            assert body["timestamp_ms"] == "1788940803000"
+            assert body["status"] == "OK"
+            saved = saved_traces[request_id]
+            saved.update(status=body["status"], execution_time_ms="3000")
+            return reply("end", saved)
+        if path.startswith("/prefix/api/2.0/mlflow-artifacts/artifacts/") and request.method == "PUT":
+            response = reply("upload", {})
+            if response.status_code == 200:
+                artifacts[path] = request.content
+            return response
+        pytest.fail(f"Unexpected provider request: {request.method} {path}")
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+    )
+    config = {
+        "tracking_uri": "https://mlflow.example/prefix",
+        "experiment_id": "7",
+        "username": "user",
+        "password": "secret",
+    }
+    with pytest.raises(TraceExportError, match="provider_http_503"):
+        MLflowTraceClient("mlflow", config).export_trace(trace)
+    # A new delivery attempt must recover without state from the old client.
+    receipt = MLflowTraceClient("mlflow", config).export_trace(trace)
+    assert len(saved_traces) == len(artifacts) == 1
+    native_id, saved = next(iter(saved_traces.items()))
+    parent = receipt.spans[trace.root_span_id]
+    assert parent["native_trace_id"] == native_id
+    assert UUID(str(parent["trace_id"])).hex == native_id
+    assert native_id != UUID(trace.trace_id).hex
+    assert parent["artifact_trace"] is True
+    metadata = {entry["key"]: entry["value"] for entry in saved["request_metadata"]}
+    assert metadata["dify.operation_id"] == trace.source.operation_id
+    assert metadata["dify.client_request_id"] == trace.source.operation_id
+    assert json.loads(metadata["mlflow.trace.tokenUsage"])["total_tokens"] == 8
+    spans = json.loads(next(iter(artifacts.values())))["spans"]
+    assert all(base64.b64decode(span["trace_id"]) == UUID(native_id).bytes for span in spans)
+    assert all(json.loads(span["attributes"]["mlflow.traceRequestId"]) == native_id for span in spans)
+    assert spans[1]["parent_span_id"] == spans[0]["span_id"]
+    assert json.loads(spans[1]["attributes"]["mlflow.llm.model"]) == "gpt-4o"
+
+    original_artifacts = dict(artifacts)
+    late = make_trace()
+    late = late.model_copy(
+        update={
+            "source": late.source.model_copy(
+                update={"tenant_id": trace.source.tenant_id, "app_id": trace.source.app_id}
+            )
+        }
+    )
+    requests.clear()
+    late_receipt = MLflowTraceClient("mlflow", config).export_trace(late, parent)
+    late_id = str(late_receipt.spans[late.root_span_id]["native_trace_id"])
+    assert late_id != native_id
+    assert len(saved_traces) == len(artifacts) == 2
+    assert not any(request.url.path.endswith("/v1/traces") for request in requests)
+    assert all(artifacts[path] == content for path, content in original_artifacts.items())
+    late_metadata = {entry["key"]: entry["value"] for entry in saved_traces[late_id]["request_metadata"]}
+    assert late_metadata["dify.linked_trace_id"] == native_id
+    late_spans = json.loads(
+        artifacts[f"/prefix/api/2.0/mlflow-artifacts/artifacts/7/traces/{late_id}/artifacts/traces.json"]
+    )["spans"]
+    assert late_spans[0]["links"][0]["trace_id"] == native_id
+
+    # A matching deterministic tag alone never grants access to another owner's trace.
+    saved["request_metadata"] = [
+        {"key": entry["key"], "value": str(uuid4()) if entry["key"] == "dify.tenant_id" else entry["value"]}
+        for entry in saved["request_metadata"]
+    ]
+    requests.clear()
+    with pytest.raises(TraceExportError, match="mlflow_trace_identity_mismatch"):
+        MLflowTraceClient("mlflow", config).export_trace(trace)
+    assert not any(request.method in {"PUT", "PATCH"} for request in requests)
+    assert len(saved_traces) == 2
+
+
+@pytest.mark.parametrize("search_response", [{"traces": [{}, {}]}, {"traces": [], "next_page_token": "more"}])
+def test_mlflow_v2_rejects_ambiguous_retry_identity(search_response: dict[str, Any]) -> None:
+    client = MLflowTraceClient("mlflow", {"tracking_uri": "https://mlflow.example"})
+    with (
+        patch.object(
+            client.http,
+            "request",
+            side_effect=[
+                TraceExportError("provider_http_404"),
+                TraceExportError("provider_http_404"),
+                httpx.Response(200, json=search_response),
+            ],
+        ) as request,
+        pytest.raises(TraceExportError, match="mlflow_trace_identity_ambiguous"),
+    ):
+        client._export_artifact_trace(make_trace(), str(uuid4()), None)
+    assert request.call_count == 3
+
+
+@pytest.mark.parametrize("status", [401, 429, 500, 503])
+def test_mlflow_does_not_fallback_after_other_otlp_failures(status: int, monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(status)
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+    )
+    client = MLflowTraceClient("mlflow", {"tracking_uri": "https://mlflow.example"})
+    with pytest.raises(TraceExportError, match=f"provider_http_{status}"):
+        client.export_trace(make_trace())
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    ("artifact_uri", "expected_url", "authenticated"),
+    [
+        (
+            "mlflow-artifacts:/7/traces/trace/artifacts",
+            "https://mlflow.example/prefix/api/2.0/mlflow-artifacts/artifacts/7/traces/trace/artifacts/traces.json",
+            True,
+        ),
+        ("https://mlflow.example/files/trace", "https://mlflow.example/files/trace/traces.json", True),
+        ("https://MLFLOW.example:443/files/trace", "https://mlflow.example/files/trace/traces.json", True),
+        ("https://mlflow.example:444/files/trace", "https://mlflow.example:444/files/trace/traces.json", False),
+        ("http://mlflow.example:80/files/trace", "http://mlflow.example/files/trace/traces.json", False),
+        (
+            "mlflow-artifacts://artifacts.example/7/trace",
+            "https://artifacts.example/prefix/api/2.0/mlflow-artifacts/artifacts/7/trace/traces.json",
+            False,
+        ),
+        (
+            "https://artifacts.example/trace?signature=upload",
+            "https://artifacts.example/trace/traces.json?signature=upload",
+            False,
+        ),
+    ],
+)
+def test_mlflow_artifact_paths_and_credentials(
+    artifact_uri: str, expected_url: str, authenticated: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200)
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+    )
+    client = MLflowTraceClient(
+        "mlflow", {"tracking_uri": "https://mlflow.example/prefix", "username": "user", "password": "secret"}
+    )
+    client._upload_mlflow_artifact(artifact_uri, b'{"spans": []}')
+    assert str(requests[0].url) == expected_url
+    assert ("Authorization" in requests[0].headers) is authenticated
+    assert requests[0].content == b'{"spans": []}'
+
+
+def test_mlflow_uses_captured_tls_for_verification_otlp_and_same_origin_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    server_certificate, client_certificate = tmp_path / "ca.pem", tmp_path / "client.pem"
+    server_certificate.write_bytes(b"private CA")
+    client_certificate.write_bytes(b"client certificate and key")
+    monkeypatch.setenv("MLFLOW_TRACKING_SERVER_CERT_PATH", str(server_certificate))
+    monkeypatch.setenv("MLFLOW_TRACKING_CLIENT_CERT_PATH", str(client_certificate))
+    monkeypatch.delenv("MLFLOW_TRACKING_INSECURE_TLS", raising=False)
+    runtime_settings = MLflowConfig.load_runtime_settings({"tracking_uri": "https://mlflow.example"})
+    assert base64.b64decode(runtime_settings["tls"]["certificate"]) == b"private CA"
+    assert base64.b64decode(runtime_settings["tls"]["client_certificate"]) == b"client certificate and key"
+    assert runtime_settings["verify"] is True
+    server_certificate.unlink()
+    client_certificate.unlink()
+    monkeypatch.setenv("MLFLOW_TRACKING_INSECURE_TLS", "true")
+
+    context = ssl.create_default_context()
+    build_context = Mock(return_value=context)
+    monkeypatch.setattr("dify_trace_mlflow.mlflow_trace.create_ssl_context", build_context)
+    contexts: list[ssl.SSLContext | None] = []
+
+    def create_http_client(*, ssl_context: ssl.SSLContext | None = None) -> httpx.Client:
+        contexts.append(ssl_context)
+        return httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=b"")), trust_env=False)
+
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.create_http_client", create_http_client)
+    client = MLflowTraceClient(
+        "mlflow", {"tracking_uri": "https://mlflow.example", "_runtime_settings": runtime_settings}
+    )
+    build_context.assert_called_once_with(runtime_settings["tls"], verify=True)
+    assert client.verify_credentials()
+    client.export_trace(make_trace())
+    client._upload_mlflow_artifact("mlflow-artifacts:/trace", b"{}")
+    client._upload_mlflow_artifact("https://MLFLOW.example:443/trace", b"{}")
+    client._upload_mlflow_artifact("https://artifacts.example/trace", b"{}")
+    assert contexts == [context, context, context, context, None]
+
+
+@pytest.mark.parametrize("insecure", ["true", "TRUE", "1", "false", "FALSE", "0"])
+def test_mlflow_direct_clients_preserve_tls_verification_setting(
+    insecure: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MLFLOW_TRACKING_INSECURE_TLS", insecure)
+    monkeypatch.delenv("MLFLOW_TRACKING_SERVER_CERT_PATH", raising=False)
+    monkeypatch.delenv("MLFLOW_TRACKING_CLIENT_CERT_PATH", raising=False)
+    monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+    monkeypatch.delenv("CURL_CA_BUNDLE", raising=False)
+    client = MLflowTraceClient("mlflow", {"tracking_uri": "https://mlflow.example"})
+    if insecure.lower() in {"true", "1"}:
+        assert client.http.ssl_context is not None
+        assert client.http.ssl_context.verify_mode == ssl.CERT_NONE
+        assert client.http.ssl_context.check_hostname is False
+    else:
+        assert client.http.ssl_context is None
+
+
+@pytest.mark.parametrize("scheme", ["http", "https"])
+def test_mlflow_rejects_conflicting_or_invalid_tls_settings(scheme: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MLFLOW_TRACKING_INSECURE_TLS", "true")
+    monkeypatch.setenv("MLFLOW_TRACKING_SERVER_CERT_PATH", "/missing/ca.pem")
+    with pytest.raises(ValueError, match="cannot be disabled"):
+        MLflowConfig.load_runtime_settings({"tracking_uri": f"{scheme}://mlflow.example"})
+    monkeypatch.setenv("MLFLOW_TRACKING_INSECURE_TLS", "invalid")
+    with pytest.raises(ValueError, match="Invalid MLflow TLS verification setting"):
+        MLflowConfig.load_runtime_settings({"tracking_uri": f"{scheme}://mlflow.example"})
+
+
+@pytest.mark.parametrize(
+    ("explicit_ca", "requests_ca", "insecure", "expected"),
+    [
+        (True, True, False, "mlflow"),
+        (False, True, False, "requests"),
+        (False, False, False, "curl"),
+        (False, True, True, None),
+    ],
+)
+def test_mlflow_preserves_requests_ca_bundle_precedence(
+    explicit_ca: bool,
+    requests_ca: bool,
+    insecure: bool,
+    expected: str | None,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for label, variable, enabled in (
+        ("mlflow", "MLFLOW_TRACKING_SERVER_CERT_PATH", explicit_ca),
+        ("requests", "REQUESTS_CA_BUNDLE", requests_ca),
+        ("curl", "CURL_CA_BUNDLE", True),
+    ):
+        path = tmp_path / f"{label}.pem"
+        path.write_text(label)
+        if enabled:
+            monkeypatch.setenv(variable, str(path))
+        else:
+            monkeypatch.delenv(variable, raising=False)
+    monkeypatch.setenv("MLFLOW_TRACKING_INSECURE_TLS", str(insecure))
+    monkeypatch.delenv("MLFLOW_TRACKING_CLIENT_CERT_PATH", raising=False)
+    runtime_settings = MLflowConfig.load_runtime_settings({"tracking_uri": "https://mlflow.example"})
+    certificate = runtime_settings["tls"].get("certificate")
+    assert (base64.b64decode(certificate).decode() if certificate else None) == expected
+
+
+def test_mlflow_does_not_read_unused_tls_files_for_http(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MLFLOW_TRACKING_SERVER_CERT_PATH", "/missing/ca.pem")
+    monkeypatch.setenv("MLFLOW_TRACKING_CLIENT_CERT_PATH", "/missing/client.pem")
+    monkeypatch.delenv("MLFLOW_TRACKING_INSECURE_TLS", raising=False)
+    read_files = Mock(side_effect=AssertionError("Plain HTTP must not load TLS files"))
+    monkeypatch.setattr("dify_trace_mlflow.config.read_tls_files", read_files)
+    config = {"tracking_uri": "http://mlflow.example"}
+    assert MLflowConfig.load_runtime_settings(config) == {}
+    assert MLflowTraceClient("mlflow", config).http.ssl_context is None
+    read_files.assert_not_called()
+
+
+def test_mlflow_explicit_blank_ca_disables_verification_without_ca_bundle_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MLFLOW_TRACKING_SERVER_CERT_PATH", "")
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", "/missing/requests.pem")
+    monkeypatch.setenv("CURL_CA_BUNDLE", "/missing/curl.pem")
+    monkeypatch.setenv("MLFLOW_TRACKING_INSECURE_TLS", "false")
+    monkeypatch.delenv("MLFLOW_TRACKING_CLIENT_CERT_PATH", raising=False)
+    config = {"tracking_uri": "https://mlflow.example"}
+    assert MLflowConfig.load_runtime_settings(config) == {"verify": False, "tls": {}}
+    ssl_context = MLflowTraceClient("mlflow", config).http.ssl_context
+    assert ssl_context is not None
+    assert ssl_context.verify_mode == ssl.CERT_NONE
+    assert ssl_context.check_hostname is False
+
+
+@pytest.mark.parametrize("ca_setting", ["MLFLOW_TRACKING_SERVER_CERT_PATH", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"])
+def test_mlflow_captures_ca_directory_before_delivery(
+    ca_setting: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for setting in (
+        "MLFLOW_TRACKING_SERVER_CERT_PATH",
+        "REQUESTS_CA_BUNDLE",
+        "CURL_CA_BUNDLE",
+        "MLFLOW_TRACKING_CLIENT_CERT_PATH",
+        "MLFLOW_TRACKING_INSECURE_TLS",
+    ):
+        monkeypatch.delenv(setting, raising=False)
+    certificate_file = tmp_path / "01234567.0"
+    certificate_file.write_bytes(b"captured certificate")
+    monkeypatch.setenv(ca_setting, str(tmp_path))
+    config: dict[str, Any] = {"tracking_uri": "https://mlflow.example"}
+    runtime_settings = MLflowConfig.load_runtime_settings(config)
+    certificates = json.loads(runtime_settings["tls"]["certificate_directory"])
+    assert base64.b64decode(certificates[certificate_file.name]) == b"captured certificate"
+    certificate_file.unlink()
+    config["_runtime_settings"] = runtime_settings
+    ssl_context = MLflowTraceClient("mlflow", config).http.ssl_context
+    assert ssl_context is not None
+    assert ssl_context.verify_mode == ssl.CERT_REQUIRED
