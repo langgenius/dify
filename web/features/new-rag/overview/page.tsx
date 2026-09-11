@@ -10,7 +10,7 @@ import { OverviewActivity } from './overview-activity'
 import { AttentionPanel } from './overview-attention'
 import { InventoryPanel } from './overview-inventory'
 import { OverviewMetrics, QueryOutcomesChart } from './overview-metrics'
-import { FirstSourceTaskFailureBanner, OverviewOnboarding } from './overview-onboarding'
+import { OverviewOnboarding } from './overview-onboarding'
 import { OverviewTaskSync } from './overview-task-sync'
 import { OVERVIEW_WINDOWS } from './query-state'
 import {
@@ -42,7 +42,6 @@ function KnowledgeOverviewContent() {
       <div className="w-full px-6 pt-3 pb-6">
         <OverviewTaskSync />
         <OverviewHeader />
-        <FirstSourceTaskFailureBanner />
         <OverviewKnowledgeModelReadinessBanner />
         <OverviewRecoveryStatus />
         <OverviewOnboarding />

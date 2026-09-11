@@ -151,12 +151,6 @@ const tasksQueryState = vi.hoisted(() => ({
   refetch: vi.fn(),
 }))
 
-const retryTaskMutationState = vi.hoisted(() => ({
-  isError: false,
-  isPending: false,
-  mutateAsync: vi.fn(),
-}))
-
 const overviewQueryState = vi.hoisted(() => ({
   activity: { isError: false, isFetching: false, isPending: false },
   attention: { isError: false, isFetching: false, isPending: false },
@@ -304,7 +298,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         refetch: vi.fn(),
       }
     },
-    useMutation: () => retryTaskMutationState,
   }
 })
 
@@ -322,15 +315,6 @@ vi.mock('@/service/console', () => {
         spaces: {
           byControlSpaceId: {
             backgroundTasks: {
-              byTaskKind: {
-                byTaskId: {
-                  retry: {
-                    post: {
-                      mutationOptions: () => ({}),
-                    },
-                  },
-                },
-              },
               get: {
                 infiniteOptions: (options: unknown) => {
                   infiniteOptionsMocks.tasks(options)
@@ -386,9 +370,6 @@ describe('KnowledgeOverviewPage', () => {
     tasksQueryState.isError = false
     tasksQueryState.isPending = false
     tasksQueryState.isRefetching = false
-    retryTaskMutationState.isError = false
-    retryTaskMutationState.isPending = false
-    retryTaskMutationState.mutateAsync.mockResolvedValue(undefined)
     for (const state of Object.values(overviewQueryState)) {
       state.isError = false
       state.isFetching = false
@@ -952,47 +933,26 @@ describe('KnowledgeOverviewPage', () => {
     expect(uploadFiles).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('shows a failed first-source task above onboarding and retries the real task', async () => {
-    const user = userEvent.setup()
+  it('keeps failed first-source tasks in Needs attention without a duplicate banner', () => {
     queryData.stats.source_count = 0
     queryData.stats.documents = 0
     queryData.tasks[0]!.can_retry = true
-    queryData.tasks[0]!.operation = 'document_upload'
+    queryData.tasks[0]!.operation = 'document_processing'
     queryData.tasks[0]!.state = 'failed'
 
     renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
-    const overviewTitle = screen.getByRole('heading', {
-      name: 'knowledgeSpace.overviewTitle',
-    })
-    const alert = screen.getByRole('alert')
-    const onboardingTitle = screen.getByRole('heading', {
-      name: 'knowledgeSpace.overview.noSources',
-    })
-    const onboarding = onboardingTitle.closest('section')
-
-    expect(alert).toHaveTextContent('knowledgeSpace.documentUploadFailed')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'knowledgeSpace.retryTask' }),
+    ).not.toBeInTheDocument()
     expect(
       screen.getByText('knowledgeSpace.overview.attention.failedDocument.title'),
     ).toBeInTheDocument()
     expect(screen.queryByText('knowledgeSpace.overview.noIssues')).not.toBeInTheDocument()
-    expect(overviewTitle.compareDocumentPosition(alert)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(alert.compareDocumentPosition(onboardingTitle)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(onboarding).not.toBeNull()
-    expect(within(onboarding!).queryByRole('alert')).not.toBeInTheDocument()
     expect(
-      within(onboarding!).getByText('knowledgeSpace.overview.noSourcesDescription'),
+      screen.getByRole('button', { name: 'knowledgeSpace.overview.viewDocuments' }),
     ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
-
-    expect(retryTaskMutationState.mutateAsync).toHaveBeenCalledWith({
-      params: {
-        control_space_id: 'space-1',
-        task_id: 'task-1',
-        task_kind: 'source',
-      },
-    })
-    expect(tasksQueryState.refetch).toHaveBeenCalledOnce()
   })
 
   it.each([0, 1])(
@@ -1025,7 +985,7 @@ describe('KnowledgeOverviewPage', () => {
 
       renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
-      if (documents > 0) expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
       expect(screen.queryByText('knowledgeSpace.overview.noIssues')).not.toBeInTheDocument()
       expect(
         screen.getByText('knowledgeSpace.overview.attention.failedDocument.title'),
