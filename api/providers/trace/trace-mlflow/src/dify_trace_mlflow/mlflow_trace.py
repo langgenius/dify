@@ -43,6 +43,13 @@ def _parse_trace_uuid(identifier: str) -> str:
     return str(value)
 
 
+def _normalize_databricks_host(host: str) -> str:
+    host = host.strip()
+    parsed = urlsplit(host if "://" in host else "https://" + host)
+    # Match the SDK's workspace host normalization, including saved bare hosts.
+    return urlunsplit(parsed._replace(netloc=parsed.netloc.removesuffix(":443"), path=parsed.path.rstrip("/")))
+
+
 def _normalize_messages(value: JsonValue) -> JsonValue:
     if isinstance(value, list):
         return [_normalize_messages(item) for item in value]
@@ -97,14 +104,21 @@ class MLflowTraceClient:
         self.config = (DatabricksConfig if provider_name == "databricks" else MLflowConfig).model_validate(
             provider_config
         )
+        runtime_settings = (
+            provider_config["_runtime_settings"]
+            if "_runtime_settings" in provider_config
+            else self.config.load_runtime_settings(provider_config)
+        )
         if isinstance(self.config, DatabricksConfig):
-            self.http = TraceProviderHttpClient(self.config.host)
-        else:
-            runtime_settings = (
-                provider_config["_runtime_settings"]
-                if "_runtime_settings" in provider_config
-                else self.config.load_runtime_settings(provider_config)
+            self._databricks_tls_settings = runtime_settings
+            endpoint = _normalize_databricks_host(self.config.host)
+            self.http = TraceProviderHttpClient(
+                endpoint,
+                ssl_context=create_ssl_context(runtime_settings.get("tls", {}))
+                if urlsplit(endpoint).scheme == "https"
+                else create_ssl_context({}),
             )
+        else:
             headers = {
                 **runtime_settings.get("headers", {}),
                 **(
@@ -251,6 +265,8 @@ class MLflowTraceClient:
             )
             client.http.deadline = self.http.deadline
             try:
+                if parent_span is None:
+                    self._register_trace_metadata(completed_trace, trace_id)
                 client.send_traces(
                     ExportTraceServiceRequest(
                         resource_spans=[
@@ -283,15 +299,11 @@ class MLflowTraceClient:
             }
         )
 
-    def _export_artifact_trace(
-        self, completed_trace: CompletedTrace, trace_id: str, parent_span: dict[str, JsonValue] | None
-    ) -> str:
+    def _build_trace_info(self, completed_trace: CompletedTrace, trace_id: str) -> dict[str, Any]:
         root = completed_trace.spans[0]
         if root.started_at is None or root.ended_at is None:
             raise TraceExportError(f"{self.provider_name}_trace_time_missing")
         request_id = "tr-" + UUID(trace_id).hex
-        # An experiment trace owns one immutable artifact. Late operations get a
-        # linked trace: appending by rewriting the parent's artifact loses siblings.
         metadata = {
             "dify.tenant_id": completed_trace.source.tenant_id,
             "dify.app_id": completed_trace.source.app_id or "",
@@ -301,6 +313,42 @@ class MLflowTraceClient:
             metadata["mlflow.trace.user"] = completed_trace.source.actor_id
         if session_id := completed_trace.source.session_id or completed_trace.source.conversation_id:
             metadata["mlflow.trace.session"] = session_id
+        return {
+            "trace_id": request_id,
+            "client_request_id": completed_trace.source.external_trace_id or completed_trace.source.operation_id,
+            "trace_location": {
+                "type": "MLFLOW_EXPERIMENT",
+                "mlflow_experiment": {"experiment_id": self.config.experiment_id},
+            },
+            "request_time": root.started_at.isoformat(),
+            "execution_duration": f"{(root.ended_at - root.started_at).total_seconds():.6f}s",
+            "state": "ERROR" if _span_failed(root) else "OK",
+            "request_preview": json_text(root.inputs)[:10000],
+            "response_preview": json_text(root.outputs)[:10000],
+            "trace_metadata": metadata,
+            "tags": {"mlflow.traceName": root.span_name},
+        }
+
+    def _register_trace_metadata(self, completed_trace: CompletedTrace, trace_id: str) -> None:
+        trace_info = self._build_trace_info(completed_trace, trace_id)
+        if self._read_existing_trace(trace_info) is not None:
+            return
+        # Register identity before OTLP so a metadata failure cannot retry spans
+        # already accepted by MLflow. OTLP itself aggregates native token usage.
+        try:
+            self.http.request("POST", "api/3.0/mlflow/traces", json={"trace": {"trace_info": trace_info}})
+        except TraceExportError as error:
+            if str(error) != "provider_http_409" or self._read_existing_trace(trace_info) is None:
+                raise
+
+    def _export_artifact_trace(
+        self, completed_trace: CompletedTrace, trace_id: str, parent_span: dict[str, JsonValue] | None
+    ) -> str:
+        trace_info = self._build_trace_info(completed_trace, trace_id)
+        request_id: str = trace_info["trace_id"]
+        metadata = trace_info["trace_metadata"]
+        # An experiment trace owns one immutable artifact. Late operations get a
+        # linked trace: appending by rewriting the parent's artifact loses siblings.
         token_usage = {
             target: sum(
                 count
@@ -330,25 +378,13 @@ class MLflowTraceClient:
             links.append(
                 {"trace_id": linked_trace_id, "span_id": linked_span_id, "attributes": {"dify.relationship": "parent"}}
             )
-        trace_info = {
-            "trace_id": request_id,
-            "client_request_id": completed_trace.source.external_trace_id or completed_trace.source.operation_id,
-            "trace_location": {
-                "type": "MLFLOW_EXPERIMENT",
-                "mlflow_experiment": {"experiment_id": self.config.experiment_id},
-            },
-            "request_time": root.started_at.isoformat(),
-            "execution_duration": f"{(root.ended_at - root.started_at).total_seconds():.6f}s",
-            "state": "ERROR" if _span_failed(root) else "OK",
-            "request_preview": json_text(root.inputs)[:10000],
-            "response_preview": json_text(root.outputs)[:10000],
-            "trace_metadata": metadata,
-            "tags": {"mlflow.traceName": root.span_name},
-        }
         # FileStore does not reliably return 409 for a repeated create. Read its
         # deterministic record first so an upload retry cannot overwrite metadata.
         saved_trace_info = self._read_existing_trace(trace_info) if self.provider_name == "mlflow" else None
-        if saved_trace_info is None:
+        if saved_trace_info is None or (
+            "mlflow.trace.tokenUsage" in metadata
+            and "mlflow.trace.tokenUsage" not in saved_trace_info.get("trace_metadata", {})
+        ):
             try:
                 created = self.http.request("POST", "api/3.0/mlflow/traces", json={"trace": {"trace_info": trace_info}})
                 saved_trace_info = created.json().get("trace", {}).get("trace_info", {})
@@ -526,7 +562,13 @@ class MLflowTraceClient:
         # These URLs are returned by the authenticated provider, never by trace
         # content. Use only their own signed headers; do not forward the API key.
         headers = {entry["name"]: entry["value"] for entry in upload.get("headers", [])}
-        client = TraceProviderHttpClient(signed_url, headers)
+        # Databricks captures only CA roots, so this context carries no client credentials.
+        ssl_context = self.http.ssl_context
+        if urlsplit(self.http.endpoint).scheme == "http":
+            if self._databricks_tls_settings.get("tls_read_failed"):
+                raise ValueError("Cannot read TLS configuration")
+            ssl_context = create_ssl_context(self._databricks_tls_settings.get("tls", {}))
+        client = TraceProviderHttpClient(signed_url, headers, ssl_context=ssl_context)
         client.deadline = self.http.deadline
         if upload.get("type") in {"AZURE_ADLS_GEN2_SAS_URI", 4}:
             parsed = urlsplit(signed_url)

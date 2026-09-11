@@ -437,6 +437,7 @@ class MessageService:
             user_id=user.id if isinstance(user, Account) else user.session_id,
             message_id=message_id,
             conversation_id=conversation.id,
+            workflow_run_id=message.workflow_run_id,
         )
         with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}):
             questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(

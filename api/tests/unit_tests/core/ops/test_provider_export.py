@@ -166,6 +166,8 @@ def test_every_provider_exports_complete_tree_with_repeatable_ids(
                     }
                 },
             )
+        if method == "GET":
+            return httpx.Response(404, json={})
         if "ingestion" in url:
             return httpx.Response(207, json={"errors": []})
         if kwargs.get("headers", {}).get("Content-Type") == "application/x-protobuf":

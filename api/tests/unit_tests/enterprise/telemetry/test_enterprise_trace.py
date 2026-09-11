@@ -1,5 +1,6 @@
 """Enterprise exports consume captured spans without record lookups or shared SDK state."""
 
+import json
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -89,9 +90,11 @@ def test_draft_node_identity_and_content_survive_capture(
     for field, value in structure.items():
         assert attributes[f"dify.node.{field}"] == value
     reference = f"ref:node_execution_id={execution_id}"
-    assert attributes["dify.node.process_data"] == (process_data if include_content else reference)
-    assert attributes["dify.node.inputs"] == ({"query": "private input"} if include_content else reference)
-    assert attributes["dify.node.outputs"] == ({"answer": "private output"} if include_content else reference)
+    assert attributes["dify.node.process_data"] == (json.dumps(process_data) if include_content else reference)
+    assert attributes["dify.node.inputs"] == (json.dumps({"query": "private input"}) if include_content else reference)
+    assert attributes["dify.node.outputs"] == (
+        json.dumps({"answer": "private output"}) if include_content else reference
+    )
     if not include_content:
         assert "private" not in str(attributes)
 
