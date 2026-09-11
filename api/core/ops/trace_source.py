@@ -284,7 +284,7 @@ def read_message_trace_fields(tenant_id: str, app_id: str, message_id: str) -> d
             "conversation_id": message.conversation_id,
             "workflow_run_id": message.workflow_run_id,
             "inputs": message.message,
-            "original_inputs": message.inputs,
+            "original_inputs": message.inputs_with_session(session=session),
             "query": message.query,
             "outputs": message.answer,
             "started_at": message.created_at,

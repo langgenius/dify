@@ -1879,10 +1879,14 @@ version = "0.0.1"
 source = { editable = "providers/trace/trace-mlflow" }
 dependencies = [
     { name = "pydantic" },
+    { name = "requests" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic" }]
+requires-dist = [
+    { name = "pydantic" },
+    { name = "requests" },
+]
 
 [[package]]
 name = "dify-trace-opik"

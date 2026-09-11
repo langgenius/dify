@@ -89,7 +89,9 @@ class TencentTraceClient(OtlpTraceClient):
                 "retrieval": "RETRIEVER",
                 "agent": "AGENT",
             }.get(native_type, "TASK"),
-            "gen_ai.is_entry": "true" if span.span_id == completed_trace.root_span_id else "false",
+            "gen_ai.is_entry": "true"
+            if span.span_id == completed_trace.root_span_id and parent_span is None
+            else "false",
             "gen_ai.entity.input": inputs,
             "gen_ai.entity.output": outputs,
             "gen_ai.usage.input_tokens": span.usage.get("prompt_tokens"),
@@ -167,7 +169,13 @@ class TencentTraceClient(OtlpTraceClient):
         metrics: list[Metric] = []
         for span in completed_trace.spans:
             is_message = span.attributes.get("operation_type") == "message" and span.span_type == "operation"
-            if span.span_id == completed_trace.root_span_id and span.started_at and span.ended_at:
+            # Workflow duration remains valid when a Chatflow message is its parent.
+            if (
+                (is_message or span.span_type == "workflow")
+                and span.span_id == completed_trace.root_span_id
+                and span.started_at
+                and span.ended_at
+            ):
                 seconds = (span.ended_at - span.started_at).total_seconds()
                 trace_labels = (
                     {

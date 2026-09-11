@@ -209,6 +209,22 @@ def test_http_errors_and_otlp_partial_acceptance_are_not_success(monkeypatch: py
         OtlpTraceClient("https://provider.example", {}, {}, "").export_trace(make_completed_trace())
 
 
+@pytest.mark.parametrize(("request_timeout", "remaining", "expected"), [(60, 100, 60), (60, 12, 12), (5, 100, 5)])
+def test_http_request_timeout_stays_within_export_deadline(
+    request_timeout: float, remaining: float, expected: float, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("core.ops.provider_export.monotonic", lambda: 100.0)
+    send = Mock(return_value=httpx.Response(200))
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", send)
+    client = TraceProviderHttpClient("https://provider.example", request_timeout=request_timeout)
+    client.deadline = 100 + remaining
+
+    client.request("GET")
+
+    assert send.call_args.kwargs["timeout"] == expected
+    assert client.deadline == 100 + remaining
+
+
 def test_ssrf_clients_close_and_do_not_share_response_cookies(monkeypatch: pytest.MonkeyPatch) -> None:
     received_cookies: list[str | None] = []
     clients: list[httpx.Client] = []

@@ -256,6 +256,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     conversation.id,
                     external_trace_id=application_generate_entity.extras.get("external_trace_id"),
                     session_id=application_generate_entity.extras.get("trace_session_id"),
+                    from_account_id=message.from_account_id,
+                    from_end_user_id=message.from_end_user_id,
                 )
             return conversation, message
         except Exception:

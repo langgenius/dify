@@ -1,4 +1,5 @@
 import gzip
+import logging
 import ssl
 from collections.abc import Callable
 from typing import override
@@ -37,6 +38,63 @@ def test_successful_request(mock_get_client):
     assert response.status_code == 200
     mock_client.build_request.assert_called_once()
     mock_client.send.assert_called_once()
+
+
+@pytest.mark.parametrize("max_retries", [0, 1])
+def test_network_failure_redacts_warning_and_retry_error(
+    max_retries: int, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = "https://user:password@collector.example/api/traces?signature=query-secret#fragment-secret"
+    wire_urls: list[str] = []
+
+    def fail(request: httpx.Request) -> httpx.Response:
+        wire_urls.append(str(request.url))
+        raise httpx.ConnectError(f"Cannot reach {request.url}; auth=exception-secret", request=request)
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _: None)
+    caplog.set_level(logging.WARNING, logger="core.helper.ssrf_proxy")
+    expected_error = httpx.ConnectError if max_retries == 0 else max_retries_exceeded_error
+    with httpx.Client(transport=httpx.MockTransport(fail)) as client, pytest.raises(expected_error) as caught:
+        make_request("POST", url, max_retries=max_retries, http_client=client)
+
+    assert wire_urls == [url] * (max_retries + 1)
+    assert [record.getMessage() for record in caplog.records] == [
+        f"Request to URL https://collector.example/api/traces failed on attempt {attempt}: ConnectError"
+        for attempt in range(1, max_retries + 2)
+    ]
+    if max_retries == 0:
+        assert isinstance(caught.value, httpx.ConnectError)
+        assert str(caught.value.request.url) == url
+    else:
+        assert str(caught.value) == "Reached maximum retries (1) for URL https://collector.example/api/traces"
+
+
+@pytest.mark.parametrize("status_code", [403, 503])
+def test_rejected_request_redacts_status_warning_and_error(
+    status_code: int, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = "https://user:password@collector.example/api/traces?signature=query-secret#fragment-secret"
+    wire_urls: list[str] = []
+
+    def reject(request: httpx.Request) -> httpx.Response:
+        wire_urls.append(str(request.url))
+        return httpx.Response(status_code, headers={"Server": "squid"}, request=request)
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _: None)
+    caplog.set_level(logging.WARNING, logger="core.helper.ssrf_proxy")
+    expected_error = ToolSSRFError if status_code == 403 else max_retries_exceeded_error
+    with httpx.Client(transport=httpx.MockTransport(reject)) as client, pytest.raises(expected_error) as caught:
+        make_request("POST", url, max_retries=1, http_client=client)
+
+    assert wire_urls == [url] * (1 if status_code == 403 else 2)
+    assert "https://collector.example/api/traces" in str(caught.value)
+    output = caplog.text + str(caught.value)
+    for secret in ("user:", "password", "signature", "query-secret", "fragment-secret"):
+        assert secret not in output
+    if status_code == 503:
+        assert [record.getMessage() for record in caplog.records] == [
+            "Received status code 503 for URL https://collector.example/api/traces which is in the force list"
+        ] * 2
 
 
 def test_buffer_response_rejects_encoded_response_before_decoding() -> None:

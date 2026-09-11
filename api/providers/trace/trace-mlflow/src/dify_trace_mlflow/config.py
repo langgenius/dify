@@ -11,6 +11,7 @@ from core.helper.ssl_context import read_tls_files
 from core.ops.provider_config import BaseTracingConfig
 from core.ops.utils import validate_integer_id, validate_url_with_path
 from dify_trace_mlflow.deployment_auth import resolve_aws_credentials, resolve_deployment_auth
+from dify_trace_mlflow.request_auth import capture_request_auth_provider
 
 
 def _load_sampling_ratio() -> float:
@@ -71,6 +72,11 @@ class MLflowConfig(BaseTracingConfig):
         aws_credentials = resolve_aws_credentials(credential_identity=credential_identity)
         if aws_credentials is not None:
             settings["aws_sigv4"] = aws_credentials
+        elif (auth_provider := os.environ.get("MLFLOW_TRACKING_AUTH")) and auth_provider not in {
+            "kubernetes",
+            "kubernetes-namespaced",
+        }:
+            settings["request_auth_provider"] = capture_request_auth_provider(auth_provider)
         if headers := resolve_deployment_auth(
             settings.get("headers", {}),
             aws_sigv4=aws_credentials is not None,

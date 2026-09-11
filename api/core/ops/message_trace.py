@@ -62,6 +62,8 @@ class MessageTraceRecorder:
         *,
         external_trace_id: str | None = None,
         session_id: str | None = None,
+        from_account_id: str | None = None,
+        from_end_user_id: str | None = None,
     ) -> None:
         with self._lock:
             if self._spans or self._closed:
@@ -76,6 +78,7 @@ class MessageTraceRecorder:
                     "session_id": session_id,
                 }
             )
+            self.attributes.update(from_account_id=from_account_id, from_end_user_id=from_end_user_id)
 
     def submit_completed_trace(
         self, completed_trace: CompletedTrace, provider_settings: Sequence[TraceProviderSettings] | None = None
