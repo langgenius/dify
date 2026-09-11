@@ -3815,6 +3815,33 @@ class TestKnowledgeRetrievalRegression:
         assert "dataset_id=dataset-1" in caplog.text
         assert "Skipping dataset retrieval because retriever failed" in caplog.text
 
+    def test_run_retriever_thread_safely_propagates_quota_errors_when_skip_requested(self):
+        from core.errors.error import QuotaExceededError
+
+        dataset_retrieval = DatasetRetrieval()
+        all_documents: list[Document] = []
+        cancel_event = threading.Event()
+        thread_exceptions: list[Exception] = []
+        expected_error = QuotaExceededError("Model quota has been exceeded")
+
+        with patch.object(dataset_retrieval, "_retriever", side_effect=expected_error):
+            dataset_retrieval._run_retriever_thread_safely(
+                flask_app=_FakeFlaskApp(),
+                dataset_id="dataset-1",
+                query="test query",
+                top_k=3,
+                all_documents=all_documents,
+                document_ids_filter=None,
+                metadata_condition=None,
+                attachment_ids=None,
+                cancel_event=cancel_event,
+                thread_exceptions=thread_exceptions,
+                skip_on_error=True,
+            )
+
+        assert cancel_event.is_set()
+        assert thread_exceptions == [expected_error]
+
     def test_multiple_retrieve_thread_skips_failed_dataset(self, mock_dataset, caplog):
         dataset_retrieval = DatasetRetrieval()
         flask_app = Flask(__name__)
