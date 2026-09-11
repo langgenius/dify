@@ -36,13 +36,11 @@ def _localizer(monkeypatch, *, detect="zh-Hans", table=None):
 
     def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
         model.translate_calls += 1
-        # translate every requested source string via the table (default: prefix).
-        # Mirror the REAL model behavior observed in the live stack: it wraps the
-        # mapping under a "strings" key (echoing the request envelope). The
-        # Localizer must unwrap this; a flat fake would hide that bug.
+        # The request is an index->string object ({"0": src0, ...}); reply with an
+        # index-keyed object of translations, matching the hardened protocol.
         import json
-        srcs = json.loads(user)["strings"] if user.strip().startswith("{") else []
-        return {"strings": {s: table.get(s, f"<{s}>") for s in srcs}}
+        req = json.loads(user)
+        return {idx: table.get(src, f"<{src}>") for idx, src in req.items()}
 
     monkeypatch.setattr(mod.llm, "invoke_text", fake_invoke_text)
     monkeypatch.setattr(mod.llm, "invoke_json", fake_invoke_json)
@@ -144,24 +142,65 @@ def test_fill_cache_provider_raising_leaves_strings_untranslated():
     assert out[0].payload["title"] == "Review"
 
 
-def test_unwrap_translation_table():
-    misses = ["Review", "Test run"]
-    flat = {"Review": "评审", "Test run": "测试运行"}
-    # flat mapping: returned as-is
-    assert Localizer._unwrap_translation_table(flat, misses) == flat
-    # wrapped envelope (real model behavior): descend one level
-    wrapped = {"strings": flat}
-    assert Localizer._unwrap_translation_table(wrapped, misses) == flat
-    # differently-named wrapper key still unwraps by content
-    assert Localizer._unwrap_translation_table({"translations": flat}, misses) == flat
-    # non-dict / unrecognizable: returns a dict with no matching keys (safe fallback to English upstream)
-    assert Localizer._unwrap_translation_table([], misses) == {}
+def test_translations_by_index_tolerates_model_shape_variation():
+    n = 2
+    # index-keyed object (the requested shape)
+    assert Localizer._translations_by_index({"0": "评审", "1": "测试运行"}, n) == {0: "评审", 1: "测试运行"}
+    # index object wrapped one level (model echoing an envelope key)
+    wrapped_idx = {"strings": {"0": "评审", "1": "测试运行"}}
+    assert Localizer._translations_by_index(wrapped_idx, n) == {0: "评审", 1: "测试运行"}
+    # positional array
+    assert Localizer._translations_by_index(["评审", "测试运行"], n) == {0: "评审", 1: "测试运行"}
+    # wrapped positional array (differently-named key)
+    assert Localizer._translations_by_index({"translations": ["评审", "测试运行"]}, n) == {0: "评审", 1: "测试运行"}
+    # partial reply: only the present index maps; the missing one is simply absent
+    assert Localizer._translations_by_index({"0": "评审"}, n) == {0: "评审"}
+    # unusable shapes -> empty (caller keeps English, uncached)
+    assert Localizer._translations_by_index("nope", n) == {}
+    assert Localizer._translations_by_index({"weird": 123}, n) == {}
 
 
-def test_localize_translates_when_model_wraps_response(monkeypatch):
-    # End-to-end within the Localizer: the fake now mirrors the real model's
-    # {"strings": {...}} envelope, so this only passes if _fill_cache unwraps it.
-    loc, _ = _localizer(monkeypatch, table={"Let's clarify the requirements.": "让我们明确一下需求。"})
-    items = [ConversationItem(kind="assistant_turn", payload={"reply_text": "Let's clarify the requirements."})]
+def test_localize_translates_when_model_wraps_index_object(monkeypatch):
+    # End-to-end: model wraps an index-keyed map under a key; localize must still translate.
+    from services.dify_builder.agent import localize as mod
+
+    def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
+        return "zh-Hans"
+
+    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+        import json
+        req = json.loads(user)
+        return {"strings": {idx: ("评审" if src == "Review" else "<" + src + ">") for idx, src in req.items()}}
+
+    monkeypatch.setattr(mod.llm, "invoke_text", fake_invoke_text)
+    monkeypatch.setattr(mod.llm, "invoke_json", fake_invoke_json)
+    loc = Localizer(lambda: object())
+    items = [ConversationItem(kind="summary", payload={"title": "Review"})]
     out = loc.localize_items(items, "zh-Hans")
-    assert out[0].payload["reply_text"] == "让我们明确一下需求。"
+    assert out[0].payload["title"] == "评审"
+
+
+def test_localize_does_not_cache_failures_and_retries(monkeypatch):
+    # A model that returns nothing usable must NOT poison the cache with the English
+    # original; a later turn re-invokes the model (self-heal) instead of sticking.
+    from services.dify_builder.agent import localize as mod
+
+    calls = {"n": 0}
+
+    def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
+        return "zh-Hans"
+
+    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+        calls["n"] += 1
+        return {}  # unusable / no translations
+
+    monkeypatch.setattr(mod.llm, "invoke_text", fake_invoke_text)
+    monkeypatch.setattr(mod.llm, "invoke_json", fake_invoke_json)
+    loc = Localizer(lambda: object())
+
+    out1 = loc.localize_items([ConversationItem(kind="summary", payload={"title": "Review"})], "zh-Hans")
+    assert out1[0].payload["title"] == "Review"  # kept English (no translation available)
+    assert ("Review", "zh-Hans") not in mod._TRANSLATION_CACHE  # failure NOT cached
+
+    loc.localize_items([ConversationItem(kind="summary", payload={"title": "Review"})], "zh-Hans")
+    assert calls["n"] == 2  # re-invoked on the next turn (self-heal), not stuck on cached English
