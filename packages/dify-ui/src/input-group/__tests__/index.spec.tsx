@@ -148,3 +148,45 @@ describe('InputGroup', () => {
     await expect.element(addonButton).toHaveFocus()
   })
 })
+
+describe('Invalid focus colors', () => {
+  it.each(['light', 'dark'])(
+    'preserves error colors through keyboard and pointer focus in %s',
+    async (theme) => {
+      const previousTheme = document.documentElement.dataset.theme
+      document.documentElement.dataset.theme = theme
+      try {
+        const screen = await render(
+          <>
+            <Button>Before</Button>
+            <Field invalid>
+              <FieldLabel>Invalid value</FieldLabel>
+              <InputGroup data-testid="invalid-surface">
+                <InputGroupInput defaultValue="Invalid value" />
+                <InputGroupAddon>suffix</InputGroupAddon>
+              </InputGroup>
+            </Field>
+          </>,
+        )
+        const input = screen.getByRole('textbox', { name: 'Invalid value' })
+        const surface = screen.getByTestId('invalid-surface').element()
+        const colors = () => {
+          const style = getComputedStyle(surface)
+          return [style.borderTopColor, style.backgroundColor]
+        }
+        const restingColors = colors()
+        const restingShadow = getComputedStyle(surface).boxShadow
+        await screen.getByRole('button', { name: 'Before' }).click()
+        await userEvent.keyboard('{Tab}')
+        await expect.element(input).toHaveFocus()
+        await expect.element(input).toHaveAttribute('aria-invalid', 'true')
+        await expect.poll(colors).toEqual(restingColors)
+        await expect.poll(() => getComputedStyle(surface).boxShadow).not.toBe(restingShadow)
+        await input.click()
+        await expect.poll(colors).toEqual(restingColors)
+      } finally {
+        document.documentElement.dataset.theme = previousTheme
+      }
+    },
+  )
+})

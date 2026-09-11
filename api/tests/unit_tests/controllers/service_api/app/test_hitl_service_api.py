@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import services.app_generate_service as ags_module
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
+from core.app.apps.advanced_chat.generate_task_pipeline import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from core.app.apps.common import workflow_response_converter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
@@ -42,10 +43,10 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import to_utc_timestamp
 from models.account import Account
-from models.enums import CreatorUserRole, MessageStatus
+from models.enums import CreatorUserRole, EndUserType, MessageStatus
 from models.human_input import HumanInputForm
-from models.model import AppMode
-from models.workflow import WorkflowRun
+from models.model import App, AppMode, EndUser
+from models.workflow import Workflow, WorkflowRun, WorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
@@ -82,6 +83,47 @@ def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_eng
     )
     monkeypatch.setattr(workflow_events_module, "db", SimpleNamespace(engine=sqlite_engine))
     return workflow_events_module
+
+
+def _app(*, app_id: str = "app-1", tenant_id: str = "tenant-1", mode: AppMode = AppMode.WORKFLOW) -> App:
+    return App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name="Service API app",
+        description="",
+        mode=mode,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
+    )
+
+
+def _end_user(*, user_id: str = "end-user-1", app_id: str = "app-1", tenant_id: str = "tenant-1") -> EndUser:
+    return EndUser(
+        id=user_id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        type=EndUserType.SERVICE_API,
+        external_user_id="external-user-1",
+        name="Service API user",
+        session_id="session-1",
+    )
+
+
+def _workflow(*, workflow_id: str = "workflow-id", app_id: str = "app-id", tenant_id: str = "tenant-id") -> Workflow:
+    return Workflow(
+        id=workflow_id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        type=WorkflowType.WORKFLOW,
+        version="1",
+        graph=json.dumps({"nodes": [], "edges": []}),
+        features="{}",
+        created_by="owner-id",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
 
 
 def _persist_human_input_form(
@@ -288,13 +330,8 @@ class TestHitlServiceApi:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ) -> None:
-        workflow_run = SimpleNamespace(
-            id="run-1",
-            app_id="app-1",
-            created_by_role=CreatorUserRole.END_USER,
-            created_by="end-user-1",
-            finished_at=None,
-        )
+        workflow_run = _build_workflow_run(WorkflowExecutionStatus.RUNNING)
+        workflow_run.created_by = "end-user-1"
         workflow_events_module = _mock_repo_for_run(
             monkeypatch,
             workflow_run=workflow_run,
@@ -309,8 +346,8 @@ class TestHitlServiceApi:
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        end_user = SimpleNamespace(id="end-user-1")
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context("/workflow/run-1/events?user=u1&continue_on_pause=true", method="GET"):
             response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
@@ -329,13 +366,8 @@ class TestHitlServiceApi:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ) -> None:
-        workflow_run = SimpleNamespace(
-            id="run-1",
-            app_id="app-1",
-            created_by_role=CreatorUserRole.END_USER,
-            created_by="end-user-1",
-            finished_at=None,
-        )
+        workflow_run = _build_workflow_run(WorkflowExecutionStatus.RUNNING)
+        workflow_run.created_by = "end-user-1"
         workflow_events_module = _mock_repo_for_run(
             monkeypatch,
             workflow_run=workflow_run,
@@ -351,8 +383,8 @@ class TestHitlServiceApi:
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        end_user = SimpleNamespace(id="end-user-1")
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/workflow/run-1/events?user=u1&include_state_snapshot=true&continue_on_pause=true",
@@ -384,8 +416,7 @@ class TestHitlServiceApi:
         apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(ags_module, "RateLimit", _DummyRateLimit)
 
-        workflow = MagicMock()
-        workflow.created_by = "owner-id"
+        workflow = _workflow()
         monkeypatch.setattr(AppGenerateService, "_get_workflow", lambda *args, **kwargs: workflow)
         sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         monkeypatch.setattr(ags_module.session_factory, "get_session_maker", lambda: sqlite_session_maker)
@@ -395,16 +426,8 @@ class TestHitlServiceApi:
         generator_instance.convert_to_event_stream.side_effect = lambda payload: payload
         monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", lambda: generator_instance)
 
-        app_model = MagicMock()
-        app_model.mode = AppMode.ADVANCED_CHAT
-        app_model.id = "app-id"
-        app_model.tenant_id = "tenant-id"
-        app_model.max_active_requests = 0
-        app_model.is_agent = False
-        app_model.is_agent_with_session.return_value = False
-
-        user = MagicMock()
-        user.id = "user-id"
+        app_model = _app(app_id="app-id", tenant_id="tenant-id", mode=AppMode.ADVANCED_CHAT)
+        user = _end_user(user_id="user-id", app_id="app-id", tenant_id="tenant-id")
 
         with sqlite_session_maker() as session:
             result = AppGenerateService.generate(
@@ -456,7 +479,6 @@ class TestHitlServiceApi:
     def test_advanced_chat_blocking_pipeline_pause_payload_contract(self) -> None:
         from core.app.app_config.entities import AppAdditionalFeatures
         from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
-        from models.model import EndUser
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -481,17 +503,17 @@ class TestHitlServiceApi:
         )
         pipeline = AdvancedChatAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
-            workflow=SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={}),
+            workflow=WorkflowSnapshot(id="workflow-id", tenant_id="tenant", features_dict={}),
             queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
-            conversation=SimpleNamespace(id="conv-id", mode=AppMode.ADVANCED_CHAT),
-            message=SimpleNamespace(
+            conversation=ConversationSnapshot(id="conv-id", mode=AppMode.ADVANCED_CHAT),
+            message=MessageSnapshot(
                 id="message-id",
                 query="hello",
                 created_at=datetime.utcnow(),
                 status=MessageStatus.NORMAL,
                 answer="",
             ),
-            user=EndUser(tenant_id="tenant", type="session", name="tester", session_id="session"),
+            user=_end_user(user_id="user", app_id="app", tenant_id="tenant"),
             stream=False,
             dialogue_count=1,
             draft_var_saver_factory=lambda **kwargs: None,
@@ -574,9 +596,9 @@ class TestHitlServiceApi:
         )
         pipeline = WorkflowAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
-            workflow=SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={}),
+            workflow=_workflow(workflow_id="workflow-id", app_id="app", tenant_id="tenant"),
             queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
-            user=SimpleNamespace(id="user", session_id="session"),
+            user=_end_user(user_id="user", app_id="app", tenant_id="tenant"),
             stream=False,
             draft_var_saver_factory=lambda **kwargs: None,
         )

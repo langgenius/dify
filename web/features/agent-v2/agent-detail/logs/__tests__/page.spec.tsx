@@ -4,7 +4,7 @@ import type {
   AgentLogSourceListResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
@@ -329,6 +329,15 @@ describe('AgentLogsPage', () => {
 
       renderPage()
 
+      const createdHeader = screen.getByRole('columnheader', {
+        name: 'agentV2.agentDetail.logs.table.createdTime',
+      })
+      const updatedHeader = screen.getByRole('columnheader', {
+        name: 'agentV2.agentDetail.logs.table.updatedTime',
+      })
+      expect(createdHeader).toHaveAttribute('aria-sort', 'descending')
+      expect(updatedHeader).not.toHaveAttribute('aria-sort')
+
       await user.click(screen.getByRole('button', { name: /appLog\.filter\.sortBy/ }))
       await user.click(
         await screen.findByRole('menuitemradio', {
@@ -345,6 +354,9 @@ describe('AgentLogsPage', () => {
         )
       })
 
+      expect(createdHeader).not.toHaveAttribute('aria-sort')
+      expect(updatedHeader).toHaveAttribute('aria-sort', 'descending')
+
       await user.click(screen.getByRole('button', { name: 'appLog.filter.ascending' }))
 
       await waitFor(() => {
@@ -355,6 +367,33 @@ describe('AgentLogsPage', () => {
           }),
         )
       })
+      expect(createdHeader).not.toHaveAttribute('aria-sort')
+      expect(updatedHeader).toHaveAttribute('aria-sort', 'ascending')
+    })
+
+    it('should expose unread status in the matching log row', async () => {
+      const readLog = populatedLogsResponse.data[0]!
+      mocks.logsQueryFn.mockResolvedValue({
+        ...populatedLogsResponse,
+        data: [
+          readLog,
+          { ...readLog, id: 'unread-log', title: 'Unread conversation', unread: true },
+        ],
+        total: 2,
+      })
+
+      renderPage()
+
+      const unreadRow = await screen.findByRole('row', { name: /Unread conversation/ })
+      const readRow = screen.getByRole('row', { name: /Previous conversation/ })
+      expect(
+        within(unreadRow).getByRole('cell', {
+          name: 'agentV2.agentDetail.logs.table.unread',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        within(readRow).queryByText('agentV2.agentDetail.logs.table.unread'),
+      ).not.toBeInTheDocument()
     })
 
     it('should keep existing log rows visible while filter changes refetch', async () => {
