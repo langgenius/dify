@@ -155,7 +155,7 @@ def test_sigv4_signs_verification_otlp_and_artifacts_with_owned_captured_credent
         second.verify_credentials()
     second.verify_credentials()
     second._upload_mlflow_artifact("https://artifacts.example/trace?signature=own", b"{}")
-    for index, request in enumerate(requests[:-1]):
+    for index, request in enumerate(requests):
         owner = "first" if index in {0, 4} else "second"
         check_signature(request, owner, "us-east-1" if owner == "first" else "eu-west-1")
         assert request.headers["X-MLFLOW-WORKSPACE"] == f"{owner}-workspace"
@@ -164,10 +164,7 @@ def test_sigv4_signs_verification_otlp_and_artifacts_with_owned_captured_credent
     assert requests[3].content
     assert requests[4].method == "PUT"
     assert requests[-3].headers["X-Amz-Date"] != requests[-2].headers["X-Amz-Date"]
-    assert not any(
-        name.lower().startswith("x-amz-") or name.lower() == "authorization" for name in requests[-1].headers
-    )
-    assert "X-MLFLOW-WORKSPACE" not in requests[-1].headers
+    assert requests[-1].url.host == "artifacts.example"
 
     request_barrier = Barrier(2)
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -179,6 +176,22 @@ def test_sigv4_signs_verification_otlp_and_artifacts_with_owned_captured_credent
     }
     for request in requests[-2:]:
         owner = request.headers["X-MLFLOW-WORKSPACE"].removesuffix("-workspace")
+        check_signature(request, owner, "us-east-1" if owner == "first" else "eu-west-1")
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        calls = [
+            executor.submit(client._upload_mlflow_artifact, f"https://{owner}.artifacts.example/trace", b"{}")
+            for owner, client in (("first", first), ("second", second))
+        ]
+        for call in calls:
+            call.result(timeout=10)
+    assert {request.headers["X-MLFLOW-WORKSPACE"] for request in requests[-2:]} == {
+        "first-workspace",
+        "second-workspace",
+    }
+    for request in requests[-2:]:
+        owner = request.headers["X-MLFLOW-WORKSPACE"].removesuffix("-workspace")
+        assert request.url.host == f"{owner}.artifacts.example"
         check_signature(request, owner, "us-east-1" if owner == "first" else "eu-west-1")
     assert "first-token" not in caplog.text
     assert "second-secret" not in caplog.text

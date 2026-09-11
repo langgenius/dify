@@ -172,11 +172,7 @@ class MLflowTraceClient:
                 else create_ssl_context({}),
             )
         else:
-            self._artifact_tls = {
-                key: value
-                for key, value in runtime_settings.get("tls", {}).items()
-                if key in {"certificate", "certificate_directory"}
-            }
+            self._artifact_tls = dict(runtime_settings.get("tls", {}))
             self._artifact_verify = runtime_settings.get("verify", True)
             self._artifact_tls_read_failed = runtime_settings.get("artifact_tls_read_failed", False)
             headers = {
@@ -623,8 +619,9 @@ class MLflowTraceClient:
         if artifact.scheme not in {"http", "https"}:
             # ponytail: HTTP-served artifacts only; direct stores need explicit destination credentials and bounds.
             raise TraceExportError("mlflow_artifact_requires_http")
-        # Only the configured tracking origin receives its credentials. Separate
-        # artifact servers must authorize their own URL, never inherit the API key.
+        # MLflow's authenticated tracker authorizes this artifact destination.
+        # Its HTTP artifact protocol uses the operation's MLflow credentials,
+        # unlike Databricks signed uploads, which provide their own headers.
         same_origin = (
             artifact.scheme,
             artifact.hostname,
@@ -634,7 +631,15 @@ class MLflowTraceClient:
             tracking.hostname,
             tracking.port if tracking.port is not None else (443 if tracking.scheme == "https" else 80),
         )
-        headers = self.http.headers if same_origin else {}
+        headers = (
+            self.http.headers
+            if same_origin
+            else {
+                key: value
+                for key, value in self.http.headers.items()
+                if key.lower() in {"authorization", "x-mlflow-workspace"}
+            }
+        )
         ssl_context = self.http.ssl_context if same_origin else None
         if not same_origin and artifact.scheme == "https":
             if self._artifact_tls_read_failed:
@@ -644,7 +649,7 @@ class MLflowTraceClient:
             urlunsplit(artifact._replace(path=artifact.path.rstrip("/") + "/traces.json")),
             headers,
             ssl_context=ssl_context,
-            aws_sigv4=self._aws_sigv4 if same_origin else None,
+            aws_sigv4=self._aws_sigv4,
         )
         client.deadline = self.http.deadline
         client.request("PUT", content=trace_json, headers={"Content-Type": "application/json"})
