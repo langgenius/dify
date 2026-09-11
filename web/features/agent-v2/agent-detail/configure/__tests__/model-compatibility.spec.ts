@@ -177,12 +177,23 @@ describe('isAgentCompatibleModel', () => {
   it('should use declared function-calling capability for customizable models', () => {
     const provider = createModel('openai-api-compatible')
 
+    // Regression: customizable qwen-max must not be blocked by the predefined
+    // family blacklist when tool-call is declared (#42092 / #39623).
     expect(
       isAgentCompatibleModel(
         provider,
         createModelItem('qwen-max', {
           fetch_from: ConfigurationMethodEnum.customizableModel,
           features: [ModelFeatureEnum.toolCall],
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      isAgentCompatibleModel(
+        provider,
+        createModelItemWithLabel('custom-id', 'gpt-4o', {
+          fetch_from: ConfigurationMethodEnum.customizableModel,
+          features: [ModelFeatureEnum.multiToolCall],
         }),
       ),
     ).toBe(true)
