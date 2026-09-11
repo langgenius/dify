@@ -3,7 +3,7 @@ from unittest import mock
 from core.rag.extractor import notion_extractor
 
 
-def _mock_response(data):
+def _mock_response(data: dict[str, object]) -> mock.Mock:
     response = mock.Mock()
     response.status_code = 200
     response.text = ""
@@ -21,7 +21,7 @@ def _extractor() -> notion_extractor.NotionExtractor:
     )
 
 
-def _mixed_rich_text():
+def _mixed_rich_text() -> list[dict[str, object]]:
     return [
         {"type": "text", "plain_text": "See ", "text": {"content": "See "}},
         {
@@ -33,7 +33,7 @@ def _mixed_rich_text():
     ]
 
 
-def _paragraph_payload():
+def _paragraph_payload() -> dict[str, object]:
     return {
         "results": [
             {
@@ -47,7 +47,7 @@ def _paragraph_payload():
     }
 
 
-def test_get_notion_block_data_preserves_mentions_and_equations():
+def test_get_notion_block_data_preserves_mentions_and_equations() -> None:
     extractor = _extractor()
 
     with mock.patch("httpx.request", return_value=_mock_response(_paragraph_payload())):
@@ -56,7 +56,7 @@ def test_get_notion_block_data_preserves_mentions_and_equations():
     assert lines == ["See \nProject Alpha\nE = mc^2\n\n"]
 
 
-def test_read_block_preserves_mentions_and_equations():
+def test_read_block_preserves_mentions_and_equations() -> None:
     extractor = _extractor()
 
     with mock.patch("httpx.request", return_value=_mock_response(_paragraph_payload())):
