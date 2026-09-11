@@ -86,6 +86,7 @@ __all__ = [
     "is_input_failure",
     "merge_known_keys",
     "mint_checkpoint",
+    "model_config_error_text",
     "perform_revert",
     "start_schema",
     "testdata_form_fields",
@@ -277,6 +278,36 @@ def is_input_failure(run: Run) -> bool:
         if any(sig in low for sig in _INPUT_FAILURE_SIGNALS):
             return True
     return False
+
+
+def model_config_error_text(run: Run) -> str | None:
+    """The first failed-node / launch error that looks like a MODEL-CONFIGURATION
+    failure -- the workflow references a model that isn't configured or available
+    for the workspace (e.g. ``ModelNotExistError``, "Model X does not exist",
+    "Provider X does not exist", a provider/credentials error). Returns the
+    offending error text, or None.
+
+    Such a failure is NOT a workflow-logic bug: diagnosing/repairing the graph
+    just thrashes (proposing if-else / extra nodes that can't help), so the flow
+    surfaces it to the human instead. Matching pairs an existence/credential
+    signal with a model/provider/credential token, so an unrelated
+    "<node> does not exist" fault is not swallowed.
+    """
+    texts = [n.error for n in run.per_node if n.status == "failed" and n.error]
+    if run.error:
+        texts.append(run.error)
+    for text in texts:
+        low = text.lower()
+        if "modelnotexist" in low:  # the ModelNotExistError class name
+            return text
+        has_model_ctx = "model" in low or "provider" in low or "credential" in low
+        if not has_model_ctx:
+            continue
+        if "does not exist" in low or "not exist" in low or "not found" in low or "not configured" in low:
+            return text
+        if "credential" in low:  # missing / invalid model credentials
+            return text
+    return None
 
 
 def testdata_form_fields(schema: StartSchema) -> list[FormField]:
