@@ -106,9 +106,16 @@ function DataSources({
     ],
   )
   const { data: marketplacePluginsData } = useMarketplacePlugins(marketplaceSearchParams)
+  const installedPluginIds = useMemo(
+    () => new Set(dataSources.map((provider) => provider.plugin_id || provider.id)),
+    [dataSources],
+  )
   const notInstalledPlugins = useMemo(
-    () => marketplacePluginsData?.pages.flatMap((page) => page.plugins) ?? [],
-    [marketplacePluginsData?.pages],
+    () =>
+      marketplacePluginsData?.pages.flatMap((page) =>
+        page.plugins.filter((plugin) => !installedPluginIds.has(plugin.plugin_id)),
+      ) ?? [],
+    [installedPluginIds, marketplacePluginsData?.pages],
   )
 
   return (
