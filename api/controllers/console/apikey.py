@@ -21,6 +21,7 @@ from models import Account
 from models.dataset import Dataset
 from models.enums import ApiTokenType
 from models.model import ApiToken, App
+from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache
 from services.app_service import AppService
 
@@ -320,6 +321,9 @@ class AppApiKeyResource(BaseApiKeyResource):
 # The per-dataset routes below remain for callers that key an API token to a single dataset.
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys")
 class DatasetApiKeyListResource(BaseApiKeyListResource):
+    max_keys = 10
+    token_prefix = "ds-"
+
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get all API keys for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
@@ -330,10 +334,11 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
         """Get all API keys for a dataset"""
-        return dump_response(
-            ApiKeyList,
-            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),  # pyrefly: ignore[unnecessary-type-conversion]
-        )
+        dataset_id = str(resource_id)
+        _get_resource(dataset_id, current_tenant_id, Dataset, session=session)
+        keys = dataset_api_key_service.list_keys_for_dataset(session, current_tenant_id, dataset_id)
+        bindings_by_token = dataset_api_key_service.list_bindings_by_token(session, [str(key.id) for key in keys])
+        return dump_response(ApiKeyList, build_masked_api_key_list(keys, bindings_by_token))
 
     @console_ns.doc("create_dataset_api_key")
     @console_ns.doc(description="Create a new API key for a dataset")
@@ -346,19 +351,31 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @with_session
     def post(self, session: Session, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
         """Create a new API key for a dataset"""
-        return dump_response(
-            ApiKeyItem,
-            self._create_api_key(str(resource_id), current_tenant_id, session=session),  # pyrefly: ignore[unnecessary-type-conversion]
-        ), 201
-
-    resource_type = ApiTokenType.DATASET
-    resource_model = Dataset
-    resource_id_field = "dataset_id"
-    token_prefix = "ds-"
+        dataset_id = str(resource_id)
+        _get_resource(dataset_id, current_tenant_id, Dataset, session=session)
+        try:
+            api_token = dataset_api_key_service.create_key_for_dataset(
+                session,
+                current_tenant_id,
+                dataset_id,
+                token_prefix=self.token_prefix,
+                max_keys=self.max_keys,
+            )
+        except ValueError as error:
+            flask_restx.abort(
+                HTTPStatus.BAD_REQUEST,
+                message=str(error),
+                custom="max_keys_exceeded",
+            )
+        item = ApiKeyItem.model_validate(api_token, from_attributes=True)
+        item.dataset_ids = [dataset_id]
+        return dump_response(ApiKeyItem, item), 201
 
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
 class DatasetApiKeyResource(BaseApiKeyResource):
+    resource_type = ApiTokenType.DATASET
+
     @console_ns.doc("delete_dataset_api_key")
     @console_ns.doc(description="Delete an API key for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
@@ -376,15 +393,25 @@ class DatasetApiKeyResource(BaseApiKeyResource):
         api_key_id: UUID,
     ) -> tuple[str, int]:
         """Delete an API key for a dataset"""
-        self._delete_api_key(
-            str(resource_id),  # pyrefly: ignore[unnecessary-type-conversion]
-            str(api_key_id),
-            current_tenant_id,
-            current_user,
-            session=session,
-        )
-        return "", 204
+        dataset_id = str(resource_id)
+        api_key_id_str = str(api_key_id)
+        _get_resource(dataset_id, current_tenant_id, Dataset, session=session)
 
-    resource_type = ApiTokenType.DATASET
-    resource_model = Dataset
-    resource_id_field = "dataset_id"
+        if not dify_config.RBAC_ENABLED and not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        key = session.scalar(
+            select(ApiToken)
+            .where(
+                ApiToken.tenant_id == current_tenant_id,
+                ApiToken.type == self.resource_type,
+                ApiToken.id == api_key_id_str,
+            )
+            .limit(1)
+        )
+        if key is None or not dataset_api_key_service.key_can_access_dataset(session, api_key_id_str, dataset_id):
+            flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
+
+        ApiTokenCache.delete(key.token, key.type)
+        session.delete(key)
+        return "", 204
