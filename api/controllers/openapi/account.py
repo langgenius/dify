@@ -36,7 +36,6 @@ class AccountApi(Resource):
     @endpoint(
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         returns=(200, AccountResponse, "Account info"),
-        write=False,
     )
     def get(self, ctx: Context):
         request_context = _request_context(ctx)
@@ -72,7 +71,6 @@ class AccountSessionsApi(Resource):
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         query=SessionListQuery,
         returns=(200, SessionListResponse, "Session list"),
-        write=False,
     )
     def get(self, ctx: Context, *, query: SessionListQuery):
         page = application_services().accounts.access.list_sessions(

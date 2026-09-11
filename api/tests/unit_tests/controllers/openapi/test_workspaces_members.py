@@ -406,12 +406,10 @@ def test_invite_commits_the_invitation(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """The one route where a wrong `write=` is silent data loss rather than a
-    wrong status: `RegisterService.invite_new_member` carries no commit of its
-    own, so the invitation persists only because the route declares `write=True`
-    and the router commits the request's session. The double stands in for that
-    contract — it writes through the session it is handed and returns a token —
-    so this fails if the route ever declares `write=False`.
+    """`RegisterService.invite_new_member` carries no commit of its own, so the
+    invitation persists only because the router commits the request's session.
+    The double stands in for that contract — it writes through the session it
+    is handed and returns a token — so this fails if the router stops committing.
     """
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()

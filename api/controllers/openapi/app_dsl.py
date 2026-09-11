@@ -55,7 +55,6 @@ class AppDslImportApi(Resource):
             (202, Import, "Import pending confirmation"),
             (400, Import, "Import failed"),
         ),
-        write=False,
     )
     def post(self, ctx: Context, workspace_id: str, *, body: AppDslImportPayload):
         account = ctx.account
@@ -112,7 +111,6 @@ class AppDslImportConfirmApi(Resource):
             CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
         ),
         returns=((200, Import, "Import confirmed"), (400, Import, "Import failed")),
-        write=False,
     )
     def post(self, ctx: Context, workspace_id: str, import_id: str):
         account = ctx.account
@@ -157,7 +155,6 @@ class AppDslExportApi(Resource):
         ),
         query=AppDslExportQuery,
         returns=(200, AppDslExportResponse, "Export successful"),
-        write=False,
     )
     def get(self, ctx: Context, app_id: str, *, query: AppDslExportQuery):
         try:
@@ -192,7 +189,6 @@ class AppDslCheckDependenciesApi(Resource):
             CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
         ),
         returns=(200, CheckDependenciesResult, "Dependencies checked"),
-        write=False,
     )
     def get(self, ctx: Context, app_id: str):
         with Session(db.engine, expire_on_commit=False) as session:

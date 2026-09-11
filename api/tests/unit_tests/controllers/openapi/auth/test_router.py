@@ -60,9 +60,8 @@ def _guard(
     *,
     requirements: tuple[Requirement, ...] = (),
     edition: frozenset[DeploymentEdition] | None = None,
-    write: bool = True,
 ) -> Callable[..., object]:
-    return subject_router.guard(EndpointSpec(requirements=requirements, edition=edition, write=write))(view)
+    return subject_router.guard(EndpointSpec(requirements=requirements, edition=edition))(view)
 
 
 def _nothing(**_kwargs: object) -> None:
@@ -319,7 +318,7 @@ def _rename_handler(*, ctx: Context) -> str:
     return "ok"
 
 
-def test_write_true_by_default_commits_a_mutation_on_success(
+def test_a_mutation_is_committed_when_the_view_returns(
     app: Flask,
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -339,7 +338,12 @@ def test_write_true_by_default_commits_a_mutation_on_success(
         assert renamed.name == "renamed"
 
 
-def test_write_false_does_not_persist_a_mutation(
+def _rename_then_fail(*, ctx: Context) -> str:
+    _rename_handler(ctx=ctx)
+    raise RuntimeError("after the write")
+
+
+def test_a_mutation_is_rolled_back_when_the_view_raises(
     app: Flask,
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -348,10 +352,11 @@ def test_write_false_does_not_persist_a_mutation(
     persist(sqlite_session, make_account())
     _authenticates(monkeypatch, make_auth(TokenType.OAUTH_ACCOUNT))
     monkeypatch.setattr(MOUNT, lambda _user: None)
-    view = _guard(_rename_handler, write=False)
+    view = _guard(_rename_then_fail)
 
     with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
-        view()
+        with pytest.raises(RuntimeError, match="after the write"):
+            view()
 
     with sqlite_session_factory() as verify:
         unchanged = verify.get(Account, ACCOUNT_ID)

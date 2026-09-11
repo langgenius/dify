@@ -112,7 +112,6 @@ class AppDescribeApi(Resource):
         ),
         query=AppDescribeQuery,
         returns=(200, AppDescribeResponse, "App description"),
-        write=False,
     )
     def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
         # The pipeline has already loaded the app; project it.
@@ -129,7 +128,6 @@ class AppListApi(Resource):
         ),
         query=AppListQuery,
         returns=(200, AppListResponse, "App list"),
-        write=False,
     )
     def get(self, ctx: Context, *, query: AppListQuery):
         workspace_id = query.workspace_id

@@ -63,7 +63,6 @@ class OpenApiWorkflowEventsApi(Resource):
             CheckAppAccess(),
         ),
         returns=(200, EventStreamResponse, "SSE event stream"),
-        write=False,
     )
     def get(self, ctx: Context, app_id: str, task_id: str):
         # The router's session closes as soon as this returns, so everything the SSE

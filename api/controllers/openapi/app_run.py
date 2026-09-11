@@ -205,7 +205,6 @@ class AppRunTaskStopApi(Resource):
             CheckAppAccess(),
         ),
         returns=(200, TaskStopResponse, "Task stopped"),
-        write=False,
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
         AppQueueManager.set_stop_flag_no_user_check(task_id)

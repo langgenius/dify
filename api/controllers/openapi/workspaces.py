@@ -90,7 +90,6 @@ class WorkspacesApi(Resource):
     @endpoint(
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
         returns=(200, WorkspaceListResponse, "Workspace list"),
-        write=False,
     )
     def get(self, ctx: Context):
         rows = TenantService.get_workspaces_for_account(str(ctx.subject.account_id), session=ctx.session)
@@ -103,7 +102,6 @@ class WorkspaceByIdApi(Resource):
     @endpoint(
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
         returns=(200, WorkspaceDetailResponse, "Workspace detail"),
-        write=False,
     )
     def get(self, ctx: Context, workspace_id: str):
         row = TenantService.find_workspace_for_account(str(ctx.subject.account_id), workspace_id, session=ctx.session)
@@ -160,7 +158,6 @@ class WorkspaceMembersApi(Resource):
         ),
         query=MemberListQuery,
         returns=(200, MemberListResponse, "Member list"),
-        write=False,
     )
     def get(self, ctx: Context, workspace_id: str, *, query: MemberListQuery):
         members = TenantService.get_tenant_members(ctx.workspace, session=ctx.session)
