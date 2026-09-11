@@ -703,7 +703,8 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     )
     export_format = next(param for param in export["parameters"] if param["name"] == "format")
     assert set(export_format["schema"]["enum"]) == {"yaml", "ifpkg"}
-    assert export_format["schema"]["default"] == "yaml"
+    assert export_format["schema"].get("default") is None
+    assert "defaults to ifpkg for Agent Apps and yaml for other Apps" in export_format["description"]
 
     api_key_auth_binding_schema = _request_schema(paths["/api-key-auth/data-source/binding"]["post"])
     assert api_key_auth_binding_schema["$ref"] == "#/components/schemas/ApiKeyAuthBindingPayload"
