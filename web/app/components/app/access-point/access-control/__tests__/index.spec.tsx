@@ -38,8 +38,6 @@ const accessControlTranslations = vi.hoisted(() => ({
   'studio.accessControl.applyToHelp': 'Choose which access points to protect.',
   'studio.accessControl.applyToHelpSelected': 'Choose which access points this policy protects.',
   'studio.accessControl.createIpPolicy': 'Create an IP policy',
-  'studio.accessControl.emptyPoliciesDescription':
-    'A policy is the list of IP addresses allowed in. Create one, then come back to apply it here.',
   'studio.accessControl.emptyPoliciesTitle': 'No IP policies in this workspace yet',
   'studio.accessControl.chipOff': 'Off',
   'studio.accessControl.chipOn': 'ON',
@@ -235,10 +233,10 @@ describe('AccessControlEntry', () => {
 
     expect(screen.getByText('No IP policies in this workspace yet')).toBeInTheDocument()
     expect(
-      screen.getByText(
+      screen.queryByText(
         'A policy is the list of IP addresses allowed in. Create one, then come back to apply it here.',
       ),
-    ).toBeInTheDocument()
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(screen.getByRole('switch', { name: 'Web App' })).not.toHaveAttribute(

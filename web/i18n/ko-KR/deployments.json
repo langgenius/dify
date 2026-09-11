@@ -41,7 +41,6 @@
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} of {{m}}",
   "studio.accessControl.createIpPolicy": "Create an IP policy",
-  "studio.accessControl.emptyPoliciesDescription": "A policy is the list of IP addresses allowed in. Create one, then come back to apply it here.",
   "studio.accessControl.emptyPoliciesTitle": "No IP policies in this workspace yet",
   "studio.accessControl.entryLabel": "Access Control",
   "studio.accessControl.excluded": "Excluded",
