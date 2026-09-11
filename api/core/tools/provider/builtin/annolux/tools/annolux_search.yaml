@@ -1,0 +1,46 @@
+identity:
+  name: annolux_search
+  author: Annolux
+  label:
+    en_US: Annolux Web Search
+    zh_Hans: Annolux 网页搜索
+description:
+  human:
+    en_US: Search curated English and Chinese technical corpus with explicit snapshot timestamps.
+    zh_Hans: 检索精选中英双语高信噪比网页，返回带快照时间戳的准确知识。
+  llm: A curated web search tool for technical documentation, developer topics, and real-time facts with explicit fetched_at dates.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 搜索词
+    human_description:
+      en_US: Natural language search query
+      zh_Hans: 自然语言检索词
+    llm_description: The search query to look up on the web.
+    form: llm
+  - name: limit
+    type: number
+    required: false
+    default: 5
+    min: 1
+    max: 10
+    label:
+      en_US: Result Limit
+      zh_Hans: 返回条数
+    human_description:
+      en_US: Number of results to return (1-10)
+      zh_Hans: 返回结果最大数量（1至10）
+    form: form
+  - name: domains
+    type: string
+    required: false
+    label:
+      en_US: Domain Filter
+      zh_Hans: 域名过滤
+    human_description:
+      en_US: Comma-separated list of domains to filter (e.g. docs.rs, go.dev)
+      zh_Hans: 逗号分隔的域名白名单过滤（如 docs.rs, go.dev）
+    form: form

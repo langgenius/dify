@@ -1,0 +1,23 @@
+identity:
+  name: annolux
+  author: Annolux
+  label:
+    en_US: Annolux Search
+    zh_Hans: Annolux 搜索
+  description:
+    en_US: Curated English and Chinese technical search with verified snapshot timestamps for AI Agents.
+    zh_Hans: 面向 AI Agent 与 RAG 的中英双语精选搜索，带显式 fetched_at 快照时间戳。
+  icon: _assets/icon.svg
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Key
+      zh_Hans: API 密钥
+    placeholder:
+      en_US: Enter your Annolux API key (starts with ann_live_)
+      zh_Hans: 输入以 ann_live_ 开头的 Annolux API Key
+    help:
+      en_US: Get your API key from https://annolux.com/account
+      zh_Hans: 在 https://annolux.com/account 获取 API Key
