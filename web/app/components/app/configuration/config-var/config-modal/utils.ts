@@ -93,6 +93,15 @@ export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
   return produce(payload, (draft) => {
     draft.type = type
     if (type === InputVarType.select) draft.default = undefined
+    if (isStringInputType(type) && typeof draft.default === 'number')
+      draft.default = String(draft.default)
+    if (type === InputVarType.number && typeof draft.default !== 'number') {
+      const value =
+        typeof draft.default === 'string' && draft.default.trim() !== ''
+          ? Number(draft.default)
+          : Number.NaN
+      draft.default = Number.isFinite(value) ? value : undefined
+    }
 
     if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
       draft.hide = false

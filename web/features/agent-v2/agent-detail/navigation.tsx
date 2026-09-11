@@ -217,16 +217,23 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
               />
             </span>
           </div>
-          <div className={cn('flex h-10 min-w-0 flex-1 items-center gap-2', !expand && 'hidden')}>
-            <div className="flex min-w-0 flex-1 flex-col justify-center">
-              <div className="truncate system-md-semibold text-text-secondary">
-                {agent?.name ?? t(($) => $['agentDetail.title'])}
-              </div>
-              <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
-                {agent?.role ?? t(($) => $['agentDetail.type'])}
-              </div>
+          <div
+            className={cn(
+              'relative flex h-10 min-w-0 flex-1 flex-col justify-center gap-0.5 pr-7',
+              !expand && 'hidden',
+            )}
+          >
+            <div className="truncate system-md-semibold text-text-secondary">
+              {agent?.name ?? t(($) => $['agentDetail.title'])}
             </div>
-            {agent && expand && <AgentDetailSidebarActions agent={agent} />}
+            {agent?.role?.trim() && (
+              <div className="truncate system-xs-regular text-text-tertiary">{agent.role}</div>
+            )}
+            {agent && expand && (
+              <div className="absolute -top-px right-0">
+                <AgentDetailSidebarActions agent={agent} />
+              </div>
+            )}
           </div>
         </div>
       </div>

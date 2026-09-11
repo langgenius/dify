@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -34,14 +35,19 @@ const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
-        aria-label={t(($) => $['operation.moreActionsFor'], {
-          ns: 'common',
-          name: appName,
-        })}
-        className="flex size-5 shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
-      >
-        <span aria-hidden className="i-ri-more-fill size-4" />
-      </DropdownMenuTrigger>
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.moreActionsFor'], {
+              ns: 'common',
+              name: appName,
+            })}
+            size="md"
+            className="-mx-1 -my-0.5 data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </IconButton>
+        }
+      />
       <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
         {visibleGroups.map((group, groupIndex) => (
           <Fragment key={group.map((operation) => operation.id).join('-')}>

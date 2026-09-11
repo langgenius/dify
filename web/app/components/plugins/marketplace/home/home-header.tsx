@@ -1,8 +1,7 @@
 import type { HomeCatalogTab, HomeCatalogTabLabels } from './home-catalog-tabs'
 import { cn } from '@langgenius/dify-ui/cn'
 import Link from '@/next/link'
-import MarketplaceLogoDark from '@/public/marketplace/dify-marketplace-logo-dark.svg'
-import MarketplaceLogo from '@/public/marketplace/dify-marketplace-logo.svg'
+import { MarketplaceLogo } from '../marketplace-logo'
 import HomeCatalogTabs from './home-catalog-tabs'
 import { HOME_HEADER_HEIGHT_PX } from './home-constants'
 // HomeCreatorCenter stays in its own client module: it derives styles via
@@ -40,28 +39,7 @@ const HomeHeader = ({
           aria-label="Dify Marketplace"
           className="flex h-full w-[141.933px] shrink-0 items-center"
         >
-          <img
-            alt=""
-            aria-hidden
-            className={cn(
-              'h-[16.386px] w-[141.761px] max-w-none shrink-0',
-              styles.marketplaceLogoLight,
-            )}
-            height="16.386"
-            src={MarketplaceLogo.src}
-            width="141.761"
-          />
-          <img
-            alt=""
-            aria-hidden
-            className={cn(
-              'h-[16.386px] w-[141.761px] max-w-none shrink-0',
-              styles.marketplaceLogoDark,
-            )}
-            height="16.386"
-            src={MarketplaceLogoDark.src}
-            width="141.761"
-          />
+          <MarketplaceLogo />
         </Link>
         <HomeStickyCatalogTabs>
           <HomeCatalogTabs
