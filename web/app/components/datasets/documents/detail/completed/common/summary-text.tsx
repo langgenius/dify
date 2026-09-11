@@ -22,6 +22,7 @@ const SummaryText = ({ value, onChange, disabled }: SummaryTextProps) => {
         )}
         placeholder={t(($) => $['segment.summaryPlaceholder'], { ns: 'datasetDocuments' })}
         minRows={1}
+        maxRows={6}
         value={value ?? ''}
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}
