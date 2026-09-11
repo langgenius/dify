@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import BinaryIO, Final, Literal, Self
 
@@ -32,7 +33,6 @@ class RosterAgentPackageAudit(BaseModel):
 class _RosterAgentPackageResource(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
     path: str = Field(min_length=1, max_length=255)
     size: int = Field(ge=0)
     sha256: str
@@ -43,6 +43,17 @@ class _RosterAgentPackageResource(BaseModel):
     def validate_sha256(cls, value: str) -> str:
         if _SHA256_PATTERN.fullmatch(value) is None:
             raise ValueError("sha256 must be a lowercase hexadecimal SHA-256 digest")
+        return value
+
+
+class RosterAgentPackageApp(_RosterAgentPackageResource):
+    @field_validator("path")
+    @classmethod
+    def validate_app_path(cls, value: str) -> str:
+        if "/" in value or "\\" in value or not value.endswith((".yaml", ".yml")):
+            raise ValueError("app path must be a root-level YAML member")
+        if value.casefold() == "manifest.yaml":
+            raise ValueError("app path must not use the package manifest name")
         return value
 
 
@@ -78,60 +89,63 @@ class RosterAgentPackageManifest(BaseModel):
     format: Literal["dify.roster-agent"]
     format_version: Literal[1]
     audit: RosterAgentPackageAudit | None = None
+    apps: list[RosterAgentPackageApp] = Field(min_length=1)
     skills: list[RosterAgentPackageSkill] = Field(default_factory=list)
     files: list[RosterAgentPackageFile] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_resource_index(self) -> Self:
-        resources = [*self.skills, *self.files]
-        ids = [item.id for item in resources]
+        ids = [item.id for item in self.skills] + [item.id for item in self.files]
         if len(ids) != len(set(ids)):
             raise ValueError("resource ids must be unique")
+        paths = [item.path.casefold() for item in [*self.apps, *self.skills, *self.files]]
+        if len(paths) != len(set(paths)):
+            raise ValueError("resource paths must be unique")
         skill_names = [item.name for item in self.skills]
         if len(skill_names) != len(set(skill_names)):
             raise ValueError("skill names must be unique after workspace Skills are localized")
 
         return self
 
-    def validate_app(self, app: AgentAppDsl) -> None:
-        """Resolve application references against the package resource index."""
-
-        if app.package.soul.schema_version != 1:
-            raise ValueError("unsupported Agent Soul schema version")
+    def validate_apps(self, apps: Mapping[str, AgentAppDsl]) -> None:
+        """Resolve all application references against the shared resource index."""
+        if set(apps) != {item.path for item in self.apps}:
+            raise ValueError("app members must match the package app index")
         skill_by_id = {item.id: item for item in self.skills}
-        referenced_skill_ids: set[str] = set()
-        for skill_ref in app.package.soul.config_skills:
-            if skill_ref.is_missing:
-                continue
-            skill_resource = skill_by_id.get(skill_ref.file_id)
-            if skill_resource is None or skill_resource.scope != "agent_config":
-                raise ValueError("config skill reference must resolve to an agent_config skill")
-            if skill_resource.name != skill_ref.name:
-                raise ValueError("config skill name must match its resource metadata")
-            referenced_skill_ids.add(skill_resource.id)
-        unreferenced_skills = {
-            item.id for item in self.skills if item.scope == "agent_config" and item.id not in referenced_skill_ids
-        }
-        if unreferenced_skills:
-            raise ValueError("agent_config skill resources must be referenced by the Agent Soul")
-
-        workspace_names = [item.name for item in app.package.workspace_skills]
-        if len(workspace_names) != len(set(workspace_names)):
-            raise ValueError("workspace skill names must be unique in the Agent DSL")
-        if set(workspace_names) != {item.name for item in self.skills if item.scope == "workspace"}:
-            raise ValueError("workspace skill references must match the package resource index")
-
         file_by_id = {item.id: item for item in self.files}
+        workspace_names = {item.name for item in self.skills if item.scope == "workspace"}
+        referenced_skill_ids: set[str] = set()
         referenced_file_ids: set[str] = set()
-        for file_ref in app.package.soul.config_files:
-            if file_ref.is_missing:
-                continue
-            file_resource = file_by_id.get(file_ref.file_id)
-            if file_resource is None:
-                raise ValueError("config file reference must resolve to a package file")
-            referenced_file_ids.add(file_resource.id)
-        unreferenced_files = {item.id for item in self.files if item.id not in referenced_file_ids}
-        if unreferenced_files:
+        referenced_workspace_names: set[str] = set()
+        for app in apps.values():
+            if app.package.soul.schema_version != 1:
+                raise ValueError("unsupported Agent Soul schema version")
+            for skill_ref in app.package.soul.config_skills:
+                if skill_ref.is_missing:
+                    continue
+                skill_resource = skill_by_id.get(skill_ref.file_id)
+                if skill_resource is None or skill_resource.scope != "agent_config":
+                    raise ValueError("config skill reference must resolve to an agent_config skill")
+                if skill_resource.name != skill_ref.name:
+                    raise ValueError("config skill name must match its resource metadata")
+                referenced_skill_ids.add(skill_resource.id)
+            app_workspace_names = [item.name for item in app.package.workspace_skills]
+            if len(app_workspace_names) != len(set(app_workspace_names)):
+                raise ValueError("workspace skill names must be unique in the Agent DSL")
+            if set(app_workspace_names) - workspace_names:
+                raise ValueError("workspace skill references must match the package resource index")
+            referenced_workspace_names.update(app_workspace_names)
+            for file_ref in app.package.soul.config_files:
+                if file_ref.is_missing:
+                    continue
+                if file_ref.file_id not in file_by_id:
+                    raise ValueError("config file reference must resolve to a package file")
+                referenced_file_ids.add(file_ref.file_id)
+        if {item.id for item in self.skills if item.scope == "agent_config"} - referenced_skill_ids:
+            raise ValueError("agent_config skill resources must be referenced by the Agent Soul")
+        if workspace_names != referenced_workspace_names:
+            raise ValueError("workspace skill references must match the package resource index")
+        if set(file_by_id) - referenced_file_ids:
             raise ValueError("file resources must be referenced by the Agent Soul")
 
 
@@ -141,7 +155,7 @@ class PreparedRosterAgentPackage:
 
     archive: BinaryIO
     manifest: RosterAgentPackageManifest
-    app: AgentAppDsl
+    apps: dict[str, AgentAppDsl]
     members: dict[str, RosterAgentPackageMember]
     invalid_skills: dict[str, str] = field(default_factory=dict)
 
@@ -178,6 +192,7 @@ __all__ = [
     "ROSTER_AGENT_PACKAGE_FORMAT_VERSION",
     "ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES",
     "PreparedRosterAgentPackage",
+    "RosterAgentPackageApp",
     "RosterAgentPackageAudit",
     "RosterAgentPackageExport",
     "RosterAgentPackageFile",
