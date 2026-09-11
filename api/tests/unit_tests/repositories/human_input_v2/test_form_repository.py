@@ -129,7 +129,11 @@ def test_all_operations_are_owner_scoped(form_engine: Engine, other_tenant: Tena
         assert _submit(repo, form.id) == FormSubmissionFailure.NOT_FOUND
         assert repo.expire_form(form.id) is None
         assert repo.list_expired_forms(now=naive_utc_now(), limit=10) == ()
-        assert repo.create_form(params).id != form.id
+        # Execution identity is global; an owner mismatch must neither create a
+        # duplicate nor expose the existing owner's form.
+        with pytest.raises(sa.exc.NoResultFound):
+            repo.create_form(params)
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputForm)) == 1
 
 
 def test_submission_round_trips_raw_inputs_and_concrete_segments(form_engine: Engine) -> None:

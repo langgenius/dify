@@ -79,6 +79,14 @@ class ContactRepository(Protocol):
 
     def get_contacts_by_id(self, tenant_id: TenantId, contact_id: ContactId) -> Contact | None: ...
 
+    def get_contact_by_account_id(self, tenant_id: TenantId, account_id: AccountId) -> Contact | None:
+        """Read the current Contact of an authenticated Account without provisioning it.
+
+        Missing, disabled, or unavailable Accounts have no current Contact in
+        this workspace. Email matching must never substitute for this identity.
+        """
+        ...
+
     def get_contacts_by_ids(
         self,
         tenant_id: TenantId,

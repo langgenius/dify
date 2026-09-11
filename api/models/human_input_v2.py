@@ -1196,12 +1196,12 @@ class HumanInputForm(DefaultFieldsDCMixin, TypeBase):
     __tablename__ = "hitlv2_forms"
     __table_args__ = (
         sa.UniqueConstraint(
-            "tenant_id",
-            "app_id",
             "workflow_run_id",
             "node_execution_id",
             name="hitlv2_forms_execution_uq",
         ),
+        # Equality predicates precede the ID cursor used by expiration scans.
+        sa.Index("hitlv2_forms_expiration_scan_idx", "tenant_id", "app_id", "form_kind", "status", "id"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

@@ -25,7 +25,7 @@ from .form_repository import Form, FormCreateParams, FormRepository, FormSubmiss
 
 _RAW_INPUTS = TypeAdapter(Mapping[str, JsonValue])
 _NORMALIZED_INPUTS = TypeAdapter(Mapping[str, Segment])
-_EXECUTION_KEY = ("tenant_id", "app_id", "workflow_run_id", "node_execution_id")
+_EXECUTION_KEY = ("workflow_run_id", "node_execution_id")
 
 
 class _StoredForm(BaseModel):

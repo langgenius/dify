@@ -92,6 +92,22 @@ class SQLAlchemyContactRepository:
         contacts = self._get_contacts_by_distinct_ids(tenant_id, (contact_id,))
         return contacts[0] if contacts else None
 
+    def get_contact_by_account_id(self, tenant_id: TenantId, account_id: AccountId) -> Contact | None:
+        current_contacts = self._current_contacts_subquery(tenant_id)
+        row = (
+            self._session.execute(
+                sa.select(current_contacts)
+                .join(HumanInputContactIdentity, HumanInputContactIdentity.id == current_contacts.c.contact_id)
+                .where(
+                    HumanInputContactIdentity.subject_type == ContactSubjectType.ACCOUNT,
+                    HumanInputContactIdentity.account_id == str(account_id),
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return self._contact_from_row(row) if row is not None else None
+
     def get_contacts_by_ids(
         self,
         tenant_id: TenantId,
