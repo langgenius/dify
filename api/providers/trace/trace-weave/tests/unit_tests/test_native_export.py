@@ -105,7 +105,9 @@ def test_weave_verification_and_export_use_saved_destination(
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(200, json={"data": {"viewer": {"entity": "entity"}, "project": {"name": "project"}}})
+        return httpx.Response(
+            200, json={"data": {"viewer": {"defaultEntity": {"name": "entity"}}, "project": {"name": "project"}}}
+        )
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",

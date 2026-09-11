@@ -1,10 +1,13 @@
 import json
+import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 from uuid import UUID, uuid4
 
 import pytest
 from dify_trace_langfuse.langfuse_trace import LangfuseTraceClient
+from opentelemetry.sdk.trace import TracerProvider
 
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.otlp_trace import OtlpTraceClient
@@ -100,6 +103,38 @@ def test_langfuse_v4_keeps_native_ttft_tags_version_prompt_and_model(monkeypatch
     assert attributes["user.id"].string_value == "customer-7"
     assert attributes["session.id"].string_value == "session-5"
     assert trace.model_dump_json() == original
+
+
+def test_langfuse_exports_when_unrelated_otel_sdk_tracing_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
+    requests = []
+    monkeypatch.setattr(OtlpTraceClient, "send_traces", lambda self, request: requests.append(request))
+    traces = [make_trace(), make_trace()]
+
+    def export(trace: CompletedTrace):
+        client = LangfuseTraceClient(
+            {"public_key": trace.source.tenant_id, "secret_key": "secret", "host": "https://langfuse.example"}
+        )
+        return client.export_trace(trace)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        receipts = list(executor.map(export, traces))
+
+    assert len(requests) == len(traces)
+    assert all(len(receipt.spans) == len(trace.spans) for trace, receipt in zip(traces, receipts, strict=True))
+    assert {
+        attribute.value.string_value
+        for request in requests
+        for span in request.resource_spans[0].scope_spans[0].spans
+        for attribute in span.attributes
+        if attribute.key == "langfuse.observation.metadata.dify.tenant_id"
+    } == {trace.source.tenant_id for trace in traces}
+    assert os.environ["OTEL_SDK_DISABLED"] == "true"
+    provider = TracerProvider(shutdown_on_exit=False)
+    try:
+        assert not provider.get_tracer("unrelated").start_span("still disabled").is_recording()
+    finally:
+        provider.shutdown()
 
 
 @pytest.mark.parametrize(("status", "workflow_failed"), [("handled_error", False), ("cancelled", True)])

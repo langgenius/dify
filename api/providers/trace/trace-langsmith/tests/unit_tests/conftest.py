@@ -19,3 +19,8 @@ def isolate_deployment_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
             "SSL_CERT_DIR",
         }:
             monkeypatch.delenv(name)
+
+
+@pytest.fixture(autouse=True)
+def isolate_netrc(isolate_deployment_settings: None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("NETRC", str(tmp_path / "netrc"))

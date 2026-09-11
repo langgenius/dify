@@ -2,6 +2,7 @@
 
 import base64
 import json
+from collections.abc import Mapping
 from functools import partial
 from ssl import SSLContext
 from typing import Any, override
@@ -13,6 +14,8 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTrace
 from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
 from pydantic import JsonValue
+from requests.auth import _basic_auth_str
+from requests.utils import get_auth_from_url
 
 from core.helper.ssl_context import create_ssl_context
 from core.ops.otlp_trace import OtlpTraceClient, otlp_span
@@ -70,8 +73,21 @@ class MLflowHttpClient(TraceProviderHttpClient):
         ssl_context: SSLContext | None,
         aws_sigv4: dict[str, Any] | None,
         request_auth_provider: Any = None,
+        netrc_auth: Mapping[str, list[str] | tuple[str, str]] | None = None,
+        url_auth: tuple[str, str] | None = None,
+        use_implicit_auth: bool = True,
+        request_timeout: float = 120,
     ):
-        super().__init__(endpoint, headers, ssl_context=ssl_context)
+        parsed = urlsplit(endpoint)
+        self.url_auth = get_auth_from_url(endpoint) if url_auth is None else url_auth
+        self.netrc_auth = {host: (auth[0], auth[1]) for host, auth in (netrc_auth or {}).items()}
+        self.use_implicit_auth = use_implicit_auth
+        auth = self.netrc_auth.get(parsed.hostname or "", self.netrc_auth.get("default"))
+        if not auth or not any(auth):
+            auth = self.url_auth
+        self.implicit_auth = auth if use_implicit_auth and any(auth) else None
+        endpoint = urlunsplit(parsed._replace(netloc=parsed.netloc.rsplit("@", 1)[-1]))
+        super().__init__(endpoint, headers, ssl_context=ssl_context, request_timeout=request_timeout)
         self.aws_sigv4 = dict(aws_sigv4) if aws_sigv4 is not None else None
         self.request_auth_provider = request_auth_provider
 
@@ -80,7 +96,14 @@ class MLflowHttpClient(TraceProviderHttpClient):
         if self.aws_sigv4 is not None:
             kwargs["auth"] = partial(sign_aws_request, credentials=self.aws_sigv4)
         elif self.request_auth_provider is not None:
-            return send_authenticated_request(self, self.request_auth_provider, method, path, **kwargs)
+            return send_authenticated_request(
+                self, self.request_auth_provider, method, path, fallback_auth=self.implicit_auth, **kwargs
+            )
+        elif self.implicit_auth:
+            kwargs["headers"] = {
+                **kwargs.get("headers", {}),
+                "Authorization": _basic_auth_str(*self.implicit_auth),
+            }
         return super().request(method, path, **kwargs)
 
 
@@ -230,6 +253,7 @@ class MLflowTraceClient:
             else self.config.load_runtime_settings(provider_config)
         )
         self.sampling_ratio = float(runtime_settings.get("sampling_ratio", 1.0))
+        self.disabled = bool(runtime_settings.get("disabled", False))
         self._aws_sigv4 = dict(runtime_settings["aws_sigv4"]) if runtime_settings.get("aws_sigv4") else None
         self._request_auth_provider = load_request_auth_provider(runtime_settings.get("request_auth_provider"))
         if isinstance(self.config, DatabricksConfig):
@@ -265,6 +289,9 @@ class MLflowTraceClient:
                 ),
                 aws_sigv4=self._aws_sigv4,
                 request_auth_provider=self._request_auth_provider,
+                netrc_auth=runtime_settings.get("netrc_auth"),
+                use_implicit_auth=runtime_settings.get("use_implicit_auth", True),
+                request_timeout=runtime_settings.get("request_timeout", 120),
             )
 
     def _authenticate_databricks(self) -> None:
@@ -368,7 +395,8 @@ class MLflowTraceClient:
                 trace_id = _parse_trace_uuid(external_id)
             except ValueError:
                 pass
-        sampled = (
+        disabled = self.disabled or (parent_span is not None and parent_span.get("disabled") is True)
+        sampled = not disabled and (
             parent_span.get("sampled", True) is not False
             if parent_span is not None
             # Match the SDK's TraceIdRatioBased lower-64-bit comparison, including its rounding.
@@ -381,6 +409,7 @@ class MLflowTraceClient:
                         "trace_id": str(parent_span["trace_id"]) if parent_span else trace_id,
                         "span_id": export_span_id(completed_trace, span.span_id),
                         "sampled": False,
+                        **({"disabled": True} if disabled else {}),
                     }
                     for span in completed_trace.spans
                 }
@@ -393,6 +422,7 @@ class MLflowTraceClient:
             self._authenticate_databricks()
             native_trace_id = self._export_artifact_trace(completed_trace, trace_id, parent_span)
         else:
+            assert isinstance(self.http, MLflowHttpClient)
             trace_id = _parse_trace_uuid(str(parent_span["trace_id"])) if parent_span else trace_id
             spans = []
             for span in completed_trace.spans:
@@ -425,6 +455,10 @@ class MLflowTraceClient:
                 ssl_context=self.http.ssl_context,
                 aws_sigv4=self._aws_sigv4,
                 request_auth_provider=self._request_auth_provider,
+                netrc_auth=self.http.netrc_auth,
+                url_auth=self.http.url_auth,
+                use_implicit_auth=self.http.use_implicit_auth,
+                request_timeout=self.http.request_timeout,
             )
             client.http.deadline = self.http.deadline
             try:
@@ -689,10 +723,12 @@ class MLflowTraceClient:
         return existing
 
     def _upload_mlflow_artifact(self, artifact_uri: str | None, trace_json: bytes) -> None:
+        assert isinstance(self.config, MLflowConfig)
+        assert isinstance(self.http, MLflowHttpClient)
         if not artifact_uri:
             raise TraceExportError("mlflow_artifact_location_missing")
         artifact = urlsplit(artifact_uri)
-        tracking = urlsplit(self.http.endpoint)
+        tracking = urlsplit(self.config.tracking_uri)
         if artifact.scheme == "mlflow-artifacts":
             path = f"{tracking.path.rstrip('/')}/api/2.0/mlflow-artifacts/artifacts/{artifact.path.lstrip('/')}"
             artifact = artifact._replace(scheme=tracking.scheme, netloc=artifact.netloc or tracking.netloc, path=path)
@@ -731,6 +767,9 @@ class MLflowTraceClient:
             ssl_context=ssl_context,
             aws_sigv4=self._aws_sigv4,
             request_auth_provider=self._request_auth_provider,
+            netrc_auth=self.http.netrc_auth,
+            use_implicit_auth=self.http.use_implicit_auth,
+            request_timeout=self.http.request_timeout,
         )
         client.deadline = self.http.deadline
         client.request("PUT", content=trace_json, headers={"Content-Type": "application/json"})

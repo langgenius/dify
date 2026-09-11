@@ -1,11 +1,13 @@
 """Enterprise destinations are resolved before their configuration is fingerprinted."""
 
 import base64
+import json
 import os
 import ssl
 from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 
@@ -25,8 +27,34 @@ def enterprise_configuration(monkeypatch: pytest.MonkeyPatch, config_overrides: 
         SECRET_KEY="enterprise-configuration-test",
     )
     for name in tuple(os.environ):
-        if name.startswith("OTEL_EXPORTER_OTLP") or name in {"REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"}:
+        if name.startswith("OTEL_EXPORTER_OTLP") or name in {
+            "OTEL_SDK_DISABLED",
+            "REQUESTS_CA_BUNDLE",
+            "CURL_CA_BUNDLE",
+        }:
             monkeypatch.delenv(name)
+
+
+@pytest.mark.parametrize("value", [None, "", "true", " TrUe ", "false", "1", "yes"])
+def test_otlp_disabled_setting_is_captured_before_delivery(value: str | None, monkeypatch: pytest.MonkeyPatch) -> None:
+    if value is not None:
+        monkeypatch.setenv("OTEL_SDK_DISABLED", value)
+    disabled = (value or "").lower().strip() == "true"
+    captured = enterprise_trace.load_enterprise_config()
+    assert captured is not None
+    captured = json.loads(json.dumps(captured))
+    assert captured["otlp_disabled"] is disabled
+    tenant_id = str(uuid4())
+    fingerprint = _settings_hash(tenant_id, captured)
+    monkeypatch.setenv("OTEL_SDK_DISABLED", "false" if disabled else "true")
+    rotated = enterprise_trace.load_enterprise_config()
+    assert rotated is not None
+    assert _settings_hash(tenant_id, rotated) != fingerprint
+
+    client = enterprise_trace.EnterpriseTraceClient(captured)
+
+    assert client.otlp_disabled is disabled
+    assert _settings_hash(tenant_id, captured) == fingerprint
 
 
 @pytest.mark.parametrize("protocol", ["http/protobuf", "grpc"])
@@ -67,7 +95,71 @@ def test_endpoint_precedence_for_both_signals(
             expected = "https://base.example:4317" if protocol == "grpc" else f"https://base.example/otlp/v1/{suffix}"
         else:
             expected = "http://localhost:4317" if protocol == "grpc" else f"http://localhost:4318/v1/{suffix}"
-        assert configuration["signals"][signal] == {"endpoint": expected, "headers": {}, "tls": {}}
+        assert configuration["signals"][signal] == {
+            "endpoint": expected,
+            "headers": {},
+            "request_timeout": "10.0",
+            "tls": {},
+        }
+
+
+@pytest.mark.parametrize("protocol", ["http/protobuf", "grpc"])
+@pytest.mark.parametrize(
+    "environment",
+    [
+        {},
+        {"OTEL_EXPORTER_OTLP_TIMEOUT": "60"},
+        {
+            "OTEL_EXPORTER_OTLP_TIMEOUT": "80",
+            "OTEL_EXPORTER_OTLP_TRACES_TIMEOUT": "60",
+            "OTEL_EXPORTER_OTLP_METRICS_TIMEOUT": "70.5",
+        },
+        {
+            "OTEL_EXPORTER_OTLP_TIMEOUT": "80",
+            "OTEL_EXPORTER_OTLP_TRACES_TIMEOUT": "0",
+            "OTEL_EXPORTER_OTLP_METRICS_TIMEOUT": "0",
+        },
+        {"OTEL_EXPORTER_OTLP_TIMEOUT": "inf"},
+        {"OTEL_EXPORTER_OTLP_TRACES_TIMEOUT": "nan", "OTEL_EXPORTER_OTLP_METRICS_TIMEOUT": "nan"},
+    ],
+)
+def test_signal_timeouts_match_native_exporters_and_stay_bound_to_captured_settings(
+    protocol: str,
+    environment: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(ENTERPRISE_OTLP_PROTOCOL=protocol)
+    for name, value in environment.items():
+        monkeypatch.setenv(name, value)
+    captured = enterprise_trace.load_enterprise_config()
+    assert captured is not None
+    json.dumps(captured, allow_nan=False)
+    native_factory = exporter._ExporterFactory(protocol, "", {}, insecure=True)
+    native_trace = native_factory.create_trace_exporter()
+    native_metrics = native_factory.create_metric_exporter()
+    try:
+        trace_timeout, metrics_timeout = native_trace._timeout, native_metrics._timeout
+        assert captured["signals"]["trace"]["request_timeout"] == str(trace_timeout)
+        assert captured["signals"]["metrics"]["request_timeout"] == str(metrics_timeout)
+    finally:
+        native_trace.shutdown()
+        native_metrics.shutdown()
+    tenant_id = str(uuid4())
+    fingerprint = _settings_hash(tenant_id, captured)
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT", "90")
+    rotated = enterprise_trace.load_enterprise_config()
+    assert rotated is not None
+    assert _settings_hash(tenant_id, rotated) != fingerprint
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT", "invalid-after-capture")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_TIMEOUT", "invalid-after-capture")
+
+    client = enterprise_trace.EnterpriseTraceClient(captured)
+
+    assert str(client.otlp.http.request_timeout) == str(trace_timeout)
+    assert client.otlp.metrics_http is not None
+    assert str(client.otlp.metrics_http.request_timeout) == str(metrics_timeout)
+    assert _settings_hash(tenant_id, captured) == fingerprint
 
 
 @pytest.mark.parametrize(

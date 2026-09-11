@@ -38,6 +38,8 @@ class TraceProviderHttpClient:
         *,
         timeout: float = 100,
         request_timeout: float = 30,
+        connect_timeout: float | None = None,
+        pool_timeout: float | None = None,
         ssl_context: SSLContext | None = None,
     ):
         parsed = urlsplit(endpoint)
@@ -48,11 +50,21 @@ class TraceProviderHttpClient:
         self.ssl_context = ssl_context
         self.deadline = monotonic() + timeout
         self.request_timeout = request_timeout
+        self.connect_timeout = connect_timeout
+        self.pool_timeout = pool_timeout
 
     def request(self, method: str, path: str = "", **kwargs: Any) -> httpx.Response:
         remaining = self.deadline - monotonic()
         if remaining <= 0:
             raise TraceExportError("export_deadline_exceeded", retryable=True)
+        request_timeout = min(remaining, self.request_timeout)
+        timeout: float | httpx.Timeout = request_timeout
+        if self.connect_timeout is not None or self.pool_timeout is not None:
+            timeout = httpx.Timeout(
+                request_timeout,
+                connect=min(remaining, self.connect_timeout) if self.connect_timeout is not None else request_timeout,
+                pool=min(remaining, self.pool_timeout) if self.pool_timeout is not None else request_timeout,
+            )
         headers = {**self.headers, **kwargs.pop("headers", {})}
         try:
             with (
@@ -65,7 +77,7 @@ class TraceProviderHttpClient:
                     f"{self.endpoint}/{path.lstrip('/')}" if path else self.endpoint,
                     headers=headers,
                     max_retries=0,
-                    timeout=min(self.request_timeout, remaining),
+                    timeout=timeout,
                     follow_redirects=False,
                     **kwargs,
                     http_client=http_client,

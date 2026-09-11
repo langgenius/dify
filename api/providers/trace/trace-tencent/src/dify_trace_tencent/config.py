@@ -29,9 +29,17 @@ class TencentConfig(BaseTracingConfig):
         protocol = os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "").strip().lower()
         # The old SDK used HTTP/protobuf when an optional JSON exporter was unavailable.
         http_metrics = protocol in {"http/protobuf", "http-protobuf", "http/json", "http-json"}
+        metrics_request_timeout = float(
+            os.environ.get("OTEL_EXPORTER_OTLP_METRICS_TIMEOUT", os.environ.get("OTEL_EXPORTER_OTLP_TIMEOUT", "10"))
+        )
+        if not http_metrics and not metrics_request_timeout:
+            # The gRPC exporter treats a zero signal timeout as unset.
+            metrics_request_timeout = float(os.environ.get("OTEL_EXPORTER_OTLP_TIMEOUT", "10"))
         settings: dict[str, Any] = {
+            "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
             "metrics_protocol": "http/protobuf" if http_metrics else "grpc",
             "metrics_verify": True,
+            "metrics_request_timeout": str(metrics_request_timeout),
         }
         for signal, env_signal in (("trace", "TRACES"), ("metrics", "METRICS")):
             tls = {}

@@ -17,7 +17,11 @@ from services.app_tracing_config_service import AppTracingConfigVerificationFail
         (httpx.Response(200, text="invalid json"), None, True),
         (httpx.Response(200, json={"data": None}), None, True),
         (httpx.Response(200, json={"data": {"viewer": None}}), None, True),
-        (httpx.Response(200, json={"data": {"viewer": {"entity": "team"}}}), "/team/project/weave", False),
+        (
+            httpx.Response(200, json={"data": {"viewer": {"defaultEntity": {"name": "team"}}}}),
+            "/team/project/weave",
+            False,
+        ),
     ],
 )
 def test_saved_config_stays_readable_when_project_discovery_fails(

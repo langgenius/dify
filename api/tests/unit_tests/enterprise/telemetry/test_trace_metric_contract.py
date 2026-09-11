@@ -4,6 +4,7 @@ import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Unpack
+from unittest.mock import Mock
 from uuid import uuid4
 
 import httpx
@@ -111,7 +112,15 @@ def test_enterprise_metrics_keep_root_and_model_usage_distinct(monkeypatch: pyte
             provider_name="enterprise",
         ),
     )
+    log = Mock()
+    monkeypatch.setattr(client.logger, "info", log)
     client.export_trace(trace)
+    assert [call.kwargs["extra"]["attributes"]["dify.event.name"] for call in log.call_args_list] == [
+        "dify.workflow.run",
+        "dify.tool.execution",
+        "dify.node.execution",
+        "dify.node.execution",
+    ]
     metrics = ExportMetricsServiceRequest.FromString(requests[-1][1]).resource_metrics[0].scope_metrics[0].metrics
     totals = [point for metric in metrics if metric.name == "dify.tokens.total" for point in metric.sum.data_points]
     assert len(totals) == 2

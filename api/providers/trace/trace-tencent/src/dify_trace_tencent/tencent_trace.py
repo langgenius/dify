@@ -10,8 +10,8 @@ from pydantic import JsonValue
 
 from configs import dify_config
 from core.helper.ssl_context import create_grpc_credentials, create_ssl_context
-from core.ops.otlp_trace import OtlpTraceClient, histogram, otlp_span
-from core.ops.provider_export import TraceProviderHttpClient, json_text, span_attributes
+from core.ops.otlp_trace import OtlpTraceClient, histogram, otlp_span, otlp_trace_id
+from core.ops.provider_export import TraceProviderHttpClient, export_span_id, json_text, span_attributes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_tencent.config import TencentConfig
 
@@ -28,6 +28,8 @@ def usage_seconds(span: TraceSpan, field: str, *legacy_attributes: str) -> float
 
 class TencentTraceClient(OtlpTraceClient):
     """Project Tencent's span attributes and existing metric series from captured calls."""
+
+    disabled: bool = False
 
     @override
     def build_span(
@@ -140,6 +142,17 @@ class TencentTraceClient(OtlpTraceClient):
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
+        if self.disabled or (parent_span is not None and parent_span.get("disabled") is True):
+            return ExportedParentSpans(
+                spans={
+                    span.span_id: {
+                        "trace_id": otlp_trace_id(completed_trace, parent_span),
+                        "span_id": export_span_id(completed_trace, span.span_id),
+                        "disabled": True,
+                    }
+                    for span in completed_trace.spans
+                }
+            )
         receipt = super().export_trace(completed_trace, parent_span)
         self.send_metrics(self.build_metrics(completed_trace))
         return receipt
@@ -268,7 +281,7 @@ def create_trace_client(provider_config: dict[str, Any]) -> TencentTraceClient:
     )
     http_metrics = runtime_settings["metrics_protocol"] == "http/protobuf"
     headers = {"authorization": f"Bearer {config.token}"}
-    return TencentTraceClient(
+    client = TencentTraceClient(
         config.endpoint,
         headers,
         {
@@ -285,13 +298,16 @@ def create_trace_client(provider_config: dict[str, Any]) -> TencentTraceClient:
         metrics_http=TraceProviderHttpClient(
             config.endpoint,
             headers,
-            ssl_context=create_ssl_context(runtime_settings["metrics_tls"], verify=runtime_settings["metrics_verify"]),
-        )
-        if http_metrics
-        else None,
+            request_timeout=float(runtime_settings.get("metrics_request_timeout", 10)),
+            ssl_context=create_ssl_context(runtime_settings["metrics_tls"], verify=runtime_settings["metrics_verify"])
+            if http_metrics
+            else None,
+        ),
         metrics_protocol=runtime_settings["metrics_protocol"],
         grpc_credentials={
             "trace": create_grpc_credentials(runtime_settings["trace_tls"]),
             **({"metrics": create_grpc_credentials(runtime_settings["metrics_tls"])} if not http_metrics else {}),
         },
     )
+    client.disabled = bool(runtime_settings.get("disabled", False))
+    return client

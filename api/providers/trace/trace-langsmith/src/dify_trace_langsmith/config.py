@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, override
 
 from pydantic import ValidationInfo, field_validator
+from requests import Request, Session
 
 from core.helper.ssl_context import read_tls_files
 from core.ops.provider_config import BaseTracingConfig
@@ -28,7 +29,10 @@ class LangSmithConfig(BaseTracingConfig):
     @classmethod
     @override
     def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
-        cls.model_validate(provider_config)
+        config = cls.model_validate(provider_config)
+        # Requests resolves NETRC before URL userinfo and encodes Basic auth itself.
+        with Session() as session:
+            authorization = session.prepare_request(Request("GET", config.endpoint)).headers.get("Authorization")
         sampling_rate = float(
             next(
                 (
@@ -62,6 +66,7 @@ class LangSmithConfig(BaseTracingConfig):
                     workspace_id = profile["workspace_id"]
         certificate = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("CURL_CA_BUNDLE")
         return {
+            "authorization": authorization,
             # The SDK accepts NaN, whose sampling comparisons always drop. Keep the snapshot JSON-safe.
             "sampling_rate": 0.0 if math.isnan(sampling_rate) else sampling_rate,
             **{

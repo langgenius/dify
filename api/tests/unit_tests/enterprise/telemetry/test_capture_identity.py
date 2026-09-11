@@ -26,6 +26,8 @@ from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, ChatAppGenerateEntity, InvokeFrom
 from core.ops.basic_chat_trace import record_basic_chat_result
+from core.ops.completion_trace import record_completion_result
+from core.ops.legacy_agent_trace import record_legacy_agent_result
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.provider_export import span_attributes
 from core.ops.trace_data import CompletedTrace
@@ -39,7 +41,7 @@ from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from graphon.runtime import RuntimeState
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
-from models.model import App, AppMode, Conversation, EndUser, Message, UploadFile
+from models.model import App, AppMode, Conversation, EndUser, Message, MessageAgentThought, UploadFile
 from models.workflow import Workflow, WorkflowType
 from tests.unit_tests.core.ops.test_message_trace import RecordingQueue
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace
@@ -94,6 +96,7 @@ def capture_queue(
 
 @pytest.mark.parametrize("external_user", [False, True])
 @pytest.mark.parametrize("include_content", [False, True])
+@pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT])
 def test_owned_message_and_late_retrieval_keep_enterprise_user_ids(
     sqlite_session: Session,
     sqlite_engine: Engine,
@@ -101,15 +104,21 @@ def test_owned_message_and_late_retrieval_keep_enterprise_user_ids(
     monkeypatch: pytest.MonkeyPatch,
     external_user: bool,
     include_content: bool,
+    app_mode: AppMode,
 ) -> None:
     monkeypatch.setattr(
         "factories.file_factory.builders.session_factory",
         SimpleNamespace(create_session=lambda: Session(sqlite_engine)),
     )
     owners = [
-        create_app_user(sqlite_session, name=f"Owner {index}", app_mode=AppMode.CHAT, external_user=external_user)
+        create_app_user(sqlite_session, name=f"Owner {index}", app_mode=app_mode, external_user=external_user)
         for index in range(2)
     ]
+    record_result = {
+        AppMode.CHAT: record_basic_chat_result,
+        AppMode.COMPLETION: record_completion_result,
+        AppMode.AGENT_CHAT: record_legacy_agent_result,
+    }[app_mode]
     messages: list[tuple[MessageTraceRecorder, str]] = []
     expected_users: dict[str, str] = {}
     expected_actors: dict[str, str] = {}
@@ -142,7 +151,7 @@ def test_owned_message_and_late_retrieval_keep_enterprise_user_ids(
             tenant_id=tenant.id,
             app_id=app_model.id,
             user_id=actor_id,
-            record_message_result=record_basic_chat_result,
+            record_message_result=record_result,
         )
         assert recorder is not None
         entity = ChatAppGenerateEntity.model_construct(
@@ -150,7 +159,7 @@ def test_owned_message_and_late_retrieval_keep_enterprise_user_ids(
             app_config=EasyUIBasedAppConfig(
                 tenant_id=tenant.id,
                 app_id=app_model.id,
-                app_mode=AppMode.CHAT,
+                app_mode=app_mode,
                 app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
                 app_model_config_dict={},
                 model=ModelConfigEntity(provider="provider", model="model", mode="chat"),
@@ -168,6 +177,21 @@ def test_owned_message_and_late_retrieval_keep_enterprise_user_ids(
         )
         _, message = MessageBasedAppGenerator()._init_generate_records(entity, session=sqlite_session)
         message.answer = f"Answer for {user.id}"
+        if app_mode == AppMode.AGENT_CHAT:
+            sqlite_session.add(
+                MessageAgentThought(
+                    message_id=message.id,
+                    position=1,
+                    created_by_role=CreatorUserRole.END_USER if external_user else CreatorUserRole.ACCOUNT,
+                    created_by=user.id,
+                    message=f"Question for {user.id}",
+                    answer=message.answer,
+                    latency=0.5,
+                    message_token=2,
+                    answer_token=3,
+                    tokens=5,
+                )
+            )
         sqlite_session.commit()
         fields = read_message_trace_fields(tenant.id, app_model.id, message.id)
         attachment = fields["original_inputs"]["attachment"]
@@ -228,6 +252,7 @@ def test_owned_message_and_late_retrieval_keep_enterprise_user_ids(
             assert trace.parent is not None
         else:
             assert trace.spans[-1].parent_span_id == trace.root_span_id
+            assert sum(span.span_type == "llm" for span in trace.spans) == 1
         client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": include_content})
         monkeypatch.setattr(client.otlp, "send_metrics", Mock())
         monkeypatch.setattr(client.otlp, "send_traces", Mock())
@@ -238,11 +263,11 @@ def test_owned_message_and_late_retrieval_keep_enterprise_user_ids(
             fields = call.kwargs["extra"]
             attributes = fields["attributes"]
             event_name = attributes["dify.event.name"]
-            if event_name in {"dify.message.run", "dify.dataset.retrieval"}:
-                assert fields["tenant_id"] == tenant_id
-                assert fields["user_id"] == expected_users[tenant_id]
-                assert attributes["gen_ai.user.id"] == expected_users[tenant_id]
-                exported_events.append((tenant_id, event_name))
+            assert event_name in {"dify.message.run", "dify.dataset.retrieval"}
+            assert fields["tenant_id"] == tenant_id
+            assert fields["user_id"] == expected_users[tenant_id]
+            assert attributes["gen_ai.user.id"] == expected_users[tenant_id]
+            exported_events.append((tenant_id, event_name))
         assert trace.source.actor_id == expected_actors[tenant_id]
     for tenant_id in expected_users:
         assert exported_events.count((tenant_id, "dify.message.run")) == 1

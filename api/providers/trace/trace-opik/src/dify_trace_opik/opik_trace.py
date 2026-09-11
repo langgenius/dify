@@ -155,6 +155,9 @@ class OpikTraceClient:
             ssl_context=create_ssl_context(
                 runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)
             ),
+            request_timeout=100,
+            connect_timeout=20,
+            pool_timeout=20,
         )
 
     def verify_credentials(self) -> bool:

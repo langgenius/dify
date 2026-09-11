@@ -1,4 +1,4 @@
-"""Renewed deployment credentials retain their source-bound trace destination."""
+"""Bind queued trace destinations to deployment credentials and settings."""
 
 import base64
 import json
@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.ops import trace_source
+from core.ops.trace_data import TraceProviderSettings
 from models.account import Tenant
 from models.model import App, AppMode, TraceAppConfig
 
@@ -113,6 +114,78 @@ def test_assume_role_renewal_passes_real_destination_revalidation(
     client = MLflowTraceClient("mlflow", resolved)
     assert client._aws_sigv4 is not None
     assert client._aws_sigv4["token"] == "renewed-token-2"
+
+
+@pytest.mark.parametrize("change", ["tracker", "artifact", "default", "timeout", "userinfo"])
+def test_http_auth_and_timeout_changes_invalidate_queued_destination(
+    trace_owner: tuple[Tenant, App, TraceAppConfig],
+    sqlite3_session: Session,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
+) -> None:
+    tenant, app, config = trace_owner
+    filename = tmp_path / ".netrc"
+    original = (
+        "machine mlflow.example login tracker password tracker-secret\n"
+        "machine artifacts.example login artifact password artifact-secret\n"
+        "default login fallback password default-secret\n"
+    )
+    filename.write_text(original)
+    captured = trace_source.get_trace_provider_settings(tenant.id, app.id)[0]
+    resolved = trace_source.load_trace_provider_config(captured)
+    assert resolved["_runtime_settings"]["netrc_auth"]["artifacts.example"] == ["artifact", "artifact-secret"]
+    assert "netrc_auth" not in captured.model_dump_json()
+    if change == "timeout":
+        monkeypatch.setenv("MLFLOW_HTTP_REQUEST_TIMEOUT", "7")
+    elif change == "userinfo":
+        assert config.tracing_config is not None
+        config.tracing_config = {**config.tracing_config, "tracking_uri": "http://url:secret@mlflow.example"}
+        sqlite3_session.commit()
+    else:
+        filename.write_text(original.replace(f"{change}-secret", "rotated-secret"))
+    assert trace_source.get_trace_provider_settings(tenant.id, app.id)[0] != captured
+    with pytest.raises(ValueError, match="configuration_changed"):
+        trace_source.load_trace_provider_config(captured)
+
+
+@pytest.mark.parametrize("provider", ["mlflow", "databricks"])
+@pytest.mark.parametrize("disabled", [False, True])
+def test_sdk_disabled_changes_invalidate_serialized_queued_destination(
+    trace_owner: tuple[Tenant, App, TraceAppConfig],
+    sqlite3_session: Session,
+    provider: str,
+    disabled: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant, app, config = trace_owner
+    if provider == "databricks":
+        app.tracing = json.dumps({"enabled": True, "tracing_provider": provider})
+        config.tracing_provider = provider
+        config.tracing_config = {
+            "host": "http://databricks.example",
+            "experiment_id": "1",
+            "personal_access_token": "encrypted-token",
+        }
+        sqlite3_session.commit()
+    monkeypatch.setattr("core.helper.encrypter.batch_decrypt_token", Mock(return_value=["tenant-secret"]))
+    monkeypatch.setenv("OTEL_SDK_DISABLED", str(disabled))
+    captured = trace_source.get_trace_provider_settings(tenant.id, app.id)[0]
+    queued = TraceProviderSettings.model_validate_json(captured.model_dump_json())
+    assert queued == captured
+    assert "disabled" not in queued.model_dump_json()
+    assert "tenant-secret" not in queued.model_dump_json()
+    resolved = trace_source.load_trace_provider_config(queued)
+    assert resolved["_runtime_settings"]["disabled"] is disabled
+    assert MLflowTraceClient(provider, resolved).disabled is disabled
+
+    monkeypatch.setenv("OTEL_SDK_DISABLED", str(not disabled))
+    assert trace_source.get_trace_provider_settings(tenant.id, app.id)[0] != queued
+    decrypt = Mock(side_effect=AssertionError("Decrypted a changed destination"))
+    monkeypatch.setattr("core.helper.encrypter.batch_decrypt_token", decrypt)
+    with pytest.raises(ValueError, match="configuration_changed"):
+        trace_source.load_trace_provider_config(queued)
+    decrypt.assert_not_called()
 
 
 @pytest.mark.parametrize("change", ["role", "region", "source_profile", "source_key"])

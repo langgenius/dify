@@ -42,13 +42,14 @@ def load_enterprise_config() -> dict[str, Any] | None:
         "service_name": dify_config.APPLICATION_NAME,
         "include_content": dify_config.ENTERPRISE_INCLUDE_CONTENT,
         "sampling_rate": dify_config.ENTERPRISE_OTEL_SAMPLING_RATE,
+        "otlp_disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
     }
     config["signals"] = resolve_enterprise_signal_settings(config)
     return config
 
 
 def resolve_enterprise_signal_settings(provider_config: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Freeze the previous SDK's destination/auth defaults before their configuration is fingerprinted."""
+    """Freeze the previous SDK's signal settings before their configuration is fingerprinted."""
     if "signals" in provider_config:
         return provider_config["signals"]
     protocol = provider_config.get("protocol", "grpc")
@@ -59,6 +60,10 @@ def resolve_enterprise_signal_settings(provider_config: dict[str, Any]) -> dict[
     signals: dict[str, dict[str, Any]] = {}
     for signal, env_signal in (("trace", "TRACES"), ("metrics", "METRICS")):
         prefix = f"OTEL_EXPORTER_OTLP_{env_signal}_"
+        request_timeout = float(os.environ.get(prefix + "TIMEOUT", os.environ.get("OTEL_EXPORTER_OTLP_TIMEOUT", "10")))
+        if protocol == "grpc" and not request_timeout:
+            # The gRPC exporter treats a zero signal timeout as unset.
+            request_timeout = float(os.environ.get("OTEL_EXPORTER_OTLP_TIMEOUT", "10"))
         if configured_endpoint:
             endpoint = configured_endpoint
             if protocol != "grpc":
@@ -111,6 +116,7 @@ def resolve_enterprise_signal_settings(provider_config: dict[str, Any]) -> dict[
         signals[signal] = {
             "endpoint": endpoint,
             "headers": dict(headers),
+            "request_timeout": str(request_timeout),
             "tls": read_tls_files(tls_files, allow_ca_directory=protocol != "grpc"),
         }
         if not verify:
@@ -161,6 +167,11 @@ def invocation_source(captured: dict[str, Any], operation_type: str) -> Any:
 
 class EnterpriseTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
+        self.otlp_disabled = (
+            bool(provider_config["otlp_disabled"])
+            if "otlp_disabled" in provider_config
+            else os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true"
+        )
         protocol = str(provider_config.get("protocol", "grpc"))
         signals = resolve_enterprise_signal_settings(provider_config)
         trace_settings, metrics_settings = signals["trace"], signals["metrics"]
@@ -178,9 +189,13 @@ class EnterpriseTraceClient:
             {"service.name": provider_config.get("service_name", "dify"), "host.name": socket.gethostname()},
             "",
             protocol=protocol,
+            request_timeout=float(trace_settings.get("request_timeout", 10)),
             ssl_context=ssl_contexts.get("trace"),
             metrics_http=TraceProviderHttpClient(
-                metrics_settings["endpoint"], metrics_settings["headers"], ssl_context=ssl_contexts.get("metrics")
+                metrics_settings["endpoint"],
+                metrics_settings["headers"],
+                request_timeout=float(metrics_settings.get("request_timeout", 10)),
+                ssl_context=ssl_contexts.get("metrics"),
             ),
             grpc_credentials=grpc_credentials,
         )
@@ -477,7 +492,8 @@ class EnterpriseTraceClient:
         self.otlp.export_state = self.export_state
         emit_logs = self.export_state is None or not self.export_state.has_completed_signal("business_logs")
         trace_id = otlp_trace_id(completed_trace, parent_span)
-        sampled = UUID(trace_id).int / 2**128 < self.sampling_rate
+        disabled = self.otlp_disabled or (parent_span is not None and parent_span.get("disabled") is True)
+        sampled = not disabled and UUID(trace_id).int / 2**128 < self.sampling_rate
         exported_spans = []
         metrics: list[Metric] = []
         # Independent child views share execution measurements with the outer trace.
@@ -512,7 +528,10 @@ class EnterpriseTraceClient:
                 "draft_node_execution": "dify.node.execution.draft",
             }.get(operation_type, "dify.prompt_generation.execution")
             signal = "span_detail" if sends_span else "metric_only"
-            if emit_logs:
+            # Message LLM details share their message event; workflow details keep their own span logs.
+            if emit_logs and not (
+                operation_type == "llm" and span.attributes.get("metrics_from_parent") and not sends_span
+            ):
                 self.logger.info(
                     "telemetry.%s",
                     signal,
@@ -524,7 +543,7 @@ class EnterpriseTraceClient:
                         "user_id": self._user_id(completed_trace, span, operation_type),
                     },
                 )
-            if not metrics_from_outer_workflow and not span.attributes.get("metrics_from_parent"):
+            if not disabled and not metrics_from_outer_workflow and not span.attributes.get("metrics_from_parent"):
                 metrics.extend(self._metrics(completed_trace, span, operation_type))
         if emit_logs and self.export_state is not None:
             self.export_state.complete_signal("business_logs")
@@ -547,7 +566,11 @@ class EnterpriseTraceClient:
         self.otlp.send_metrics(metrics)
         return ExportedParentSpans(
             spans={
-                span.span_id: {"trace_id": trace_id, "span_id": export_span_id(completed_trace, span.span_id)}
+                span.span_id: {
+                    "trace_id": trace_id,
+                    "span_id": export_span_id(completed_trace, span.span_id),
+                    "disabled": disabled,
+                }
                 for span in completed_trace.spans
             }
         )

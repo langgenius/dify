@@ -18,5 +18,7 @@ def isolate_deployment_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
             "CURL_CA_BUNDLE",
             "SSL_CERT_FILE",
             "SSL_CERT_DIR",
+            "NETRC",
+            "OTEL_SDK_DISABLED",
         }:
             monkeypatch.delenv(name)
