@@ -465,7 +465,7 @@ class TencentTraceClient:
                     if isinstance(value, (int, float, bool)):
                         attributes[key] = value
                     else:
-                        attributes[key] = str(value)
+                        attributes[key] = value
                 span.set_attributes(attributes)
 
             if span_data.events:
