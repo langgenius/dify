@@ -318,11 +318,6 @@
       "count": 4
     }
   },
-  "web/app/components/app/configuration/config-var/config-string/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config-var/index.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -4180,11 +4175,6 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-number.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
