@@ -664,7 +664,7 @@ class IndexingRunner:
             )
             create_keyword_thread.start()
 
-        max_workers = 10
+        max_workers = dify_config.INDEXING_MAX_WORKERS_NUMBER
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = []

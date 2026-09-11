@@ -1,6 +1,7 @@
 import base64
 import logging
 import pickle
+import time
 from typing import Any, cast, override
 
 import numpy as np
@@ -19,6 +20,12 @@ from libs import helper
 from models.dataset import Embedding
 
 logger = logging.getLogger(__name__)
+
+
+def _pause_between_embedding_batches(batch_offset: int) -> None:
+    delay = dify_config.EMBEDDING_BATCH_DELAY
+    if batch_offset > 0 and delay > 0:
+        time.sleep(delay)
 
 
 class CacheEmbedding(Embeddings):
@@ -63,6 +70,7 @@ class CacheEmbedding(Embeddings):
                     else 1
                 )
                 for i in range(0, len(embedding_queue_texts), max_chunks):
+                    _pause_between_embedding_batches(i)
                     batch_texts = embedding_queue_texts[i : i + max_chunks]
 
                     embedding_result = self._model_instance.invoke_text_embedding(
@@ -145,6 +153,7 @@ class CacheEmbedding(Embeddings):
                     else 1
                 )
                 for i in range(0, len(embedding_queue_multimodel_documents), max_chunks):
+                    _pause_between_embedding_batches(i)
                     batch_multimodel_documents = embedding_queue_multimodel_documents[i : i + max_chunks]
 
                     embedding_result = self._model_instance.invoke_multimodal_embedding(
