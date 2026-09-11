@@ -1,14 +1,16 @@
 import type { Action } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
-import { AgentBuildGridTexture } from '@/features/agent-v2/agent-detail/configure/components/build-grid-texture'
-import DifyBuilderComposer from './composer'
 import { DifyBuilderConversation } from './conversation'
-import DebugLogExport from './debug-log-export'
-import { getDefaultActionPayload } from './interactions/action-payload'
+import { FORM_ACTION_IDS, getDefaultActionPayload } from './interactions/action-payload'
+import { DifyBuilderActionBar } from './panel/action-bar'
+import { DifyBuilderPanelBackground } from './panel/background'
+import { DifyBuilderPanelEmptyState } from './panel/empty-state'
+import { DifyBuilderPanelFooter } from './panel/footer'
+import { DifyBuilderPanelHeader } from './panel/header'
 import {
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
@@ -19,25 +21,19 @@ import {
   difyBuilderActionsAtom,
   difyBuilderActiveInteractionAtom,
   difyBuilderCanvasReadyAtom,
-  difyBuilderCanvasRefreshFailedAtom,
-  difyBuilderCanvasRefreshingAtom,
-  difyBuilderErrorAtom,
   difyBuilderHasSessionAtom,
   difyBuilderInteractionAtom,
   difyBuilderInteractionBusyAtom,
   difyBuilderInterruptedAtom,
   difyBuilderLoadOlderConversationAtom,
   difyBuilderRecheckReadyAtom,
-  difyBuilderRecoveryAtom,
   difyBuilderResetAtom,
-  difyBuilderRetryCanvasRefreshAtom,
   difyBuilderRetryMessageAtom,
   difyBuilderSessionIdAtom,
   difyBuilderSubmitActionAtom,
   difyBuilderViewVersionAtom,
 } from './store'
 
-const FORM_ACTION_IDS = new Set(['provide_testdata', 'submit_edit_rules', 'submit_requirements'])
 const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
 const EMPTY_ACTION_INTERACTION_STATE = {
   key: '',
@@ -45,94 +41,25 @@ const EMPTY_ACTION_INTERACTION_STATE = {
   validity: {} as Record<string, boolean>,
 }
 
-const DifyBuilderPanelBackground = memo(() => {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <AgentBuildGridTexture className="absolute top-0 right-0" />
-      <AgentBuildGridTexture className="absolute right-0 bottom-0 origin-center scale-y-[-1]" />
-    </div>
-  )
-})
-
-const DifyBuilderActionBar = ({
-  actionValidity,
-  actions,
-  busy,
-  formActionId,
-  formId,
-  pendingActionId,
-  recheckReady,
-  onAction,
-}: {
-  actionValidity: Record<string, boolean>
-  actions: Action[]
-  busy: boolean
-  formActionId?: string
-  formId?: string
-  pendingActionId: string | null
-  recheckReady: boolean
-  onAction: (action: Action) => void
-}) => {
-  const visibleActions = actions.filter((action) => action.kind !== 'automatic')
-  if (visibleActions.length === 0) return null
-
-  return (
-    <div className="flex flex-col items-end gap-1 px-4 py-2">
-      {visibleActions.map((action) => {
-        const loading = pendingActionId === action.id
-        const awaitingChecklist = action.id === 'recheck' && !recheckReady
-        const submitsForm = action.id === formActionId && formId !== undefined
-        const invalid = FORM_ACTION_IDS.has(action.id)
-          ? actionValidity[action.id] !== true
-          : actionValidity[action.id] === false
-        return (
-          <Button
-            key={action.id}
-            size="small"
-            variant={action.kind === 'primary' ? 'primary' : 'secondary'}
-            tone={action.kind === 'destructive' ? 'destructive' : 'default'}
-            type={submitsForm ? 'submit' : 'button'}
-            form={submitsForm ? formId : undefined}
-            loading={loading}
-            disabled={
-              loading
-                ? false
-                : busy || pendingActionId !== null || awaitingChecklist || (!submitsForm && invalid)
-            }
-            onClick={submitsForm ? undefined : () => onAction(action)}
-          >
-            {action.label}
-          </Button>
-        )
-      })}
-    </div>
-  )
-}
-
 const DifyBuilderPanel = () => {
   const { t } = useTranslation()
   const setShowDifyBuilderPanel = useStore((state) => state.setShowDifyBuilderPanel)
   const actions = useAtomValue(difyBuilderActionsAtom)
   const activeInteraction = useAtomValue(difyBuilderActiveInteractionAtom)
-  const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
-  const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const conversation = useAtomValue(difyBuilderConversationAtom)
   const conversationHasMore = useAtomValue(difyBuilderConversationHasMoreAtom)
   const conversationLoading = useAtomValue(difyBuilderConversationLoadingAtom)
-  const error = useAtomValue(difyBuilderErrorAtom)
   const hasSession = useAtomValue(difyBuilderHasSessionAtom)
   const interaction = useAtomValue(difyBuilderInteractionAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
   const interrupted = useAtomValue(difyBuilderInterruptedAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
-  const recovery = useAtomValue(difyBuilderRecoveryAtom)
   const retryableMessage = useAtomValue(difyBuilderRetryableMessageAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const reset = useSetAtom(difyBuilderResetAtom)
   const loadOlderConversation = useSetAtom(difyBuilderLoadOlderConversationAtom)
-  const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
   const retryMessage = useSetAtom(difyBuilderRetryMessageAtom)
   const submitAction = useSetAtom(difyBuilderSubmitActionAtom)
   const interactionFormId = useId()
@@ -296,36 +223,11 @@ const DifyBuilderPanel = () => {
       <div className="relative flex min-w-0 grow flex-col overflow-hidden rounded-xl bg-background-section shadow-xl inset-ring-[0.5px] inset-ring-components-panel-border">
         <DifyBuilderPanelBackground />
 
-        <header className="relative z-10 flex h-11 shrink-0 items-center justify-between bg-gradient-to-b from-background-section to-transparent pr-3 pl-[18px]">
-          <div className="relative flex h-full items-center gap-1 system-xs-semibold-uppercase text-text-primary after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:bg-text-accent">
-            <span
-              aria-hidden
-              className="i-custom-public-app-builder-builder-mark size-4 shrink-0"
-            />
-            <h2>{t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}</h2>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <DebugLogExport />
-            <button
-              type="button"
-              disabled={!hasSession || interactionBusy}
-              aria-label={t(($) => $['difyBuilder.reset'], { ns: 'workflow' })}
-              className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-30"
-              onClick={handleReset}
-            >
-              <span aria-hidden className="i-ri-reset-left-line size-4" />
-            </button>
-            <span aria-hidden className="h-3.5 w-px bg-divider-regular" />
-            <button
-              type="button"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid"
-              onClick={() => setShowDifyBuilderPanel(false)}
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </button>
-          </div>
-        </header>
+        <DifyBuilderPanelHeader
+          resetDisabled={!hasSession || interactionBusy}
+          onReset={handleReset}
+          onClose={() => setShowDifyBuilderPanel(false)}
+        />
 
         <div
           ref={scrollRef}
@@ -375,50 +277,11 @@ const DifyBuilderPanel = () => {
               />
             </>
           ) : (
-            <div className="flex min-h-full flex-col items-center justify-center px-8 pb-8 text-center">
-              <span aria-hidden className="mb-3 i-custom-public-app-builder-builder-mark size-8" />
-              <h3 className="system-sm-semibold text-text-primary">
-                {t(($) => $['difyBuilder.emptyBuildTitle'], { ns: 'workflow' })}
-              </h3>
-              <p className="mt-1 max-w-71 text-sm leading-5 tracking-[-0.07px] text-text-tertiary">
-                {t(($) => $['difyBuilder.emptyDescription'], { ns: 'workflow' })}
-              </p>
-            </div>
+            <DifyBuilderPanelEmptyState />
           )}
         </div>
 
-        <footer className="relative z-10 shrink-0 pb-2">
-          {recovery?.message && (
-            <div
-              role="alert"
-              className="mx-4 mb-2 rounded-lg bg-state-warning-hover px-2 py-1.5 system-xs-regular text-text-warning"
-            >
-              {recovery.message}
-            </div>
-          )}
-          {error && (
-            <div
-              role="alert"
-              className="mx-4 mb-2 rounded-lg bg-state-destructive-hover px-2 py-1.5 system-xs-regular text-text-destructive"
-            >
-              {error}
-            </div>
-          )}
-          {canvasRefreshFailed && (
-            <div className="mx-4 mb-2 flex justify-end">
-              <Button
-                size="small"
-                variant="secondary"
-                loading={canvasRefreshing}
-                disabled={interactionBusy && !canvasRefreshing}
-                onClick={() => retryCanvasRefresh()}
-              >
-                {t(($) => $['operation.retry'], { ns: 'common' })}
-              </Button>
-            </div>
-          )}
-          <DifyBuilderComposer />
-        </footer>
+        <DifyBuilderPanelFooter />
       </div>
     </aside>
   )

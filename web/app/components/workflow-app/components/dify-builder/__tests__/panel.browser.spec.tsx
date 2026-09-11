@@ -37,6 +37,18 @@ vi.mock('../model-selector', () => ({
   default: () => <button type="button">Model selector</button>,
 }))
 
+vi.mock('../use-dify-builder-model', () => ({
+  useDifyBuilderModel: () => ({
+    model: {
+      completion_params: {},
+      mode: 'chat',
+      name: 'gpt-4o',
+      provider: 'openai',
+    },
+    modelList: [],
+  }),
+}))
+
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: { setShowDifyBuilderPanel: typeof mocks.closePanel }) => T) =>
     selector({ setShowDifyBuilderPanel: mocks.closePanel }),

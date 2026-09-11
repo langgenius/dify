@@ -39,7 +39,7 @@ const DebugLogExport = () => {
             size="md"
             disabled={!runtime}
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-            className="data-popup-open:bg-state-base-hover"
+            className="size-7 data-popup-open:bg-state-base-hover"
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
           </IconButton>
