@@ -1,25 +1,25 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 
-from configs import dify_config
 from constants.languages import supported_language
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.auth.error import InvitationAccountMismatchError
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
-from controllers.console.wraps import model_validate
-from enums import DeploymentEdition
-from extensions.ext_database import db
-from libs.datetime_utils import naive_utc_now
-from libs.helper import EmailStr, timezone
+from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
+from extensions.ext_application_services import application_services
+from libs.helper import EmailStr, dump_response, timezone
 from libs.login import current_account_with_tenant
 from libs.token import extract_access_token
-from models import AccountStatus
-from models.account import TenantAccountJoin, TenantAccountRole
-from services.account_service import RegisterService, TenantService
-from services.billing_service import BillingService
+from services.account_activation_service import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
+from services.account_activation_service import (
+    FrozenAccountError,
+    InvalidInvitationError,
+    InvitationAccountMismatchError,
+)
+from services.entities.account_activation_entities import ActivationCommand, InvitationLookup
 
 
 class ActivateCheckQuery(BaseModel):
@@ -88,45 +88,19 @@ class ActivateCheckApi(Resource):
         "Success",
         console_ns.models[ActivationCheckResponse.__name__],
     )
-    @model_validate(ActivateCheckQuery)
-    def get(self, req_data: ActivateCheckQuery):
-
-        workspaceId = req_data.workspace_id
-        token = req_data.token
-
-        invitation = RegisterService.get_invitation_with_case_fallback(
-            workspaceId, req_data.email, token, session=db.session()
+    def get(self):
+        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))
+        result = application_services().account_activation.check(
+            InvitationLookup(
+                workspace_id=args.workspace_id,
+                email=args.email,
+                token=args.token,
+            ),
         )
-        if invitation:
-            data = invitation.get("data", {})
-            tenant = invitation.get("tenant", None)
-
-            # Check workspace permission
-            if tenant:
-                from libs.workspace_permission import check_workspace_member_invite_permission
-
-                check_workspace_member_invite_permission(tenant.id)
-
-            workspace_name = tenant.name if tenant else None
-            workspace_id = tenant.id if tenant else None
-            invitee_email = data.get("email") if data else None
-            account = invitation.get("account")
-            account_status = account.status if account else None
-            requires_setup = data.get("requires_setup")
-            if requires_setup is None:
-                requires_setup = account_status == AccountStatus.PENDING
-            return {
-                "is_valid": invitation is not None,
-                "data": {
-                    "workspace_name": workspace_name,
-                    "workspace_id": workspace_id,
-                    "email": invitee_email,
-                    "account_status": account_status,
-                    "requires_setup": requires_setup,
-                },
-            }
-        else:
-            return {"is_valid": False}
+        return ActivationCheckResponse.model_validate(result, from_attributes=True).model_dump(
+            mode="json",
+            exclude_none=True,
+        )
 
 
 @console_ns.route("/activate")
@@ -140,72 +114,39 @@ class ActivateApi(Resource):
         console_ns.models[ActivationResponse.__name__],
     )
     @console_ns.response(400, "Already activated or invalid token")
-    @model_validate(ActivatePayload)
-    def post(self, req_data: ActivatePayload):
+    def post(self):
         """Accept an invitation without letting an existing session act for another account.
 
         Token-only activation remains available for legacy clients. When the request already
         carries a console session, that session must belong to the account encoded in the
         invitation before the token is consumed or tenant membership is changed.
         """
+        args = ActivatePayload.model_validate(console_ns.payload or {})
+        authenticated_account_id: str | None = None
+        if extract_access_token(request) is not None:
+            authenticated_account_id = current_account_with_tenant().account.id
 
-        normalized_request_email = req_data.email.lower() if req_data.email else None
-        invitation = RegisterService.get_invitation_with_case_fallback(
-            req_data.workspace_id, req_data.email, req_data.token, session=db.session()
-        )
-        if invitation is None:
-            raise AlreadyActivateError()
-
-        account = invitation["account"]
-        if extract_access_token(request):
-            current_account, _ = current_account_with_tenant()
-            if current_account.id != account.id:
-                raise InvitationAccountMismatchError()
-
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
-            account.email
-        ):
-            raise AccountInFreezeError()
-
-        tenant = invitation["tenant"]
-        raw_role = invitation["data"].get("role")
         try:
-            role = TenantAccountRole(raw_role) if raw_role else TenantAccountRole.NORMAL
-        except ValueError:
-            role = TenantAccountRole.NORMAL
-        if not TenantAccountRole.is_non_owner_role(role):
-            role = TenantAccountRole.NORMAL
-
-        membership_id = db.session.scalar(
-            select(TenantAccountJoin.id).where(
-                TenantAccountJoin.tenant_id == tenant.id,
-                TenantAccountJoin.account_id == account.id,
+            application_services().account_activation.activate(
+                ActivationCommand(
+                    invitation=InvitationLookup(
+                        workspace_id=args.workspace_id,
+                        email=args.email,
+                        token=args.token,
+                    ),
+                    name=args.name,
+                    interface_language=args.interface_language,
+                    timezone=args.timezone,
+                ),
+                authenticated_account_id=authenticated_account_id,
             )
-        )
+        except InvalidInvitationError:
+            raise AlreadyActivateError() from None
+        except InvitationAccountMismatchError:
+            raise InvitationAccountMismatchHTTPError() from None
+        except EmailDomainSuspendedRegistrationError:
+            raise EmailDomainSuspendedError() from None
+        except FrozenAccountError:
+            raise AccountInFreezeError() from None
 
-        requires_setup = invitation["data"].get("requires_setup")
-        if requires_setup is None:
-            requires_setup = account.status == AccountStatus.PENDING
-
-        setup_fields: tuple[str, str, str] | None = None
-        if requires_setup:
-            if not req_data.name or not req_data.interface_language or not req_data.timezone:
-                raise AlreadyActivateError()
-            setup_fields = (req_data.name, req_data.interface_language, req_data.timezone)
-
-        RegisterService.revoke_token(req_data.workspace_id, normalized_request_email, req_data.token)
-
-        if membership_id is None:
-            TenantService.create_tenant_member(tenant, account, db.session(), role=role)
-
-        if setup_fields:
-            account.name = setup_fields[0]
-            account.interface_language = setup_fields[1]
-            account.timezone = setup_fields[2]
-            account.interface_theme = "light"
-            account.status = AccountStatus.ACTIVE
-            account.initialized_at = naive_utc_now()
-
-        TenantService.switch_tenant(account, tenant.id, session=db.session())
-
-        return {"result": "success"}
+        return dump_response(ActivationResponse, {"result": "success"})

@@ -1,6 +1,9 @@
+import type {
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { Model, ModelItem } from '../../declarations'
-import { Combobox } from '@langgenius/dify-ui/combobox'
+import { Popover } from '@langgenius/dify-ui/popover'
 import { render as renderComponent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
@@ -11,7 +14,8 @@ import {
 } from '../../declarations'
 import { ModelSelectorTrigger } from '../model-selector-trigger'
 
-const render = (node: ReactNode) => renderComponent(<Combobox>{node}</Combobox>)
+const render = (node: ReactNode) => renderComponent(<Popover>{node}</Popover>)
+const getTrigger = () => screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
 
 const mockUseQuery = vi.hoisted(() => vi.fn())
 const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
@@ -22,7 +26,9 @@ vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
   useCredentialPanelState: mockUseCredentialPanelState,
 }))
 
-const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const createModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'gpt-4',
   label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
   model_type: ModelTypeEnum.textGeneration,
@@ -34,7 +40,10 @@ const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const createModel = (overrides: Partial<Model> = {}): Model => ({
+const createModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: {
     en_US: 'https://example.com/openai-light.png',
@@ -71,7 +80,7 @@ describe('ModelSelectorTrigger', () => {
       render(<ModelSelectorTrigger />)
 
       expect(screen.getByText('plugin.detailPanel.configureModel')).toBeInTheDocument()
-      expect(screen.getByRole('combobox')).toBeEnabled()
+      expect(getTrigger()).toBeEnabled()
     })
 
     it('should render selected model details when model is active', () => {
@@ -81,7 +90,7 @@ describe('ModelSelectorTrigger', () => {
 
       expect(screen.getByText('GPT-4')).toBeInTheDocument()
       expect(screen.getByText('CHAT')).toBeInTheDocument()
-      expect(screen.getByRole('combobox')).toBeEnabled()
+      expect(getTrigger()).toBeEnabled()
     })
 
     it('should render deprecated default model and disabled style when selection is missing', () => {
@@ -102,7 +111,7 @@ describe('ModelSelectorTrigger', () => {
         />,
       )
 
-      expect(screen.getByRole('combobox')).toBeDisabled()
+      expect(getTrigger()).toBeDisabled()
     })
   })
 
@@ -118,11 +127,8 @@ describe('ModelSelectorTrigger', () => {
       expect(
         screen.getByText('common.modelProvider.selector.configureRequired'),
       ).toBeInTheDocument()
-      expect(screen.getByRole('combobox')).toHaveAttribute(
-        'data-model-status',
-        'configure-required',
-      )
-      expect(screen.getByRole('combobox')).toHaveClass(
+      expect(getTrigger()).toHaveAttribute('data-model-status', 'configure-required')
+      expect(getTrigger()).toHaveClass(
         'data-[model-status=configure-required]:bg-components-input-bg-disabled',
       )
     })
@@ -167,7 +173,7 @@ describe('ModelSelectorTrigger', () => {
         screen.getByText('common.modelProvider.selector.apiKeyUnavailable'),
       ).toBeInTheDocument()
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
-      expect(screen.getByRole('combobox')).toHaveClass(
+      expect(getTrigger()).toHaveClass(
         'data-[model-status=api-key-unavailable]:bg-components-input-bg-disabled',
       )
     })
@@ -208,7 +214,7 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
-      expect(screen.getByRole('combobox')).toHaveClass(
+      expect(getTrigger()).toHaveClass(
         'data-[model-status=incompatible]:bg-components-input-bg-disabled',
       )
       await user.hover(screen.getByText('common.modelProvider.selector.incompatible'))

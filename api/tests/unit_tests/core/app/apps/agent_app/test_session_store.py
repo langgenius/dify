@@ -1,14 +1,16 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, AgentAppWorkspaceStore
 from models.agent import (
     AgentConfigVersionKind,
+    AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
+from models.model import App, AppMode, Conversation
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 
 
@@ -30,9 +32,11 @@ def _scope(
     )
 
 
-def _binding() -> SimpleNamespace:
-    return SimpleNamespace(
+def _binding() -> AgentWorkspaceBinding:
+    return AgentWorkspaceBinding(
         id="binding-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
         workspace_id="workspace-1",
         backend_binding_ref="backend-binding-1",
         agent_id="agent-1",
@@ -43,6 +47,49 @@ def _binding() -> SimpleNamespace:
         pending_form_id=None,
         pending_tool_call_id=None,
     )
+
+
+def _persist_conversation(session: Session, *, binding_id: str | None = None) -> Conversation:
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Agent App",
+        description="",
+        mode=AppMode.AGENT_CHAT,
+        icon_type=None,
+        icon=None,
+        icon_background=None,
+        app_model_config_id=None,
+        workflow_id=None,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=None,
+        created_by=None,
+    )
+    conversation = Conversation(
+        id="conversation-1",
+        app_id=app.id,
+        app_model_config_id=None,
+        agent_workspace_binding_id=binding_id,
+        model_provider=None,
+        override_model_configs=None,
+        model_id=None,
+        mode=AppMode.AGENT_CHAT,
+        name="Agent conversation",
+        summary=None,
+        inputs={},
+        introduction="",
+        system_instruction="",
+        invoke_from=None,
+        from_source="api",
+        from_end_user_id="user-1",
+        from_account_id=None,
+        read_at=None,
+        read_account_id=None,
+    )
+    session.add_all([app, conversation])
+    session.commit()
+    return conversation
 
 
 def test_scope_selects_conversation_or_build_draft_workspace_owner() -> None:
@@ -56,14 +103,15 @@ def test_scope_selects_conversation_or_build_draft_workspace_owner() -> None:
 
 
 @pytest.mark.parametrize("home_snapshot_id", ["home-1", None])
-def test_load_or_create_persists_new_binding_on_caller(monkeypatch, home_snapshot_id: str | None) -> None:
-    caller = SimpleNamespace(agent_workspace_binding_id=None)
-    context = MagicMock()
-    session = context.__enter__.return_value
+def test_load_or_create_persists_new_binding_on_caller(
+    monkeypatch: pytest.MonkeyPatch,
+    home_snapshot_id: str | None,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_conversation(sqlite_session)
     create = MagicMock(return_value=_binding())
     store = AgentAppWorkspaceStore()
-    monkeypatch.setattr("core.app.apps.agent_app.session_store.session_factory.create_session", lambda: context)
-    monkeypatch.setattr(store, "_load_caller", MagicMock(return_value=caller))
     monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
 
     stored = store.load_or_create(_scope(home_snapshot_id=home_snapshot_id))
@@ -71,21 +119,22 @@ def test_load_or_create_persists_new_binding_on_caller(monkeypatch, home_snapsho
     assert stored.binding_id == "binding-1"
     assert stored.workspace_id == "workspace-1"
     assert stored.backend_binding_ref == "backend-binding-1"
-    assert caller.agent_workspace_binding_id == "binding-1"
-    assert create.call_args.kwargs["session"] is session
+    assert isinstance(create.call_args.kwargs["session"], Session)
     assert create.call_args.kwargs["base_home_snapshot_id"] == home_snapshot_id
-    session.commit.assert_called_once_with()
+    with sqlite_session_factory() as observer:
+        caller = observer.get(Conversation, "conversation-1")
+        assert caller is not None
+        assert caller.agent_workspace_binding_id == "binding-1"
 
 
-def test_load_or_create_uses_exact_caller_binding(monkeypatch: pytest.MonkeyPatch) -> None:
-    caller = SimpleNamespace(agent_workspace_binding_id="binding-1")
-    context = MagicMock()
-    context.__enter__.return_value = MagicMock()
+def test_load_or_create_uses_exact_caller_binding(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    _persist_conversation(sqlite_session, binding_id="binding-1")
     get_binding = MagicMock(return_value=_binding())
     create = MagicMock()
     store = AgentAppWorkspaceStore()
-    monkeypatch.setattr("core.app.apps.agent_app.session_store.session_factory.create_session", lambda: context)
-    monkeypatch.setattr(store, "_load_caller", MagicMock(return_value=caller))
     monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
     monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", MagicMock())
     monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
@@ -97,14 +146,14 @@ def test_load_or_create_uses_exact_caller_binding(monkeypatch: pytest.MonkeyPatc
     create.assert_not_called()
 
 
-def test_normal_conversation_pointer_does_not_create_replacement_binding(monkeypatch: pytest.MonkeyPatch) -> None:
-    caller = SimpleNamespace(agent_workspace_binding_id="unavailable-binding")
-    context = MagicMock()
+def test_normal_conversation_pointer_does_not_create_replacement_binding(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    _persist_conversation(sqlite_session, binding_id="unavailable-binding")
     get_binding = MagicMock(return_value=None)
     create = MagicMock()
     store = AgentAppWorkspaceStore()
-    monkeypatch.setattr("core.app.apps.agent_app.session_store.session_factory.create_session", lambda: context)
-    monkeypatch.setattr(store, "_load_caller", MagicMock(return_value=caller))
     monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
     monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
 

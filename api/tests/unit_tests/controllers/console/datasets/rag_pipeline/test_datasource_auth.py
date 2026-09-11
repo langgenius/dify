@@ -151,6 +151,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             plugin_id="langgenius/notion_datasource",
             provider="notion",
             credential_id="cred-1",
+            extra_data={"visibility": "only_me"},
         )
         get_authorization_url.assert_called_once()
         assert get_authorization_url.call_args.kwargs["tenant_id"] == "tenant-1"
@@ -250,6 +251,10 @@ class TestDatasourceOAuthCallback:
         assert response.status_code == 302
         assert "/oauth-callback" in response.location
         add_oauth_provider.assert_called_once()
+        # Legacy context without a visibility key falls back to ONLY_ME, and
+        # the callback now also propagates the creator's user_id.
+        from models.enums import PermissionEnum
+
         assert add_oauth_provider.call_args.kwargs == {
             "tenant_id": "tenant-1",
             "provider_id": add_oauth_provider.call_args.kwargs["provider_id"],
@@ -257,6 +262,8 @@ class TestDatasourceOAuthCallback:
             "name": "Workspace Bot",
             "expire_at": expires_at,
             "credentials": {"token": "abc"},
+            "user_id": "user-1",
+            "visibility": PermissionEnum.ONLY_ME,
         }
         assert str(add_oauth_provider.call_args.kwargs["provider_id"]) == _PROVIDER_ID
 
@@ -645,6 +652,7 @@ class TestDatasourceAuthListApi:
     def test_list_success(self, app: Flask):
         api = DatasourceAuthListApi()
         method = inspect.unwrap(api.get)
+        user = MagicMock(id="user-1")
 
         with (
             app.test_request_context("/"),
@@ -652,16 +660,20 @@ class TestDatasourceAuthListApi:
                 DatasourceProviderService,
                 "get_all_datasource_credentials",
                 return_value=[_datasource_auth()],
-            ),
+            ) as get_all,
         ):
-            response, status = method(api, "tenant-1")
+            response, status = method(api, "tenant-1", user)
 
         assert status == 200
         assert response == {"result": [_datasource_auth()]}
+        # user is threaded through so list_datasource_credentials applies the
+        # visibility filter for the current viewer.
+        assert get_all.call_args.kwargs["user"] is user
 
     def test_auth_list_empty(self, app: Flask):
         api = DatasourceAuthListApi()
         method = inspect.unwrap(api.get)
+        user = MagicMock(id="user-1")
 
         with (
             app.test_request_context("/"),
@@ -671,7 +683,7 @@ class TestDatasourceAuthListApi:
                 return_value=[],
             ),
         ):
-            response, status = method(api, "tenant-1")
+            response, status = method(api, "tenant-1", user)
 
         assert status == 200
         assert response["result"] == []
@@ -679,6 +691,7 @@ class TestDatasourceAuthListApi:
     def test_hardcode_list_empty(self, app: Flask):
         api = DatasourceHardCodeAuthListApi()
         method = inspect.unwrap(api.get)
+        user = MagicMock(id="user-1")
 
         with (
             app.test_request_context("/"),
@@ -688,7 +701,7 @@ class TestDatasourceAuthListApi:
                 return_value=[],
             ),
         ):
-            response, status = method(api, "tenant-1")
+            response, status = method(api, "tenant-1", user)
 
         assert status == 200
         assert response["result"] == []
@@ -698,6 +711,7 @@ class TestDatasourceHardCodeAuthListApi:
     def test_list_success(self, app: Flask):
         api = DatasourceHardCodeAuthListApi()
         method = inspect.unwrap(api.get)
+        user = MagicMock(id="user-1")
 
         with (
             app.test_request_context("/"),
@@ -705,11 +719,12 @@ class TestDatasourceHardCodeAuthListApi:
                 DatasourceProviderService,
                 "get_hard_code_datasource_credentials",
                 return_value=[_datasource_auth()],
-            ),
+            ) as get_hardcode,
         ):
-            response, status = method(api, "tenant-1")
+            response, status = method(api, "tenant-1", user)
 
         assert status == 200
+        assert get_hardcode.call_args.kwargs["user"] is user
 
 
 class TestDatasourceAuthOauthCustomClient:

@@ -1,10 +1,9 @@
 'use client'
 
 import type { Field as BaseFieldNS } from '@base-ui/react/field'
-import type { VariantProps } from 'class-variance-authority'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cn } from '../cn'
-import { formLabelClassName, textControlVariants } from '../form-control-shared'
+import { formLabelClassName } from '../form-control-shared'
 
 type FieldProps = Omit<BaseFieldNS.Root.Props, 'className'> & {
   className?: string
@@ -28,15 +27,6 @@ type FieldLabelProps = Omit<BaseFieldNS.Label.Props, 'className'> & {
 
 function FieldLabel({ className, ...props }: FieldLabelProps) {
   return <BaseField.Label className={cn(formLabelClassName, className)} {...props} />
-}
-
-type FieldControlProps = Omit<BaseFieldNS.Control.Props, 'className' | 'size'> &
-  VariantProps<typeof textControlVariants> & {
-    className?: string
-  }
-
-function FieldControl({ className, size = 'medium', ...props }: FieldControlProps) {
-  return <BaseField.Control className={cn(textControlVariants({ size }), className)} {...props} />
 }
 
 type FieldDescriptionProps = Omit<BaseFieldNS.Description.Props, 'className'> & {
@@ -69,10 +59,9 @@ type FieldValidityProps = BaseFieldNS.Validity.Props
 
 const FieldValidity = BaseField.Validity
 
-export { Field, FieldControl, FieldDescription, FieldError, FieldItem, FieldLabel, FieldValidity }
+export { Field, FieldDescription, FieldError, FieldItem, FieldLabel, FieldValidity }
 
 export type {
-  FieldControlProps,
   FieldDescriptionProps,
   FieldErrorProps,
   FieldItemProps,

@@ -1,5 +1,4 @@
 'use client'
-
 import type {
   TimePickerProps,
   TriggerParams,
@@ -10,11 +9,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
@@ -263,7 +263,17 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
             <DialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
               {t(($) => $['autoUpdate.autoUpdateSettings'], { ns: 'plugin' })}
             </DialogTitle>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute top-5 right-5"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
           {isSettingsLoading && (
             <div

@@ -433,9 +433,13 @@ describe('AddOAuthButton', () => {
         wrapper: createWrapper(),
       })
 
-      // Click the main button area (left side)
+      // Click the main button area (left side) → opens visibility picker
       const buttonText = screen.getByText('use oauth')
       fireEvent.click(buttonText)
+
+      // Confirm the picker to actually kick off OAuth
+      const confirmButton = await screen.findByText('plugin.auth.authorize')
+      fireEvent.click(confirmButton)
 
       await waitFor(() => {
         expect(mockGetPluginOAuthUrl).toHaveBeenCalled()
@@ -474,6 +478,10 @@ describe('AddOAuthButton', () => {
       const buttonText = screen.getByText('use oauth')
       fireEvent.click(buttonText)
 
+      // Confirm the visibility picker to kick off the OAuth request
+      const confirmButton = await screen.findByText('plugin.auth.authorize')
+      fireEvent.click(confirmButton)
+
       await waitFor(() => {
         expect(mockGetPluginOAuthUrl).toHaveBeenCalled()
       })
@@ -503,6 +511,10 @@ describe('AddOAuthButton', () => {
 
       const buttonText = screen.getByText('use oauth')
       fireEvent.click(buttonText)
+
+      // Confirm the visibility picker to kick off the OAuth request
+      const confirmButton = await screen.findByText('plugin.auth.authorize')
+      fireEvent.click(confirmButton)
 
       await waitFor(() => {
         expect(mockOpenOAuthPopup).toHaveBeenCalledWith(
@@ -1333,9 +1345,8 @@ describe('OAuthClientSettings', () => {
 
     it('should render Save and Auth button that is clickable', async () => {
       const pluginPayload = createPluginPayload()
-      const onAuth = vi.fn().mockResolvedValue(undefined)
 
-      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={[]} onAuth={onAuth} />, {
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={[]} />, {
         wrapper: createWrapper(),
       })
 
@@ -1392,9 +1403,9 @@ describe('OAuthClientSettings', () => {
       })
     })
 
-    it('should call onAuth after handleConfirmAndAuthorize', async () => {
+    it('should request authorization after handleConfirmAndAuthorize', async () => {
       const pluginPayload = createPluginPayload()
-      const onAuth = vi.fn().mockResolvedValue(undefined)
+      const onRequestAuthorization = vi.fn().mockResolvedValue(undefined)
       const onClose = vi.fn()
       mockSetPluginOAuthCustomClient.mockResolvedValue({})
 
@@ -1402,7 +1413,7 @@ describe('OAuthClientSettings', () => {
         <OAuthClientSettings
           pluginPayload={pluginPayload}
           schemas={defaultSchemas}
-          onAuth={onAuth}
+          onRequestAuthorization={onRequestAuthorization}
           onClose={onClose}
         />,
         { wrapper: createWrapper() },
@@ -1413,7 +1424,7 @@ describe('OAuthClientSettings', () => {
 
       await waitFor(() => {
         expect(mockSetPluginOAuthCustomClient).toHaveBeenCalled()
-        expect(onAuth).toHaveBeenCalled()
+        expect(onRequestAuthorization).toHaveBeenCalled()
       })
     })
 
@@ -1773,7 +1784,7 @@ describe('OAuthClientSettings', () => {
     })
   })
 
-  describe('Branch Coverage - onAuth callback', () => {
+  describe('Branch Coverage - authorization request callback', () => {
     beforeEach(() => {
       mockGetFormValues.mockReturnValue({
         isCheckValidated: true,
@@ -1781,16 +1792,16 @@ describe('OAuthClientSettings', () => {
       })
     })
 
-    it('should call onAuth when provided and Save and Auth is clicked', async () => {
+    it('should request authorization when Save and Auth is clicked', async () => {
       const pluginPayload = createPluginPayload()
-      const onAuth = vi.fn().mockResolvedValue(undefined)
+      const onRequestAuthorization = vi.fn().mockResolvedValue(undefined)
       mockSetPluginOAuthCustomClient.mockResolvedValue({})
 
       render(
         <OAuthClientSettings
           pluginPayload={pluginPayload}
           schemas={defaultSchemas}
-          onAuth={onAuth}
+          onRequestAuthorization={onRequestAuthorization}
         />,
         { wrapper: createWrapper() },
       )
@@ -1798,29 +1809,23 @@ describe('OAuthClientSettings', () => {
       fireEvent.click(screen.getByText('plugin.auth.saveAndAuth'))
 
       await waitFor(() => {
-        expect(onAuth).toHaveBeenCalled()
+        expect(onRequestAuthorization).toHaveBeenCalled()
       })
     })
 
-    it('should not call onAuth when not provided', async () => {
+    it('should save without an authorization request callback', async () => {
       const pluginPayload = createPluginPayload()
       mockSetPluginOAuthCustomClient.mockResolvedValue({})
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-          onAuth={undefined}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       fireEvent.click(screen.getByText('plugin.auth.saveAndAuth'))
 
       await waitFor(() => {
         expect(mockSetPluginOAuthCustomClient).toHaveBeenCalled()
       })
-      // No onAuth to call, but should not throw
     })
   })
 

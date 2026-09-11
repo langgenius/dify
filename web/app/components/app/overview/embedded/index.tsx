@@ -6,7 +6,7 @@ import type {
 } from '../app-card-utils'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -376,7 +376,17 @@ const Embedded = ({
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
         </DialogTitle>
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {isShow && (
             <EmbeddedContent

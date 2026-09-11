@@ -3,7 +3,7 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { useClickAway } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import Card from './card'
 
 type PromptLogModalProps = {
@@ -43,7 +43,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({ currentLogItem, width, onCanc
         <div className="flex items-center">
           {currentLogItem.log?.length === 1 && (
             <>
-              <CopyFeedbackNew className="size-6" content={currentLogItem.log[0]!.text} />
+              <CopyFeedback className="size-6" content={currentLogItem.log[0]!.text} />
               <div className="mx-2.5 h-3.5 w-px bg-divider-regular" />
             </>
           )}

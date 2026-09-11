@@ -19,7 +19,7 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
-from core.rbac import RBACPermission
+from core.rbac import RBACPermission, RBACResourceScope
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
@@ -44,6 +44,7 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
+from models.agent import AgentScope
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
@@ -51,6 +52,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
+from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise.rbac_service import RBACService
 from services.entities.dsl_entities import (
     CheckDependenciesResult,
@@ -61,10 +63,15 @@ from services.entities.dsl_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.icon_configuration import (
+    DEFAULT_ICON,
+    DEFAULT_ICON_TYPE,
+    is_valid_image_icon,
+)
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.system_feature_service import SystemFeatureService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +115,55 @@ class AppDslService:
     def __init__(self, session: Session):
         self._session = session
         self._warnings = []
+
+    def copy_app(
+        self,
+        *,
+        app_model: App,
+        account: Account,
+        tenant_id: str,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+    ) -> tuple[Import, App | None]:
+        """Copy an app, finalizing the import before inheriting external access settings.
+
+        Failed and pending imports roll back the current transaction. Completed
+        imports commit before external I/O, then load the copy in the caller's tenant.
+        """
+        if app_model.tenant_id != tenant_id or account.current_tenant_id != tenant_id:
+            raise NoPermissionError("App does not belong to the current workspace")
+
+        original_app_id = app_model.id
+        yaml_content = self.export_dsl(app_model=app_model, session=self._session, include_secret=True)
+        result = self.import_app(
+            account=account,
+            import_mode=ImportMode.YAML_CONTENT,
+            yaml_content=yaml_content,
+            name=name,
+            description=description,
+            icon_type=icon_type,
+            icon=icon,
+            icon_background=icon_background,
+        )
+        if result.status in {ImportStatus.FAILED, ImportStatus.PENDING}:
+            self._session.rollback()
+            return result, None
+        self._session.commit()
+
+        if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
+            try:
+                original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(original_app_id)
+                access_mode = original_settings.access_mode
+            except Exception:
+                # Old apps without settings default to public, matching the access fallback.
+                access_mode = "public"
+            EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
+
+        app = self._session.scalar(select(App).where(App.id == result.app_id, App.tenant_id == tenant_id))
+        return result, app
 
     def import_app(
         self,
@@ -227,9 +283,7 @@ class AppDslService:
             # If app_id is provided, check if it exists
             app = None
             if app_id:
-                stmt = select(App).where(App.id == app_id, App.tenant_id == account.current_tenant_id)
-                app = self._session.scalar(stmt)
-
+                app = self._load_app_for_overwrite(account, app_id)
                 if not app:
                     return Import(
                         id=import_id,
@@ -246,8 +300,11 @@ class AppDslService:
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
                 pending_data = PendingData(
-                    tenant_id=account.current_tenant_id,
+                    tenant_id=tenant_id,
                     account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
@@ -367,8 +424,13 @@ class AppDslService:
 
             app = None
             if pending_data.app_id:
-                stmt = select(App).where(App.id == pending_data.app_id, App.tenant_id == account.current_tenant_id)
-                app = self._session.scalar(stmt)
+                app = self._load_app_for_overwrite(account, pending_data.app_id)
+                if not app:
+                    return Import(
+                        id=import_id,
+                        status=ImportStatus.FAILED,
+                        error="App not found",
+                    )
 
             # Create or update app
             app = self._create_or_update_app(
@@ -429,20 +491,52 @@ class AppDslService:
             leaked_dependencies=leaked_dependencies,
         )
 
-    @staticmethod
-    def _ensure_agent_manage_permission(account: Account) -> None:
-        """Importing an Agent DSL creates a roster Agent, which requires ``agent.manage``."""
+    def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
+        if account.current_tenant_id is None:
+            raise ValueError("Current tenant is not set")
+        if dify_config.RBAC_ENABLED and self._session.in_transaction():
+            raise RuntimeError("App overwrite authorization requires a session without an active transaction")
+        rbac_allowed = not dify_config.RBAC_ENABLED or RBACService.CheckAccess.check(
+            account.current_tenant_id,
+            account.id,
+            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+            resource_type=RBACResourceScope.APP,
+            resource_id=app_id,
+        )
+        app = self._session.scalar(
+            select(App)
+            .where(
+                App.id == app_id,
+                App.tenant_id == account.current_tenant_id,
+                App.status == "normal",
+            )
+            .execution_options(populate_existing=True)
+        )
+        if app is not None and not rbac_allowed and app.maintainer != account.id:
+            raise NoPermissionError("You do not have permission to overwrite this app")
+        return app
+
+    def _ensure_agent_import_permission(self, account: Account, *, app: App | None) -> None:
         if not dify_config.RBAC_ENABLED:
             return
         if account.current_tenant_id is None:
             raise ValueError("Current tenant is not set")
+        binding = (
+            app.agent_app_binding_with_session(session=self._session, include_archived=True)
+            if app is not None
+            else None
+        )
+        if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
         allowed = RBACService.CheckAccess.check(
             account.current_tenant_id,
             account.id,
-            scene=RBACPermission.AGENT_MANAGE,
+            scene=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
+            resource_type=RBACResourceScope.AGENT if binding is not None else None,
+            resource_id=str(binding.id) if binding is not None else None,
         )
         if not allowed:
-            raise NoPermissionError("Agent management permission is required to import an Agent App")
+            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
 
     def _create_or_update_app(
         self,
@@ -465,7 +559,11 @@ class AppDslService:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
         if app_mode == AppMode.AGENT:
-            self._ensure_agent_manage_permission(account)
+            self._ensure_agent_import_permission(account, app=app)
+
+        target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
+        if target_tenant_id is None:
+            raise ValueError("Current tenant is not set")
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
@@ -475,6 +573,14 @@ class AppDslService:
         else:
             resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
+        if not is_valid_image_icon(
+            session=self._session,
+            tenant_id=target_tenant_id,
+            icon_type=resolved_icon_type,
+            icon=icon,
+        ):
+            resolved_icon_type = DEFAULT_ICON_TYPE
+            icon = DEFAULT_ICON
 
         if app:
             # Update existing app
@@ -486,13 +592,10 @@ class AppDslService:
             app.updated_by = account.id
             app.updated_at = naive_utc_now()
         else:
-            if account.current_tenant_id is None:
-                raise ValueError("Current tenant is not set")
-
             # Create new app
             app = App()
             app.id = import_app_id or str(uuid4())
-            app.tenant_id = account.current_tenant_id
+            app.tenant_id = target_tenant_id
             app.mode = app_mode
             app.name = name or app_data.get("name", "")
             app.description = description or app_data.get("description", "")
@@ -542,6 +645,11 @@ class AppDslService:
                 else:
                     unique_hash = None
                 graph = workflow_data.get("graph", {})
+                if not isinstance(graph, dict):
+                    raise ValueError("Workflow graph must be a mapping")
+                # The source canvas position should not determine the imported app's initial view.
+                graph = graph.copy()
+                graph.pop("viewport", None)
                 for node in graph.get("nodes", []):
                     if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         dataset_ids = node["data"].get("dataset_ids", [])
@@ -583,15 +691,10 @@ class AppDslService:
                         draft_workflow=draft_workflow,
                     )
                     self._session.commit()
-                    binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                    WorkflowAgentRetirementService.retire_unowned(
                         tenant_id=app.tenant_id,
                         agent_ids=retirement_candidates,
                         account_id=account.id,
-                    )
-                    enqueue_agent_resource_collection(
-                        tenant_id=app.tenant_id,
-                        binding_ids=binding_ids,
-                        home_snapshot_ids=home_snapshot_ids,
                     )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config

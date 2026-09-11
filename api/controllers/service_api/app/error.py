@@ -1,4 +1,8 @@
 from libs.exception import BaseHTTPException
+from services.errors.app import (
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE,
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE,
+)
 
 
 class AppUnavailableError(BaseHTTPException):
@@ -34,6 +38,12 @@ class NotWorkflowAppError(BaseHTTPException):
 class WorkflowVersionExecutionNotAllowedError(BaseHTTPException):
     error_code = "workflow_version_execution_not_allowed"
     description = "Workflow version execution is not available on your current plan. Please upgrade to a paid plan."
+    code = 403
+
+
+class TriggerWorkflowServiceModeUnavailableError(BaseHTTPException):
+    error_code = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE
+    description = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
     code = 403
 
 

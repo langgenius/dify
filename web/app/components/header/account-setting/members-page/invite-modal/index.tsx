@@ -1,23 +1,25 @@
 'use client'
-
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { EmailRecipient } from './email-recipients'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
-import { consoleQuery } from '@/service/client'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import { mergeEmailRecipients } from './email-recipients'
 import { EmailRecipientsField } from './email-recipients-field'
@@ -48,14 +50,16 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const queryClient = useQueryClient()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const [recipients, setRecipients] = useState<EmailRecipient[]>([])
   const [draft, setDraft] = useState('')
   const [submissionError, setSubmissionError] = useState<SubmissionError>(null)
   const fieldErrors = submissionError?.kind === 'fields' ? submissionError.errors : undefined
+  // A limit of 0 means unlimited.
   const memberLimit = features?.workspace_members.enabled
     ? features.workspace_members
-    : features?.billing.enabled && features.members.limit > 0
+    : deploymentEdition === 'CLOUD' && features && features.members.limit > 0
       ? features.members
       : undefined
   const remainingSeats =
@@ -167,13 +171,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
           {submissionError.message}
         </div>
       )}
-      <Button
-        type="submit"
-        variant="primary"
-        className="w-full"
-        loading={isPending}
-        disabled={isPending}
-      >
+      <Button type="submit" variant="primary" className="w-full" loading={isPending}>
         {validRecipientCount > 0
           ? t(($) => $['members.sendInviteCount'], {
               ns: 'common',
@@ -207,7 +205,17 @@ export function InviteModal({
           </DialogDescription>
         </div>
         <InviteForm isEmailSetup={isEmailSetup} onOpenChange={onOpenChange} onSend={onSend} />
-        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
       </DialogContent>
     </Dialog>
   )

@@ -37,6 +37,10 @@ export const zNotificationResponse = z.object({
   should_show: z.boolean(),
 })
 
+export const zGetNotificationQuery = z.object({
+  language: z.string().optional().default('en-US'),
+})
+
 /**
  * Success — inspect should_show to decide whether to render the modal
  */

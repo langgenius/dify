@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TypeSelector from '../type-select'
@@ -14,6 +13,7 @@ describe('TypeSelector', () => {
 
     render(
       <TypeSelector
+        label="Field type"
         value="text-input"
         onSelect={onSelect}
         items={[

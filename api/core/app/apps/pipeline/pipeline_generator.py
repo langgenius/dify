@@ -654,8 +654,6 @@ class PipelineGenerator(BaseAppGenerator):
             except Exception as e:
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            finally:
-                db.session.close()
 
     def _handle_response(
         self,

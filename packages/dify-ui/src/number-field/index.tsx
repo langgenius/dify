@@ -1,22 +1,23 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
-import { textControlCompoundFocusClassName } from '../form-control-shared'
+import { textControlCompoundInputFocusClassName } from '../form-control-shared'
 
 const NumberField = BaseNumberField.Root
 type NumberFieldProps = BaseNumberField.Root.Props
 
 const numberFieldGroupVariants = cva(
   [
-    'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
+    'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlCompoundFocusClassName,
+    textControlCompoundInputFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-invalid:border-components-input-border-destructive data-invalid:bg-components-input-bg-destructive',
+    'data-invalid:has-[input:focus]:border-components-input-border-destructive data-invalid:has-[input:focus]:bg-components-input-bg-destructive',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
     'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal motion-reduce:transition-none',
@@ -60,7 +61,7 @@ const numberFieldInputVariants = cva(
     variants: {
       size: {
         medium: 'px-3 py-1.75 system-sm-regular',
-        large: 'px-4 py-2 system-md-regular',
+        large: 'px-4 py-1.75 system-md-regular',
       },
     },
     defaultVariants: {
@@ -106,7 +107,7 @@ function NumberFieldUnit({ className, size = 'medium', ...props }: NumberFieldUn
 }
 
 const numberFieldControlsVariants = cva(
-  'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
+  'flex w-6 shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
 type NumberFieldControlsProps = React.ComponentProps<'div'>
@@ -117,7 +118,7 @@ function NumberFieldControls({ className, ...props }: NumberFieldControlsProps) 
 
 const numberFieldControlButtonVariants = cva(
   [
-    'flex touch-manipulation items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors select-none',
+    'flex touch-manipulation items-center justify-center text-text-tertiary outline-hidden transition-colors select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
     'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
@@ -140,22 +141,22 @@ const numberFieldControlButtonVariants = cva(
       {
         size: 'medium',
         direction: 'increment',
-        className: 'pt-1',
+        className: 'pt-0.75',
       },
       {
         size: 'medium',
         direction: 'decrement',
-        className: 'pb-1',
+        className: 'pb-0.75',
       },
       {
         size: 'large',
         direction: 'increment',
-        className: 'pt-1.5',
+        className: 'pt-1.25',
       },
       {
         size: 'large',
         direction: 'decrement',
-        className: 'pb-1.5',
+        className: 'pb-1.25',
       },
     ],
     defaultVariants: {

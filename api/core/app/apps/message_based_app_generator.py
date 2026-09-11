@@ -31,7 +31,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file_reference import resolve_file_record_id
 from extensions.ext_database import db
 from extensions.ext_redis import get_pubsub_broadcast_channel
-from libs.broadcast_channel.channel import Topic
+from libs.broadcast_channel.channel import SupportsPreparedSubscription, Topic
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
@@ -323,8 +323,14 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         on_subscribe: Callable[[], None] | None = None,
     ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
+        subscriber = topic.as_subscriber()
+        subscription = (
+            subscriber.prepare_subscription()
+            if isinstance(subscriber, SupportsPreparedSubscription)
+            else subscriber.subscribe()
+        )
         return stream_topic_events(
-            topic=topic,
+            subscription=subscription,
             idle_timeout=idle_timeout,
             on_subscribe=on_subscribe,
         )

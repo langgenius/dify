@@ -1,11 +1,12 @@
+import type { ModelProviderSummaryListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelSelectorPreviewPayload } from './popup-item'
 import type {
+  ModelSelectorModel,
   ModelSelectorModelPredicate,
   ModelSelectorProvider,
   ModelSelectorValue,
 } from './types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
-import { ComboboxList } from '@langgenius/dify-ui/combobox'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -19,10 +20,9 @@ import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n-config'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelTypeEnum } from '../declarations'
@@ -51,6 +51,9 @@ import {
   ShowIncompatibleModelsButton,
 } from './popup-layout'
 
+const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryListResponse['data'] = []
+const EMPTY_MODEL_PROVIDER_PLUGINS: ModelProviderSummaryListResponse['plugins'] = {}
+
 export type PopupProps = {
   defaultModel?: ModelSelectorValue
   inputValue: string
@@ -61,6 +64,7 @@ export type PopupProps = {
   modelSuggestionPredicate?: ModelSelectorModelPredicate
   onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
+  onSelect: (provider: string, model: ModelSelectorModel) => void
   onOpenMarketplace?: () => void
   onHide: () => void
 }
@@ -74,6 +78,7 @@ function Popup({
   modelSuggestionPredicate,
   onConfigureEmptyState,
   onInputValueChange,
+  onSelect,
   onOpenMarketplace,
   onHide,
 }: PopupProps) {
@@ -86,7 +91,11 @@ function Popup({
   )
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const [showIncompatibleModels, setShowIncompatibleModels] = useState(false)
-  const { modelProviders, modelProviderPlugins = {} } = useProviderContext()
+  const { data: providerSummary } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
+  )
+  const modelProviders = providerSummary?.data ?? EMPTY_MODEL_PROVIDERS
+  const modelProviderPlugins = providerSummary?.plugins ?? EMPTY_MODEL_PROVIDER_PLUGINS
   const { data: enableMarketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.enable_marketplace,
@@ -239,6 +248,13 @@ function Popup({
     )
   }, [enableMarketplace, modelProviderPlugins])
 
+  const searchStatus =
+    !filteredModelList.length && installedModelList.length > 0
+      ? t(($) => $['modelProvider.selector.noModelFoundForSearch'], {
+          ns: 'common',
+          query: inputValue,
+        })
+      : null
   const handleClosePreviewCard = useCallback(() => {
     previewCardHandle.close()
   }, [previewCardHandle])
@@ -251,34 +267,37 @@ function Popup({
           {showCreditsExhaustedAlert && (
             <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
           )}
-          <ComboboxList className="max-h-none overflow-visible p-0">
-            <div className="pb-1">
-              {filteredModelList.map((model) => (
-                <PopupItem
-                  key={model.provider}
-                  defaultModel={defaultModel}
-                  model={model}
-                  modelPredicate={modelPredicate}
-                  modelSuggestionPredicate={modelSuggestionPredicate}
-                  previewCardHandle={previewCardHandle}
-                  onPreviewCardClose={handleClosePreviewCard}
-                  onHide={onHide}
-                />
-              ))}
-            </div>
-          </ComboboxList>
+          <div className="pb-1">
+            {filteredModelList.map((model) => (
+              <PopupItem
+                key={model.provider}
+                defaultModel={defaultModel}
+                model={model}
+                modelPredicate={modelPredicate}
+                modelSuggestionPredicate={modelSuggestionPredicate}
+                previewCardHandle={previewCardHandle}
+                onPreviewCardClose={handleClosePreviewCard}
+                onSelect={onSelect}
+                onHide={onHide}
+              />
+            ))}
+          </div>
           <div className="pb-1">
             {!filteredModelList.length && !installedModelList.length && (
               <ModelSelectorEmptyState onConfigure={onConfigureEmptyState ?? onHide} />
             )}
-            {!filteredModelList.length && installedModelList.length > 0 && (
-              <div className="px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary">
-                {t(($) => $['modelProvider.selector.noModelFoundForSearch'], {
-                  ns: 'common',
-                  query: inputValue,
-                })}
-              </div>
-            )}
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className={
+                searchStatus
+                  ? 'px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary'
+                  : 'h-0'
+              }
+            >
+              {searchStatus}
+            </div>
             {scopeFeatures.length > 0 && <CompatibleModelsNotice />}
             {shouldShowModelPredicateReveal && (
               <ShowIncompatibleModelsButton
@@ -335,7 +354,7 @@ function ModelSelectorPreviewCard({
   return (
     <PreviewCardContent
       placement="right"
-      popupClassName="w-[206px] bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
+      className="w-51.5 bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
     >
       <div className="flex flex-col gap-1">
         <div className="flex flex-col items-start gap-2">

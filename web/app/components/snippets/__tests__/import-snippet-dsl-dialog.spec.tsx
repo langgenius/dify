@@ -73,7 +73,18 @@ describe('ImportSnippetDSLDialog', () => {
 
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
 
-    await user.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
+    expect(screen.getByRole('dialog', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'snippet.importFromDSLFile' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+
+    await user.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
+    expect(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
     await user.type(
       screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'),
       'https://example.com/snippet.yml',
@@ -147,7 +158,7 @@ describe('ImportSnippetDSLDialog', () => {
 
     render(<ImportSnippetDSLDialog isOpen onClose={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
+    await user.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
     await user.type(
       screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'),
       'https://example.com/snippet.yml',

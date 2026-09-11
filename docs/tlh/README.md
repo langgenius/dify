@@ -107,7 +107,7 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
 
 Star Dify on GitHub and be instantly notified of new releases.
 
-![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
+<img width="1344" height="720" alt="star" src="https://github.com/user-attachments/assets/dcd086d1-af0f-471b-ae52-1ad2fa040595" />
 
 ## Quick Start
 
@@ -132,70 +132,31 @@ After running, you can access the Dify dashboard in your browser at [http://loca
 
 ## Next steps
 
-If you need to customize the configuration, please refer to the comments in our [.env.example](../../docker/.env.example) file and update the corresponding values in your `.env` file. Additionally, you might need to make adjustments to the `docker-compose.yaml` file itself, such as changing image versions, port mappings, or volume mounts, based on your specific deployment environment and requirements. After making any changes, please re-run `docker-compose up -d`. You can find the full list of available environment variables [here](https://docs.dify.ai/getting-started/install-self-hosted/environments).
-
-If you'd like to configure a highly-available setup, there are community-contributed [Helm Charts](https://helm.sh/) and YAML files which allow Dify to be deployed on Kubernetes.
-
-- [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
-- [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
-- [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
-- [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 NEW! YAML files (Supports Dify v1.6.0) by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### Terraform atorlugu pilersitsineq
-
-wa'logh nIqHom neH ghun deployment toy'wI' [terraform](https://www.terraform.io/) lo'laH.
-
-##### Azure Global
-
-- [Azure Terraform mung @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform qachlot @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
-
-#### AWS CDK atorlugh pilersitsineq
-
-wa'logh nIqHom neH ghun deployment toy'wI' [CDK](https://aws.amazon.com/cdk/) lo'laH.
-
-##### AWS
-
-- [AWS CDK qachlot @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
-- [AWS CDK qachlot @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
-
-#### Alibaba Cloud
-
-[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
-
-#### Alibaba Cloud Data Management
-
-[Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
-
-#### AKS 'e' Deploy je Azure Devops Pipeline lo'laH
-
-[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) lo'laH Dify AKS 'e' wa'DIch click 'e' Deploy
+For custom configuration, observability, and deployment options, see [Advanced Setup](ADVANCED_SETUP.md).
 
 ## Contributing
 
-For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-At the same time, please consider supporting Dify by sharing it on social media and at events and conferences.
+Dify welcomes contributions of all kinds:
 
-> We are looking for contributors to help with translating Dify to languages other than Mandarin or English. If you are interested in helping, please see the [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) for more information, and leave us a comment in the `global-users` channel of our [Discord Community Server](https://discord.gg/8Tpq4AcN9c).
+- **Code**: Read the [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md), then browse [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **Ideas and feedback**: Start or join a [GitHub Discussion](https://github.com/langgenius/dify/discussions).
+- **Translations**: Follow the [internationalization guide](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) to add or update a locale.
+- **Community**: Share the apps you build, help other users, and spread the word about Dify.
 
-**Contributors**
+### Contributors
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
 ## Community & Contact
 
-- [GitHub Discussion](https://github.com/langgenius/dify/discussions). Best for: sharing feedback and asking questions.
-- [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-- [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
-- [X(Twitter)](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
+Choose the channel that best fits your question:
 
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): Get help, share feedback, and propose ideas.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): Report reproducible bugs and track engineering work. Read the [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) before opening one.
+- [Discord](https://discord.gg/FngNHpbcY7): Chat in real time, share your apps, and connect with other Dify users.
+- [X](https://x.com/dify_ai): Follow Dify for release news and project updates.
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

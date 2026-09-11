@@ -86,7 +86,7 @@ class TraceClient:
                 logger.warning("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
                 return False
         except httpx.RequestError as e:
-            logger.warning("AliyunTrace API check failed: %s", str(e))
+            logger.warning("AliyunTrace API check failed", exc_info=True)
             raise ValueError(f"AliyunTrace API check failed: {str(e)}")
 
     def get_project_url(self) -> str:

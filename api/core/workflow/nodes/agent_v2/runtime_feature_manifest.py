@@ -36,9 +36,9 @@ def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any
     soul_dump = agent_soul.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
     for section in sorted(RESERVED_AGENT_BACKEND_FEATURES):
         value = _get_nested(soul_dump, section)
-        has_value = bool(value)
+        has_value = value
         if isinstance(value, dict):
-            has_value = any(bool(item) for item in value.values())
+            has_value = any(item for item in value.values())
         if has_value:
             warnings.append(
                 {

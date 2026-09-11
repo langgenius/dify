@@ -54,7 +54,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
     >
       <DialogContent
         className={`inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 shadow-none! ${!isMobile ? 'p-8!' : 'p-0!'}`}
-        backdropClassName="bg-transparent!"
+        backdropProps={{ className: 'bg-transparent!' }}
       >
         <div
           tabIndex={-1}

@@ -1,4 +1,5 @@
 import importlib
+import json
 import sys
 import types
 from types import SimpleNamespace
@@ -8,6 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_elasticsearch_modules():
@@ -333,12 +335,10 @@ def test_create_and_create_collection_paths(elasticsearch_module, monkeypatch: p
 
 def test_elasticsearch_factory_branches(elasticsearch_module, monkeypatch: pytest.MonkeyPatch):
     factory = elasticsearch_module.ElasticSearchVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(elasticsearch_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
 

@@ -9,7 +9,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -21,7 +21,7 @@ import { useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useFileUploadConfig } from '@/service/use-common'
 import { formatFileSize } from '@/utils/format'
 
@@ -327,8 +327,18 @@ export function AgentSkillUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed">
-        <DialogCloseButton />
+      <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['agentDetail.configure.skills.upload.title'])}
         </DialogTitle>

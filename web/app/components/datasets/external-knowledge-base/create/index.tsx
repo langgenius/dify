@@ -1,12 +1,13 @@
 'use client'
 
 import type { CreateKnowledgeBaseReq } from './declarations'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { useDocLink } from '@/context/i18n'
+import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import ExternalApiSelection from './ExternalApiSelection'
 import InfoPanel from './InfoPanel'
@@ -124,11 +125,11 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
               }
             />
             <div className="flex items-center justify-end gap-2 self-stretch py-2">
-              <Button variant="secondary" onClick={navBackHandle}>
+              <Link href="/datasets" replace className={buttonVariants({ variant: 'secondary' })}>
                 <div className="system-sm-medium text-components-button-secondary-text">
                   {t(($) => $['externalKnowledgeForm.cancel'], { ns: 'dataset' })}
                 </div>
-              </Button>
+              </Link>
               <Button
                 variant="primary"
                 onClick={() => {

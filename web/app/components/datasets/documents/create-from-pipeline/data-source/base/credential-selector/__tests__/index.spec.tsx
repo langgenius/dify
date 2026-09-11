@@ -12,12 +12,14 @@ const credentials = [
     name: 'First credential',
     avatar_url: 'https://example.com/first.png',
     type: 'oauth2',
+    is_default: false,
   },
   {
     id: 'credential-2',
     name: 'Second credential',
     avatar_url: 'https://example.com/second.png',
     type: 'oauth2',
+    is_default: false,
   },
 ] as DataSourceCredential[]
 
@@ -49,6 +51,23 @@ describe('CredentialSelector', () => {
     )
 
     await waitFor(() => expect(onCredentialChange).toHaveBeenCalledWith('credential-1'))
+  })
+
+  it('selects the visible default credential before falling back to the first one', async () => {
+    const onCredentialChange = vi.fn()
+    const credentialsWithDefault = credentials.map((credential, index) => ({
+      ...credential,
+      is_default: index === 1,
+    }))
+    render(
+      <CredentialSelector
+        currentCredentialId="missing"
+        credentials={credentialsWithDefault}
+        onCredentialChange={onCredentialChange}
+      />,
+    )
+
+    await waitFor(() => expect(onCredentialChange).toHaveBeenCalledWith('credential-2'))
   })
 
   it('does not select a fallback for an empty credential list', () => {

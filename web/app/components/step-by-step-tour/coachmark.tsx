@@ -278,7 +278,7 @@ export function StepByStepTourCoachmark({
       {stableOverlay?.interactionPolicy === 'target-only' ? (
         targetBlockerStyles.map((style, index) => (
           <div
-            // eslint-disable-next-line react/no-array-index-key -- The four blocker slices are static and positional.
+            // oxlint-disable-next-line react/no-array-index-key -- The four blocker slices are static and positional.
             key={index}
             aria-hidden="true"
             data-step-by-step-tour-backdrop=""

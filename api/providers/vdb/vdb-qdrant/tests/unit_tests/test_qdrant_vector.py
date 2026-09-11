@@ -1,4 +1,5 @@
 import importlib
+import json
 import os
 import sys
 import types
@@ -8,8 +9,11 @@ from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
+from models.dataset import Dataset, DatasetCollectionBinding
+from models.enums import CollectionBindingType
 
 
 def _build_fake_qdrant_modules():
@@ -290,15 +294,14 @@ def test_search_and_helper_methods(qdrant_module):
     assert doc.page_content == "doc"
 
 
-def test_qdrant_factory_paths(qdrant_module, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [(DatasetCollectionBinding,)], indirect=True)
+def test_qdrant_factory_paths(
+    qdrant_module,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite3_session: Session,
+):
     factory = qdrant_module.QdrantVectorFactory()
-    dataset = SimpleNamespace(
-        id="dataset-1",
-        tenant_id="tenant-1",
-        collection_binding_id=None,
-        index_struct_dict=None,
-        index_struct=None,
-    )
+    dataset = Dataset(id="dataset-1", tenant_id="tenant-1", collection_binding_id=None)
     monkeypatch.setattr(qdrant_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(qdrant_module, "current_app", SimpleNamespace(config=SimpleNamespace(root_path="/root")))
     monkeypatch.setattr(qdrant_module.dify_config, "QDRANT_URL", "http://localhost:6333")
@@ -315,16 +318,23 @@ def test_qdrant_factory_paths(qdrant_module, monkeypatch: pytest.MonkeyPatch):
     assert dataset.index_struct is not None
 
     # collection binding lookup path
-    dataset.collection_binding_id = "binding-1"
-    dataset.index_struct_dict = {"vector_store": {"class_prefix": "existing"}}
-    monkeypatch.setattr(qdrant_module, "select", lambda _model: SimpleNamespace(where=lambda *_args: "stmt"))
-    qdrant_module.db.session.scalars = MagicMock(
-        return_value=SimpleNamespace(one_or_none=lambda: SimpleNamespace(collection_name="BOUND_COLLECTION"))
+    binding = DatasetCollectionBinding(
+        provider_name="provider",
+        model_name="model",
+        type=CollectionBindingType.DATASET,
+        collection_name="BOUND_COLLECTION",
     )
+    sqlite3_session.add(binding)
+    sqlite3_session.commit()
+    dataset.collection_binding_id = binding.id
+    dataset.index_struct = json.dumps({"vector_store": {"class_prefix": "existing"}})
+    monkeypatch.setattr(qdrant_module.db, "session", sqlite3_session)
+
     with patch.object(qdrant_module, "QdrantVector", return_value="vector") as vector_cls:
         factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
     assert vector_cls.call_args.kwargs["collection_name"] == "BOUND_COLLECTION"
 
-    qdrant_module.db.session.scalars = MagicMock(return_value=SimpleNamespace(one_or_none=lambda: None))
+    sqlite3_session.delete(binding)
+    sqlite3_session.commit()
     with pytest.raises(ValueError, match="Dataset Collection Bindings does not exist"):
         factory.init_vector(dataset, attributes=[], embeddings=MagicMock())

@@ -41,7 +41,7 @@ from models.trigger import (
 from models.workflow import Workflow
 from schedule import workflow_schedule_task
 from schedule.workflow_schedule_task import poll_workflow_schedules
-from services import feature_service as feature_service_module
+from services.system_feature_service import SystemFeatureService
 from services.trigger import webhook_service
 from services.trigger.schedule_service import ScheduleService
 from services.workflow_service import WorkflowService
@@ -112,7 +112,7 @@ def test_publish_blocks_start_and_trigger_coexistence(
     workflow_service = WorkflowService()
 
     monkeypatch.setattr(
-        feature_service_module.FeatureService,
+        SystemFeatureService,
         "is_plugin_manager_enabled",
         classmethod(lambda _cls: False),
     )

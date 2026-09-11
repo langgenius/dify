@@ -59,6 +59,7 @@ func TestDumpCLIHelpCoversPromptCommands(t *testing.T) {
 		"config skills delete",
 		"file upload",
 		"file download",
+		"file public-url",
 	}
 	for _, key := range wantKeys {
 		if _, ok := table[key]; !ok {

@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import type { ScheduleTriggerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { Input } from '@langgenius/dify-ui/input'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
-import Input from '@/app/components/base/input'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import FrequencySelector from './components/frequency-selector'
 import ModeToggle from './components/mode-toggle'
@@ -18,6 +18,7 @@ const i18nPrefix = 'nodes.triggerSchedule'
 
 const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
+  const cronExpressionId = React.useId()
   const {
     inputs,
     setInputs,
@@ -112,12 +113,16 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
             {inputs.mode === 'cron' && (
               <div className="space-y-2">
                 <div>
-                  <label className="mb-2 block text-xs font-medium text-gray-500">
+                  <label
+                    htmlFor={cronExpressionId}
+                    className="mb-2 block text-xs font-medium text-gray-500"
+                  >
                     {t(($) => $['nodes.triggerSchedule.cronExpression'], { ns: 'workflow' })}
                   </label>
                   <Input
+                    id={cronExpressionId}
                     value={inputs.cron_expression || ''}
-                    onChange={(e) => handleCronExpressionChange(e.target.value)}
+                    onValueChange={(value) => handleCronExpressionChange(value)}
                     placeholder="0 0 * * *"
                     className="font-mono"
                   />
