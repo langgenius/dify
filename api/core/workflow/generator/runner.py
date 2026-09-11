@@ -2392,6 +2392,14 @@ class WorkflowGenerator:
         data.setdefault("desc", "")
         data.setdefault("selected", False)
         # `data.type` is the actual node-type string — we never override it.
+        # Tool nodes must always carry `tool_parameters` / `tool_configurations`
+        # objects: the Studio canvas' checklist validator (`getNodeUsedVars`)
+        # calls `Object.keys(node.tool_parameters)` unguarded and crashes on a
+        # missing field. The builder is prompted to emit these, but a terse LLM
+        # response can omit them — backfill empty dicts so the draft always loads.
+        if data.get("type") == BuiltinNodeTypes.TOOL:
+            data.setdefault("tool_parameters", {})
+            data.setdefault("tool_configurations", {})
 
     @classmethod
     def _fill_edge_defaults(cls, edge: dict[str, Any]) -> None:

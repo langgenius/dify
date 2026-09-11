@@ -40,6 +40,8 @@ RESOURCE_MODULES = (
     "controllers.console.explore.workflow",
     "controllers.console.files",
     "controllers.console.remote_files",
+    "controllers.console.page_generator",
+    "controllers.console.app.copilot",
 )
 
 for module_name in RESOURCE_MODULES:
