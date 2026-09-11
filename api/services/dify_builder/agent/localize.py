@@ -140,8 +140,9 @@ class Localizer:
         system = (
             f"You are a translation engine. Translate each string into the language "
             f"with BCP-47 code {language}. Preserve any {{placeholder}} tokens EXACTLY. "
-            "Do not translate proper nouns or code. Reply with ONLY a JSON object mapping "
-            "each original string to its translation."
+            "Do not translate proper nouns or code. Reply with ONLY a flat JSON object whose "
+            "keys are the original strings VERBATIM and whose values are the translations. "
+            "Do not nest, wrap, or rename the keys."
         )
         user = json.dumps({"strings": misses}, ensure_ascii=False)
         try:
@@ -149,6 +150,24 @@ class Localizer:
         except Exception:
             logger.exception("dify_builder: batch translation failed; leaving strings in English")
             return
+        mapping = self._unwrap_translation_table(table, misses)
         for src in misses:
-            out = table.get(src)
+            out = mapping.get(src)
             _TRANSLATION_CACHE[(src, language)] = out if isinstance(out, str) and out else src
+
+    @staticmethod
+    def _unwrap_translation_table(table: dict, misses: list[str]) -> dict:
+        """Return the dict that actually maps sources -> translations.
+
+        The model sometimes wraps the mapping under a single key (e.g. echoing
+        the ``{"strings": ...}`` request envelope): ``{"strings": {src: tr}}``.
+        If none of the sources are top-level keys, descend one level into the
+        first nested dict that carries them."""
+        if not isinstance(table, dict):
+            return {}
+        if any(s in table for s in misses):
+            return table
+        for value in table.values():
+            if isinstance(value, dict) and any(s in value for s in misses):
+                return value
+        return table
