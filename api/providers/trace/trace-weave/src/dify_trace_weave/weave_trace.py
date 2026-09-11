@@ -67,7 +67,12 @@ class WeaveTraceClient:
         return True
 
     def get_project_url(self) -> str:
-        return f"{(self.config.host or 'https://wandb.ai').rstrip('/')}/{quote(self._project_id(), safe='/')}/weave"
+        host = (self.config.host or "https://wandb.ai").rstrip("/")
+        try:
+            return f"{host}/{quote(self._project_id(), safe='/')}/weave"
+        except Exception:
+            # Project discovery must not prevent reading saved settings.
+            return f"{host}/"
 
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None

@@ -17,6 +17,7 @@ from core.ops.trace_data import (
     TraceSpan,
     copy_trace_value,
 )
+from graphon.variables.segments import ArrayObjectSegment, StringSegment
 
 
 @pytest.mark.parametrize(
@@ -100,6 +101,17 @@ def test_trace_copy_handles_non_json_values_without_retaining_them() -> None:
     cycle: list[object] = []
     cycle.append(cycle)
     assert "[trace value truncated]" in json.dumps(copy_trace_value(cycle))
+
+
+def test_trace_copy_serializes_workflow_variable_values_with_redaction_and_limits() -> None:
+    documents = [{"content": "Found", "metadata": {"api_key": "secret"}}]
+    output = {"query": StringSegment(value="Question"), "result": ArrayObjectSegment(value=documents)}
+
+    copied = copy_trace_value(output)
+    documents[0]["content"] = "Changed after capture"
+
+    assert copied == {"query": "Question", "result": [{"content": "Found", "metadata": {}}]}
+    assert len(json.dumps(copy_trace_value(StringSegment(value="x" * 4096), max_bytes=128)).encode()) <= 128
 
 
 @pytest.mark.parametrize(

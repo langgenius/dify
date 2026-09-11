@@ -19,7 +19,7 @@ class ArizeConfig(BaseTracingConfig):
     @classmethod
     @override
     def secret_fields(cls) -> tuple[str, ...]:
-        return ("api_key",)
+        return ("api_key", "space_id")
 
     @field_validator("project")
     @classmethod

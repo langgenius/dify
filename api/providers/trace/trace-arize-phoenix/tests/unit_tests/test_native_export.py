@@ -1,12 +1,70 @@
 """OpenInference's native message and model fields are provider-owned."""
 
 import json
+from unittest.mock import Mock
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from dify_trace_arize_phoenix.arize_phoenix_trace import create_trace_client
+from pydantic import JsonValue
 
+from core.ops.provider_config import decrypt_provider_config, mask_provider_config
+from core.ops.trace_data import copy_trace_value
+from core.rag.models.document import Document
+from graphon.variables.segments import ArrayObjectSegment
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace, provider_config
+
+
+@pytest.mark.parametrize("provider", ["arize", "phoenix"])
+@pytest.mark.parametrize("output_shape", ["workflow", "workflow_segment", "message"])
+def test_workflow_and_message_retrieval_documents(provider: str, output_shape: str) -> None:
+    trace = make_completed_trace()
+    metadata = {"document_id": "document-1", "score": 0.0, "_source": "knowledge", "doc_metadata": {"author": "Dify"}}
+    workflow_result = ArrayObjectSegment(value=[{"content": "Retrieved text", "title": "Guide", "metadata": metadata}])
+    outputs = copy_trace_value(
+        {"result": workflow_result if output_shape == "workflow_segment" else workflow_result.value}
+        if output_shape != "message"
+        else {"documents": [Document(page_content="Retrieved text", metadata=metadata)]}
+    )
+    retrieval = trace.spans[1].model_copy(update={"span_type": "retrieval", "outputs": outputs})
+    attributes = {
+        item.key: item.value
+        for item in create_trace_client(provider, provider_config(provider)).build_span(trace, retrieval).attributes
+    }
+    assert attributes["openinference.span.kind"].string_value == "RETRIEVER"
+    assert attributes["retrieval.documents.0.document.id"].string_value == "document-1"
+    assert attributes["retrieval.documents.0.document.content"].string_value == "Retrieved text"
+    assert attributes["retrieval.documents.0.document.score"].double_value == 0.0
+    assert json.loads(attributes["retrieval.documents.0.document.metadata"].string_value) == metadata
+    assert "retrieval.documents.1.document.id" not in attributes
+    assert json.loads(attributes["output.value"].string_value) == outputs
+
+
+@pytest.mark.parametrize("provider", ["arize", "phoenix"])
+@pytest.mark.parametrize("outputs", [{"result": []}, {"documents": []}, {}, None])
+def test_retrieval_without_hits_has_no_documents(provider: str, outputs: JsonValue) -> None:
+    trace = make_completed_trace()
+    retrieval = trace.spans[1].model_copy(update={"span_type": "retrieval", "outputs": outputs})
+    attributes = create_trace_client(provider, provider_config(provider)).build_span(trace, retrieval).attributes
+    assert not any(item.key.startswith("retrieval.documents.") for item in attributes)
+
+
+def test_existing_encrypted_space_id_is_decrypted_for_export_and_masked_for_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    decrypt = Mock(return_value=["plain-api-key", "plain-space-id"])
+    monkeypatch.setattr("core.helper.encrypter.batch_decrypt_token", decrypt)
+    saved_config = {**provider_config("arize"), "api_key": "encrypted-api-key", "space_id": "encrypted-space-id"}
+
+    settings = decrypt_provider_config("tenant-a", "arize", saved_config)
+    client = create_trace_client("arize", settings)
+
+    decrypt.assert_called_once_with("tenant-a", ["encrypted-api-key", "encrypted-space-id"])
+    assert client.http.headers["api_key"] == "plain-api-key"
+    assert client.http.headers["space_id"] == "plain-space-id"
+    masked = mask_provider_config("arize", settings)
+    assert masked["api_key"] != settings["api_key"]
+    assert masked["space_id"] != settings["space_id"]
 
 
 @pytest.mark.parametrize(
