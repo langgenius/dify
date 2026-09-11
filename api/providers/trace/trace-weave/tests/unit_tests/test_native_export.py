@@ -114,3 +114,34 @@ def test_weave_external_correlation_and_parent_take_precedence(monkeypatch: pyte
     request.reset_mock()
     child = make_trace()
     assert client.export_trace(child, receipt).spans[child.root_span_id]["trace_id"] == receipt["trace_id"]
+
+
+@pytest.mark.parametrize(
+    ("span_type", "status", "error", "expected_error"),
+    [
+        ("workflow", "cancelled", "User stopped workflow", "User stopped workflow"),
+        ("workflow", "cancelled", None, None),
+        ("llm", "cancelled", "User stopped workflow", None),
+        ("workflow", "handled_error", None, None),
+        ("llm", "handled_error", "Node failure was handled", None),
+        ("workflow", "incomplete", None, None),
+        ("workflow", "ok", None, None),
+    ],
+)
+def test_weave_preserves_cancelled_workflow_reason_without_inventing_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    span_type: str,
+    status: str,
+    error: str | None,
+    expected_error: str | None,
+) -> None:
+    trace = make_trace()
+    span = trace.spans[0].model_copy(update={"span_type": span_type, "status": status, "error": error})
+    trace = trace.model_copy(update={"spans": (span,), "complete": False, "truncation": {"reasons": ["capture_error"]}})
+    client, request = make_client_with_transport(monkeypatch)
+
+    client.export_trace(trace)
+
+    end = request.call_args.kwargs["json"]["end"]
+    assert end["exception"] == expected_error
+    assert end["summary"]["status_counts"] == {"error": int(bool(expected_error)), "success": int(not expected_error)}

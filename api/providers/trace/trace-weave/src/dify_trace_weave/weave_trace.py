@@ -83,6 +83,9 @@ class WeaveTraceClient:
         for span in spans:
             assert span.started_at is not None
             assert span.ended_at is not None
+            has_error = span.status == "error" or (
+                span.status == "cancelled" and span.span_type == "workflow" and bool(span.error)
+            )
             self.http.request(
                 "POST",
                 "call/start",
@@ -110,13 +113,13 @@ class WeaveTraceClient:
                         "project_id": project_id,
                         "id": export_span_id(completed_trace, span.span_id),
                         "ended_at": span.ended_at.isoformat(),
-                        "exception": span.error if span.status == "error" else None,
+                        "exception": span.error if has_error else None,
                         "output": span.outputs,
                         "summary": {
                             "usage": {str(span.attributes.get("model_name", "unknown")): span.usage},
                             "status_counts": {
-                                "error": int(span.status == "error"),
-                                "success": int(span.status != "error"),
+                                "error": int(has_error),
+                                "success": int(not has_error),
                             },
                             "weave": {
                                 "latency_ms": (span.ended_at - span.started_at).total_seconds() * 1000,
