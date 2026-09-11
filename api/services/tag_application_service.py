@@ -5,7 +5,7 @@ from typing import Literal, NamedTuple, Protocol
 
 from machinery.context import RequestContext
 
-type TagKind = Literal["knowledge", "app", "snippet"]
+type TagKind = Literal["knowledge", "app", "snippet", "skill"]
 
 
 class TagSummary(NamedTuple):
@@ -62,7 +62,7 @@ class TagNameConflictError(TagApplicationError):
 
 class TagBindingTargetNotFoundError(TagApplicationError):
     def __init__(self, target_type: TagKind) -> None:
-        target_name = {"knowledge": "Dataset", "app": "App", "snippet": "Snippet"}[target_type]
+        target_name = {"knowledge": "Dataset", "app": "App", "snippet": "Snippet", "skill": "Skill"}[target_type]
         super().__init__(f"{target_name} not found")
 
 
@@ -76,28 +76,22 @@ class TagApplicationService:
         self._tags = tags
 
     def list_tags(self, context: RequestContext, tag_type: str, keyword: str | None = None) -> tuple[TagSummary, ...]:
-        return tuple(self._tags.list_tags(self._workspace_id(context), tag_type, keyword))
+        return tuple(self._tags.list_tags(context.active_workspace_id, tag_type, keyword))
 
     def get_tag_type(self, context: RequestContext, tag_id: str) -> str | None:
-        return self._tags.get_tag_type(self._workspace_id(context), tag_id)
+        return self._tags.get_tag_type(context.active_workspace_id, tag_id)
 
     def create_tag(self, context: RequestContext, tag: CreateTagInput) -> TagSummary:
-        return self._tags.create_tag(self._workspace_id(context), context.account_id, tag)
+        return self._tags.create_tag(context.active_workspace_id, context.account_id, tag)
 
     def update_tag(self, context: RequestContext, tag_id: str, tag: UpdateTagInput) -> TagSummary:
-        return self._tags.update_tag(self._workspace_id(context), tag_id, tag)
+        return self._tags.update_tag(context.active_workspace_id, tag_id, tag)
 
     def delete_tag(self, context: RequestContext, tag_id: str) -> None:
-        self._tags.delete_tag(self._workspace_id(context), tag_id)
+        self._tags.delete_tag(context.active_workspace_id, tag_id)
 
     def create_bindings(self, context: RequestContext, binding: TagBindingInput) -> None:
-        self._tags.create_bindings(self._workspace_id(context), context.account_id, binding)
+        self._tags.create_bindings(context.active_workspace_id, context.account_id, binding)
 
     def delete_bindings(self, context: RequestContext, binding: TagBindingInput) -> None:
-        self._tags.delete_bindings(self._workspace_id(context), binding)
-
-    @staticmethod
-    def _workspace_id(context: RequestContext) -> str:
-        if context.active_workspace_id is None:
-            raise RuntimeError("Console account admission did not resolve an active workspace")
-        return context.active_workspace_id
+        self._tags.delete_bindings(context.active_workspace_id, binding)

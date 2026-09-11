@@ -778,7 +778,7 @@ export const GroupedSuggestions: Story = {
         </AutocompleteInputGroup>
         <AutocompletePortal>
           <AutocompletePositioner>
-            <AutocompletePopup className="w-[420px]">
+            <AutocompletePopup className="w-105">
               <GroupedSuggestionList />
               <AutocompleteEmpty>No suggestion. Use the text as entered.</AutocompleteEmpty>
             </AutocompletePopup>
@@ -817,7 +817,7 @@ export const LimitResults: Story = {
         </AutocompleteInputGroup>
         <AutocompletePortal>
           <AutocompletePositioner>
-            <AutocompletePopup className="w-[420px]">
+            <AutocompletePopup className="w-105">
               <AutocompleteStatus className="border-b border-divider-subtle">
                 <LimitedStatus total={workflowSuggestions.length} />
               </AutocompleteStatus>
@@ -892,7 +892,7 @@ const VirtualizedLongSuggestionsDemo = () => {
         </AutocompleteInputGroup>
         <AutocompletePortal>
           <AutocompletePositioner>
-            <AutocompletePopup className="w-[440px] p-1">
+            <AutocompletePopup className="w-110 p-1">
               <VirtualizedStatus />
               <VirtualizedSuggestionList virtualizerRef={virtualizerRef} />
               <AutocompleteEmpty>No suggestion. Free-form text is still valid.</AutocompleteEmpty>

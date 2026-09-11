@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.16.1",
+  "version": "1.17.1",
   "private": true,
   "type": "module",
   "imports": {
@@ -67,6 +67,7 @@
     "@tanstack/react-virtual": "catalog:",
     "abcjs": "catalog:",
     "ahooks": "catalog:",
+    "bowser": "catalog:",
     "class-variance-authority": "catalog:",
     "copy-to-clipboard": "catalog:",
     "cron-parser": "catalog:",

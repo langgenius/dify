@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from typing import cast
 from unittest import mock
 
@@ -89,7 +90,7 @@ def test_on_user_logged_in_logs_unsupported_user_type(caplog: pytest.LogCaptureF
 
 
 def test_admin_api_key_header_takes_precedence_over_console_cookie(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    sqlite_session: Session, config_overrides: Callable[..., None]
 ) -> None:
     app = Flask(__name__)
     tenant = ext_login.Tenant(name="Test Tenant")
@@ -104,11 +105,13 @@ def test_admin_api_key_header_takes_precedence_over_console_cookie(
     )
     sqlite_session.add(tenant_account_join)
     sqlite_session.commit()
-    monkeypatch.setattr(ext_login.dify_config, "ADMIN_API_KEY_ENABLE", True)
-    monkeypatch.setattr(ext_login.dify_config, "ADMIN_API_KEY", "admin-key")
-    monkeypatch.setattr(ext_login.dify_config, "CONSOLE_WEB_URL", "http://console.example.com")
-    monkeypatch.setattr(ext_login.dify_config, "CONSOLE_API_URL", "http://api.example.com")
-    monkeypatch.setattr(ext_login.dify_config, "COOKIE_DOMAIN", "")
+    config_overrides(
+        ADMIN_API_KEY_ENABLE=True,
+        ADMIN_API_KEY="admin-key",
+        CONSOLE_WEB_URL="http://console.example.com",
+        CONSOLE_API_URL="http://api.example.com",
+        COOKIE_DOMAIN="",
+    )
 
     with app.test_request_context(
         "/console/api/test",

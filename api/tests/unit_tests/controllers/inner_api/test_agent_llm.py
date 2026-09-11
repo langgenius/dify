@@ -15,6 +15,7 @@ from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResul
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from services.agent_llm_inner_service import AgentLLMInnerServiceError, PreparedAgentLLMInvocation
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _payload() -> dict[str, object]:
@@ -44,8 +45,7 @@ def _payload() -> dict[str, object]:
 @contextmanager
 def _agent_inner_auth() -> Generator[None]:
     with (
-        patch("configs.dify_config.PLUGIN_DAEMON_KEY", "plugin-daemon-key"),
-        patch("configs.dify_config.INNER_API_KEY_FOR_PLUGIN", "inner-key"),
+        config_overrides_context(PLUGIN_DAEMON_KEY="plugin-daemon-key", INNER_API_KEY_FOR_PLUGIN="inner-key"),
     ):
         yield
 

@@ -57,7 +57,7 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
           placement="bottom-end"
           sideOffset={4}
           alignOffset={-4}
-          popupClassName="border-none bg-transparent shadow-none"
+          className="border-none bg-transparent shadow-none"
         >
           <div className="w-60 space-y-1.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg">
             {!!canOAuth && oAuthTrigger}

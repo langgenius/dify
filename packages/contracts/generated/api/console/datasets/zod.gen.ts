@@ -10,10 +10,18 @@ export const zApiBaseUrlResponse = z.object({
 })
 
 /**
+ * DatasetApiKeyCreatePayload
+ */
+export const zDatasetApiKeyCreatePayload = z.object({
+  dataset_ids: z.array(z.string()).optional(),
+})
+
+/**
  * ApiKeyItem
  */
 export const zApiKeyItem = z.object({
   created_at: z.int().nullish(),
+  dataset_ids: z.array(z.string()).optional().default([]),
   id: z.string(),
   last_used_at: z.int().nullish(),
   token: z.string(),
@@ -577,8 +585,8 @@ export const zDocumentResponse = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
   data_source_type: z.string().nullish(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
@@ -617,8 +625,8 @@ export const zDocumentWithSegmentsResponse = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
   data_source_type: z.string().nullish(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
@@ -1545,6 +1553,8 @@ export const zGetDatasetsApiBaseInfoResponse = zApiBaseUrlResponse
  * API keys retrieved successfully
  */
 export const zGetDatasetsApiKeysResponse = zApiKeyList
+
+export const zPostDatasetsApiKeysBody = zDatasetApiKeyCreatePayload
 
 /**
  * API key created successfully

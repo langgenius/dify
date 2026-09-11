@@ -100,10 +100,10 @@ describe('AmplitudeProvider', () => {
       expect(amplitude.add).toHaveBeenCalledTimes(2)
     })
 
-    it('opts out when the runtime leaves the first-party route boundary', () => {
-      const { rerender } = render(<AmplitudeProvider active />)
+    it('opts out when the analytics layout runtime unmounts', () => {
+      const { unmount } = render(<AmplitudeProvider />)
 
-      rerender(<AmplitudeProvider active={false} />)
+      unmount()
 
       expect(amplitude.setOptOut).toHaveBeenLastCalledWith(true)
     })
@@ -145,6 +145,9 @@ describe('AmplitudeProvider', () => {
         window.location.pathname = '/apps'
         await execute(event)
         expect(getPageTitle(event)).toBe('Studio')
+        window.location.pathname = '/agents'
+        await execute(event)
+        expect(getPageTitle(event)).toBe('Agents')
         window.location.pathname = '/explore'
         await execute(event)
         expect(getPageTitle(event)).toBe('Explore')

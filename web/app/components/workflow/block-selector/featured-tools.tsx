@@ -125,13 +125,13 @@ const FeaturedTools = ({
       open={!isCollapsed}
       onOpenChange={(open) => setIsCollapsed(!open)}
     >
-      <CollapsibleTrigger className="-ml-2 min-h-0 w-fit justify-start gap-0 rounded-md px-2 py-1 hover:not-data-disabled:bg-transparent focus-visible:ring-inset">
+      <CollapsibleTrigger className="group/collapsible -ml-2 flex min-h-0 w-fit touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-start system-sm-medium text-text-secondary outline-hidden select-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset data-panel-open:text-text-primary">
         <span className="system-xs-medium text-text-primary">
           {t(($) => $['tabs.featuredTools'], { ns: 'workflow' })}
         </span>
         <span
           aria-hidden
-          className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none"
+          className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none"
         />
       </CollapsibleTrigger>
 

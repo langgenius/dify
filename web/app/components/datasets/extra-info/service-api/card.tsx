@@ -1,4 +1,5 @@
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverClose } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
@@ -68,17 +69,17 @@ export function ServiceApiCard({ apiBaseUrl, canManageApiKey, onOpenApiKeyModal 
             </Button>
           }
         />
-        <Button
-          variant="ghost"
-          size="small"
-          className="text-text-tertiary"
-          render={<Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer" />}
+        <Link
+          href={apiReferenceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants({ variant: 'ghost', size: 'small' }), 'text-text-tertiary')}
         >
           <span aria-hidden className="i-ri-book-open-line size-3.5 shrink-0" />
           <span className="system-xs-medium">
             {t(($) => $['serviceApi.card.apiReference'], { ns: 'dataset' })}
           </span>
-        </Button>
+        </Link>
       </div>
     </div>
   )

@@ -1283,11 +1283,18 @@ function analyzeSourceFile(
     const contextualType = checker.getContextualType(node)
     if (!contextualType) return
 
-    if (!/\bI18nKeys?\b|\bI18nKeys?(?:By|With)Prefix\b/.test(checker.typeToString(contextualType)))
-      return
-
     const contextualKeys = extractStringValuesFromType(contextualType)
     if (!contextualKeys?.includes(node.text)) return
+
+    const preservesI18nAlias = /\bI18nKeys?\b|\bI18nKeys?(?:By|With)Prefix\b/.test(
+      checker.typeToString(contextualType),
+    )
+    // Imported conditional aliases are commonly expanded into literal unions by the checker.
+    const containsOnlyCatalogKeys = contextualKeys.every(
+      (key) =>
+        Boolean(splitNamespaceKey(key, catalog)) || inferNamespacesForKey(key, catalog).length,
+    )
+    if (!preservesI18nAlias && !containsOnlyCatalogKeys) return
 
     recordKeyUsage(
       collector,

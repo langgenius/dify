@@ -1,7 +1,6 @@
 'use client'
 
 import type { IntegrationSection } from './routes'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
@@ -29,7 +28,7 @@ export default function IntegrationsSettingModal({
   }, [])
 
   return (
-    <MenuDialog show onClose={onCancel}>
+    <MenuDialog title={t(($) => $['settings.integrations'], { ns: 'common' })} onClose={onCancel}>
       <div className="mx-auto flex h-dvh w-[min(1440px,calc(100vw-48px))] shrink-0 py-6">
         <div className="relative flex min-h-0 w-full shrink-0 overflow-hidden rounded-2xl border border-divider-subtle bg-components-panel-bg shadow-2xl">
           <IntegrationsPage
@@ -37,17 +36,6 @@ export default function IntegrationsSettingModal({
             onSectionChange={onSectionChange}
             onSwitchToMarketplace={handleSwitchToMarketplace}
           />
-          <div className="fixed top-6 right-6 flex shrink-0 flex-col items-center">
-            <IconButton
-              variant="tertiary"
-              size="xl"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              onClick={onCancel}
-            >
-              <span aria-hidden className="i-ri-close-line h-5 w-5" />
-            </IconButton>
-            <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
-          </div>
         </div>
       </div>
     </MenuDialog>

@@ -77,32 +77,17 @@ function DateRangePart({
 }) {
   const locale = useLocale()
 
-  const renderDate: DatePickerProps['renderTrigger'] = (
-    props,
-    _state,
-    { value, handleClickTrigger },
-  ) => (
-    <div
+  const renderDate: DatePickerProps['renderTrigger'] = (props, _state, { value }) => (
+    <button
       {...props}
-      role="button"
-      tabIndex={0}
+      type="button"
       className={cn(
         'flex h-7 cursor-pointer items-center rounded-lg px-1 system-sm-regular text-components-input-text-filled hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover',
         props.className,
       )}
-      onClick={(event) => {
-        handleClickTrigger(event)
-        props.onClick?.(event)
-      }}
-      onKeyDown={(event) => {
-        if (event.key !== 'Enter' && event.key !== ' ') return
-
-        event.preventDefault()
-        event.currentTarget.click()
-      }}
     >
       {value ? formatToLocalTime(value, locale, 'MMM D') : ''}
-    </div>
+    </button>
   )
 
   const availableStartDate = end.subtract(30, 'day')
@@ -218,7 +203,7 @@ export function AgentMonitoringTimeRangePicker({
               ? t(($) => $[selectedOption.nameKey])
               : value.name}
         </SelectTrigger>
-        <SelectContent popupClassName="w-50">
+        <SelectContent className="w-50">
           {timeRangeOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               <SelectItemText>{t(($) => $[option.nameKey])}</SelectItemText>

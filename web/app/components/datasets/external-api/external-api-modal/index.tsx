@@ -170,7 +170,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                     />
                     <PopoverContent
                       placement="bottom"
-                      popupClassName="flex w-[320px] items-center self-stretch px-3 py-2"
+                      className="flex w-[320px] items-center self-stretch px-3 py-2"
                     >
                       <div className="p-1">
                         <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
@@ -246,7 +246,10 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
         >
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              <AlertDialogTitle
+                className="w-full truncate title-2xl-semi-bold text-text-primary"
+                title="Warning"
+              >
                 Warning
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

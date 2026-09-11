@@ -7,10 +7,11 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, ChatAppGenerateEntity
+from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, ChatAppGenerateEntity, CreditUsageCreatedBy
+from core.credit_usage import CreditUsageAppType
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from events.event_handlers import update_provider_when_message_created
-from models import Message, TenantCreditPool
+from models import AppMode, Message, TenantCreditPool
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import ProviderType
 
@@ -48,7 +49,7 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
         ],
     )
     application_generate_entity = ChatAppGenerateEntity.model_construct(
-        app_config=SimpleNamespace(tenant_id=tenant_id),
+        app_config=SimpleNamespace(tenant_id=tenant_id, app_mode=AppMode.CHAT),
         model_conf=SimpleNamespace(
             provider="openai",
             model="gpt-4o",
@@ -61,6 +62,7 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
         ),
     )
     message = Message(message_tokens=2, answer_tokens=1)
+    message.id = "message-1"
 
     with (
         patch.object(update_provider_when_message_created, "_execute_provider_updates"),
@@ -89,7 +91,7 @@ def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
         ],
     )
     application_generate_entity = ChatAppGenerateEntity.model_construct(
-        app_config=SimpleNamespace(tenant_id=tenant_id),
+        app_config=SimpleNamespace(tenant_id=tenant_id, app_mode=AppMode.CHAT),
         model_conf=SimpleNamespace(
             provider="openai",
             model="gpt-4o",
@@ -102,6 +104,7 @@ def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
         ),
     )
     message = Message(message_tokens=2, answer_tokens=1)
+    message.id = "message-1"
 
     with (
         patch.object(update_provider_when_message_created, "_deduct_credit_pool_quota_capped") as mock_deduct,
@@ -116,6 +119,14 @@ def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
         tenant_id=tenant_id,
         credits_required=3,
         pool_type="paid",
+        request_id="message-1",
+        metadata={
+            "provider": "openai",
+            "model": "gpt-4o",
+            "model_type": "llm",
+            "app_type": CreditUsageAppType.CHATBOT,
+            "created_by": CreditUsageCreatedBy.APP.value,
+        },
     )
 
 
@@ -132,7 +143,7 @@ def test_agent_app_gateway_accounting_skips_legacy_message_charge() -> None:
         ],
     )
     application_generate_entity = AgentAppGenerateEntity.model_construct(
-        app_config=SimpleNamespace(tenant_id=tenant_id),
+        app_config=SimpleNamespace(tenant_id=tenant_id, app_mode=AppMode.AGENT),
         model_conf=SimpleNamespace(
             provider="openai",
             model="gpt-4o",

@@ -31,7 +31,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
+import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { EditInConsoleLink } from './edit-in-console-link'
 
 const i18nPrefix = 'nodes.agent'
@@ -44,6 +45,7 @@ type AgentRosterDisplayData = {
   icon_type?: string | null
   id: string
   name: string
+  permission_keys?: string[]
   role?: string | null
 }
 
@@ -122,7 +124,7 @@ function AgentRosterDrawer({
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const canManageAgents = useCanManageAgents()
+  const canCreateAgents = useCanCreateAgents()
   const isSetup = mode === 'setup'
   const title = isInlineSetup
     ? t(($) => $[`${i18nPrefix}.roster.inlineSetup.name`], { ns: 'workflow' })
@@ -130,7 +132,8 @@ function AgentRosterDrawer({
   const description = isSetup
     ? t(($) => $[`${i18nPrefix}.roster.inlineSetup.description`], { ns: 'workflow' })
     : agent.role
-  const showInlineActions = isInlineSetup && !!onSaveInlineToRoster && canManageAgents
+  const canConfigureAgent = getAgentACLCapabilities(agent.permission_keys).canConfigure
+  const showInlineActions = isInlineSetup && !!onSaveInlineToRoster && canCreateAgents
 
   return (
     <Drawer
@@ -224,7 +227,7 @@ function AgentRosterDrawer({
                           <DropdownMenuContent
                             placement="bottom-end"
                             sideOffset={4}
-                            popupClassName="min-w-44 w-max"
+                            className="w-max min-w-44"
                           >
                             <DropdownMenuItem
                               className="gap-2 whitespace-nowrap"
@@ -251,8 +254,8 @@ function AgentRosterDrawer({
                 </div>
                 {!isSetup && showDetailActions && (
                   <div className="flex h-8 gap-2 pl-1">
-                    {showConsoleLink && (
-                      <EditInConsoleLink agentId={agent.id} canManageAgents={canManageAgents} />
+                    {showConsoleLink && canConfigureAgent && (
+                      <EditInConsoleLink agentId={agent.id} />
                     )}
                     <Button
                       variant="secondary"
@@ -437,7 +440,7 @@ export function AgentRosterField({
           <PopoverContent
             placement="bottom-end"
             sideOffset={4}
-            popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+            className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
           >
             <PopoverTitle className="sr-only">
               {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentV2' })}

@@ -387,7 +387,9 @@ class TestModelProviderServiceConfiguration:
     def test_preferred_provider_fallback_uses_custom_presence_not_configuration_status(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+        from tests.unit_tests.config_override import apply_config_overrides
+
+        apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         state = _ProviderSummaryState(has_custom_provider=True)
 
         preferred_provider_type = ModelProviderService._get_preferred_provider_type(

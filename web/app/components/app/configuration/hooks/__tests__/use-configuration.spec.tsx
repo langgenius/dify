@@ -1,7 +1,6 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { act, waitFor } from '@testing-library/react'
 import { updateAppModelConfig } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
@@ -83,12 +82,6 @@ vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
   return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    isAPIKeySet: true,
-  }),
-}))
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) =>

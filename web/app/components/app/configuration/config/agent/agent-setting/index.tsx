@@ -1,8 +1,9 @@
 'use client'
 import type { AgentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Slider,
   SliderControl,
@@ -57,9 +58,16 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
           <DialogTitle className="text-base leading-6 font-semibold text-text-primary">
             {t(($) => $['agent.setting.name'], { ns: 'appDebug' })}
           </DialogTitle>
-          <DialogCloseButton
-            className="static z-auto size-6 shrink-0"
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="sm"
+                className="static z-auto size-6 shrink-0 rounded-2xl"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
           />
         </div>
         {/* Body */}

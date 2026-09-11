@@ -14,9 +14,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail, QAPreviewDetail
 from core.errors.error import ProviderTokenNotInitError
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -37,6 +39,7 @@ from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from extensions.otel import propagate_context
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from libs.datetime_utils import naive_utc_now
@@ -74,6 +77,7 @@ class IndexingRunner:
             document.stopped_at = naive_utc_now()
             session.flush()
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def run(self, dataset_documents: list[DatasetDocument], session: Session):
         """Run indexing with commits before slow transforms and parallel index workers.
 
@@ -160,6 +164,7 @@ class IndexingRunner:
             except Exception as e:
                 self._handle_indexing_error(document_id, e, session)
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def run_in_splitting_status(self, dataset_document: DatasetDocument, session: Session):
         """Run the indexing process when the index_status is splitting."""
         document_id = dataset_document.id
@@ -243,6 +248,7 @@ class IndexingRunner:
         except Exception as e:
             self._handle_indexing_error(document_id, e, session)
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def run_in_indexing_status(self, dataset_document: DatasetDocument, session: Session):
         """Run the indexing process when the index_status is indexing."""
         document_id = dataset_document.id
@@ -315,6 +321,7 @@ class IndexingRunner:
         except Exception as e:
             self._handle_indexing_error(document_id, e, session)
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def indexing_estimate(
         self,
         tenant_id: str,
@@ -652,7 +659,7 @@ class IndexingRunner:
         ):
             # create keyword index
             create_keyword_thread = threading.Thread(
-                target=self._process_keyword_index,
+                target=propagate_context(self._process_keyword_index),
                 args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
             )
             create_keyword_thread.start()
@@ -675,7 +682,7 @@ class IndexingRunner:
                         continue
                     futures.append(
                         executor.submit(
-                            self._process_chunk,
+                            propagate_context(self._process_chunk),
                             current_app._get_current_object(),  # type: ignore
                             dataset_document.doc_form,
                             chunk_documents,

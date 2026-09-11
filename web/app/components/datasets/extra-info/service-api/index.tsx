@@ -44,7 +44,7 @@ export function ServiceApi({ apiBaseUrl }: ServiceApiProps) {
           placement="top-start"
           sideOffset={4}
           alignOffset={-4}
-          popupClassName="border-none bg-transparent shadow-none"
+          className="border-none bg-transparent shadow-none"
         >
           <ServiceApiCard
             apiBaseUrl={apiBaseUrl}

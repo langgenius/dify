@@ -44,7 +44,7 @@ const AddCondition = ({
       <PopoverContent
         placement="bottom-start"
         sideOffset={12}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="p-2 pb-1">

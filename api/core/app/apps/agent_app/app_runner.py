@@ -55,8 +55,14 @@ from core.repositories.human_input_repository import HumanInputFormRepository, H
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from extensions.ext_database import db
+from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessage,
+    UserPromptMessage,
+)
 from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -643,6 +649,8 @@ class AgentAppRunner:
         message_id: str,
         model_name: str,
         queue_manager: AppQueueManager,
+        files: list[File] | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
         build_draft_id: str | None = None,
     ) -> None:
@@ -669,6 +677,8 @@ class AgentAppRunner:
             backend_binding_ref=stored.backend_binding_ref,
             conversation_id=conversation_id,
             query=query,
+            files=tuple(files or ()),
+            image_detail_config=image_detail_config,
             idempotency_key=message_id,
             stored=stored,
             message_id=message_id,
@@ -796,6 +806,8 @@ class AgentAppRunner:
         backend_binding_ref: str,
         conversation_id: str,
         query: str,
+        files: tuple[File, ...],
+        image_detail_config: ImagePromptMessageContent.DETAIL | None,
         idempotency_key: str,
         stored: StoredAgentAppSession,
         message_id: str | None,
@@ -815,6 +827,8 @@ class AgentAppRunner:
                 agent_soul=agent_soul,
                 conversation_id=conversation_id,
                 user_query=query,
+                files=files,
+                image_detail_config=image_detail_config,
                 idempotency_key=idempotency_key,
                 binding_id=binding_id,
                 backend_binding_ref=backend_binding_ref,

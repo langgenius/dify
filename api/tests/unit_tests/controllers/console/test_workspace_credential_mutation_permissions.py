@@ -1,14 +1,21 @@
-from inspect import getclosurevars, unwrap
+from inspect import unwrap
 from types import FunctionType
 
 import pytest
 
-from controllers.common.wraps import RBACPermission, RBACResourceScope
+from controllers.common.rbac import AgentId, RBACPermission, Workspace
+from controllers.console.agent.composer import AgentComposerApi
+from controllers.console.agent.roster import AgentAppApi
 from controllers.console.datasets.data_source import DataSourceApi
 from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
 from controllers.console.workspace.model_providers import ModelProviderCredentialApi
 from controllers.console.workspace.models import ModelProviderModelCredentialApi
-from controllers.console.workspace.tool_providers import ToolBuiltinProviderAddApi, ToolOAuthCustomClient
+from controllers.console.workspace.tool_providers import (
+    ToolBuiltinProviderAddApi,
+    ToolMCPDetailApi,
+    ToolOAuthCustomClient,
+)
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 @pytest.mark.parametrize(
@@ -16,6 +23,7 @@ from controllers.console.workspace.tool_providers import ToolBuiltinProviderAddA
     [
         (ToolBuiltinProviderAddApi.post, RBACPermission.CREDENTIAL_CREATE),
         (DataSourceApi.patch, RBACPermission.CREDENTIAL_MANAGE),
+        (DataSourceApi.get, RBACPermission.CREDENTIAL_MANAGE),
     ],
 )
 def test_workspace_credential_mutations_require_management_permission(
@@ -24,11 +32,9 @@ def test_workspace_credential_mutations_require_management_permission(
     legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
     assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
 
-    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
-    rbac_config = getclosurevars(rbac_wrapper).nonlocals
-    assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
-    assert rbac_config["scene"] == permission
-    assert rbac_config["resource_required"] is False
+    [check] = rbac_checks(method)
+    assert check.scene == permission
+    assert isinstance(check.locator, Workspace)
 
 
 @pytest.mark.parametrize(
@@ -46,11 +52,9 @@ def test_model_provider_credential_get_requires_admin_and_rbac(
     legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
     assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
 
-    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
-    rbac_config = getclosurevars(rbac_wrapper).nonlocals
-    assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
-    assert rbac_config["scene"] == RBACPermission.CREDENTIAL_MANAGE
-    assert rbac_config["resource_required"] is False
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.CREDENTIAL_MANAGE
+    assert isinstance(check.locator, Workspace)
 
 
 def test_tool_oauth_custom_client_get_requires_admin_and_rbac() -> None:
@@ -61,11 +65,9 @@ def test_tool_oauth_custom_client_get_requires_admin_and_rbac() -> None:
     legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
     assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
 
-    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
-    rbac_config = getclosurevars(rbac_wrapper).nonlocals
-    assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
-    assert rbac_config["scene"] == RBACPermission.CREDENTIAL_MANAGE
-    assert rbac_config["resource_required"] is False
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.CREDENTIAL_MANAGE
+    assert isinstance(check.locator, Workspace)
 
 
 def test_datasource_auth_get_requires_edit_and_rbac() -> None:
@@ -76,8 +78,31 @@ def test_datasource_auth_get_requires_edit_and_rbac() -> None:
     edit_wrapper = unwrap(method, stop=lambda wrapper: "edit_permission_required" in wrapper.__code__.co_qualname)
     assert "edit_permission_required" in edit_wrapper.__code__.co_qualname
 
-    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
-    rbac_config = getclosurevars(rbac_wrapper).nonlocals
-    assert rbac_config["resource_type"] == RBACResourceScope.DATASET
-    assert rbac_config["scene"] == RBACPermission.CREDENTIAL_MANAGE
-    assert rbac_config["resource_required"] is False
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.CREDENTIAL_MANAGE
+    assert isinstance(check.locator, Workspace)
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        AgentAppApi.get,
+        AgentComposerApi.get,
+    ],
+)
+def test_agent_app_get_requires_rbac(method: FunctionType) -> None:
+    """GET endpoints that return agent app details or composer state must require
+    the agent preview scene on the agent resource, same as their sibling routes."""
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.AGENT_PREVIEW
+    assert isinstance(check.locator, AgentId)
+
+
+def test_tool_mcp_detail_get_requires_rbac() -> None:
+    """GET endpoint that returns MCP provider details must enforce
+    the workspace MCP management RBAC gate."""
+    method = ToolMCPDetailApi.get
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.MCP_MANAGE
+    assert isinstance(check.locator, Workspace)

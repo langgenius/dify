@@ -243,4 +243,22 @@ describe('AuthorizedInNode Component', () => {
     const button = screen.getByRole('button')
     expect(button.textContent).toContain('plugin.auth.unavailable')
   })
+
+  it('should show unavailable when workspace default credential is missing', async () => {
+    const AuthorizedInNode = (await import('../authorized-in-node')).default
+    mockGetPluginCredentialInfo.mockReturnValue({
+      credentials: [],
+      supported_credential_types: [CredentialTypeEnum.API_KEY],
+      allow_custom_token: true,
+    })
+    const pluginPayload = createPluginPayload()
+
+    render(<AuthorizedInNode pluginPayload={pluginPayload} onAuthorizationItemClick={vi.fn()} />, {
+      wrapper: createWrapper(),
+    })
+
+    const button = screen.getByRole('button')
+    expect(button.textContent).toContain('plugin.auth.workspaceDefault')
+    expect(button.textContent).toContain('plugin.auth.unavailable')
+  })
 })

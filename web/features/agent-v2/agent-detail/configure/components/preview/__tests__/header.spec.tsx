@@ -122,7 +122,7 @@ describe('AgentPreviewHeader', () => {
     renderHeader({ mode: 'build', onOpenWorkingDirectory, showWorkingDirectoryAction: true })
 
     const fileSystemButton = screen.getByRole('button', {
-      name: 'agentV2.agentDetail.configure.workingDirectory.open',
+      name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
     })
     expect(fileSystemButton).toHaveTextContent(
       'agentV2.agentDetail.configure.workingDirectory.fileSystem',
@@ -137,7 +137,9 @@ describe('AgentPreviewHeader', () => {
     renderHeader({ mode: 'build' })
 
     expect(
-      screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.workingDirectory.open' }),
+      screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
+      }),
     ).not.toBeInTheDocument()
   })
 
@@ -171,7 +173,9 @@ describe('AgentPreviewHeader', () => {
     })
 
     await user.hover(
-      screen.getByLabelText('agentV2.agentDetail.configure.rightPanel.previewDisabledTip'),
+      screen.getByLabelText(
+        'agentV2.agentDetail.configure.rightPanel.preview. agentV2.agentDetail.configure.rightPanel.previewDisabledTip',
+      ),
     )
 
     expect(

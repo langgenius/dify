@@ -152,7 +152,7 @@ const DatasetListHeader = ({
                     ? stepByStepTourCreateMenuHighlightPart
                     : undefined,
                   interactionMode: createMenu.controlled ? 'presentation' : 'interactive',
-                  popupClassName: 'w-80',
+                  className: 'w-80',
                 })}
               >
                 {canCreateDataset && (

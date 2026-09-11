@@ -7,6 +7,7 @@ import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from '#i18n'
 import { useTags } from '@/app/components/plugins/hooks'
+import { markMarketplaceSiteFilter } from '@/utils/marketplace-site-track'
 import MarketplaceTrigger from './trigger/marketplace'
 import ToolSelectorTrigger from './trigger/tool-selector'
 
@@ -24,6 +25,17 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
     option.label.toLowerCase().includes(searchText.toLowerCase()),
   )
   const selectedTagsLength = tags.length
+  const handleTagsChange = (nextTags: string[]) => {
+    const addedTag = nextTags.find((tag) => !tags.includes(tag))
+    const removedTag = tags.find((tag) => !nextTags.includes(tag))
+    markMarketplaceSiteFilter({
+      filter_type: 'category',
+      selection_mode: 'multi',
+      filter_value: addedTag ?? removedTag ?? nextTags.at(-1) ?? '',
+      selected_values: nextTags,
+    })
+    onTagsChange(nextTags)
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -32,7 +44,7 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
           selectedTagsLength={selectedTagsLength}
           tags={tags}
           tagsMap={tagsMap}
-          onTagsChange={onTagsChange}
+          onTagsChange={handleTagsChange}
         />
       )}
       {!usedInMarketplace && (
@@ -40,14 +52,14 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
           selectedTagsLength={selectedTagsLength}
           tags={tags}
           tagsMap={tagsMap}
-          onTagsChange={onTagsChange}
+          onTagsChange={handleTagsChange}
         />
       )}
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
         alignOffset={-6}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
@@ -74,7 +86,7 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
           <CheckboxGroup
             aria-label={t(($) => $.allTags, { ns: 'pluginTags' })}
             value={tags}
-            onValueChange={(nextTags) => onTagsChange(nextTags)}
+            onValueChange={handleTagsChange}
             className="max-h-112 overflow-y-auto p-1"
           >
             {filteredOptions.map((option) => (

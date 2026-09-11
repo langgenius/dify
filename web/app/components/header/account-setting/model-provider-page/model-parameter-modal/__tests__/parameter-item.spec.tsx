@@ -1,6 +1,7 @@
 import type { ModelParameterRule } from '../../declarations'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import ParameterItem from '../parameter-item'
 
@@ -199,10 +200,11 @@ describe('ParameterItem', () => {
     expect(onChange).toHaveBeenCalledWith(false)
   })
 
-  it('should call onSwitch with current value when optional switch is toggled off', () => {
+  it('should name the optional switch after its parameter and toggle it off', async () => {
+    const user = userEvent.setup()
     const onSwitch = vi.fn()
     render(<ParameterItem parameterRule={createRule()} value={0.7} onSwitch={onSwitch} />)
-    fireEvent.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
     expect(onSwitch).toHaveBeenCalledWith(false, 0.7)
   })
 

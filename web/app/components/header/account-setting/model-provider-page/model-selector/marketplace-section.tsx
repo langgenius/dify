@@ -47,7 +47,7 @@ function MarketplaceSection({
         <div className="flex h-5.5 items-center pr-2 pl-4">
           <CollapsibleTrigger
             id={headingId}
-            className="group/marketplace min-h-0 flex-1 justify-start gap-0 rounded-none p-0 system-sm-medium text-text-primary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-primary data-panel-open:text-text-primary"
+            className="group/marketplace flex min-h-0 w-full flex-1 touch-manipulation items-center justify-start gap-0 text-start system-sm-medium text-text-primary outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             {t(($) => $['modelProvider.selector.fromMarketplace'], { ns: 'common' })}
             <span
@@ -63,6 +63,8 @@ function MarketplaceSection({
             {marketplaceProviders.map((key) => {
               const Icon = providerIconMap[key]
               const isInstalling = installingProvider === key
+              const installButtonLabelId = `${headingId}-install-${key}`
+              const providerNameId = `${headingId}-provider-${key}`
               return (
                 <li
                   key={key}
@@ -70,7 +72,7 @@ function MarketplaceSection({
                 >
                   <div className="flex flex-1 items-center gap-2 py-0.5">
                     <Icon aria-hidden="true" className="size-5 shrink-0 rounded-md" />
-                    <span className="system-sm-regular text-text-secondary">
+                    <span id={providerNameId} className="system-sm-regular text-text-secondary">
                       {modelNameMap[key]}
                     </span>
                   </div>
@@ -78,24 +80,20 @@ function MarketplaceSection({
                     <Button
                       variant="secondary"
                       size="small"
-                      aria-busy={isInstalling || undefined}
+                      loading={isInstalling}
+                      aria-labelledby={`${installButtonLabelId} ${providerNameId}`}
                       className={cn(
                         'shrink-0 backdrop-blur-[5px]',
                         !isInstalling &&
                           'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100',
                       )}
-                      disabled={isInstalling}
                       onClick={() => onInstallPlugin(key)}
                     >
-                      {isInstalling && (
-                        <span
-                          aria-hidden="true"
-                          className="i-ri-loader-2-line size-3.5 animate-spin"
-                        />
-                      )}
-                      {isInstalling
-                        ? t(($) => $['installModal.installing'], { ns: 'plugin' })
-                        : t(($) => $['modelProvider.selector.install'], { ns: 'common' })}
+                      <span id={installButtonLabelId}>
+                        {isInstalling
+                          ? t(($) => $['installModal.installing'], { ns: 'plugin' })
+                          : t(($) => $['modelProvider.selector.install'], { ns: 'common' })}
+                      </span>
                     </Button>
                   )}
                 </li>

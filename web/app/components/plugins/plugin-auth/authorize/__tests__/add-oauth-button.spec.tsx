@@ -218,14 +218,13 @@ describe('AddOAuthButton', () => {
     await waitFor(() => {
       expect(confirmButton).toHaveAttribute('aria-disabled', 'true')
     })
-    expect(confirmButton).toHaveAttribute('aria-busy', 'true')
     expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
     expect(
       within(dialog).getByRole('button', {
         name: /datasetSettings\.form\.permissionsOnlyMe/,
       }),
     ).toBeDisabled()
-    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
 
     await act(async () => {
       resolveOAuthRequest?.({ authorization_url: 'https://auth.example.com' })

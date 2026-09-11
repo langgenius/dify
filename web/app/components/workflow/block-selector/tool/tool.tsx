@@ -226,7 +226,7 @@ function Tool({
       <div className="group/item relative flex w-full items-center rounded-lg">
         <CollapsibleTrigger
           aria-controls={panelId}
-          className="h-8 min-h-8 w-full min-w-0 justify-start gap-0 rounded-lg bg-transparent py-0 pr-2 pl-3 group-hover/item:bg-state-base-hover hover:not-data-disabled:bg-state-base-hover focus-visible:ring-inset"
+          className="group/collapsible flex h-8 min-h-8 w-full min-w-0 touch-manipulation items-center justify-start gap-0 rounded-lg bg-transparent pr-2 pl-3 text-start system-sm-medium text-text-secondary outline-hidden select-none group-hover/item:bg-state-base-hover hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset data-panel-open:text-text-primary"
         >
           {providerDetails}
           {!isShowCanNotChooseMCPTip && !canNotSelectMultiple && selectedStatus && (
@@ -243,7 +243,7 @@ function Tool({
           <span
             aria-hidden
             className={cn(
-              'ml-2 i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none',
+              'ml-2 i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary transition-transform group-data-panel-open/collapsible:rotate-90 motion-reduce:transition-none',
               !isShowCanNotChooseMCPTip &&
                 !canNotSelectMultiple &&
                 !isAllSelected &&

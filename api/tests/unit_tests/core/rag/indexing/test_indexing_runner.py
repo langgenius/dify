@@ -755,7 +755,7 @@ class TestIndexingRunnerLoad:
         # Verify executor was used for parallel processing
         assert mock_executor_instance.submit.called
         for submit_call in mock_executor_instance.submit.call_args_list:
-            assert submit_call.args[0] == runner._process_chunk
+            assert submit_call.args[0].__name__ == runner._process_chunk.__name__
             assert len(submit_call.args) == 6
         mock_future.result.assert_called()
         assert mock_update_status.call_args.kwargs["extra_update_params"][DatasetDocument.tokens] == 300

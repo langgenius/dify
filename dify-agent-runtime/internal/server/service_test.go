@@ -66,7 +66,7 @@ func TestMaterializeStdioStatusMarksMissingSessionWithIncompleteArtifactsLost(t 
 func setupModeTestService(t *testing.T, mode jobmode.Mode, status JobStatusName) (*Service, *JobRow) {
 	t.Helper()
 	stateDir := t.TempDir()
-	config := DefaultConfig()
+	config := mustDefaultConfig(t)
 	config.StateDir = stateDir
 	config.RuntimeDir = filepath.Join(stateDir, "runtime")
 	if err := os.MkdirAll(config.JobsDir(), 0700); err != nil {

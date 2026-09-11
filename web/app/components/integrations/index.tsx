@@ -12,7 +12,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
 import {
@@ -126,6 +126,7 @@ export default function IntegrationsPage({
   syncDocumentTitle = false,
 }: IntegrationsPageProps) {
   const { t } = useTranslation()
+  const navigationTitleId = useId()
   const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
@@ -231,13 +232,13 @@ export default function IntegrationsPage({
   const toolsNavItemClassName = cn(
     integrationSidebarNavItemClassName,
     integrationSidebarInactiveNavItemClassName,
-    'group',
+    'group/collapsible',
   )
   const toolsNavItemContent = (
     <>
       <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-        <ToolsDisclosureIcon className="h-3.5 w-3 group-hover:hidden group-focus-visible:hidden" />
-        <span className="i-ri-arrow-down-s-line hidden size-4 transition-transform duration-100 ease-out group-hover:inline-block group-focus-visible:inline-block group-data-panel-open:rotate-180 motion-reduce:transition-none" />
+        <ToolsDisclosureIcon className="h-3.5 w-3 group-hover/collapsible:hidden group-focus-visible/collapsible:hidden" />
+        <span className="i-ri-arrow-down-s-line hidden size-4 transition-transform duration-100 ease-out group-hover/collapsible:inline-block group-focus-visible/collapsible:inline-block group-data-panel-open/collapsible:rotate-180 motion-reduce:transition-none" />
       </span>
       <span className="min-w-0 flex-1 truncate">
         {t(($) => $['menus.tools'], { ns: 'common' })}
@@ -253,7 +254,7 @@ export default function IntegrationsPage({
       {syncDocumentTitle && (
         <IntegrationsDocumentTitle title={`${sectionTitle} · ${integrationsTitle}`} />
       )}
-      <aside
+      <div
         className={cn(
           'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
           'w-50 items-end',
@@ -268,7 +269,10 @@ export default function IntegrationsPage({
             )}
           >
             <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
-              <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+              <div
+                id={navigationTitleId}
+                className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary"
+              >
                 {t(($) => $['settings.integrations'], { ns: 'common' })}
               </div>
             </div>
@@ -283,7 +287,10 @@ export default function IntegrationsPage({
           {!showInstallAction && reserveInstallActionSlot && (
             <div aria-hidden="true" className="h-8 w-full shrink-0" />
           )}
-          <nav className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}>
+          <nav
+            aria-labelledby={navigationTitleId}
+            className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}
+          >
             <IntegrationSidebarNavItem
               item={providerItem}
               onSelect={onSectionChange}
@@ -291,10 +298,9 @@ export default function IntegrationsPage({
             />
             <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
               <CollapsibleTrigger
-                aria-label={t(($) => $['menus.tools'], { ns: 'common' })}
                 className={cn(
                   toolsNavItemClassName,
-                  'border-none bg-transparent data-panel-open:text-components-menu-item-text',
+                  'min-h-8 touch-manipulation justify-between border-none bg-transparent select-none data-panel-open:text-components-menu-item-text',
                 )}
               >
                 {toolsNavItemContent}
@@ -338,7 +344,7 @@ export default function IntegrationsPage({
             onPermissionChange={handlePermissionChange}
           />
         )}
-      </aside>
+      </div>
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {useFillLayout ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

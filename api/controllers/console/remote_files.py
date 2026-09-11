@@ -1,4 +1,3 @@
-import httpx
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -6,24 +5,41 @@ from pydantic import BaseModel, Field
 import services
 from controllers.common import helpers
 from controllers.common.errors import (
+    BlockedFileExtensionError,
     FileTooLargeError,
-    RemoteFileUploadError,
+    RemoteFileAccessDeniedError,
+    RemoteFileInvalidResponseError,
+    RemoteFileInvalidUrlError,
+    RemoteFileNotFoundError,
+    RemoteFileUnavailableError,
+    RemoteFileUrlBlockedError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import with_current_user
-from core.file import remote_fetcher
-from extensions.ext_database import db
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate, with_current_user
+from extensions.ext_application_services import application_services
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
-from graphon.file import helpers as file_helpers
+from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
-from services.file_service import FileService
+from services.remote_file_service import (
+    RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
+)
+from services.remote_file_service import (
+    RemoteFileInvalidResponseError as RemoteFileInvalidResponseServiceError,
+)
+from services.remote_file_service import RemoteFileInvalidUrlError as RemoteFileInvalidUrlServiceError
+from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNotFoundServiceError
+from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
+from services.remote_file_service import RemoteFileUploadResult
+from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
 
 
 class RemoteFileUploadPayload(BaseModel):
-    url: str = Field(..., description="URL to fetch")
+    url: str = Field(description="URL to fetch", json_schema_extra={"format": "uri"})
 
 
 register_schema_models(console_ns, RemoteFileUploadPayload)
@@ -32,84 +48,96 @@ register_response_schema_models(console_ns, FileWithSignedUrl, RemoteFileInfo)
 
 @console_ns.route("/remote-files/<path:url>")
 class GetRemoteFileInfo(Resource):
+    @console_ns.doc(
+        responses={
+            400: "Invalid, blocked, or inaccessible remote file URL",
+            404: "Remote file not found",
+            502: "Remote file unavailable or returned an invalid response",
+            500: "Internal server error",
+        }
+    )
     @console_ns.response(200, "Success", console_ns.models[RemoteFileInfo.__name__])
-    @login_required
-    def get(self, url: str):
+    @console_account_admission()
+    def get(self, _request_context: RequestContext, url: str):
         decoded_url = helpers.decode_remote_url(url, request.query_string)
-        resp = remote_fetcher.make_request("HEAD", decoded_url)
-        if resp.status_code != httpx.codes.OK:
-            resp = remote_fetcher.make_request("GET", decoded_url, timeout=3)
-        resp.raise_for_status()
-        return RemoteFileInfo(
-            file_type=resp.headers.get("Content-Type", "application/octet-stream"),
-            file_length=int(resp.headers.get("Content-Length", 0)),
-        ).model_dump(mode="json")
+        try:
+            file_info = application_services().remote_files.fetch_info(url=decoded_url)
+        except RemoteFileInvalidUrlServiceError as error:
+            raise RemoteFileInvalidUrlError from error
+        except RemoteFileUrlBlockedServiceError as error:
+            raise RemoteFileUrlBlockedError from error
+        except RemoteFileNotFoundServiceError as error:
+            raise RemoteFileNotFoundError from error
+        except RemoteFileAccessDeniedServiceError as error:
+            raise RemoteFileAccessDeniedError from error
+        except RemoteFileUnavailableServiceError as error:
+            raise RemoteFileUnavailableError from error
+        except RemoteFileInvalidResponseServiceError as error:
+            raise RemoteFileInvalidResponseError from error
+
+        return dump_response(
+            RemoteFileInfo,
+            {
+                "file_type": file_info.content_type,
+                "file_length": file_info.content_length if file_info.content_length is not None else 0,
+            },
+        )
 
 
-def upload_remote_file_from_request(
+def upload_remote_file(
     *,
+    url: str,
     current_user: Account,
     resource_tenant_id: str | None = None,
-) -> FileWithSignedUrl:
-    payload = RemoteFileUploadPayload.model_validate(console_ns.payload)
-    """Validate the JSON request, fetch its remote file, and persist it under the requested tenant."""
-    url = payload.url
-
-    # Try to fetch remote file metadata/content first
+) -> RemoteFileUploadResult:
+    """Fetch a remote file and persist it under the requested tenant."""
     try:
-        resp = remote_fetcher.make_request("HEAD", url=url)
-        if resp.status_code != httpx.codes.OK:
-            resp = remote_fetcher.make_request("GET", url=url, timeout=3, follow_redirects=True)
-        if resp.status_code != httpx.codes.OK:
-            # Normalize into a user-friendly error message expected by tests
-            raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
-    except httpx.RequestError as e:
-        raise RemoteFileUploadError(f"Failed to fetch file from {url}: {str(e)}")
-
-    file_info = helpers.guess_file_info_from_response(resp)
-
-    # Enforce file size limit with 400 (Bad Request) per tests' expectation
-    if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
-        raise FileTooLargeError()
-
-    # Load content if needed
-    content = resp.content if resp.request.method == "GET" else remote_fetcher.make_request("GET", url).content
-
-    try:
-        upload_file = FileService(db.engine).upload_file(
-            filename=file_info.filename,
-            content=content,
-            mimetype=file_info.mimetype,
+        return application_services().remote_files.upload_from_url(
+            url=url,
             user=current_user,
             tenant_id=resource_tenant_id,
-            source_url=url,
         )
-    except services.errors.file.FileTooLargeError as file_too_large_error:
-        raise FileTooLargeError(file_too_large_error.description)
-    except services.errors.file.UnsupportedFileTypeError:
-        raise UnsupportedFileTypeError()
-
-    return FileWithSignedUrl(
-        id=upload_file.id,
-        name=upload_file.name,
-        size=upload_file.size,
-        extension=upload_file.extension,
-        url=file_helpers.get_signed_file_url(upload_file_id=upload_file.id),
-        mime_type=upload_file.mime_type,
-        created_by=upload_file.created_by,
-        created_at=int(upload_file.created_at.timestamp()),
-    )
+    except RemoteFileInvalidUrlServiceError as error:
+        raise RemoteFileInvalidUrlError from error
+    except RemoteFileUrlBlockedServiceError as error:
+        raise RemoteFileUrlBlockedError from error
+    except RemoteFileNotFoundServiceError as error:
+        raise RemoteFileNotFoundError from error
+    except RemoteFileAccessDeniedServiceError as error:
+        raise RemoteFileAccessDeniedError from error
+    except RemoteFileUnavailableServiceError as error:
+        raise RemoteFileUnavailableError from error
+    except RemoteFileInvalidResponseServiceError as error:
+        raise RemoteFileInvalidResponseError from error
+    except services.errors.file.FileTooLargeError as error:
+        raise FileTooLargeError(error.description or "File size exceeded.") from error
+    except services.errors.file.UnsupportedFileTypeError as error:
+        raise UnsupportedFileTypeError from error
+    except services.errors.file.BlockedFileExtensionError as error:
+        raise BlockedFileExtensionError(error.description) from error
 
 
 @console_ns.route("/remote-files/upload")
 class RemoteFileUpload(Resource):
+    @console_ns.doc(
+        responses={
+            400: "Invalid, blocked, or inaccessible remote file URL",
+            404: "Remote file not found",
+            413: "File too large",
+            415: "Unsupported file type",
+            422: "Request payload validation failed",
+            502: "Remote file unavailable or returned an invalid response",
+            500: "Internal server error",
+        }
+    )
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
     @login_required
     @with_current_user
-    def post(self, current_user: Account):
-        remote_file = upload_remote_file_from_request(current_user=current_user)
-        return (
-            remote_file.model_dump(mode="json"),
-            201,
+    @model_validate(RemoteFileUploadPayload)
+    def post(self, payload: RemoteFileUploadPayload, current_user: Account) -> JsonResponseWithStatus:
+        remote_file = upload_remote_file(
+            url=payload.url,
+            current_user=current_user,
         )
+        return dump_response(FileWithSignedUrl, remote_file), 201

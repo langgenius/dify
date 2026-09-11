@@ -1,10 +1,10 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
 import { textControlCompoundInputFocusClassName } from '../form-control-shared'
 import {
@@ -38,7 +38,8 @@ function Autocomplete(props: AutocompleteProps<unknown>): React.JSX.Element {
 const AutocompleteValue = BaseAutocomplete.Value
 const AutocompleteRow = BaseAutocomplete.Row
 const useAutocompleteFilter = BaseAutocomplete.useFilter
-const useAutocompleteFilteredItems = BaseAutocomplete.useFilteredItems
+const useAutocompleteFilteredItems: <Value>() => readonly Value[] =
+  BaseAutocomplete.useFilteredItems
 
 type AutocompleteValueProps = BaseAutocomplete.Value.Props
 type AutocompleteRowProps = BaseAutocomplete.Row.Props
@@ -80,7 +81,7 @@ const autocompleteItemClassName = [
 
 const autocompleteInputGroupVariants = cva(
   [
-    'group/autocomplete flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
+    'group/autocomplete flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
     textControlCompoundInputFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',

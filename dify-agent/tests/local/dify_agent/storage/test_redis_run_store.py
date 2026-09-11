@@ -24,7 +24,12 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import RunFinalizationResult
-from dify_agent.storage.redis_run_store import DEFAULT_RUN_RETENTION_SECONDS, RedisRunStore, RunNotFoundError
+from dify_agent.storage.redis_run_store import (
+    DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH,
+    DEFAULT_RUN_RETENTION_SECONDS,
+    RedisRunStore,
+    RunNotFoundError,
+)
 
 
 class FakeRedis:
@@ -48,18 +53,34 @@ class FakeRedis:
         self.commands.append(("get", key))
         return self.values.get(key)
 
-    async def xadd(self, key: str, fields: Mapping[str, object]) -> str:
-        self.commands.append(("xadd", key, dict(fields)))
-        return self._append_stream_entry(key, fields)
+    async def xadd(
+        self,
+        key: str,
+        fields: Mapping[str, object],
+        *,
+        maxlen: int | None = None,
+        approximate: bool = True,
+    ) -> str:
+        self.commands.append(("xadd", key, dict(fields), maxlen, approximate))
+        return self._append_stream_entry(key, fields, maxlen=maxlen)
 
     def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> "FakeRedisPipeline":
         self.commands.append(("pipeline", transaction, shard_hint))
         return FakeRedisPipeline(self)
 
-    def _append_stream_entry(self, key: str, fields: Mapping[str, object]) -> str:
+    def _append_stream_entry(
+        self,
+        key: str,
+        fields: Mapping[str, object],
+        *,
+        maxlen: int | None = None,
+    ) -> str:
         entries = self.streams.setdefault(key, [])
-        event_id = f"{len(entries) + 1}-0"
+        next_sequence = self._stream_id_value(entries[-1][0])[0] + 1 if entries else 1
+        event_id = f"{next_sequence}-0"
         entries.append((event_id, dict(fields)))
+        if maxlen is not None and len(entries) > maxlen:
+            del entries[: len(entries) - maxlen]
         self.stream_changed.set()
         return event_id
 
@@ -137,9 +158,16 @@ class FakeRedisPipeline:
     async def __aexit__(self, exc_type: object, exc: object, traceback: object) -> None:
         del exc_type, exc, traceback
 
-    def xadd(self, key: str, fields: Mapping[str, object]) -> "FakeRedisPipeline":
-        self.redis.commands.append(("xadd", key, dict(fields)))
-        self.results.append(self.redis._append_stream_entry(key, fields))
+    def xadd(
+        self,
+        key: str,
+        fields: Mapping[str, object],
+        *,
+        maxlen: int | None = None,
+        approximate: bool = True,
+    ) -> "FakeRedisPipeline":
+        self.redis.commands.append(("xadd", key, dict(fields), maxlen, approximate))
+        self.results.append(self.redis._append_stream_entry(key, fields, maxlen=maxlen))
         return self
 
     def expire(self, key: str, seconds: int) -> "FakeRedisPipeline":
@@ -184,6 +212,15 @@ def test_create_run_writes_running_record_without_job_queue_and_with_retention()
     assert "request" not in str(redis.commands[0][2])
 
 
+@pytest.mark.parametrize(
+    "kwargs",
+    [{"run_retention_seconds": 0}, {"run_event_stream_max_length": 0}],
+)
+def test_rejects_non_positive_run_storage_bounds(kwargs: dict[str, int]) -> None:
+    with pytest.raises(ValueError, match="must be positive"):
+        _ = RedisRunStore(FakeRedis(), **kwargs)  # pyright: ignore[reportArgumentType]
+
+
 def test_get_run_accepts_legacy_record_without_error_type() -> None:
     redis = FakeRedis()
     store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
@@ -223,6 +260,7 @@ def test_request_cancellation_maps_eval_result_and_arguments() -> None:
     assert intent_payload["reason"] == "workflow_aborted"
     assert intent_payload["message"] == "workflow stopped"
     assert eval_command[7] == "60"
+    assert '"MAXLEN", "1"' in cast(str, eval_command[1])
 
 
 def test_finalize_cancellation_maps_eval_result_and_arguments() -> None:
@@ -262,6 +300,8 @@ def test_finalize_cancellation_maps_eval_result_and_arguments() -> None:
     assert payload["data"]["usage"]["completion_tokens"] == 8
     assert payload["data"]["usage"]["total_tokens"] == 21
     assert eval_command[10] == "60"
+    assert eval_command[11] == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
+    assert '"MAXLEN", "~", ARGV[6]' in cast(str, eval_command[1])
 
 
 def test_finalize_failed_run_maps_eval_result_and_arguments() -> None:
@@ -290,6 +330,9 @@ def test_finalize_failed_run_maps_eval_result_and_arguments() -> None:
     assert eval_command[8:12] == ("1", "model failed", "1", "agent_run_limit_exceeded")
     payload = json.loads(cast(str, eval_command[12]))
     assert payload["data"]["error_type"] == "agent_run_limit_exceeded"
+    assert eval_command[13] == str(DEFAULT_RUN_RETENTION_SECONDS)
+    assert eval_command[14] == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
+    assert '"MAXLEN", "~", ARGV[9]' in cast(str, eval_command[1])
 
 
 def test_request_cancellation_raises_when_record_is_missing() -> None:
@@ -368,12 +411,33 @@ def test_append_event_serializes_typed_event_without_id_and_expires_run_keys() -
     assert isinstance(fields, dict)
     assert '"id"' not in str(fields["payload"])
     assert '"type":"run_started"' in str(fields["payload"])
+    assert xadd_commands[0][3:] == (DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, True)
     expire_commands = {command for command in redis.commands if command[0] == "expire"}
     assert expire_commands == {
         ("expire", "test:runs:run-1:events", 60),
         ("expire", "test:runs:run-1:record", 60),
     }
     assert ("execute",) in redis.commands
+
+
+def test_append_event_keeps_only_the_configured_number_of_entries() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(
+        redis,  # pyright: ignore[reportArgumentType]
+        prefix="test",
+        run_retention_seconds=60,
+        run_event_stream_max_length=2,
+    )
+
+    async def scenario() -> None:
+        for _ in range(3):
+            _ = await store.append_event(RunStartedEvent(run_id="run-1"))
+
+    asyncio.run(scenario())
+
+    assert len(redis.streams["test:runs:run-1:events"]) == 2
+    xadd_commands = [command for command in redis.commands if command[0] == "xadd"]
+    assert all(command[3:] == (2, True) for command in xadd_commands)
 
 
 def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> None:
