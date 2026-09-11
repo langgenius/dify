@@ -2506,6 +2506,50 @@ class TestWorkflowGeneratorVariableReferences:
         # And the generation still succeeds (no error envelope).
         assert result["error"] == ""
 
+    def test_normalizes_start_select_variable_with_empty_options(self):
+        # A bool requirement can't be a native Dify start variable; the generator
+        # sometimes emits it as a `select` with NO options -> an empty, unfillable
+        # dropdown in the test form (user can't submit). Convert such a select to a
+        # fillable text-input; a select that DOES declare options is left intact.
+        nodes = [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {
+                            "variable": "include_key_points",
+                            "label": "Include Key Points",
+                            "type": "select",
+                            "required": True,
+                            "options": [],
+                        },
+                        {
+                            "variable": "junk_opts",
+                            "label": "Junk",
+                            "type": "select",
+                            "options": ["", None],
+                        },
+                        {
+                            "variable": "tone",
+                            "label": "Tone",
+                            "type": "select",
+                            "options": ["formal", "casual"],
+                        },
+                    ],
+                },
+            }
+        ]
+
+        WorkflowGenerator._normalize_start_select_variables(nodes=nodes)
+
+        by_name = {v["variable"]: v for v in nodes[0]["data"]["variables"]}
+        assert by_name["include_key_points"]["type"] == "text-input"  # empty options -> fillable text input
+        assert by_name["include_key_points"].get("options") == []
+        assert by_name["junk_opts"]["type"] == "text-input"  # no usable options -> text input
+        assert by_name["tone"]["type"] == "select"  # real options preserved
+        assert by_name["tone"]["options"] == ["formal", "casual"]
+
     def test_does_not_re_inject_declared_start_variable(self):
         # When the builder DID declare ``url`` on the start node, the walker
         # must leave it alone — we don't want duplicates or to overwrite the

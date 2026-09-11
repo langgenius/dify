@@ -1537,6 +1537,10 @@ class WorkflowGenerator:
         # it, but we fill safe defaults for any variable that still lacks it so
         # the generated workflow always loads and runs.
         cls._normalize_start_file_variables(nodes=nodes)
+        # A `select` start variable with no options (e.g. a bool requirement the
+        # LLM emitted as an options-less select) renders as an empty, unfillable
+        # dropdown in the test form -> repair it to a text-input.
+        cls._normalize_start_select_variables(nodes=nodes)
 
         return cast(GraphDict, {"nodes": nodes, "edges": deduped_edges, "viewport": viewport})
 
@@ -2380,6 +2384,45 @@ class WorkflowGenerator:
                 var["allowed_file_upload_methods"] = list(_DEFAULT_FILE_UPLOAD_METHODS)
             if not isinstance(var.get("allowed_file_extensions"), list):
                 var["allowed_file_extensions"] = []
+
+    @classmethod
+    def _normalize_start_select_variables(cls, *, nodes: list[dict[str, Any]]) -> None:
+        """
+        Repair ``select`` start variables that have no usable options.
+
+        Dify has no native boolean start-variable type, so a ``bool`` requirement
+        the builder proposes gets emitted as a ``select`` — and the LLM often
+        leaves its ``options`` empty. An options-less ``select`` renders as an
+        empty, unfillable dropdown in the test-input form, so the user can never
+        submit test data. Convert any ``select`` with no usable (non-empty string)
+        options into a ``text-input`` the user can type into; a ``select`` that
+        declares real options is normalized to just those strings and kept.
+
+        Idempotent: a valid select is left as a select with cleaned options.
+        """
+        start_node = next(
+            (n for n in nodes if (n.get("data") or {}).get("type") == BuiltinNodeTypes.START),
+            None,
+        )
+        if start_node is None:
+            return
+        variables = (start_node.get("data") or {}).get("variables")
+        if not isinstance(variables, list):
+            return
+        for var in variables:
+            if not isinstance(var, dict) or var.get("type") != "select":
+                continue
+            raw_options = var.get("options")
+            usable = (
+                [o for o in raw_options if isinstance(o, str) and o.strip()] if isinstance(raw_options, list) else []
+            )
+            if usable:
+                var["options"] = usable
+                continue
+            # No usable options -> the dropdown would be empty and unfillable.
+            # Fall back to a free-text input so the user can still provide a value.
+            var["type"] = "text-input"
+            var["options"] = []
 
     @classmethod
     def _document_extractor_start_vars(cls, *, nodes: list[dict[str, Any]], start_id: str) -> dict[str, bool]:
