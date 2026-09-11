@@ -112,7 +112,11 @@ class OpenInferenceTraceClient(OtlpTraceClient):
                 }
             )
         elif span.span_type == "retrieval":
-            documents = span.outputs.get("documents", []) if isinstance(span.outputs, dict) else span.outputs
+            documents = (
+                span.outputs.get("result", span.outputs.get("documents", []))
+                if isinstance(span.outputs, dict)
+                else span.outputs
+            )
             for index, document in enumerate(documents if isinstance(documents, list) else []):
                 if not isinstance(document, dict):
                     continue

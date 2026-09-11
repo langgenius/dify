@@ -125,8 +125,14 @@ class LangfuseTraceClient:
         return True
 
     def get_project_url(self) -> str:
-        projects = self.http.request("GET", "api/public/projects").json().get("data", [])
-        return f"{self.config.host.rstrip('/')}/project/{projects[0]['id']}" if projects else self.config.host
+        try:
+            projects = self.http.request("GET", "api/public/projects").json().get("data", [])
+            if projects:
+                return f"{self.config.host.rstrip('/')}/project/{projects[0]['id']}"
+        except Exception:
+            # Project discovery must not prevent reading saved settings.
+            return f"{self.config.host.rstrip('/')}/"
+        return f"{self.config.host.rstrip('/')}/"
 
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None

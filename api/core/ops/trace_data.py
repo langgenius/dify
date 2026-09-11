@@ -17,6 +17,8 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
+from graphon.variables.segments import Segment
+
 
 class TraceSource(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -230,6 +232,8 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
             remaining -= 24
             return "[trace value truncated]"
         remaining -= 8
+        if isinstance(item, Segment):
+            return copy_value(item.to_object(), depth + 1)
         if item is None or isinstance(item, bool | int):
             if isinstance(item, int) and item.bit_length() > 1024:
                 remaining -= 27
