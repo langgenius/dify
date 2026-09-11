@@ -5,6 +5,7 @@ import io
 import json
 import zipfile
 from collections.abc import Generator
+from typing import override
 
 import pytest
 import yaml
@@ -85,16 +86,20 @@ class _CleanupCache(PackageCleanupCache):
     def __init__(self):
         self.jobs: dict[str, PackageCleanupJob] = {}
 
+    @override
     def save(self, job: PackageCleanupJob) -> None:
         self.jobs[job.key] = job.model_copy(deep=True)
 
+    @override
     def load(self, key: str) -> PackageCleanupJob | None:
         job = self.jobs.get(key)
         return job.model_copy(deep=True) if job else None
 
+    @override
     def complete(self, key: str) -> None:
         self.jobs.pop(key, None)
 
+    @override
     def due(self) -> list[str]:
         return list(self.jobs)
 
@@ -141,7 +146,7 @@ def _package(
     workspace_skill = _skill_archive("workspace-skill")
     guide = b"guide-content"
     notes = b"notes-content"
-    soul_data = {
+    soul_data: dict[str, object] = {
         "prompt": {"system_prompt": "Imported prompt"},
         "config_skills": [{"name": "config-skill", "file_id": "s_000001"}],
         "config_files": [
@@ -441,6 +446,8 @@ def test_missing_plugins_are_checked_before_writes(monkeypatch, config_overrides
         )
     assert storage.save_count == 0
     if allowed:
+        assert isinstance(failure.value, RosterAgentPackageDependenciesMissingError)
+        assert failure.value.data is not None
         assert len(failure.value.data["leaked_dependencies"]) == 1
 
 
@@ -720,6 +727,7 @@ def test_import_marks_unavailable_knowledge_for_rebinding(
         assert draft is not None
         soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
         dataset_id = soul.knowledge.sets[0].datasets[0].id
+        assert dataset_id is not None
         assert dataset_id.startswith("missing-dataset-")
         assert dataset_id != "missing-dataset-id"
 
