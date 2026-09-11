@@ -35,6 +35,15 @@ class BaseTracingConfig(BaseModel):
         return {}
 
     @classmethod
+    def runtime_settings_for_identity(cls, runtime_settings: dict[str, Any]) -> dict[str, Any]:
+        """Bind all runtime settings unless a provider identifies renewable credentials by their source.
+
+        Providers must retain the effective authentication source and destination
+        settings when excluding issued tokens. Do not mutate the captured settings.
+        """
+        return runtime_settings
+
+    @classmethod
     def validate_endpoint_url(cls, v: str, default_url: str) -> str:
         """
         Common endpoint URL validation logic
@@ -138,12 +147,21 @@ def encrypt_provider_config(
 
 
 def resolve_provider_config(provider_name: str, settings: dict[str, Any]) -> dict[str, Any]:
-    """Include runtime credentials in the destination fingerprint without persisting their contents."""
+    """Capture deployment settings for identity checks and one owned export attempt without persisting them."""
     resolved = {key: value for key, value in settings.items() if key != "_runtime_settings"}
     runtime_settings = get_provider_config_fields(provider_name).config_class.load_runtime_settings(resolved)
     if runtime_settings:
         resolved["_runtime_settings"] = runtime_settings
     return resolved
+
+
+def provider_config_identity(provider_name: str, resolved_config: dict[str, Any]) -> dict[str, Any]:
+    """Select provider-owned identity fields without changing its attempt credentials."""
+    identity = dict(resolved_config)
+    if "_runtime_settings" in identity:
+        schema = get_provider_config_fields(provider_name).config_class
+        identity["_runtime_settings"] = schema.runtime_settings_for_identity(identity["_runtime_settings"])
+    return identity
 
 
 def decrypt_provider_config(tenant_id: str, provider_name: str, settings: dict[str, Any]) -> dict[str, Any]:

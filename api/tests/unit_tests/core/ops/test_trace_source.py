@@ -123,6 +123,39 @@ def test_runtime_credentials_are_bound_to_owner_without_persisting_or_rereading_
     load_runtime.assert_not_called()
 
 
+def test_provider_can_bind_renewable_credentials_to_their_unchanged_source(
+    trace_owner: tuple[Tenant, App, TraceAppConfig], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tenant, app, _ = trace_owner
+    runtime_settings = {"auth_source": "original-source", "access_token": "first-issued-token"}
+    load_runtime = Mock(side_effect=lambda _config: dict(runtime_settings))
+    monkeypatch.setattr(
+        BaseTracingConfig, "load_runtime_settings", classmethod(lambda _cls, settings: load_runtime(settings))
+    )
+    monkeypatch.setattr(
+        BaseTracingConfig,
+        "runtime_settings_for_identity",
+        classmethod(lambda _cls, settings: {"auth_source": settings["auth_source"]}),
+    )
+    decrypt = Mock(side_effect=lambda _tenant, _provider, settings: dict(settings))
+    monkeypatch.setattr(trace_source, "decrypt_provider_config", decrypt)
+
+    captured = trace_source.get_trace_provider_settings(tenant.id, app.id)[0]
+    runtime_settings["access_token"] = "refreshed-issued-token"
+    resolved = trace_source.load_trace_provider_config(captured)
+
+    assert resolved["_runtime_settings"] == runtime_settings
+    assert load_runtime.call_count == 2
+    assert "issued-token" not in captured.model_dump_json()
+    assert trace_source.get_trace_provider_settings(tenant.id, app.id)[0] == captured
+    runtime_settings["auth_source"] = "different-source"
+    assert resolved["_runtime_settings"]["auth_source"] == "original-source"
+    decrypt.reset_mock()
+    with pytest.raises(ValueError, match="configuration_changed"):
+        trace_source.load_trace_provider_config(captured)
+    decrypt.assert_not_called()
+
+
 def test_noop_and_inactive_config_changes_preserve_pending_destination(
     trace_owner: tuple[Tenant, App, TraceAppConfig],
     sqlite_session_factory: sessionmaker[Session],

@@ -11,7 +11,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from core.ops.provider_config import decrypt_provider_config, resolve_provider_config
+from core.ops.provider_config import decrypt_provider_config, provider_config_identity, resolve_provider_config
 from core.ops.trace_data import TraceProviderSettings, TraceSource
 
 if TYPE_CHECKING:
@@ -87,7 +87,11 @@ def get_trace_provider_settings(tenant_id: str, app_id: str | None = None) -> tu
             resolved_config = resolve_provider_config(app_settings.provider_name, app_provider_config)
             destinations.append(
                 app_settings.model_copy(
-                    update={"destination_settings_hash": _settings_hash(tenant_id, resolved_config)}
+                    update={
+                        "destination_settings_hash": _settings_hash(
+                            tenant_id, provider_config_identity(app_settings.provider_name, resolved_config)
+                        )
+                    }
                 )
             )
         except Exception:
@@ -170,7 +174,8 @@ def load_trace_provider_config(settings: TraceProviderSettings) -> dict[str, Any
         encrypted = dict(config.tracing_config or {})
     resolved_config = resolve_provider_config(settings.provider_name, encrypted)
     if not hmac.compare_digest(
-        _settings_hash(settings.tenant_id, resolved_config).encode(), settings.destination_settings_hash.encode()
+        _settings_hash(settings.tenant_id, provider_config_identity(settings.provider_name, resolved_config)).encode(),
+        settings.destination_settings_hash.encode(),
     ):
         raise ValueError("configuration_changed")
     decrypted = decrypt_provider_config(settings.tenant_id, settings.provider_name, encrypted)

@@ -1014,31 +1014,28 @@ def test_mlflow_does_not_fallback_after_other_otlp_failures(status: int, monkeyp
 
 
 @pytest.mark.parametrize(
-    ("artifact_uri", "expected_url", "authenticated"),
+    ("artifact_uri", "expected_url"),
     [
         (
             "mlflow-artifacts:/7/traces/trace/artifacts",
             "https://mlflow.example/prefix/api/2.0/mlflow-artifacts/artifacts/7/traces/trace/artifacts/traces.json",
-            True,
         ),
-        ("https://mlflow.example/files/trace", "https://mlflow.example/files/trace/traces.json", True),
-        ("https://MLFLOW.example:443/files/trace", "https://mlflow.example/files/trace/traces.json", True),
-        ("https://mlflow.example:444/files/trace", "https://mlflow.example:444/files/trace/traces.json", False),
-        ("http://mlflow.example:80/files/trace", "http://mlflow.example/files/trace/traces.json", False),
+        ("https://mlflow.example/files/trace", "https://mlflow.example/files/trace/traces.json"),
+        ("https://MLFLOW.example:443/files/trace", "https://mlflow.example/files/trace/traces.json"),
+        ("https://mlflow.example:444/files/trace", "https://mlflow.example:444/files/trace/traces.json"),
+        ("http://mlflow.example:80/files/trace", "http://mlflow.example/files/trace/traces.json"),
         (
             "mlflow-artifacts://artifacts.example/7/trace",
             "https://artifacts.example/prefix/api/2.0/mlflow-artifacts/artifacts/7/trace/traces.json",
-            False,
         ),
         (
             "https://artifacts.example/trace?signature=upload",
             "https://artifacts.example/trace/traces.json?signature=upload",
-            False,
         ),
     ],
 )
 def test_mlflow_artifact_paths_and_credentials(
-    artifact_uri: str, expected_url: str, authenticated: bool, monkeypatch: pytest.MonkeyPatch
+    artifact_uri: str, expected_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     requests: list[httpx.Request] = []
 
@@ -1057,11 +1054,11 @@ def test_mlflow_artifact_paths_and_credentials(
     )
     client._upload_mlflow_artifact(artifact_uri, b'{"spans": []}')
     assert str(requests[0].url) == expected_url
-    assert ("Authorization" in requests[0].headers) is authenticated
+    assert requests[0].headers["Authorization"] == basic_auth("user", "secret")
     assert requests[0].content == b'{"spans": []}'
 
 
-def test_mlflow_uses_captured_tls_for_verification_otlp_and_same_origin_artifacts(
+def test_mlflow_uses_captured_tls_for_verification_otlp_and_artifacts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     server_certificate, client_certificate = tmp_path / "ca.pem", tmp_path / "client.pem"
@@ -1104,7 +1101,7 @@ def test_mlflow_uses_captured_tls_for_verification_otlp_and_same_origin_artifact
     client._upload_mlflow_artifact("https://MLFLOW.example:443/trace", b"{}")
     client._upload_mlflow_artifact("https://artifacts.example/trace", b"{}")
     assert contexts == [context] * 7
-    build_context.assert_called_with({"certificate": runtime_settings["tls"]["certificate"]}, verify=True)
+    build_context.assert_called_with(runtime_settings["tls"], verify=True)
 
 
 @pytest.mark.parametrize("insecure", ["true", "TRUE", "1", "false", "FALSE", "0"])
@@ -1172,7 +1169,7 @@ def test_mlflow_preserves_requests_ca_bundle_precedence(
     assert (base64.b64decode(certificate).decode() if certificate else None) == expected
 
 
-def test_mlflow_http_defers_ca_failures_and_does_not_read_client_certificates(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mlflow_http_captures_tls_failures_without_blocking_tracking_requests(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MLFLOW_TRACKING_SERVER_CERT_PATH", "/missing/ca.pem")
     monkeypatch.setenv("MLFLOW_TRACKING_CLIENT_CERT_PATH", "/missing/client.pem")
     monkeypatch.delenv("MLFLOW_TRACKING_INSECURE_TLS", raising=False)
@@ -1189,7 +1186,7 @@ def test_mlflow_http_defers_ca_failures_and_does_not_read_client_certificates(mo
     assert ssl_context.verify_mode == ssl.CERT_REQUIRED
     assert ssl_context.check_hostname is True
     read_files.assert_called_with(
-        {"certificate": "/missing/ca.pem", "client_certificate": None}, allow_ca_directory=True
+        {"certificate": "/missing/ca.pem", "client_certificate": "/missing/client.pem"}, allow_ca_directory=True
     )
 
 

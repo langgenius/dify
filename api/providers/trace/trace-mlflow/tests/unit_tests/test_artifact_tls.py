@@ -1,4 +1,4 @@
-"""Separate HTTP artifact destinations share captured trust, never credentials."""
+"""Tracker-authorized HTTP artifact destinations use owned TLS and authentication."""
 
 import ssl
 from datetime import UTC, datetime, timedelta
@@ -69,7 +69,7 @@ def handshake(client_context: ssl.SSLContext, server_context: ssl.SSLContext) ->
 
 @pytest.mark.parametrize("tracking_scheme", ["http", "https"])
 @pytest.mark.parametrize("ca_kind", ["file", "directory"])
-def test_artifact_tls_preserves_owned_ca_snapshots_without_tracking_auth_or_client_certificates(
+def test_artifact_tls_preserves_owned_ca_client_certificates_and_authentication(
     tracking_scheme: str, ca_kind: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     settings = []
@@ -112,12 +112,12 @@ def test_artifact_tls_preserves_owned_ca_snapshots_without_tracking_auth_or_clie
         tracking_context, artifact_context = contexts[-2:]
         assert tracking_context is not artifact_context
         assert artifact_context.verify_mode == ssl.CERT_REQUIRED
-        assert handshake(artifact_context, servers[index]).getpeercert() is None
+        assert handshake(artifact_context, servers[index]).getpeercert()
         if tracking_scheme == "https":
             assert handshake(tracking_context, servers[index]).getpeercert()
         owner = "first" if index == 0 else "second"
         assert requests[-2].headers["Authorization"] == f"Bearer {owner}-secret"
-        assert "Authorization" not in requests[-1].headers
+        assert requests[-1].headers["Authorization"] == f"Bearer {owner}-secret"
     assert contexts[1] is not contexts[3]
     assert contexts[1].get_ca_certs(binary_form=True) != contexts[3].get_ca_certs(binary_form=True)
 
@@ -143,16 +143,19 @@ def test_separate_artifact_verification_uses_captured_setting(
     assert contexts[0].check_hostname is False
 
 
-@pytest.mark.parametrize("ca_error", ["unreadable", "invalid"])
-def test_http_tracker_defers_captured_ca_failure_until_https_artifact_upload(
-    ca_error: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("certificate_error", ["unreadable", "invalid"])
+@pytest.mark.parametrize(
+    "certificate_setting", ["MLFLOW_TRACKING_SERVER_CERT_PATH", "MLFLOW_TRACKING_CLIENT_CERT_PATH"]
+)
+def test_http_tracker_defers_captured_tls_failure_until_https_artifact_upload(
+    certificate_error: str, certificate_setting: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    ca = tmp_path / "ca.pem"
-    if ca_error == "invalid":
-        ca.write_text("invalid certificate")
-    monkeypatch.setenv("MLFLOW_TRACKING_SERVER_CERT_PATH", str(ca))
+    certificate_file = tmp_path / "certificate.pem"
+    if certificate_error == "invalid":
+        certificate_file.write_text("invalid certificate")
+    monkeypatch.setenv(certificate_setting, str(certificate_file))
     settings = resolve_provider_config("mlflow", {"tracking_uri": "http://mlflow.example"})
-    monkeypatch.delenv("MLFLOW_TRACKING_SERVER_CERT_PATH")
+    monkeypatch.delenv(certificate_setting)
     client = MLflowTraceClient("mlflow", settings)
     request = Mock(return_value=httpx.Response(200))
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
