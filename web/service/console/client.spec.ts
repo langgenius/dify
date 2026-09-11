@@ -199,6 +199,33 @@ describe('consoleQuery transport context', () => {
     vi.restoreAllMocks()
   })
 
+  it('preserves archive bytes and the download filename for App exports', async () => {
+    const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])
+    const request = vi.fn().mockResolvedValue(
+      new Response(bytes, {
+        status: 200,
+        headers: {
+          'content-type': 'application/zip',
+          'content-disposition': 'attachment; filename="agent.ifpkg"',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const options = consoleQuery.apps.byAppId.export.get.queryOptions({
+      input: { params: { app_id: 'app-1' } },
+      context: { silent: true },
+    })
+    const result = await options.queryFn({
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    expect(result).toBeInstanceOf(File)
+    if (!(result instanceof File)) throw new TypeError('Expected an archive download')
+    expect(result.name).toBe('agent.ifpkg')
+    expect(result.type).toBe('application/zip')
+    expect(new Uint8Array(await result.arrayBuffer())).toEqual(bytes)
+  })
+
   it('should forward silent context to the base request transport', async () => {
     const request = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({}), {
