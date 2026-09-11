@@ -14,6 +14,7 @@ import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
+import { IpPolicyDialog } from '@/app/components/header/account-setting/ip-policies-page/policy-dialog'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -21,20 +22,13 @@ import {
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { useAppWorkflow } from '@/service/use-workflow'
-import { getPublishedWorkflowState, isAdvancedApp } from '../shared/utils'
 import { AccessControlChipAffix } from './chip-affix'
 import { getAccessControlChipState } from './chip-status'
 import { AccessControlConfigPanel } from './config-panel'
-import {
-  canSaveAccessControl,
-  getAccessControlScopeAvailability,
-  isAccessControlDraftEqual,
-} from './draft'
+import { canSaveAccessControl, isAccessControlDraftEqual } from './draft'
 import { AccessControlFreePaywall } from './free-paywall'
 import {
   accessPointsFromScopes,
-  availabilityFromAccessPoints,
   draftFromBinding,
   getNetworkAccessErrorStatus,
   scopesFromAccessPoints,
@@ -56,10 +50,6 @@ export function AccessControlEntry() {
   const appInfo = useAppStore((state) => state.appDetail)
   const appId = appInfo?.id
   const canFetchNetworkAccess = deploymentEdition === 'CLOUD' && isManager
-  const shouldFetchWorkflow = Boolean(appInfo && isAdvancedApp(appInfo))
-  const { data: workflow } = useAppWorkflow(
-    shouldFetchWorkflow && canFetchNetworkAccess && appInfo ? appInfo.id : '',
-  )
   const groupsQuery = useQuery(
     consoleQuery.workspaces.current.networkAccessGroups.get.queryOptions({
       enabled: canFetchNetworkAccess,
@@ -77,10 +67,14 @@ export function AccessControlEntry() {
   const updateBinding = useMutation(
     consoleQuery.apps.byAppId.networkAccessGroup.put.mutationOptions(),
   )
+  const createGroup = useMutation(
+    consoleQuery.workspaces.current.networkAccessGroups.post.mutationOptions(),
+  )
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'config' | 'status'>('status')
   const [showBack, setShowBack] = useState(false)
   const [draft, setDraft] = useState<AccessControlDraft | null>(null)
+  const [createPolicyOpen, setCreatePolicyOpen] = useState(false)
 
   const bindingErrorStatus = getNetworkAccessErrorStatus(bindingQuery.error)
   const hideForUnsupportedApp =
@@ -93,16 +87,6 @@ export function AccessControlEntry() {
   if (groupsQuery.isPending || (appId && bindingQuery.isPending)) return null
 
   const label = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
-  const workflowState = appInfo ? getPublishedWorkflowState(appInfo, workflow) : undefined
-  const triggerAvailable = getAccessControlScopeAvailability({
-    mode: appInfo?.mode,
-    hasTriggerNode: Boolean(workflowState?.hasTriggerNode),
-    isUnpublished: Boolean(workflowState?.isUnpublished),
-  }).trigger
-  const availability = availabilityFromAccessPoints(
-    bindingQuery.data?.available_access_points ?? [],
-    triggerAvailable,
-  )
   const groups = groupsQuery.data?.groups ?? []
   const binding = bindingQuery.data?.binding
   const policies = groups.map((group) => ({
@@ -110,25 +94,29 @@ export function AccessControlEntry() {
     name: group.name,
     allowed_cidrs: group.allowed_cidrs,
   }))
-  const baseline = draftFromBinding(binding, availability)
+  const baseline = draftFromBinding(binding)
   const resolvedDraft = draft ?? baseline
   const assignment: AccessControlAssignment | null = binding?.group_id
     ? {
         policyId: binding.group_id,
         policyName: groups.find((group) => group.id === binding.group_id)?.name ?? binding.group_id,
-        scopes: scopesFromAccessPoints(binding.access_points, availability),
+        scopes: scopesFromAccessPoints(binding.access_points),
         enabled: binding.enabled,
       }
     : null
   const entitled = bindingQuery.data?.entitled ?? groupsQuery.data?.entitled
   const canMutate = entitled === true
   const dirty = !isAccessControlDraftEqual(resolvedDraft, baseline)
+  const persistableAccessPoints = accessPointsFromScopes(
+    resolvedDraft.scopes,
+    bindingQuery.data?.available_access_points,
+  )
   const canSave = canSaveAccessControl({
     draft: resolvedDraft,
-    availability,
     baseline,
+    persistableAccessPoints,
   })
-  const chip = getAccessControlChipState({ entitled, assignment, availability })
+  const chip = getAccessControlChipState({ entitled, assignment })
   const showPaywall = chip.kind === 'pro'
   const showStatus = Boolean(assignment) && (view === 'status' || !canMutate)
 
@@ -177,7 +165,18 @@ export function AccessControlEntry() {
 
   const handleCreatePolicy = () => {
     setOpen(false)
+    setCreatePolicyOpen(true)
+  }
+
+  const handleManagePolicies = () => {
+    setOpen(false)
     void setSettingsDestination('ip-policies')
+  }
+
+  const handlePolicyDialogOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) return
+    setCreatePolicyOpen(false)
+    setOpen(true)
   }
 
   const persistBinding = (
@@ -228,7 +227,7 @@ export function AccessControlEntry() {
       {
         enabled: resolvedDraft.enabled,
         groupId: resolvedDraft.selectedPolicyId,
-        accessPoints: accessPointsFromScopes(resolvedDraft.scopes, availability),
+        accessPoints: persistableAccessPoints,
       },
       () => {
         setDraft(null)
@@ -244,79 +243,121 @@ export function AccessControlEntry() {
   }
 
   return (
-    <Tooltip>
-      <Popover
-        open={open}
-        onOpenChange={(nextOpen) => {
-          setOpen(nextOpen)
-          if (!nextOpen) {
-            setDraft(null)
+    <>
+      <Tooltip>
+        <Popover
+          open={open}
+          onOpenChange={(nextOpen) => {
+            setOpen(nextOpen)
+            if (!nextOpen) {
+              setDraft(null)
+              setShowBack(false)
+              return
+            }
+            setView(assignment || !canMutate ? 'status' : 'config')
             setShowBack(false)
-            return
-          }
-          setView(assignment || !canMutate ? 'status' : 'config')
-          setShowBack(false)
-        }}
-      >
-        <TooltipTrigger
-          render={
-            <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border-[0.5px] border-divider-deep px-2.5 shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid" />
-          }
+          }}
         >
-          <span aria-hidden className="i-ri-shield-keyhole-line size-4 text-text-secondary" />
-          <span className="system-sm-medium text-text-secondary">{label}</span>
-          <AccessControlChipAffix
-            kind={chip.kind}
-            coveredCount={chip.coveredCount}
-            inServiceCount={chip.inServiceCount}
-          />
-        </TooltipTrigger>
-        <PopoverContent
-          placement="bottom-end"
-          className="w-100 rounded-2xl border-divider-regular p-0 backdrop-blur-[5px] transition-none data-starting-style:scale-100 data-starting-style:opacity-100"
-        >
-          {showPaywall ? (
-            <AccessControlFreePaywall onTurnOn={handleTurnOn} />
-          ) : showStatus && assignment ? (
-            <AccessControlStatusPanel
-              draft={resolvedDraft}
-              policies={policies}
-              enabled={resolvedDraft.enabled}
-              availability={availability}
-              updating={updateBinding.isPending}
-              dirty={dirty}
-              canSave={canSave}
-              readOnly={!canMutate}
-              onUpgrade={handleTurnOn}
-              onEnabledChange={handleEnabledChange}
-              onCancel={handleCancel}
-              onSave={handleSave}
-              onEdit={() => {
-                if (!canMutate) return
-                setDraft(resolvedDraft)
-                setShowBack(true)
-                setView('config')
-              }}
+          <TooltipTrigger
+            render={
+              <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border-[0.5px] border-divider-deep px-2.5 shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid" />
+            }
+          >
+            <span aria-hidden className="i-ri-shield-keyhole-line size-4 text-text-secondary" />
+            <span className="system-sm-medium text-text-secondary">{label}</span>
+            <AccessControlChipAffix
+              kind={chip.kind}
+              coveredCount={chip.coveredCount}
+              inServiceCount={chip.inServiceCount}
             />
-          ) : (
-            <AccessControlConfigPanel
-              draft={resolvedDraft}
-              policies={policies}
-              availability={availability}
-              baseline={baseline}
-              showBack={showBack}
-              saving={updateBinding.isPending}
-              onBack={handleBack}
-              onCancel={handleCancel}
-              onCreatePolicy={handleCreatePolicy}
-              onManagePolicies={handleCreatePolicy}
-              onDraftChange={setDraft}
-              onSave={handleSave}
-            />
-          )}
-        </PopoverContent>
-      </Popover>
-      <TooltipContent>{tooltip}</TooltipContent>
-    </Tooltip>
+          </TooltipTrigger>
+          <PopoverContent
+            placement="bottom-end"
+            className="w-100 rounded-2xl border-divider-regular p-0 backdrop-blur-[5px] transition-none data-starting-style:scale-100 data-starting-style:opacity-100"
+          >
+            {showPaywall ? (
+              <AccessControlFreePaywall onTurnOn={handleTurnOn} />
+            ) : showStatus && assignment ? (
+              <AccessControlStatusPanel
+                draft={resolvedDraft}
+                policies={policies}
+                enabled={resolvedDraft.enabled}
+                updating={updateBinding.isPending}
+                dirty={dirty}
+                canSave={canSave}
+                readOnly={!canMutate}
+                onUpgrade={handleTurnOn}
+                onEnabledChange={handleEnabledChange}
+                onCancel={handleCancel}
+                onSave={handleSave}
+                onEdit={() => {
+                  if (!canMutate) return
+                  setDraft(resolvedDraft)
+                  setShowBack(true)
+                  setView('config')
+                }}
+              />
+            ) : (
+              <AccessControlConfigPanel
+                draft={resolvedDraft}
+                policies={policies}
+                persistableAccessPoints={persistableAccessPoints}
+                baseline={baseline}
+                showBack={showBack}
+                saving={updateBinding.isPending}
+                onBack={handleBack}
+                onCancel={handleCancel}
+                onCreatePolicy={handleCreatePolicy}
+                onManagePolicies={handleManagePolicies}
+                onDraftChange={setDraft}
+                onSave={handleSave}
+              />
+            )}
+          </PopoverContent>
+        </Popover>
+        <TooltipContent>{tooltip}</TooltipContent>
+      </Tooltip>
+      {createPolicyOpen && (
+        <IpPolicyDialog
+          mode="create"
+          open
+          isPending={createGroup.isPending}
+          onOpenChange={handlePolicyDialogOpenChange}
+          onSubmit={(payload) => {
+            createGroup.mutate(
+              {
+                body: {
+                  name: payload.name,
+                  description: '',
+                  allowed_cidrs: payload.allowed_cidrs,
+                },
+              },
+              {
+                onSuccess: (data) => {
+                  queryClient.setQueryData(
+                    consoleQuery.workspaces.current.networkAccessGroups.get.queryOptions().queryKey,
+                    (current) => {
+                      if (!current) return current
+                      if (current.groups.some((group) => group.id === data.group.id)) return current
+                      return {
+                        ...current,
+                        groups: [...current.groups, data.group],
+                      }
+                    },
+                  )
+                  setDraft({
+                    ...resolvedDraft,
+                    selectedPolicyId: data.group.id,
+                  })
+                  setCreatePolicyOpen(false)
+                  setView('config')
+                  setOpen(true)
+                },
+              },
+            )
+          }}
+        />
+      )}
+    </>
   )
 }

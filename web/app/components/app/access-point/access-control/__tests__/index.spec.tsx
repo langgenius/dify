@@ -15,13 +15,28 @@ const mockSetPricing = vi.fn()
 const mockSetSettingsDestination = vi.fn()
 const accessControlTranslations = vi.hoisted(() => ({
   'operation.cancel': 'Cancel',
+  'operation.close': 'Close',
   'operation.save': 'Save',
   'overview.apiInfo.title': 'Backend Service API',
   'overview.appInfo.title': 'Web App',
   'mcp.server.title': 'MCP Server',
+  'settings.ipPolicies': 'IP Policies',
+  'settings.ipPolicyAddEntry': 'Add',
+  'settings.ipPolicyAllowlist': 'Allowlist',
+  'settings.ipPolicyAllowlistHelp':
+    'Single addresses (203.0.113.42) or CIDR ranges (10.0.0.0/8). IPv4 and IPv6 are both accepted.',
+  'settings.ipPolicyCreate': 'Create',
+  'settings.ipPolicyDialogDescription':
+    'Specify which IP addresses or ranges can access your apps.',
+  'settings.ipPolicyName': 'Name',
+  'settings.ipPolicyNamePlaceholder': 'e.g. Internal Network',
+  'settings.ipPolicyNewTitle': 'New IP Policy',
+  'settings.ipPolicyRemoveEntry': 'Remove entry',
   'settings.trigger': 'Trigger',
+  'studio.accessControl.addressCount': '{{count}} addresses',
   'studio.accessControl.applyTo': 'Apply to',
   'studio.accessControl.applyToHelp': 'Choose which access points to protect.',
+  'studio.accessControl.applyToHelpSelected': 'Choose which access points this policy protects.',
   'studio.accessControl.createIpPolicy': 'Create an IP policy',
   'studio.accessControl.emptyPoliciesDescription':
     'A policy is the list of IP addresses allowed in. Create one, then come back to apply it here.',
@@ -31,19 +46,24 @@ const accessControlTranslations = vi.hoisted(() => ({
   'studio.accessControl.chipPartial': '{{n}} of {{m}}',
   'studio.accessControl.entryLabel': 'Access Control',
   'studio.accessControl.ipPolicy': 'IP Policy',
+  'studio.accessControl.manageIpPolicies': 'Manage IP policies',
   'studio.accessControl.notEnabled': 'Not enabled',
   'studio.accessControl.paywallDescription': 'Restrict this app to IP addresses you trust.',
   'studio.accessControl.paywallTitle': 'Access Control',
+  'studio.accessControl.policySummaryOne': 'Allows {{address}}',
   'studio.accessControl.previewAppName': 'Code Companion',
   'studio.accessControl.previewCaption':
     "This app is only available on your organization's network.",
   'studio.accessControl.proBadge': 'PRO',
+  'studio.accessControl.selectPolicy': 'Select a policy',
   'studio.accessControl.tooltipOff': 'Not set up',
   'studio.accessControl.tooltipPro': 'Access control requires the Pro plan',
   'studio.accessControl.turnOn': 'Turn on Access Control',
   'studio.accessControl.restrictByIp': 'Restrict by IP address',
   'studio.accessControl.restrictedTo': 'Restricted to {{name}}',
+  'studio.accessControl.excluded': 'Excluded',
   'studio.accessControl.protectingAll': 'Protecting all {{count}} access points in service.',
+  'studio.accessControl.protectingPartial': 'Protecting {{n}} of {{m}} access points in service.',
   'studio.accessControl.policySummaryTwo': 'Allows {{first}} and {{second}}',
   'operation.edit': 'Edit',
   'studio.accessControl.turnOffTitle': 'Turn off access control?',
@@ -143,7 +163,7 @@ describe('AccessControlEntry', () => {
       },
     })
 
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+    expect(within(getChip()).getByText('3 of 4')).toBeInTheDocument()
     await user.click(getChip())
     expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Turn on Access Control' })).toBeInTheDocument()
@@ -221,30 +241,106 @@ describe('AccessControlEntry', () => {
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('switch', { name: 'Backend Service API' })).toHaveAttribute(
+    expect(screen.getByRole('switch', { name: 'Web App' })).not.toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByRole('switch', { name: 'MCP Server' })).toHaveAttribute(
+    expect(screen.getByRole('switch', { name: 'Backend Service API' })).not.toHaveAttribute(
       'aria-disabled',
       'true',
     )
-    expect(screen.getByRole('switch', { name: 'Trigger' })).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByText('Not enabled')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('switch', { name: 'Trigger' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.queryByText('Not enabled')).not.toBeInTheDocument()
   })
 
-  it('sends paid users to Settings IP Policies from the empty-state exit', async () => {
+  it('opens the new policy dialog from the empty-state create action', async () => {
     const user = userEvent.setup()
     renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
     await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
+    expect(screen.getByRole('heading', { name: 'New IP Policy' })).toBeInTheDocument()
+    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
+  })
+
+  it('returns to the empty-state config after canceling the new policy dialog', async () => {
+    const user = userEvent.setup()
+    renderEntry({ plan: 'professional' })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+
     await waitFor(() => {
-      expect(screen.queryByText('No IP policies in this workspace yet')).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'New IP Policy' })).not.toBeInTheDocument()
     })
+    expect(screen.getByText('No IP policies in this workspace yet')).toBeInTheDocument()
+    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
+  })
+
+  it('posts a new policy from the empty-state dialog without opening Settings', async () => {
+    const user = userEvent.setup()
+    const created = createNetworkAccessGroupFixture({
+      id: 'group-office',
+      name: 'Office',
+      allowed_cidrs: ['10.0.0.0/8'],
+    })
+    const posted: Array<{ method: string; url: string; body: unknown }> = []
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(String(input), init)
+      const bodyText =
+        request.method === 'GET' || request.method === 'HEAD' ? '' : await request.text()
+      posted.push({
+        method: request.method,
+        url: request.url,
+        body: bodyText ? JSON.parse(bodyText) : null,
+      })
+      return new Response(JSON.stringify({ group: created }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+    renderEntry({ plan: 'professional' })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
+    await user.type(screen.getByPlaceholderText('e.g. Internal Network'), 'Office')
+    await user.type(screen.getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => {
+      expect(posted).toContainEqual({
+        method: 'POST',
+        url: 'http://localhost:5001/console/api/workspaces/current/network-access-groups',
+        body: {
+          name: 'Office',
+          description: '',
+          allowed_cidrs: ['10.0.0.0/8'],
+        },
+      })
+    })
+    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
+  })
+
+  it('sends paid users to Settings IP Policies from manage', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+    })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Manage IP policies' }))
+
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
   })
 
   it('closes the first-time config on Cancel without opening settings', async () => {
@@ -279,7 +375,7 @@ describe('AccessControlEntry', () => {
       },
     })
 
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+    expect(within(getChip()).getByText('3 of 4')).toBeInTheDocument()
     await user.click(getChip())
     expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
@@ -308,6 +404,6 @@ describe('AccessControlEntry', () => {
     await user.click(screen.getByRole('button', { name: 'Turn off' }))
 
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
-    expect(within(getChip()).getByText('ON')).toBeInTheDocument()
+    expect(within(getChip()).getByText('3 of 4')).toBeInTheDocument()
   })
 })

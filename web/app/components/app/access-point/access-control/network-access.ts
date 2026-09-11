@@ -2,7 +2,7 @@ import type {
   AppNetworkAccessGroupBindingResponse,
   AppNetworkAccessGroupResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { AccessControlDraft, AccessControlScopeAvailability } from './draft'
+import type { AccessControlDraft } from './draft'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 import { createDefaultAccessControlDraft } from './draft'
@@ -31,26 +31,6 @@ export function toUiAccessPoint(accessPoint: NetworkAccessPoint): AccessPoint {
   return API_TO_ACCESS_POINT[accessPoint]
 }
 
-export function availabilityFromAccessPoints(
-  availableAccessPoints: readonly string[],
-  triggerAvailable: boolean,
-): AccessControlScopeAvailability {
-  const allowed = new Set(
-    availableAccessPoints.flatMap((accessPoint) => {
-      if (accessPoint in API_TO_ACCESS_POINT)
-        return [toUiAccessPoint(accessPoint as NetworkAccessPoint)]
-      return []
-    }),
-  )
-
-  return {
-    webApp: allowed.has('webApp'),
-    serviceApi: allowed.has('serviceApi'),
-    mcp: allowed.has('mcp'),
-    trigger: allowed.has('trigger') && triggerAvailable,
-  }
-}
-
 export function getNetworkAccessErrorStatus(error: unknown): number | undefined {
   if (error instanceof Response) return error.status
   if (typeof error === 'object' && error !== null) {
@@ -68,7 +48,6 @@ export function getNetworkAccessErrorStatus(error: unknown): number | undefined 
 
 export function scopesFromAccessPoints(
   accessPoints: readonly string[],
-  availability: AccessControlScopeAvailability,
 ): AccessControlDraft['scopes'] {
   const selected = new Set(
     accessPoints.flatMap((accessPoint) => {
@@ -79,31 +58,34 @@ export function scopesFromAccessPoints(
   )
 
   return {
-    webApp: availability.webApp && selected.has('webApp'),
-    serviceApi: availability.serviceApi && selected.has('serviceApi'),
-    mcp: availability.mcp && selected.has('mcp'),
-    trigger: availability.trigger && selected.has('trigger'),
+    webApp: selected.has('webApp'),
+    serviceApi: selected.has('serviceApi'),
+    mcp: selected.has('mcp'),
+    trigger: selected.has('trigger'),
   }
 }
 
 export function accessPointsFromScopes(
   scopes: AccessControlDraft['scopes'],
-  availability: AccessControlScopeAvailability,
+  availableAccessPoints?: readonly string[],
 ): NetworkAccessPoint[] {
-  return ACCESS_POINT_ORDER.filter(
-    (accessPoint) => availability[accessPoint] && scopes[accessPoint],
-  ).map(toApiAccessPoint)
+  const allowed = availableAccessPoints ? new Set(availableAccessPoints) : null
+
+  return ACCESS_POINT_ORDER.filter((accessPoint) => {
+    if (!scopes[accessPoint]) return false
+    if (!allowed) return true
+    return allowed.has(toApiAccessPoint(accessPoint))
+  }).map(toApiAccessPoint)
 }
 
 export function draftFromBinding(
   binding: AppNetworkAccessGroupBindingResponse | null | undefined,
-  availability: AccessControlScopeAvailability,
 ): AccessControlDraft {
-  if (!binding?.group_id) return createDefaultAccessControlDraft(availability)
+  if (!binding?.group_id) return createDefaultAccessControlDraft()
 
   return {
     selectedPolicyId: binding.group_id,
     enabled: binding.enabled,
-    scopes: scopesFromAccessPoints(binding.access_points, availability),
+    scopes: scopesFromAccessPoints(binding.access_points),
   }
 }

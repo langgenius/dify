@@ -1,4 +1,4 @@
-import type { AccessControlDraft, AccessControlScopeAvailability } from './draft'
+import type { AccessControlDraft } from './draft'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 
@@ -18,34 +18,28 @@ export type AccessControlChipState = {
   policyName?: string
 }
 
-export function getInServiceCoverage(
-  scopes: Record<AccessPoint, boolean>,
-  availability: AccessControlScopeAvailability,
-) {
-  const inService = ACCESS_POINT_ORDER.filter((scope) => availability[scope])
-  const covered = inService.filter((scope) => scopes[scope])
+export function getInServiceCoverage(scopes: Record<AccessPoint, boolean>) {
+  const covered = ACCESS_POINT_ORDER.filter((scope) => scopes[scope])
 
   return {
     coveredCount: covered.length,
-    inServiceCount: inService.length,
+    inServiceCount: ACCESS_POINT_ORDER.length,
   }
 }
 
 export function getAccessControlChipState({
   entitled,
   assignment,
-  availability,
 }: {
   entitled?: boolean
   assignment: AccessControlAssignment | null
-  availability: AccessControlScopeAvailability
 }): AccessControlChipState {
   if (!assignment) {
     if (entitled === false) return { kind: 'pro', coveredCount: 0, inServiceCount: 0 }
     return { kind: 'off', coveredCount: 0, inServiceCount: 0 }
   }
 
-  const coverage = getInServiceCoverage(assignment.scopes, availability)
+  const coverage = getInServiceCoverage(assignment.scopes)
 
   if (!assignment.enabled) {
     return {
@@ -56,10 +50,7 @@ export function getAccessControlChipState({
   }
 
   return {
-    kind:
-      coverage.inServiceCount > 0 && coverage.coveredCount === coverage.inServiceCount
-        ? 'on'
-        : 'partial',
+    kind: coverage.coveredCount === coverage.inServiceCount ? 'on' : 'partial',
     policyName: assignment.policyName,
     ...coverage,
   }

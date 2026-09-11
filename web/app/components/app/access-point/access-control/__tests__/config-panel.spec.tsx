@@ -1,8 +1,4 @@
-import type {
-  AccessControlDraft,
-  AccessControlPolicy,
-  AccessControlScopeAvailability,
-} from '../draft'
+import type { AccessControlDraft, AccessControlPolicy } from '../draft'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -10,13 +6,6 @@ import { useState } from 'react'
 import { render } from '@/test/console/render'
 import { AccessControlConfigPanel } from '../config-panel'
 import { createDefaultAccessControlDraft } from '../draft'
-
-const allScopesAvailable: AccessControlScopeAvailability = {
-  webApp: true,
-  serviceApi: true,
-  mcp: true,
-  trigger: true,
-}
 
 const policies: AccessControlPolicy[] = [
   {
@@ -48,7 +37,6 @@ const translations = vi.hoisted(() => ({
   'studio.accessControl.lockoutWarning':
     "Your IP ({{ip}}) isn't in this policy. You may lose access.",
   'studio.accessControl.manageIpPolicies': 'Manage IP policies',
-  'studio.accessControl.notEnabled': 'Not enabled',
   'studio.accessControl.policySummaryMany': 'Allows {{listed}} and {{count}} more addresses',
   'studio.accessControl.policySummaryOne': 'Allows {{address}}',
   'studio.accessControl.selectAccessPoint': 'Select at least one access point to protect.',
@@ -61,12 +49,10 @@ vi.mock('react-i18next', async () => {
 })
 
 function PanelHarness({
-  availability = allScopesAvailable,
   currentIp,
   initialDraft = createDefaultAccessControlDraft(),
   onSave = vi.fn(),
 }: {
-  availability?: AccessControlScopeAvailability
   currentIp?: string
   initialDraft?: AccessControlDraft
   onSave?: () => void
@@ -84,7 +70,6 @@ function PanelHarness({
           draft={draft}
           policies={policies}
           currentIp={currentIp}
-          availability={availability}
           onCancel={onCancel}
           onCreatePolicy={onCreatePolicy}
           onManagePolicies={onManagePolicies}
@@ -102,7 +87,22 @@ describe('AccessControlConfigPanel', () => {
 
     expect(await screen.findByRole('option', { name: /Internal Network/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('switch', { name: 'Web App' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('switch', { name: 'Backend Service API' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('switch', { name: 'Trigger' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it('enables save after a policy is selected', async () => {
@@ -125,7 +125,7 @@ describe('AccessControlConfigPanel', () => {
     expect(onSave).toHaveBeenCalledTimes(1)
   })
 
-  it('warns and disables save when every protectable access point is off', async () => {
+  it('warns and disables save when every access point is off', async () => {
     const user = userEvent.setup()
     render(<PanelHarness />)
 
@@ -133,6 +133,7 @@ describe('AccessControlConfigPanel', () => {
     await user.click(screen.getByRole('switch', { name: 'Web App' }))
     await user.click(screen.getByRole('switch', { name: 'Backend Service API' }))
     await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+    await user.click(screen.getByRole('switch', { name: 'Trigger' }))
 
     expect(screen.getByText('Select at least one access point to protect.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
@@ -150,7 +151,8 @@ describe('AccessControlConfigPanel', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
 
-  it('marks an unavailable MCP server as not enabled', () => {
+  it('lets the user turn any access point off without a Not enabled label', async () => {
+    const user = userEvent.setup()
     render(
       <PanelHarness
         initialDraft={{
@@ -158,41 +160,13 @@ describe('AccessControlConfigPanel', () => {
           selectedPolicyId: 'internal-network',
           enabled: true,
         }}
-        availability={{ ...allScopesAvailable, mcp: false }}
       />,
     )
 
-    expect(screen.getByText('Not enabled')).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'MCP Server' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-  })
-
-  it('disables MCP and Trigger for agent apps', () => {
-    render(
-      <PanelHarness
-        initialDraft={{
-          ...createDefaultAccessControlDraft(),
-          selectedPolicyId: 'internal-network',
-          enabled: true,
-        }}
-        availability={{ webApp: true, serviceApi: true, mcp: false, trigger: false }}
-      />,
-    )
-
-    expect(screen.getByRole('switch', { name: 'Web App' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(screen.getByRole('switch', { name: 'Backend Service API' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(screen.getByRole('switch', { name: 'MCP Server' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(screen.getByRole('switch', { name: 'Trigger' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByText('Not enabled')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+    expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toBeChecked()
+    await user.click(screen.getByRole('switch', { name: 'Trigger' }))
+    expect(screen.getByRole('switch', { name: 'Trigger' })).not.toBeChecked()
   })
 })

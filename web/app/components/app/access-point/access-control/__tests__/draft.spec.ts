@@ -2,20 +2,7 @@ import {
   policyIncludesIp,
   splitPolicySummary,
 } from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
-import { AppModeEnum } from '@/types/app'
-import {
-  canSaveAccessControl,
-  createDefaultAccessControlDraft,
-  getAccessControlScopeAvailability,
-  getAccessControlScopeSupport,
-} from '../draft'
-
-const allScopesAvailable = {
-  webApp: true,
-  serviceApi: true,
-  mcp: true,
-  trigger: true,
-}
+import { canSaveAccessControl, createDefaultAccessControlDraft } from '../draft'
 
 const selectedDraft = {
   ...createDefaultAccessControlDraft(),
@@ -24,15 +11,10 @@ const selectedDraft = {
 
 describe('canSaveAccessControl', () => {
   it('disables save when no policy is selected', () => {
-    expect(
-      canSaveAccessControl({
-        draft: createDefaultAccessControlDraft(),
-        availability: { ...allScopesAvailable, trigger: false },
-      }),
-    ).toBe(false)
+    expect(canSaveAccessControl({ draft: createDefaultAccessControlDraft() })).toBe(false)
   })
 
-  it('disables save when every protectable access point is off', () => {
+  it('disables save when every access point is off', () => {
     expect(
       canSaveAccessControl({
         draft: {
@@ -42,24 +24,18 @@ describe('canSaveAccessControl', () => {
             webApp: false,
             serviceApi: false,
             mcp: false,
-            trigger: true,
+            trigger: false,
           },
         },
-        availability: { ...allScopesAvailable, trigger: false },
       }),
     ).toBe(false)
   })
 
   it('enables save when a policy is selected and at least one access point is on', () => {
-    expect(
-      canSaveAccessControl({
-        draft: selectedDraft,
-        availability: { ...allScopesAvailable, trigger: false },
-      }),
-    ).toBe(true)
+    expect(canSaveAccessControl({ draft: selectedDraft })).toBe(true)
   })
 
-  it('counts an enabled trigger only when that access point is available', () => {
+  it('counts trigger as a selectable access point', () => {
     expect(
       canSaveAccessControl({
         draft: {
@@ -72,12 +48,11 @@ describe('canSaveAccessControl', () => {
             trigger: true,
           },
         },
-        availability: allScopesAvailable,
       }),
     ).toBe(true)
   })
 
-  it('does not count an unavailable MCP server toward save', () => {
+  it('does not enable save when none of the selected access points can be persisted', () => {
     expect(
       canSaveAccessControl({
         draft: {
@@ -86,11 +61,11 @@ describe('canSaveAccessControl', () => {
           scopes: {
             webApp: false,
             serviceApi: false,
-            mcp: true,
-            trigger: false,
+            mcp: false,
+            trigger: true,
           },
         },
-        availability: { ...allScopesAvailable, mcp: false, trigger: false },
+        persistableAccessPoints: [],
       }),
     ).toBe(false)
   })
@@ -99,7 +74,6 @@ describe('canSaveAccessControl', () => {
     expect(
       canSaveAccessControl({
         draft: selectedDraft,
-        availability: { ...allScopesAvailable, trigger: false },
         baseline: selectedDraft,
       }),
     ).toBe(false)
@@ -109,69 +83,8 @@ describe('canSaveAccessControl', () => {
     expect(
       canSaveAccessControl({
         draft: { ...selectedDraft, enabled: false },
-        availability: { ...allScopesAvailable, trigger: false },
         baseline: selectedDraft,
       }),
-    ).toBe(true)
-  })
-})
-
-describe('getAccessControlScopeSupport', () => {
-  it('lets workflow apps apply to every access point', () => {
-    expect(getAccessControlScopeSupport(AppModeEnum.WORKFLOW)).toEqual({
-      webApp: true,
-      serviceApi: true,
-      mcp: true,
-      trigger: true,
-    })
-  })
-
-  it('lets agent apps apply only to Web App and Backend Service API', () => {
-    expect(getAccessControlScopeSupport(AppModeEnum.AGENT)).toEqual({
-      webApp: true,
-      serviceApi: true,
-      mcp: false,
-      trigger: false,
-    })
-  })
-
-  it.each([
-    AppModeEnum.ADVANCED_CHAT,
-    AppModeEnum.CHAT,
-    AppModeEnum.COMPLETION,
-    AppModeEnum.AGENT_CHAT,
-  ])('does not let %s apps apply to Trigger', (mode) => {
-    expect(getAccessControlScopeSupport(mode)).toEqual({
-      webApp: true,
-      serviceApi: true,
-      mcp: true,
-      trigger: false,
-    })
-  })
-})
-
-describe('getAccessControlScopeAvailability', () => {
-  it('keeps workflow Trigger off until a published trigger node exists', () => {
-    expect(
-      getAccessControlScopeAvailability({
-        mode: AppModeEnum.WORKFLOW,
-        hasTriggerNode: false,
-        isUnpublished: false,
-      }).trigger,
-    ).toBe(false)
-    expect(
-      getAccessControlScopeAvailability({
-        mode: AppModeEnum.WORKFLOW,
-        hasTriggerNode: true,
-        isUnpublished: true,
-      }).trigger,
-    ).toBe(false)
-    expect(
-      getAccessControlScopeAvailability({
-        mode: AppModeEnum.WORKFLOW,
-        hasTriggerNode: true,
-        isUnpublished: false,
-      }).trigger,
     ).toBe(true)
   })
 })
