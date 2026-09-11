@@ -50,9 +50,10 @@ def test_draft_node_identity_and_content_survive_capture(
     session_context = Mock()
     session_context.__enter__ = Mock(return_value=session)
     session_context.__exit__ = Mock(return_value=False)
-    monkeypatch.setattr("sqlalchemy.orm.Session", Mock(return_value=session_context))
+    monkeypatch.setattr("enterprise.telemetry.operation_trace.Session", Mock(return_value=session_context))
     monkeypatch.setattr("extensions.ext_database.db", SimpleNamespace(engine=Mock()))
-    monkeypatch.setattr("enterprise.telemetry.operation_trace.create_message_trace", Mock(return_value=recorder))
+    create_recorder = Mock(return_value=recorder)
+    monkeypatch.setattr("enterprise.telemetry.operation_trace.create_message_trace", create_recorder)
     process_data = {"prompts": [{"role": "user", "text": "private prompt"}]}
     structure = {
         "index": 0,
@@ -82,6 +83,13 @@ def test_draft_node_identity_and_content_survive_capture(
                 }
             },
         )
+    )
+    assert session.scalar.call_count == 2
+    create_recorder.assert_called_once_with(
+        tenant_id=tenant_id,
+        app_id=None if pipeline_run else owner_id,
+        pipeline_id=owner_id if pipeline_run else None,
+        user_id=None,
     )
     trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
     span = trace.spans[0]

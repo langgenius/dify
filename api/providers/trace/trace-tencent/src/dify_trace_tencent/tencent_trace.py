@@ -96,6 +96,8 @@ class TencentTraceClient(OtlpTraceClient):
             "gen_ai.usage.output_tokens": span.usage.get("completion_tokens"),
             "gen_ai.usage.total_tokens": span.usage.get("total_tokens"),
         }
+        if operation_type == "message" and span.attributes.get("is_streaming_request"):
+            attributes["llm.is_streaming"] = "true"
         if native_type == "llm":
             attributes.update(
                 {

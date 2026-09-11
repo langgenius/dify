@@ -71,8 +71,9 @@ def export_spans(trace: CompletedTrace, monkeypatch: pytest.MonkeyPatch) -> list
         ),
     ],
 )
+@pytest.mark.parametrize("node_title", ["Node", "Model Thought"])
 def test_recorded_workflow_native_kind_and_output(
-    node_type: str, result: NodeRunResult, kind: str, output: str, monkeypatch: pytest.MonkeyPatch
+    node_type: str, result: NodeRunResult, kind: str, output: str, node_title: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
     submitted: list[CompletedTrace] = []
@@ -84,6 +85,7 @@ def test_recorded_workflow_native_kind_and_output(
         submit_completed_trace=lambda trace: submitted.append(trace) is None,
     )
     node = workflow_node(source, node_type=node_type)
+    monkeypatch.setattr(node, "title", node_title)
     start_node(recorder, node)
     started = datetime.now(UTC)
     recorder.on_event(
@@ -107,6 +109,7 @@ def test_recorded_workflow_native_kind_and_output(
     assert attributes["output.value"] == output
     if node_type == "llm":
         assert attributes["gen_ai.completion"] == output
+        assert "gen_ai.request.model" not in attributes
     elif node_type in {"question-classifier", "parameter-extractor"}:
         assert json.loads(attributes["input.value"]) == {"query": "hello"}
         assert "gen_ai.completion" not in attributes
@@ -116,8 +119,9 @@ def test_recorded_workflow_native_kind_and_output(
 
 
 @pytest.mark.parametrize("outputs", [{"error_message": "rate limited", "error_type": "RateLimitError"}, {}, None])
+@pytest.mark.parametrize("node_title", ["Node", "Model Thought"])
 def test_recorded_failed_llm_retains_prepared_model_and_node_error(
-    outputs: dict[str, JsonValue] | None, monkeypatch: pytest.MonkeyPatch
+    outputs: dict[str, JsonValue] | None, node_title: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
     submitted: list[CompletedTrace] = []
@@ -129,6 +133,7 @@ def test_recorded_failed_llm_retains_prepared_model_and_node_error(
         submit_completed_trace=lambda trace: submitted.append(trace) is None,
     )
     node = workflow_node(source, node_type="llm")
+    monkeypatch.setattr(node, "title", node_title)
     start_node(recorder, node)
     if outputs is not None:
         recorder.on_event(
