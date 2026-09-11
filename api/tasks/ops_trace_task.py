@@ -23,6 +23,10 @@ def export_trace_delivery(tenant_id: str, delivery_id: str) -> None:
     delivery = repository.get_delivery(tenant_id, delivery_id)
     if delivery is None or delivery.status not in ("pending", "sending"):
         return
+    if delivery.attempt_count >= dify_config.OPS_TRACE_MAX_ATTEMPTS:
+        # Exhausted due rows become terminal; existing body maintenance handles their cleanup.
+        repository.claim_delivery(tenant_id, delivery_id)
+        return
     parent_ready, parent_reference = repository.read_parent_reference(delivery)
     if not parent_ready:
         return
