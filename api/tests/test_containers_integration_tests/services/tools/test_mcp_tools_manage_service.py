@@ -223,6 +223,95 @@ class TestMCPToolManageService:
         with pytest.raises(ValueError, match="MCP tool not found"):
             service.get_provider(provider_id=mcp_provider1.id, tenant_id=tenant2.id)
 
+    def test_get_mcp_provider_by_provider_id_accepts_server_identifier(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test that a non-UUID server identifier passed as provider_id resolves instead of failing.
+
+        Detail responses expose ``server_identifier`` as the entity ``id``, so the frontend
+        round-trips that value back into endpoints that take a provider_id. Casting it to the
+        UUID ``id`` column used to raise "invalid input syntax for type uuid" (500).
+
+        This test verifies:
+        - A human-readable server identifier is accepted as provider_id
+        - The correct provider is returned
+        """
+        # Arrange: Create test data
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        mcp_provider = self._create_test_mcp_provider(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+        )
+        mcp_provider.server_identifier = "my-mcp-tools"
+        db_session_with_containers.commit()
+
+        # Act: Execute the method under test
+
+        service = MCPToolManageService(db_session_with_containers)
+        result = service.get_provider(provider_id="my-mcp-tools", tenant_id=tenant.id)
+
+        # Assert: Verify the expected outcomes
+        assert result is not None
+        assert result.id == mcp_provider.id
+        assert result.server_identifier == "my-mcp-tools"
+        assert result.tenant_id == tenant.id
+
+    def test_get_mcp_provider_by_provider_id_non_uuid_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test that an unknown non-UUID provider_id raises ValueError rather than a database error.
+
+        This test verifies:
+        - Unknown human-readable identifiers surface as "MCP tool not found"
+        - No UUID cast error escapes to the caller
+        """
+        # Arrange: Create test data
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        # Act & Assert: Verify proper error handling
+
+        service = MCPToolManageService(db_session_with_containers)
+        with pytest.raises(ValueError, match="MCP tool not found"):
+            service.get_provider(provider_id="no-such-mcp-tools", tenant_id=tenant.id)
+
+    def test_get_mcp_provider_by_provider_id_server_identifier_tenant_isolation(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test tenant isolation when a server identifier is passed as provider_id.
+
+        This test verifies:
+        - The server identifier fallback stays scoped to the requesting tenant
+        - Security boundaries are maintained
+        """
+        # Arrange: Create test data for two tenants
+        account1, tenant1 = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        account2, tenant2 = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        # Create MCP provider in tenant1
+        mcp_provider1 = self._create_test_mcp_provider(
+            db_session_with_containers, mock_external_service_dependencies, tenant1.id, account1.id
+        )
+        mcp_provider1.server_identifier = "tenant1-mcp-tools"
+        db_session_with_containers.commit()
+
+        # Act & Assert: Verify tenant isolation
+
+        service = MCPToolManageService(db_session_with_containers)
+        with pytest.raises(ValueError, match="MCP tool not found"):
+            service.get_provider(provider_id="tenant1-mcp-tools", tenant_id=tenant2.id)
+
     def test_get_mcp_provider_by_server_identifier_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
