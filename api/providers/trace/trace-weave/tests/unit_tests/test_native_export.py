@@ -75,6 +75,11 @@ def make_client_with_transport(monkeypatch: pytest.MonkeyPatch) -> tuple[WeaveTr
     client = WeaveTraceClient({"api_key": "secret", "entity": "entity", "project": "project"})
     request = Mock(return_value=httpx.Response(200, json={}))
     monkeypatch.setattr(client.http, "request", request)
+    monkeypatch.setattr(
+        client.account_http,
+        "request",
+        Mock(return_value=httpx.Response(200, json={"data": {"project": {"name": "project"}}})),
+    )
     return client, request
 
 
@@ -100,7 +105,7 @@ def test_weave_verification_and_export_use_saved_destination(
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(200, json={"data": {"viewer": {"entity": "entity"}}})
+        return httpx.Response(200, json={"data": {"viewer": {"entity": "entity"}, "project": {"name": "project"}}})
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
@@ -125,8 +130,8 @@ def test_weave_verification_and_export_use_saved_destination(
     discovery = [f"{(host or 'https://api.wandb.ai').rstrip('/')}/graphql"] if entity is None else []
     assert [str(request.url) for request in requests] == [
         *discovery,
+        f"{(host or 'https://api.wandb.ai').rstrip('/')}/graphql",
         f"{trace_endpoint}/calls/query_stats",
-        *discovery,
         *[f"{trace_endpoint}/v2/entity/project/calls/complete" for _span in trace.spans],
     ]
     assert all(request.headers["Authorization"] == basic_auth("api", "saved-key") for request in requests)
@@ -198,7 +203,7 @@ def test_weave_self_hosted_failure_never_falls_back_to_cloud(monkeypatch: pytest
         send_to_provider()
     assert len(requests) == 1
     assert requests[0].url.host == "wandb.example"
-    assert requests[0].url.path.startswith("/traces/")
+    assert requests[0].url.path == "/graphql"
 
 
 @pytest.mark.parametrize("missing", [{"started_at": None, "ended_at": None}, {"ended_at": None}])
@@ -213,7 +218,12 @@ def test_weave_preserves_untimed_children_and_status_counts(missing: dict, monke
     assert anchor is not None
     assert call["started_at"] == call["ended_at"] == anchor.isoformat()
     assert call["attributes"]["dify.timing.estimated"] is True
-    assert call["output"] == child.outputs
+    assert isinstance(child.outputs, dict)
+    assert call["output"] == {
+        **child.outputs,
+        "usage_metadata": {"input_tokens": 3, "output_tokens": 5, "total_tokens": 8},
+        "file_list": [],
+    }
     assert call["exception"] == "attempt failed"
     assert call["summary"]["status_counts"] == {"success": 0, "error": 1}
     assert call["summary"]["usage"]["gpt-4o"]["total_tokens"] == 8
@@ -286,6 +296,8 @@ def test_weave_exports_complete_calls_and_falls_back_for_legacy_servers(
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
+        if request.url.path == "/graphql":
+            return httpx.Response(200, json={"data": {"project": {"name": "project"}}})
         if request.url.path.endswith("/calls/complete"):
             return httpx.Response(404 if legacy_server else 200, json={})
         if not legacy_server:
@@ -310,6 +322,8 @@ def test_weave_exports_complete_calls_and_falls_back_for_legacy_servers(
 
     assert second_receipts == first_receipts
     assert [request.content for request in requests] == [request.content for request in first_requests]
+    assert requests[0].url.path == "/graphql"
+    requests = requests[1:]
     paths = [request.url.path for request in requests]
     if legacy_server:
         assert paths == ["/traces/v2/team/project/calls/complete"] + [
@@ -329,7 +343,9 @@ def test_weave_exports_complete_calls_and_falls_back_for_legacy_servers(
         assert call["trace_id"] == first_receipts.spans[span.span_id]["trace_id"]
         assert call["started_at"] == span.started_at.isoformat()
         assert call["ended_at"] == span.ended_at.isoformat()
-        assert call["output"] == span.outputs
+        assert isinstance(call["output"], dict)
+        assert isinstance(span.outputs, dict)
+        assert call["output"].items() >= span.outputs.items()
 
 
 @pytest.mark.parametrize("entity", [None, ""])
@@ -337,22 +353,29 @@ def test_weave_qualified_project_skips_default_entity_discovery(
     monkeypatch: pytest.MonkeyPatch, entity: str | None
 ) -> None:
     client = WeaveTraceClient({"api_key": "saved-key", "entity": entity, "project": "team/project"})
-    request = Mock(return_value=httpx.Response(200, json={}))
+    request = Mock(return_value=httpx.Response(200, json={"data": {"project": {"name": "project"}}}))
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
 
     assert client.verify_credentials() is True
     assert client.get_project_url() == "https://wandb.ai/team/project/weave"
     client.export_trace(make_trace())
 
-    assert request.call_args_list[0].args[1] == "https://trace.wandb.ai/calls/query_stats"
-    assert request.call_args_list[0].kwargs["json"] == {"project_id": "team/project"}
-    assert all(call.args[1].endswith("/v2/team/project/calls/complete") for call in request.call_args_list[1:])
+    assert request.call_args_list[0].args[1] == "https://api.wandb.ai/graphql"
+    assert "viewer" not in request.call_args_list[0].kwargs["json"]["query"]
+    assert request.call_args_list[1].args[1] == "https://trace.wandb.ai/calls/query_stats"
+    assert request.call_args_list[1].kwargs["json"] == {"project_id": "team/project"}
+    assert all(call.args[1].endswith("/v2/team/project/calls/complete") for call in request.call_args_list[2:])
 
 
 @pytest.mark.parametrize("status", [400, 401, 403, 429, 503])
 def test_weave_complete_call_failure_does_not_fall_back(monkeypatch: pytest.MonkeyPatch, status: int) -> None:
     client = WeaveTraceClient({"api_key": "saved-key", "entity": "team", "project": "project"})
     request = Mock(return_value=httpx.Response(status))
+    monkeypatch.setattr(
+        client.account_http,
+        "request",
+        Mock(return_value=httpx.Response(200, json={"data": {"project": {"name": "project"}}})),
+    )
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
 
     with pytest.raises(TraceExportError, match=f"provider_http_{status}"):
@@ -435,12 +458,17 @@ def test_recorded_model_nodes_preserve_native_inputs(
 ) -> None:
     source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()), actor_id=str(uuid4()))
     submitted: list[CompletedTrace] = []
+
+    def submit_trace(trace: CompletedTrace) -> bool:
+        submitted.append(trace)
+        return True
+
     recorder = WorkflowTraceRecorder(
         source=source,
         workflow_id="workflow",
         workflow_version="1",
         inputs={},
-        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+        submit_completed_trace=submit_trace,
     )
     node = workflow_node(source, node_type=node_type)
     start_node(recorder, node)
@@ -474,6 +502,11 @@ def test_recorded_model_nodes_preserve_native_inputs(
         calls = [call.kwargs["json"]["start"] for call in request.call_args_list if call.args[1] == "call/start"]
     else:
         calls = [call.kwargs["json"]["batch"][0] for call in request.call_args_list]
-    assert calls[1]["inputs"] == ({"input": prompts} if node_type == "llm" else original_inputs)
+    metadata = {"usage_metadata": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}, "file_list": []}
+    assert calls[1]["inputs"] == (
+        {"messages": [{"role": "user", "content": "Rendered prompt", **metadata}]}
+        if node_type == "llm"
+        else {**original_inputs, **metadata}
+    )
     assert calls[1]["attributes"]["dify.tenant_id"] == source.tenant_id
     assert trace.model_dump_json() == original_trace
