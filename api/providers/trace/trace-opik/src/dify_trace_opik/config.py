@@ -1,3 +1,5 @@
+from typing import override
+
 from pydantic import ValidationInfo, field_validator
 
 from core.ops.provider_config import BaseTracingConfig
@@ -13,6 +15,11 @@ class OpikConfig(BaseTracingConfig):
     project: str | None = None
     workspace: str | None = None
     url: str = "https://www.comet.com/opik/api/"
+
+    @classmethod
+    @override
+    def secret_fields(cls) -> tuple[str, ...]:
+        return ("api_key",)
 
     @field_validator("project")
     @classmethod

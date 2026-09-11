@@ -58,6 +58,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         entity = Mock(spec=ChatAppGenerateEntity)
         entity.task_id = "test-task-id"
         entity.app_id = "test-app-id"
+        entity.trace_recorder = None
         # minimal app_config used by pipeline internals
         entity.app_config = SimpleNamespace(
             tenant_id="test-tenant-id",

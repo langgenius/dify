@@ -4,7 +4,7 @@ from threading import Thread, Timer
 from typing import Union
 
 from flask import Flask, current_app
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -13,6 +13,7 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
+    InvokeFrom,
 )
 from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
@@ -120,45 +121,64 @@ class MessageCycleManager:
         query: str,
         message_id: str | None = None,
     ):
+        app_config = self._application_generate_entity.app_config
+        tenant_id, app_id = app_config.tenant_id, app_config.app_id
+        user_id = self._application_generate_entity.user_id
+        conversation_user_filter = (
+            Conversation.from_end_user_id == user_id
+            if self._application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}
+            else Conversation.from_account_id == user_id
+        )
+        trace_recorder = self._application_generate_entity.trace_recorder
+        trace_user_id = (trace_recorder.user_id if trace_recorder else None) or user_id
         with flask_app.app_context():
             with session_factory.create_session() as session:
-                # get conversation and message
-                stmt = select(Conversation).where(Conversation.id == conversation_id)
-                conversation = session.scalar(stmt)
-
-                if not conversation:
+                conversation_mode = session.scalar(
+                    select(Conversation.mode)
+                    .join(App, App.id == Conversation.app_id)
+                    .where(
+                        Conversation.id == conversation_id,
+                        Conversation.app_id == app_id,
+                        App.tenant_id == tenant_id,
+                        conversation_user_filter,
+                    )
+                )
+                if conversation_mode is None or conversation_mode == AppMode.COMPLETION:
                     return
 
-                if conversation.mode != AppMode.COMPLETION:
-                    app_model = session.get(App, conversation.app_id)
-                    if not app_model:
-                        return
+            query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
+            cache_key = f"conv_name:{conversation_id}:{query_hash}"
+            cached_name = redis_client.get(cache_key)
+            if cached_name:
+                name = cached_name.decode("utf-8")
+            else:
+                try:
+                    name = LLMGenerator.generate_conversation_name(
+                        tenant_id,
+                        query,
+                        conversation_id,
+                        app_id,
+                        message_id=message_id,
+                        user_id=trace_user_id,
+                    )
+                    redis_client.setex(cache_key, 3600, name)
+                except Exception:
+                    if dify_config.DEBUG:
+                        logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
+                    name = query[:47] + "..." if len(query) > 50 else query
 
-                    # generate conversation name
-                    query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
-                    cache_key = f"conv_name:{conversation_id}:{query_hash}"
-
-                    cached_name = redis_client.get(cache_key)
-                    if cached_name:
-                        name = cached_name.decode("utf-8")
-                    else:
-                        try:
-                            name = LLMGenerator.generate_conversation_name(
-                                app_model.tenant_id,
-                                query,
-                                conversation_id,
-                                conversation.app_id,
-                                message_id=message_id,
-                            )
-                            redis_client.setex(cache_key, 3600, name)
-                        except Exception:
-                            if dify_config.DEBUG:
-                                logger.exception(
-                                    "generate conversation name failed, conversation_id: %s", conversation_id
-                                )
-                            name = query[:47] + "..." if len(query) > 50 else query
-                    conversation.name = name
-                    session.commit()
+            with session_factory.create_session() as session:
+                session.execute(
+                    update(Conversation)
+                    .where(
+                        Conversation.id == conversation_id,
+                        Conversation.app_id == app_id,
+                        Conversation.app_id.in_(select(App.id).where(App.id == app_id, App.tenant_id == tenant_id)),
+                        conversation_user_filter,
+                    )
+                    .values(name=name)
+                )
+                session.commit()
 
     def handle_annotation_reply(self, event: QueueAnnotationReplyEvent, session: Session) -> MessageAnnotation | None:
         """

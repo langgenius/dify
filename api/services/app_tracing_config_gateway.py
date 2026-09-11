@@ -62,6 +62,13 @@ class TraceProviderConfigChecks(TracingConfigProviderGateway):
         except Exception as error:
             raise AppTracingConfigProcessingError from error
         self._verify_credentials(tracing_provider, settings)
+        if current_tracing_config:
+            try:
+                if settings == decrypt_provider_config(workspace_id, tracing_provider, current_tracing_config):
+                    return dict(current_tracing_config)
+            except Exception:
+                # A complete replacement can repair a configuration that no longer decrypts.
+                return encrypted
         return encrypted
 
     @override

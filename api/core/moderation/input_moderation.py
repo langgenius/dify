@@ -54,6 +54,7 @@ class InputModeration:
             trace_recorder.record_operation(
                 "moderation",
                 span_type="tool",
+                attributes={"operation_type": "moderation", "moderation_type": moderation_type},
                 message_id=message_id,
                 inputs={"inputs": inputs, "query": query},
                 outputs=moderation_result,

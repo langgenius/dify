@@ -2,7 +2,7 @@ from collections.abc import Callable, Generator, Sequence
 from typing import Any, override
 
 from graphon.file import File
-from graphon.model_runtime.entities.llm_entities import LLMStructuredOutput
+from graphon.model_runtime.entities.llm_entities import LLMStructuredOutput, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.node_events import NodeEventPayload
 from graphon.nodes.llm.node import LLMNode
@@ -26,6 +26,27 @@ class DifyLLMNode(LLMNode):
     ) -> None:
         super().__init__(*args, **kwargs)
         self._polling_finalizer = polling_finalizer
+
+    @override
+    def _build_process_data(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        usage: LLMUsage,
+        finish_reason: str | None,
+        model_provider: Any,
+        model_name: str,
+    ) -> dict[str, Any]:
+        return {
+            **super()._build_process_data(
+                prompt_messages=prompt_messages,
+                usage=usage,
+                finish_reason=finish_reason,
+                model_provider=model_provider,
+                model_name=model_name,
+            ),
+            "model_parameters": dict(self.model_instance.parameters),
+        }
 
     @override
     def _invoke_llm_with_polling(
