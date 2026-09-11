@@ -29,12 +29,10 @@ from core.ops.trace_data import (
     make_span_id,
     make_trace_id,
 )
-from tests.unit_tests.core.ops.test_provider_export import (
-    RequestArguments,
-    make_completed_trace,
-    provider_config,
-    settings_for,
-)
+from tests.unit_tests.core.ops.test_provider_export import RequestArguments, make_completed_trace, settings_for
+
+# Pytest importlib mode resolves these hyphenated provider packages.
+from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
 
 
 @pytest.mark.parametrize("session_id", ["explicit-session", None, "session-" + "x" * 504])
@@ -77,7 +75,7 @@ def test_langfuse_exports_observation_attributes_and_attaches_late_children(
     with otel_trace.use_span(
         otel_trace.NonRecordingSpan(otel_trace.SpanContext(trace_id=1, span_id=2, is_remote=False))
     ):
-        receipts = export_trace(trace, settings, provider_config("langfuse"))
+        receipts = export_trace(trace, settings, make_provider_config())
         assert otel_trace.get_current_span().get_span_context().trace_id == 1
     assert request.call_count == 1
     assert request.call_args.args == ("POST", "https://langfuse.example/api/public/otel/v1/traces")
@@ -142,7 +140,7 @@ def test_langfuse_exports_observation_attributes_and_attaches_late_children(
         root_span_id=late_root.span_id,
         spans=(late_root,),
     )
-    export_trace(late, settings, provider_config("langfuse"), parent)
+    export_trace(late, settings, make_provider_config(), parent)
     late_spans = (
         ExportTraceServiceRequest.FromString(request.call_args.kwargs["content"]).resource_spans[0].scope_spans[0].spans
     )
@@ -155,7 +153,7 @@ def test_langfuse_exports_observation_attributes_and_attaches_late_children(
     assert not late_attributes["langfuse.internal.is_app_root"].bool_value
     legacy_parent = {**parent, "trace_id": str(uuid4()), "span_id": str(uuid4())}
     with pytest.raises(TraceExportError, match="langfuse_legacy_parent_receipt") as rejected:
-        export_trace(late, settings, provider_config("langfuse"), legacy_parent)
+        export_trace(late, settings, make_provider_config(), legacy_parent)
     assert not rejected.value.retryable
     assert request.call_count == 2
     assert dict(os.environ) == environment
@@ -176,8 +174,7 @@ def test_langfuse_overlapping_exports_isolate_same_public_key_destinations(monke
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
     traces = [make_completed_trace(), make_completed_trace()]
     configs = [
-        {**provider_config("langfuse", f"secret-{index}"), "host": f"https://tenant-{index}.example"}
-        for index in range(2)
+        {**make_provider_config(f"secret-{index}"), "host": f"https://tenant-{index}.example"} for index in range(2)
     ]
     with ThreadPoolExecutor(2) as pool:
         jobs = [
@@ -204,7 +201,7 @@ def test_langfuse_http_errors_reach_delivery_retry_policy(
     request = Mock(return_value=httpx.Response(status, headers={"retry-after": "60"}))
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
     with pytest.raises(TraceExportError, match=f"provider_http_{status}") as failed:
-        create_provider_client("langfuse", provider_config("langfuse")).export_trace(make_completed_trace())
+        create_provider_client("langfuse", make_provider_config()).export_trace(make_completed_trace())
     assert failed.value.retryable is retryable
     assert failed.value.retry_after == 60
     assert request.call_count == 1
@@ -217,7 +214,7 @@ def test_langfuse_partial_acceptance_is_not_a_successful_delivery(monkeypatch: p
     request = Mock(return_value=httpx.Response(200, content=rejected.SerializeToString()))
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
     with pytest.raises(TraceExportError) as failed:
-        create_provider_client("langfuse", provider_config("langfuse")).export_trace(make_completed_trace())
+        create_provider_client("langfuse", make_provider_config()).export_trace(make_completed_trace())
     assert not failed.value.retryable
     assert "sensitive" not in str(failed.value)
     assert request.call_count == 1
@@ -231,7 +228,7 @@ def test_langfuse_preserves_missing_timestamps_and_generation_errors(monkeypatch
         update={"started_at": None, "ended_at": None, "status": "error", "error": "model failed"}
     )
     trace = trace.model_copy(update={"spans": (*trace.spans[:-1], failed_model)})
-    create_provider_client("langfuse", provider_config("langfuse")).export_trace(trace)
+    create_provider_client("langfuse", make_provider_config()).export_trace(trace)
     model = (
         ExportTraceServiceRequest.FromString(request.call_args.kwargs["content"])
         .resource_spans[0]
@@ -282,10 +279,10 @@ def test_langfuse_drains_large_trees_and_shuts_down_sdk_resources(
     )
     if fail_flush:
         with pytest.raises(TraceExportError, match="langfuse_flush_failed"):
-            create_provider_client("langfuse", provider_config("langfuse")).export_trace(trace)
+            create_provider_client("langfuse", make_provider_config()).export_trace(trace)
         request.assert_not_called()
     else:
-        receipts = create_provider_client("langfuse", provider_config("langfuse")).export_trace(trace)
+        receipts = create_provider_client("langfuse", make_provider_config()).export_trace(trace)
         assert len(receipts.spans) == 2050
         assert request.call_count == 1
         spans = (

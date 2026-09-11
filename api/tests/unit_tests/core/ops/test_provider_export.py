@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from time import monotonic
-from typing import Never, TypedDict, Unpack
+from typing import Never, TypedDict
 from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID, uuid4
 
@@ -116,26 +116,6 @@ def make_completed_trace() -> CompletedTrace:
     )
 
 
-def provider_config(provider: str, secret: str = "tenant-secret") -> dict[str, str]:
-    return {
-        "langsmith": {"api_key": secret, "project": "project", "endpoint": "https://langsmith.example"},
-        "langfuse": {"public_key": "public", "secret_key": secret, "host": "https://langfuse.example"},
-        "opik": {"api_key": secret, "workspace": "workspace", "project": "project", "url": "https://opik.example/api/"},
-        "weave": {"api_key": secret, "entity": "entity", "project": "project", "endpoint": "https://weave.example"},
-        "phoenix": {"api_key": secret, "project": "project", "endpoint": "https://phoenix.example"},
-        "arize": {"api_key": secret, "project": "project", "space_id": "space", "endpoint": "https://arize.example"},
-        "aliyun": {"license_key": secret, "app_name": "project", "endpoint": "https://aliyun.example"},
-        "tencent": {"token": secret, "service_name": "project", "endpoint": "https://tencent.example:4317"},
-        "mlflow": {
-            "username": "user",
-            "password": secret,
-            "experiment_id": "1",
-            "tracking_uri": "https://mlflow.example",
-        },
-        "databricks": {"personal_access_token": secret, "experiment_id": "1", "host": "https://databricks.example"},
-    }[provider]
-
-
 def settings_for(trace: CompletedTrace, provider: str) -> TraceProviderSettings:
     return TraceProviderSettings(
         tenant_id=trace.source.tenant_id,
@@ -146,54 +126,18 @@ def settings_for(trace: CompletedTrace, provider: str) -> TraceProviderSettings:
     )
 
 
-@pytest.mark.parametrize(
-    "provider",
-    ["langsmith", "langfuse", "opik", "weave", "phoenix", "arize", "aliyun", "tencent", "mlflow", "databricks"],
-)
-def test_every_provider_exports_complete_tree_with_repeatable_ids(
-    provider: str, monkeypatch: pytest.MonkeyPatch
+def assert_provider_exports_complete_tree_with_repeatable_ids(
+    provider: str, config: dict[str, str], requests: list[tuple[str, str, RequestArguments]]
 ) -> None:
-    requests: list[tuple[str, str, RequestArguments]] = []
-
-    def request(method: str, url: str, **kwargs: Unpack[RequestArguments]) -> httpx.Response:
-        requests.append((method, url, kwargs))
-        if "credentials-for-data-upload" in url:
-            return httpx.Response(
-                200,
-                json={
-                    "credential_info": {
-                        "signed_uri": "https://storage.example/traces.json?signature=upload-only",
-                        "type": "AWS_PRESIGNED_URL",
-                        "headers": [],
-                    }
-                },
-            )
-        if method == "GET":
-            return httpx.Response(404, json={})
-        if "ingestion" in url:
-            return httpx.Response(207, json={"errors": []})
-        if kwargs.get("headers", {}).get("Content-Type") == "application/x-protobuf":
-            return httpx.Response(200, content=b"")
-        return httpx.Response(200, json={})
-
-    def grpc_request(
-        client: OtlpTraceClient, signal: str, serialized: bytes, *, http_client: TraceProviderHttpClient | None = None
-    ) -> bytes:
-        transport = http_client if http_client is not None else client.http
-        requests.append(("GRPC", signal, {"content": serialized, "headers": dict(transport.headers)}))
-        return b""
-
-    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
-    monkeypatch.setattr(OtlpTraceClient, "_send_grpc", grpc_request)
     trace = make_completed_trace()
     settings = settings_for(trace, provider)
     state = make_export_state(trace, settings)
     environment = dict(os.environ)
-    first = export_trace(trace, settings, provider_config(provider), export_state=state)
+    first = export_trace(trace, settings, config.copy(), export_state=state)
     second = export_trace(
         trace,
         settings,
-        provider_config(provider),
+        config.copy(),
         export_state=TraceExportState(state.repository, state.delivery),
     )
     assert first == second
@@ -391,12 +335,8 @@ def test_otlp_can_send_grpc_traces_and_http_metrics(monkeypatch: pytest.MonkeyPa
     assert metrics.deadline == client.http.deadline
 
 
-@pytest.mark.parametrize(
-    "provider",
-    ["langsmith", "langfuse", "opik", "weave", "phoenix", "arize", "aliyun", "tencent", "mlflow", "databricks"],
-)
-def test_provider_credentials_round_trip_without_exposing_or_replacing_saved_secrets(
-    provider: str, monkeypatch: pytest.MonkeyPatch
+def assert_provider_credentials_round_trip_without_exposing_or_replacing_saved_secrets(
+    provider: str, original: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     tenant_id = str(uuid4())
 
@@ -412,7 +352,7 @@ def test_provider_credentials_round_trip_without_exposing_or_replacing_saved_sec
 
     monkeypatch.setattr("core.helper.encrypter.encrypt_token", encrypt)
     monkeypatch.setattr("core.helper.encrypter.batch_decrypt_token", decrypt)
-    original = provider_config(provider)
+    original_copy = original.copy()
     saved = encrypt_provider_config(tenant_id, provider, original)
     masked = mask_provider_config(provider, saved)
     schema = get_provider_config_fields(provider)
@@ -425,7 +365,7 @@ def test_provider_credentials_round_trip_without_exposing_or_replacing_saved_sec
         if original.get(field) is not None:
             assert saved[field] == f"encrypted:{tenant_id}:{original[field]}"
             assert "*" in masked[field]
-    assert original == provider_config(provider)
+    assert original == original_copy
 
 
 def test_unknown_provider_is_rejected() -> None:

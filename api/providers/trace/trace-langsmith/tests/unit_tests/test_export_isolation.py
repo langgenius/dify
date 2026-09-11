@@ -10,12 +10,10 @@ from core.ops.provider_config import resolve_provider_config
 from core.ops.provider_export import (
     export_trace,
 )
-from tests.unit_tests.core.ops.test_provider_export import (
-    RequestArguments,
-    make_completed_trace,
-    provider_config,
-    settings_for,
-)
+from tests.unit_tests.core.ops.test_provider_export import RequestArguments, make_completed_trace, settings_for
+
+# Pytest importlib mode resolves these hyphenated provider packages.
+from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
 
 
 def test_overlapping_exports_keep_credentials_and_parent_order_separate(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -33,9 +31,9 @@ def test_overlapping_exports_keep_credentials_and_parent_order_separate(monkeypa
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
     trace_a, trace_b = make_completed_trace(), make_completed_trace()
     monkeypatch.setenv("LANGSMITH_HIDE_INPUTS", "true")
-    config_a = resolve_provider_config("langsmith", provider_config("langsmith", "secret-a"))
+    config_a = resolve_provider_config("langsmith", make_provider_config("secret-a"))
     monkeypatch.setenv("LANGSMITH_HIDE_INPUTS", "false")
-    config_b = resolve_provider_config("langsmith", provider_config("langsmith", "secret-b"))
+    config_b = resolve_provider_config("langsmith", make_provider_config("secret-b"))
     with ThreadPoolExecutor(2) as pool:
         jobs = [
             pool.submit(export_trace, trace, settings_for(trace, "langsmith"), config)

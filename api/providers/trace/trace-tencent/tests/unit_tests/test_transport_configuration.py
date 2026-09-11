@@ -13,7 +13,9 @@ from dify_trace_tencent.config import TencentConfig
 from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 
 from configs import dify_config
-from tests.unit_tests.core.ops.test_provider_export import provider_config
+
+# Pytest importlib mode resolves these hyphenated provider packages.
+from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
 
 
 @pytest.fixture(autouse=True)
@@ -28,7 +30,7 @@ def test_metric_protocol_is_captured_and_dispatches_separately_from_traces(
     monkeypatch: pytest.MonkeyPatch, protocol: str
 ) -> None:
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", protocol)
-    config = provider_config("tencent")
+    config = make_provider_config()
     runtime = TencentConfig.load_runtime_settings(config)
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "changed")
     monkeypatch.setattr(TencentConfig, "load_runtime_settings", Mock(side_effect=AssertionError("snapshot was reread")))
@@ -72,7 +74,7 @@ def test_tls_selection_preserves_sdk_signal_precedence_and_frozen_credentials(
     metric_key = tmp_path / "metric-key"
     metric_key.write_text("metric key")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_CLIENT_KEY", str(metric_key))
-    config = provider_config("tencent")
+    config = make_provider_config()
     runtime = TencentConfig.load_runtime_settings(config)
     assert runtime["trace_tls"] == {"certificate": base64.b64encode(trace_ca.read_bytes()).decode()}
     assert runtime["metrics_tls"] == {
@@ -103,7 +105,7 @@ def test_empty_grpc_signal_ca_suppresses_generic_credentials(monkeypatch: pytest
     ca.write_text("generic CA")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_CERTIFICATE", str(ca))
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE", "")
-    runtime = TencentConfig.load_runtime_settings(provider_config("tencent"))
+    runtime = TencentConfig.load_runtime_settings(make_provider_config())
     assert runtime["trace_tls"] == {}
     assert runtime["metrics_tls"] == {"certificate": base64.b64encode(ca.read_bytes()).decode()}
 
@@ -111,7 +113,7 @@ def test_empty_grpc_signal_ca_suppresses_generic_credentials(monkeypatch: pytest
 def test_explicit_empty_http_metric_ca_keeps_existing_verification_setting(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_CERTIFICATE", "")
-    client = tencent_trace.create_trace_client(provider_config("tencent"))
+    client = tencent_trace.create_trace_client(make_provider_config())
     assert client.metrics_http is not None
     assert client.metrics_http.ssl_context is not None
     assert client.metrics_http.ssl_context.verify_mode == ssl.CERT_NONE
@@ -129,7 +131,7 @@ def test_http_metric_ca_fallback_and_unused_key_do_not_change_grpc_credentials(
         if name == ca_source:
             break
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_CLIENT_KEY", "/unused/missing-key.pem")
-    runtime = TencentConfig.load_runtime_settings(provider_config("tencent"))
+    runtime = TencentConfig.load_runtime_settings(make_provider_config())
     expected = {"certificate": base64.b64encode(ca_source.encode()).decode()}
     assert runtime["metrics_tls"] == expected
     assert runtime["trace_tls"] == (expected if ca_source == "OTEL_EXPORTER_OTLP_CERTIFICATE" else {})
@@ -137,7 +139,7 @@ def test_http_metric_ca_fallback_and_unused_key_do_not_change_grpc_credentials(
 
 def test_resource_dimensions_are_preserved(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(tencent_trace.socket, "gethostname", lambda: "tencent-worker")
-    client = tencent_trace.create_trace_client(provider_config("tencent"))
+    client = tencent_trace.create_trace_client(make_provider_config())
     attributes = {attribute.key: attribute.value.string_value for attribute in client.resource.attributes}
     assert attributes == {
         "service.name": "project",
@@ -154,7 +156,7 @@ def test_empty_requests_ca_bundles_keep_http_metric_verification(monkeypatch: py
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
     monkeypatch.setenv("REQUESTS_CA_BUNDLE", "")
     monkeypatch.setenv("CURL_CA_BUNDLE", "")
-    runtime = TencentConfig.load_runtime_settings(provider_config("tencent"))
+    runtime = TencentConfig.load_runtime_settings(make_provider_config())
     assert runtime["metrics_verify"] is True
     assert runtime["metrics_tls"] == {}
 
@@ -168,7 +170,7 @@ def test_ca_directories_are_captured_only_for_http_metrics(
     certificate.write_bytes(b"original certificate")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", protocol)
     monkeypatch.setenv(f"OTEL_EXPORTER_OTLP_{signal}_CERTIFICATE", str(tmp_path))
-    config = provider_config("tencent")
+    config = make_provider_config()
     if protocol == "grpc" or signal == "TRACES":
         with pytest.raises(ValueError, match="^Cannot read TLS configuration$"):
             TencentConfig.load_runtime_settings(config)
