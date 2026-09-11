@@ -1,3 +1,4 @@
+import os
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -45,11 +46,14 @@ class TestHelpers:
         assert encodings[0].encoding == "ascii"
 
     def test_detect_file_encodings(self) -> None:
-        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt") as temp:
+        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt", delete=False) as temp:
             temp.write("Shared data")
             temp.flush()
             temp_path = temp.name
+        try:
             encodings = detect_file_encodings(temp_path)
+        finally:
+            os.unlink(temp_path)
 
         assert len(encodings) == 1
         assert encodings[0].encoding in {"utf_8", "ascii"}
