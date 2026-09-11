@@ -1,15 +1,16 @@
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem, SessionView } from '../types'
+import type { MarkdownProps } from '@/app/components/base/markdown'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import DifyBuilderPanel from '../panel'
 import { DifyBuilderProvider } from '../provider'
-import { difyBuilderStartRunFixAtom } from '../store'
+import { difyBuilderCanStartFixAtom, difyBuilderStartRunFixAtom } from '../store'
 
 const mocks = vi.hoisted(() => ({
   action: vi.fn(),
@@ -23,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   setCanvasReadOnly: vi.fn(),
   invalidateWorkflowDraftSync: vi.fn(),
   setShowPanel: vi.fn(),
-  syncDraft: vi.fn(async () => undefined),
+  syncDraft: vi.fn(async (): Promise<void> => undefined),
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -50,6 +51,11 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 vi.mock('../model-selector', () => ({
   default: () => <button type="button">Model selector</button>,
+}))
+
+// These flows verify delivered replies; Markdown rendering has its own tests.
+vi.mock('@/app/components/base/markdown', () => ({
+  Markdown: ({ content }: MarkdownProps) => <div>{content}</div>,
 }))
 
 vi.mock('@/features/agent-v2/agent-detail/configure/components/build-grid-texture', () => ({
@@ -148,9 +154,10 @@ const createControlledEventStream = () => {
 }
 
 const FixEntry = () => {
+  const canStartFix = useAtomValue(difyBuilderCanStartFixAtom)
   const startFix = useSetAtom(difyBuilderStartRunFixAtom)
   return (
-    <button type="button" onClick={() => void startFix('failed-run-42')}>
+    <button type="button" disabled={!canStartFix} onClick={() => void startFix('failed-run-42')}>
       Fix failed run
     </button>
   )
@@ -683,5 +690,121 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       },
     })
     expect(mocks.get).toHaveBeenCalledOnce()
+  })
+
+  it('replaces an unfinished Build session with Fix and restores the new session on remount', async () => {
+    const storageKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
+    window.sessionStorage.setItem(storageKey, 'build-session')
+    const buildForm: ConversationItem = {
+      seq: 0,
+      at_version: 2,
+      kind: 'form',
+      payload: {
+        variant: 'build_requirements',
+        fields: [{ key: 'audience', label: 'Build audience', type: 'text' }],
+        values: { audience: 'Support agents' },
+      },
+    }
+    const build = createSessionView({
+      actions: [{ id: 'submit_requirements', kind: 'primary', label: 'Submit requirements' }],
+      active_interaction: {
+        action_id: 'submit_requirements',
+        card: buildForm,
+        valid_at_version: 2,
+      },
+      conversation_last_seq: 0,
+      entry_mode: 'build',
+      phase: 'clarify',
+      session_id: 'build-session',
+      state: 'build.goal_analysis',
+      version: 2,
+    })
+    const fixNotice: ConversationItem = {
+      seq: 0,
+      at_version: 2,
+      kind: 'notice',
+      payload: { text: 'Repair the selected failed run.' },
+    }
+    const fix = createSessionView({
+      actions: [{ id: 'approve_plan', kind: 'primary', label: 'Approve repair' }],
+      conversation_last_seq: 0,
+      entry_mode: 'fix',
+      phase: 'plan',
+      run_status: 'waiting_confirmation',
+      session_id: 'fix-session',
+      state: 'fix.await_approval',
+      version: 2,
+    })
+    mocks.get.mockResolvedValueOnce(build).mockResolvedValue(fix)
+    mocks.conversation.mockImplementation(({ params }: { params: { session_id: string } }) =>
+      Promise.resolve(
+        conversationPage(params.session_id === 'build-session' ? [buildForm] : [fixNotice]),
+      ),
+    )
+    let finishSync!: () => void
+    mocks.syncDraft.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSync = resolve
+        }),
+    )
+    const fixStream = createControlledEventStream()
+    mocks.create.mockResolvedValue(fixStream.iterable)
+    const user = userEvent.setup()
+    const { unmount } = renderFlow()
+
+    const audience = await screen.findByRole('textbox', { name: 'Build audience' })
+    const fixEntry = screen.getByRole('button', { name: 'Fix failed run' })
+    await waitFor(() => expect(fixEntry).toBeEnabled())
+    await user.type(getComposer(), 'Continue the build')
+    await user.click(fixEntry)
+    await waitFor(() => expect(fixEntry).toBeDisabled())
+    expect(audience).toBeDisabled()
+    expect(getComposer()).toBeDisabled()
+    expect(mocks.create).not.toHaveBeenCalled()
+
+    await act(async () => finishSync())
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('textbox', { name: 'Build audience' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Submit requirements' })).not.toBeInTheDocument()
+    expect(getComposer()).toHaveValue('')
+
+    await act(async () => {
+      fixStream.push(
+        commandStartedEvent({
+          ...fix,
+          actions: [],
+          canvas_read_only: true,
+          conversation_last_seq: -1,
+          phase: 'understand',
+          run_status: 'processing',
+          state: 'fix.diagnose',
+          version: 1,
+        }),
+      )
+      fixStream.push(stateEvent(fix))
+      fixStream.close()
+    })
+    expect(await screen.findByText('Repair the selected failed run.')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Approve repair' })).toBeEnabled(),
+    )
+    expect(window.sessionStorage.getItem(storageKey)).toBe('fix-session')
+    expect(mocks.create.mock.calls[0]?.[0].body).toMatchObject({
+      scenario: 'fix',
+      app_id: 'app-1',
+      failed_run_id: 'failed-run-42',
+    })
+
+    unmount()
+    renderFlow()
+
+    expect(await screen.findByText('Repair the selected failed run.')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Build audience' })).not.toBeInTheDocument()
+    expect(mocks.get).toHaveBeenLastCalledWith(
+      { params: { session_id: 'fix-session' } },
+      { context: { silent: true }, signal: expect.any(AbortSignal) },
+    )
+    expect(mocks.create).toHaveBeenCalledOnce()
   })
 })

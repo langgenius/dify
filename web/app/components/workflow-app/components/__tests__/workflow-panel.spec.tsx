@@ -37,6 +37,7 @@ const mockSetShowMessageLogModal = vi.fn()
 const mockSetShowPanel = vi.fn()
 const mockStartFix = vi.fn(async () => true)
 const mockSyncDraft = vi.fn(async () => undefined)
+const mockLoadBackupDraft = vi.fn()
 
 let appStoreState: AppStoreState
 let workflowStoreState: WorkflowStoreState
@@ -47,6 +48,13 @@ vi.mock('@/app/components/app/store', () => ({
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: WorkflowStoreState) => T) => selector(workflowStoreState),
+  useWorkflowStore: () => ({
+    setState: (state: Partial<WorkflowStoreState>) => Object.assign(workflowStoreState, state),
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
+  useWorkflowRun: () => ({ handleLoadBackupDraft: mockLoadBackupDraft }),
 }))
 
 vi.mock('@/app/components/workflow/panel', () => ({
@@ -331,5 +339,23 @@ describe('WorkflowPanel', () => {
     expect(
       await screen.findByRole('button', { name: 'Fix failed run with App Builder' }),
     ).toBeDisabled()
+  })
+
+  it('restores the editing draft and exits history before syncing and starting Fix', async () => {
+    const user = userEvent.setup()
+    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+    const preparation: string[] = []
+    mockLoadBackupDraft.mockImplementationOnce(() => preparation.push('restore'))
+    mockSyncDraft.mockImplementationOnce(async () => {
+      if (workflowStoreState.historyWorkflowData) throw new Error('Workflow draft sync failed.')
+      preparation.push('sync')
+    })
+    renderWorkflowPanel({ enabled: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Fix failed run with App Builder' }))
+
+    expect(preparation).toEqual(['restore', 'sync'])
+    expect(workflowStoreState.historyWorkflowData).toBeUndefined()
+    expect(mockStartFix).toHaveBeenCalledExactlyOnceWith('app-123', 'failed-run-1', undefined)
   })
 })

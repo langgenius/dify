@@ -461,8 +461,10 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       setLastError('')
       if (startsSession) {
         setActiveSessionId(null)
+        setView(null)
         setConversation([])
         setConversationHasMore(false)
+        setConversationLoading(false)
         setRetryableMessage(null)
         setLastCanvasEvent(null)
         canvasCursorRef.current = undefined
@@ -580,6 +582,8 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       setLastCanvasEvent,
       setLastError,
       setRetryableMessage,
+      setConversationLoading,
+      setView,
       store,
       streamingTurnBuffer,
     ],
