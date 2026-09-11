@@ -1046,6 +1046,14 @@ export const zMemberInviteResponse = z.object({
 })
 
 /**
+ * LoadBalancingPayload
+ */
+export const zLoadBalancingPayload = z.object({
+  configs: z.array(z.record(z.string(), z.unknown())).nullish(),
+  enabled: z.boolean().nullish(),
+})
+
+/**
  * ModelType
  *
  * Enum class for model type.
@@ -1060,9 +1068,12 @@ export const zModelType = z.enum([
 ])
 
 /**
- * ParserDeleteModels
+ * ParserPostModels
  */
-export const zParserDeleteModels = z.object({
+export const zParserPostModels = z.object({
+  config_from: z.string().nullish(),
+  credential_id: z.string().nullish(),
+  load_balancing: zLoadBalancingPayload.nullish(),
   model: z.string(),
   model_type: zModelType,
 })
@@ -1116,6 +1127,14 @@ export const zParserValidate = z.object({
 })
 
 /**
+ * ParserDeleteModels
+ */
+export const zParserDeleteModels = z.object({
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
  * LoadBalancingCredentialPayload
  */
 export const zLoadBalancingCredentialPayload = z.object({
@@ -1138,25 +1157,6 @@ export const zInner = z.object({
  */
 export const zParserPostDefault = z.object({
   model_settings: z.array(zInner),
-})
-
-/**
- * LoadBalancingPayload
- */
-export const zLoadBalancingPayload = z.object({
-  configs: z.array(z.record(z.string(), z.unknown())).nullish(),
-  enabled: z.boolean().nullish(),
-})
-
-/**
- * ParserPostModels
- */
-export const zParserPostModels = z.object({
-  config_from: z.string().nullish(),
-  credential_id: z.string().nullish(),
-  load_balancing: zLoadBalancingPayload.nullish(),
-  model: z.string(),
-  model_type: zModelType,
 })
 
 /**
@@ -4370,8 +4370,6 @@ export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidatePa
  */
 export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponse =
   zValidationResultResponse
-
-export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody = zParserDeleteModels
 
 export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath = z.object({
   provider: z.string(),
