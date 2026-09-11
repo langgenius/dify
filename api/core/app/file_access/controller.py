@@ -19,8 +19,8 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
 
     Tenant scoping remains mandatory. When the current execution belongs to an
     end user, the lookup is additionally constrained to that end user's file
-    ownership markers, plus upload files explicitly granted by the current
-    execution context.
+    ownership markers, plus upload and tool files explicitly granted by the
+    current execution context.
     """
 
     _scope_getter: Callable[[], FileAccessScope | None]
@@ -80,7 +80,16 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         if not resolved_scope.requires_user_ownership:
             return scoped_stmt
 
-        return scoped_stmt.where(ToolFile.user_id == resolved_scope.user_id)
+        user_owned_filter = ToolFile.user_id == resolved_scope.user_id
+        if not resolved_scope.granted_tool_file_ids:
+            return scoped_stmt.where(user_owned_filter)
+
+        return scoped_stmt.where(
+            or_(
+                user_owned_filter,
+                ToolFile.id.in_(resolved_scope.granted_tool_file_ids),
+            )
+        )
 
     @override
     def get_upload_file(
