@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,7 +9,9 @@ from core.datasource.entities.datasource_entities import (
     GetOnlineDocumentPageContentRequest,
     OnlineDocumentPagesMessage,
     OnlineDriveBrowseFilesRequest,
+    OnlineDriveBrowseFilesResponse,
     OnlineDriveDownloadFileRequest,
+    OnlineDriveDownloadMessage,
 )
 from core.plugin.backwards_invocation.datasource import PluginDatasourceBackwardsInvocation
 from core.plugin.entities.request import RequestInvokeDatasource
@@ -296,6 +299,100 @@ def test_invoke_online_drive_builds_typed_dify_requests(
     assert call.kwargs["user_id"] == "user-1"
     assert call.kwargs["provider_type"] == DatasourceProviderType.ONLINE_DRIVE
     assert call.kwargs["request"] == request_type.model_validate(request_data)
+
+
+def test_online_drive_metadata_and_binary_survive_the_inner_event_stream() -> None:
+    browse = OnlineDriveBrowseFilesResponse.model_validate(
+        {
+            "result": [
+                {
+                    "bucket": "bucket-1",
+                    "files": [
+                        {
+                            "id": "file-1",
+                            "name": "report.bin",
+                            "size": 3,
+                            "type": "file",
+                            "remote_metadata": {
+                                "version_id": "browse-v2",
+                                "etag": '"browse-etag"',
+                                "checksum": {"algorithm": "sha256", "value": "A" * 64},
+                                "modified_time": "2026-09-09T00:00:00Z",
+                                "credentials": "must-not-cross",
+                            },
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+    blob = OnlineDriveDownloadMessage.model_validate(
+        {
+            "type": "blob",
+            "message": {"blob": "AP+A"},
+            "meta": {"remote_metadata": {"version_id": "download-v2"}},
+        }
+    )
+    chunk = OnlineDriveDownloadMessage.model_validate(
+        {
+            "type": "blob_chunk",
+            "message": {
+                "id": "download-1",
+                "sequence": 0,
+                "total_length": 3,
+                "blob": "AP+A",
+                "end": True,
+            },
+            "meta": {
+                "remote_metadata": {
+                    "version_id": "download-v2",
+                    "etag": '"download-etag"',
+                    "checksum": {"algorithm": "md5", "value": "B" * 32},
+                    "modified_time": "2026-09-09T00:01:00Z",
+                    "credentials": "must-not-cross",
+                }
+            },
+        }
+    )
+
+    def responses():
+        yield browse
+        yield blob
+        yield chunk
+
+    events = [
+        json.loads(event.decode()) for event in PluginDatasourceBackwardsInvocation.convert_to_event_stream(responses())
+    ]
+
+    assert events[0]["data"]["result"][0]["files"][0]["remote_metadata"] == {
+        "version_id": "browse-v2",
+        "etag": '"browse-etag"',
+        "checksum": {"algorithm": "sha256", "value": "a" * 64},
+        "modified_time": "2026-09-09T00:00:00Z",
+    }
+    assert events[1]["data"] == {
+        "type": "blob",
+        "message": {"blob": "AP+A"},
+        "meta": {"remote_metadata": {"version_id": "download-v2"}},
+    }
+    assert events[2]["data"] == {
+        "type": "blob_chunk",
+        "message": {
+            "id": "download-1",
+            "sequence": 0,
+            "total_length": 3,
+            "blob": "AP+A",
+            "end": True,
+        },
+        "meta": {
+            "remote_metadata": {
+                "version_id": "download-v2",
+                "etag": '"download-etag"',
+                "checksum": {"algorithm": "md5", "value": "b" * 32},
+                "modified_time": "2026-09-09T00:01:00Z",
+            }
+        },
+    }
 
 
 def test_invoke_rejects_missing_required_credential() -> None:
