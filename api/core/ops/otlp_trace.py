@@ -1,7 +1,8 @@
 """Build deterministic OTLP messages without a global tracer or SDK span queue."""
 
 import os
-from collections.abc import Mapping
+from bisect import bisect_left
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from ipaddress import ip_address, ip_network
 from time import monotonic
@@ -132,7 +133,18 @@ def otlp_span(
     )
 
 
-def histogram(name: str, value: float, span: TraceSpan, attributes: dict[str, Any], unit: str = "s") -> Metric:
+def histogram(
+    name: str,
+    value: float,
+    span: TraceSpan,
+    attributes: dict[str, Any],
+    unit: str = "s",
+    *,
+    explicit_bounds: Sequence[float],
+) -> Metric:
+    """Encode one delta observation in the destination's upper-inclusive buckets."""
+    bucket_counts = [0] * (len(explicit_bounds) + 1)
+    bucket_counts[bisect_left(explicit_bounds, value)] = 1
     return Metric(
         name=name,
         unit=unit,
@@ -145,6 +157,8 @@ def histogram(name: str, value: float, span: TraceSpan, attributes: dict[str, An
                     time_unix_nano=timestamp_ns(span.ended_at),
                     count=1,
                     sum=value,
+                    explicit_bounds=explicit_bounds,
+                    bucket_counts=bucket_counts,
                     min=value,
                     max=value,
                 )

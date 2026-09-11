@@ -358,10 +358,25 @@ class MessageTraceRecorder:
             if not self._closed and reason not in self._incomplete_reasons:
                 self._incomplete_reasons.append(reason)
 
-    def close(self) -> None:
-        """Release unfinished collection when its response consumer exits."""
+    def close(self, *, submit_pending_operations: bool = False) -> None:
+        """Release collection on consumer exit, optionally exporting operations without completing the message."""
         with self._lock:
             self._closed = True
-            self._spans.clear()
+            pending_operations, self._spans = self._spans, []
             reserved, self._reserved_bytes = self._reserved_bytes, 0
-        self.trace_queue.release_recording_bytes(self.source.tenant_id, reserved)
+        try:
+            if submit_pending_operations:
+                for span in pending_operations:
+                    self.record_operation(
+                        span.span_name,
+                        span_type=span.span_type,
+                        inputs=span.inputs,
+                        outputs=span.outputs,
+                        timer={"start": span.started_at, "end": span.ended_at},
+                        error=span.error,
+                        attributes=span.attributes,
+                        usage=span.usage,
+                        independent=True,
+                    )
+        finally:
+            self.trace_queue.release_recording_bytes(self.source.tenant_id, reserved)

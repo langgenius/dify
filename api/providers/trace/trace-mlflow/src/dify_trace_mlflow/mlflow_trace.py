@@ -8,7 +8,7 @@ from uuid import UUID
 
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
-from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans
+from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
 from pydantic import JsonValue
 
 from core.ops.otlp_trace import OtlpTraceClient, otlp_span
@@ -25,6 +25,14 @@ from core.ops.provider_export import (
 )
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
+
+
+def _span_failed(span: TraceSpan) -> bool:
+    return (
+        span.status == "error"
+        or (span.status == "handled_error" and span.span_type != "workflow")
+        or (span.status == "cancelled" and bool(span.error))
+    )
 
 
 def _parse_trace_uuid(identifier: str) -> str:
@@ -126,7 +134,8 @@ class MLflowTraceClient:
         return True
 
     def get_project_url(self) -> str:
-        return self.http.endpoint + f"/#/experiments/{quote(self.config.experiment_id, safe='')}"
+        path_prefix = "ml" if isinstance(self.config, DatabricksConfig) else "#"
+        return self.http.endpoint + f"/{path_prefix}/experiments/{quote(self.config.experiment_id, safe='')}/traces"
 
     def _attributes(self, completed_trace: CompletedTrace, span: TraceSpan, trace_id: str) -> dict[str, str]:
         attributes = span_attributes(completed_trace, span)
@@ -194,6 +203,8 @@ class MLflowTraceClient:
                     },
                 )
                 exported_span.trace_id = UUID(trace_id).bytes
+                if _span_failed(span):
+                    exported_span.status.code = Status.STATUS_CODE_ERROR
                 spans.append(exported_span)
             client = OtlpTraceClient(
                 self.http.endpoint + "/v1/traces",
@@ -262,7 +273,7 @@ class MLflowTraceClient:
             },
             "request_time": root.started_at.isoformat(),
             "execution_duration": f"{(root.ended_at - root.started_at).total_seconds():.6f}s",
-            "state": "ERROR" if root.status == "error" else "OK",
+            "state": "ERROR" if _span_failed(root) else "OK",
             "request_preview": json_text(root.inputs)[:10000],
             "response_preview": json_text(root.outputs)[:10000],
             "trace_metadata": metadata,
@@ -308,7 +319,7 @@ class MLflowTraceClient:
                     for event in otlp_span(completed_trace, span).events
                 ],
                 "status": {
-                    "code": "STATUS_CODE_ERROR" if span.status == "error" else "STATUS_CODE_OK",
+                    "code": "STATUS_CODE_ERROR" if _span_failed(span) else "STATUS_CODE_OK",
                     "message": span.error or "",
                 },
             }

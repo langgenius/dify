@@ -20,7 +20,7 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
 )
 from pydantic import JsonValue
 
-from core.ops.otlp_trace import OtlpTraceClient, counter, otlp_span, otlp_value
+from core.ops.otlp_trace import OtlpTraceClient, counter, histogram, otlp_span, otlp_value
 from core.ops.provider_config import (
     decrypt_provider_config,
     encrypt_provider_config,
@@ -370,6 +370,19 @@ def test_otlp_probes_credentials_and_checks_partial_metric_acceptance(monkeypatc
     with pytest.raises(TraceExportError, match="provider_rejected_metrics") as failed:
         client.send_metrics([counter("operations", 1, make_completed_trace().spans[0], {})])
     assert not failed.value.retryable
+
+
+@pytest.mark.parametrize(
+    ("value", "bucket_counts"),
+    [(0, [1, 0, 0, 0]), (1, [0, 1, 0, 0]), (5, [0, 1, 0, 0]), (10, [0, 0, 1, 0]), (11, [0, 0, 0, 1])],
+)
+def test_otlp_histogram_preserves_upper_inclusive_buckets(value: float, bucket_counts: list[int]) -> None:
+    metric = histogram("duration", value, make_completed_trace().spans[0], {}, explicit_bounds=(0, 5, 10))
+    point = metric.histogram.data_points[0]
+    assert list(point.explicit_bounds) == [0, 5, 10]
+    assert list(point.bucket_counts) == bucket_counts
+    assert sum(point.bucket_counts) == point.count == 1
+    assert point.sum == point.min == point.max == value
 
 
 @pytest.mark.parametrize("secure", [True, False])

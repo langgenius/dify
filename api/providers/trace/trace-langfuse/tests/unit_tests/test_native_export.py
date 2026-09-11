@@ -97,6 +97,29 @@ def test_langfuse_v4_keeps_native_ttft_tags_version_prompt_and_model(monkeypatch
     assert trace.model_dump_json() == original
 
 
+@pytest.mark.parametrize(("status", "workflow_failed"), [("handled_error", False), ("cancelled", True)])
+def test_langfuse_keeps_handled_node_and_cancelled_workflow_error_filtering(
+    status: str,
+    workflow_failed: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    trace = make_trace()
+    trace = trace.model_copy(
+        update={
+            "spans": tuple(
+                span.model_copy(update={"status": status, "error": "model timed out"}) for span in trace.spans
+            )
+        }
+    )
+    _, spans = export_request(trace, monkeypatch)
+    for span in spans:
+        attributes = {item.key: item.value.string_value for item in span.attributes}
+        failed = span.name == "Model" or workflow_failed
+        assert span.status.code == (2 if failed else 0)
+        assert attributes["langfuse.observation.level"] == ("ERROR" if failed else "DEFAULT")
+        assert attributes["langfuse.observation.metadata.dify.span.status"] == status
+
+
 def test_langfuse_native_external_trace_id_and_late_parent(monkeypatch: pytest.MonkeyPatch) -> None:
     trace = make_trace()
     external_id = str(uuid4())

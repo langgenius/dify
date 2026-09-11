@@ -1,5 +1,6 @@
 """Protocol fixtures for complete trees, fixed destinations and synchronous acceptance."""
 
+from datetime import timedelta
 from typing import Unpack
 
 import httpx
@@ -10,6 +11,9 @@ from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import Histogram as SdkHistogram
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
 from core.ops.provider_export import (
     create_provider_client,
@@ -17,7 +21,44 @@ from core.ops.provider_export import (
 from core.ops.trace_data import (
     make_span_id,
 )
+from enterprise.telemetry.enterprise_trace import EnterpriseTraceClient
 from tests.unit_tests.core.ops.test_provider_export import RequestArguments, make_completed_trace
+
+
+@pytest.mark.parametrize(
+    "operation_type", ["workflow", "node_execution", "draft_node_execution", "message", "tool", "app_prompt"]
+)
+def test_histogram_distributions_match_the_previous_sdk_instruments(operation_type: str) -> None:
+    trace = make_completed_trace()
+    original = trace.spans[0]
+    assert original.started_at is not None
+    span = original.model_copy(
+        update={"ended_at": original.started_at + timedelta(seconds=5), "usage": {"time_to_first_token": 10001}}
+    )
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example"})
+    metrics = [metric for metric in client._metrics(trace, span, operation_type) if metric.HasField("histogram")]
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader])
+    try:
+        meter = provider.get_meter("previous-enterprise-exporter")
+        for metric in metrics:
+            meter.create_histogram(metric.name, unit=metric.unit).record(metric.histogram.data_points[0].sum)
+        data = reader.get_metrics_data()
+        assert data is not None
+        previous_metrics = data.resource_metrics[0].scope_metrics[0].metrics
+        assert len(metrics) == len(previous_metrics) == (2 if operation_type == "message" else 1)
+        for metric, previous_metric in zip(metrics, previous_metrics, strict=True):
+            assert isinstance(previous_metric.data, SdkHistogram)
+            expected = previous_metric.data.data_points[0]
+            point = metric.histogram.data_points[0]
+            assert tuple(point.explicit_bounds) == expected.explicit_bounds
+            assert tuple(point.bucket_counts) == expected.bucket_counts
+            assert len(point.explicit_bounds) == 15
+            assert len(point.bucket_counts) == 16
+            assert point.count == expected.count
+            assert point.sum == expected.sum
+    finally:
+        provider.shutdown()
 
 
 def test_enterprise_metrics_keep_root_and_model_usage_distinct(monkeypatch: pytest.MonkeyPatch) -> None:
