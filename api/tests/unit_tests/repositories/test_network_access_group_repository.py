@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -158,6 +158,85 @@ def test_get_manageable_app_applies_agent_scope_and_lifecycle_visibility(
     )
 
     assert (result is not None) is expected_visible
+    if result is not None:
+        assert result.bound_agent_id == "77777777-7777-7777-7777-777777777777"
+
+
+def test_list_apps_batch_loads_agent_routes_and_excludes_hidden_workflow_backing_apps(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    agent_app_id = _APP_ID
+    second_agent_app_id = _UNREQUESTED_APP_ID
+    hidden_app_id = _DISABLED_APP_ID
+    with sqlite_session_factory() as session:
+        session.add_all(
+            [
+                _app(agent_app_id, mode=AppMode.AGENT),
+                _app(second_agent_app_id, mode=AppMode.AGENT),
+                _app(hidden_app_id, mode=AppMode.AGENT),
+                Agent(
+                    id="77777777-7777-7777-7777-777777777777",
+                    tenant_id=_WORKSPACE_ID,
+                    name="First roster agent",
+                    description="",
+                    role="",
+                    scope=AgentScope.ROSTER,
+                    source=AgentSource.AGENT_APP,
+                    status=AgentStatus.ACTIVE,
+                    app_id=agent_app_id,
+                    backing_app_id=agent_app_id,
+                ),
+                Agent(
+                    id="88888888-8888-8888-8888-888888888888",
+                    tenant_id=_WORKSPACE_ID,
+                    name="Second roster agent",
+                    description="",
+                    role="",
+                    scope=AgentScope.ROSTER,
+                    source=AgentSource.IMPORTED,
+                    status=AgentStatus.ACTIVE,
+                    app_id=second_agent_app_id,
+                    backing_app_id=second_agent_app_id,
+                ),
+                Agent(
+                    id="99999999-9999-9999-9999-999999999999",
+                    tenant_id=_WORKSPACE_ID,
+                    name="Workflow-only agent",
+                    description="",
+                    role="",
+                    scope=AgentScope.WORKFLOW_ONLY,
+                    source=AgentSource.WORKFLOW,
+                    status=AgentStatus.ACTIVE,
+                    app_id=_OTHER_APP_ID,
+                    backing_app_id=hidden_app_id,
+                    workflow_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                    workflow_node_id="agent-node",
+                ),
+            ]
+        )
+        session.commit()
+        engine = session.get_bind()
+
+    agent_selects: list[str] = []
+
+    def record_agent_select(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+        if "FROM agents" in statement:
+            agent_selects.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record_agent_select)
+    try:
+        result = _repository(sqlite_session_factory).list_apps(
+            workspace_id=_WORKSPACE_ID,
+            app_ids=[agent_app_id, second_agent_app_id, hidden_app_id],
+        )
+    finally:
+        event.remove(engine, "before_cursor_execute", record_agent_select)
+
+    assert [(app.id, app.bound_agent_id) for app in result] == [
+        (agent_app_id, "77777777-7777-7777-7777-777777777777"),
+        (second_agent_app_id, "88888888-8888-8888-8888-888888888888"),
+    ]
+    assert len(agent_selects) == 1
 
 
 def test_list_apps_maps_database_failures_to_query_error() -> None:

@@ -10817,6 +10817,19 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Workspace network access group updated successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
 
+### [GET] /workspaces/current/network-access-groups/{group_id}/check-current-ip
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| group_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Current client IP checked against the workspace network access group | **application/json**: [NetworkAccessGroupCurrentIPCheckResponse](#networkaccessgroupcurrentipcheckresponse)<br> |
+
 ### [GET] /workspaces/current/permission
 **Get workspace permission settings**
 
@@ -16019,6 +16032,7 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | available_access_points | [ string, <br>**Available values:** "mcp", "service_api", "trigger", "webapp" ] |  | Yes |
 | binding | [AppNetworkAccessGroupBindingResponse](#appnetworkaccessgroupbindingresponse) |  | Yes |
+| effective_enabled | boolean |  | Yes |
 
 #### AppNetworkAccessGroupResponse
 
@@ -16027,6 +16041,7 @@ AppMCPServer Status Enum
 | app_id | string |  | Yes |
 | available_access_points | [ string, <br>**Available values:** "mcp", "service_api", "trigger", "webapp" ] |  | Yes |
 | binding | [AppNetworkAccessGroupBindingResponse](#appnetworkaccessgroupbindingresponse) |  | Yes |
+| effective_enabled | boolean |  | Yes |
 | entitled | boolean |  | Yes |
 | tenant_id | string |  | Yes |
 
@@ -19948,10 +19963,12 @@ Model with provider entity.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| bound_agent_id | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
 | id | string |  | Yes |
+| mode | string |  | Yes |
 | name | string |  | Yes |
 
 #### NetworkAccessGroupCreatePayload
@@ -19961,6 +19978,14 @@ Model with provider entity.
 | allowed_cidrs | [ string ] |  | Yes |
 | description | string |  | No |
 | name | string |  | Yes |
+
+#### NetworkAccessGroupCurrentIPCheckResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed | boolean |  | Yes |
+| client_ip | string |  | Yes |
+| policy_version | integer |  | Yes |
 
 #### NetworkAccessGroupDeleteResponse
 
@@ -19991,6 +20016,7 @@ Model with provider entity.
 | apps | [ [NetworkAccessGroupAppResponse](#networkaccessgroupappresponse) ] |  | Yes |
 | created_at | dateTime |  | Yes |
 | description | string |  | No |
+| enforcing_count | integer |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
 | tenant_id | string |  | Yes |

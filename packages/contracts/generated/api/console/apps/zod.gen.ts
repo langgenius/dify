@@ -1329,6 +1329,7 @@ export const zAppNetworkAccessGroupResponse = z.object({
   app_id: z.string(),
   available_access_points: z.array(z.enum(['mcp', 'service_api', 'trigger', 'webapp'])),
   binding: zAppNetworkAccessGroupBindingResponse.nullable(),
+  effective_enabled: z.boolean(),
   entitled: z.boolean(),
   tenant_id: z.string(),
 })
@@ -1339,6 +1340,7 @@ export const zAppNetworkAccessGroupResponse = z.object({
 export const zAppNetworkAccessGroupMutationResponse = z.object({
   available_access_points: z.array(z.enum(['mcp', 'service_api', 'trigger', 'webapp'])),
   binding: zAppNetworkAccessGroupBindingResponse,
+  effective_enabled: z.boolean(),
 })
 
 /**

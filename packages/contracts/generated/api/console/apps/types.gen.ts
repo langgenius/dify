@@ -576,6 +576,7 @@ export type AppNetworkAccessGroupResponse = {
   app_id: string
   available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
   binding: AppNetworkAccessGroupBindingResponse | null
+  effective_enabled: boolean
   entitled: boolean
   tenant_id: string
 }
@@ -590,6 +591,7 @@ export type AppNetworkAccessGroupUpdatePayload = {
 export type AppNetworkAccessGroupMutationResponse = {
   available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
   binding: AppNetworkAccessGroupBindingResponse
+  effective_enabled: boolean
 }
 
 export type RedirectUrlResponse = {
