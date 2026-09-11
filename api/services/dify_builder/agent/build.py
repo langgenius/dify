@@ -11,7 +11,7 @@ from typing import Any
 
 from core.app.app_config.entities import ModelConfig
 from core.dify_builder.contract import ResourceOption
-from core.dify_builder.models import MutationIntent
+from core.dify_builder.models import BuildNodesResult, MutationIntent
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import graph_ops
 from services.dify_builder.agent import form_schema, graph_translate, llm, resources
@@ -236,12 +236,32 @@ def _terminal_retry_instruction(base_instruction: str, error: str) -> str:
     )
 
 
+def _generation_error_text(result: dict[str, Any]) -> str:
+    """Best human-readable failure reason from a generator result -- the top-level
+    ``error`` (e.g. "UNRESOLVED_REFERENCE: Reference {#node4.x#} not declared"), else
+    the joined ``errors`` details, else a generic fallback. Surfaced to the user so
+    a failed build shows WHY, not a hardcoded 'couldn't build' message."""
+    err = result.get("error")
+    if isinstance(err, str) and err.strip():
+        return err.strip()
+    errors = result.get("errors")
+    if isinstance(errors, list) and errors:
+        parts = [
+            str(e.get("detail") or e.get("message") or e.get("code"))
+            for e in errors
+            if isinstance(e, dict) and (e.get("detail") or e.get("message") or e.get("code"))
+        ]
+        if parts:
+            return "; ".join(parts)
+    return "the generator returned no usable graph"
+
+
 def build_nodes(
     tenant_id: str,
     model_config: dict[str, Any],
     plan_items: list[str],
     resource_ids: Sequence[str] = (),
-) -> list[MutationIntent]:
+) -> BuildNodesResult:
     try:
         mc = _generator_model_config(tenant_id, model_config)
         base_instruction = f"{_WORKFLOW_TOPOLOGY_DIRECTIVE}\n\n" + "\n".join(plan_items)
@@ -265,13 +285,14 @@ def build_nodes(
             result = _generate(_terminal_retry_instruction(base_instruction, retry_error))
             graph = result.get("graph") or {}
         if result.get("error") or not graph.get("nodes"):
+            error = _generation_error_text(result)
             logger.warning(
                 "Dify Builder: build_nodes produced no graph for tenant %s (%d plan items): error=%s",
                 tenant_id,
                 len(plan_items),
-                result.get("error"),
+                error,
             )
-            return []
+            return BuildNodesResult(intents=[], error=error)
         intents = graph_translate.to_intents(graph)
         # Ground node model blocks to the user-SELECTED model (resource confirmation),
         # falling back to the generation/session model when none was selected. The
@@ -279,15 +300,22 @@ def build_nodes(
         # runtime model follows the user's choice.
         grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
         _ground(intents, grounding_mc, tenant_id, plan_items)
-        applicable, _rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
-        return applicable
-    except Exception:  # any generation/translation failure -> honest empty build
+        applicable, rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
+        if not applicable:
+            reason = rejected[0][1] if rejected else "no applicable node intents"
+            error = f"the generated nodes were rejected by validation: {reason}"
+            logger.warning("Dify Builder: build_nodes rejected all intents for tenant %s: %s", tenant_id, error)
+            return BuildNodesResult(intents=[], error=error)
+        return BuildNodesResult(intents=applicable)
+    except Exception as exc:  # any generation/translation failure -> honest empty build
         logger.exception(
             "Dify Builder: build_nodes generation failed for tenant %s (%d plan items); returning empty build",
             tenant_id,
             len(plan_items),
         )
-        return []
+        # Surface the exception text (e.g. a provider error like credit_balance_exhausted)
+        # so the user sees WHY, not a hardcoded 'couldn't build' message.
+        return BuildNodesResult(intents=[], error=str(exc).strip() or type(exc).__name__)
 
 
 def _ground(intents: list[MutationIntent], mc: ModelConfig, tenant_id: str, plan_items: list[str]) -> None:
