@@ -55,6 +55,29 @@ def _make_opik_id(identifier: str, started_at: datetime | None) -> str:
     return str(UUID(bytes=bytes(encoded)))
 
 
+def _make_span_tags(completed_trace: CompletedTrace, span: TraceSpan) -> list[JsonValue]:
+    tags = ["dify", span.span_type]
+    operation_type = span.attributes.get("operation_type", span.span_type)
+    if not isinstance(operation_type, str):
+        operation_type = span.span_type
+    mode = span.attributes.get("conversation_mode", span.attributes.get("app_mode"))
+    if span.node_execution_id or span.attributes.get("node_execution_id") or span.span_type == "node":
+        tags.append("node_execution")
+    elif operation_type in {"message", "llm"}:
+        tags.append(operation_type)
+        if operation_type == "message" and completed_trace.source.workflow_run_id:
+            tags.append("workflow")
+        elif isinstance(mode, str) and mode:
+            tags.append(mode)
+    elif operation_type in {"moderation", "suggested_question", "dataset_retrieval", "generate_name"}:
+        tags.append(operation_type)
+    elif operation_type == "tool" or span.span_type == "tool":
+        tags.append("tool")
+        if isinstance(tool_name := span.attributes.get("tool_name", span.span_name), str) and tool_name:
+            tags.append(tool_name)
+    return list(dict.fromkeys(tags))
+
+
 class OpikTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
         self.config = OpikConfig.model_validate(provider_config)
@@ -127,7 +150,7 @@ class OpikTraceClient:
             span.span_id: _make_opik_id(export_span_id(completed_trace, span.span_id), span.started_at)
             for span in spans
         }
-        requests = []
+        requests: list[tuple[str, dict[str, JsonValue]]] = []
         for span in spans:
             assert span.started_at is not None
             assert span.ended_at is not None
@@ -140,8 +163,8 @@ class OpikTraceClient:
                 if isinstance(span.inputs, dict)
                 else {"messages" if span.span_type == "llm" else "input": span.inputs},
                 "output": span.outputs if isinstance(span.outputs, dict) else {"output": span.outputs},
-                "metadata": span_attributes(completed_trace, span),
-                "tags": ["dify", span.span_type],
+                "metadata": {**span_attributes(completed_trace, span), "created_from": "dify"},
+                "tags": _make_span_tags(completed_trace, span),
             }
             if span.error:
                 values["error_info"] = {"message": span.error, "exception_type": span.status, "traceback": ""}
@@ -152,6 +175,9 @@ class OpikTraceClient:
                         {
                             **values,
                             "id": trace_id,
+                            "tags": ["dify", "message", "workflow"]
+                            if span.span_type == "workflow" and completed_trace.source.message_id
+                            else values["tags"],
                             "thread_id": completed_trace.source.session_id or completed_trace.source.conversation_id,
                         },
                     )

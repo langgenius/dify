@@ -293,6 +293,7 @@ class EnterpriseTraceClient:
         elif operation_type in {"node_execution", "draft_node_execution"}:
             prefix = "dify.node"
             reference = f"ref:node_execution_id={span.node_execution_id or trace.source.operation_id}"
+            tool_info = captured.get("tool_info")
             attributes.update(
                 {
                     f"{prefix}.type": captured.get("node_type") or span.span_type,
@@ -304,6 +305,8 @@ class EnterpriseTraceClient:
                     f"{prefix}.invoked_by": captured.get("invoked_by") or trace.source.actor_id,
                     f"{prefix}.total_price": float(total_price) if total_price is not None else 0.0,
                     f"{prefix}.currency": usage.get("currency"),
+                    "gen_ai.tool.name": captured.get("tool_name")
+                    or (tool_info.get("tool_name") if isinstance(tool_info, dict) else None),
                 }
             )
             for field in (
