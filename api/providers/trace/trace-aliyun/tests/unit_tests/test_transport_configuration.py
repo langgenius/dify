@@ -1,10 +1,12 @@
-"""Keep the former OTel HTTP exporter's TLS and header settings across queued delivery."""
+"""Keep the former OTel HTTP exporter's transport settings across queued delivery."""
 
 import base64
+import json
 import os
 import ssl
 from pathlib import Path
 from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 from dify_trace_aliyun import aliyun_trace
@@ -12,6 +14,8 @@ from dify_trace_aliyun.config import AliyunConfig
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
 from configs import dify_config
+from core.ops.provider_config import provider_config_identity, resolve_provider_config
+from core.ops.trace_source import _settings_hash
 
 # Pytest importlib mode resolves these hyphenated provider packages.
 from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
@@ -145,3 +149,42 @@ def test_http_ca_directory_is_captured_and_detects_certificate_rotation(
     assert "certificate" not in captured["tls"]
     certificate.write_bytes(b"rotated certificate")
     assert AliyunConfig.load_runtime_settings(config) != captured
+
+
+@pytest.mark.parametrize(
+    "environment",
+    [
+        {},
+        {"OTEL_EXPORTER_OTLP_TIMEOUT": "60"},
+        {"OTEL_EXPORTER_OTLP_TIMEOUT": "80", "OTEL_EXPORTER_OTLP_TRACES_TIMEOUT": "70.5"},
+        {"OTEL_EXPORTER_OTLP_TIMEOUT": "80", "OTEL_EXPORTER_OTLP_TRACES_TIMEOUT": "0"},
+        {"OTEL_EXPORTER_OTLP_TIMEOUT": "inf"},
+        {"OTEL_EXPORTER_OTLP_TRACES_TIMEOUT": "nan"},
+    ],
+)
+def test_timeout_matches_native_exporter_and_is_bound_to_captured_settings(
+    environment: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(dify_config, "SECRET_KEY", "aliyun-timeout-test")
+    for name, value in environment.items():
+        monkeypatch.setenv(name, value)
+    config = make_provider_config()
+    captured = resolve_provider_config("aliyun", config)
+    json.dumps(captured, allow_nan=False)
+    native = OTLPSpanExporter(endpoint=config["endpoint"])
+    try:
+        native_timeout = native._timeout
+        assert captured["_runtime_settings"]["request_timeout"] == str(native_timeout)
+    finally:
+        native.shutdown()
+    tenant_id = str(uuid4())
+    fingerprint = _settings_hash(tenant_id, provider_config_identity("aliyun", captured))
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT", "90")
+    rotated = resolve_provider_config("aliyun", config)
+    assert _settings_hash(tenant_id, provider_config_identity("aliyun", rotated)) != fingerprint
+    monkeypatch.setattr(AliyunConfig, "load_runtime_settings", Mock(side_effect=AssertionError("snapshot was reread")))
+
+    client = aliyun_trace.create_trace_client(captured)
+
+    assert str(client.http.request_timeout) == str(native_timeout)
+    assert _settings_hash(tenant_id, provider_config_identity("aliyun", captured)) == fingerprint

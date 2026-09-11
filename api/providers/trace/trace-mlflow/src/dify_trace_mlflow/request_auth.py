@@ -1,7 +1,10 @@
-"""MLflow auth plugins with attempt-owned providers and SSRF-protected Requests transport."""
+"""MLflow credential snapshots and auth plugins using SSRF-protected Requests transport."""
 
 import logging
+import os
 from importlib import metadata
+from netrc import NetrcParseError, netrc
+from pathlib import Path
 from time import monotonic
 from typing import Any, override
 from urllib.parse import urlsplit
@@ -12,6 +15,29 @@ import requests
 from core.helper.ssrf_requests import SSRFRequestsAdapter
 from core.ops.provider_export import TraceExportError, TraceProviderHttpClient
 from core.tools.errors import ToolSSRFError
+
+
+def capture_netrc_auth() -> dict[str, list[str]]:
+    """Copy Requests' host/default credentials before artifact hosts are discovered."""
+    configured_file = os.environ.get("NETRC")
+    filenames = (
+        [Path(configured_file).expanduser()]
+        if configured_file is not None
+        else [Path.home() / filename for filename in requests.utils.NETRC_FILES]
+    )
+    for filename in filenames:
+        if not filename.exists():
+            continue
+        try:
+            # Keep empty host entries: they suppress the default authenticator.
+            return {
+                host: [login or account or "", password or ""]
+                for host, (login, account, password) in netrc(filename).hosts.items()
+            }
+        except (NetrcParseError, OSError):
+            # Requests ignores an unreadable or invalid selected file, without trying the next one.
+            return {}
+    return {}
 
 
 def _provider_settings(name: str, entrypoint: metadata.EntryPoint) -> dict[str, str | None]:
@@ -99,7 +125,13 @@ class MLflowRequestAdapter(SSRFRequestsAdapter):
 
 
 def send_authenticated_request(
-    client: TraceProviderHttpClient, provider: Any, method: str, path: str, **kwargs: Any
+    client: TraceProviderHttpClient,
+    provider: Any,
+    method: str,
+    path: str,
+    *,
+    fallback_auth: tuple[str, str] | None = None,
+    **kwargs: Any,
 ) -> httpx.Response:
     try:
         headers = {**client.headers, **kwargs.pop("headers", {})}
@@ -115,7 +147,7 @@ def send_authenticated_request(
                 method,
                 f"{client.endpoint}/{path.lstrip('/')}" if path else client.endpoint,
                 headers=headers,
-                auth=provider.get_auth(),
+                auth=provider.get_auth() or fallback_auth,
                 allow_redirects=False,
                 **kwargs,
             )

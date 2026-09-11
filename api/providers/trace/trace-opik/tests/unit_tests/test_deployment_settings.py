@@ -111,3 +111,39 @@ def test_opik_config_file_and_environment_disable_tls(tmp_path: Path, monkeypatc
     monkeypatch.setenv("OPIK_CHECK_TLS_CERTIFICATE", "invalid")
     with pytest.raises(ValueError):
         OpikTraceClient({})
+
+
+@pytest.mark.parametrize("remaining", [100, 12])
+def test_native_request_timeouts_preserve_each_phase_and_the_export_deadline(
+    remaining: float, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = [100.0]
+    monkeypatch.setattr("core.ops.provider_export.monotonic", lambda: clock[0])
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        clock[0] += 2
+        return httpx.Response(200, json={})
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda *, ssl_context: httpx.Client(
+            verify=ssl_context, transport=httpx.MockTransport(respond), trust_env=False
+        ),
+    )
+    client = OpikTraceClient({"api_key": "key", "workspace": "team", "project": "project"})
+    clock[0] = 200 - remaining
+    assert client.verify_credentials()
+    client.export_trace(make_completed_trace())
+
+    assert len(requests) == 5
+    for index, request in enumerate(requests):
+        budget = remaining - 2 * index
+        assert request.extensions["timeout"] == {
+            "connect": min(20, budget),
+            "read": budget,
+            "write": budget,
+            "pool": min(20, budget),
+        }
+    assert client.http.deadline == 200

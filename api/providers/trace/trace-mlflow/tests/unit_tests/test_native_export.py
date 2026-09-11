@@ -296,7 +296,7 @@ def test_databricks_empty_tls_snapshot_prevents_later_environment_reads(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config = resolve_provider_config("databricks", {"host": "workspace.example", "experiment_id": "7"})
-    assert config["_runtime_settings"] == {"sampling_ratio": 1.0, "tls": {}}
+    assert config["_runtime_settings"] == {"sampling_ratio": 1.0, "disabled": False, "tls": {}}
     monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(tmp_path / "not-readable.pem"))
     client = MLflowTraceClient("databricks", config)
     assert client.http.ssl_context is not None
@@ -324,7 +324,7 @@ def test_databricks_http_verification_defers_captured_ca_errors_until_https_uplo
         "databricks", {"host": "http://workspace.example", "experiment_id": "7", "personal_access_token": "pat"}
     )
     if ca_error == "unreadable":
-        assert config["_runtime_settings"] == {"sampling_ratio": 1.0, "tls_read_failed": True}
+        assert config["_runtime_settings"] == {"sampling_ratio": 1.0, "disabled": False, "tls_read_failed": True}
     assert str(bundle) not in json.dumps(config["_runtime_settings"])
     monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / "missing-ambient-ca.pem"))
     monkeypatch.setattr(DatabricksConfig, "load_runtime_settings", Mock(side_effect=AssertionError("snapshot reread")))
@@ -847,7 +847,10 @@ def test_mlflow_filestore_upload_retry_and_late_operations(otlp_status: int, mon
 
 
 @pytest.mark.parametrize("failure_stage", ["create", "end", "upload"])
-def test_mlflow_v2_server_ids_retries_and_late_links(failure_stage: str, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("auth_source", ["saved", "netrc", "userinfo"])
+def test_mlflow_v2_server_ids_retries_and_late_links(
+    failure_stage: str, auth_source: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     trace = make_trace()
     requests: list[httpx.Request] = []
     saved_traces: dict[str, dict[str, Any]] = {}
@@ -863,7 +866,9 @@ def test_mlflow_v2_server_ids_retries_and_late_links(failure_stage: str, monkeyp
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        assert request.headers["Authorization"] == basic_auth("user", "secret")
+        assert request.headers["Authorization"] == expected_auth
+        assert request.url.userinfo == b""
+        assert all(0 < timeout <= 7 for timeout in request.extensions["timeout"].values())
         path = request.url.path
         if path.endswith("/v1/traces") or "/api/3.0/" in path:
             return httpx.Response(404)
@@ -909,12 +914,23 @@ def test_mlflow_v2_server_ids_retries_and_late_links(failure_stage: str, monkeyp
             transport=httpx.MockTransport(respond), verify=ssl_context or True, trust_env=False
         ),
     )
-    config = {
+    config: dict[str, Any] = {
         "tracking_uri": "https://mlflow.example/prefix",
         "experiment_id": "7",
         "username": "user",
         "password": "secret",
     }
+    expected_auth = basic_auth("user", "secret")
+    monkeypatch.setenv("MLFLOW_HTTP_REQUEST_TIMEOUT", "7")
+    filename = tmp_path / ".netrc"
+    if auth_source == "netrc":
+        filename.write_text("machine mlflow.example login netrc password secret\n")
+        expected_auth = basic_auth("netrc", "secret")
+    elif auth_source == "userinfo":
+        config["tracking_uri"] = "https://url:p%40ss@mlflow.example/prefix"
+        expected_auth = basic_auth("url", "p@ss")
+    config = resolve_provider_config("mlflow", config)
+    filename.unlink(missing_ok=True)
     with pytest.raises(TraceExportError, match="provider_http_503"):
         MLflowTraceClient("mlflow", config).export_trace(trace)
     # A new delivery attempt must recover without state from the old client.
@@ -1178,6 +1194,8 @@ def test_mlflow_http_captures_tls_failures_without_blocking_tracking_requests(mo
     config = {"tracking_uri": "http://mlflow.example"}
     assert MLflowConfig.load_runtime_settings(config) == {
         "sampling_ratio": 1.0,
+        "request_timeout": 120,
+        "disabled": False,
         "verify": True,
         "artifact_tls_read_failed": True,
     }
@@ -1199,7 +1217,13 @@ def test_mlflow_explicit_blank_ca_disables_verification_without_ca_bundle_fallba
     monkeypatch.setenv("MLFLOW_TRACKING_INSECURE_TLS", "false")
     monkeypatch.delenv("MLFLOW_TRACKING_CLIENT_CERT_PATH", raising=False)
     config = {"tracking_uri": "https://mlflow.example"}
-    assert MLflowConfig.load_runtime_settings(config) == {"sampling_ratio": 1.0, "verify": False, "tls": {}}
+    assert MLflowConfig.load_runtime_settings(config) == {
+        "sampling_ratio": 1.0,
+        "request_timeout": 120,
+        "disabled": False,
+        "verify": False,
+        "tls": {},
+    }
     ssl_context = MLflowTraceClient("mlflow", config).http.ssl_context
     assert ssl_context is not None
     assert ssl_context.verify_mode == ssl.CERT_NONE

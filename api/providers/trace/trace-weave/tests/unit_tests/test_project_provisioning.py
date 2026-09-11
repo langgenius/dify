@@ -28,7 +28,7 @@ def test_project_lookup_and_creation_use_canonical_name(
         requests.append((request.url.path, body))
         query = body.get("query", "")
         if "viewer" in query:
-            return httpx.Response(200, json={"data": {"viewer": {"entity": "team"}}})
+            return httpx.Response(200, json={"data": {"viewer": {"defaultEntity": {"name": "team"}}}})
         if "upsertModel" in query:
             return httpx.Response(200, json={"data": {"upsertModel": {"model": {"name": "canonical-name"}}}})
         if "project(" in query:
@@ -134,7 +134,7 @@ def test_two_owned_clients_keep_account_auth_tls_deadline_and_project_separate(m
         query = kwargs["json"].get("query", "")
         if "viewer" in query:
             first_request.wait(timeout=5)
-            return httpx.Response(200, json={"data": {"viewer": {"entity": f"{owner}-team"}}})
+            return httpx.Response(200, json={"data": {"viewer": {"defaultEntity": {"name": f"{owner}-team"}}}})
         if "project(" in query:
             return httpx.Response(200, json={"data": {"project": None}})
         if "upsertModel" in query:
@@ -200,3 +200,60 @@ def test_qualified_project_precedes_captured_default_entity(monkeypatch: pytest.
     assert request.call_args_list[0].kwargs["json"]["variables"] == {"entity": "explicit-team", "name": "project"}
     assert "viewer" not in request.call_args_list[0].kwargs["json"]["query"]
     assert client.get_project_url() == "https://wandb.ai/explicit-team/project/weave"
+
+
+def test_user_default_team_owns_discovered_project_and_export(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "data": {
+                    "viewer": {"entity": "personal-user", "defaultEntity": {"name": "default-team"}},
+                    "project": {"name": "project"},
+                }
+            },
+        )
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda *, ssl_context: httpx.Client(
+            verify=ssl_context, transport=httpx.MockTransport(respond), trust_env=False
+        ),
+    )
+    client = WeaveTraceClient({"api_key": "key", "project": "project"})
+    trace = make_completed_trace()
+    client.export_trace(trace)
+    assert json.loads(requests[0].content)["query"] == "query { viewer { defaultEntity { name } } }"
+    assert json.loads(requests[1].content)["variables"] == {"entity": "default-team", "name": "project"}
+    assert all(request.url.path == "/v2/default-team/project/calls/complete" for request in requests[2:])
+    assert client.get_project_url() == "https://wandb.ai/default-team/project/weave"
+
+
+@pytest.mark.parametrize("default_entity", [None, {}, {"name": None}, {"name": ""}])
+def test_missing_default_entity_does_not_fall_back_to_personal_account(
+    default_entity: dict[str, str | None] | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = Mock(
+        return_value=httpx.Response(
+            200, json={"data": {"viewer": {"entity": "personal-user", "defaultEntity": default_entity}}}
+        )
+    )
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
+    client = WeaveTraceClient({"api_key": "key", "project": "project"})
+    with pytest.raises(TraceExportError, match="weave_entity_unavailable"):
+        client.export_trace(make_completed_trace())
+    request.assert_called_once()
+    assert "defaultEntity" in request.call_args.kwargs["json"]["query"]
+
+
+def test_empty_environment_entity_does_not_discover_a_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("WANDB_ENTITY", "")
+    request = Mock(side_effect=AssertionError("empty entity unexpectedly triggered discovery"))
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
+    client = WeaveTraceClient({"api_key": "key", "project": "project"})
+    with pytest.raises(TraceExportError, match="weave_entity_unavailable"):
+        client.export_trace(make_completed_trace())
+    request.assert_not_called()

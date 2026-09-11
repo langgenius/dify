@@ -6,6 +6,7 @@ from urllib.parse import quote, urlsplit
 from uuid import UUID
 
 from pydantic import JsonValue
+from requests.utils import urldefragauth
 
 from core.helper.ssl_context import create_ssl_context
 from core.ops.provider_export import TraceExportError, TraceProviderHttpClient, export_span_id, span_attributes
@@ -175,10 +176,17 @@ class LangSmithTraceClient:
         self.sampling_rate = float(runtime_settings.get("sampling_rate", 1.0))
         api_key = self.config.api_key.strip().strip('"').strip("'")
         headers = {"x-api-key": api_key} if api_key else {}
+        if authorization := runtime_settings.get("authorization"):
+            headers["Authorization"] = authorization
         if workspace_id := runtime_settings.get("workspace_id"):
             headers["X-Tenant-Id"] = workspace_id
+        self.config = self.config.model_copy(update={"endpoint": urldefragauth(self.config.endpoint)})
         self.http = TraceProviderHttpClient(
-            self.config.endpoint, headers, ssl_context=create_ssl_context(runtime_settings.get("tls", {}))
+            self.config.endpoint,
+            headers,
+            request_timeout=60,
+            connect_timeout=10,
+            ssl_context=create_ssl_context(runtime_settings.get("tls", {})),
         )
 
     def verify_credentials(self) -> bool:

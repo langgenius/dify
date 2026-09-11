@@ -1,18 +1,24 @@
 """Preserve Tencent's signal-specific transport choices without rereading queued settings."""
 
 import base64
+import json
 import os
 import ssl
 from pathlib import Path
 from unittest.mock import Mock
+from uuid import uuid4
 
 import httpx
 import pytest
 from dify_trace_tencent import tencent_trace
 from dify_trace_tencent.config import TencentConfig
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as GrpcMetricExporter
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter as HttpMetricExporter
 from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 
 from configs import dify_config
+from core.ops.provider_config import provider_config_identity, resolve_provider_config
+from core.ops.trace_source import _settings_hash
 
 # Pytest importlib mode resolves these hyphenated provider packages.
 from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
@@ -23,6 +29,52 @@ def clear_otlp_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in tuple(os.environ):
         if name.startswith("OTEL_EXPORTER_OTLP") or name in {"REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"}:
             monkeypatch.delenv(name)
+
+
+@pytest.mark.parametrize("protocol", ["grpc", "http/protobuf"])
+@pytest.mark.parametrize(
+    "environment",
+    [
+        {},
+        {"OTEL_EXPORTER_OTLP_TIMEOUT": "60"},
+        {"OTEL_EXPORTER_OTLP_TIMEOUT": "80", "OTEL_EXPORTER_OTLP_METRICS_TIMEOUT": "70.5"},
+        {"OTEL_EXPORTER_OTLP_TIMEOUT": "80", "OTEL_EXPORTER_OTLP_METRICS_TIMEOUT": "0"},
+        {"OTEL_EXPORTER_OTLP_TIMEOUT": "inf"},
+        {"OTEL_EXPORTER_OTLP_METRICS_TIMEOUT": "nan"},
+    ],
+)
+def test_metric_timeout_matches_native_exporter_and_trace_timeout_stays_explicit(
+    protocol: str,
+    environment: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(dify_config, "SECRET_KEY", "tencent-timeout-test")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", protocol)
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT", "95")
+    for name, value in environment.items():
+        monkeypatch.setenv(name, value)
+    config = make_provider_config()
+    captured = resolve_provider_config("tencent", config)
+    json.dumps(captured, allow_nan=False)
+    native = (GrpcMetricExporter if protocol == "grpc" else HttpMetricExporter)(endpoint=config["endpoint"])
+    try:
+        native_timeout = native._timeout
+        assert captured["_runtime_settings"]["metrics_request_timeout"] == str(native_timeout)
+    finally:
+        native.shutdown()
+    tenant_id = str(uuid4())
+    fingerprint = _settings_hash(tenant_id, provider_config_identity("tencent", captured))
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_TIMEOUT", "90")
+    rotated = resolve_provider_config("tencent", config)
+    assert _settings_hash(tenant_id, provider_config_identity("tencent", rotated)) != fingerprint
+    monkeypatch.setattr(TencentConfig, "load_runtime_settings", Mock(side_effect=AssertionError("snapshot was reread")))
+
+    client = tencent_trace.create_trace_client(captured)
+
+    assert client.http.request_timeout == 30
+    assert client.metrics_http is not None
+    assert str(client.metrics_http.request_timeout) == str(native_timeout)
+    assert _settings_hash(tenant_id, provider_config_identity("tencent", captured)) == fingerprint
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http/protobuf", " http-protobuf ", "http/json", "http-json"])

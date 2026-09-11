@@ -7,9 +7,9 @@ from opentelemetry.proto.trace.v1.trace_pb2 import Span, Status
 from pydantic import JsonValue
 
 from core.helper.ssl_context import create_grpc_credentials, create_ssl_context
-from core.ops.otlp_trace import OtlpTraceClient, otlp_span
-from core.ops.provider_export import json_text, span_attributes
-from core.ops.trace_data import CompletedTrace, TraceSpan
+from core.ops.otlp_trace import OtlpTraceClient, otlp_span, otlp_trace_id
+from core.ops.provider_export import export_span_id, json_text, span_attributes
+from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
 
 
@@ -49,6 +49,31 @@ def message_attributes(value: JsonValue, prefix: str, default_role: str) -> dict
 
 
 class OpenInferenceTraceClient(OtlpTraceClient):
+    def __init__(self, *args: Any, disabled: bool = False, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.disabled = disabled
+
+    @override
+    def verify_credentials(self) -> bool:
+        return self.disabled or super().verify_credentials()
+
+    @override
+    def export_trace(
+        self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
+    ) -> ExportedParentSpans:
+        if self.disabled or (parent_span is not None and parent_span.get("disabled") is True):
+            return ExportedParentSpans(
+                spans={
+                    span.span_id: {
+                        "trace_id": otlp_trace_id(completed_trace, parent_span),
+                        "span_id": export_span_id(completed_trace, span.span_id),
+                        "disabled": True,
+                    }
+                    for span in completed_trace.spans
+                }
+            )
+        return super().export_trace(completed_trace, parent_span)
+
     @override
     def build_span(
         self, completed_trace: CompletedTrace, span: TraceSpan, parent_span: dict[str, JsonValue] | None = None
@@ -180,6 +205,7 @@ def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> 
             resource_attributes,
             project_url,
             protocol="grpc",
+            disabled=bool(runtime_settings.get("disabled", False)),
             grpc_credentials={"trace": create_grpc_credentials(runtime_settings.get("tls", {}))},
         )
     endpoint = config.endpoint.rstrip("/")
@@ -190,5 +216,6 @@ def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> 
         headers,
         resource_attributes,
         project_url,
+        disabled=bool(runtime_settings.get("disabled", False)),
         ssl_context=create_ssl_context(runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)),
     )

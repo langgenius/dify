@@ -3,10 +3,12 @@
 import os
 import ssl
 from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from time import monotonic
-from typing import Never, TypedDict
+from typing import Never, TypedDict, override
 from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID, uuid4
 
@@ -57,7 +59,7 @@ class RequestArguments(TypedDict, total=False):
     content: bytes
     max_retries: int
     follow_redirects: bool
-    timeout: float
+    timeout: float | httpx.Timeout
     http_client: httpx.Client
 
 
@@ -149,7 +151,9 @@ def assert_provider_exports_complete_tree_with_repeatable_ids(
         if method != "GRPC":
             assert kwargs["max_retries"] == 0
             assert kwargs["follow_redirects"] is False
-            assert 0 < kwargs["timeout"] <= 30
+            assert all(
+                value is not None and 0 < value <= 100 for value in httpx.Timeout(kwargs["timeout"]).as_dict().values()
+            )
 
 
 def test_tenant_and_parent_destination_mismatch_rejected_before_client_creation(
@@ -209,7 +213,10 @@ def test_http_errors_and_otlp_partial_acceptance_are_not_success(monkeypatch: py
         OtlpTraceClient("https://provider.example", {}, {}, "").export_trace(make_completed_trace())
 
 
-@pytest.mark.parametrize(("request_timeout", "remaining", "expected"), [(60, 100, 60), (60, 12, 12), (5, 100, 5)])
+@pytest.mark.parametrize(
+    ("request_timeout", "remaining", "expected"),
+    [(60, 100, 60), (60, 12, 12), (5, 100, 5), (float("inf"), 12, 12), (float("nan"), 12, 12)],
+)
 def test_http_request_timeout_stays_within_export_deadline(
     request_timeout: float, remaining: float, expected: float, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -222,6 +229,32 @@ def test_http_request_timeout_stays_within_export_deadline(
     client.request("GET")
 
     assert send.call_args.kwargs["timeout"] == expected
+    assert client.deadline == 100 + remaining
+
+
+@pytest.mark.parametrize(("connect_timeout", "pool_timeout"), [(10, None), (None, 2), (10, 2)])
+@pytest.mark.parametrize("remaining", [100, 1])
+def test_http_connection_and_pool_limits_stay_within_the_export_deadline(
+    connect_timeout: float | None,
+    pool_timeout: float | None,
+    remaining: float,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("core.ops.provider_export.monotonic", lambda: 100.0)
+    send = Mock(return_value=httpx.Response(200))
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", send)
+    client = TraceProviderHttpClient(
+        "https://provider.example", request_timeout=60, connect_timeout=connect_timeout, pool_timeout=pool_timeout
+    )
+    client.deadline = 100 + remaining
+    client.request("GET")
+
+    assert send.call_args.kwargs["timeout"].as_dict() == {
+        "connect": min(connect_timeout if connect_timeout is not None else 60, remaining),
+        "read": min(60, remaining),
+        "write": min(60, remaining),
+        "pool": min(pool_timeout if pool_timeout is not None else 60, remaining),
+    }
     assert client.deadline == 100 + remaining
 
 
@@ -486,6 +519,7 @@ def test_grpc_sends_through_explicit_proxy_and_closes_its_channel(
     secure: bool, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
     config_overrides(SSRF_PROXY_ALL_URL="http://ssrf-proxy:3128")
+    monkeypatch.setenv("grpc_proxy", "http://environment-proxy:3128")
     monkeypatch.setenv("no_grpc_proxy", ",.unrelated.example,invalid/network")
     channel = MagicMock()
     send = Mock(return_value=b"")
@@ -507,6 +541,41 @@ def test_grpc_sends_through_explicit_proxy_and_closes_its_channel(
     assert send.call_args.kwargs["metadata"] == (("authorization", "tenant-key"),)
     assert 0 < send.call_args.kwargs["timeout"] <= 30
     channel.__exit__.assert_called_once()
+
+
+@pytest.mark.parametrize("proxy_setting", ["grpc_proxy", "https_proxy", "http_proxy", "SSRF_PROXY_ALL_URL"])
+def test_grpc_uses_native_proxy_fallback_and_prefers_explicit_proxy(
+    proxy_setting: str, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(SSRF_PROXY_ALL_URL="", SSRF_PROXY_HTTP_URL="", SSRF_PROXY_HTTPS_URL="")
+    connected_targets: list[str] = []
+
+    class ProxyHandler(BaseHTTPRequestHandler):
+        def do_CONNECT(self) -> None:
+            connected_targets.append(self.path)
+            self.send_response(502)
+            self.end_headers()
+
+        @override
+        def log_message(self, format: str, *args: object) -> None:
+            pass
+
+    with HTTPServer(("127.0.0.1", 0), ProxyHandler) as proxy, ThreadPoolExecutor(max_workers=1) as executor:
+        proxy.timeout = 2
+        proxy_url = f"http://127.0.0.1:{proxy.server_port}"
+        if proxy_setting == "SSRF_PROXY_ALL_URL":
+            config_overrides(SSRF_PROXY_ALL_URL=proxy_url)
+            monkeypatch.setenv("grpc_proxy", "http://unused.invalid:3128")
+        else:
+            monkeypatch.setenv(proxy_setting, proxy_url)
+        proxy_request = executor.submit(proxy.handle_request)
+        client = OtlpTraceClient("http://collector.example:4317", {}, {}, "", protocol="grpc")
+        client.http.deadline = monotonic() + 2
+        with pytest.raises(TraceExportError, match="provider_grpc_rejected"):
+            client._send("trace", b"")
+        proxy_request.result(timeout=3)
+
+    assert connected_targets == ["collector.example:4317"]
 
 
 @pytest.mark.parametrize(
@@ -554,7 +623,7 @@ def test_grpc_errors_follow_provider_retry_policy_and_close_channel(
         client._send("trace", b"")
     assert failed.value.retryable is retryable
     assert create_channel.call_args is not None
-    assert create_channel.call_args.kwargs["options"] == [("grpc.enable_http_proxy", 0)]
+    assert create_channel.call_args.kwargs["options"] == []
     channel.__exit__.assert_called_once()
 
 
