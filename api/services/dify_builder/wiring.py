@@ -7,7 +7,7 @@ controller module so it is unit-testable without the Flask request stack.
 import dataclasses
 import json
 import time
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -15,7 +15,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
-from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
+from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, ModelUnavailableError, NotFoundError
 from core.dify_builder.models import Action, Actor
 from extensions.ext_database import db
 from libs.broadcast_channel.exc import SubscriptionClosedError
@@ -102,6 +102,8 @@ def session_view_to_dict(view: SessionView) -> dict:
 
 
 def dify_builder_error_response(exc: Exception) -> tuple[dict, int] | None:
+    if isinstance(exc, ModelUnavailableError):
+        return {"code": "model_unavailable", "message": "Builder model is unavailable", "recoverable": True}, 400
     if isinstance(exc, BadRequestError):
         return {"code": "bad_request"}, 400
     # NotFoundError ALWAYS maps to a generic 404 regardless of message text
@@ -148,7 +150,7 @@ class _ClosingFrameStream:
     spec requires the server to call ``close()`` on the response iterable even on
     an early disconnect."""
 
-    def __init__(self, frames: Iterator[str], subscription) -> None:
+    def __init__(self, frames: Generator[str, None, None], subscription) -> None:
         self._frames = frames
         self._subscription = subscription
 
@@ -185,7 +187,7 @@ def stream_advance_frames(
     activated ``subscription`` is closed even when the WSGI server closes the
     response body without ever iterating it -- see _ClosingFrameStream."""
 
-    def _frames() -> Iterator[str]:
+    def _frames() -> Generator[str, None, None]:
         try:
             yield _event_frame("command_started", {"kind": "command_started", **view_dict})
             if not expect_advance:

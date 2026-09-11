@@ -233,6 +233,9 @@ describe('question-classifier path', () => {
       activeTextGenerationModelList: [
         { provider: 'openai', model: 'gpt-4o', status: 'active' } as any,
       ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
     })
     mockUseConfig.mockReturnValue(createConfigResult())
   })

@@ -23,6 +23,7 @@ import {
   difyBuilderStartPromptAtom,
   difyBuilderStartRunFixAtom,
 } from '../store'
+import { builderModel, createBuilderQueryClient } from './model-fixtures'
 
 const mocks = vi.hoisted(() => ({
   controllerHook: vi.fn(),
@@ -108,7 +109,10 @@ const Probe = () => {
       <button type="button" onClick={() => setSessionView(null)}>
         Reset view
       </button>
-      <button type="button" onClick={() => void startPrompt('Build a support bot')}>
+      <button
+        type="button"
+        onClick={() => void startPrompt({ text: 'Build a support bot', model: builderModel })}
+      >
         Send prompt
       </button>
       <button type="button" onClick={() => void startRunFix('failed-run-42')}>
@@ -228,7 +232,10 @@ const renderProvider = (edgeCount = 0, difyBuilderEnabled = true, userId = 'user
     >
       <Probe />
     </DifyBuilderProvider>,
-    { features: { dify_builder_enabled: difyBuilderEnabled } },
+    {
+      queryClient: createBuilderQueryClient(),
+      features: { dify_builder_enabled: difyBuilderEnabled },
+    },
   )
 
 const CreationNavigation = ({
@@ -293,7 +300,7 @@ describe('DifyBuilderProvider', () => {
     await user.click(screen.getByRole('button', { name: 'Send prompt' }))
 
     expect(mocks.syncDraft).toHaveBeenCalledTimes(1)
-    expect(mocks.startBuild).toHaveBeenCalledWith('app-1', 'Build a support bot', undefined)
+    expect(mocks.startBuild).toHaveBeenCalledWith('app-1', 'Build a support bot', builderModel)
     expect(mocks.startEdit).not.toHaveBeenCalled()
   })
 
@@ -311,6 +318,7 @@ describe('DifyBuilderProvider', () => {
         <CreationNavigation />
       </StrictMode>,
       {
+        queryClient: createBuilderQueryClient(),
         features: { dify_builder_enabled: true },
       },
     )
@@ -321,7 +329,7 @@ describe('DifyBuilderProvider', () => {
       expect(mocks.startBuild).toHaveBeenCalledWith(
         'created-app',
         'Build an expense workflow',
-        undefined,
+        builderModel,
       ),
     )
     expect(mocks.setShowPanel).toHaveBeenCalledWith(true)
@@ -340,7 +348,10 @@ describe('DifyBuilderProvider', () => {
   it('retains the initial prompt in the panel when Builder cannot start', async () => {
     mocks.startBuild.mockResolvedValueOnce(false)
     const user = userEvent.setup()
-    renderWithConsoleQuery(<CreationNavigation />, { features: { dify_builder_enabled: true } })
+    renderWithConsoleQuery(<CreationNavigation />, {
+      queryClient: createBuilderQueryClient(),
+      features: { dify_builder_enabled: true },
+    })
 
     await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
 
@@ -354,7 +365,10 @@ describe('DifyBuilderProvider', () => {
   it('restores the creation prompt when draft synchronization fails', async () => {
     mocks.syncDraft.mockRejectedValueOnce(new Error('Workflow draft sync failed.'))
     const user = userEvent.setup()
-    renderWithConsoleQuery(<CreationNavigation />, { features: { dify_builder_enabled: true } })
+    renderWithConsoleQuery(<CreationNavigation />, {
+      queryClient: createBuilderQueryClient(),
+      features: { dify_builder_enabled: true },
+    })
 
     await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
 
@@ -370,7 +384,10 @@ describe('DifyBuilderProvider', () => {
   it('restores the creation prompt when starting the Builder throws', async () => {
     mocks.startBuild.mockRejectedValueOnce(new Error('Connection failed.'))
     const user = userEvent.setup()
-    renderWithConsoleQuery(<CreationNavigation />, { features: { dify_builder_enabled: true } })
+    renderWithConsoleQuery(<CreationNavigation />, {
+      queryClient: createBuilderQueryClient(),
+      features: { dify_builder_enabled: true },
+    })
 
     await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
 
@@ -393,7 +410,10 @@ describe('DifyBuilderProvider', () => {
           }),
       )
       const user = userEvent.setup()
-      renderWithConsoleQuery(<CreationNavigation />, { features: { dify_builder_enabled: true } })
+      renderWithConsoleQuery(<CreationNavigation />, {
+        queryClient: createBuilderQueryClient(),
+        features: { dify_builder_enabled: true },
+      })
 
       await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
       await waitFor(() => expect(mocks.startBuild).toHaveBeenCalledOnce())
@@ -416,6 +436,7 @@ describe('DifyBuilderProvider', () => {
     async ({ appId, canEdit, enabled }) => {
       const user = userEvent.setup()
       renderWithConsoleQuery(<CreationNavigation appId={appId} canEdit={canEdit} />, {
+        queryClient: createBuilderQueryClient(),
         features: { dify_builder_enabled: enabled },
       })
       await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
@@ -482,7 +503,7 @@ describe('DifyBuilderProvider', () => {
 
     await user.click(screen.getByRole('button', { name: 'Send prompt' }))
 
-    expect(mocks.startEdit).toHaveBeenCalledWith('app-1', 'Build a support bot', undefined)
+    expect(mocks.startEdit).toHaveBeenCalledWith('app-1', 'Build a support bot', builderModel)
     expect(mocks.startBuild).not.toHaveBeenCalled()
   })
 

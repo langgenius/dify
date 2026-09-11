@@ -5,7 +5,7 @@ import pytest
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.rbac import PlainApp, RBACPermission
-from core.dify_builder.errors import BusyError, ConflictError, NotFoundError
+from core.dify_builder.errors import BusyError, ConflictError, ModelUnavailableError, NotFoundError
 from core.dify_builder.models import Action, Actor
 from models import TenantAccountRole
 from services.dify_builder import wiring
@@ -48,6 +48,10 @@ def test_session_view_to_dict_round_trips_fields():
 
 
 def test_error_map():
+    assert wiring.dify_builder_error_response(ModelUnavailableError("private provider detail")) == (
+        {"code": "model_unavailable", "message": "Builder model is unavailable", "recoverable": True},
+        400,
+    )
     assert wiring.dify_builder_error_response(NotFoundError("x"))[1] == 404
     assert wiring.dify_builder_error_response(NotFoundError("x"))[0]["code"] == "not_found"
     assert wiring.dify_builder_error_response(ConflictError("x")) == ({"code": "conflict"}, 409)

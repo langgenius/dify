@@ -15,7 +15,7 @@ from flask import Response
 import controllers.console.dify_builder as mod
 from controllers.console import wraps as wraps_mod
 from core.dify_builder.contract import ConversationPage, RunStatus
-from core.dify_builder.errors import ConflictError, NotFoundError
+from core.dify_builder.errors import ConflictError, ModelUnavailableError, NotFoundError
 from core.dify_builder.models import Actor, ConversationItem
 from services.dify_builder.service import SessionView
 
@@ -257,6 +257,19 @@ def test_create_maps_pre_stream_error(monkeypatch):
     result = mod._create({"scenario": "fix", "app_id": "a1", "failed_run_id": "TR-1"}, _actor())
 
     assert result == ({"code": "conflict"}, 409)
+
+
+def test_create_returns_recoverable_model_error_before_starting_stream(monkeypatch):
+    service = MagicMock()
+    service.create_build_session_stream.side_effect = ModelUnavailableError("provider credential detail")
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+
+    result = mod._create({"scenario": "build", "app_id": "a1", "goal_text": "Build it"}, _actor())
+
+    assert result == (
+        {"code": "model_unavailable", "message": "Builder model is unavailable", "recoverable": True},
+        400,
+    )
 
 
 def test_action_always_returns_event_stream_and_resolves_action_id(monkeypatch):

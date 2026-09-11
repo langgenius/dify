@@ -978,7 +978,7 @@ describe('hooks', () => {
       },
     })
 
-    it('should refresh providers and model lists', () => {
+    it('should refresh providers, model lists, and defaults after model configuration', () => {
       const invalidateQueries = vi.fn()
       ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
 
@@ -1014,6 +1014,8 @@ describe('hooks', () => {
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: getModelListQueryKey(ModelTypeEnum.textEmbedding),
       })
+      for (const type of provider.supported_model_types)
+        expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['default-model', type] })
     })
 
     it('should expand target provider list when refreshModelList is true and custom config is active', () => {

@@ -1,10 +1,19 @@
 import type { ConversationItem } from '../../types'
 import { act, waitFor } from '@testing-library/react'
+import { queryClientAtom } from 'jotai-tanstack-query'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { commonQueryKeys } from '@/service/use-common'
+import {
+  builderModel,
+  builderModelListQueryKey,
+  createBuilderQueryClient,
+} from '../../__tests__/model-fixtures'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
   difyBuilderSessionBusyAtom,
+  difyBuilderSessionErrorCodeAtom,
   difyBuilderSessionLastCanvasEventAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
@@ -28,7 +37,8 @@ const clientMocks = vi.hoisted(() => ({
   message: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
+vi.mock('@/service/console', async (importOriginal) => ({
+  consoleQuery: (await importOriginal<typeof import('@/service/console')>()).consoleQuery,
   consoleClient: {
     difyBuilder: {
       sessions: {
@@ -49,6 +59,49 @@ describe('useDifyBuilderSessionController lifecycle', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     clientMocks.conversation.mockResolvedValue(conversationPage())
+  })
+
+  it('refreshes model availability after a rejected creation and can retry in the same app', async () => {
+    clientMocks.create.mockRejectedValueOnce({
+      data: {
+        status: 400,
+        body: { code: 'model_unavailable', message: 'Provider changed', recoverable: true },
+      },
+    })
+    const { result, store } = renderSessionHook()
+    const queryClient = createBuilderQueryClient()
+    store.set(queryClientAtom, queryClient)
+
+    await act(async () => {
+      expect(
+        await result.current.startBuild('app-1', 'Build an expense assistant', builderModel),
+      ).toBe(false)
+    })
+
+    expect(store.get(difyBuilderSessionErrorCodeAtom)).toBe('model_unavailable')
+    expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
+    expect(store.get(difyBuilderSessionViewAtom)).toBeNull()
+    expect(store.get(difyBuilderActiveSessionIdAtom)).toBeNull()
+    expect(
+      queryClient.getQueryState(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration))
+        ?.isInvalidated,
+    ).toBe(true)
+    expect(queryClient.getQueryState(builderModelListQueryKey)?.isInvalidated).toBe(true)
+    expect(clientMocks.get).not.toHaveBeenCalled()
+    expect(clientMocks.create).toHaveBeenCalledOnce()
+
+    const waiting = createSessionView({ run_status: 'waiting_input', canvas_read_only: false })
+    clientMocks.create.mockResolvedValueOnce(
+      streamOf(commandStartedEvent(waiting), stateEvent(waiting)),
+    )
+    await act(async () => {
+      expect(
+        await result.current.startBuild('app-1', 'Build an expense assistant', builderModel),
+      ).toBe(true)
+    })
+    expect(store.get(difyBuilderSessionErrorCodeAtom)).toBeNull()
+    expect(store.get(difyBuilderSessionViewAtom)?.app_id).toBe('app-1')
+    expect(clientMocks.create).toHaveBeenCalledTimes(2)
   })
 
   it('starts a session through the generated client and consumes typed events', async () => {
@@ -152,7 +205,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
           failed_run_id: 'run-1',
         },
       },
-      { signal: expect.any(AbortSignal) },
+      { context: { silent: true }, signal: expect.any(AbortSignal) },
     )
     expect(store.get(difyBuilderSessionLastCanvasEventAtom)).toEqual({
       id: 2,

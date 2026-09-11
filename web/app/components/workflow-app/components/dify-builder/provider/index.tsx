@@ -74,18 +74,19 @@ const DifyBuilderProviderContent = ({
         tenantId={tenantId}
         userId={userId}
       />
-      <DifyBuilderCreationStart
-        appId={appId}
-        canEdit={canEdit}
-        canStartCreation={canStartCreation}
-        enabled={enabled}
-      />
       <DifyBuilderCanvasLockSync />
       <DifyBuilderCanvasRefreshSync
         onFocusCanvas={onFocusCanvas}
         onRefreshCanvas={onRefreshCanvas}
       />
       {children}
+      {/* Subscribe the editor to draft updates before consuming the creation prompt. */}
+      <DifyBuilderCreationStart
+        appId={appId}
+        canEdit={canEdit}
+        canStartCreation={canStartCreation}
+        enabled={enabled}
+      />
     </>
   )
 }

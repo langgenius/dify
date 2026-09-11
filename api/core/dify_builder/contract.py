@@ -149,6 +149,7 @@ class BuilderErrorCode(StrEnum):
     CONFLICT = "conflict"
     SESSION_BUSY = "session_busy"
     FEATURE_UNAVAILABLE = "feature_unavailable"
+    MODEL_UNAVAILABLE = "model_unavailable"
 
 
 @dataclass

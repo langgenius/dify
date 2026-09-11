@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { StrictMode, useState } from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { builderModel, createBuilderQueryClient } from '../dify-builder/__tests__/model-fixtures'
 import { difyBuilderPendingCreationAtom } from '../dify-builder/creation'
 import { difyBuilderDraftAtom, difyBuilderLocalErrorAtom } from '../dify-builder/store'
 import WorkflowMain from '../workflow-main'
@@ -166,6 +167,7 @@ describe('Workflow creation with App Builder', () => {
         <CreatedAppNavigation />
       </StrictMode>,
       {
+        queryClient: createBuilderQueryClient(),
         accountProfile: { id: 'user-1' },
         features: { dify_builder_enabled: true },
         systemFeatures: { enable_collaboration_mode: true },
@@ -188,7 +190,7 @@ describe('Workflow creation with App Builder', () => {
       expect(mocks.startBuild).toHaveBeenCalledWith(
         'created-app',
         'Build an expense workflow',
-        undefined,
+        builderModel,
       ),
     )
     expect(mocks.setShowPanel).toHaveBeenCalledWith(true)
@@ -204,6 +206,7 @@ describe('Workflow creation with App Builder', () => {
     mocks.collaborative = false
     const user = userEvent.setup()
     renderWithConsoleQuery(<CreatedAppNavigation />, {
+      queryClient: createBuilderQueryClient(),
       accountProfile: { id: 'user-1' },
       features: { dify_builder_enabled: true },
       systemFeatures: { enable_collaboration_mode: false },
@@ -216,7 +219,7 @@ describe('Workflow creation with App Builder', () => {
       expect(mocks.startBuild).toHaveBeenCalledWith(
         'created-app',
         'Build an expense workflow',
-        undefined,
+        builderModel,
       ),
     )
     expect(mocks.syncWorkflowDraft).toHaveBeenCalledOnce()

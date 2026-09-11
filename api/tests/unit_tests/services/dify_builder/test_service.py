@@ -70,6 +70,17 @@ def engine() -> Iterator[Engine]:
         engine.dispose()
 
 
+@pytest.fixture(autouse=True)
+def configured_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        service_module,
+        "validate_model_config",
+        lambda _tenant, config: (
+            config or {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
+        ),
+    )
+
+
 @pytest.fixture
 def repo(engine: Engine) -> SqlDifyBuilderRepository:
     factory = sessionmaker(bind=engine, expire_on_commit=False)
@@ -885,10 +896,15 @@ def test_submit_action_update_model_persists_without_dispatch(
         "completion_params": {"temperature": 0.2},
     }
     validated: list[tuple[str, dict]] = []
+
+    def validate_model(tenant_id: str, config: dict) -> dict:
+        validated.append((tenant_id, config))
+        return config
+
     monkeypatch.setattr(
         service_module,
         "validate_model_config",
-        lambda tenant_id, config: validated.append((tenant_id, config)),
+        validate_model,
     )
 
     view = service.submit_action(
@@ -931,7 +947,7 @@ def test_submit_action_update_model_localizes_notice(
         DifyBuilderContext(failed_run_id="TR-1", reply_language="ja"),
         [ConversationItem(kind="run-context", seq=0)],
     )
-    monkeypatch.setattr(service_module, "validate_model_config", lambda _tenant_id, _config: None)
+    monkeypatch.setattr(service_module, "validate_model_config", lambda _tenant_id, config: config)
 
     class _FakeLocalizer:
         def __init__(self, _provider):
@@ -980,7 +996,7 @@ def test_submit_action_stream_update_model_emits_terminal_state_frame(
     and its next action 409s (regression class from the 409 review)."""
     s = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
     model_config = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
-    monkeypatch.setattr(service_module, "validate_model_config", lambda _tenant_id, _config: None)
+    monkeypatch.setattr(service_module, "validate_model_config", lambda _tenant_id, config: config)
 
     action = Action(kind="update_model", payload={"model_config": model_config}, base_version=s.version)
     frames = list(service.submit_action_stream(s.id, _actor(), action))
