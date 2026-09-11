@@ -42,8 +42,7 @@ class KeywordsModeration(Moderation):
             if query:
                 inputs["query__"] = query
 
-            # Filter out empty values
-            keywords_list = [keyword for keyword in self.config["keywords"].split("\n") if keyword]
+            keywords_list = self._keyword_rows(self.config["keywords"])
 
             flagged = self._is_violated(inputs, keywords_list)
 
@@ -59,8 +58,7 @@ class KeywordsModeration(Moderation):
             raise ValueError("The config is not set.")
 
         if self.config["outputs_config"]["enabled"]:
-            # Filter out empty values
-            keywords_list = [keyword for keyword in self.config["keywords"].split("\n") if keyword]
+            keywords_list = self._keyword_rows(self.config["keywords"])
 
             flagged = self._is_violated({"text": text}, keywords_list)
             preset_response = self.config["outputs_config"]["preset_response"]
@@ -68,6 +66,16 @@ class KeywordsModeration(Moderation):
         return ModerationOutputsResult(
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
         )
+
+    @staticmethod
+    def _keyword_rows(keywords: str) -> list[str]:
+        """Split the keywords config into stripped, non-empty rows.
+
+        Rows keep surrounding whitespace from pasted configs (for example CRLF
+        line endings) unless stripped: a keyword ending in "\r" never matches
+        real text, and a whitespace-only row matches nearly every message.
+        """
+        return [row for row in (row.strip() for row in keywords.split("\n")) if row]
 
     def _is_violated(self, inputs: dict[str, Any], keywords_list: list[str]) -> bool:
         return any(self._check_keywords_in_value(keywords_list, value) for value in inputs.values())
