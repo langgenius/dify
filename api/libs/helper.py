@@ -432,6 +432,10 @@ def compact_generate_response(
             _stream_with_request_context(generate()),
             status=200,
             mimetype="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
         )
 
 

@@ -1,8 +1,16 @@
 from datetime import datetime
 
 import pytest
+from flask import Flask
 
-from libs.helper import OptionalTimestampField, alphanumeric, email, escape_like_pattern, extract_tenant_id
+from libs.helper import (
+    OptionalTimestampField,
+    alphanumeric,
+    compact_generate_response,
+    email,
+    escape_like_pattern,
+    extract_tenant_id,
+)
 from models.account import Account
 from models.model import EndUser
 
@@ -153,6 +161,21 @@ class TestEmailValidator:
     def test_invalid_email_rejected(self):
         with pytest.raises(ValueError, match="not a valid email"):
             email("not-an-email")
+
+
+class TestCompactGenerateResponseStreaming:
+    """Regression for #41556: intermediate proxies buffering SSE streams into bursty chunks."""
+
+    def test_streaming_response_disables_proxy_buffering(self, app: Flask):
+        def stream_response():
+            yield "data: chunk-1\n\n"
+            yield "data: chunk-2\n\n"
+
+        with app.test_request_context():
+            response = compact_generate_response(stream_response())
+
+        assert response.headers.get("X-Accel-Buffering") == "no"
+        assert response.headers.get("Cache-Control") == "no-cache"
 
 
 class TestAlphanumericValidator:
