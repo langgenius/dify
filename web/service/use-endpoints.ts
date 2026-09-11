@@ -1,8 +1,11 @@
 import type { EndpointsResponse } from '@/app/components/plugins/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, post } from './base'
+import { get } from './base'
+import { consoleClient, consoleQuery } from './client'
 
 const NAME_SPACE = 'endpoints'
+const endpointContract = consoleQuery.workspaces.current.endpoints
+const endpointClient = consoleClient.workspaces.current.endpoints
 
 export const useEndpointList = (pluginID: string) => {
   return useQuery({
@@ -35,16 +38,15 @@ export const useCreateEndpoint = ({
   onError?: (error: any) => void
 }) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'create'],
+    mutationKey: endpointContract.post.mutationKey(),
     mutationFn: (payload: { pluginUniqueID: string; state: Record<string, any> }) => {
       const { pluginUniqueID, state } = payload
-      const newName = state.name
-      delete state.name
-      return post('/workspaces/current/endpoints/create', {
+      const { name, ...settings } = state
+      return endpointClient.post({
         body: {
           plugin_unique_identifier: pluginUniqueID,
-          settings: state,
-          name: newName,
+          settings,
+          name,
         },
       })
     },
@@ -61,16 +63,17 @@ export const useUpdateEndpoint = ({
   onError?: (error: any) => void
 }) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'update'],
+    mutationKey: endpointContract.byId.patch.mutationKey(),
     mutationFn: (payload: { endpointID: string; state: Record<string, any> }) => {
       const { endpointID, state } = payload
-      const newName = state.name
-      delete state.name
-      return post('/workspaces/current/endpoints/update', {
+      const { name, ...settings } = state
+      return endpointClient.byId.patch({
+        params: {
+          id: endpointID,
+        },
         body: {
-          endpoint_id: endpointID,
-          settings: state,
-          name: newName,
+          settings,
+          name,
         },
       })
     },
@@ -87,11 +90,11 @@ export const useDeleteEndpoint = ({
   onError?: (error: any) => void
 }) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'delete'],
+    mutationKey: endpointContract.byId.delete.mutationKey(),
     mutationFn: (endpointID: string) => {
-      return post('/workspaces/current/endpoints/delete', {
-        body: {
-          endpoint_id: endpointID,
+      return endpointClient.byId.delete({
+        params: {
+          id: endpointID,
         },
       })
     },
@@ -108,9 +111,9 @@ export const useEnableEndpoint = ({
   onError?: (error: any) => void
 }) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'enable'],
+    mutationKey: endpointContract.enable.post.mutationKey(),
     mutationFn: (endpointID: string) => {
-      return post('/workspaces/current/endpoints/enable', {
+      return endpointClient.enable.post({
         body: {
           endpoint_id: endpointID,
         },
@@ -129,9 +132,9 @@ export const useDisableEndpoint = ({
   onError?: (error: any) => void
 }) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'disable'],
+    mutationKey: endpointContract.disable.post.mutationKey(),
     mutationFn: (endpointID: string) => {
-      return post('/workspaces/current/endpoints/disable', {
+      return endpointClient.disable.post({
         body: {
           endpoint_id: endpointID,
         },
