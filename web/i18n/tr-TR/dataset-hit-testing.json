@@ -1,9 +1,9 @@
 {
-  "chunkDetail": "Yığın Detayı",
+  "chunkDetail": "Parça Detayı",
   "dateTimeFormat": "GG/AA/YYYY ss:dd ÖÖ/ÖS",
   "desc": "Verilen sorgu metnine göre Bilginin isabet etkisini test edin.",
-  "hit.emptyTip": "Geri Alım Testi sonuçları burada gösterilecektir",
-  "hit.title": "{{num}} geri alınan paragraflar",
+  "hit.emptyTip": "Alım Testi sonuçları burada gösterilecektir",
+  "hit.title": "{{num}} alınan parça",
   "hitChunks": "{{num}} alt parçalarına basın",
   "imageUploader.dropZoneTip": "Yüklemek için dosyayı buraya sürükleyin",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Tek parça eklerin sayısı {{limit}} değerini aşamaz",
@@ -17,9 +17,9 @@
   "noRecentTip": "Burada son sorgu sonuçları yok",
   "open": "Açık",
   "records": "Kayıt",
-  "settingTitle": "Alma Ayarı",
+  "settingTitle": "Alım Ayarı",
   "table.header.queryContent": "Sorgu İçeriği",
   "table.header.source": "Kaynak",
   "table.header.time": "Zaman",
-  "title": "Geri Alım Testi"
+  "title": "Alım Testi"
 }
