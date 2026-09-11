@@ -322,17 +322,22 @@ def test_message_factory_uses_the_app_queue_and_rejects_foreign_pipelines(
     sqlite_session.commit()
     flask_app = Flask(__name__)
     queue = Mock(spec=TraceQueue)
-    message_id, conversation_id = str(uuid4()), str(uuid4())
+    message_id, conversation_id, workflow_run_id = str(uuid4()), str(uuid4()), str(uuid4())
     with flask_app.app_context():
         assert trace_source.create_message_trace(tenant_id=tenant.id, app_id=app.id) is None
         flask_app.extensions["ops_trace_queue"] = queue
         recorder = trace_source.create_message_trace(
-            tenant_id=tenant.id, app_id=app.id, message_id=message_id, conversation_id=conversation_id
+            tenant_id=tenant.id,
+            app_id=app.id,
+            message_id=message_id,
+            conversation_id=conversation_id,
+            workflow_run_id=workflow_run_id,
         )
         assert recorder is not None
         assert recorder.trace_queue is queue
         assert recorder.source.operation_id == message_id
         assert recorder.source.conversation_id == conversation_id
+        assert recorder.source.workflow_run_id == workflow_run_id
         assert recorder.provider_settings[0].app_id == app.id
         assert recorder.attributes["app_name"] == app.name
         assert recorder.attributes["workspace_name"] == tenant.name
