@@ -3,10 +3,6 @@ import type {
   DifyBuilderActionPayloadChange,
   DifyBuilderActionValidityChange,
 } from '../types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
-import copy from 'copy-to-clipboard'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
@@ -21,23 +17,6 @@ export const AssistantReply = ({ text }: { text: string }) => (
   <Markdown content={text} className="px-1 text-sm! leading-5! tracking-[-0.07px]" />
 )
 
-const CopyMessageButton = ({ className, text }: { className?: string; text: string }) => {
-  const { t } = useTranslation()
-
-  return (
-    <IconButton
-      aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
-      className={className}
-      onClick={() => {
-        copy(text)
-        toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
-      }}
-    >
-      <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
-    </IconButton>
-  )
-}
-
 export const ConversationCard = memo(
   ({
     item,
@@ -48,9 +27,6 @@ export const ConversationCard = memo(
     onActionPayloadChange,
     onActionValidityChange,
     onFormSubmit,
-    onRetryMessage,
-    retryableTurnId,
-    retryingTurnId,
   }: {
     item: ConversationItem
     busy: boolean
@@ -60,9 +36,6 @@ export const ConversationCard = memo(
     onActionPayloadChange: DifyBuilderActionPayloadChange
     onActionValidityChange?: DifyBuilderActionValidityChange
     onFormSubmit?: () => void
-    onRetryMessage?: (turnId: string) => void
-    retryableTurnId?: string
-    retryingTurnId?: string | null
   }) => {
     const { t } = useTranslation()
 
@@ -71,43 +44,7 @@ export const ConversationCard = memo(
     if (item.kind === 'change_set')
       return <ChangeSetCard payload={item.payload} invalidated={invalidated} />
 
-    if (item.kind === 'user') {
-      const retryable = item.payload.turn_id === retryableTurnId
-      const retrying = item.payload.turn_id === retryingTurnId
-      return (
-        <article className="flex justify-end">
-          <div className="group/user-message flex flex-col items-end gap-1">
-            <h3 className="sr-only">{t(($) => $.you, { ns: 'common' })}</h3>
-            <div className="max-w-79 rounded-2xl bg-background-default-dimmed px-4 py-3 text-[13px] leading-4 whitespace-pre-wrap text-text-primary">
-              {item.payload.text}
-            </div>
-            <div className="flex h-6 items-center gap-0.5">
-              <CopyMessageButton
-                className="pointer-events-none opacity-0 transition-opacity group-focus-within/user-message:pointer-events-auto group-focus-within/user-message:opacity-100 group-hover/user-message:pointer-events-auto group-hover/user-message:opacity-100 motion-reduce:transition-none [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
-                text={item.payload.text}
-              />
-              {retryable && onRetryMessage && (
-                <IconButton
-                  aria-label={t(($) => $['operation.retry'], { ns: 'common' })}
-                  disabled={busy || retrying}
-                  onClick={() => onRetryMessage(item.payload.turn_id)}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'i-ri-reset-left-line size-4',
-                      retrying && 'animate-spin motion-reduce:animate-none',
-                    )}
-                  />
-                </IconButton>
-              )}
-            </div>
-          </div>
-        </article>
-      )
-    }
-
-    if (item.kind === 'decision') {
+    if (item.kind === 'user' || item.kind === 'decision') {
       return (
         <article className="flex justify-end">
           <h3 className="sr-only">{t(($) => $.you, { ns: 'common' })}</h3>
@@ -128,12 +65,7 @@ export const ConversationCard = memo(
           <h3 className="sr-only">{t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}</h3>
           {hasExecution ? <ExecutionProgress execution={item.payload.execution} /> : null}
           <Thinking text={item.payload.reasoning_text} />
-          {item.payload.reply_text ? (
-            <div className="flex w-full flex-col items-start gap-1">
-              <AssistantReply text={item.payload.reply_text} />
-              <CopyMessageButton text={item.payload.reply_text} />
-            </div>
-          ) : null}
+          {item.payload.reply_text ? <AssistantReply text={item.payload.reply_text} /> : null}
         </article>
       )
     }

@@ -287,13 +287,7 @@ describe('DifyBuilderPanel', () => {
     expect(composer).toHaveValue('Do not submit this draft')
   })
 
-  it('shows retry below the failed user bubble and resends the same turn', async () => {
-    const user = userEvent.setup()
-    let finishRetry!: (sent: boolean) => void
-    const retrying = new Promise<boolean>((resolve) => {
-      finishRetry = resolve
-    })
-    mocks.sendMessage.mockReturnValueOnce(retrying)
+  it('renders failed user messages without message actions', () => {
     renderPanel(sessionView, (store) => {
       store.set(difyBuilderRetryableMessageAtom, {
         sessionId: 'session-1',
@@ -302,19 +296,9 @@ describe('DifyBuilderPanel', () => {
       })
     })
 
-    const message = screen.getByText('Fix the workflow')
-    const userBubble = message.closest('article')
-    expect(userBubble).not.toBeNull()
-    const retry = within(userBubble!).getByRole('button', { name: 'common.operation.retry' })
-    expect(retry).not.toHaveTextContent('common.operation.retry')
-    expect(message.compareDocumentPosition(retry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-
-    await user.click(retry)
-
-    expect(mocks.sendMessage).toHaveBeenCalledWith('Fix the workflow', 'turn-user-1')
-    await waitFor(() => expect(retry).toBeDisabled())
-    act(() => finishRetry(true))
-    await waitFor(() => expect(retry).not.toBeInTheDocument())
+    const log = screen.getByRole('log', { name: 'workflow.difyBuilder.panelTitle' })
+    expect(within(log).getByText('Fix the workflow')).toBeInTheDocument()
+    expect(within(log).queryAllByRole('button')).toHaveLength(0)
   })
 
   it('does not submit while Enter confirms an IME composition', async () => {

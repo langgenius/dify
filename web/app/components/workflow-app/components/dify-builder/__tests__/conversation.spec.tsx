@@ -13,18 +13,8 @@ import {
 } from '../session/state'
 
 const mocks = vi.hoisted(() => ({
-  copy: vi.fn(() => true),
   fileUploader: vi.fn(),
   markdown: vi.fn(),
-  toastSuccess: vi.fn(),
-}))
-
-vi.mock('copy-to-clipboard', () => ({
-  default: mocks.copy,
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: { success: mocks.toastSuccess },
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -455,10 +445,7 @@ describe('DifyBuilderConversation test data form', () => {
     expect(mocks.markdown).toHaveBeenCalledWith(expect.objectContaining({ content: replyText }))
   })
 
-  it('copies user and assistant text with copy before retry', async () => {
-    const user = userEvent.setup()
-    const onRetryMessage = vi.fn()
-
+  it('renders user and assistant text without message actions', () => {
     render(
       <DifyBuilderConversation
         viewVersion={1}
@@ -485,32 +472,13 @@ describe('DifyBuilderConversation test data form', () => {
           },
         ]}
         onActionPayloadChange={vi.fn()}
-        onRetryMessage={onRetryMessage}
-        retryableTurnId="turn-1"
       />,
     )
 
-    const userArticle = screen.getByText('Refine the workflow').closest('article')
-    const assistantArticle = screen.getByText('**Updated plan**').closest('article')
-    expect(userArticle).not.toBeNull()
-    expect(assistantArticle).not.toBeNull()
-
-    const userActions = within(userArticle!).getAllByRole('button')
-    expect(userActions).toHaveLength(2)
-    expect(userActions[0]).toHaveAccessibleName('common.operation.copy')
-    expect(userActions[1]).toHaveAccessibleName('common.operation.retry')
-    const assistantCopy = within(assistantArticle!).getByRole('button', {
-      name: 'common.operation.copy',
-    })
-
-    await user.click(userActions[0]!)
-    await user.click(assistantCopy)
-
-    expect(mocks.copy).toHaveBeenNthCalledWith(1, 'Refine the workflow')
-    expect(mocks.copy).toHaveBeenNthCalledWith(2, '**Updated plan**')
-    expect(mocks.toastSuccess).toHaveBeenCalledTimes(2)
-    expect(mocks.toastSuccess).toHaveBeenLastCalledWith('common.actionMsg.copySuccessfully')
-    expect(onRetryMessage).not.toHaveBeenCalled()
+    const log = screen.getByRole('log', { name: 'workflow.difyBuilder.panelTitle' })
+    expect(within(log).getByText('Refine the workflow')).toBeInTheDocument()
+    expect(within(log).getByText('**Updated plan**')).toBeInTheDocument()
+    expect(within(log).queryAllByRole('button')).toHaveLength(0)
   })
 
   it('announces committed messages as a labelled log without putting streaming tokens in it', () => {

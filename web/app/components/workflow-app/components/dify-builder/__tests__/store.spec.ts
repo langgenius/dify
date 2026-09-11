@@ -6,7 +6,6 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
-  difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionViewAtom,
 } from '../session/state'
@@ -26,7 +25,6 @@ import {
   difyBuilderRecheckReadyAtom,
   difyBuilderRegisterChecklistErrorsAtom,
   difyBuilderResetAtom,
-  difyBuilderRetryMessageAtom,
   difyBuilderRunActiveAtom,
   difyBuilderRuntimeAtom,
   difyBuilderSendDraftAtom,
@@ -423,25 +421,6 @@ describe('Dify Builder store', () => {
     expect(runtime.session.startBuild).not.toHaveBeenCalled()
     expect(runtime.session.startEdit).not.toHaveBeenCalled()
     expect(runtime.session.sendMessage).not.toHaveBeenCalled()
-  })
-
-  it('retries a failed message with its original turn id', async () => {
-    const store = createStore()
-    const runtime = createRuntime(vi.fn(async () => true))
-    store.set(difyBuilderRuntimeAtom, runtime)
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({ run_status: 'waiting_input', state: 'fix.await_approval' }),
-    )
-    store.set(difyBuilderRetryableMessageAtom, {
-      sessionId: 'session-1',
-      text: 'Retry this message',
-      turnId: 'turn-retry-1',
-    })
-
-    expect(await store.set(difyBuilderRetryMessageAtom, 'turn-retry-1')).toBe(true)
-    expect(runtime.session.sendMessage).toHaveBeenCalledWith('Retry this message', 'turn-retry-1')
-    expect(store.get(difyBuilderRetryableMessageAtom)).toBeNull()
   })
 
   it('clears the composer draft when resetting the session', () => {
