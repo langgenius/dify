@@ -4,6 +4,9 @@ In-editor App Builder UI and session logic for the Build, Edit, and Fix APIs.
 
 ## Internal Modules
 
+- `panel.tsx`: panel composition, conversation scrolling, and shared interaction
+  coordination. `panel/` owns the header, background, empty state, action bar,
+  and footer.
 - `session/`: scoped session atoms, pure projection helpers, the SSE lifecycle
   controller, an animation-frame buffer for assistant text deltas, and a
   low-frequency live-progress projection.
