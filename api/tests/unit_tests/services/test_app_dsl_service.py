@@ -14,10 +14,12 @@ from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode, Tenant
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow, WorkflowType
-from services.app_dsl_service import AppDslService, PendingData
+from services.app_dsl_service import AppDslService, Import, PendingData
+from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.system_feature_service import SystemFeatureService
 from tests.unit_tests.config_override import apply_config_overrides
 
 _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
@@ -103,6 +105,90 @@ def _workflow(
     )
     workflow.environment_variables = environment_variables or []
     return workflow
+
+
+@pytest.mark.parametrize("status", [ImportStatus.FAILED, ImportStatus.PENDING])
+def test_copy_app_rolls_back_incomplete_import(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, status: ImportStatus
+) -> None:
+    original = _persist_overwrite_target(sqlite_session)
+    service = AppDslService(sqlite_session)
+    monkeypatch.setattr(service, "export_dsl", Mock(return_value="dsl"))
+
+    def import_app(**_kwargs: object) -> Import:
+        original.name = "Uncommitted change"
+        sqlite_session.flush()
+        return Import(id="import-1", status=status)
+
+    monkeypatch.setattr(service, "import_app", import_app)
+    auth_enabled = Mock()
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", auth_enabled)
+
+    result, copied = service.copy_app(app_model=original, account=_account(tenant_id=_TENANT_ID), tenant_id=_TENANT_ID)
+
+    assert result.status == status
+    assert copied is None
+    assert original.name == "Target"
+    auth_enabled.assert_not_called()
+
+
+@pytest.mark.parametrize("status", [ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS])
+@pytest.mark.parametrize("missing_settings", [False, True])
+def test_copy_app_commits_before_inheriting_access(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, status: ImportStatus, missing_settings: bool
+) -> None:
+    original = _persist_overwrite_target(sqlite_session)
+    service = AppDslService(sqlite_session)
+    monkeypatch.setattr(service, "export_dsl", Mock(return_value="dsl"))
+    copied_id = "55555555-5555-4555-8555-555555555555"
+
+    def import_app(**_kwargs: object) -> Import:
+        sqlite_session.add(_app(app_id=copied_id, tenant_id=_TENANT_ID))
+        return Import(id="import-1", status=status, app_id=copied_id)
+
+    def get_access_mode(app_id: str) -> SimpleNamespace:
+        assert not sqlite_session.in_transaction()
+        assert app_id == _OVERWRITE_APP_ID
+        if missing_settings:
+            raise ValueError("No settings")
+        return SimpleNamespace(access_mode="private")
+
+    def update_access_mode(app_id: str, access_mode: str) -> None:
+        assert not sqlite_session.in_transaction()
+        assert app_id == copied_id
+        assert access_mode == ("public" if missing_settings else "private")
+
+    monkeypatch.setattr(service, "import_app", import_app)
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: True)
+    monkeypatch.setattr(EnterpriseService.WebAppAuth, "get_app_access_mode_by_id", get_access_mode)
+    update_access = Mock(side_effect=update_access_mode)
+    monkeypatch.setattr(EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
+
+    result, copied = service.copy_app(app_model=original, account=_account(tenant_id=_TENANT_ID), tenant_id=_TENANT_ID)
+
+    assert result.status == status
+    assert copied is not None
+    assert copied.id == copied_id
+    update_access.assert_called_once()
+
+
+def test_copy_app_scopes_result_to_current_tenant(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    original = _persist_overwrite_target(sqlite_session)
+    foreign_app = _app(tenant_id="66666666-6666-4666-8666-666666666666", app_id=_OTHER_ACCOUNT_ID)
+    sqlite_session.add(foreign_app)
+    sqlite_session.commit()
+    service = AppDslService(sqlite_session)
+    monkeypatch.setattr(service, "export_dsl", Mock(return_value="dsl"))
+    monkeypatch.setattr(
+        service,
+        "import_app",
+        Mock(return_value=Import(id="import-1", status=ImportStatus.COMPLETED, app_id=foreign_app.id)),
+    )
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
+
+    _, copied = service.copy_app(app_model=original, account=_account(tenant_id=_TENANT_ID), tenant_id=_TENANT_ID)
+
+    assert copied is None
 
 
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -506,6 +592,45 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
     assert app.app_model_config_id is not None
     assert sqlite_session.get(AppModelConfig, app.app_model_config_id) is not None
     assert sqlite_session.in_transaction()
+
+
+def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
+    service = AppDslService(session=session)
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+    )
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    imported_graph: dict[str, object] = {
+        "nodes": [],
+        "edges": [],
+        "viewport": {"x": 100, "y": 200, "zoom": 1.5},
+    }
+
+    service._create_or_update_app(
+        app=cast(App, app),
+        data={
+            "app": {"mode": AppMode.WORKFLOW.value},
+            "workflow": {"graph": imported_graph},
+        },
+        account=Mock(id="account-1"),
+    )
+
+    assert workflow_service.sync_draft_workflow.call_args.kwargs["graph"] == {
+        "nodes": [],
+        "edges": [],
+    }
+    assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
 
 
 def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
