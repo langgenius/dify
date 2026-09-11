@@ -51,7 +51,7 @@ class CacheEmbedding(Embeddings):
 
         if embedding_queue_indices:
             embedding_queue_texts = [texts[i] for i in embedding_queue_indices]
-            embedding_queue_embeddings = []
+            indexed_embeddings: list[tuple[int, list[float]]] = []
             try:
                 model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
                 model_schema = model_type_instance.get_model_schema(
@@ -64,12 +64,13 @@ class CacheEmbedding(Embeddings):
                 )
                 for i in range(0, len(embedding_queue_texts), max_chunks):
                     batch_texts = embedding_queue_texts[i : i + max_chunks]
+                    batch_indices = embedding_queue_indices[i : i + max_chunks]
 
                     embedding_result = self._model_instance.invoke_text_embedding(
                         texts=batch_texts, input_type=EmbeddingInputType.DOCUMENT
                     )
 
-                    for vector in embedding_result.embeddings:
+                    for embedding_index, vector in zip(batch_indices, embedding_result.embeddings):
                         try:
                             # FIXME: type ignore for numpy here
                             normalized_embedding = (vector / np.linalg.norm(vector)).tolist()  # type: ignore
@@ -78,14 +79,14 @@ class CacheEmbedding(Embeddings):
                                 # for issue #11827  float values are not json compliant
                                 logger.warning("Normalized embedding is nan: %s", normalized_embedding)
                                 continue
-                            embedding_queue_embeddings.append(normalized_embedding)
+                            indexed_embeddings.append((embedding_index, normalized_embedding))
                         except IntegrityError:
                             db.session.rollback()
                         except Exception:
                             logger.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
-                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
+                    for i, n_embedding in indexed_embeddings:
                         text_embeddings[i] = n_embedding
                         hash = helper.generate_text_hash(texts[i])
                         if hash not in cache_embeddings:
@@ -133,7 +134,7 @@ class CacheEmbedding(Embeddings):
 
         if embedding_queue_indices:
             embedding_queue_multimodel_documents = [multimodel_documents[i] for i in embedding_queue_indices]
-            embedding_queue_embeddings = []
+            indexed_embeddings: list[tuple[int, list[float]]] = []
             try:
                 model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
                 model_schema = model_type_instance.get_model_schema(
@@ -146,13 +147,14 @@ class CacheEmbedding(Embeddings):
                 )
                 for i in range(0, len(embedding_queue_multimodel_documents), max_chunks):
                     batch_multimodel_documents = embedding_queue_multimodel_documents[i : i + max_chunks]
+                    batch_indices = embedding_queue_indices[i : i + max_chunks]
 
                     embedding_result = self._model_instance.invoke_multimodal_embedding(
                         multimodel_documents=batch_multimodel_documents,
                         input_type=EmbeddingInputType.DOCUMENT,
                     )
 
-                    for vector in embedding_result.embeddings:
+                    for embedding_index, vector in zip(batch_indices, embedding_result.embeddings):
                         try:
                             # FIXME: type ignore for numpy here
                             normalized_embedding = (vector / np.linalg.norm(vector)).tolist()  # type: ignore
@@ -161,14 +163,14 @@ class CacheEmbedding(Embeddings):
                                 # for issue #11827  float values are not json compliant
                                 logger.warning("Normalized embedding is nan: %s", normalized_embedding)
                                 continue
-                            embedding_queue_embeddings.append(normalized_embedding)
+                            indexed_embeddings.append((embedding_index, normalized_embedding))
                         except IntegrityError:
                             db.session.rollback()
                         except Exception:
                             logger.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
-                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
+                    for i, n_embedding in indexed_embeddings:
                         multimodel_embeddings[i] = n_embedding
                         file_id = multimodel_documents[i]["file_id"]
                         if file_id not in cache_embeddings:
