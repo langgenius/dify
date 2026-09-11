@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 
-from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource
 from core.ops.workflow_trace import WorkflowTraceRecorder, build_workflow_trace_inputs
@@ -18,9 +18,11 @@ from core.workflow.llm_node import DifyLLMNode
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.system_variables import build_system_variables, get_all_system_variables
 from core.workflow.variable_pool_initializer import add_variables_to_pool
+from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import (
+    EngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
     GraphRunPausedEvent,
@@ -205,6 +207,67 @@ class RetryingLLMNode(Node[RetryingLLMData]):
     @override
     def _run(self) -> Generator[StreamCompletedEvent, None, None]:
         yield StreamCompletedEvent(node_run_result=next(self.results))
+
+
+@pytest.mark.parametrize("host_failure", [False, True])
+def test_workflow_entry_distinguishes_recorded_node_failure_from_host_failure(
+    source: TraceSource,
+    recorder: WorkflowTraceRecorder,
+    submitted: list[CompletedTrace],
+    monkeypatch: pytest.MonkeyPatch,
+    host_failure: bool,
+) -> None:
+    state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=1)
+    node = RetryingLLMNode(
+        node_id="llm",
+        data=RetryingLLMData(type="llm", title="Answer"),
+        init_params=build_test_graph_init_params(tenant_id=source.tenant_id, app_id=source.app_id or ""),
+        runtime_state=state,
+    )
+    node.results = iter([NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, error="node failed")])
+    start = StartNode(
+        node_id="start",
+        data=StartNodeData(title="Start", variables=[]),
+        init_params=node.init_params,
+        runtime_state=state,
+    )
+    entry = WorkflowEntry(
+        tenant_id=source.tenant_id,
+        app_id=source.app_id or "",
+        workflow_id="workflow",
+        graph=Graph.new().add_root(start).add_node(node, from_node_id=start.id).build(),
+        graph_config={},
+        user_id=source.actor_id or "caller",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+        variable_pool=state.variable_pool,
+        graph_runtime_state=state,
+        workflow_tool_source_repository=Mock(),
+        workflow_trace=recorder,
+    )
+    if host_failure:
+        run_engine = entry.graph_engine.run
+
+        def fail_after_engine() -> Generator[EngineEvent, None, None]:
+            try:
+                yield from run_engine()
+            except RuntimeError as error:
+                # A different host exception with identical text must remain incomplete.
+                raise RuntimeError(str(error)) from error
+
+        monkeypatch.setattr(entry.graph_engine, "run", fail_after_engine)
+
+    list(entry.run())
+
+    assert len(submitted) == 1
+    trace = submitted[0]
+    assert [(span.node_id, span.status) for span in trace.spans] == [(None, "error"), ("start", "ok"), ("llm", "error")]
+    assert trace.complete is not host_failure
+    assert trace.truncation == {
+        "reasons": ["host_execution_failed"] if host_failure else [],
+        "omitted_spans": 0,
+    }
 
 
 def test_real_engine_retry_preserves_prompt_model_metadata_and_failure_finish(

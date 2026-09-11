@@ -3,6 +3,7 @@
 import base64
 import json
 from datetime import datetime
+from ssl import SSLContext
 from time import monotonic
 from typing import Any, cast
 from urllib.parse import urlsplit
@@ -27,12 +28,20 @@ class TraceExportError(Exception):
 class TraceProviderHttpClient:
     """Request-local authentication, bounded export time and no SDK background queues."""
 
-    def __init__(self, endpoint: str, headers: dict[str, str] | None = None, *, timeout: float = 100):
+    def __init__(
+        self,
+        endpoint: str,
+        headers: dict[str, str] | None = None,
+        *,
+        timeout: float = 100,
+        ssl_context: SSLContext | None = None,
+    ):
         parsed = urlsplit(endpoint)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
             raise ValueError("Tracing requires an HTTP endpoint without embedded credentials")
         self.endpoint = endpoint.rstrip("/")
         self.headers = dict(headers or {})
+        self.ssl_context = ssl_context
         self.deadline = monotonic() + timeout
 
     def request(self, method: str, path: str = "", **kwargs: Any) -> httpx.Response:
@@ -41,7 +50,11 @@ class TraceProviderHttpClient:
             raise TraceExportError("export_deadline_exceeded", retryable=True)
         headers = {**self.headers, **kwargs.pop("headers", {})}
         try:
-            with ssrf_proxy.create_http_client() as http_client:
+            with (
+                ssrf_proxy.create_http_client(ssl_context=self.ssl_context)
+                if self.ssl_context is not None
+                else ssrf_proxy.create_http_client()
+            ) as http_client:
                 response = ssrf_proxy.make_request(
                     method,
                     f"{self.endpoint}/{path.lstrip('/')}" if path else self.endpoint,
