@@ -234,7 +234,8 @@ describe('ResultPanel', () => {
     expect(screen.getByText('WORKFLOW.COMMON.OUTPUT')).toBeInTheDocument()
   })
 
-  it('should offer App Builder only for a failed workflow run', () => {
+  it('should offer App Builder only for a failed workflow run', async () => {
+    const user = userEvent.setup()
     const onFixRun = vi.fn()
     const { rerender } = render(
       <ResultPanel
@@ -244,7 +245,7 @@ describe('ResultPanel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'difyBuilder.fixWithAppBuilder' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' }))
     expect(onFixRun).toHaveBeenCalledWith('run-failed-1')
 
     rerender(
@@ -255,7 +256,7 @@ describe('ResultPanel', () => {
       />,
     )
     expect(
-      screen.queryByRole('button', { name: 'difyBuilder.fixWithAppBuilder' }),
+      screen.queryByRole('button', { name: 'workflow.difyBuilder.fixRun' }),
     ).not.toBeInTheDocument()
   })
 })
