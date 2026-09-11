@@ -1,8 +1,13 @@
 // @vitest-environment node
 
-const mocks = vi.hoisted(() => ({ loadResource: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  loadResource: vi.fn(),
+  cookies: vi.fn(),
+  headers: vi.fn(),
+  getCookie: vi.fn(),
+}))
 
-vi.mock('@/next/headers', () => ({ cookies: vi.fn(), headers: vi.fn() }))
+vi.mock('@/next/headers', () => ({ cookies: mocks.cookies, headers: mocks.headers }))
 vi.mock('../load-resource', () => ({ loadI18nResource: mocks.loadResource }))
 
 // Unit tests have no RSC dispatcher; provide its memoization boundary here.
@@ -71,4 +76,45 @@ describe('server translations', () => {
     expect(chinese.t(($) => $['operation.save'], { ns: 'common' })).toBe('保存')
     expect(english.t(($) => $['operation.save'], { ns: 'common' })).toBe('Save')
   })
+})
+
+describe('server locale', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    mocks.getCookie.mockReturnValue(undefined)
+    mocks.cookies.mockResolvedValue({ get: mocks.getCookie })
+    mocks.headers.mockResolvedValue(new Headers())
+  })
+
+  it('resolves the request locale once for concurrent and subsequent consumers', async () => {
+    mocks.headers.mockResolvedValue(new Headers({ 'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8' }))
+    const { getLocaleOnServer } = await import('../server')
+
+    await expect(
+      Promise.all([getLocaleOnServer(), getLocaleOnServer(), getLocaleOnServer()]),
+    ).resolves.toEqual(['zh-Hans', 'zh-Hans', 'zh-Hans'])
+    await expect(getLocaleOnServer()).resolves.toBe('zh-Hans')
+    expect(mocks.getCookie).toHaveBeenCalledExactlyOnceWith('locale')
+    expect(mocks.headers).toHaveBeenCalledOnce()
+  })
+
+  it('prefers the locale cookie over the browser language', async () => {
+    mocks.getCookie.mockReturnValue({ value: 'zh-Hans' })
+    mocks.headers.mockResolvedValue(new Headers({ 'accept-language': 'en-US' }))
+    const { getLocaleOnServer } = await import('../server')
+
+    await expect(getLocaleOnServer()).resolves.toBe('zh-Hans')
+    expect(mocks.headers).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, 'bad value', 'zz-ZZ'])(
+    'uses the default language for an absent or unusable preference: %s',
+    async (locale) => {
+      mocks.getCookie.mockReturnValue(locale ? { value: locale } : undefined)
+      const { getLocaleOnServer } = await import('../server')
+
+      await expect(getLocaleOnServer()).resolves.toBe('en-US')
+    },
+  )
 })
