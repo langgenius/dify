@@ -1500,11 +1500,11 @@ class CeleryScheduleTasksConfig(BaseSettings):
     )
     TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS: int = Field(
         description="Proactive credential refresh threshold in seconds",
-        default=60 * 60,
+        default=5 * 60,
     )
     TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
         description="Proactive subscription refresh threshold in seconds",
-        default=60 * 60,
+        default=5 * 60,
     )
 
 
