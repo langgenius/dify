@@ -13,11 +13,12 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTrace
 from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
 from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans
+from opentelemetry.sdk.trace import SpanLimits
 from opentelemetry.util.re import _LIBERAL_HEADER_PATTERN, parse_env_headers
 from pydantic import JsonValue
 
 from core.helper.ssl_context import create_grpc_credentials, create_ssl_context, read_tls_files
-from core.ops.otlp_trace import OtlpTraceClient, counter, histogram, otlp_span, otlp_trace_id
+from core.ops.otlp_trace import OtlpTraceClient, counter, histogram, limit_span_attributes, otlp_span, otlp_trace_id
 from core.ops.provider_export import TraceProviderHttpClient, export_span_id, json_text, span_attributes, span_id_bytes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 
@@ -26,6 +27,22 @@ if TYPE_CHECKING:
 
 # Preserve the explicit buckets used by the previous enterprise SDK histograms.
 HISTOGRAM_BOUNDS = (0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000)
+
+
+def load_span_attribute_limits() -> dict[str, int | None]:
+    count_configured = any(
+        name in os.environ for name in ("OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT", "OTEL_ATTRIBUTE_COUNT_LIMIT")
+    )
+    length_configured = any(
+        name in os.environ for name in ("OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT", "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT")
+    )
+    if not count_configured and not length_configured:
+        return {}
+    limits = SpanLimits()
+    return {
+        "max_attributes": limits.max_span_attributes if count_configured else None,
+        "max_value_length": limits.max_span_attribute_length if length_configured else None,
+    }
 
 
 def load_enterprise_config() -> dict[str, Any] | None:
@@ -43,6 +60,7 @@ def load_enterprise_config() -> dict[str, Any] | None:
         "include_content": dify_config.ENTERPRISE_INCLUDE_CONTENT,
         "sampling_rate": dify_config.ENTERPRISE_OTEL_SAMPLING_RATE,
         "otlp_disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
+        "span_limits": load_span_attribute_limits(),
     }
     config["signals"] = resolve_enterprise_signal_settings(config)
     return config
@@ -171,6 +189,9 @@ class EnterpriseTraceClient:
             bool(provider_config["otlp_disabled"])
             if "otlp_disabled" in provider_config
             else os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true"
+        )
+        self.span_limits = (
+            dict(provider_config["span_limits"]) if "span_limits" in provider_config else load_span_attribute_limits()
         )
         protocol = str(provider_config.get("protocol", "grpc"))
         signals = resolve_enterprise_signal_settings(provider_config)
@@ -510,6 +531,7 @@ class EnterpriseTraceClient:
             }
             if sends_span and sampled:
                 exported_span = otlp_span(completed_trace, span, parent_span, attributes=attributes)
+                limit_span_attributes(exported_span, **self.span_limits)
                 exported_span.name = {
                     "workflow": "dify.workflow.run",
                     "draft_node_execution": "dify.node.execution.draft",

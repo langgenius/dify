@@ -2,15 +2,20 @@
 
 from typing import Any, override
 from urllib.parse import quote, urlsplit
+from uuid import UUID
 
+from opentelemetry.context import Context
 from opentelemetry.proto.trace.v1.trace_pb2 import Span, Status
+from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
+from opentelemetry.sdk.trace.sampling import Sampler
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, set_span_in_context
 from pydantic import JsonValue
 
 from core.helper.ssl_context import create_grpc_credentials, create_ssl_context
-from core.ops.otlp_trace import OtlpTraceClient, otlp_span, otlp_trace_id
-from core.ops.provider_export import export_span_id, json_text, span_attributes
+from core.ops.otlp_trace import OtlpTraceClient, limit_span_attributes, otlp_span, otlp_trace_id
+from core.ops.provider_export import export_span_id, json_text, span_attributes, span_id_bytes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
-from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
+from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig, create_sampler
 
 
 def message_attributes(value: JsonValue, prefix: str, default_role: str) -> dict[str, Any]:
@@ -49,30 +54,70 @@ def message_attributes(value: JsonValue, prefix: str, default_role: str) -> dict
 
 
 class OpenInferenceTraceClient(OtlpTraceClient):
-    def __init__(self, *args: Any, disabled: bool = False, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        sampler: Sampler,
+        disabled: bool = False,
+        span_limits: dict[str, int | None] | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.disabled = disabled
+        self.sampler = sampler
+        self.span_limits = dict(span_limits or {})
+
+    def _sample_trace(self, trace_id: int, name: str, parent_span: dict[str, JsonValue] | None = None) -> bool:
+        parent_context = Context()
+        if parent_span is not None:
+            parent_context = set_span_in_context(
+                NonRecordingSpan(
+                    SpanContext(
+                        trace_id,
+                        int.from_bytes(span_id_bytes(str(parent_span["span_id"])), "big"),
+                        is_remote=True,
+                        # Older receipts represent spans that were already exported.
+                        trace_flags=TraceFlags(int(parent_span.get("sampled", True) is not False)),
+                    )
+                ),
+                parent_context,
+            )
+        return self.sampler.should_sample(parent_context, trace_id, name).decision.is_sampled()
 
     @override
     def verify_credentials(self) -> bool:
-        return self.disabled or super().verify_credentials()
+        return (
+            self.disabled
+            or not self._sample_trace(RandomIdGenerator().generate_trace_id(), "api_check")
+            or super().verify_credentials()
+        )
 
     @override
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
-        if self.disabled or (parent_span is not None and parent_span.get("disabled") is True):
+        disabled = self.disabled or (parent_span is not None and parent_span.get("disabled") is True)
+        trace_id = otlp_trace_id(completed_trace, parent_span)
+        # All six built-in samplers keep one decision across this local, same-trace tree.
+        sampled = not disabled and self._sample_trace(
+            UUID(trace_id).int, completed_trace.spans[0].span_name, parent_span
+        )
+        if not sampled:
             return ExportedParentSpans(
                 spans={
                     span.span_id: {
-                        "trace_id": otlp_trace_id(completed_trace, parent_span),
+                        "trace_id": trace_id,
                         "span_id": export_span_id(completed_trace, span.span_id),
-                        "disabled": True,
+                        "sampled": False,
+                        **({"disabled": True} if disabled else {}),
                     }
                     for span in completed_trace.spans
                 }
             )
-        return super().export_trace(completed_trace, parent_span)
+        exported = super().export_trace(completed_trace, parent_span)
+        return ExportedParentSpans(
+            spans={span_id: {**receipt, "sampled": True} for span_id, receipt in exported.spans.items()}
+        )
 
     @override
     def build_span(
@@ -172,7 +217,11 @@ class OpenInferenceTraceClient(OtlpTraceClient):
         # Existing provider status filters include stopped workflows with a reason.
         if span.span_type == "workflow" and span.status == "cancelled" and span.error:
             exported_span.status.code = Status.STATUS_CODE_ERROR
-        return exported_span
+        return limit_span_attributes(
+            exported_span,
+            max_attributes=self.span_limits.get("max_attributes"),
+            max_value_length=self.span_limits.get("max_value_length"),
+        )
 
 
 def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> OpenInferenceTraceClient:
@@ -183,6 +232,7 @@ def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> 
         if "_runtime_settings" in provider_config
         else config_class.load_runtime_settings(provider_config)
     )
+    sampler = create_sampler(**runtime_settings.get("sampling", {}))
     headers = {"authorization": f"Bearer {config.api_key}"} if config.api_key else {}
     resource_attributes = {
         "openinference.project.name": config.project or "default",
@@ -205,6 +255,8 @@ def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> 
             resource_attributes,
             project_url,
             protocol="grpc",
+            sampler=sampler,
+            span_limits=runtime_settings.get("span_limits"),
             disabled=bool(runtime_settings.get("disabled", False)),
             grpc_credentials={"trace": create_grpc_credentials(runtime_settings.get("tls", {}))},
         )
@@ -216,6 +268,8 @@ def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> 
         headers,
         resource_attributes,
         project_url,
+        sampler=sampler,
+        span_limits=runtime_settings.get("span_limits"),
         disabled=bool(runtime_settings.get("disabled", False)),
         ssl_context=create_ssl_context(runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)),
     )
