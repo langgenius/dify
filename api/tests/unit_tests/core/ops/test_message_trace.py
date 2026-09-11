@@ -16,6 +16,7 @@ from core.ops.legacy_agent_trace import record_legacy_agent_result
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.trace_data import CompletedTrace, QueuedTrace, TraceProviderSettings, TraceSource, copy_trace_value
 from core.ops.trace_queue import TraceQueue
+from graphon.engine_events import GraphRunSucceededEvent
 
 
 class RecordingQueue(TraceQueue):
@@ -112,6 +113,163 @@ def test_late_operation_references_original_destination_and_message_root() -> No
     assert late.source.operation_id != recorder.source.operation_id
     with pytest.raises(ValueError, match="different tenants"):
         QueuedTrace.from_trace(late, recorder.provider_settings[0].model_copy(update={"tenant_id": str(uuid4())}))
+
+
+@pytest.mark.parametrize("workflow_finishes_first", [False, True])
+def test_chatflow_and_late_operations_reference_each_destination_message(workflow_finishes_first: bool) -> None:
+    recorder, queue = make_recorder()
+    recorder.provider_settings = (
+        recorder.provider_settings[0],
+        TraceProviderSettings(
+            tenant_id=recorder.source.tenant_id, destination_type="enterprise", provider_name="enterprise"
+        ),
+    )
+    run_id = str(uuid4())
+    workflow = recorder.create_workflow_trace(
+        workflow_id=str(uuid4()), workflow_version="1", workflow_run_id=run_id, inputs={"query": "hello"}
+    )
+    recorder.record_operation("moderation", outputs="allowed")
+    title_recorder = MessageTraceRecorder(recorder.source, queue, recorder.provider_settings)
+    title_recorder.record_operation("generate_conversation_name", outputs="Title", independent=True)
+
+    def finish_message() -> None:
+        recorder.finish_message_trace({**message_fields(recorder), "workflow_run_id": run_id})
+
+    if not workflow_finishes_first:
+        finish_message()
+    workflow.record_workflow_event(GraphRunSucceededEvent(outputs={"answer": "answer"}))
+    assert workflow.finish_workflow_trace()
+    if workflow_finishes_first:
+        finish_message()
+    recorder.record_operation("suggested_questions", outputs=["next?"], independent=True)
+
+    for destination in recorder.provider_settings:
+        deliveries = [item for item in queue.items if item.provider_settings == destination]
+        deliveries_by_name = {
+            CompletedTrace.model_validate_json(item.trace_json).spans[0].span_name: item for item in deliveries
+        }
+        assert deliveries_by_name.keys() == {"message", "Workflow", "generate_conversation_name", "suggested_questions"}
+        message = CompletedTrace.model_validate_json(deliveries_by_name["message"].trace_json)
+        assert message.parent is None
+        assert [span.span_name for span in message.spans] == ["message", "moderation"]
+        for name in ("Workflow", "generate_conversation_name", "suggested_questions"):
+            child = CompletedTrace.model_validate_json(deliveries_by_name[name].trace_json)
+            assert child.parent is not None
+            assert child.parent.export_id == deliveries_by_name["message"].export_id
+            assert child.parent.span_id == message.root_span_id
+            assert child.source.message_id == message.source.message_id
+            assert child.source.external_trace_id == message.source.external_trace_id
+            assert child.source.session_id == message.source.session_id
+    assert queue.reserved == 0
+
+
+def test_chatflow_delivery_waits_for_its_message_receipt() -> None:
+    from tests.unit_tests.core.ops.test_trace_delivery import make_repository
+
+    recorder, queue = make_recorder()
+    workflow = recorder.create_workflow_trace(
+        workflow_id=str(uuid4()), workflow_version="1", workflow_run_id=str(uuid4()), inputs={}
+    )
+    workflow.record_workflow_event(GraphRunSucceededEvent(outputs={}))
+    workflow.finish_workflow_trace()
+    recorder.finish_message_trace(message_fields(recorder))
+    repository = make_repository()
+    child, _ = repository.reserve_delivery(queue.items[0])
+    assert repository.accept_upload(child)
+    assert repository.read_parent_reference(child) == (False, None)
+    message, _ = repository.reserve_delivery(queue.items[1])
+    assert repository.accept_upload(message)
+    attempt = repository.claim_delivery(message.tenant_id, message.id)
+    assert attempt is not None
+    root = CompletedTrace.model_validate_json(queue.items[1].trace_json)
+    receipt = {"trace_id": "exported-trace", "span_id": "exported-message"}
+    assert repository.finish_attempt(attempt, "succeeded", parent_references={root.root_span_id: receipt})
+    assert repository.read_parent_reference(child) == (True, receipt)
+
+
+def test_standalone_workflow_has_no_message_parent() -> None:
+    initial, queue = make_recorder()
+    recorder = MessageTraceRecorder(
+        initial.source.model_copy(update={"message_id": None, "conversation_id": None}),
+        queue,
+        initial.provider_settings,
+    )
+    workflow = recorder.create_workflow_trace(
+        workflow_id=str(uuid4()), workflow_version="1", workflow_run_id=str(uuid4()), inputs={}
+    )
+    workflow.record_workflow_event(GraphRunSucceededEvent(outputs={}))
+    assert workflow.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+    assert trace.parent is None
+
+
+@pytest.mark.parametrize("root_enabled", [False, True])
+def test_chatflow_child_workflow_keeps_its_independent_destination(root_enabled: bool) -> None:
+    from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+    from graphon.engine_events import NodeRunSucceededEvent
+
+    recorder, queue = make_recorder()
+    assert recorder.source.app_id is not None
+    child_app_id = str(uuid4())
+    child_destination = recorder.provider_settings[0].model_copy(
+        update={"app_id": child_app_id, "config_id": str(uuid4())}
+    )
+    if not root_enabled:
+        recorder.provider_settings = ()
+    recorder.load_provider_settings = Mock(return_value=(child_destination,))
+    workflow_id, execution_id = str(uuid4()), str(uuid4())
+    workflow = recorder.create_workflow_trace(
+        workflow_id=workflow_id, workflow_version="1", workflow_run_id=str(uuid4()), inputs={}
+    )
+    node = Mock(
+        execution_id=execution_id,
+        id="tool",
+        title="Tool",
+        node_type="tool",
+        workflow_id=workflow_id,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: DifyRunContext(
+                tenant_id=recorder.source.tenant_id,
+                app_id=recorder.source.app_id,
+                user_id="user",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+        },
+    )
+    node.version.return_value = "1"
+    with workflow.node_run_context(node):
+        workflow.register_workflow_source(
+            tenant_id=recorder.source.tenant_id,
+            app_id=child_app_id,
+            workflow_id=str(uuid4()),
+            workflow_version="1",
+            invocation_id=str(uuid4()),
+            parent_execution_id=execution_id,
+        )
+        workflow.record_workflow_event(
+            NodeRunSucceededEvent(
+                id=execution_id,
+                node_id="tool",
+                node_type="tool",
+                start_at=datetime.now(UTC),
+                finished_at=datetime.now(UTC),
+            )
+        )
+    workflow.record_workflow_event(GraphRunSucceededEvent(outputs={}))
+    workflow.finish_workflow_trace()
+    recorder.finish_message_trace(message_fields(recorder))
+
+    assert len(queue.items) == (3 if root_enabled else 1)
+    child = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+    assert queue.items[0].provider_settings == child_destination
+    assert child.source.app_id == child_app_id
+    assert child.source.message_id is None
+    assert child.parent is None
+    if root_enabled:
+        root_workflow = CompletedTrace.model_validate_json(queue.items[1].trace_json)
+        assert root_workflow.parent is not None
+        assert root_workflow.parent.export_id == queue.items[2].export_id
 
 
 def test_budget_exhaustion_is_explicit_and_close_releases_unfinished_spans() -> None:
@@ -267,12 +425,19 @@ def test_operation_without_message_has_no_parent_reference() -> None:
 
 def test_resuming_workflow_uses_checkpoint_destination_revision() -> None:
     recorder, queue = make_recorder()
+    destination = recorder.provider_settings[0]
     workflow_id, run_id = str(uuid4()), str(uuid4())
     workflow = recorder.create_workflow_trace(
         workflow_id=workflow_id, workflow_version="1", workflow_run_id=run_id, inputs={}
     )
+    recorder.record_operation("moderation", outputs="allowed")
     checkpoint = workflow.save_pause_state()
-    recorder.provider_settings = (recorder.provider_settings[0].model_copy(update={"config_revision": 99}),)
+    recorder.close(submit_pending_operations=True)
+    recorder = MessageTraceRecorder(
+        recorder.source,
+        queue,
+        (destination.model_copy(update={"config_revision": 99, "destination_settings_hash": "changed"}),),
+    )
     resumed = recorder.create_workflow_trace(
         workflow_id=workflow_id,
         workflow_version="1",
@@ -280,8 +445,18 @@ def test_resuming_workflow_uses_checkpoint_destination_revision() -> None:
         inputs={},
         workflow_trace_state=checkpoint,
     )
-    assert recorder.provider_settings[0].config_revision == 0
-    resumed.save_pause_state()
+    assert recorder.provider_settings == (destination,)
+    resumed.record_workflow_event(GraphRunSucceededEvent(outputs={}))
+    assert resumed.finish_workflow_trace()
+    recorder.finish_message_trace({**message_fields(recorder), "workflow_run_id": run_id})
+    recorder.record_operation("suggested_questions", outputs=["next?"], independent=True)
+    message_delivery = queue.items[2]
+    for delivery in queue.items:
+        assert delivery.provider_settings == destination
+        trace = CompletedTrace.model_validate_json(delivery.trace_json)
+        if delivery is not message_delivery:
+            assert trace.parent is not None
+            assert trace.parent.export_id == message_delivery.export_id
     assert queue.reserved == 0
 
 
