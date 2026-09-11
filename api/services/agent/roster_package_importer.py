@@ -86,13 +86,11 @@ class RosterAgentPackageImporter:
     def __init__(
         self,
         *,
-        reader: RosterAgentPackageReader | None = None,
-        skill_packages: SkillPackageService | None = None,
         storage_backend: _Storage = storage,
         cleanup: RosterPackageCleanup | None = None,
     ) -> None:
-        self._reader = reader or RosterAgentPackageReader()
-        self._skill_packages = skill_packages or SkillPackageService()
+        self._reader = RosterAgentPackageReader()
+        self._skill_packages = SkillPackageService()
         self._storage = storage_backend
         self._cleanup = cleanup or RosterPackageCleanup(storage_backend=storage_backend)
 
