@@ -1570,11 +1570,13 @@ export const useChat = (
               (item.execution_metadata?.parallel_id ===
                 iterationFinishedData.execution_metadata?.parallel_id ||
                 item.parallel_id === iterationFinishedData.execution_metadata?.parallel_id),
-          )!
-          tracing[iterationIndex] = {
-            ...tracing[iterationIndex],
-            ...iterationFinishedData,
-            status: WorkflowRunningStatus.Succeeded,
+          )
+          if (iterationIndex > -1) {
+            tracing[iterationIndex] = {
+              ...tracing[iterationIndex],
+              ...iterationFinishedData,
+              status: WorkflowRunningStatus.Succeeded,
+            }
           }
 
           updateCurrentQAOnTree({
@@ -1627,7 +1629,8 @@ export const useChat = (
                 nodeFinishedData.execution_metadata?.parallel_id
             )
           })
-          responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData as any
+          if (currentIndex > -1)
+            responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData as any
 
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -1668,11 +1671,13 @@ export const useChat = (
               (item.execution_metadata?.parallel_id ===
                 loopFinishedData.execution_metadata?.parallel_id ||
                 item.parallel_id === loopFinishedData.execution_metadata?.parallel_id),
-          )!
-          tracing[loopIndex] = {
-            ...tracing[loopIndex],
-            ...loopFinishedData,
-            status: WorkflowRunningStatus.Succeeded,
+          )
+          if (loopIndex > -1) {
+            tracing[loopIndex] = {
+              ...tracing[loopIndex],
+              ...loopFinishedData,
+              status: WorkflowRunningStatus.Succeeded,
+            }
           }
 
           updateCurrentQAOnTree({
