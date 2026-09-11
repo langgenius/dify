@@ -571,7 +571,9 @@ export const zAgentComposerAgentResponse = z.object({
  */
 export const zAppVariableConfig = z.object({
   default: z.unknown().optional(),
+  hide: z.boolean().optional().default(false),
   name: z.string().min(1).max(255),
+  options: z.array(z.string()).nullish(),
   required: z.boolean().optional().default(false),
   type: z.string().min(1).max(64),
 })
