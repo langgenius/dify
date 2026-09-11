@@ -219,6 +219,88 @@ def test_mlflow_native_llm_format_usage_cost_model_and_grouping(monkeypatch: pyt
 
 
 @pytest.mark.parametrize("provider_name", ["mlflow", "databricks"])
+@pytest.mark.parametrize(
+    ("span_types", "parent_indexes", "model_calls"),
+    [
+        pytest.param(("workflow", "llm"), (None, 0), 1, id="workflow"),
+        pytest.param(("operation", "llm"), (None, 0), 1, id="basic-chat-or-completion"),
+        pytest.param(("llm",), (None,), 1, id="standalone-model"),
+        pytest.param(("workflow", "node", "llm", "llm"), (None, 0, 1, 1), 2, id="model-retry"),
+    ],
+)
+def test_native_token_usage_counts_model_calls_without_root_or_container_aggregates(
+    provider_name: str,
+    span_types: tuple[str, ...],
+    parent_indexes: tuple[int | None, ...],
+    model_calls: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    trace = make_trace()
+    usage = {"prompt_tokens": 3, "completion_tokens": 5, "total_tokens": 8}
+    aggregate_usage = {key: value * model_calls for key, value in usage.items()}
+    span_ids = [
+        make_span_id(trace.source.tenant_id, trace.source.operation_id, str(index)) for index in range(len(span_types))
+    ]
+    spans = tuple(
+        trace.spans[1].model_copy(
+            update={
+                "span_id": span_ids[index],
+                "parent_span_id": span_ids[parent_index] if parent_index is not None else None,
+                "span_type": span_type,
+                "usage": aggregate_usage if index == 0 else usage if span_type == "llm" else {},
+                "attributes": {"metrics_from_parent": True}
+                if span_type == "llm"
+                else {"aggregate_usage": aggregate_usage},
+                "status": "error" if span_type == "llm" and index == 2 and model_calls == 2 else "ok",
+            }
+        )
+        for index, (span_type, parent_index) in enumerate(zip(span_types, parent_indexes))
+    )
+    trace = trace.model_copy(update={"root_span_id": span_ids[0], "spans": spans})
+    config = (
+        {"host": "https://tracing.example", "personal_access_token": "secret", "experiment_id": "7"}
+        if provider_name == "databricks"
+        else {"tracking_uri": "https://tracing.example", "experiment_id": "7"}
+    )
+    client = MLflowTraceClient(provider_name, config)
+    if provider_name == "databricks":
+        monkeypatch.setattr(
+            client.http,
+            "request",
+            Mock(
+                side_effect=[
+                    httpx.Response(200, json={}),
+                    httpx.Response(200, json={"credential_info": {"signed_uri": "https://storage.example/trace"}}),
+                ]
+            ),
+        )
+        upload = Mock()
+        monkeypatch.setattr(client, "_upload_spans", upload)
+        client.export_trace(trace)
+        exported_spans = json.loads(upload.call_args.args[1])["spans"]
+        span_attributes = [
+            {key: json.loads(value) for key, value in span["attributes"].items()} for span in exported_spans
+        ]
+    else:
+        send = Mock()
+        monkeypatch.setattr(OtlpTraceClient, "send_traces", send)
+        client.export_trace(trace)
+        exported_spans = send.call_args.args[0].resource_spans[0].scope_spans[0].spans
+        span_attributes = [
+            {item.key: read_attribute_value(item.value) for item in span.attributes} for span in exported_spans
+        ]
+    native_usage = [
+        attributes["mlflow.chat.tokenUsage"] for attributes in span_attributes if "mlflow.chat.tokenUsage" in attributes
+    ]
+    # MLflow 3.11.1's SQL ingestion sums every span carrying this native attribute.
+    assert native_usage == [{"input_tokens": 3, "output_tokens": 5, "total_tokens": 8}] * model_calls
+    assert span_attributes[0]["dify.usage"] == aggregate_usage
+    for span, attributes in zip(spans, span_attributes):
+        assert ("mlflow.chat.tokenUsage" in attributes) == (span.span_type == "llm")
+        assert attributes["dify.usage"] == span.usage
+
+
+@pytest.mark.parametrize("provider_name", ["mlflow", "databricks"])
 @pytest.mark.parametrize("output_shape", ["workflow", "message", "native"])
 @pytest.mark.parametrize("empty", [False, True])
 def test_retrieval_exports_native_documents(

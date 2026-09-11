@@ -1,6 +1,8 @@
 """Enterprise exports consume captured spans without record lookups or shared SDK state."""
 
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -10,8 +12,88 @@ from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 from core.moderation.base import ModerationAction, ModerationInputsResult
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource, TraceSpan
+from core.ops.trace_source import record_enterprise_operation
+from core.telemetry.events import DraftNodeExecutionTraceEvent, TelemetryContext
 from enterprise.telemetry.enterprise_trace import EnterpriseTraceClient
+from models.workflow import WorkflowType
 from tests.unit_tests.core.ops.test_message_trace import RecordingQueue
+
+
+@pytest.mark.parametrize("include_content", [False, True])
+@pytest.mark.parametrize("pipeline_run", [False, True])
+def test_draft_node_identity_and_content_survive_capture(
+    monkeypatch: pytest.MonkeyPatch, include_content: bool, pipeline_run: bool
+) -> None:
+    tenant_id, owner_id, workflow_id, execution_id = (str(uuid4()) for _ in range(4))
+    source = TraceSource(
+        tenant_id=tenant_id,
+        operation_id=str(uuid4()),
+        app_id=None if pipeline_run else owner_id,
+        pipeline_id=owner_id if pipeline_run else None,
+    )
+    queue = RecordingQueue()
+    settings = TraceProviderSettings(tenant_id=tenant_id, destination_type="enterprise", provider_name="enterprise")
+    recorder = MessageTraceRecorder(source, queue, (settings,))
+    session = Mock()
+    session.scalar.side_effect = [
+        SimpleNamespace(type=WorkflowType.RAG_PIPELINE if pipeline_run else WorkflowType.WORKFLOW),
+        owner_id,
+    ]
+    session_context = Mock()
+    session_context.__enter__ = Mock(return_value=session)
+    session_context.__exit__ = Mock(return_value=False)
+    monkeypatch.setattr("sqlalchemy.orm.Session", Mock(return_value=session_context))
+    monkeypatch.setattr("extensions.ext_database.db", SimpleNamespace(engine=Mock()))
+    monkeypatch.setattr("core.ops.trace_source.create_message_trace", Mock(return_value=recorder))
+    process_data = {"prompts": [{"role": "user", "text": "private prompt"}]}
+    structure = {
+        "index": 0,
+        "predecessor_node_id": "previous-node",
+        "iteration_id": "iteration",
+        "iteration_index": 0,
+        "loop_id": "loop",
+        "loop_index": 0,
+        "parallel_id": "parallel",
+    }
+    record_enterprise_operation(
+        DraftNodeExecutionTraceEvent(
+            context=TelemetryContext(tenant_id=tenant_id, app_id=owner_id),
+            payload={
+                "node_execution_data": {
+                    "tenant_id": tenant_id,
+                    "app_id": owner_id,
+                    "workflow_id": workflow_id,
+                    "node_execution_id": execution_id,
+                    "node_id": "model-node",
+                    "node_type": "llm",
+                    "status": "succeeded",
+                    "node_inputs": {"query": "private input"},
+                    "node_outputs": {"answer": "private output"},
+                    "process_data": process_data,
+                    **structure,
+                }
+            },
+        )
+    )
+    trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+    span = trace.spans[0]
+    assert span.source_app_id == source.app_id
+    assert span.source_pipeline_id == source.pipeline_id
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": include_content})
+    attributes = client._attributes(trace, span, client._operation_type(span))
+
+    assert attributes["dify.workflow.id"] == workflow_id
+    assert attributes["dify.node.execution_id"] == execution_id
+    assert attributes["dify.node.id"] == "model-node"
+    assert attributes["dify.node.status"] == "succeeded"
+    for field, value in structure.items():
+        assert attributes[f"dify.node.{field}"] == value
+    reference = f"ref:node_execution_id={execution_id}"
+    assert attributes["dify.node.process_data"] == (process_data if include_content else reference)
+    assert attributes["dify.node.inputs"] == ({"query": "private input"} if include_content else reference)
+    assert attributes["dify.node.outputs"] == ({"answer": "private output"} if include_content else reference)
+    if not include_content:
+        assert "private" not in str(attributes)
 
 
 @pytest.mark.parametrize("include_content", [False, True])
