@@ -81,8 +81,23 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             try:
                 user = cls._get_user(user_id, app)
             except ValueError:
-                # Plugins such as WeCom Bot pass external sender IDs rather than EndUser UUIDs.
-                user = EndUserService.get_or_create_end_user(app, user_id=user_id)
+                # The inner-api layer (get_user_tenant) resolves an empty or external
+                # user id into a tenant-scoped EndUser whose app_id is NULL, so the
+                # app-scoped lookup above misses it. Reuse that record instead of
+                # minting a new app-bound end user: plugin file uploads are owned by
+                # the tenant-scoped record (tool_files.user_id), and the file access
+                # controller enforces ToolFile.user_id == invoking user, so invoking
+                # under a fresh identity makes every file-carrying invocation fail
+                # with "ToolFile ... not found".
+                stmt = select(EndUser).where(
+                    EndUser.id == user_id,
+                    EndUser.tenant_id == app.tenant_id,
+                )
+                user = session.scalar(stmt)
+                if user is None:
+                    # Plugins such as WeCom Bot pass external sender IDs rather than
+                    # EndUser UUIDs; keep the get-or-create behavior for those.
+                    user = EndUserService.get_or_create_end_user(app, user_id=user_id)
 
         conversation_id = conversation_id or ""
 
