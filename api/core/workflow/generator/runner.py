@@ -1734,7 +1734,9 @@ class WorkflowGenerator:
                 logger.info("Workflow generator: auto-injected missing start variable %r", var)
                 continue
 
-            replacement = cls._sole_declared_variable(target)
+            # Prefer a known output-name alias (e.g. HTTP-request `response` -> `body`);
+            # otherwise fall back to a rewrite only when the source has a sole output.
+            replacement = cls._aliased_output(target, var) or cls._sole_declared_variable(target)
             if replacement is None:
                 continue
             for node in nodes:
@@ -1747,7 +1749,7 @@ class WorkflowGenerator:
                         new_variable=replacement,
                     )
             logger.info(
-                "Workflow generator: rewrote unresolved reference %s.%s to sole output %s.%s",
+                "Workflow generator: rewrote unresolved reference %s.%s to declared output %s.%s",
                 node_id,
                 var,
                 node_id,
@@ -1880,6 +1882,25 @@ class WorkflowGenerator:
         # Other node types (if-else, iteration-start, loop-start, ...) don't
         # produce outputs of their own.
         return False
+
+    # Well-known output-name mistakes the builder LLM makes, keyed by
+    # (node type, wrong name) -> correct output. Used to repair references the
+    # sole-output rewrite can't (a node with several outputs), but only for
+    # unambiguous aliases. HTTP-request nodes expose {body, status_code, headers,
+    # files} and never `response`; the response body a workflow wants is `body`.
+    _OUTPUT_ALIASES: dict[tuple[str, str], str] = {
+        (BuiltinNodeTypes.HTTP_REQUEST, "response"): "body",
+    }
+
+    @classmethod
+    def _aliased_output(cls, node: dict[str, Any], var: str) -> str | None:
+        """Map a known-wrong output name to the correct one for this node type,
+        but only when that correct output is actually declared (safety)."""
+        node_type = (node.get("data") or {}).get("type")
+        replacement = cls._OUTPUT_ALIASES.get((node_type, var))
+        if replacement is not None and cls._declares_variable(node, replacement):
+            return replacement
+        return None
 
     @classmethod
     def _sole_declared_variable(cls, node: dict[str, Any]) -> str | None:

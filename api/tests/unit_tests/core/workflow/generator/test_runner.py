@@ -3583,6 +3583,31 @@ class TestWorkflowGeneratorStructuredErrors:
             }
         ]
 
+    def test_repairs_http_request_response_reference_to_body(self):
+        # HTTP-request nodes expose {body, status_code, headers, files} and never a
+        # `response` output, but LLMs routinely wire downstream refs to
+        # `{#httpNode.response#}`. The sole-output repair can't help (4 outputs), so
+        # without a targeted alias the ref stays unresolved and the whole build fails
+        # with an empty graph. Repair `response` -> `body` (the response body).
+        nodes = [
+            {
+                "id": "node2",
+                "data": {"type": "http-request", "title": "HTTP", "method": "get", "url": "https://example.com"},
+            },
+            {
+                "id": "node3",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "Summarize {{#node2.response#}}."}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes[1]["data"]["prompt_template"][0]["text"] == "Summarize {{#node2.body#}}."
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
     def test_planner_json_failure_retries_once_then_recovers(self):
         # First planner response is non-JSON (the LLM wrapped the response in
         # prose) — we retry exactly once with a corrective system message,
