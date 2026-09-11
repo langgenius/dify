@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import base64
 import enum
 import re
 import string
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, TypedDict, override
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_serializer, field_validator
 from yarl import URL
 
 from configs import dify_config
@@ -433,6 +434,20 @@ class OnlineDriveDownloadMessage(DatasourceMessage):
         else:
             result.pop("remote_metadata", None)
         return result
+
+    @field_serializer("message")
+    @override
+    def serialize_message(self, v: Any) -> Any:
+        """Keep online-drive blob chunks JSON-safe across the Dify inner API bridge."""
+        if isinstance(v, self.BlobChunkMessage):
+            return {
+                "id": v.id,
+                "sequence": v.sequence,
+                "total_length": v.total_length,
+                "blob": base64.b64encode(v.blob).decode("utf-8"),
+                "end": v.end,
+            }
+        return super().serialize_message(v)
 
 
 class OnlineDriveFile(BaseModel):

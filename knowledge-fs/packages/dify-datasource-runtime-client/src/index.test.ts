@@ -98,6 +98,73 @@ describe("createDifyDatasourceRuntimeClient", () => {
     });
   });
 
+  it("preserves online-drive metadata and chunk bytes from Dify response frames", async () => {
+    const browseData = {
+      result: [
+        {
+          bucket: "bucket-1",
+          files: [
+            {
+              id: "file-1",
+              name: "report.bin",
+              remote_metadata: {
+                checksum: { algorithm: "sha256", value: "a".repeat(64) },
+                etag: '"browse-etag"',
+                modified_time: "2026-09-09T00:00:00Z",
+                version_id: "browse-v2",
+              },
+              size: 3,
+              type: "file",
+            },
+          ],
+          is_truncated: false,
+        },
+      ],
+    };
+    const downloadData = {
+      type: "blob_chunk",
+      message: {
+        blob: "AP+A",
+        end: true,
+        id: "download-1",
+        sequence: 0,
+        total_length: 3,
+      },
+      meta: {
+        remote_metadata: {
+          checksum: { algorithm: "md5", value: "b".repeat(32) },
+          etag: '"download-etag"',
+          modified_time: "2026-09-09T00:01:00Z",
+          version_id: "download-v2",
+        },
+      },
+    };
+    const responses = [
+      frame({ data: browseData, error: "" }),
+      frame({ data: downloadData, error: "" }),
+    ];
+    const client = createDifyDatasourceRuntimeClient({
+      apiKey: "inner-secret",
+      baseUrl: "http://api:5001",
+      fetch: vi.fn(async () => responseFromBytes(responses.shift() ?? new Uint8Array())),
+    });
+    const drive = {
+      ...COMMON,
+      datasource: "google_drive",
+      pluginId: "langgenius/google_drive",
+      provider: "google_drive",
+    };
+
+    await expect(collect(client.browseOnlineDrive({ ...drive, prefix: "" }))).resolves.toEqual([
+      browseData,
+    ]);
+    await expect(
+      collect(
+        client.downloadOnlineDriveFile({ ...drive, file: { bucket: "bucket-1", id: "file-1" } }),
+      ),
+    ).resolves.toEqual([downloadData]);
+  });
+
   it("fails closed on inner errors and malformed routing identifiers", async () => {
     const client = createDifyDatasourceRuntimeClient({
       apiKey: "inner-secret",
