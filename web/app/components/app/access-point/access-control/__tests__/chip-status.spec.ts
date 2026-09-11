@@ -1,12 +1,5 @@
 import { getAccessControlChipState, getInServiceCoverage } from '../chip-status'
 
-const availability = {
-  webApp: true,
-  serviceApi: true,
-  mcp: true,
-  trigger: false,
-}
-
 const assignment = {
   policyId: 'internal-network',
   policyName: 'Internal Network',
@@ -14,19 +7,16 @@ const assignment = {
     webApp: true,
     serviceApi: true,
     mcp: true,
-    trigger: false,
+    trigger: true,
   },
   enabled: true,
 }
 
 describe('getInServiceCoverage', () => {
-  it('ignores unavailable access points in the denominator', () => {
+  it('counts selected access points against every configured access point', () => {
     expect(
-      getInServiceCoverage(
-        { webApp: true, serviceApi: true, mcp: false, trigger: true },
-        availability,
-      ),
-    ).toEqual({ coveredCount: 2, inServiceCount: 3 })
+      getInServiceCoverage({ webApp: true, serviceApi: true, mcp: false, trigger: true }),
+    ).toEqual({ coveredCount: 3, inServiceCount: 4 })
   })
 })
 
@@ -36,7 +26,6 @@ describe('getAccessControlChipState', () => {
       getAccessControlChipState({
         entitled: false,
         assignment: null,
-        availability,
       }).kind,
     ).toBe('pro')
   })
@@ -46,7 +35,6 @@ describe('getAccessControlChipState', () => {
       getAccessControlChipState({
         entitled: false,
         assignment,
-        availability,
       }).kind,
     ).toBe('on')
   })
@@ -56,7 +44,6 @@ describe('getAccessControlChipState', () => {
       getAccessControlChipState({
         entitled: true,
         assignment: null,
-        availability,
       }),
     ).toEqual({ kind: 'off', coveredCount: 0, inServiceCount: 0 })
   })
@@ -66,32 +53,30 @@ describe('getAccessControlChipState', () => {
       getAccessControlChipState({
         entitled: true,
         assignment: { ...assignment, enabled: false },
-        availability,
       }),
     ).toEqual({
       kind: 'paused',
       policyName: 'Internal Network',
-      coveredCount: 3,
-      inServiceCount: 3,
+      coveredCount: 4,
+      inServiceCount: 4,
     })
   })
 
-  it('returns on when every in-service access point is covered', () => {
+  it('returns on when every access point is covered', () => {
     expect(
       getAccessControlChipState({
         entitled: true,
         assignment,
-        availability,
       }),
     ).toEqual({
       kind: 'on',
       policyName: 'Internal Network',
-      coveredCount: 3,
-      inServiceCount: 3,
+      coveredCount: 4,
+      inServiceCount: 4,
     })
   })
 
-  it('returns partial when some in-service access points are excluded', () => {
+  it('returns partial when some access points are excluded', () => {
     expect(
       getAccessControlChipState({
         entitled: true,
@@ -99,13 +84,12 @@ describe('getAccessControlChipState', () => {
           ...assignment,
           scopes: { ...assignment.scopes, mcp: false },
         },
-        availability,
       }),
     ).toEqual({
       kind: 'partial',
       policyName: 'Internal Network',
-      coveredCount: 2,
-      inServiceCount: 3,
+      coveredCount: 3,
+      inServiceCount: 4,
     })
   })
 })

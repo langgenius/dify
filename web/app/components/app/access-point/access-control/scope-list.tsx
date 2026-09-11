@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessControlDraft, AccessControlScopeAvailability } from './draft'
+import type { AccessControlDraft } from './draft'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -17,17 +17,10 @@ const SCOPE_ICONS: Record<Exclude<AccessPoint, 'webApp'>, string> = {
 
 type AccessControlScopeListProps = {
   draft: AccessControlDraft
-  disabled: boolean
-  availability: AccessControlScopeAvailability
   onDraftChange: (draft: AccessControlDraft) => void
 }
 
-export function AccessControlScopeList({
-  draft,
-  disabled,
-  availability,
-  onDraftChange,
-}: AccessControlScopeListProps) {
+export function AccessControlScopeList({ draft, onDraftChange }: AccessControlScopeListProps) {
   const { t } = useTranslation()
   const appInfo = useAppStore((state) => state.appDetail)
 
@@ -41,7 +34,6 @@ export function AccessControlScopeList({
   return (
     <div className="flex w-full flex-col gap-0.5">
       {ACCESS_POINT_ORDER.map((scope) => {
-        const unavailable = !availability[scope]
         const label = labels[scope]
 
         return (
@@ -57,34 +49,16 @@ export function AccessControlScopeList({
                 className="rounded-sm bg-util-colors-orange-orange-100"
               />
             ) : (
-              <span
-                className={cn(
-                  'flex size-6 shrink-0 items-center justify-center rounded-sm border-[0.5px] border-divider-regular bg-components-panel-bg',
-                  unavailable && 'opacity-40',
-                )}
-              >
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-sm border-[0.5px] border-divider-regular bg-components-panel-bg">
                 <span
                   aria-hidden
                   className={cn(SCOPE_ICONS[scope], 'size-3.5 text-text-tertiary')}
                 />
               </span>
             )}
-            <span
-              className={cn(
-                'system-sm-medium',
-                unavailable ? 'shrink-0 text-text-tertiary' : 'min-w-0 flex-1 text-text-secondary',
-              )}
-            >
-              {label}
-            </span>
-            {unavailable && (
-              <span className="min-w-0 flex-1 text-right system-xs-regular text-text-quaternary">
-                {t(($) => $['studio.accessControl.notEnabled'], { ns: 'deployments' })}
-              </span>
-            )}
+            <span className="min-w-0 flex-1 system-sm-medium text-text-secondary">{label}</span>
             <Switch
-              checked={unavailable ? false : draft.scopes[scope]}
-              disabled={disabled || unavailable}
+              checked={draft.scopes[scope]}
               aria-label={label}
               onCheckedChange={(checked) => {
                 onDraftChange({

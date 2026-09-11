@@ -1,10 +1,6 @@
 'use client'
 
-import type {
-  AccessControlDraft,
-  AccessControlPolicy,
-  AccessControlScopeAvailability,
-} from './draft'
+import type { AccessControlDraft, AccessControlPolicy } from './draft'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import {
   AlertDialog,
@@ -26,7 +22,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import { splitPolicySummary } from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
 import { getInServiceCoverage } from './chip-status'
-import { isProtectableAccessPoint } from './draft'
 
 const SCOPE_ICONS: Record<Exclude<AccessPoint, 'webApp'>, string> = {
   serviceApi: 'i-custom-vender-knowledge-api-aggregate',
@@ -38,7 +33,6 @@ type AccessControlStatusPanelProps = {
   draft: AccessControlDraft
   policies: readonly AccessControlPolicy[]
   enabled: boolean
-  availability: AccessControlScopeAvailability
   onEdit: () => void
   updating?: boolean
   dirty?: boolean
@@ -54,7 +48,6 @@ export function AccessControlStatusPanel({
   draft,
   policies,
   enabled,
-  availability,
   onEdit,
   updating = false,
   dirty = false,
@@ -70,16 +63,16 @@ export function AccessControlStatusPanel({
   const [confirmPause, setConfirmPause] = useState(false)
   const selectedPolicy = policies.find((policy) => policy.id === draft.selectedPolicyId)
   const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.allowed_cidrs) : undefined
-  const coverage = getInServiceCoverage(draft.scopes, availability)
+  const coverage = getInServiceCoverage(draft.scopes)
   const labels: Record<AccessPoint, string> = {
     webApp: t(($) => $['overview.appInfo.title'], { ns: 'appOverview' }),
     serviceApi: t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' }),
     mcp: t(($) => $['mcp.server.title'], { ns: 'tools' }),
     trigger: t(($) => $['settings.trigger'], { ns: 'common' }),
   }
-  const exposedNames = ACCESS_POINT_ORDER.filter(
-    (scope) => availability[scope] && draft.scopes[scope],
-  ).map((scope) => labels[scope])
+  const exposedNames = ACCESS_POINT_ORDER.filter((scope) => draft.scopes[scope]).map(
+    (scope) => labels[scope],
+  )
   const policyName = selectedPolicy?.name
 
   return (
@@ -171,8 +164,7 @@ export function AccessControlStatusPanel({
             {t(($) => $['studio.accessControl.applyTo'], { ns: 'deployments' })}
           </p>
           {ACCESS_POINT_ORDER.map((scope) => {
-            const unavailable = !isProtectableAccessPoint(scope, availability)
-            const excluded = !unavailable && !draft.scopes[scope]
+            const excluded = !draft.scopes[scope]
             const label = labels[scope]
 
             return (
@@ -191,7 +183,7 @@ export function AccessControlStatusPanel({
                   <span
                     className={cn(
                       'flex size-6 shrink-0 items-center justify-center rounded-sm border-[0.5px] border-divider-regular bg-components-panel-bg',
-                      (unavailable || excluded) && 'opacity-40',
+                      excluded && 'opacity-40',
                     )}
                   >
                     <span
@@ -203,9 +195,7 @@ export function AccessControlStatusPanel({
                 <span
                   className={cn(
                     'system-sm-medium',
-                    excluded || unavailable
-                      ? 'shrink-0 text-text-tertiary'
-                      : 'min-w-0 flex-1 text-text-secondary',
+                    excluded ? 'shrink-0 text-text-tertiary' : 'min-w-0 flex-1 text-text-secondary',
                   )}
                 >
                   {label}
@@ -213,11 +203,6 @@ export function AccessControlStatusPanel({
                 {excluded && (
                   <span className="min-w-0 flex-1 text-right system-xs-regular text-text-quaternary">
                     {t(($) => $['studio.accessControl.excluded'], { ns: 'deployments' })}
-                  </span>
-                )}
-                {unavailable && (
-                  <span className="min-w-0 flex-1 text-right system-xs-regular text-text-quaternary">
-                    {t(($) => $['studio.accessControl.notEnabled'], { ns: 'deployments' })}
                   </span>
                 )}
               </div>

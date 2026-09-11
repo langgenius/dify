@@ -1,18 +1,14 @@
 'use client'
 
 import type { FormEvent } from 'react'
-import type {
-  AccessControlDraft,
-  AccessControlPolicy,
-  AccessControlScopeAvailability,
-} from './draft'
+import type { AccessControlDraft, AccessControlPolicy } from './draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
-import { canSaveAccessControl, hasSelectedProtectableAccessPoint } from './draft'
+import { canSaveAccessControl, hasSelectedAccessPoint } from './draft'
 import { AccessControlPolicyField } from './policy-field'
 import { AccessControlScopeList } from './scope-list'
 
@@ -20,7 +16,7 @@ type AccessControlConfigPanelProps = {
   draft: AccessControlDraft
   policies: readonly AccessControlPolicy[]
   currentIp?: string
-  availability: AccessControlScopeAvailability
+  persistableAccessPoints?: readonly string[]
   baseline?: AccessControlDraft
   showBack?: boolean
   saving?: boolean
@@ -36,7 +32,7 @@ export function AccessControlConfigPanel({
   draft,
   policies,
   currentIp,
-  availability,
+  persistableAccessPoints,
   baseline,
   showBack = false,
   saving = false,
@@ -50,7 +46,10 @@ export function AccessControlConfigPanel({
   const { t } = useTranslation()
   const title = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
   const hasSelectedPolicy = Boolean(draft.selectedPolicyId)
-  const canSave = canSaveAccessControl({ draft, availability, baseline })
+  const hasPersistableSelection = persistableAccessPoints
+    ? persistableAccessPoints.length > 0
+    : hasSelectedAccessPoint(draft)
+  const canSave = canSaveAccessControl({ draft, baseline, persistableAccessPoints })
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -99,7 +98,7 @@ export function AccessControlConfigPanel({
           />
         </Fieldset>
 
-        <Fieldset className={cn('flex w-full flex-col gap-1', !hasSelectedPolicy && 'opacity-40')}>
+        <Fieldset className="flex w-full flex-col gap-1">
           <FieldsetLegend className="mb-0 py-0">
             {t(($) => $['studio.accessControl.applyTo'], { ns: 'deployments' })}
           </FieldsetLegend>
@@ -108,13 +107,8 @@ export function AccessControlConfigPanel({
               ? t(($) => $['studio.accessControl.applyToHelpSelected'], { ns: 'deployments' })
               : t(($) => $['studio.accessControl.applyToHelp'], { ns: 'deployments' })}
           </p>
-          <AccessControlScopeList
-            draft={draft}
-            disabled={!hasSelectedPolicy}
-            availability={availability}
-            onDraftChange={onDraftChange}
-          />
-          {hasSelectedPolicy && !hasSelectedProtectableAccessPoint(draft, availability) && (
+          <AccessControlScopeList draft={draft} onDraftChange={onDraftChange} />
+          {hasSelectedPolicy && draft.enabled && !hasPersistableSelection && (
             <p className="system-xs-regular text-text-warning">
               {t(($) => $['studio.accessControl.selectAccessPoint'], { ns: 'deployments' })}
             </p>
