@@ -63,6 +63,74 @@ def test_build_nodes_grounds_model_and_dataset():
     assert by_type["knowledge-retrieval"]["dataset_ids"] == ["kb-real"]  # dataset injected by label match
 
 
+def test_build_nodes_grounds_to_selected_model_resource():
+    # The user selected a model resource at resource-confirmation; the built
+    # workflow nodes must use THAT model, not the Builder's session/cognition
+    # model (the bug: nodes were always grounded to the session model, so a
+    # selected gpt model got overwritten with the session's deepseek).
+    fake_resources = resources.TenantResources(
+        models=[resources.ResourceRef(id="langgenius/openai/openai/chat-latest", label="gpt-5.6")],
+        datasets=[],
+        tools=[],
+    )
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("deepseek", "deepseek-chat")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value=_GEN_GRAPH,
+        ),
+        patch.object(build.resources, "list_tenant_resources", return_value=fake_resources),
+    ):
+        intents = build.build_nodes(
+            "t1", {}, ["Summarize"], resource_ids=["langgenius/openai/openai/chat-latest"]
+        )
+
+    llm_cfg = next(i.args["config"] for i in intents if i.op == "create_node" and i.args["node_type"] == "llm")
+    assert llm_cfg["model"]["provider"] == "langgenius/openai/openai"  # selected model, not deepseek
+    assert llm_cfg["model"]["name"] == "chat-latest"
+
+
+def test_build_nodes_without_selected_model_grounds_to_session_model():
+    # No model resource among the selected ids -> fall back to the session model.
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("deepseek", "deepseek-chat")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value=_GEN_GRAPH,
+        ),
+        patch.object(
+            build.resources,
+            "list_tenant_resources",
+            return_value=resources.TenantResources(
+                models=[], datasets=[resources.ResourceRef(id="kb-1", label="KB")], tools=[]
+            ),
+        ),
+    ):
+        intents = build.build_nodes("t1", {}, ["Summarize"], resource_ids=["kb-1"])  # kb-1 is a dataset, not a model
+
+    llm_cfg = next(i.args["config"] for i in intents if i.op == "create_node" and i.args["node_type"] == "llm")
+    assert llm_cfg["model"]["provider"] == "deepseek"
+    assert llm_cfg["model"]["name"] == "deepseek-chat"
+
+
+def test_selected_workflow_model_resolves_model_resource_only():
+    fake_resources = resources.TenantResources(
+        models=[resources.ResourceRef(id="langgenius/openai/openai/chat-latest", label="gpt")],
+        datasets=[resources.ResourceRef(id="kb-1", label="KB")],
+        tools=[],
+    )
+    with patch.object(build.resources, "list_tenant_resources", return_value=fake_resources):
+        # a selected model resource -> ModelConfig split on the last '/'
+        mc = build._selected_workflow_model("t1", ["kb-1", "langgenius/openai/openai/chat-latest"])
+        assert mc is not None
+        assert mc.provider == "langgenius/openai/openai"
+        assert mc.name == "chat-latest"
+        # only non-model ids selected -> None (don't ground to a dataset/tool)
+        assert build._selected_workflow_model("t1", ["kb-1"]) is None
+    # empty selection -> None
+    assert build._selected_workflow_model("t1", []) is None
+
+
 def test_build_nodes_instruction_states_workflow_topology():
     """The instruction sent to the generator must explicitly require a workflow
     topology (start + end node, no answer node). Otherwise the LLM, fed a
