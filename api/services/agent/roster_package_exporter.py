@@ -48,6 +48,7 @@ from services.agent.errors import (
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
+    RosterAgentPackageApp,
     RosterAgentPackageAudit,
     RosterAgentPackageExport,
     RosterAgentPackageFile,
@@ -261,18 +262,26 @@ class RosterAgentPackageExporter:
                             )
                         )
 
+                app_bytes = yaml.safe_dump(
+                    app.model_dump(mode="json", exclude_none=True), allow_unicode=True, sort_keys=False
+                ).encode("utf-8")
                 manifest = RosterAgentPackageManifest(
                     format=ROSTER_AGENT_PACKAGE_FORMAT,
                     format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
                     audit=audit,
+                    apps=[
+                        RosterAgentPackageApp(
+                            path="app.yaml", size=len(app_bytes), sha256=hashlib.sha256(app_bytes).hexdigest()
+                        )
+                    ],
                     skills=skills,
                     files=files,
                 )
-                manifest.validate_app(app)
-                for path, document in (("manifest.yaml", manifest), ("app.yaml", app)):
-                    document_bytes = yaml.safe_dump(
-                        document.model_dump(mode="json", exclude_none=True), allow_unicode=True, sort_keys=False
-                    ).encode("utf-8")
+                manifest.validate_apps({"app.yaml": app})
+                manifest_bytes = yaml.safe_dump(
+                    manifest.model_dump(mode="json", exclude_none=True), allow_unicode=True, sort_keys=False
+                ).encode("utf-8")
+                for path, document_bytes in (("app.yaml", app_bytes), ("manifest.yaml", manifest_bytes)):
                     if len(document_bytes) > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
                         raise RosterAgentPackageTooLargeError(f"Roster Agent package {path} exceeds the size limit")
                     total_size += len(document_bytes)

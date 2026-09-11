@@ -22,6 +22,7 @@ from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPac
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES,
     PreparedRosterAgentPackage,
+    RosterAgentPackageApp,
     RosterAgentPackageManifest,
     RosterAgentPackageMember,
     RosterAgentPackageSkill,
@@ -51,10 +52,10 @@ class RosterAgentPackageReader:
             self._copy_bounded(source, spool)
             spool.seek(0)
             invalid_skills: dict[str, str] = {}
-            manifest, app, members = self._validate_archive(spool, invalid_skills=invalid_skills)
+            manifest, apps, members = self._validate_archive(spool, invalid_skills=invalid_skills)
             spool.seek(0)
             return PreparedRosterAgentPackage(
-                archive=spool, manifest=manifest, app=app, members=members, invalid_skills=invalid_skills
+                archive=spool, manifest=manifest, apps=apps, members=members, invalid_skills=invalid_skills
             )
         except Exception:
             spool.close()
@@ -85,7 +86,7 @@ class RosterAgentPackageReader:
 
     def _validate_archive(
         self, archive_file: BinaryIO, *, invalid_skills: dict[str, str]
-    ) -> tuple[RosterAgentPackageManifest, AgentAppDsl, dict[str, RosterAgentPackageMember]]:
+    ) -> tuple[RosterAgentPackageManifest, dict[str, AgentAppDsl], dict[str, RosterAgentPackageMember]]:
         try:
             with zipfile.ZipFile(archive_file) as archive:
                 infos = archive.infolist()
@@ -112,21 +113,37 @@ class RosterAgentPackageReader:
                     manifest = RosterAgentPackageManifest.model_validate(manifest_data)
                 except ValidationError as exc:
                     raise InvalidRosterAgentPackageError("Roster Agent package manifest is invalid") from exc
-                app_data, app_size = self._read_yaml_document(archive, info_by_path, "app.yaml")
+                apps: dict[str, AgentAppDsl] = {}
+                members: dict[str, RosterAgentPackageMember] = {}
+                streamed_size = manifest_size
+                for app_resource in manifest.apps:
+                    app_data, app_size = self._read_yaml_document(
+                        archive, info_by_path, app_resource.path, resource=app_resource
+                    )
+                    streamed_size += app_size
+                    if streamed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
+                        raise RosterAgentPackageTooLargeError(
+                            "Roster Agent package uncompressed size exceeds the limit"
+                        )
+                    try:
+                        app = AgentAppDsl.model_validate(app_data)
+                        if check_version_compatibility(app.version, CURRENT_APP_DSL_VERSION) in {
+                            ImportStatus.FAILED,
+                            ImportStatus.PENDING,
+                        }:
+                            raise ValueError("unsupported App DSL version")
+                    except ValueError as exc:
+                        raise InvalidRosterAgentPackageError("Roster Agent package app is invalid") from exc
+                    apps[app_resource.path] = app
+                    members[app_resource.path] = RosterAgentPackageMember(size=app_size, sha256=app_resource.sha256)
                 try:
-                    app = AgentAppDsl.model_validate(app_data)
-                    if check_version_compatibility(app.version, CURRENT_APP_DSL_VERSION) in {
-                        ImportStatus.FAILED,
-                        ImportStatus.PENDING,
-                    }:
-                        raise ValueError("unsupported App DSL version")
-                    manifest.validate_app(app)
+                    manifest.validate_apps(apps)
                 except ValueError as exc:
                     raise InvalidRosterAgentPackageError("Roster Agent package app is invalid") from exc
 
                 expected_paths = {
                     "manifest.yaml",
-                    "app.yaml",
+                    *(item.path for item in manifest.apps),
                     *(item.path for item in manifest.skills),
                     *(item.path for item in manifest.files),
                 }
@@ -138,8 +155,6 @@ class RosterAgentPackageReader:
                 if actual_paths != expected_paths:
                     raise InvalidRosterAgentPackageError("Roster Agent package members do not match the manifest")
 
-                members: dict[str, RosterAgentPackageMember] = {}
-                streamed_size = manifest_size + app_size
                 nested_uncompressed_size = 0
                 signature_info = info_by_path.get("signature.sig")
                 if signature_info is not None:
@@ -209,7 +224,7 @@ class RosterAgentPackageReader:
                             )
                         if inspection.name != resource.name:
                             invalid_skills[resource.id] = "skill_name_mismatch"
-                return manifest, app, members
+                return manifest, apps, members
         except (InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError):
             raise
         except (OSError, zipfile.BadZipFile, EOFError, RuntimeError, ValueError, zlib.error) as exc:
@@ -276,20 +291,27 @@ class RosterAgentPackageReader:
         return output.getvalue() if output is not None else b"", digest.hexdigest(), size
 
     def _read_yaml_document(
-        self, archive: zipfile.ZipFile, infos: dict[str, zipfile.ZipInfo], path: str
+        self,
+        archive: zipfile.ZipFile,
+        infos: dict[str, zipfile.ZipInfo],
+        path: str,
+        *,
+        resource: RosterAgentPackageApp | None = None,
     ) -> tuple[Any, int]:
         info = infos.get(path)
         if info is None:
             raise InvalidRosterAgentPackageError(f"Roster Agent package is missing {path}")
         if info.file_size > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
             raise RosterAgentPackageTooLargeError(f"Roster Agent package {path} exceeds the size limit")
-        payload, _, size = self._read_member(
+        payload, digest, size = self._read_member(
             archive,
             info,
             collect=True,
             max_bytes=dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES,
-            expected_size=info.file_size,
+            expected_size=resource.size if resource is not None else info.file_size,
         )
+        if resource is not None and digest != resource.sha256:
+            raise InvalidRosterAgentPackageError(f"Roster Agent package {path} failed integrity checks")
         try:
             # The custom SafeLoader also rejects duplicate keys and aliases.
             return yaml.load(payload, Loader=_PackageYamlLoader), size  # noqa: S506
