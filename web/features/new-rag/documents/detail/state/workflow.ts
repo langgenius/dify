@@ -473,6 +473,10 @@ export const reindexDocumentAtom = atom(
         await queryClient.invalidateQueries({ queryKey: documentQueryKey })
         return 'document-missing' as const
       }
+      if (item.status === 'failed' || item.status === 'disabled') {
+        await invalidateDocumentWorkflow(get)
+        return 'failed' as const
+      }
       const taskId =
         typeof item.compilation_job?.id === 'string' ? item.compilation_job.id : undefined
       if (!taskId) throw new Error('Re-index response did not include a compilation task id')

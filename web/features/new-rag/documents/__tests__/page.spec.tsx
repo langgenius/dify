@@ -482,7 +482,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                 (item: {
                   documentId?: string
                   document_id?: string
-                  status: 'disabled' | 'not_found' | 'queued'
+                  status: 'disabled' | 'not_found' | 'queued' | 'failed'
                 }) => ({
                   ...item,
                   document_id: item.document_id ?? item.documentId ?? null,
@@ -1659,32 +1659,35 @@ describe('DocumentsPage', () => {
     },
   )
 
-  it('reports a row re-index that loses availability before the request runs', async () => {
-    const user = userEvent.setup()
-    documentsQuery.data = {
-      pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
-    }
-    reindexMutation.mutateAsync.mockResolvedValue({
-      bulkJobId: 'reindex-disabled',
-      items: [{ documentId: 'one', status: 'disabled' }],
-      total: 1,
-    })
+  it.each(['disabled', 'failed'] as const)(
+    'reports a %s row re-index without success feedback',
+    async (status) => {
+      const user = userEvent.setup()
+      documentsQuery.data = {
+        pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
+      }
+      reindexMutation.mutateAsync.mockResolvedValue({
+        bulkJobId: 'reindex-disabled',
+        items: [{ documentId: 'one', status }],
+        total: 1,
+      })
 
-    render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(
-      screen.getByRole('button', {
-        name: /knowledgeSpace\.documentActions/,
-      }),
-    )
-    await user.click(
-      await screen.findByRole('menuitem', {
-        name: 'knowledgeSpace.reindexDocument',
-      }),
-    )
+      render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(
+        screen.getByRole('button', {
+          name: /knowledgeSpace\.documentActions/,
+        }),
+      )
+      await user.click(
+        await screen.findByRole('menuitem', {
+          name: 'knowledgeSpace.reindexDocument',
+        }),
+      )
 
-    expect(toastMock.success).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentsReindexFailed')
-  })
+      expect(toastMock.success).not.toHaveBeenCalled()
+      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentsReindexFailed')
+    },
+  )
 
   it('retries a failed document from its row action', async () => {
     const user = userEvent.setup()
@@ -3980,52 +3983,55 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('keeps concurrently disabled documents selected after a partial bulk re-index result', async () => {
-    const user = userEvent.setup()
-    documentsQuery.data = {
-      pages: [
-        {
-          items: [
-            document({ id: 'one', title: 'One.pdf' }),
-            document({ id: 'disabled', title: 'Disabled.pdf' }),
-          ],
-        },
-      ],
-    }
-    reindexMutation.mutateAsync.mockResolvedValue({
-      bulkJobId: 'reindex-partial-disabled',
-      items: [
-        {
-          asset: {
-            createdAt: '2026-07-20T10:00:00Z',
-            filename: 'one.pdf',
-            id: 'asset-1',
-            knowledgeSpaceId: 'space-1',
-            mimeType: 'application/pdf',
-            objectKey: 'documents/one.pdf',
-            parserStatus: 'pending',
-            sha256: 'sha',
-            sizeBytes: 1024,
-            version: 1,
+  it.each(['disabled', 'failed'] as const)(
+    'keeps %s documents selected after a partial bulk re-index result',
+    async (status) => {
+      const user = userEvent.setup()
+      documentsQuery.data = {
+        pages: [
+          {
+            items: [
+              document({ id: 'one', title: 'One.pdf' }),
+              document({ id: 'disabled', title: 'Disabled.pdf' }),
+            ],
           },
-          compilationJob: { id: 'job-1', stage: 'queued' },
-          status: 'queued',
-          statusUrl: '/tasks/job-1',
-        },
-        { documentId: 'disabled', status: 'disabled' },
-      ],
-      total: 2,
-    })
+        ],
+      }
+      reindexMutation.mutateAsync.mockResolvedValue({
+        bulkJobId: 'reindex-partial-disabled',
+        items: [
+          {
+            asset: {
+              createdAt: '2026-07-20T10:00:00Z',
+              filename: 'one.pdf',
+              id: 'asset-1',
+              knowledgeSpaceId: 'space-1',
+              mimeType: 'application/pdf',
+              objectKey: 'documents/one.pdf',
+              parserStatus: 'pending',
+              sha256: 'sha',
+              sizeBytes: 1024,
+              version: 1,
+            },
+            compilationJob: { id: 'job-1', stage: 'queued' },
+            status: 'queued',
+            statusUrl: '/tasks/job-1',
+          },
+          { documentId: 'disabled', status },
+        ],
+        total: 2,
+      })
 
-    render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
-    await user.click(screen.getByRole('checkbox', { name: 'Disabled.pdf' }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
+      render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Disabled.pdf' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
 
-    expect(screen.getByRole('checkbox', { name: 'One.pdf' })).not.toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Disabled.pdf' })).toBeChecked()
-    expect(toastMock.warning).toHaveBeenCalledWith('knowledgeSpace.documentsReindexFailed')
-  })
+      expect(screen.getByRole('checkbox', { name: 'One.pdf' })).not.toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Disabled.pdf' })).toBeChecked()
+      expect(toastMock.warning).toHaveBeenCalledWith('knowledgeSpace.documentsReindexFailed')
+    },
+  )
 
   it('clears stale selection and refreshes after every re-index target is missing', async () => {
     const user = userEvent.setup()

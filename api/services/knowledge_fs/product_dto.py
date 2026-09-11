@@ -1977,7 +1977,9 @@ class KnowledgeFSDocumentReindexItemResponse(ResponseModel):
         default=None, validation_alias=AliasChoices("compilation_job", "compilationJob")
     )
     document_id: str | None = Field(default=None, validation_alias=AliasChoices("document_id", "documentId"))
-    status: Literal["disabled", "not_found", "queued"]
+    status: Literal["disabled", "not_found", "queued", "failed"]
+    code: str | None = None
+    error: str | None = None
     status_url: str | None = Field(default=None, validation_alias=AliasChoices("status_url", "statusUrl"))
 
 

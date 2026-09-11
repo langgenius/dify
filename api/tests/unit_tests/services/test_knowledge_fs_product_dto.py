@@ -378,11 +378,37 @@ def test_document_reindex_response_preserves_disabled_items() -> None:
                 "compilation_job": None,
                 "document_id": "document-1",
                 "status": "disabled",
+                "code": None,
+                "error": None,
                 "status_url": None,
             }
         ],
         "total": 1,
     }
+
+
+def test_document_reindex_response_preserves_mixed_upstream_results() -> None:
+    response = KnowledgeFSDocumentReindexResponse.model_validate(
+        {
+            "bulkJobId": "bulk-job-1",
+            "items": [
+                {"status": "queued", "compilationJob": {"id": "job-1"}},
+                {
+                    "documentId": "document-2",
+                    "status": "failed",
+                    "code": "DOCUMENT_COMPILATION_PROFILE_CHANGED",
+                    "error": "Model configuration changed",
+                },
+            ],
+            "total": 2,
+        }
+    )
+    result = response.model_dump(mode="json")
+    assert result["items"][0]["compilation_job"] == {"id": "job-1"}
+    assert result["items"][1]["status"] == "failed"
+    assert result["items"][1]["document_id"] == "document-2"
+    assert result["items"][1]["code"] == "DOCUMENT_COMPILATION_PROFILE_CHANGED"
+    assert result["items"][1]["error"] == "Model configuration changed"
 
 
 def test_space_create_initial_source_is_a_backward_compatible_discriminated_union() -> None:

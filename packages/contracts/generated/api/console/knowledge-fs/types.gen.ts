@@ -1614,11 +1614,13 @@ export type KnowledgeFsBulkDeletionAcceptedItemResponse = {
 
 export type KnowledgeFsDocumentReindexItemResponse = {
   asset?: KnowledgeFsDocumentResponse | null
+  code?: string | null
   compilation_job?: {
     [key: string]: unknown
   } | null
   document_id?: string | null
-  status: 'disabled' | 'not_found' | 'queued'
+  error?: string | null
+  status: 'disabled' | 'failed' | 'not_found' | 'queued'
   status_url?: string | null
 }
 
