@@ -243,6 +243,24 @@ beforeEach(() => {
       await screen.findByRole('button', { name: 'Fix failed run with App Builder' }),
     ).toBeDisabled()
   })
+
+  it('restores the editing draft and exits history before syncing and starting Fix', async () => {
+    const user = userEvent.setup()
+    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+    const preparation: string[] = []
+    mockLoadBackupDraft.mockImplementationOnce(() => preparation.push('restore'))
+    mockSyncDraft.mockImplementationOnce(async () => {
+      if (workflowStoreState.historyWorkflowData) throw new Error('Workflow draft sync failed.')
+      preparation.push('sync')
+    })
+    renderWorkflowPanel({ enabled: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Fix failed run with App Builder' }))
+
+    expect(preparation).toEqual(['restore', 'sync'])
+    expect(workflowStoreState.historyWorkflowData).toBeUndefined()
+    expect(mockStartFix).toHaveBeenCalledExactlyOnceWith('app-123', 'failed-run-1', undefined)
+  })
 })
 afterEach(() => {
   window.history.replaceState({}, '', originalUrl)

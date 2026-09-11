@@ -1,7 +1,10 @@
 import type { DifyBuilderRuntime } from '../store'
 import type { SessionView } from '../types'
+import { QueryClient } from '@tanstack/react-query'
 import { createStore } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import {
+  difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
@@ -18,6 +21,7 @@ import {
   difyBuilderCanvasRefreshingAtom,
   difyBuilderDraftAtom,
   difyBuilderInteractionBusyAtom,
+  difyBuilderLocalErrorAtom,
   difyBuilderModelReadonlyAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRegisterChecklistErrorsAtom,
@@ -26,7 +30,9 @@ import {
   difyBuilderRunActiveAtom,
   difyBuilderRuntimeAtom,
   difyBuilderSendDraftAtom,
+  difyBuilderStartChecklistFixAtom,
   difyBuilderStartPromptAtom,
+  difyBuilderStartRunFixAtom,
   difyBuilderSubmitActionAtom,
 } from '../store'
 
@@ -55,7 +61,7 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
     canEdit: true,
     enabled: true,
     getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
-    onSyncDraft: vi.fn(async () => undefined),
+    onSyncDraft: vi.fn(async (): Promise<void> => undefined),
     session: {
       refresh: vi.fn(async () => true),
       getTrace: vi.fn(() => ({ entries: [], truncated: false })),
@@ -138,7 +144,7 @@ describe('Dify Builder store', () => {
     expect(store.get(difyBuilderActiveInteractionAtom)?.card).toEqual(card)
   })
 
-  it('requires the feature, edit permission, and an idle terminal session to start a fix', () => {
+  it('requires the feature, edit permission, and an idle session to start a fix', () => {
     const store = createStore()
     const runtime = createRuntime(vi.fn(async () => true))
     store.set(difyBuilderSessionViewAtom, createSessionView())
@@ -163,6 +169,104 @@ describe('Dify Builder store', () => {
     store.set(difyBuilderCanvasRefreshingAtom, false)
     store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
     expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({ run_status: 'processing', interrupted: true }),
+    )
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({ phase: 'test', run_status: 'waiting_input' }),
+    )
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+  })
+
+  it.each(['waiting_input', 'waiting_confirmation', 'paused'] as const)(
+    'starts a new Fix session while the current session is %s',
+    async (runStatus) => {
+      const store = createStore()
+      store.set(queryClientAtom, new QueryClient())
+      const runtime = createRuntime(vi.fn(async () => true))
+      store.set(difyBuilderRuntimeAtom, runtime)
+      store.set(
+        difyBuilderSessionViewAtom,
+        createSessionView({
+          entry_mode: 'build',
+          state: runStatus === 'waiting_input' ? 'build.goal_analysis' : 'build.plan_approval',
+          run_status: runStatus,
+        }),
+      )
+      store.set(difyBuilderDraftAtom, 'Old build conversation draft')
+
+      expect(store.get(difyBuilderCanStartFixAtom)).toBe(true)
+      expect(await store.set(difyBuilderStartRunFixAtom, 'failed-run-42')).toBe(true)
+      expect(runtime.session.startFix).toHaveBeenCalledExactlyOnceWith(
+        'app-1',
+        'failed-run-42',
+        undefined,
+      )
+      expect(runtime.session.sendMessage).not.toHaveBeenCalled()
+      expect(store.get(difyBuilderDraftAtom)).toBe('')
+    },
+  )
+
+  it('rejects a second Fix entry while the first is syncing the draft', async () => {
+    const store = createStore()
+    store.set(queryClientAtom, new QueryClient())
+    const runtime = createRuntime(vi.fn(async () => true))
+    let finishSync!: () => void
+    const sync = new Promise<void>((resolve) => {
+      finishSync = resolve
+    })
+    runtime.onSyncDraft = vi.fn(() => sync)
+    store.set(difyBuilderRuntimeAtom, runtime)
+
+    const starting = store.set(difyBuilderStartRunFixAtom, 'failed-run-42')
+    const duplicate = store.set(difyBuilderStartRunFixAtom, 'failed-run-43')
+    const checklist = store.set(difyBuilderStartChecklistFixAtom, [
+      {
+        messages: ['Missing model'],
+        node_id: 'llm-1',
+        node_type: 'llm',
+        plugin_missing: false,
+        title: 'LLM',
+        unconnected: false,
+      },
+    ])
+    finishSync()
+
+    expect(await starting).toBe(true)
+    expect(await duplicate).toBe(false)
+    expect(await checklist).toBe(false)
+    expect(runtime.onSyncDraft).toHaveBeenCalledOnce()
+    expect(runtime.session.startFix).toHaveBeenCalledExactlyOnceWith(
+      'app-1',
+      'failed-run-42',
+      undefined,
+    )
+    expect(runtime.session.startChecklistFix).not.toHaveBeenCalled()
+  })
+
+  it('retains the existing session and draft when preparation fails, then allows retry', async () => {
+    const store = createStore()
+    store.set(queryClientAtom, new QueryClient())
+    const runtime = createRuntime(vi.fn(async () => true))
+    const waiting = createSessionView({ run_status: 'waiting_confirmation' })
+    runtime.onSyncDraft.mockRejectedValueOnce(new Error('Workflow draft sync failed.'))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderSessionViewAtom, waiting)
+    store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+    store.set(difyBuilderDraftAtom, 'Continue the build')
+
+    expect(await store.set(difyBuilderStartRunFixAtom, 'failed-run-42')).toBe(false)
+    expect(runtime.session.startFix).not.toHaveBeenCalled()
+    expect(store.get(difyBuilderSessionViewAtom)).toEqual(waiting)
+    expect(store.get(difyBuilderActiveSessionIdAtom)).toBe(waiting.session_id)
+    expect(store.get(difyBuilderDraftAtom)).toBe('Continue the build')
+    expect(store.get(difyBuilderLocalErrorAtom)).toBe('Workflow draft sync failed.')
+
+    expect(await store.set(difyBuilderStartRunFixAtom, 'failed-run-42')).toBe(true)
+    expect(runtime.session.startFix).toHaveBeenCalledOnce()
   })
 
   it('makes an interrupted execution resettable without releasing its canvas lock', () => {
