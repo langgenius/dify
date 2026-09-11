@@ -59,6 +59,33 @@ describe('useExportAppDsl', () => {
     mocks.getEnvironmentVariables.mockResolvedValue({ items: [] })
   })
 
+  it.each([
+    ['download.ifpkg', 'download.ifpkg'],
+    ['blob', 'Support Agent.ifpkg'],
+  ])('downloads binary exports using %s without rebuilding their bytes', async (name, fileName) => {
+    const archive = new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])], name, {
+      type: 'application/zip',
+    })
+    mocks.exportAppDsl.mockResolvedValue(archive)
+    const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
+
+    await act(async () => {
+      await expect(
+        result.current.exportAppDsl({
+          appId: 'agent-app-id',
+          appName: 'Support Agent',
+        }),
+      ).resolves.toEqual({ status: 'downloaded' })
+    })
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({ data: archive, fileName })
+    const [{ data }] = mocks.downloadBlob.mock.calls[0] as [{ data: Blob }]
+    expect(new Uint8Array(await data.arrayBuffer())).toEqual(
+      new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff]),
+    )
+    expect(mocks.getEnvironmentVariables).not.toHaveBeenCalled()
+  })
+
   it('exports through the generated client and hands the YAML file to the browser', async () => {
     mocks.exportAppDsl.mockResolvedValue({ data: 'kind: app\nversion: 0.1.5\n' })
     const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })

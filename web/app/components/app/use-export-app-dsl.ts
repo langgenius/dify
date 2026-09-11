@@ -40,7 +40,7 @@ async function getSecretEnvironmentVariables(appId: string) {
 }
 
 async function exportAppDslFile({ appId, appName, includeSecret = false }: ExportAppDslInput) {
-  const { data } = await consoleClient.apps.byAppId.export.get(
+  const response = await consoleClient.apps.byAppId.export.get(
     {
       params: { app_id: appId },
       query: { include_secret: includeSecret },
@@ -48,8 +48,17 @@ async function exportAppDslFile({ appId, appName, includeSecret = false }: Expor
     { context: { silent: true } },
   )
 
+  if (response instanceof Blob) {
+    const name = response instanceof File ? response.name : undefined
+    downloadBlob({
+      data: response,
+      fileName: name && name !== 'blob' ? name : `${appName}.ifpkg`,
+    })
+    return
+  }
+
   downloadBlob({
-    data: new Blob([data], { type: 'application/yaml' }),
+    data: new Blob([response.data], { type: 'application/yaml' }),
     fileName: `${appName}.yml`,
   })
 }
