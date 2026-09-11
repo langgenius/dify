@@ -103,6 +103,12 @@ function CreateFromDSLModal({
   )
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
+      if (
+        source.type === CreateFromDSLModalTab.FROM_FILE &&
+        source.file.name.toLowerCase().endsWith('.ifpkg')
+      )
+        return requestImport({ body: { file: source.file } })
+
       const body =
         source.type === CreateFromDSLModalTab.FROM_FILE
           ? ({
@@ -134,9 +140,14 @@ function CreateFromDSLModal({
       select: (data) => data.apps,
     }),
   )
-  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  const isPackageImport =
+    currentTab === CreateFromDSLModalTab.FROM_FILE &&
+    currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
+  const isAppQuotaUnavailable =
+    !isPackageImport && deploymentEdition === 'CLOUD' && appQuota === undefined
   // A limit of 0 means unlimited.
   const isAppsFull =
+    !isPackageImport &&
     deploymentEdition === 'CLOUD' &&
     appQuota !== undefined &&
     appQuota.limit > 0 &&
@@ -309,6 +320,8 @@ function CreateFromDSLModal({
                   className="px-6 py-4"
                 >
                   <Uploader
+                    accept=".yaml,.yml,.ifpkg"
+                    displayName={isPackageImport ? 'IFPKG' : 'YAML'}
                     browseButtonRef={browseButtonRef}
                     className="mt-0"
                     file={currentFile}

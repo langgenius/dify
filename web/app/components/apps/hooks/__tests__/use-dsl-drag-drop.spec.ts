@@ -188,24 +188,27 @@ describe('useDSLDragDrop', () => {
   })
 
   describe('Drop functionality', () => {
-    it('should call onDSLFileDropped for .yaml file', () => {
-      const dropZoneRef = { current: container }
-      renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          dropZoneRef,
-        }),
-      )
+    it.each(['test.yaml', 'agent.ifpkg', 'agent.IFPKG'])(
+      'should call onDSLFileDropped for %s',
+      (filename) => {
+        const dropZoneRef = { current: container }
+        renderHook(() =>
+          useDSLDragDrop({
+            onDSLFileDropped: mockOnDSLFileDropped,
+            dropZoneRef,
+          }),
+        )
 
-      const file = createMockFile('test.yaml')
-      const dropEvent = createDragEvent('drop', [file])
+        const file = createMockFile(filename)
+        const dropEvent = createDragEvent('drop', [file])
 
-      act(() => {
-        container.dispatchEvent(dropEvent)
-      })
+        act(() => {
+          container.dispatchEvent(dropEvent)
+        })
 
-      expect(mockOnDSLFileDropped).toHaveBeenCalledWith(file)
-    })
+        expect(mockOnDSLFileDropped).toHaveBeenCalledWith(file)
+      },
+    )
 
     it('should call onDSLFileDropped for .yml file', () => {
       const dropZoneRef = { current: container }
