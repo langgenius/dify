@@ -1,5 +1,7 @@
 """Build deterministic OTLP messages without a global tracer or SDK span queue."""
 
+from __future__ import annotations
+
 import os
 from bisect import bisect_left
 from collections.abc import Mapping, Sequence
@@ -7,7 +9,7 @@ from datetime import datetime
 from ipaddress import ip_address, ip_network
 from ssl import SSLContext
 from time import monotonic
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 from uuid import UUID
 
@@ -45,6 +47,9 @@ from core.ops.provider_export import (
     timestamp_ns,
 )
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
+
+if TYPE_CHECKING:
+    from core.ops.trace_export_state import TraceExportState
 
 
 def otlp_value(value: Any) -> AnyValue:
@@ -207,6 +212,7 @@ class OtlpTraceClient:
         self.resource = Resource(attributes=otlp_attributes(resource_attributes))
         self.project_url = project_url
         self.protocol = protocol
+        self.export_state: TraceExportState | None = None
 
     def get_project_url(self) -> str:
         return self.project_url
@@ -224,10 +230,17 @@ class OtlpTraceClient:
     def send_metrics(self, metrics: list[Metric]) -> None:
         if not metrics:
             return
+        if self.export_state is None:
+            raise TraceExportError("metric_state_required")
+        if self.export_state.has_completed_signal("metrics"):
+            return
+        resource = Resource()
+        resource.CopyFrom(self.resource)
+        metrics = self.export_state.prepare_metrics(metrics, resource, "dify.ops")
         request = ExportMetricsServiceRequest(
             resource_metrics=[
                 ResourceMetrics(
-                    resource=self.resource,
+                    resource=resource,
                     scope_metrics=[ScopeMetrics(scope=InstrumentationScope(name="dify.ops"), metrics=metrics)],
                 )
             ]
@@ -236,6 +249,7 @@ class OtlpTraceClient:
         accepted = ExportMetricsServiceResponse.FromString(response)
         if accepted.partial_success.rejected_data_points:
             raise TraceExportError("provider_rejected_metrics")
+        self.export_state.complete_signal("metrics")
 
     def _send(self, signal: str, serialized: bytes) -> bytes:
         client = self.metrics_http if signal == "metrics" and self.metrics_http is not None else self.http

@@ -445,6 +445,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle error events."""
         with self._database_session() as session:
             err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
+        self._emit_message_trace()
         yield self._base_task_pipeline.error_to_stream_response(err)
 
     def _handle_workflow_started_event(
@@ -774,6 +775,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         with self._database_session() as session:
             err_event = QueueErrorEvent(error=ValueError(f"Run failed: {event.error}"))
             err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
+        self._emit_message_trace()
 
         yield workflow_finish_resp
         yield self._base_task_pipeline.error_to_stream_response(err)
