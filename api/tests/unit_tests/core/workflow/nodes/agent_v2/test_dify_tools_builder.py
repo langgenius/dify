@@ -670,6 +670,57 @@ def test_rejects_missing_required_runtime_parameter():
     assert exc_info.value.error_code == "agent_tool_runtime_parameter_missing"
 
 
+def test_forwards_model_selector_and_pinned_llm_runtime_parameters():
+    tool = _tool(runtime_parameters={})
+    tool.entity.parameters = [
+        *tool.entity.parameters,
+        ToolParameter(
+            name="model",
+            label=I18nObject(en_US="Model"),
+            type=ToolParameter.ToolParameterType.MODEL_SELECTOR,
+            form=ToolParameter.ToolParameterForm.FORM,
+            required=True,
+        ),
+        ToolParameter(
+            name="tables",
+            label=I18nObject(en_US="Tables"),
+            type=ToolParameter.ToolParameterType.STRING,
+            form=ToolParameter.ToolParameterForm.LLM,
+            required=False,
+            llm_description="Optional table filter",
+        ),
+    ]
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=FakeRuntimeProvider(tool))
+    model = {"provider": "openai", "model": "gpt-4.1", "model_type": "llm"}
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
+                    "tool_name": "search",
+                    "credential_type": "api-key",
+                    "credential_id": "credential-1",
+                    "runtime_parameters": {
+                        "region": "us",
+                        "tables": "orders",
+                        "model": model,
+                    },
+                }
+            ]
+        }
+    )
+
+    result = _build(builder, tools)
+
+    assert result is not None
+    prepared = result.tools[0]
+    assert prepared.runtime_parameters["model"] == model
+    assert prepared.runtime_parameters["tables"] == "orders"
+    assert "tables" not in prepared.parameters_json_schema.get("properties", {})
+    assert "query" in prepared.parameters_json_schema.get("properties", {})
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # invoke_from is threaded through to ToolManager
 # ──────────────────────────────────────────────────────────────────────────────
