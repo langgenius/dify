@@ -69,11 +69,11 @@ def test_node_metadata_and_dimensions_survive_content_policy(include_content: bo
                 "credential_id": "credential-id",
                 "prompts": "private prompt",
                 "process_data": {"prompts": "private rendered prompt"},
+                "index": 4,
+                "predecessor_node_id": "node-1",
                 "metadata": {
-                    "index": 4,
                     "iteration_id": "iteration-1",
                     "iteration_index": 2,
-                    "predecessor_node_id": "node-1",
                 },
             },
         }
@@ -84,6 +84,7 @@ def test_node_metadata_and_dimensions_survive_content_policy(include_content: bo
     assert attributes["dify.node.type"] == "tool"
     assert attributes["dify.node.version"] == "2"
     assert attributes["dify.node.index"] == 4
+    assert attributes["dify.node.predecessor_node_id"] == "node-1"
     assert attributes["dify.node.iteration_index"] == 2
     assert attributes["dify.node.elapsed_time"] == 2
     assert attributes["dify.app.name"] == "App"

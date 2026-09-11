@@ -333,6 +333,15 @@ class WorkflowTraceRecorder(Layer):
                 self.workflow_id,
             )
 
+    def record_node_execution_index(self, node_execution_id: str, index: int) -> None:
+        """Keep the sequence assigned by the owning persistence layer."""
+        with self._lock:
+            span_id = self._execution_span_ids.get(node_execution_id)
+            if self._closed or self._ownership_rejected or span_id is None:
+                return
+            span = self._spans[span_id]
+            self._spans[span_id] = span.model_copy(update={"attributes": {**span.attributes, "index": index}})
+
     def _record_workflow_event(self, event: EngineEvent) -> None:
         if self._closed or self._ownership_rejected:
             return
@@ -451,10 +460,14 @@ class WorkflowTraceRecorder(Layer):
             self._attempts[event.id] = event.retry_index
             return
         if isinstance(event, NodeRunStartedEvent):
+            attributes = dict(span.attributes)
+            if event.predecessor_node_id is not None:
+                attributes["predecessor_node_id"] = self._copy_value(event.predecessor_node_id[:512])
             self._spans[span_id] = span.model_copy(
                 update={
                     "started_at": self._utc(event.start_at),
                     "inputs": self._copy_value(event.node_run_result.inputs),
+                    "attributes": attributes,
                 }
             )
             return

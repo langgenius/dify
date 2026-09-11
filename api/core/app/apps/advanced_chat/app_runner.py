@@ -253,18 +253,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
         )
 
-        persistence_layer = WorkflowPersistenceLayer(
-            application_generate_entity=self.application_generate_entity,
-            workflow_info=PersistenceWorkflowInfo(
-                workflow_id=self._workflow.id,
-                workflow_type=WorkflowType(self._workflow.type),
-                version=self._workflow.version,
-                graph_data=self._workflow.graph_dict,
-            ),
-            workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
-        )
-
         trace_recorder = self.application_generate_entity.trace_recorder
         workflow_trace = (
             trace_recorder.create_workflow_trace(
@@ -287,6 +275,18 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
             if trace_recorder is not None and self.application_generate_entity.workflow_run_id is not None
             else None
+        )
+        persistence_layer = WorkflowPersistenceLayer(
+            application_generate_entity=self.application_generate_entity,
+            workflow_info=PersistenceWorkflowInfo(
+                workflow_id=self._workflow.id,
+                workflow_type=WorkflowType(self._workflow.type),
+                version=self._workflow.version,
+                graph_data=self._workflow.graph_dict,
+            ),
+            workflow_execution_repository=self._workflow_execution_repository,
+            workflow_node_execution_repository=self._workflow_node_execution_repository,
+            record_node_execution_index=workflow_trace.record_node_execution_index if workflow_trace else None,
         )
         workflow_entry = WorkflowEntry(
             tenant_id=self._workflow.tenant_id,

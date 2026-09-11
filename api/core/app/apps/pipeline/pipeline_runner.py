@@ -221,18 +221,6 @@ class PipelineRunner(WorkflowBasedAppRunner):
             )
 
         # RUN WORKFLOW
-        persistence_layer = WorkflowPersistenceLayer(
-            application_generate_entity=self.application_generate_entity,
-            workflow_info=PersistenceWorkflowInfo(
-                workflow_id=workflow.id,
-                workflow_type=WorkflowType(workflow.type),
-                version=workflow.version,
-                graph_data=workflow.graph_dict,
-            ),
-            workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
-        )
-
         trace_recorder = self.application_generate_entity.trace_recorder
         workflow_trace = (
             trace_recorder.create_workflow_trace(
@@ -245,6 +233,18 @@ class PipelineRunner(WorkflowBasedAppRunner):
             )
             if trace_recorder is not None
             else None
+        )
+        persistence_layer = WorkflowPersistenceLayer(
+            application_generate_entity=self.application_generate_entity,
+            workflow_info=PersistenceWorkflowInfo(
+                workflow_id=workflow.id,
+                workflow_type=WorkflowType(workflow.type),
+                version=workflow.version,
+                graph_data=workflow.graph_dict,
+            ),
+            workflow_execution_repository=self._workflow_execution_repository,
+            workflow_node_execution_repository=self._workflow_node_execution_repository,
+            record_node_execution_index=workflow_trace.record_node_execution_index if workflow_trace else None,
         )
         workflow_entry = WorkflowEntry(
             tenant_id=workflow.tenant_id,

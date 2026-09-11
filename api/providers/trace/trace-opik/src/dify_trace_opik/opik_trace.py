@@ -61,7 +61,7 @@ class OpikTraceClient:
             self.config.url,
             {
                 **({"Authorization": self.config.api_key} if self.config.api_key else {}),
-                **({"Comet-Workspace": self.config.workspace} if self.config.workspace else {}),
+                "Comet-Workspace": self.config.workspace or "default",
             },
         )
 

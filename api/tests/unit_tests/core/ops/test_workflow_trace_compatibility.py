@@ -2,14 +2,18 @@
 
 from collections.abc import Generator, Iterator
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from typing import override
 from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
 
+from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource
 from core.ops.workflow_trace import WorkflowTraceRecorder, build_workflow_trace_inputs
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.llm_node import DifyLLMNode
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.system_variables import build_system_variables, get_all_system_variables
@@ -27,7 +31,7 @@ from graphon.engine_events import (
     NodeRunSucceededEvent,
 )
 from graphon.entities.base_node_data import BaseNodeData, RetryConfig
-from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus, WorkflowType
 from graphon.graph import Graph
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.message_entities import UserPromptMessage
@@ -62,6 +66,35 @@ def recorder(source: TraceSource, submitted: list[CompletedTrace]) -> WorkflowTr
         inputs={},
         submit_completed_trace=lambda trace, _settings=(): submitted.append(trace) is None,
     )
+
+
+def make_persistence_layer(
+    recorder: WorkflowTraceRecorder, state: RuntimeState
+) -> tuple[WorkflowPersistenceLayer, Mock]:
+    source = recorder.source
+    add_variables_to_pool(state.variable_pool, build_system_variables(workflow_execution_id=source.operation_id))
+    node_repository = Mock(spec=WorkflowNodeExecutionRepository)
+    layer = WorkflowPersistenceLayer(
+        application_generate_entity=WorkflowAppGenerateEntity.model_construct(
+            task_id=source.operation_id,
+            app_config=SimpleNamespace(app_id=source.app_id, tenant_id=source.tenant_id),
+            inputs={},
+            files=[],
+            user_id=source.actor_id or "caller",
+            extras={},
+            workflow_execution_id=source.operation_id,
+        ),
+        workflow_info=PersistenceWorkflowInfo(
+            workflow_id=recorder.workflow_id,
+            workflow_type=WorkflowType.WORKFLOW,
+            version=recorder.workflow_version,
+            graph_data={"nodes": [], "edges": []},
+        ),
+        workflow_execution_repository=Mock(spec=WorkflowExecutionRepository),
+        workflow_node_execution_repository=node_repository,
+        record_node_execution_index=recorder.record_node_execution_index,
+    )
+    return layer, node_repository
 
 
 def test_chatflow_root_includes_question_files_and_user_variables(source: TraceSource) -> None:
@@ -223,11 +256,19 @@ def test_real_engine_retry_preserves_prompt_model_metadata_and_failure_finish(
         runtime_state=state,
         command_channel=InMemoryChannel(),
     )
+    persistence, node_repository = make_persistence_layer(recorder, state)
     engine.add_layer(recorder)
+    engine.add_layer(persistence)
     events = list(engine.run())
     recorder.finish_workflow_trace()
 
     assert any(isinstance(event, NodeRunRetryEvent) for event in events)
+    persisted_nodes = {call.args[0].node_id: call.args[0] for call in node_repository.save.call_args_list}
+    assert {node_id: execution.index for node_id, execution in persisted_nodes.items()} == {"start": 1, "llm": 2}
+    for span in submitted[0].spans:
+        if span.node_id in persisted_nodes:
+            assert span.attributes["index"] == persisted_nodes[span.node_id].index
+            assert span.attributes.get("predecessor_node_id") == persisted_nodes[span.node_id].predecessor_node_id
     failed = next(span for span in submitted[0].spans if span.error == "temporary failure")
     final = next(span for span in submitted[0].spans if span.span_name == "Answer attempt 2")
     assert failed.ended_at is not None

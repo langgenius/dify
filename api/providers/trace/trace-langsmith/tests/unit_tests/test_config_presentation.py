@@ -68,8 +68,11 @@ def test_saved_config_stays_readable_when_project_discovery_fails(
         ("https://dev.api.smith.langchain.com", "https://dev.smith.langchain.com"),
         ("https://beta.api.smith.langchain.com", "https://beta.smith.langchain.com"),
         ("https://langsmith.example/api", "https://langsmith.example"),
+        ("https://langsmith.example/api/", "https://langsmith.example"),
         ("https://langsmith.example/prefix/api", "https://langsmith.example/prefix"),
+        ("https://langsmith.example/prefix/api/", "https://langsmith.example/prefix"),
         ("https://langsmith.example/prefix/api/v1", "https://langsmith.example/prefix"),
+        ("https://langsmith.example/prefix/api/v1/", "https://langsmith.example/prefix"),
     ],
 )
 def test_project_url_uses_endpoint_web_host(endpoint: str, web_url: str, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -78,4 +81,4 @@ def test_project_url_uses_endpoint_web_host(endpoint: str, web_url: str, monkeyp
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
 
     assert client.get_project_url() == f"{web_url}/o/tenant-id/projects/p/project-id"
-    assert request.call_args.args == ("GET", f"{endpoint}/sessions")
+    assert request.call_args.args == ("GET", f"{endpoint.rstrip('/')}/sessions")
