@@ -6,7 +6,7 @@ rather than crashing the advance. build_nodes lives in the same module
 (added in Task A6)."""
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from core.app.app_config.entities import ModelConfig
@@ -189,6 +189,31 @@ def _generator_model_config(tenant_id: str, model_config: dict[str, Any]) -> Mod
     )
 
 
+def _selected_workflow_model(tenant_id: str, resource_ids: Sequence[str]) -> ModelConfig | None:
+    """The user-selected MODEL resource (from the resource-confirmation step) as a
+    ModelConfig to ground the built workflow's node model blocks, or None when the
+    user selected no model.
+
+    A model resource id is ``{provider}/{name}`` (see ``resources._list_models``),
+    so split on the last '/'. Only ids that are actually model resources qualify --
+    a selected dataset/tool must never ground a node's model. This is deliberately
+    separate from the Builder's session/cognition model: the workflow runs on the
+    model the user picked, not on whatever model drives the Builder itself.
+    """
+    if not resource_ids:
+        return None
+    model_ids = {m.id for m in resources.list_tenant_resources(tenant_id).models}
+    selected = next((rid for rid in resource_ids if rid in model_ids), None)
+    if selected is None:
+        return None
+    provider, _, name = selected.rpartition("/")
+    if not provider or not name:
+        return None
+    return ModelConfig.model_validate(
+        {"provider": provider, "name": name, "mode": "chat", "completion_params": {}}
+    )
+
+
 # Prepended to the generator instruction so the LLM emits a WORKFLOW-shaped graph
 # (start + end node) even when the plan reads like a chatbot. Without this the model
 # often produces a chatflow graph (answer node / no end node) that the generator
@@ -211,7 +236,12 @@ def _terminal_retry_instruction(base_instruction: str, error: str) -> str:
     )
 
 
-def build_nodes(tenant_id: str, model_config: dict[str, Any], plan_items: list[str]) -> list[MutationIntent]:
+def build_nodes(
+    tenant_id: str,
+    model_config: dict[str, Any],
+    plan_items: list[str],
+    resource_ids: Sequence[str] = (),
+) -> list[MutationIntent]:
     try:
         mc = _generator_model_config(tenant_id, model_config)
         base_instruction = f"{_WORKFLOW_TOPOLOGY_DIRECTIVE}\n\n" + "\n".join(plan_items)
@@ -243,7 +273,12 @@ def build_nodes(tenant_id: str, model_config: dict[str, Any], plan_items: list[s
             )
             return []
         intents = graph_translate.to_intents(graph)
-        _ground(intents, mc, tenant_id, plan_items)
+        # Ground node model blocks to the user-SELECTED model (resource confirmation),
+        # falling back to the generation/session model when none was selected. The
+        # generator above still runs on ``mc`` (cognition); only the built workflow's
+        # runtime model follows the user's choice.
+        grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
+        _ground(intents, grounding_mc, tenant_id, plan_items)
         applicable, _rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
         return applicable
     except Exception:  # any generation/translation failure -> honest empty build

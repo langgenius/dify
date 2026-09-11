@@ -265,7 +265,7 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas():
         "nodes": [{"id": "start", "data": {"type": "start", "title": "Old", "variables": []}}],
         "edges": [],
     }
-    env.agent.build_nodes = lambda _plan: []  # generation produced nothing
+    env.agent.build_nodes = lambda _plan, _rids=None: []  # generation produced nothing
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
     fc = DifyBuilderContext(plan_items=["x"])
 
@@ -291,7 +291,7 @@ def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build():
         "edges": [],
     }
     # generator returns a graph whose start id is "node1" (a document variable)
-    env.agent.build_nodes = lambda _plan: [
+    env.agent.build_nodes = lambda _plan, _rids=None: [
         MutationIntent(
             op="create_node",
             args={
@@ -333,7 +333,7 @@ def test_plan_approval_survives_generator_reusing_the_deleted_placeholder_start_
         "edges": [],
     }
     # generator reuses the SAME id ("start") for its own start node
-    env.agent.build_nodes = lambda _plan: [
+    env.agent.build_nodes = lambda _plan, _rids=None: [
         MutationIntent(
             op="create_node",
             args={
