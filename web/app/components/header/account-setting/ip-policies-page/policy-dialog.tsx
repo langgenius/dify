@@ -23,7 +23,7 @@ import {
   IP_POLICY_NAME_MAX_LENGTH,
 } from './validate-ip-entry'
 
-export type IpPolicyDialogSubmit = {
+type IpPolicyDialogSubmit = {
   name: string
   allowed_cidrs: string[]
 }

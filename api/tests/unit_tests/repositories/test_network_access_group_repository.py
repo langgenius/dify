@@ -219,7 +219,7 @@ def test_list_apps_batch_loads_agent_routes_and_excludes_hidden_workflow_backing
 
     agent_selects: list[str] = []
 
-    def record_agent_select(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def record_agent_select(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         if "FROM agents" in statement:
             agent_selects.append(statement)
 
