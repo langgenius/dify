@@ -244,28 +244,6 @@ export const difyBuilderSendDraftAtom = atom(null, async (get, set, model: Sessi
   return set(startDifyBuilderPromptAtom, { model, text: prompt })
 })
 
-export const difyBuilderRetryMessageAtom = atom(null, async (get, set, turnId: string) => {
-  const runtime = get(difyBuilderRuntimeAtom)
-  const retryableMessage = get(difyBuilderRetryableMessageAtom)
-  const view = get(difyBuilderSessionViewAtom)
-  if (
-    !runtime?.enabled ||
-    !runtime.canEdit ||
-    !retryableMessage ||
-    retryableMessage.turnId !== turnId ||
-    retryableMessage.sessionId !== view?.session_id ||
-    get(difyBuilderInteractionBusyAtom) ||
-    !get(difyBuilderCanvasReadyAtom)
-  )
-    return false
-
-  set(difyBuilderLocalErrorAtom, '')
-  const sent = await runtime.session.sendMessage(retryableMessage.text, retryableMessage.turnId)
-  if (sent && get(difyBuilderRetryableMessageAtom)?.turnId === retryableMessage.turnId)
-    set(difyBuilderRetryableMessageAtom, null)
-  return sent
-})
-
 const startDifyBuilderFixAtom = atom(
   null,
   async (get, set, target: { failedRunId: string } | { errors: ChecklistErrorPayload[] }) => {
