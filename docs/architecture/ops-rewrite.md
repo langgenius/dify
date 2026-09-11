@@ -39,6 +39,7 @@ flowchart TD
 | [trace_queue.py](../../api/core/ops/trace_queue.py) | Queue admission, byte budgets, one writer and durable acceptance |
 | [provider_config.py](../../api/core/ops/provider_config.py) | Configuration schemas, encryption and secret field selection |
 | [provider_export.py](../../api/core/ops/provider_export.py) | Fresh client construction, synchronous HTTP/OTLP support and receipt ownership |
+| [trace_export_state.py](../../api/core/ops/trace_export_state.py) | Delivery-owned signal progress and cumulative metric snapshots |
 | [trace_source.py](../../api/core/ops/trace_source.py) | Authorized source/destination lookup, recorder creation, message enrichment and enterprise source handling |
 | [ops_trace_service.py](../../api/services/ops_trace_service.py) | Controller-facing reads and updates of the app's selected tracing settings |
 | [ops_trace_delivery_repository.py](../../api/repositories/ops_trace_delivery_repository.py) | Reservations, conditional claims, owner checks, parent lookup and retention |
@@ -178,6 +179,7 @@ The writer reserves a SQL staging row, writes immutable JSON to existing object 
 | Object validation | SHA-256, byte size and schema version |
 | Attempt | status, attempt count, next attempt time, random attempt token and lease expiry |
 | Parent | original export/span ID, resolved delivery ID and bounded root receipt |
+| Export progress | completed local signals and the immutable cumulative metric snapshot |
 | Retention / diagnosis | safe error code, created/updated/finished times and object deletion time |
 
 Uniqueness is `(tenant_id, export_id)` plus `(tenant_id, id)`. A composite tenant/parent-delivery foreign key prevents foreign parent assignment. Database constraints enforce source shape, app-provider requirements and the 8 MiB limit. Owner references otherwise use explicit lookup validation so deleting an application/configuration is not blocked by retained tracing rows.
@@ -206,6 +208,8 @@ Successful, failed and cancelled trace bodies are deleted immediately by default
 
 Tokens prevent stale local writes; they cannot retract an HTTP request already accepted remotely. Deterministic IDs reduce duplicate output, but timeout/crash after remote acceptance can still duplicate append-only provider output. Exactly-once remote delivery is not promised.
 
+OTLP counters and histograms accumulate in tenant- and destination-scoped metric series, using short database transactions guarded by the delivery's attempt token. Each delivery contributes once and stores its cumulative snapshot for retries. Collection timestamps describe when measurements entered the series; execution timestamps remain on spans and duration values. The snapshot retains the original resource and stable writer identity even when another worker handles the retry. Hourly maintenance removes up to 100 series that have been idle for 30 days; active series retain their start time and totals. Enterprise business logs record completed progress before OTLP transport, so a transport retry does not repeat them and a permanently failed transport does not suppress them. A crash between a log write and its progress update can still repeat that log.
+
 ## 8. Tenant and configuration checks
 
 | Boundary | Required ownership |
@@ -217,7 +221,7 @@ Tokens prevent stale local writes; they cannot retract an HTTP request already a
 | Repository / worker | Tenant-scoped delivery ID, source chain and immutable object agree |
 | Configuration | Same app/tenant, config ID, selected provider, enabled state, revision and settings hash |
 | Parent | Same tenant, source owner and exact destination revision; receipt repeats destination ownership |
-| Provider | Supplied trace/config only; no Dify record lookup or implicit current account |
+| Provider | Supplied trace, configuration and delivery progress only; no source record lookup or implicit current account |
 
 OPS no longer switches a creator account's active workspace, creates a service account to discover tenant, or reconstructs workflows with unscoped run lookups. Actor identity is metadata. Configuration secrets are decrypted only after owner and revision checks, and never stored in trace/checkpoint/queue data.
 

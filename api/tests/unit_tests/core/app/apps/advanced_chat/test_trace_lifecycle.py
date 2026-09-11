@@ -1,5 +1,6 @@
 """Advanced chat response consumers release invocation-owned trace recording bytes."""
 
+from contextlib import closing, nullcontext
 from datetime import UTC, datetime
 from unittest.mock import Mock
 from uuid import uuid4
@@ -8,10 +9,21 @@ import pytest
 
 from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.entities.queue_entities import QueueWorkflowPausedEvent, WorkflowQueueMessage
-from core.app.entities.task_entities import MessageEndStreamResponse, WorkflowPauseStreamResponse
+from core.app.entities.queue_entities import (
+    QueueErrorEvent,
+    QueueWorkflowFailedEvent,
+    QueueWorkflowPausedEvent,
+    WorkflowQueueMessage,
+)
+from core.app.entities.task_entities import (
+    ErrorStreamResponse,
+    MessageEndStreamResponse,
+    WorkflowFinishStreamResponse,
+    WorkflowPauseStreamResponse,
+)
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.trace_data import CompletedTrace
+from graphon.engine_events import GraphRunFailedEvent
 from graphon.enums import WorkflowExecutionStatus
 from models.model import AppMode
 from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline_core import _make_pipeline
@@ -158,4 +170,78 @@ def test_failed_operation_submission_still_releases_budget(
 
     submit.assert_called_once()
     assert recorder._closed
+    assert queue.reserved == 0
+
+
+@pytest.mark.parametrize("failure", ["workflow", "worker"])
+def test_failure_submits_committed_message_parent_before_response(
+    pending_moderation: tuple[AdvancedChatAppGenerateTaskPipeline, MessageTraceRecorder, RecordingQueue],
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    pipeline, recorder, queue = pending_moderation
+    task_id = pipeline._application_generate_entity.task_id
+    error = ValueError("model unavailable")
+    workflow = recorder.create_workflow_trace(
+        workflow_id=str(uuid4()), workflow_version="1", workflow_run_id=str(uuid4()), inputs={}
+    )
+    workflow.record_workflow_event(GraphRunFailedEvent(error=str(error)))
+    workflow.finish_workflow_trace()
+    event = (
+        QueueWorkflowFailedEvent(error=str(error), exceptions_count=0)
+        if failure == "workflow"
+        else QueueErrorEvent(error=error)
+    )
+    pipeline._base_task_pipeline.queue_manager.listen = Mock(
+        return_value=iter([WorkflowQueueMessage(task_id=task_id, app_mode=AppMode.ADVANCED_CHAT, event=event)])
+    )
+    session = Mock()
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.generate_task_pipeline.session_factory.create_session",
+        Mock(return_value=nullcontext(session)),
+    )
+    monkeypatch.setattr(pipeline._base_task_pipeline, "handle_error", Mock(return_value=error))
+    monkeypatch.setattr(pipeline, "_ensure_workflow_initialized", Mock())
+    monkeypatch.setattr(pipeline, "_ensure_graph_runtime_initialized", Mock())
+    monkeypatch.setattr(
+        pipeline._workflow_response_converter,
+        "workflow_finish_to_stream_response",
+        Mock(
+            return_value=WorkflowFinishStreamResponse(
+                task_id=task_id,
+                workflow_run_id=workflow.source.operation_id,
+                data=WorkflowFinishStreamResponse.Data(
+                    id=workflow.source.operation_id,
+                    workflow_id=workflow.workflow_id,
+                    status=WorkflowExecutionStatus.FAILED,
+                    error=str(error),
+                    elapsed_time=1,
+                    total_tokens=0,
+                    total_steps=1,
+                    created_at=0,
+                    finished_at=1,
+                ),
+            )
+        ),
+    )
+
+    def load_message_fields(message_id: str) -> dict[str, object]:
+        session.commit.assert_called_once()
+        assert message_id == recorder.source.message_id
+        return {**message_fields(recorder), "error": str(error)}
+
+    monkeypatch.setattr(recorder, "_load_message_fields", load_message_fields)
+    with closing(pipeline._wrapper_process_stream_response(trace_recorder=recorder)) as responses:
+        assert isinstance(
+            next(responses), WorkflowFinishStreamResponse if failure == "workflow" else ErrorStreamResponse
+        )
+        assert len(queue.items) == 2
+        workflow_trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+        message_trace = CompletedTrace.model_validate_json(queue.items[1].trace_json)
+        assert workflow_trace.parent is not None
+        assert workflow_trace.parent.export_id == queue.items[1].export_id
+        assert workflow_trace.parent.span_id == message_trace.root_span_id
+        assert message_trace.spans[0].status == "error"
+        assert message_trace.spans[0].error == str(error)
+        assert [span.span_name for span in message_trace.spans] == ["message", "moderation"]
     assert queue.reserved == 0

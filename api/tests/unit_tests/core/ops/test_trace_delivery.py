@@ -30,7 +30,7 @@ from core.ops.trace_data import (
     TraceSpan,
 )
 from core.ops.trace_queue import TraceQueue
-from models.ops_trace import OpsTraceDelivery
+from models.ops_trace import OpsTraceDelivery, OpsTraceMetricSeries
 from repositories.ops_trace_delivery_repository import OpsTraceDeliveryRepository
 
 
@@ -55,9 +55,12 @@ def make_queued_trace(tenant_id: str | None = None, *, parent: ParentSpanReferen
 
 def make_repository(engine: Engine | None = None) -> OpsTraceDeliveryRepository:
     engine = engine or sa.create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
-    table = OpsTraceDelivery.__table__
-    assert isinstance(table, sa.Table)
-    table.create(engine)
+    delivery_table = OpsTraceDelivery.__table__
+    metric_table = OpsTraceMetricSeries.__table__
+    assert isinstance(delivery_table, sa.Table)
+    assert isinstance(metric_table, sa.Table)
+    delivery_table.create(engine)
+    metric_table.create(engine)
     return OpsTraceDeliveryRepository(sessionmaker(engine, expire_on_commit=False))
 
 
@@ -598,8 +601,10 @@ def test_migration_rejects_conflicting_configs_before_schema_changes() -> None:
             migration.upgrade()
             assert connection.scalar(sa.text("SELECT count(*) FROM trace_app_config")) == 1
             assert "ops_trace_deliveries" in sa.inspect(connection).get_table_names()
+            assert "ops_trace_metric_series" in sa.inspect(connection).get_table_names()
             migration.downgrade()
             assert "ops_trace_deliveries" not in sa.inspect(connection).get_table_names()
+            assert "ops_trace_metric_series" not in sa.inspect(connection).get_table_names()
 
 
 @pytest.mark.parametrize("dialect_name", ["postgresql", "mysql"])
@@ -636,3 +641,5 @@ def test_migration_generates_offline_sql_with_duplicate_constraint(dialect_name:
     assert sql.index("trace_app_config_app_provider_unique") < sql.index("ALTER TABLE apps")
     assert "CREATE TABLE ops_trace_deliveries" in sql
     assert "DROP TABLE ops_trace_deliveries" in sql
+    assert "CREATE TABLE ops_trace_metric_series" in sql
+    assert "DROP TABLE ops_trace_metric_series" in sql

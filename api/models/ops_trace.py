@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base, DefaultFieldsMixin
-from models.types import StringUUID
+from models.types import BinaryData, StringUUID
 
 
 class OpsTraceDelivery(DefaultFieldsMixin, Base):
@@ -64,6 +64,7 @@ class OpsTraceDelivery(DefaultFieldsMixin, Base):
     parent_delivery_id: Mapped[str | None] = mapped_column(StringUUID)
     parent_span_id: Mapped[str | None] = mapped_column(StringUUID)
     parent_references: Mapped[dict | None] = mapped_column(sa.JSON)
+    export_state: Mapped[dict | None] = mapped_column(sa.JSON)
     error_code: Mapped[str | None] = mapped_column(sa.String(64))
     finished_at: Mapped[datetime | None] = mapped_column(sa.DateTime)
     trace_deleted_at: Mapped[datetime | None] = mapped_column(sa.DateTime)
@@ -76,3 +77,16 @@ class OpsTraceDelivery(DefaultFieldsMixin, Base):
         delivery_id = UUID(self.id)
         owner_id = UUID(self.app_id or self.pipeline_id) if self.app_id or self.pipeline_id else "workspace"
         return f"ops_trace/v2/{tenant_id}/{owner_id}/{delivery_id}.json"
+
+
+class OpsTraceMetricSeries(Base):
+    """One destination's durable cumulative metric; clients never own shared counters."""
+
+    __tablename__ = "ops_trace_metric_series"
+    __table_args__ = (sa.Index("ops_trace_metric_series_idle_idx", "updated_at"),)
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
+    destination_key: Mapped[str] = mapped_column(sa.String(64), primary_key=True)
+    series_key: Mapped[str] = mapped_column(sa.String(64), primary_key=True)
+    metric_data: Mapped[bytes] = mapped_column(BinaryData, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False)

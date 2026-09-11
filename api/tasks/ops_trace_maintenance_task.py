@@ -28,6 +28,7 @@ def delete_expired_traces() -> None:
     ):
         delete_trace_body(delivery)
     repository.delete_expired_deliveries()
+    repository.delete_idle_metric_series()
 
 
 def delete_trace_body(delivery: OpsTraceDelivery) -> None:

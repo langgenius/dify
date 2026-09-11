@@ -1,23 +1,30 @@
 """Enterprise exports consume captured spans without record lookups or shared SDK state."""
 
 import json
+import logging
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from typing import Unpack
 from unittest.mock import Mock
 from uuid import uuid4
 
+import httpx
 import pytest
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 
 from core.moderation.base import ModerationAction, ModerationInputsResult
 from core.ops.message_trace import MessageTraceRecorder
+from core.ops.provider_export import TraceExportError, export_trace
 from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource, TraceSpan
+from core.ops.trace_export_state import TraceExportState
 from core.telemetry.events import DraftNodeExecutionTraceEvent, TelemetryContext
 from enterprise.telemetry.enterprise_trace import EnterpriseTraceClient
 from enterprise.telemetry.operation_trace import record_enterprise_operation
 from models.workflow import WorkflowType
 from tests.unit_tests.core.ops.test_message_trace import RecordingQueue
+from tests.unit_tests.core.ops.test_provider_export import RequestArguments, make_completed_trace
+from tests.unit_tests.core.ops.test_trace_export_state import make_export_state
 
 
 @pytest.mark.parametrize("include_content", [False, True])
@@ -226,3 +233,46 @@ def test_nested_workflow_spans_preserve_immediate_parents_and_explicit_tenant(mo
             next(attr.value.string_value for attr in span.attributes if attr.key == "dify.tenant_id")
             == source.tenant_id
         )
+
+
+@pytest.mark.parametrize("failed_signal", ["traces", "metrics"])
+@pytest.mark.parametrize("retry_status", [200, 400])
+def test_business_logs_survive_transport_failure_without_repeating_on_retry(
+    failed_signal: str,
+    retry_status: int,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    trace = make_completed_trace()
+    settings = TraceProviderSettings(
+        tenant_id=trace.source.tenant_id,
+        app_id=trace.source.app_id,
+        destination_type="enterprise",
+        provider_name="enterprise",
+    )
+    state = make_export_state(trace, settings)
+    config = {"endpoint": "https://collector.example", "protocol": "http/protobuf"}
+    signal_status = 503
+
+    def request(_method: str, url: str, **_kwargs: Unpack[RequestArguments]) -> httpx.Response:
+        return httpx.Response(signal_status if url.endswith(f"/{failed_signal}") else 200, content=b"")
+
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
+    with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+        with pytest.raises(TraceExportError, match="provider_http_503"):
+            export_trace(trace, settings, config, export_state=state)
+        assert len(caplog.records) == len(trace.spans)
+        assert state.has_completed_signal("business_logs")
+        assert state.repository.finish_attempt(state.delivery, "pending", retry_delay_seconds=0)
+        delivery = state.repository.claim_delivery(state.delivery.tenant_id, state.delivery.id)
+        assert delivery is not None
+        signal_status = retry_status
+        retry_state = TraceExportState(state.repository, delivery)
+        if retry_status == 200:
+            export_trace(trace, settings, config, export_state=retry_state)
+        else:
+            with pytest.raises(TraceExportError, match="provider_http_400"):
+                export_trace(trace, settings, config, export_state=retry_state)
+        assert retry_state.has_completed_signal("business_logs")
+    assert len(caplog.records) == len(trace.spans)
+    assert all(record.__dict__["tenant_id"] == trace.source.tenant_id for record in caplog.records)
