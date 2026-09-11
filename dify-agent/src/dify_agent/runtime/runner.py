@@ -16,6 +16,8 @@ message history only through session state. Once pydantic-ai binds and builds
 messages in the run capture, every terminal outcome replaces that state with the
 captured messages after transient instructions are cleared; a failure or
 cancellation before the capture contains messages preserves the restored state.
+An interrupted run also records that its trailing response was cut short, so tool
+calls it never executed do not block the next user prompt.
 This preserves compaction rewrites and interrupted partial messages without
 saving current system prompts. An optional structured output layer named by
 ``DIFY_AGENT_OUTPUT_LAYER_ID`` is read after entry and resolved into an output
@@ -391,6 +393,7 @@ class AgentRunRunner:
                 run_timeout = asyncio.timeout(self.run_timeout_seconds)
                 try:
                     with capture_run_messages() as captured_messages:
+                        agent_run_finished = False
                         try:
                             async with run_timeout:
                                 result = await agent.run(
@@ -402,9 +405,12 @@ class AgentRunRunner:
                                     capabilities=[compaction] if compaction is not None else None,
                                     usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
                                 )
+                            agent_run_finished = True
                         finally:
                             if captured_messages:
-                                replace_run_history(history_layer, captured_messages)
+                                replace_run_history(
+                                    history_layer, captured_messages, interrupted=not agent_run_finished
+                                )
                 except TimeoutError as exc:
                     if not run_timeout.expired():
                         raise
