@@ -67,6 +67,16 @@ describe('TracingPanel', () => {
     })
   })
 
+  it('should render total workflow elapsed time when provided', () => {
+    mockFormatNodeList.mockReturnValue([])
+
+    render(<TracingPanel list={[]} totalElapsedTime={12.5} />)
+
+    expect(screen.getByText('tracing.totalTime')).toBeInTheDocument()
+    expect(screen.getByText('12.500s')).toBeInTheDocument()
+    expect(screen.getByText('tracing.totalTimeTip')).toBeInTheDocument()
+  })
+
   it('should render formatted nodes, preserve branch labels, and collapse parallel groups', () => {
     mockFormatNodeList.mockReturnValue([
       {

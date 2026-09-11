@@ -53,6 +53,19 @@ def _create_execution_extra_content_repository() -> ExecutionExtraContentReposit
     return SQLAlchemyExecutionExtraContentRepository(session_maker=session_maker)
 
 
+def get_workflow_run_elapsed_times_for_messages(session: Session, messages: Sequence[Message]) -> dict[str, float]:
+    from models.workflow import WorkflowRun
+
+    workflow_run_ids = list({message.workflow_run_id for message in messages if message.workflow_run_id})
+    if not workflow_run_ids:
+        return {}
+
+    rows = session.execute(
+        select(WorkflowRun.id, WorkflowRun.elapsed_time).where(WorkflowRun.id.in_(workflow_run_ids))
+    ).all()
+    return {str(row.id): float(row.elapsed_time) for row in rows}
+
+
 def attach_message_extra_contents(messages: Sequence[Message]) -> None:
     if not messages:
         return

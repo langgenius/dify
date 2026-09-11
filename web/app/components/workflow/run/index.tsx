@@ -174,7 +174,11 @@ const RunPanel: FC<RunProps> = ({
           <StatusPanel status={WorkflowRunningStatus.Running} isListening={true} />
         )}
         {!loading && currentTab === 'TRACING' && (
-          <TracingPanel className="bg-background-section-burn" list={list} />
+          <TracingPanel
+            className="bg-background-section-burn"
+            list={list}
+            totalElapsedTime={runDetail?.elapsed_time}
+          />
         )}
       </div>
     </div>
