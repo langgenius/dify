@@ -915,7 +915,6 @@ export function createSourceConnectionService(input: {
           metadata: {
             ...source.metadata,
             ...connection.configuration,
-            _sourceConnectionVersion: connection.version,
           },
         };
       }
@@ -942,7 +941,6 @@ export function createSourceConnectionService(input: {
         metadata: {
           ...source.metadata,
           ...connection.configuration,
-          _sourceConnectionVersion: connection.version,
           credentials: JSON.parse(JSON.stringify(stored.credentials)) as Record<string, unknown>,
         },
       };

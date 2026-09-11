@@ -11,11 +11,6 @@ import type {
   SourceDocumentMaterializer,
 } from "./source-document-materializer";
 import { createSourceWorkflowDocumentAssetId } from "./source-document-workflow-ownership";
-import {
-  type SourceFileVerification,
-  createSourceFileVerification,
-  sourceFileVerificationFingerprint,
-} from "./source-file-verification";
 import type { PublishSourceLogicalRevisionInput } from "./source-logical-revision-publisher";
 import {
   type NewSourceWorkflowRun,
@@ -2225,7 +2220,6 @@ describe("source-product workflow runtime sync", () => {
 
   it("ignores drive folders and avoids rematerializing unchanged unbucketed files", async () => {
     const body = new TextEncoder().encode("same drive body");
-    const download = vi.fn(async () => ({ body }));
     const source = sourceRecord("online-drive-unchanged", {
       metadata: { providerKind: "online-drive" },
     });
@@ -2248,377 +2242,14 @@ describe("source-product workflow runtime sync", () => {
             },
           ],
         })),
-        download,
+        download: vi.fn(async () => ({ body })),
       },
       source,
     });
 
     await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
-    expect(download).toHaveBeenCalledOnce();
     expect(fixture.materializer.materialize).not.toHaveBeenCalled();
     expect(fixture.publish).not.toHaveBeenCalled();
-  });
-
-  it("skips an online-drive download when the listed SHA-256 matches published content", async () => {
-    const body = new TextEncoder().encode("published drive body");
-    const contentHash = createHash("sha256").update(body).digest("hex");
-    const download = vi.fn();
-    const fixture = await createFixture({
-      inventory: [{ ...inventoryItem("sha-file", "online-drive"), contentHash }],
-      onlineDrive: {
-        browse: vi.fn(async () => ({
-          buckets: [
-            {
-              files: [
-                {
-                  id: "sha-file",
-                  name: "sha.bin",
-                  remoteMetadata: { checksum: { algorithm: "sha256", value: contentHash } },
-                  size: body.byteLength,
-                  type: "file",
-                },
-              ],
-              isTruncated: false,
-            },
-          ],
-        })),
-        download,
-      },
-      source: sourceRecord("online-drive-sha-skip", {
-        metadata: { providerKind: "online-drive" },
-      }),
-    });
-
-    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
-    expect(download).not.toHaveBeenCalled();
-    expect(fixture.materializer.materialize).not.toHaveBeenCalled();
-    expect(fixture.publish).not.toHaveBeenCalled();
-    expect(fixture.recordSourceFileVerification).not.toHaveBeenCalled();
-  });
-
-  it("skips downloads for matching MD5, version, and ETag verification baselines", async () => {
-    const source = sourceRecord("online-drive-marker-skip", {
-      metadata: { providerKind: "online-drive" },
-    });
-    const body = new TextEncoder().encode("verified drive body");
-    const fingerprint = sourceFileVerificationFingerprint(source);
-    const receipt = createSourceFileVerification({
-      body,
-      downloadMetadata: { etag: '"etag-v1"', version: "version-v1" },
-      sourceFingerprint: fingerprint,
-    });
-    const download = vi.fn();
-    const files = [
-      {
-        id: "md5-file",
-        name: "md5.bin",
-        remoteMetadata: { checksum: { algorithm: "md5", value: receipt.md5 } },
-        size: body.byteLength,
-        type: "file",
-      },
-      {
-        id: "version-file",
-        name: "version.bin",
-        remoteMetadata: { version: "version-v1" },
-        size: body.byteLength,
-        type: "file",
-      },
-      {
-        id: "etag-file",
-        name: "etag.bin",
-        remoteMetadata: { etag: '"etag-v1"' },
-        size: body.byteLength,
-        type: "file",
-      },
-    ];
-    const fixture = await createFixture({
-      inventory: files.map((file) => ({
-        ...inventoryItem(file.id, "online-drive"),
-        contentHash: receipt.contentHash,
-        fileVerification: receipt,
-      })),
-      onlineDrive: {
-        browse: vi.fn(async () => ({
-          buckets: [{ files, isTruncated: false }],
-        })),
-        download,
-      },
-      source,
-    });
-
-    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
-    expect(download).not.toHaveBeenCalled();
-    expect(fixture.publish).not.toHaveBeenCalled();
-    expect(fixture.recordSourceFileVerification).not.toHaveBeenCalled();
-  });
-
-  it("downloads conservatively when only modification time and size match", async () => {
-    const body = new TextEncoder().encode("same drive body");
-    const download = vi.fn(async () => ({ body }));
-    const fixture = await createFixture({
-      inventory: [
-        {
-          ...inventoryItem("mtime-file", "online-drive"),
-          contentHash: createHash("sha256").update(body).digest("hex"),
-        },
-      ],
-      onlineDrive: {
-        browse: vi.fn(async () => ({
-          buckets: [
-            {
-              files: [
-                {
-                  id: "mtime-file",
-                  name: "mtime.bin",
-                  remoteMetadata: { modifiedTime: "2026-09-09T00:00:00.000Z" },
-                  size: body.byteLength,
-                  type: "file",
-                },
-              ],
-              isTruncated: false,
-            },
-          ],
-        })),
-        download,
-      },
-      source: sourceRecord("online-drive-mtime-download", {
-        metadata: { providerKind: "online-drive" },
-      }),
-    });
-
-    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
-    expect(download).toHaveBeenCalledOnce();
-    expect(fixture.materializer.materialize).not.toHaveBeenCalled();
-    expect(fixture.publish).not.toHaveBeenCalled();
-    expect(fixture.recordSourceFileVerification).not.toHaveBeenCalled();
-  });
-
-  it("re-downloads conflicting or source-stale markers and refreshes only matched-content baselines", async () => {
-    const source = sourceRecord("online-drive-stale-marker", {
-      metadata: { providerKind: "online-drive" },
-    });
-    const body = new TextEncoder().encode("same verified bytes");
-    const current = createSourceFileVerification({
-      body,
-      downloadMetadata: { version: "v1" },
-      sourceFingerprint: sourceFileVerificationFingerprint(source),
-    });
-    const staleSource = createSourceFileVerification({
-      body,
-      downloadMetadata: { version: "v1" },
-      sourceFingerprint: "b".repeat(64),
-    });
-    const download = vi.fn(async ({ file }: { readonly file: { readonly id: string } }) => ({
-      body,
-      remoteMetadata: { version: file.id === "changed-version" ? "v2" : "v1" },
-    }));
-    const fixture = await createFixture({
-      inventory: [
-        {
-          ...inventoryItem("changed-version", "online-drive"),
-          contentHash: current.contentHash,
-          fileVerification: current,
-        },
-        {
-          ...inventoryItem("stale-source", "online-drive"),
-          contentHash: staleSource.contentHash,
-          fileVerification: staleSource,
-        },
-      ],
-      onlineDrive: {
-        browse: vi.fn(async () => ({
-          buckets: [
-            {
-              files: [
-                {
-                  id: "changed-version",
-                  name: "changed.bin",
-                  remoteMetadata: { version: "v2" },
-                  size: body.byteLength,
-                  type: "file",
-                },
-                {
-                  id: "stale-source",
-                  name: "stale.bin",
-                  remoteMetadata: { version: "v1" },
-                  size: body.byteLength,
-                  type: "file",
-                },
-              ],
-              isTruncated: false,
-            },
-          ],
-        })),
-        download,
-      },
-      source,
-    });
-
-    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
-    expect(download).toHaveBeenCalledTimes(2);
-    expect(fixture.materializer.materialize).not.toHaveBeenCalled();
-    expect(fixture.publish).not.toHaveBeenCalled();
-    expect(fixture.recordSourceFileVerification).toHaveBeenCalledTimes(2);
-    for (const [request] of fixture.recordSourceFileVerification.mock.calls) {
-      expect(request.verification).toMatchObject({
-        contentHash: current.contentHash,
-        sourceFingerprint: sourceFileVerificationFingerprint(source),
-      });
-    }
-  });
-
-  it("records a changed-file baseline only after the new revision is published", async () => {
-    const source = sourceRecord("online-drive-changed-content", {
-      metadata: { providerKind: "online-drive" },
-    });
-    const oldBody = new TextEncoder().encode("old-data");
-    const newBody = new TextEncoder().encode("new-data");
-    const prior = createSourceFileVerification({
-      body: oldBody,
-      downloadMetadata: { version: "v1" },
-      sourceFingerprint: sourceFileVerificationFingerprint(source),
-    });
-    const newHash = createHash("sha256").update(newBody).digest("hex");
-    const fixture = await createFixture({
-      inventory: [
-        {
-          ...inventoryItem("changed-file", "online-drive"),
-          contentHash: prior.contentHash,
-          fileVerification: prior,
-        },
-      ],
-      onlineDrive: {
-        browse: vi.fn(async () => ({
-          buckets: [
-            {
-              files: [
-                {
-                  id: "changed-file",
-                  name: "changed.bin",
-                  remoteMetadata: { version: "v2" },
-                  size: newBody.byteLength,
-                  type: "file",
-                },
-              ],
-              isTruncated: false,
-            },
-          ],
-        })),
-        download: vi.fn(async () => ({ body: newBody, remoteMetadata: { version: "v2" } })),
-      },
-      source,
-    });
-
-    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
-    expect(fixture.materializer.materialize).toHaveBeenCalledOnce();
-    expect(fixture.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ contentHash: newHash, providerItemId: "changed-file" }),
-      expect.any(Object),
-    );
-    expect(fixture.recordSourceFileVerification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        providerItemId: "changed-file",
-        verification: expect.objectContaining({
-          contentHash: newHash,
-          remoteMetadata: { version: "v2" },
-        }),
-      }),
-    );
-    expect(fixture.publish.mock.invocationCallOrder[0]).toBeLessThan(
-      fixture.recordSourceFileVerification.mock.invocationCallOrder[0] ?? 0,
-    );
-  });
-
-  it("does not advance the changed-file baseline when publication fails", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    try {
-      const source = sourceRecord("online-drive-failed-publication", {
-        metadata: { providerKind: "online-drive" },
-      });
-      const oldBody = new TextEncoder().encode("old-data");
-      const newBody = new TextEncoder().encode("new-data");
-      const prior = createSourceFileVerification({
-        body: oldBody,
-        downloadMetadata: { version: "v1" },
-        sourceFingerprint: sourceFileVerificationFingerprint(source),
-      });
-      const fixture = await createFixture({
-        inventory: [
-          {
-            ...inventoryItem("failed-file", "online-drive"),
-            contentHash: prior.contentHash,
-            fileVerification: prior,
-          },
-        ],
-        onlineDrive: {
-          browse: vi.fn(async () => ({
-            buckets: [
-              {
-                files: [
-                  {
-                    id: "failed-file",
-                    name: "failed.bin",
-                    remoteMetadata: { version: "v2" },
-                    size: newBody.byteLength,
-                    type: "file",
-                  },
-                ],
-                isTruncated: false,
-              },
-            ],
-          })),
-          download: vi.fn(async () => ({ body: newBody, remoteMetadata: { version: "v2" } })),
-        },
-        publishError: new Error("publication failed"),
-        source,
-      });
-
-      await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
-      await expect(fixture.getRun()).resolves.toMatchObject({
-        lastErrorCode: "SOURCE_DOCUMENT_COMPILATION_FAILED",
-        state: "failed",
-      });
-      expect(fixture.publish).toHaveBeenCalledOnce();
-      expect(fixture.recordSourceFileVerification).not.toHaveBeenCalled();
-    } finally {
-      consoleError.mockRestore();
-    }
-  });
-
-  it("rejects a mismatched download checksum before materialization or publication", async () => {
-    const body = new TextEncoder().encode("untrusted downloaded bytes");
-    const fixture = await createFixture({
-      inventory: [inventoryItem("checksum-file", "online-drive")],
-      onlineDrive: {
-        browse: vi.fn(async () => ({
-          buckets: [
-            {
-              files: [
-                {
-                  id: "checksum-file",
-                  name: "checksum.bin",
-                  remoteMetadata: { version: "v2" },
-                  type: "file",
-                },
-              ],
-              isTruncated: false,
-            },
-          ],
-        })),
-        download: vi.fn(async () => ({
-          body,
-          remoteMetadata: { checksum: { algorithm: "sha256", value: "b".repeat(64) } },
-        })),
-      },
-      source: sourceRecord("online-drive-checksum-mismatch", {
-        metadata: { providerKind: "online-drive" },
-      }),
-    });
-
-    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
-    expect(fixture.materializer.materialize).not.toHaveBeenCalled();
-    expect(fixture.publish).not.toHaveBeenCalled();
-    expect(fixture.recordSourceFileVerification).not.toHaveBeenCalled();
   });
 
   it("fails closed for unavailable sync providers, result overflow, and missing tombstoning", async () => {
@@ -3765,15 +3396,6 @@ async function createFixture(input: {
       revision: 1,
     };
   });
-  const recordSourceFileVerification = vi.fn(
-    async (_request: {
-      readonly knowledgeSpaceId: string;
-      readonly providerItemId: string;
-      readonly sourceId: string;
-      readonly tenantId: string;
-      readonly verification: SourceFileVerification;
-    }) => true,
-  );
   const markRemoteMissing = vi.fn(async (_request: unknown) => undefined);
   const revalidatePermissionSnapshot = vi.fn(
     async () =>
@@ -3856,7 +3478,6 @@ async function createFixture(input: {
     },
     logicalInventory: input.logicalInventory ?? {
       listActiveBySource: vi.fn(async () => ({ items: [...input.inventory] })),
-      recordSourceFileVerification,
     },
     ...(input.externalOperationTimeoutMs
       ? { externalOperationTimeoutMs: input.externalOperationTimeoutMs }
@@ -3891,7 +3512,6 @@ async function createFixture(input: {
     markRemoteMissing,
     materializer,
     publish,
-    recordSourceFileVerification,
     revalidatePermissionSnapshot,
     repository,
     run,

@@ -1,11 +1,9 @@
 import type { Source } from "@knowledge/core";
-import type { OnlineDriveRemoteMetadata } from "./source-file-verification";
 
 export interface OnlineDriveFile {
   readonly id: string;
   readonly name: string;
   readonly size?: number | undefined;
-  readonly remoteMetadata?: OnlineDriveRemoteMetadata | undefined;
   /** "folder" or "file". */
   readonly type: string;
 }
@@ -29,8 +27,6 @@ export interface OnlineDriveFileRef {
 
 export interface OnlineDriveDownloadResult {
   readonly body: Uint8Array;
-  /** Metadata from the same provider response/version as body, never a separate HEAD/list. */
-  readonly remoteMetadata?: OnlineDriveRemoteMetadata | undefined;
 }
 
 export interface OnlineDriveBrowseInput {

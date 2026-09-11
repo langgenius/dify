@@ -675,10 +675,6 @@ import {
 import { createInMemorySourceRepository } from "./source-repository";
 import { createSourceSyncPolicyRuntime } from "./source-sync-policy-runtime";
 import { createSourceSyncRunner } from "./source-sync-runner";
-export {
-  parseOnlineDriveRemoteMetadata,
-  type OnlineDriveRemoteMetadata,
-} from "./source-file-verification";
 import { createAgentKnowledgeInvestigationService } from "./agent-knowledge-investigation";
 import { registerAgentKnowledgeInvestigationHandlers } from "./agent-knowledge-investigation-handlers";
 import { createSourceSyncScheduler } from "./source-sync-scheduler";

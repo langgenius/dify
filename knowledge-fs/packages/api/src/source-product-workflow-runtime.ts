@@ -26,11 +26,6 @@ import type {
   SourceDocumentInput,
   SourceDocumentMaterializer,
 } from "./source-document-materializer";
-import {
-  canSkipSourceFileDownload,
-  createSourceFileVerification,
-  sourceFileVerificationFingerprint,
-} from "./source-file-verification";
 import type {
   SourceLogicalRevisionPublisher,
   SourceProviderCoordinate,
@@ -196,10 +191,7 @@ export function createSourceProductWorkflowRuntime(input: {
   readonly maxCleanupBatchesPerRun?: number | undefined;
   readonly maxSyncItems?: number | undefined;
   /** Required: the I5 logical-document aggregate is the sole provider revision truth. */
-  readonly logicalInventory: Pick<
-    LogicalDocumentRepository,
-    "listActiveBySource" | "recordSourceFileVerification"
-  >;
+  readonly logicalInventory: Pick<LogicalDocumentRepository, "listActiveBySource">;
   readonly logicalRevisions: SourceLogicalRevisionPublisher;
   readonly materializer: SourceDocumentMaterializer;
   readonly now?: (() => number) | undefined;
@@ -2108,7 +2100,6 @@ async function listSelectedOnlineDriveInventory(
       name: listed?.name ?? coordinate.name,
       providerItemId: item.providerItemId,
       ...(listed?.size === undefined ? {} : { size: listed.size }),
-      ...(listed?.remoteMetadata ? { remoteMetadata: listed.remoteMetadata } : {}),
       type: "file",
     });
   }
@@ -2659,24 +2650,10 @@ async function processOnlineDriveSync(
     "online-drive",
     files.map((file) =>
       selectionAware
-        ? [
-            file.providerItemId,
-            file.id,
-            file.bucket ?? "",
-            file.name,
-            file.size ?? "",
-            ...(file.remoteMetadata ? [JSON.stringify(file.remoteMetadata)] : []),
-          ]
-        : [
-            file.id,
-            file.bucket ?? "",
-            file.name,
-            file.size ?? "",
-            ...(file.remoteMetadata ? [JSON.stringify(file.remoteMetadata)] : []),
-          ],
+        ? [file.providerItemId, file.id, file.bucket ?? "", file.name, file.size ?? ""]
+        : [file.id, file.bucket ?? "", file.name, file.size ?? ""],
     ),
   );
-  const sourceFingerprint = sourceFileVerificationFingerprint(connectorSource);
   const cursor = requireMatchingSyncCursor(initial.cursor, "online-drive", fingerprint);
   if (cursor.phase === "eof") return;
   const missing = missingInventory(inventory, new Set(files.map((file) => file.providerItemId)));
@@ -2688,16 +2665,7 @@ async function processOnlineDriveSync(
     if (index < cursor.offset) continue;
     const providerItemId = file.providerItemId;
     const prior = inventory.get(providerItemId);
-    const unchanged =
-      prior &&
-      canSkipSourceFileDownload({
-        contentHash: prior.contentHash,
-        metadata: file.remoteMetadata,
-        size: file.size,
-        sourceFingerprint,
-        verification: prior.fileVerification,
-      });
-    if (prior?.enabled !== false && !unchanged) {
+    if (prior?.enabled !== false) {
       const run = execution.run();
       const download = await execution.external(
         (signal) =>
@@ -2712,20 +2680,7 @@ async function processOnlineDriveSync(
             runtimeError("SOURCE_ONLINE_DRIVE_UNAVAILABLE", "Online-drive provider is unavailable"),
           ),
       );
-      const needsVerification =
-        file.remoteMetadata?.checksum ||
-        file.remoteMetadata?.version ||
-        file.remoteMetadata?.etag ||
-        download.remoteMetadata;
-      const verification = needsVerification
-        ? createSourceFileVerification({
-            body: download.body,
-            sourceFingerprint,
-            downloadMetadata: download.remoteMetadata,
-          })
-        : undefined;
-      const contentHash =
-        verification?.contentHash ?? createHash("sha256").update(download.body).digest("hex");
+      const contentHash = createHash("sha256").update(download.body).digest("hex");
       if (!prior || prior.contentHash !== contentHash) {
         const mimeType = file.mimeType;
         await materializeCandidates(
@@ -2766,21 +2721,6 @@ async function processOnlineDriveSync(
               title: file.name,
             },
           ],
-        );
-      }
-      // Publication (when needed) must finish before advancing the verification baseline.
-      // A list-time ETag/version is never copied onto bytes fetched later: only the download
-      // response can attest which provider revision those bytes came from.
-      const recordVerification = input.logicalInventory.recordSourceFileVerification;
-      if (verification && recordVerification) {
-        await execution.external(() =>
-          recordVerification({
-            knowledgeSpaceId: run.knowledgeSpaceId,
-            tenantId: run.tenantId,
-            sourceId: source.id,
-            providerItemId,
-            verification,
-          }),
         );
       }
     }
