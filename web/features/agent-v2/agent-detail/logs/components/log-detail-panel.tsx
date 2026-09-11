@@ -4,6 +4,8 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
+import type { TransferMethod } from '@/types/app'
+import type { FileResponse } from '@/types/workflow'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -11,6 +13,7 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 import { useTranslation } from 'react-i18next'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
@@ -162,6 +165,21 @@ export function AgentLogDetailPanel({
   )
 }
 
+const toFileResponse = (
+  file: NonNullable<AgentLogMessageItemResponse['message_files']>[number],
+): FileResponse => ({
+  related_id: file.id ?? file.upload_file_id,
+  extension: '',
+  filename: file.filename,
+  size: file.size ?? 0,
+  mime_type: file.mime_type ?? '',
+  transfer_method: file.transfer_method as TransferMethod,
+  type: file.type,
+  url: file.url ?? '',
+  upload_file_id: file.upload_file_id ?? '',
+  remote_url: file.url ?? '',
+})
+
 function formatAgentLogMessages({
   conversationId,
   formatLogTime,
@@ -176,15 +194,20 @@ function formatAgentLogMessages({
   messages.forEach((message) => {
     const userFeedback = message.feedbacks?.find((feedback) => feedback.from_source === 'user')
     const adminFeedback = message.feedbacks?.find((feedback) => feedback.from_source === 'admin')
+    const questionFiles = message.message_files?.filter((file) => file.belongs_to === 'user') || []
+    const answerFiles =
+      message.message_files?.filter((file) => file.belongs_to === 'assistant') || []
+    const answer = message.answer || message.error || ''
     chatList.push({
       id: `question-${message.id}`,
       content: message.query,
       isAnswer: false,
+      message_files: getProcessedFilesFromResponse(questionFiles.map(toFileResponse)),
       parentMessageId: undefined,
     })
     chatList.push({
       id: message.id,
-      content: message.answer || message.error || '',
+      content: answer,
       conversationId,
       feedback: userFeedback,
       adminFeedback,
@@ -198,8 +221,13 @@ function formatAgentLogMessages({
       isAnswer: true,
       log: [
         { role: 'user', text: message.query },
-        { role: 'assistant', text: message.answer || message.error || '' },
+        {
+          role: 'assistant',
+          text: answer,
+          files: getProcessedFilesFromResponse(answerFiles.map(toFileResponse)),
+        },
       ],
+      message_files: getProcessedFilesFromResponse(answerFiles.map(toFileResponse)),
       more: {
         latency: message.latency.toFixed(2),
         time: formatLogTime(message.created_at ?? message.updated_at ?? 0),
