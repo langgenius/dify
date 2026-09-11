@@ -183,8 +183,8 @@ class CopyAppPayload(BaseModel):
 
 
 class AppExportQuery(BaseModel):
-    format: Literal["yaml", "ifpkg"] = Field(
-        default="yaml", description="Export archive format; ifpkg requires an Agent App"
+    format: Literal["yaml", "ifpkg"] | None = Field(
+        default=None, description="Export format; defaults to ifpkg for Agent Apps and yaml for other Apps"
     )
     include_secret: bool = Field(default=False, description="Include secrets in export")
     workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
@@ -1052,7 +1052,7 @@ class AppExportApi(Resource):
     def get(self, req_data: AppExportQuery, app_model: App):
         """Export app"""
 
-        if req_data.format == "ifpkg":
+        if req_data.format == "ifpkg" or (req_data.format is None and app_model.mode == AppMode.AGENT):
             if app_model.mode != AppMode.AGENT:
                 raise BadRequest("The ifpkg format is only available for Agent Apps")
             agent_id = app_model.bound_agent_id_with_session(session=db.session())

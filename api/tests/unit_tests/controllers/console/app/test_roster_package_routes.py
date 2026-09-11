@@ -108,7 +108,8 @@ def test_package_import_rejects_overwrite(app, config_overrides):
             unwrap(api.post)(api, _account())
 
 
-def test_existing_export_route_returns_ifpkg_for_agent(app, monkeypatch):
+@pytest.mark.parametrize("query", [{}, {"format": "ifpkg"}])
+def test_existing_export_route_returns_ifpkg_for_agent(app, monkeypatch, query):
     model = App(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     monkeypatch.setattr(App, "bound_agent_id_with_session", lambda _self, **_kwargs: "agent-1")
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=lambda: object()))
@@ -116,9 +117,9 @@ def test_existing_export_route_returns_ifpkg_for_agent(app, monkeypatch):
     close = Mock()
     export = Mock(return_value=SimpleNamespace(archive=archive, filename="agent.ifpkg", close=close))
     monkeypatch.setattr(app_module, "RosterAgentPackageExporter", lambda: SimpleNamespace(export=export))
-    with app.test_request_context("/console/api/apps/app-1/export?format=ifpkg"):
+    with app.test_request_context("/console/api/apps/app-1/export", query_string=query):
         response = unwrap(app_module.AppExportApi.get)(
-            app_module.AppExportApi(), app_module.AppExportQuery(format="ifpkg"), model
+            app_module.AppExportApi(), app_module.AppExportQuery.model_validate(query), model
         )
         response.direct_passthrough = False
         assert response.get_data() == b"package"
@@ -135,10 +136,14 @@ def test_ifpkg_export_rejects_non_agent_apps():
         unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), app_module.AppExportQuery(format="ifpkg"), model)
 
 
-def test_existing_export_defaults_to_yaml(monkeypatch):
-    model = App(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
+@pytest.mark.parametrize(
+    ("mode", "query"),
+    [(AppMode.AGENT, {"format": "yaml"}), (AppMode.WORKFLOW, {}), (AppMode.WORKFLOW, {"format": "yaml"})],
+)
+def test_yaml_export_remains_available(monkeypatch, mode, query):
+    model = App(id="app-1", tenant_id="tenant-1", mode=mode)
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=lambda: object()))
     monkeypatch.setattr(app_module.AppDslService, "export_dsl", lambda **_kwargs: "app: {}")
-    assert unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), app_module.AppExportQuery(), model) == {
-        "data": "app: {}"
-    }
+    assert unwrap(app_module.AppExportApi.get)(
+        app_module.AppExportApi(), app_module.AppExportQuery.model_validate(query), model
+    ) == {"data": "app: {}"}
