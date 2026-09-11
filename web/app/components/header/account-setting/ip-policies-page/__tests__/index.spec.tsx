@@ -41,8 +41,6 @@ const translations = vi.hoisted(() => ({
   'settings.ipPolicyNamePlaceholder': 'e.g. Internal Network',
   'settings.ipPolicyNewTitle': 'New IP Policy',
   'settings.ipPolicyRemoveEntry': 'Remove entry',
-  'studio.accessControl.emptyPoliciesDescription':
-    'A policy is the list of IP addresses allowed in. Create one, then come back to apply it here.',
   'studio.accessControl.emptyPoliciesTitle': 'No IP policies in this workspace yet',
   'studio.accessControl.policySummaryTwo': 'Allows {{first}} and {{second}}',
 }))

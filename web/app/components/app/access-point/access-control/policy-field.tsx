@@ -53,14 +53,9 @@ export function AccessControlPolicyField({
   if (policies.length === 0) {
     return (
       <div className="flex w-full flex-col items-center gap-3 overflow-hidden rounded-lg border border-dashed border-divider-regular px-4 py-5">
-        <div className="flex w-full flex-col items-center gap-1 text-center">
-          <p className="w-full system-sm-medium text-text-secondary">
-            {t(($) => $['studio.accessControl.emptyPoliciesTitle'], { ns: 'deployments' })}
-          </p>
-          <p className="w-full system-xs-regular text-text-tertiary">
-            {t(($) => $['studio.accessControl.emptyPoliciesDescription'], { ns: 'deployments' })}
-          </p>
-        </div>
+        <p className="w-full text-center system-sm-medium text-text-secondary">
+          {t(($) => $['studio.accessControl.emptyPoliciesTitle'], { ns: 'deployments' })}
+        </p>
         <Button type="button" variant="secondary-accent" onClick={onCreatePolicy}>
           {t(($) => $['studio.accessControl.createIpPolicy'], { ns: 'deployments' })}
         </Button>

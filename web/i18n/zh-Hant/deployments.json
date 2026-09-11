@@ -41,7 +41,6 @@
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} / {{m}}",
   "studio.accessControl.createIpPolicy": "建立 IP 策略",
-  "studio.accessControl.emptyPoliciesDescription": "策略是允許存取的 IP 位址清單。先建立一條，再回到這裡套用。",
   "studio.accessControl.emptyPoliciesTitle": "目前工作區還沒有 IP 策略",
   "studio.accessControl.entryLabel": "Access Control",
   "studio.accessControl.excluded": "未涵蓋",

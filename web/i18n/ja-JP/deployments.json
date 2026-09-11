@@ -41,7 +41,6 @@
   "studio.accessControl.chipOn": "ON",
   "studio.accessControl.chipPartial": "{{n}} / {{m}}",
   "studio.accessControl.createIpPolicy": "IP ポリシーを作成",
-  "studio.accessControl.emptyPoliciesDescription": "ポリシーは許可する IP アドレスの一覧です。作成してから、ここに戻って適用してください。",
   "studio.accessControl.emptyPoliciesTitle": "このワークスペースにはまだ IP ポリシーがありません",
   "studio.accessControl.entryLabel": "アクセス制御",
   "studio.accessControl.excluded": "対象外",
