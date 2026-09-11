@@ -1,9 +1,15 @@
 import type { SnippetWorkflowResponse } from '@dify/contracts/api/console/snippets/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
+import { LoroDoc } from 'loro-crdt/base64'
 import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
+import {
+  CollaborationManager,
+  collaborationManager,
+} from '../../../collaboration/core/collaboration-manager'
+import { crdtRuntime } from '../../../collaboration/core/crdt-runtime'
 import { NESTED_ELEMENT_Z_INDEX } from '../../../constants'
 import { useInsertSnippet } from '../use-insert-snippet'
 
@@ -108,6 +114,19 @@ const seedPublishedWorkflow = (queryClient: QueryClient, workflow: PublishedWork
   queryClient.setQueryData<PublishedWorkflow>(queryOptions.queryKey, workflow)
 }
 
+const attachCrdtDocument = (manager: CollaborationManager, doc: LoroDoc) => {
+  const internals = manager as unknown as {
+    crdtRuntime: typeof crdtRuntime
+    doc: LoroDoc
+    nodesMap: ReturnType<LoroDoc['getMap']>
+    edgesMap: ReturnType<LoroDoc['getMap']>
+  }
+  internals.crdtRuntime = crdtRuntime
+  internals.doc = doc
+  internals.nodesMap = doc.getMap('nodes')
+  internals.edgesMap = doc.getMap('edges')
+}
+
 describe('useInsertSnippet', () => {
   let queryClient: QueryClient
   const renderUseInsertSnippet = () =>
@@ -129,10 +148,106 @@ describe('useInsertSnippet', () => {
   })
 
   afterEach(() => {
+    collaborationManager.destroy()
+    vi.restoreAllMocks()
     queryClient.clear()
   })
 
   describe('Insert Flow', () => {
+    it('should not record a partial insertion while collaborative graph state is unavailable', async () => {
+      seedPublishedWorkflow(queryClient, {
+        graph: {
+          nodes: [
+            {
+              id: 'snippet-node',
+              position: { x: 10, y: 20 },
+              data: { type: 'code', selected: false },
+            },
+          ],
+          edges: [],
+        },
+      })
+      const canApplyMutation = vi
+        .spyOn(collaborationManager, 'canApplyLocalGraphMutation')
+        .mockReturnValue(false)
+
+      const { result } = renderUseInsertSnippet()
+      let inserted: boolean | undefined
+      await act(async () => {
+        inserted = await result.current.handleInsertSnippet('snippet-1')
+      })
+
+      expect(inserted).toBe(false)
+      expect(mockSetNodes).not.toHaveBeenCalled()
+      expect(mockSetEdges).not.toHaveBeenCalled()
+      expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockSaveStateToHistory).not.toHaveBeenCalled()
+      expect(mockIncrementSnippetUseCount).not.toHaveBeenCalled()
+
+      canApplyMutation.mockRestore()
+    })
+
+    it('should preserve inserted nodes and edges in a Loro snapshot', async () => {
+      mockEdges = []
+      mockGetNodes.mockReturnValue([
+        {
+          id: 'start',
+          position: { x: 0, y: 0 },
+          data: { type: 'start', selected: false },
+        },
+      ])
+      seedPublishedWorkflow(queryClient, {
+        graph: {
+          nodes: [
+            {
+              id: 'snippet-source',
+              position: { x: 10, y: 20 },
+              data: { type: 'code', selected: false },
+            },
+            {
+              id: 'snippet-target',
+              position: { x: 310, y: 20 },
+              data: { type: 'end', selected: false },
+            },
+          ],
+          edges: [
+            {
+              id: 'snippet-edge',
+              source: 'snippet-source',
+              sourceHandle: 'source',
+              target: 'snippet-target',
+              targetHandle: 'target',
+              data: { sourceType: 'code', targetType: 'end' },
+            },
+          ],
+        },
+      })
+
+      const sourceDoc = new LoroDoc()
+      attachCrdtDocument(collaborationManager, sourceDoc)
+      collaborationManager.setNodes([], mockGetNodes())
+
+      const { result } = renderUseInsertSnippet()
+      await act(async () => {
+        await result.current.handleInsertSnippet('snippet-1')
+      })
+
+      const restoredDoc = LoroDoc.fromSnapshot(sourceDoc.export({ mode: 'snapshot' }))
+      const restoredManager = new CollaborationManager()
+      attachCrdtDocument(restoredManager, restoredDoc)
+      const restoredNodes = restoredManager.getNodes()
+      const restoredEdges = restoredManager.getEdges()
+      const restoredNodeIds = new Set(restoredNodes.map((node) => node.id))
+
+      expect(restoredNodes).toHaveLength(3)
+      expect(restoredEdges).toHaveLength(1)
+      expect(
+        restoredEdges.every(
+          (edge) => restoredNodeIds.has(edge.source) && restoredNodeIds.has(edge.target),
+        ),
+      ).toBe(true)
+    })
+
     it('should append remapped snippet graph into current workflow graph', async () => {
       seedPublishedWorkflow(queryClient, {
         graph: {
