@@ -186,6 +186,15 @@ def _execute_workflow_common(
             )
 
         except Exception as e:
+            # Roll back any in-flight transaction left in a failed state by
+            # generator.generate() so the bookkeeping updates below can commit.
+            # Without this, a SQLAlchemy flush error inside the generator would
+            # leave the session in a failed-transaction state and the
+            # session.commit() at the end would raise PendingRollbackError,
+            # dropping the failure record.
+            session.rollback()
+            trigger_log = trigger_log_repo.get_by_id(trigger_log.id)
+
             # Calculate elapsed time for failed execution
             elapsed_time = (datetime.now(UTC) - start_time).total_seconds()
 
