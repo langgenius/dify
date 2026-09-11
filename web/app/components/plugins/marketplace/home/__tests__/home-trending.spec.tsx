@@ -208,6 +208,41 @@ describe('HomeTrending', () => {
     )
   })
 
+  it('renders the delivered blog cover instead of bundled art', () => {
+    const blogBanner: PluginBanner = {
+      id: 'blog-cover',
+      style_type: 'blog',
+      title: 'Research',
+      sort: 0,
+      language: 'en',
+      content: {
+        blog_title: 'Trust Is a Feature',
+        subtitle: 'Security and governance',
+        link: 'https://dify.ai/blog/trust',
+        link_target_type: 'blog',
+        cover_image: '/api/v1/banners/images/banners/trust-cover.png',
+      },
+    }
+
+    render(<HomeTrending banners={[blogBanner]} isMarketplacePlatform page="plugins" />)
+
+    const blogLink = screen.getByRole('link', {
+      name: 'plugin.marketplace.home.trendingReadMoreAbout',
+    })
+    expect(blogLink.querySelector('img')?.getAttribute('src')).toContain(
+      '/api/v1/banners/images/banners/trust-cover.png',
+    )
+  })
+
+  it('omits blog cover art when the payload has no cover_image', () => {
+    render(<HomeTrending banners={[banners[1]!]} isMarketplacePlatform page="plugins" />)
+
+    const blogLink = screen.getByRole('link', {
+      name: 'plugin.marketplace.home.trendingReadMoreAbout',
+    })
+    expect(blogLink.querySelector('img')).toBeNull()
+  })
+
   it('fits recommend card icons inside the frame instead of cover-cropping them', () => {
     render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
