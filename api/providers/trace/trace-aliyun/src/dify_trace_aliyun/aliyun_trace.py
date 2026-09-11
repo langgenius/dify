@@ -95,9 +95,15 @@ class AliyunTraceClient(OtlpTraceClient):
     ) -> Span:
         process_data = span.attributes.get("process_data")
         captured = {**(process_data if isinstance(process_data, dict) else {}), **span.attributes}
+        native_type = span.span_type
+        if span.node_execution_id and isinstance(node_type := captured.get("node_type"), str):
+            native_type = {"llm": "llm", "tool": "tool", "knowledge-retrieval": "retrieval", "agent": "agent"}.get(
+                node_type, "node"
+            )
+        inputs = captured.get("original_inputs", span.inputs) if native_type == "node" else span.inputs
         attributes: dict[str, Any] = {
             **span_attributes(completed_trace, span),
-            "input.value": json_text(span.inputs),
+            "input.value": json_text(inputs),
             "output.value": span.outputs if isinstance(span.outputs, str) else json_text(span.outputs),
             "gen_ai.session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
             "gen_ai.user.id": completed_trace.source.actor_id,
@@ -108,13 +114,14 @@ class AliyunTraceClient(OtlpTraceClient):
                 "tool": "TOOL",
                 "retrieval": "RETRIEVER",
                 "agent": "AGENT",
-            }.get(span.span_type, "CHAIN"),
+                "node": "TASK",
+            }.get(native_type, "CHAIN"),
             "gen_ai.operation.name": {
                 "llm": "chat",
                 "tool": "execute_tool",
                 "retrieval": "retrieval",
                 "agent": "invoke_agent",
-            }.get(span.span_type, span.span_type),
+            }.get(native_type, native_type),
         }
         attributes.pop("dify.inputs", None)
         attributes.pop("dify.outputs", None)
@@ -129,31 +136,42 @@ class AliyunTraceClient(OtlpTraceClient):
             ttft = usage.get("time_to_first_token", captured.get("gen_ai_server_time_to_first_token"))
             if isinstance(ttft, (int, float)) and not isinstance(ttft, bool):
                 attributes["gen_ai.response.time_to_first_token"] = int(ttft * 1_000_000_000)
-        if span.span_type == "llm":
+        if native_type == "llm":
             # Aliyun's existing ReAct projection identifies plugin thought entries
             # by this label suffix; keep that compatibility at the destination.
-            model_name = captured.get("model_name") or (
-                span.span_name.removesuffix(" Thought") if span.span_name.endswith(" Thought") else None
+            original_inputs = captured.get("original_inputs", span.inputs)
+            original_inputs = original_inputs if isinstance(original_inputs, dict) else {}
+            model_name = (
+                captured.get("model_name")
+                or original_inputs.get("model_name")
+                or (span.span_name.removesuffix(" Thought") if span.span_name.endswith(" Thought") else None)
             )
             completion = span.outputs
             if isinstance(completion, dict):
                 completion = (
                     str(completion.get("thought") or completion.get("action") or completion.get("text") or "")
                     if span.span_name.endswith(" Thought")
-                    else completion.get("text")
+                    else str(completion.get("text") or completion.get("error_message") or span.error or "")
                 )
+            elif span.node_execution_id and captured.get("node_type") == "llm":
+                completion = span.error or ""
             attributes.update(
                 {
                     "gen_ai.request.model": model_name,
                     "gen_ai.response.model": model_name,
-                    "gen_ai.provider.name": captured.get("model_provider") or captured.get("provider"),
+                    "gen_ai.provider.name": captured.get("model_provider")
+                    or captured.get("provider")
+                    or original_inputs.get("model_provider"),
                     "gen_ai.prompt": json_text(span.inputs),
                     "gen_ai.completion": completion,
+                    "output.value": completion,
                     "gen_ai.input.messages": json_text(gen_ai_messages(span.inputs, "user")),
                     "gen_ai.output.messages": json_text(gen_ai_messages(span.outputs, "assistant")),
                 }
             )
-            if isinstance(span.outputs, dict) and (finish_reason := span.outputs.get("finish_reason")):
+            if isinstance(span.outputs, dict) and (
+                finish_reason := span.outputs.get("finish_reason") or span.outputs.get("error_type")
+            ):
                 attributes["gen_ai.response.finish_reason"] = finish_reason
                 attributes["gen_ai.response.finish_reasons"] = [finish_reason]
             parameters = captured.get("model_parameters")
@@ -170,8 +188,10 @@ class AliyunTraceClient(OtlpTraceClient):
                     attributes[f"gen_ai.request.{field}"] = parameters.get(field)
                 if parameters.get("tools"):
                     attributes["gen_ai.tool.definitions"] = json_text(parameters["tools"])
-        elif span.span_type == "agent":
+        elif native_type == "agent":
             attributes["gen_ai.agent.name"] = captured.get("agent_name") or span.span_name
+            if captured.get("node_type") == "agent" and isinstance(span.outputs, dict):
+                attributes["output.value"] = str(span.outputs.get("text", ""))
             round_match = re.fullmatch(r"ROUND\s+(\d+)", span.span_name, re.IGNORECASE)
             round_number = captured.get("agent_round") or (int(round_match[1]) if round_match else None)
             if round_number is not None:
@@ -180,12 +200,17 @@ class AliyunTraceClient(OtlpTraceClient):
                 )
                 if span.error:
                     attributes["gen_ai.react.finish_reason"] = "error"
-        elif span.span_type == "tool":
+        elif native_type == "tool":
             tool_output = span.outputs if isinstance(span.outputs, dict) else {}
+            tool_metadata = captured.get("metadata")
+            tool_info = tool_metadata.get("tool_info") if isinstance(tool_metadata, dict) else None
+            tool_info = tool_info if isinstance(tool_info, dict) else {}
             tool_name = (
                 captured.get("tool_name") or tool_output.get("tool_name") or span.span_name.removeprefix("CALL ")
             )
-            provider_type = captured.get("provider_type") or tool_output.get("provider_type")
+            provider_type = (
+                captured.get("provider_type") or tool_output.get("provider_type") or tool_info.get("provider_type")
+            )
             tool_type = (
                 "datastore"
                 if provider_type in {"dataset-retrieval", "datastore"}
@@ -193,27 +218,36 @@ class AliyunTraceClient(OtlpTraceClient):
                 if provider_type == "extension"
                 else "function"
             )
+            tool_arguments = span.inputs
+            tool_result = span.outputs
+            if span.inputs is None and span.span_name.startswith("CALL "):
+                tool_arguments = tool_output.get("tool_call_args", tool_output.get("tool_call_input", tool_output))
+                tool_result = tool_output.get("output", tool_output)
+                attributes["input.value"] = json_text(tool_arguments)
+                attributes["output.value"] = tool_result if isinstance(tool_result, str) else json_text(tool_result)
+            elif captured.get("operation_type") == "tool" and not span.node_execution_id:
+                tool_result = str(span.outputs)
+                attributes["output.value"] = tool_result
+            tool_result_text = tool_result if isinstance(tool_result, str) else json_text(tool_result)
             attributes.update(
                 {
                     "gen_ai.tool.name": tool_name,
                     "gen_ai.tool.type": tool_type,
                     "gen_ai.tool.description": captured.get("tool_description")
                     or captured.get("description")
-                    or tool_output.get("description"),
+                    or tool_output.get("description")
+                    or tool_info.get("description")
+                    or tool_info.get("tool_description"),
                     "gen_ai.tool.call.id": captured.get("tool_call_id") or span.span_id,
-                    "gen_ai.tool.call.arguments": json_text(
-                        span.inputs
-                        if span.inputs is not None
-                        else tool_output.get("tool_call_args", tool_output.get("tool_call_input"))
-                    ),
-                    "gen_ai.tool.call.result": json_text(tool_output.get("output", span.outputs)),
+                    "gen_ai.tool.call.arguments": json_text(tool_arguments),
+                    "gen_ai.tool.call.result": tool_result_text,
                 }
             )
             for field in ("id", "name", "description", "version"):
                 attributes[f"gen_ai.skill.{field}"] = captured.get(f"skill_{field}") or tool_output.get(
                     f"skill_{field}"
                 )
-        elif span.span_type == "retrieval":
+        elif native_type == "retrieval":
             workflow_results = isinstance(span.outputs, dict) and "result" in span.outputs
             documents = (
                 span.outputs.get("result", span.outputs.get("documents", []))
@@ -241,9 +275,30 @@ class AliyunTraceClient(OtlpTraceClient):
                         document_metadata.update(extra_metadata)
                 retrieval_documents.append({"document": retrieval_document} if workflow_results else retrieval_document)
             query = span.inputs.get("query", span.inputs) if isinstance(span.inputs, dict) else span.inputs
+            query_text = query if isinstance(query, str) else json_text(query)
+            if isinstance(span.outputs, dict) and "documents" in span.outputs:
+                native_documents: list[JsonValue] = []
+                for document in documents if isinstance(documents, list) else []:
+                    if not isinstance(document, dict):
+                        continue
+                    metadata = document.get("metadata")
+                    metadata = metadata if isinstance(metadata, dict) else {}
+                    native_documents.append(
+                        {
+                            "content": document.get("page_content", document.get("content")),
+                            "metadata": {key: metadata.get(key) for key in ("dataset_id", "doc_id", "document_id")},
+                            "score": metadata.get("score"),
+                        }
+                    )
+            else:
+                native_documents = retrieval_documents
             attributes.update(
                 {
-                    "gen_ai.retrieval.query.text": query if isinstance(query, str) else json_text(query),
+                    "input.value": query_text,
+                    "output.value": json_text(documents if workflow_results else native_documents),
+                    "retrieval.query": query_text,
+                    "retrieval.document": json_text(native_documents),
+                    "gen_ai.retrieval.query.text": query_text,
                     "gen_ai.retrieval.documents": json_text(retrieval_documents),
                     "gen_ai.data_source.id": captured.get("dataset_id"),
                     "gen_ai.request.model": captured.get("embedding_model"),
@@ -251,6 +306,13 @@ class AliyunTraceClient(OtlpTraceClient):
                 }
             )
         exported_span = otlp_span(completed_trace, span, parent_span, attributes=attributes)
+        if span.attributes.get("operation_type") == "message" or (
+            span.span_type == "workflow"
+            and span.span_id == completed_trace.root_span_id
+            and not completed_trace.source.message_id
+            and parent_span is None
+        ):
+            exported_span.kind = Span.SPAN_KIND_SERVER
         # Existing provider status filters include stopped workflows with a reason.
         if span.span_type == "workflow" and span.status == "cancelled" and span.error:
             exported_span.status.code = Status.STATUS_CODE_ERROR

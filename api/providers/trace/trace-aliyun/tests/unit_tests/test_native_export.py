@@ -52,7 +52,20 @@ def test_workflow_and_message_retrieval_documents(output_shape: str) -> None:
         assert document["metadata"]["source"] == "knowledge"
         assert document["metadata"]["author"] == "Dify"
     assert attributes["gen_ai.retrieval.query.text"].string_value == "Find guide"
-    assert json.loads(attributes["output.value"].string_value) == outputs
+    assert attributes["input.value"].string_value == attributes["retrieval.query"].string_value == "Find guide"
+    if output_shape != "message":
+        assert json.loads(attributes["output.value"].string_value) == workflow_result.value
+        assert json.loads(attributes["retrieval.document"].string_value) == documents
+    else:
+        expected = [
+            {
+                "content": "Retrieved text",
+                "metadata": {"dataset_id": None, "doc_id": None, "document_id": "document-1"},
+                "score": 0.0,
+            }
+        ]
+        assert json.loads(attributes["output.value"].string_value) == expected
+        assert json.loads(attributes["retrieval.document"].string_value) == expected
 
 
 @pytest.mark.parametrize("outputs", [{"result": []}, {"documents": []}, {}, None])
@@ -148,7 +161,7 @@ def test_agent_round_tool_and_skill_fields_survive_generic_capture() -> None:
     assert attributes["gen_ai.tool.name"] == "search"
     assert attributes["gen_ai.tool.type"] == "datastore"
     assert json.loads(attributes["gen_ai.tool.call.arguments"]) == {"query": "document"}
-    assert json.loads(attributes["gen_ai.tool.call.result"]) == "Found"
+    assert attributes["gen_ai.tool.call.result"] == attributes["output.value"] == "Found"
     assert attributes["gen_ai.skill.id"] == "skill-1"
     assert attributes["gen_ai.skill.name"] == "research"
     thought = trace.spans[-1].model_copy(

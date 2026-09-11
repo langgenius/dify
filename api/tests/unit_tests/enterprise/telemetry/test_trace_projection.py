@@ -7,17 +7,53 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
+from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 
 from core.ops.otlp_trace import otlp_value
 from core.ops.trace_data import CompletedTrace, TraceSource
 from core.ops.workflow_trace import WorkflowTraceRecorder
 from enterprise.telemetry.enterprise_trace import EnterpriseTraceClient
-from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
+from graphon.engine_events import GraphRunAbortedEvent, GraphRunSucceededEvent, NodeRunSucceededEvent
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace
 from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
+
+
+@pytest.mark.parametrize("include_content", [True, False])
+def test_recorded_workflow_stop_keeps_its_error_counter(include_content: bool, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()), actor_id="user")
+    submitted: list[CompletedTrace] = []
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    recorder.on_event(GraphRunAbortedEvent(reason="Workflow execution stopped"))
+    assert recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted[0].model_dump_json())
+    assert trace.spans[0].status == "cancelled"
+    assert trace.spans[0].error == "Workflow execution stopped"
+
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": include_content})
+    send_metrics = Mock()
+    monkeypatch.setattr(client.otlp, "send_metrics", send_metrics)
+    monkeypatch.setattr(client.otlp, "send_traces", Mock())
+    monkeypatch.setattr(client.logger, "info", Mock())
+    client.export_trace(trace)
+    metrics = {metric.name: Metric.FromString(metric.SerializeToString()) for metric in send_metrics.call_args.args[0]}
+    error = metrics["dify.errors.total"].sum.data_points[0]
+    assert error.as_int == 1
+    assert {item.key: item.value.string_value for item in error.attributes} == {
+        "tenant_id": source.tenant_id,
+        "app_id": source.app_id,
+        "type": "workflow",
+    }
+    request = metrics["dify.requests.total"].sum.data_points[0]
+    assert {item.key: item.value.string_value for item in request.attributes}["status"] == "stopped"
 
 
 @pytest.mark.parametrize("include_content", [True, False])

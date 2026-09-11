@@ -119,11 +119,12 @@ def test_terminal_graph_outcomes_close_unfinished_nodes(
     root, node = trace.spans
     assert root.status == status
     assert root.error == error
-    assert node.status == ("cancelled" if status == "cancelled" else "incomplete")
+    terminal_failure = status in {"error", "cancelled"}
+    assert node.status == ("error" if terminal_failure else "incomplete")
     assert node.error == error
-    assert node.ended_at is None
-    assert not trace.complete
-    assert trace.truncation["reasons"] == ["unfinished_execution"]
+    assert node.ended_at == (root.ended_at if terminal_failure else None)
+    assert trace.complete is terminal_failure
+    assert trace.truncation["reasons"] == ([] if terminal_failure else ["unfinished_execution"])
 
 
 def test_paused_run_is_not_exported_before_resume(
@@ -297,7 +298,7 @@ def test_child_settings_failure_keeps_parent_capture_and_loads_once(source: Trac
     )
     load_settings.assert_called_once_with(source.tenant_id, child_app_id)
     assert len(submitted) == 1
-    assert submitted[0].spans[1].status == "cancelled"
+    assert submitted[0].spans[1].status == "error"
 
 
 @pytest.fixture

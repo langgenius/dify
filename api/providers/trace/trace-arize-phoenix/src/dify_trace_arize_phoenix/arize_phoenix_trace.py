@@ -58,21 +58,32 @@ class OpenInferenceTraceClient(OtlpTraceClient):
         metadata.pop("dify.outputs", None)
         process_data = span.attributes.get("process_data")
         captured = {**(process_data if isinstance(process_data, dict) else {}), **span.attributes}
+        node_type = span.attributes.get("node_type")
+        native_type = node_type if span.node_execution_id and isinstance(node_type, str) else span.span_type
+        inputs = span.inputs
+        if span.node_execution_id and node_type in ("question-classifier", "parameter-extractor"):
+            inputs = span.attributes.get("original_inputs", inputs)
         attributes: dict[str, Any] = {
             **metadata,
             "metadata": json_text(metadata),
-            "session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
+            "session.id": completed_trace.source.session_id
+            or completed_trace.source.conversation_id
+            or completed_trace.source.workflow_run_id,
             "user.id": completed_trace.source.actor_id,
-            "input.value": span.inputs if isinstance(span.inputs, str) else json_text(span.inputs),
-            "input.mime_type": "text/plain" if isinstance(span.inputs, str) else "application/json",
+            "input.value": inputs if isinstance(inputs, str) else json_text(inputs),
+            "input.mime_type": "text/plain" if isinstance(inputs, str) else "application/json",
             "output.value": span.outputs if isinstance(span.outputs, str) else json_text(span.outputs),
             "output.mime_type": "text/plain" if isinstance(span.outputs, str) else "application/json",
-            "openinference.span.kind": {
-                "llm": "LLM",
-                "tool": "TOOL",
-                "retrieval": "RETRIEVER",
-                "agent": "AGENT",
-            }.get(span.span_type, "CHAIN"),
+            "openinference.span.kind": {"suggested_question": "TOOL", "generate_name": "CHAIN"}.get(
+                str(span.attributes.get("operation_type")),
+                {
+                    "llm": "LLM",
+                    "tool": "TOOL",
+                    "retrieval": "RETRIEVER",
+                    "knowledge-retrieval": "RETRIEVER",
+                    "agent": "AGENT",
+                }.get(native_type, "CHAIN"),
+            ),
         }
         if isinstance(captured.get("tags"), list):
             attributes["tag.tags"] = captured["tags"]
