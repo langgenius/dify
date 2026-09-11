@@ -308,9 +308,6 @@
   "web/app/components/app/configuration/config-var/config-modal/form-fields.tsx": {
     "jsx-a11y/anchor-has-content": {
       "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/app/configuration/config-var/config-modal/index.tsx": {

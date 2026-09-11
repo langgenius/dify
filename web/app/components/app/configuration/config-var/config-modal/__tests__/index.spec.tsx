@@ -130,6 +130,155 @@ describe('ConfigModal', () => {
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ default: 'hello' }), undefined)
   })
 
+  it('should normalize spaces in the variable name and fill an empty label on blur', async () => {
+    const user = userEvent.setup()
+    render(
+      <ConfigModal
+        isShow
+        payload={createPayload({ variable: '', label: '' })}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    const variable = screen.getByRole('textbox', { name: 'appDebug.variableConfig.varName' })
+    await user.type(variable, 'search query')
+    await user.tab()
+
+    expect(variable).toHaveValue('search_query')
+    expect(screen.getByRole('textbox', { name: 'appDebug.variableConfig.labelName' })).toHaveValue(
+      'search_query',
+    )
+  })
+
+  it.each(['0', 0])(
+    'should edit a numeric default initialized from %s without losing decimal precision',
+    async (initialDefault) => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn()
+      render(
+        <ConfigModal
+          isShow
+          payload={createPayload({
+            type: InputVarType.number,
+            label: 'Amount',
+            default: initialDefault,
+          })}
+          onClose={vi.fn()}
+          onConfirm={onConfirm}
+        />,
+      )
+
+      const input = screen.getByRole('textbox', { name: 'appDebug.variableConfig.defaultValue' })
+      expect(input).toHaveValue('0')
+      await user.click(screen.getByText('appDebug.variableConfig.defaultValue'))
+      expect(input).toHaveFocus()
+      await user.clear(input)
+      await user.type(input, '-7.123456')
+      await user.tab()
+      expect(input).toHaveValue('-7.123456')
+      await user.click(input)
+      await user.keyboard('{Enter}')
+
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ default: -7.123456 }),
+        undefined,
+      )
+    },
+  )
+
+  it.each([
+    { option: 'appDebug.variableConfig.text-input string', type: InputVarType.textInput },
+    { option: 'appDebug.variableConfig.paragraph string', type: InputVarType.paragraph },
+  ])('should preserve a numeric default when switching to $type', async ({ option, type }) => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    render(
+      <ConfigModal
+        isShow
+        payload={createPayload({ type: InputVarType.number, label: 'Amount', default: -7.123456 })}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'appDebug.variableConfig.fieldType' }))
+    await user.click(await screen.findByRole('option', { name: option }))
+    expect(
+      screen.getByRole('textbox', { name: 'appDebug.variableConfig.defaultValue' }),
+    ).toHaveValue('-7.123456')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ type, default: '-7.123456' }),
+      undefined,
+    )
+  })
+
+  it.each([
+    { initialDefault: '0', expected: 0, displayed: '0' },
+    { initialDefault: 'hello', expected: undefined, displayed: '' },
+  ])(
+    'should use a numeric or absent default when switching from "$initialDefault" to number',
+    async ({ initialDefault, expected, displayed }) => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn()
+      render(
+        <ConfigModal
+          isShow
+          payload={createPayload({ label: 'Question', default: initialDefault })}
+          onClose={vi.fn()}
+          onConfirm={onConfirm}
+        />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: 'appDebug.variableConfig.fieldType' }))
+      await user.click(
+        await screen.findByRole('option', { name: 'appDebug.variableConfig.number number' }),
+      )
+      expect(
+        screen.getByRole('textbox', { name: 'appDebug.variableConfig.defaultValue' }),
+      ).toHaveValue(displayed)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ type: InputVarType.number, default: expected }),
+        undefined,
+      )
+    },
+  )
+
+  it.each([InputVarType.textInput, InputVarType.number])(
+    'should save an absent %s default after clearing it',
+    async (type) => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn()
+      render(
+        <ConfigModal
+          isShow
+          payload={createPayload({
+            type,
+            label: 'Question',
+            default: type === InputVarType.number ? 9 : 'hello',
+          })}
+          onClose={vi.fn()}
+          onConfirm={onConfirm}
+        />,
+      )
+
+      const input = screen.getByRole('textbox', { name: 'appDebug.variableConfig.defaultValue' })
+      await user.clear(input)
+      await user.tab()
+      expect(input).toHaveValue('')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ default: undefined }),
+        undefined,
+      )
+    },
+  )
+
   it.each([InputVarType.singleFile, InputVarType.multiFiles])(
     'should keep the %s configuration open when Enter adds custom extensions',
     async (type) => {
