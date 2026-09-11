@@ -10,13 +10,20 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops import trace_source
-from core.ops.provider_config import BaseTracingConfig
+from core.ops.provider_config import BaseTracingConfig, ProviderConfigFields
 from core.ops.trace_queue import TraceQueue
 from models.account import Tenant
 from models.dataset import Pipeline
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, TraceAppConfig
 from services.ops_trace_service import update_app_trace_settings
+
+
+@pytest.fixture(autouse=True)
+def use_generic_config_schema(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.ops.provider_config.get_provider_config_fields", lambda _provider: ProviderConfigFields(BaseTracingConfig)
+    )
 
 
 def seed_trace_owner(session: Session) -> tuple[Tenant, App, TraceAppConfig]:
@@ -34,9 +41,7 @@ def seed_trace_owner(session: Session) -> tuple[Tenant, App, TraceAppConfig]:
     )
     session.add(app)
     session.flush()
-    config = TraceAppConfig(
-        app_id=app.id, tracing_provider="langfuse", tracing_config={"public_key": "cipher-a", "secret_key": "cipher-b"}
-    )
+    config = TraceAppConfig(app_id=app.id, tracing_provider="langfuse", tracing_config={"credential": "cipher"})
     session.add(config)
     session.commit()
     return tenant, app, config
@@ -53,9 +58,9 @@ def test_config_snapshot_cannot_switch_tenant_provider_or_revision(
     monkeypatch.setattr(trace_source, "_enterprise_config", lambda: None)
     tenant, app, config = seed_trace_owner(sqlite_session)
     settings = trace_source.get_trace_provider_settings(tenant.id, app.id)[0]
-    decrypt = Mock(return_value={"secret_key": "decrypted"})
+    decrypt = Mock(return_value={"credential": "decrypted"})
     monkeypatch.setattr(trace_source, "decrypt_provider_config", decrypt)
-    assert trace_source.load_trace_provider_config(settings) == {"secret_key": "decrypted"}
+    assert trace_source.load_trace_provider_config(settings) == {"credential": "decrypted"}
     decrypt.assert_called_once_with(tenant.id, "langfuse", config.tracing_config)
     decrypt.reset_mock()
     with pytest.raises(ValueError):
@@ -304,7 +309,7 @@ def test_delivery_rejects_config_changes_even_without_a_revision_increment(
     if change == "digest":
         settings = settings.model_copy(update={"destination_settings_hash": "é" * 64})
     elif change == "credentials":
-        config.tracing_config = {"secret_key": "rotated"}
+        config.tracing_config = {"credential": "rotated"}
     else:
         app.tracing = json.dumps({"enabled": change != "disabled", "tracing_provider": "langsmith"})
     sqlite_session.commit()

@@ -296,7 +296,7 @@ def test_databricks_empty_tls_snapshot_prevents_later_environment_reads(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config = resolve_provider_config("databricks", {"host": "workspace.example", "experiment_id": "7"})
-    assert config["_runtime_settings"] == {"tls": {}}
+    assert config["_runtime_settings"] == {"sampling_ratio": 1.0, "tls": {}}
     monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(tmp_path / "not-readable.pem"))
     client = MLflowTraceClient("databricks", config)
     assert client.http.ssl_context is not None
@@ -324,7 +324,7 @@ def test_databricks_http_verification_defers_captured_ca_errors_until_https_uplo
         "databricks", {"host": "http://workspace.example", "experiment_id": "7", "personal_access_token": "pat"}
     )
     if ca_error == "unreadable":
-        assert config["_runtime_settings"] == {"tls_read_failed": True}
+        assert config["_runtime_settings"] == {"sampling_ratio": 1.0, "tls_read_failed": True}
     assert str(bundle) not in json.dumps(config["_runtime_settings"])
     monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / "missing-ambient-ca.pem"))
     monkeypatch.setattr(DatabricksConfig, "load_runtime_settings", Mock(side_effect=AssertionError("snapshot reread")))
@@ -1179,7 +1179,11 @@ def test_mlflow_http_defers_ca_failures_and_does_not_read_client_certificates(mo
     read_files = Mock(side_effect=ValueError("Cannot read TLS configuration"))
     monkeypatch.setattr("dify_trace_mlflow.config.read_tls_files", read_files)
     config = {"tracking_uri": "http://mlflow.example"}
-    assert MLflowConfig.load_runtime_settings(config) == {"verify": True, "artifact_tls_read_failed": True}
+    assert MLflowConfig.load_runtime_settings(config) == {
+        "sampling_ratio": 1.0,
+        "verify": True,
+        "artifact_tls_read_failed": True,
+    }
     ssl_context = MLflowTraceClient("mlflow", config).http.ssl_context
     assert isinstance(ssl_context, ssl.SSLContext)
     assert ssl_context.verify_mode == ssl.CERT_REQUIRED
@@ -1198,7 +1202,7 @@ def test_mlflow_explicit_blank_ca_disables_verification_without_ca_bundle_fallba
     monkeypatch.setenv("MLFLOW_TRACKING_INSECURE_TLS", "false")
     monkeypatch.delenv("MLFLOW_TRACKING_CLIENT_CERT_PATH", raising=False)
     config = {"tracking_uri": "https://mlflow.example"}
-    assert MLflowConfig.load_runtime_settings(config) == {"verify": False, "tls": {}}
+    assert MLflowConfig.load_runtime_settings(config) == {"sampling_ratio": 1.0, "verify": False, "tls": {}}
     ssl_context = MLflowTraceClient("mlflow", config).http.ssl_context
     assert ssl_context is not None
     assert ssl_context.verify_mode == ssl.CERT_NONE

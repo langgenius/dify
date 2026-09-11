@@ -25,9 +25,12 @@ from graphon.engine_events import (
 )
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
-from tests.unit_tests.core.ops.test_provider_export import make_completed_trace, provider_config
+from tests.unit_tests.core.ops.test_provider_export import make_completed_trace
 from tests.unit_tests.core.ops.test_trace_export_state import make_export_state
 from tests.unit_tests.core.ops.test_workflow_trace_limits import workflow_node
+
+# Pytest importlib mode resolves these hyphenated provider packages.
+from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
 
 
 def test_fresh_clients_preserve_cumulative_histograms_across_operations(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -75,7 +78,7 @@ def test_fresh_clients_preserve_cumulative_histograms_across_operations(monkeypa
     ):
         client = create_trace_client(
             {
-                **provider_config("tencent"),
+                **make_provider_config(),
                 "_runtime_settings": {
                     "metrics_protocol": "grpc",
                     "metrics_verify": True,
@@ -127,7 +130,7 @@ def test_histogram_distributions_match_the_previous_sdk_instruments() -> None:
         }
     )
     trace = trace.model_copy(update={"spans": (*trace.spans[:-1], model)})
-    metrics = create_trace_client(provider_config("tencent")).build_metrics(trace)
+    metrics = create_trace_client(make_provider_config()).build_metrics(trace)
     reader = InMemoryMetricReader()
     provider = MeterProvider(metric_readers=[reader])
     try:
@@ -167,7 +170,7 @@ def test_workflow_metrics_use_model_usage_timings_and_legacy_dimensions() -> Non
         }
     )
     trace = trace.model_copy(update={"spans": (*trace.spans[:-1], model)})
-    client = create_trace_client(provider_config("tencent"))
+    client = create_trace_client(make_provider_config())
     metrics = client.build_metrics(trace)
     duration = next(metric for metric in metrics if metric.name == "gen_ai.client.operation.duration")
     assert duration.histogram.data_points[0].sum == 1.25
@@ -237,7 +240,7 @@ def test_basic_chat_streaming_metrics_count_the_captured_message_once() -> None:
     )
     trace = CompletedTrace.model_validate_json(queue.submit_trace.call_args.args[0].trace_json)
     assert len(trace.spans) == 2
-    metrics = create_trace_client(provider_config("tencent")).build_metrics(trace)
+    metrics = create_trace_client(make_provider_config()).build_metrics(trace)
     assert {
         metric.name: metric.histogram.data_points[0].sum
         for metric in metrics
@@ -337,7 +340,7 @@ def test_workflow_recorder_metrics_count_the_final_model_result_once(node_type: 
         assert [attempt.status for attempt in attempts] == ["error", "ok"]
         assert all(attempt.attributes["metrics_from_parent"] for attempt in attempts)
 
-    metrics = create_trace_client(provider_config("tencent")).build_metrics(trace)
+    metrics = create_trace_client(make_provider_config()).build_metrics(trace)
     assert len(metrics) == 6
     assert [(metric.name, metric.histogram.data_points[0].sum) for metric in metrics[1:]] == [
         ("gen_ai.client.operation.duration", 1.25),
@@ -359,7 +362,7 @@ def test_missing_provider_latency_does_not_become_span_wall_time(latency: object
     trace = make_completed_trace()
     model = trace.spans[-1].model_copy(update={"usage": {"latency": latency, "completion_tokens": 3}})
     trace = trace.model_copy(update={"spans": (*trace.spans[:-1], model)})
-    metrics = create_trace_client(provider_config("tencent")).build_metrics(trace)
+    metrics = create_trace_client(make_provider_config()).build_metrics(trace)
     assert {metric.name for metric in metrics} == {"gen_ai.trace.duration", "gen_ai.client.token.usage"}
 
 
@@ -378,5 +381,5 @@ def test_unknown_span_times_keep_measured_usage_and_streaming_values() -> None:
         }
     )
     trace = trace.model_copy(update={"spans": (*trace.spans[:-1], model)})
-    metrics = create_trace_client(provider_config("tencent")).build_metrics(trace)
+    metrics = create_trace_client(make_provider_config()).build_metrics(trace)
     assert [metric.histogram.data_points[0].sum for metric in metrics] == [2, 3, 0.25, 0.5]

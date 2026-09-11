@@ -5,7 +5,9 @@ import pytest
 from core.ops.provider_export import (
     create_provider_client,
 )
-from tests.unit_tests.core.ops.test_provider_export import provider_config
+
+# Pytest importlib mode resolves these hyphenated provider packages.
+from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
 
 
 @pytest.mark.parametrize(
@@ -21,6 +23,6 @@ from tests.unit_tests.core.ops.test_provider_export import provider_config
     ],
 )
 def test_aliyun_trace_path_matches_complete_hostname(endpoint: str, trace_path: str) -> None:
-    client = create_provider_client("aliyun", {**provider_config("aliyun"), "endpoint": endpoint})
+    client = create_provider_client("aliyun", {**make_provider_config(), "endpoint": endpoint})
 
     assert client.http.endpoint.endswith(f"/adapt_tenant-secret/{trace_path}")
