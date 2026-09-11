@@ -33,5 +33,10 @@ def update_app_trace_settings(*, tenant_id: str, app_id: str, enabled: bool, tra
         app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
         if app is None:
             raise ValueError("App not found")
-        app.tracing = json.dumps({"enabled": enabled, "tracing_provider": tracing_provider})
+        settings = {"enabled": enabled, "tracing_provider": tracing_provider}
+        previous = json.loads(app.tracing) if app.tracing else {"enabled": False, "tracing_provider": None}
+        if previous == settings:
+            return
+        app.tracing = json.dumps(settings)
         app.tracing_revision += 1
+        app.tracing_destination_revision += 1

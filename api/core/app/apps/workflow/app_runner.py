@@ -20,12 +20,13 @@ from core.app.entities.app_invoke_entities import (
     get_credit_usage_app_type,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.ops.workflow_trace import build_workflow_trace_inputs
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSourceRepository
 from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.snippet_start import get_compatible_start_aliases
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, get_all_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
@@ -205,7 +206,16 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow_id=self._workflow.id,
                 workflow_version=self._workflow.version,
                 workflow_run_id=self.application_generate_entity.workflow_execution_id,
-                inputs=self.application_generate_entity.inputs,
+                inputs=build_workflow_trace_inputs(
+                    self.application_generate_entity.inputs, get_all_system_variables(variable_pool)
+                ),
+                attributes={
+                    "workflow_name": self._workflow.marked_name,
+                    "workflow_type": str(self._workflow.type),
+                    "workflow_version": self._workflow.version,
+                    "invoke_from": invoke_from.value,
+                    "from_source": invoke_from.to_source(),
+                },
                 workflow_trace_state=self.application_generate_entity.workflow_trace_state,
                 resumed_without_state=self.application_generate_entity.extras.get("ops_resumed_without_state", False),
             )

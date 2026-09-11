@@ -1,3 +1,5 @@
+from typing import override
+
 from pydantic import ValidationInfo, field_validator
 
 from core.ops.provider_config import BaseTracingConfig
@@ -12,6 +14,11 @@ class LangfuseConfig(BaseTracingConfig):
     public_key: str
     secret_key: str
     host: str = "https://cloud.langfuse.com"
+
+    @classmethod
+    @override
+    def secret_fields(cls) -> tuple[str, ...]:
+        return ("public_key", "secret_key")
 
     @field_validator("host")
     @classmethod

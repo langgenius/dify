@@ -95,6 +95,7 @@ def timestamp_ns(value: datetime | None) -> int:
 
 
 def span_attributes(completed_trace: CompletedTrace, span: TraceSpan) -> dict[str, JsonValue]:
+    """Return captured Dify data; each destination owns its semantic conventions."""
     attributes = dict(span.attributes)
     attributes.update(
         {
@@ -108,81 +109,23 @@ def span_attributes(completed_trace: CompletedTrace, span: TraceSpan) -> dict[st
             "dify.node.id": span.node_id,
             "dify.node.attempt": span.attempt,
             "dify.span.id": span.span_id,
+            "dify.span.name": span.span_name,
+            "dify.span.type": span.span_type,
             "dify.span.status": span.status,
             "dify.trace.complete": completed_trace.complete,
             "dify.trace.truncation": completed_trace.truncation,
             "dify.trace.links": cast(list[JsonValue], list(completed_trace.links)),
             "dify.external_trace_id": completed_trace.source.external_trace_id,
-            "session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
-            "user.id": completed_trace.source.actor_id,
-            "input.value": json_text(span.inputs),
-            "input.mime_type": "application/json",
-            "output.value": json_text(span.outputs),
-            "output.mime_type": "application/json",
-            "openinference.span.kind": {
-                "llm": "LLM",
-                "retrieval": "RETRIEVER",
-                "tool": "TOOL",
-                "agent": "AGENT",
-            }.get(span.span_type, "CHAIN"),
+            "dify.session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
+            "dify.user.id": completed_trace.source.actor_id,
+            "dify.message.id": completed_trace.source.message_id,
+            "dify.conversation.id": completed_trace.source.conversation_id,
+            "dify.inputs": span.inputs,
+            "dify.outputs": span.outputs,
+            "dify.usage": span.usage,
+            "dify.events": cast(list[JsonValue], list(span.events)),
         }
     )
-    for field, attribute in (
-        ("prompt_tokens", "llm.token_count.prompt"),
-        ("completion_tokens", "llm.token_count.completion"),
-        ("total_tokens", "llm.token_count.total"),
-        ("total_cost", "llm.cost.total"),
-        ("currency", "dify.cost.currency"),
-    ):
-        if span.usage.get(field) is not None:
-            attributes[attribute] = span.usage[field]
-    attributes["dify.usage"] = span.usage
-    attributes["dify.events"] = cast(list[JsonValue], list(span.events))
-    attributes.update(
-        {
-            "gen_ai.session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
-            "gen_ai.user.id": completed_trace.source.actor_id,
-            "gen_ai.framework": "dify",
-            "gen_ai.span.kind": attributes["openinference.span.kind"],
-            "gen_ai.operation.name": {"llm": "chat", "tool": "execute_tool", "agent": "invoke_agent"}.get(
-                span.span_type, span.span_type
-            ),
-            "gen_ai.provider.name": span.attributes.get("model_provider") or span.attributes.get("ls_provider"),
-            "gen_ai.system": span.attributes.get("model_provider") or span.attributes.get("ls_provider"),
-            "gen_ai.request.model": span.attributes.get("model_name") or span.attributes.get("ls_model_name"),
-            "gen_ai.response.model": span.attributes.get("model_name") or span.attributes.get("ls_model_name"),
-            "llm.model_name": span.attributes.get("model_name") or span.attributes.get("ls_model_name"),
-            "gen_ai.usage.input_tokens": span.usage.get("prompt_tokens"),
-            "gen_ai.usage.output_tokens": span.usage.get("completion_tokens"),
-            "gen_ai.usage.total_tokens": span.usage.get("total_tokens"),
-            "llm.cost.total": span.usage.get("total_price", span.usage.get("total_cost")),
-        }
-    )
-    if span.span_type == "llm":
-        attributes.update(
-            {
-                "gen_ai.prompt": json_text(span.inputs),
-                "gen_ai.completion": json_text(span.outputs),
-                "gen_ai.input.messages": json_text(span.inputs),
-                "gen_ai.output.messages": json_text(span.outputs),
-            }
-        )
-    elif span.span_type == "tool":
-        attributes.update(
-            {
-                "gen_ai.tool.name": span.span_name,
-                "gen_ai.tool.call.id": span.span_id,
-                "gen_ai.tool.call.arguments": json_text(span.inputs),
-                "gen_ai.tool.call.result": json_text(span.outputs),
-                "tool.name": span.span_name,
-                "tool.parameters": span.attributes.get("tool_parameters"),
-            }
-        )
-    elif span.span_type == "retrieval":
-        attributes.update({"retrieval.query": json_text(span.inputs), "retrieval.document": json_text(span.outputs)})
-    if isinstance(ttft := span.attributes.get("gen_ai_server_time_to_first_token"), (int, float)):
-        attributes["gen_ai.response.time_to_first_token"] = int(ttft * 1_000_000_000)
-        attributes["gen_ai.server.time_to_first_token"] = ttft
     if span.error:
         attributes["error.message"] = span.error
     return {key: value for key, value in attributes.items() if value is not None}

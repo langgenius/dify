@@ -4,7 +4,7 @@ import contextlib
 import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from flask import Flask
@@ -208,8 +208,9 @@ def test_ensure_snippet_start_node_in_worker_applies_snippet_start_injection(
     ensure_start_node.assert_called_once_with(workflow, snippet)
 
 
-def test_generate_includes_parent_trace_context_in_extras(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+@pytest.mark.parametrize("invoke_from", list(InvokeFrom))
+def test_generate_includes_trace_context_and_workflow_app_log_id(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, invoke_from: InvokeFrom
 ) -> None:
     generator = WorkflowAppGenerator()
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
@@ -225,14 +226,12 @@ def test_generate_includes_parent_trace_context_in_extras(
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
     )
-    monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.create_message_trace",
-        MagicMock(
-            return_value=MessageTraceRecorder(
-                TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4())), MagicMock(), ()
-            )
-        ),
+    trace_factory = MagicMock(
+        return_value=MessageTraceRecorder(
+            TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4())), MagicMock(), ()
+        )
     )
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.create_message_trace", trace_factory)
     repository_tenant_ids: dict[str, str] = {}
     workflow_execution_factory = app_generator_module.DifyCoreRepositoryFactory.create_workflow_execution_repository
     workflow_node_execution_factory = (
@@ -280,7 +279,7 @@ def test_generate_includes_parent_trace_context_in_extras(
             },
             "trace_session_id": "session-1",
         },
-        invoke_from=InvokeFrom.SERVICE_API,
+        invoke_from=invoke_from,
         streaming=False,
         call_depth=0,
     )
@@ -295,6 +294,16 @@ def test_generate_includes_parent_trace_context_in_extras(
         "parent_node_execution_id": "outer-node-execution-1",
     }
     assert extras["trace_session_id"] == "session-1"
+    trace_attributes = trace_factory.call_args.kwargs["attributes"]
+    if invoke_from in (InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI, InvokeFrom.EXPLORE, InvokeFrom.WEB_APP):
+        workflow_app_log_id = extras["workflow_app_log_id"]
+        assert str(UUID(workflow_app_log_id)) == workflow_app_log_id
+        assert trace_attributes["workflow_app_log_id"] == workflow_app_log_id
+        restored_entity = WorkflowAppGenerateEntity.model_validate_json(application_generate_entity.model_dump_json())
+        assert restored_entity.extras["workflow_app_log_id"] == workflow_app_log_id
+    else:
+        assert "workflow_app_log_id" not in extras
+        assert "workflow_app_log_id" not in trace_attributes
     assert isinstance(captured["workflow_execution_repository"], SQLAlchemyWorkflowExecutionRepository)
     assert isinstance(captured["workflow_node_execution_repository"], SQLAlchemyWorkflowNodeExecutionRepository)
     assert repository_tenant_ids == {"workflow": app.tenant_id, "node": app.tenant_id}

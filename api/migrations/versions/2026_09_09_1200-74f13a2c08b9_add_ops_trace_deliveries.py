@@ -71,6 +71,7 @@ def upgrade():
         batch.create_unique_constraint("trace_app_config_app_provider_unique", ["app_id", "tracing_provider"])
     with op.batch_alter_table("apps") as batch:
         batch.add_column(sa.Column("tracing_revision", sa.Integer(), nullable=False, server_default="0"))
+        batch.add_column(sa.Column("tracing_destination_revision", sa.Integer(), nullable=False, server_default="0"))
     op.create_table(
         "ops_trace_deliveries",
         sa.Column("id", StringUUID(), primary_key=True),
@@ -139,3 +140,4 @@ def downgrade():
         batch.drop_constraint("trace_app_config_app_provider_unique", type_="unique")
     with op.batch_alter_table("apps") as batch:
         batch.drop_column("tracing_revision")
+        batch.drop_column("tracing_destination_revision")

@@ -41,7 +41,14 @@ def record_legacy_agent_result(message_trace: MessageTraceRecorder, message_fiel
                     f"Agent round {thought.position}",
                     span_type="llm",
                     inputs=thought.message,
-                    outputs={"thought": thought.thought, "answer": thought.answer, "tools": thought.tools},
+                    outputs={
+                        "thought": thought.thought,
+                        "answer": thought.answer,
+                        "tools": thought.tools,
+                        "tool_input": thought.tool_input,
+                        "observation": thought.observation,
+                        "files": thought.message_files,
+                    },
                     timer={
                         "start": thought.created_at,
                         "end": thought.created_at + timedelta(seconds=thought.latency or 0),
@@ -51,6 +58,7 @@ def record_legacy_agent_result(message_trace: MessageTraceRecorder, message_fiel
                         "metrics_from_parent": True,
                         "agent_round": thought.position,
                         "model_name": message_fields.get("model_name"),
+                        "model_provider": message_fields.get("model_provider"),
                     },
                     usage={
                         "prompt_tokens": thought.message_token,

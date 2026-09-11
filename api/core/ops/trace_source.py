@@ -34,20 +34,9 @@ def _settings_hash(tenant_id: str, settings: dict[str, Any]) -> str:
 
 
 def _enterprise_config() -> dict[str, Any] | None:
-    from configs import dify_config
-    from enterprise.telemetry.exporter import _parse_otlp_headers, is_enterprise_telemetry_enabled
+    from enterprise.telemetry.enterprise_trace import load_enterprise_config
 
-    if not is_enterprise_telemetry_enabled():
-        return None
-    return {
-        "endpoint": dify_config.ENTERPRISE_OTLP_ENDPOINT,
-        "protocol": dify_config.ENTERPRISE_OTLP_PROTOCOL,
-        "headers": _parse_otlp_headers(dify_config.ENTERPRISE_OTLP_HEADERS),
-        "api_key": dify_config.ENTERPRISE_OTLP_API_KEY,
-        "service_name": dify_config.APPLICATION_NAME,
-        "include_content": dify_config.ENTERPRISE_INCLUDE_CONTENT,
-        "sampling_rate": dify_config.ENTERPRISE_OTEL_SAMPLING_RATE,
-    }
+    return load_enterprise_config()
 
 
 def get_trace_provider_settings(tenant_id: str, app_id: str | None = None) -> tuple[TraceProviderSettings, ...]:
@@ -89,7 +78,7 @@ def get_trace_provider_settings(tenant_id: str, app_id: str | None = None) -> tu
                             app_id=app_id,
                             provider_name=provider_name,
                             config_id=config.id,
-                            config_revision=app.tracing_revision,
+                            config_revision=app.tracing_destination_revision,
                             destination_settings_hash=_settings_hash(tenant_id, config.tracing_config),
                         )
                     )
@@ -150,7 +139,7 @@ def load_trace_provider_config(settings: TraceProviderSettings) -> dict[str, Any
                 App.tenant_id == settings.tenant_id,
                 App.id == settings.app_id,
                 App.status == AppStatus.NORMAL,
-                App.tracing_revision == settings.config_revision,
+                App.tracing_destination_revision == settings.config_revision,
                 TraceAppConfig.id == settings.config_id,
                 TraceAppConfig.tracing_provider == settings.provider_name,
             )
@@ -181,6 +170,7 @@ def create_message_trace(
     external_trace_id: str | None = None,
     session_id: str | None = None,
     record_message_result: Callable[[MessageTraceRecorder, Mapping[str, Any]], None] | None = None,
+    attributes: Mapping[str, Any] | None = None,
 ) -> MessageTraceRecorder | None:
     """Resolve the application's queue once and pass explicit ownership to the recorder."""
     from flask import current_app
@@ -212,10 +202,28 @@ def create_message_trace(
             load_message_fields=partial(read_message_trace_fields, tenant_id, app_id) if app_id else None,
             record_message_result=record_message_result,
             load_provider_settings=get_trace_provider_settings,
+            attributes={**read_trace_owner_fields(tenant_id, app_id), **(attributes or {})},
         )
     except Exception:
         logging.getLogger(__name__).warning("Cannot initialize OPS trace tenant_id=%s app_id=%s", tenant_id, app_id)
         return None
+
+
+def read_trace_owner_fields(tenant_id: str, app_id: str | None) -> dict[str, Any]:
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    from extensions.ext_database import db
+    from models.account import Tenant
+    from models.model import App
+
+    with Session(db.engine) as session:
+        workspace_name = session.scalar(select(Tenant.name).where(Tenant.id == tenant_id))
+        fields: dict[str, Any] = {"workspace_name": workspace_name}
+        if app_id is not None:
+            row = session.execute(select(App.name, App.mode).where(App.tenant_id == tenant_id, App.id == app_id)).one()
+            fields.update(app_name=row.name, app_mode=row.mode)
+        return fields
 
 
 def read_message_trace_fields(tenant_id: str, app_id: str, message_id: str) -> dict[str, Any]:
@@ -226,16 +234,17 @@ def read_message_trace_fields(tenant_id: str, app_id: str, message_id: str) -> d
     from models.model import App, Conversation, Message, MessageFile, UploadFile
 
     with Session(db.engine) as session:
-        message = session.scalar(
-            select(Message)
+        row = session.execute(
+            select(Message, Conversation.mode, Conversation.invoke_from)
             .join(App, App.id == Message.app_id)
             .join(Conversation, (Conversation.id == Message.conversation_id) & (Conversation.app_id == App.id))
             .where(App.tenant_id == tenant_id, App.id == app_id, Message.id == message_id)
-        )
-        if message is None:
+        ).first()
+        if row is None:
             raise ValueError("Trace message not found")
+        message, conversation_mode, invoke_from = row
         files = session.execute(
-            select(MessageFile, UploadFile.id)
+            select(MessageFile, UploadFile)
             .outerjoin(
                 UploadFile,
                 (UploadFile.id == MessageFile.upload_file_id) & (UploadFile.tenant_id == tenant_id),
@@ -247,6 +256,7 @@ def read_message_trace_fields(tenant_id: str, app_id: str, message_id: str) -> d
             "conversation_id": message.conversation_id,
             "workflow_run_id": message.workflow_run_id,
             "inputs": message.message,
+            "original_inputs": message.inputs,
             "query": message.query,
             "outputs": message.answer,
             "started_at": message.created_at,
@@ -266,10 +276,22 @@ def read_message_trace_fields(tenant_id: str, app_id: str, message_id: str) -> d
                 "from_source": message.from_source,
                 "status": message.status,
                 "agent_based": message.agent_based,
+                "conversation_mode": conversation_mode,
+                "invoke_from": invoke_from,
+                "from_account_id": message.from_account_id,
+                "from_end_user_id": message.from_end_user_id,
             },
             "files": [
-                {"type": file.type, "upload_file_id": upload_file_id, "transfer_method": file.transfer_method}
-                for file, upload_file_id in files
+                {
+                    "type": file.type,
+                    "upload_file_id": upload.id if upload else None,
+                    "transfer_method": file.transfer_method,
+                    "url": (upload.source_url or file.url) if upload else file.url if not file.upload_file_id else None,
+                    "name": upload.name if upload else None,
+                    "mime_type": upload.mime_type if upload else None,
+                    "size": upload.size if upload else None,
+                }
+                for file, upload in files
             ],
         }
 

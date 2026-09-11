@@ -65,3 +65,26 @@ def test_invalid_configuration_never_contacts_provider() -> None:
                 workspace_id="tenant-a", tracing_provider="langsmith", tracing_config={"endpoint": "file:///tmp/trace"}
             )
     create.assert_not_called()
+
+
+@pytest.mark.parametrize("previous_decrypts", [True, False])
+def test_config_save_preserves_ciphertext_for_noop_and_can_repair_old_credentials(previous_decrypts: bool) -> None:
+    previous = {"api_key": "old-cipher"}
+    replacement = {"api_key": "new-cipher"}
+    settings = {"api_key": "same-plaintext", "project": "same-project"}
+    with (
+        patch("services.app_tracing_config_gateway.encrypt_provider_config", return_value=replacement),
+        patch(
+            "services.app_tracing_config_gateway.decrypt_provider_config",
+            side_effect=[settings, settings if previous_decrypts else ValueError("invalid old ciphertext")],
+        ),
+        patch("core.ops.provider_export.create_provider_client") as create,
+    ):
+        result = TraceProviderConfigChecks().prepare_updated_config(
+            workspace_id="tenant-a",
+            tracing_provider="langsmith",
+            tracing_config=settings,
+            current_tracing_config=previous,
+        )
+    assert result == (previous if previous_decrypts else replacement)
+    create.return_value.verify_credentials.assert_called_once()

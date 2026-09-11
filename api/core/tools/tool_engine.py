@@ -1,7 +1,7 @@
 import contextlib
 import json
 import logging
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable, Mapping
 from copy import deepcopy
 from datetime import UTC, datetime
 from mimetypes import guess_type
@@ -14,6 +14,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.ops.message_trace import MessageTraceRecorder
+from core.ops.trace_data import copy_trace_fields
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolInvokeMessage,
@@ -80,11 +81,42 @@ class ToolEngine:
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
         started_at = datetime.now(UTC)
+        trace_attributes: dict[str, Any] = {
+            "tool_name": tool.entity.identity.name,
+            "tool_provider": tool.entity.identity.provider,
+            "tool_provider_type": tool.tool_provider_type().value,
+        }
+        trace_inputs = tool_parameters
+        if trace_recorder:
+            try:
+                trace_inputs = copy_trace_fields(tool_parameters)
+                trace_attributes["original_inputs"] = trace_inputs
+            except Exception:
+                trace_recorder.mark_incomplete("tool_parameters_capture_failed")
+
+        def capture_tool_parameters(parameters: Mapping[str, Any]) -> None:
+            nonlocal trace_inputs
+            try:
+                trace_inputs = copy_trace_fields(parameters)
+                trace_attributes["tool_parameters"] = trace_inputs
+            except Exception:
+                if trace_recorder:
+                    trace_recorder.mark_incomplete("tool_parameters_capture_failed")
+
         try:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
-            messages = ToolEngine._invoke(session, tool, tool_parameters, user_id, conversation_id, app_id, message_id)
+            messages = ToolEngine._invoke(
+                session,
+                tool,
+                tool_parameters,
+                user_id,
+                conversation_id,
+                app_id,
+                message_id,
+                on_parameters=capture_tool_parameters if trace_recorder else None,
+            )
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(
@@ -107,7 +139,7 @@ class ToolEngine:
             message_list = list(messages)
 
             # extract binary data from tool invoke message
-            binary_files = ToolEngine._extract_tool_response_binary_and_text(message_list)
+            binary_files = list(ToolEngine._extract_tool_response_binary_and_text(message_list))
             # create message file
             message_files = ToolEngine._create_message_files(
                 tool_messages=binary_files, agent_message=message, invoke_from=invoke_from, user_id=user_id
@@ -120,11 +152,17 @@ class ToolEngine:
             # hit the callback handler
             agent_tool_callback.on_tool_end(
                 tool_name=tool.entity.identity.name,
-                tool_inputs=tool_parameters,
+                tool_inputs=trace_inputs,
                 tool_outputs=plain_text,
                 message_id=message.id,
                 trace_recorder=trace_recorder,
                 timer={"start": started_at, "end": datetime.now(UTC)},
+                trace_attributes={
+                    **trace_attributes,
+                    "tool_config": meta.tool_config,
+                    "files": binary_files,
+                    "message_file_ids": message_files,
+                },
             )
 
             # transform tool invoke message to get LLM friendly message
@@ -154,9 +192,10 @@ class ToolEngine:
                 trace_recorder.record_operation(
                     tool.entity.identity.name,
                     span_type="tool",
-                    inputs=tool_parameters,
+                    inputs=trace_inputs,
                     outputs=error_response,
                     error=error_response,
+                    attributes={**trace_attributes, "tool_config": meta.tool_config},
                     timer={"start": started_at, "end": datetime.now(UTC)},
                 )
             return error_response, [], meta
@@ -169,9 +208,10 @@ class ToolEngine:
             trace_recorder.record_operation(
                 tool.entity.identity.name,
                 span_type="tool",
-                inputs=tool_parameters,
+                inputs=trace_inputs,
                 outputs=error_response,
                 error=error_response,
+                attributes=trace_attributes,
                 timer={"start": started_at, "end": datetime.now(UTC)},
             )
         return error_response, [], ToolInvokeMeta.error_instance(error_response)
@@ -231,6 +271,8 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        *,
+        on_parameters: Callable[[Mapping[str, Any]], None] | None = None,
     ) -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
         """
         Invoke the tool with the given arguments.
@@ -248,7 +290,12 @@ class ToolEngine:
             },
         )
         try:
-            yield from tool.invoke(session, user_id, tool_parameters, conversation_id, app_id, message_id)
+            if on_parameters is None:
+                yield from tool.invoke(session, user_id, tool_parameters, conversation_id, app_id, message_id)
+            else:
+                yield from tool.invoke(
+                    session, user_id, tool_parameters, conversation_id, app_id, message_id, on_parameters=on_parameters
+                )
         except Exception as e:
             meta.error = str(e)
             raise ToolEngineInvokeError(meta)

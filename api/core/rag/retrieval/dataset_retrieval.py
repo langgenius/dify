@@ -771,6 +771,13 @@ class DatasetRetrieval:
                     attributes={
                         "embedding_model_provider": selected_dataset.embedding_model_provider,
                         "embedding_model": selected_dataset.embedding_model,
+                        "dataset_models": {
+                            selected_dataset.id: {
+                                "dataset_name": selected_dataset.name,
+                                "embedding_model_provider": selected_dataset.embedding_model_provider,
+                                "embedding_model": selected_dataset.embedding_model,
+                            }
+                        },
                     },
                 )
                 if results:
@@ -918,10 +925,19 @@ class DatasetRetrieval:
             timer,
             query=query,
             attributes={
-                "embedding_model_provider": available_datasets[0].embedding_model_provider,
-                "embedding_model": available_datasets[0].embedding_model,
-                "rerank_model_provider": reranking_model["reranking_provider_name"] if reranking_model else None,
-                "rerank_model_name": reranking_model["reranking_model_name"] if reranking_model else None,
+                "dataset_models": {
+                    dataset.id: {
+                        "dataset_name": dataset.name,
+                        "embedding_model_provider": dataset.embedding_model_provider,
+                        "embedding_model": dataset.embedding_model,
+                    }
+                    for dataset in available_datasets
+                },
+                "rerank_configuration": {
+                    "enabled": reranking_enable,
+                    "mode": reranking_mode,
+                    "model": reranking_model,
+                },
             },
         )
         if all_documents:

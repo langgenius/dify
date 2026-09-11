@@ -1,5 +1,7 @@
 """Export completed observations to Langfuse v4 with attempt-owned SDK resources."""
 
+import math
+from datetime import timedelta
 from typing import Any, override
 from uuid import UUID
 
@@ -10,6 +12,7 @@ from langfuse import propagate_attributes
 # observations. Use its serializers and processor without initializing that client.
 from langfuse._client.attributes import create_generation_attributes, create_span_attributes
 from langfuse._client.span_processor import LangfuseSpanProcessor
+from langfuse.api import MapValue
 from opentelemetry import context, trace
 from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
 from opentelemetry.sdk.resources import Resource
@@ -25,13 +28,74 @@ from core.ops.provider_export import (
     TraceProviderHttpClient,
     basic_auth,
     export_span_id,
+    json_text,
     provider_uuid,
     span_attributes,
     span_id_bytes,
     timestamp_ns,
 )
-from core.ops.trace_data import CompletedTrace, ExportedParentSpans
+from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_langfuse.config import LangfuseConfig
+
+
+def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
+    """Keep untimed details as marked instants at a captured endpoint, never export time."""
+    spans: dict[str, TraceSpan] = {}
+    for span in completed_trace.spans:
+        if span.started_at is None or span.ended_at is None:
+            parent = spans.get(span.parent_span_id or "")
+            anchor = span.started_at or span.ended_at or (parent.started_at if parent else None)
+            if anchor is None:
+                raise TraceExportError("langfuse_span_time_missing")
+            span = span.model_copy(
+                update={
+                    "started_at": anchor,
+                    "ended_at": anchor,
+                    "attributes": {
+                        **span.attributes,
+                        "dify.timing.estimated": True,
+                        "dify.timing.source": "captured_endpoint",
+                    },
+                }
+            )
+        assert span.started_at is not None
+        assert span.ended_at is not None
+        if span.ended_at < span.started_at:
+            raise TraceExportError("langfuse_span_time_invalid")
+        spans[span.span_id] = span
+    return list(spans.values())
+
+
+def _normalize_messages(value: JsonValue) -> JsonValue:
+    if isinstance(value, list):
+        return [_normalize_messages(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    message = dict(value)
+    if "role" in message:
+        if message["role"] == "human":
+            message["role"] = "user"
+        elif message["role"] == "ai":
+            message["role"] = "assistant"
+        if "text" in message and "content" not in message:
+            message["content"] = message.pop("text")
+    if "messages" in message:
+        message["messages"] = _normalize_messages(message["messages"])
+    return message
+
+
+def _map_model_parameters(value: JsonValue) -> dict[str, MapValue] | None:
+    if not isinstance(value, dict):
+        return None
+    parameters: dict[str, MapValue] = {}
+    for key, parameter in value.items():
+        if parameter is None or isinstance(parameter, (str, int, float, bool)):
+            parameters[key] = parameter
+        elif isinstance(parameter, list) and all(isinstance(item, str) for item in parameter):
+            parameters[key] = [item for item in parameter if isinstance(item, str)]
+        else:
+            parameters[key] = json_text(parameter)
+    return parameters
 
 
 class LangfuseSpanIds(IdGenerator):
@@ -67,9 +131,24 @@ class LangfuseTraceClient:
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
-        root = completed_trace.spans[0]
+        spans = _prepare_timed_spans(completed_trace)
+        root = spans[0]
         trace_id = UUID(provider_uuid(completed_trace.trace_id)).hex
+        if parent_span is None and (external_id := completed_trace.source.external_trace_id):
+            try:
+                external_uuid = UUID(external_id)
+                if external_uuid.int:
+                    trace_id = external_uuid.hex
+            except ValueError:
+                pass
         trace_name, trace_version = root.span_name, root.source_workflow_version
+        operation_type = root.attributes.get("operation_type", root.span_type)
+        trace_tags = [operation_type if isinstance(operation_type, str) else root.span_type]
+        if root.span_type == "workflow" and completed_trace.source.message_id:
+            trace_tags.insert(0, "message")
+        elif operation_type == "message":
+            if isinstance(mode := root.attributes.get("conversation_mode", root.attributes.get("app_mode")), str):
+                trace_tags.append(mode)
         parent = None
         if parent_span is not None:
             trace_id, parent_id = str(parent_span["trace_id"]), str(parent_span["span_id"])
@@ -84,10 +163,9 @@ class LangfuseTraceClient:
             trace_name = str(parent_span.get("trace_name", trace_name))
             if parent_span.get("version") is not None:
                 trace_version = str(parent_span["version"])
-        span_ids = {
-            span.span_id: span_id_bytes(export_span_id(completed_trace, span.span_id)).hex()
-            for span in completed_trace.spans
-        }
+            if isinstance(parent_tags := parent_span.get("tags"), list):
+                trace_tags = [tag for tag in parent_tags if isinstance(tag, str)]
+        span_ids = {span.span_id: span_id_bytes(export_span_id(completed_trace, span.span_id)).hex() for span in spans}
         collector = InMemorySpanExporter()
         provider = TracerProvider(
             resource=Resource({"service.name": "dify"}),
@@ -120,11 +198,12 @@ class LangfuseTraceClient:
                 session_id=completed_trace.source.session_id or completed_trace.source.conversation_id,
                 trace_name=trace_name,
                 version=trace_version,
+                tags=trace_tags,
                 metadata={"dify.tenant_id": completed_trace.source.tenant_id},
             ):
-                for span in completed_trace.spans:
+                for span in spans:
                     attributes = create_span_attributes(
-                        input=span.inputs,
+                        input=_normalize_messages(span.inputs) if span.span_type == "llm" else span.inputs,
                         output=span.outputs,
                         metadata={**root.attributes, **span_attributes(completed_trace, span)},
                         level="ERROR" if span.status == "error" else "DEFAULT",
@@ -141,16 +220,29 @@ class LangfuseTraceClient:
                                 or completed_trace.source.conversation_id,
                                 "langfuse.trace.name": trace_name,
                                 "langfuse.version": trace_version,
+                                "langfuse.trace.tags": trace_tags,
                             }.items()
                             if value is not None
                         }
                     )
                     if span.span_type == "llm":
                         cost = span.usage.get("total_price", span.usage.get("total_cost"))
-                        model = span.attributes.get("model_name") or span.attributes.get("ls_model_name")
+                        model = span.attributes.get("model_name")
+                        completion_start_time = None
+                        ttft = span.usage.get("time_to_first_token")
+                        if (
+                            isinstance(ttft, (int, float))
+                            and math.isfinite(ttft)
+                            and ttft >= 0
+                            and span.started_at is not None
+                            and not span.attributes.get("dify.timing.estimated")
+                        ):
+                            completion_start_time = span.started_at + timedelta(seconds=ttft)
                         attributes.update(
                             create_generation_attributes(
                                 model=model if isinstance(model, str) else None,
+                                model_parameters=_map_model_parameters(span.attributes.get("model_parameters")),
+                                completion_start_time=completion_start_time,
                                 usage_details={
                                     key: tokens
                                     for key, value in (
@@ -182,13 +274,13 @@ class LangfuseTraceClient:
                         observation.set_status(trace.StatusCode.ERROR, span.error)
                     observations[span.span_id] = observation
                 # Keep parents alive until their children have inherited the SDK root scope.
-                for span in completed_trace.spans:
+                for span in spans:
                     observations[span.span_id].end(end_time=timestamp_ns(span.ended_at))
                     # Drain locally so even trees larger than the SDK queue cannot lose spans.
                     if not provider.force_flush():
                         raise TraceExportError("langfuse_flush_failed", retryable=True)
             finished = collector.get_finished_spans()
-            if len(finished) != len(completed_trace.spans):
+            if len(finished) != len(spans):
                 raise TraceExportError("langfuse_incomplete_export")
             request = encode_spans(finished)
         finally:
@@ -209,6 +301,7 @@ class LangfuseTraceClient:
         )
         transport.http.deadline = self.http.deadline
         transport.send_traces(request)
+        receipt_tags: list[JsonValue] = list(trace_tags)
         return ExportedParentSpans(
             spans={
                 span_id: {
@@ -216,6 +309,7 @@ class LangfuseTraceClient:
                     "span_id": exported_id,
                     "trace_name": trace_name,
                     "version": trace_version,
+                    "tags": receipt_tags,
                 }
                 for span_id, exported_id in span_ids.items()
             }

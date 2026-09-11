@@ -26,6 +26,10 @@ class BaseTracingConfig(BaseModel):
     """
 
     @classmethod
+    def secret_fields(cls) -> tuple[str, ...]:
+        raise NotImplementedError
+
+    @classmethod
     def validate_endpoint_url(cls, v: str, default_url: str) -> str:
         """
         Common endpoint URL validation logic
@@ -57,7 +61,10 @@ class BaseTracingConfig(BaseModel):
 @dataclass(frozen=True)
 class ProviderConfigFields:
     config_class: type[BaseTracingConfig]
-    secret_keys: tuple[str, ...]
+
+    @property
+    def secret_keys(self) -> tuple[str, ...]:
+        return self.config_class.secret_fields()
 
 
 def get_provider_config_fields(provider_name: str) -> ProviderConfigFields:
@@ -66,43 +73,43 @@ def get_provider_config_fields(provider_name: str) -> ProviderConfigFields:
         case "langfuse":
             from dify_trace_langfuse.config import LangfuseConfig
 
-            return ProviderConfigFields(LangfuseConfig, ("public_key", "secret_key"))
+            return ProviderConfigFields(LangfuseConfig)
         case "langsmith":
             from dify_trace_langsmith.config import LangSmithConfig
 
-            return ProviderConfigFields(LangSmithConfig, ("api_key",))
+            return ProviderConfigFields(LangSmithConfig)
         case "opik":
             from dify_trace_opik.config import OpikConfig
 
-            return ProviderConfigFields(OpikConfig, ("api_key",))
+            return ProviderConfigFields(OpikConfig)
         case "weave":
             from dify_trace_weave.config import WeaveConfig
 
-            return ProviderConfigFields(WeaveConfig, ("api_key",))
+            return ProviderConfigFields(WeaveConfig)
         case "arize":
             from dify_trace_arize_phoenix.config import ArizeConfig
 
-            return ProviderConfigFields(ArizeConfig, ("api_key", "space_id"))
+            return ProviderConfigFields(ArizeConfig)
         case "phoenix":
             from dify_trace_arize_phoenix.config import PhoenixConfig
 
-            return ProviderConfigFields(PhoenixConfig, ("api_key",))
+            return ProviderConfigFields(PhoenixConfig)
         case "aliyun":
             from dify_trace_aliyun.config import AliyunConfig
 
-            return ProviderConfigFields(AliyunConfig, ("license_key",))
+            return ProviderConfigFields(AliyunConfig)
         case "mlflow":
             from dify_trace_mlflow.config import MLflowConfig
 
-            return ProviderConfigFields(MLflowConfig, ("password",))
+            return ProviderConfigFields(MLflowConfig)
         case "databricks":
             from dify_trace_mlflow.config import DatabricksConfig
 
-            return ProviderConfigFields(DatabricksConfig, ("personal_access_token", "client_secret"))
+            return ProviderConfigFields(DatabricksConfig)
         case "tencent":
             from dify_trace_tencent.config import TencentConfig
 
-            return ProviderConfigFields(TencentConfig, ("token",))
+            return ProviderConfigFields(TencentConfig)
         case _:
             raise ValueError(f"Unsupported tracing provider: {provider_name}")
 
