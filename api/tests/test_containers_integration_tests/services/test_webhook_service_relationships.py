@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -15,12 +14,40 @@ from sqlalchemy.orm import Session
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from enums import QuotaType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import AppTriggerStatus, AppTriggerType
-from models.model import App
+from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
+from models.model import App, EndUser
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import WebhookService
+
+
+class _EndUserServiceStub:
+    def __init__(self, result: EndUser | Exception) -> None:
+        self._result = result
+        self.calls: list[tuple[EndUserType, str, str, str | None]] = []
+
+    def get_or_create_end_user_by_type(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser:
+        self.calls.append((type, tenant_id, app_id, user_id))
+        if isinstance(self._result, Exception):
+            raise self._result
+        return self._result
+
+
+def _end_user(*, tenant_id: str, app_id: str) -> EndUser:
+    return EndUser(
+        id=str(uuid4()),
+        tenant_id=tenant_id,
+        app_id=app_id,
+        type=EndUserType.TRIGGER,
+        session_id="trigger-session",
+    )
 
 
 class WebhookServiceRelationshipFactory:
@@ -329,23 +356,24 @@ class TestWebhookServiceTriggerExecutionWithContainers:
             db_session_with_containers, app=app, account=account, node_id="node-1"
         )
 
-        end_user = SimpleNamespace(id=str(uuid4()))
+        end_user = _end_user(tenant_id=tenant.id, app_id=app.id)
         webhook_data = {"body": {"value": 1}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"}
 
         quota_charge = MagicMock()
 
         with (
             patch(
-                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-                return_value=end_user,
-            ),
-            patch(
                 "services.trigger.webhook_service.QuotaService.reserve",
                 return_value=quota_charge,
             ) as mock_reserve,
             patch("services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async") as mock_trigger,
         ):
-            WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                webhook_data,
+                workflow,
+                end_users=_EndUserServiceStub(end_user),
+            )
 
         mock_reserve.assert_called_once()
         reserve_args = mock_reserve.call_args.args
@@ -375,10 +403,6 @@ class TestWebhookServiceTriggerExecutionWithContainers:
 
         with (
             patch(
-                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-                return_value=SimpleNamespace(id=str(uuid4())),
-            ),
-            patch(
                 "services.trigger.webhook_service.QuotaService.reserve",
                 side_effect=QuotaExceededError(feature="trigger", tenant_id=tenant.id, required=1),
             ),
@@ -391,6 +415,7 @@ class TestWebhookServiceTriggerExecutionWithContainers:
                     webhook_trigger,
                     {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
                     workflow,
+                    end_users=_EndUserServiceStub(_end_user(tenant_id=tenant.id, app_id=app.id)),
                 )
 
         mock_mark_rate_limited.assert_called_once_with(tenant.id)
@@ -413,16 +438,13 @@ class TestWebhookServiceTriggerExecutionWithContainers:
         )
         caplog.set_level(logging.ERROR, logger="services.trigger.webhook_service")
 
-        with patch(
-            "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-            side_effect=RuntimeError("boom"),
-        ):
-            with pytest.raises(RuntimeError, match="boom"):
-                WebhookService.trigger_workflow_execution(
-                    webhook_trigger,
-                    {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
-                    workflow,
-                )
+        with pytest.raises(RuntimeError, match="boom"):
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
+                workflow,
+                end_users=_EndUserServiceStub(RuntimeError("boom")),
+            )
 
         assert caplog.messages.count(f"Failed to trigger workflow for webhook {webhook_trigger.webhook_id}") == 1
 

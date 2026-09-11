@@ -1,4 +1,3 @@
-import types
 from unittest.mock import patch
 
 import pytest
@@ -10,18 +9,37 @@ from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 
 
+class _RequestStub:
+    method = "POST"
+    headers = {"x-test": "1"}
+    args = {"a": "b"}
+
+
+class _AppScopedEndUserServicesStub:
+    def __init__(self, commands: object) -> None:
+        self.commands = commands
+
+
+class _ApplicationServicesStub:
+    def __init__(self, commands: object) -> None:
+        self.app_scoped_end_users = _AppScopedEndUserServicesStub(commands)
+
+
 @pytest.fixture(autouse=True)
 def mock_request():
-    module.request = types.SimpleNamespace(
-        method="POST",
-        headers={"x-test": "1"},
-        args={"a": "b"},
-    )
+    module.request = _RequestStub()
 
 
 @pytest.fixture(autouse=True)
 def mock_jsonify():
     module.jsonify = lambda payload: payload
+
+
+@pytest.fixture(autouse=True)
+def end_user_commands(monkeypatch: pytest.MonkeyPatch) -> object:
+    commands = object()
+    monkeypatch.setattr(module, "application_services", lambda: _ApplicationServicesStub(commands))
+    return commands
 
 
 def _webhook_trigger() -> WorkflowWebhookTrigger:
@@ -75,6 +93,7 @@ class TestHandleWebhook:
         mock_trigger,
         mock_extract,
         mock_get,
+        end_user_commands,
     ):
         mock_get.return_value = (_webhook_trigger(), _workflow(), "node_config")
         mock_extract.return_value = {"input": "x"}
@@ -85,6 +104,7 @@ class TestHandleWebhook:
         assert status == 200
         assert response["ok"] is True
         mock_trigger.assert_called_once()
+        assert mock_trigger.call_args.kwargs["end_users"] is end_user_commands
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
     @patch.object(module.WebhookService, "extract_and_validate_webhook_data", side_effect=ValueError("bad"))

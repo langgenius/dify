@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -49,6 +50,22 @@ def _end_user() -> EndUser:
         type=EndUserType.TRIGGER,
         session_id="trigger-session",
     )
+
+
+class _EndUserServiceStub:
+    def __init__(self) -> None:
+        self.result: Mapping[str, EndUser] = {}
+        self.calls: list[tuple[EndUserType, str, list[str], str]] = []
+
+    def create_end_user_batch(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_ids: list[str],
+        user_id: str,
+    ) -> Mapping[str, EndUser]:
+        self.calls.append((type, tenant_id, app_ids, user_id))
+        return self.result
 
 
 class TestDispatchTriggeredWorkflow:
@@ -106,7 +123,7 @@ class TestDispatchTriggeredWorkflow:
 
         Defaults are configured so the code flow can reach the final async
         trigger block (line ~385); each test overrides specific handles
-        (``get_workflows``, ``reserve``, ``create_end_user_batch``, ...) to
+        (``get_workflows``, ``reserve``, ``end_users``, ...) to
         drive the path it targets.
         """
         invoke_response = MagicMock()
@@ -114,6 +131,7 @@ class TestDispatchTriggeredWorkflow:
         invoke_response.variables = {}
 
         quota_charge = MagicMock()
+        end_users = _EndUserServiceStub()
 
         with (
             patch.object(
@@ -151,11 +169,6 @@ class TestDispatchTriggeredWorkflow:
                 "_get_published_workflows_by_app_ids",
             ) as get_workflows,
             patch.object(
-                trigger_processing_tasks_module.EndUserService,
-                "create_end_user_batch",
-                return_value={},
-            ) as create_end_user_batch,
-            patch.object(
                 trigger_processing_tasks_module.QuotaService,
                 "reserve",
                 return_value=quota_charge,
@@ -176,7 +189,7 @@ class TestDispatchTriggeredWorkflow:
                 "mark_rate_limited": mark_rate_limited,
                 "invoke_trigger_event": invoke_trigger_event,
                 "invoke_response": invoke_response,
-                "create_end_user_batch": create_end_user_batch,
+                "end_users": end_users,
                 "trigger_workflow_async": trigger_workflow_async,
             }
 
@@ -189,6 +202,7 @@ class TestDispatchTriggeredWorkflow:
             subscription=subscription,
             event_name="test_event",
             request_id="request-123",
+            end_users=dispatch_mocks["end_users"],
         )
 
         assert dispatched == 0
@@ -209,6 +223,7 @@ class TestDispatchTriggeredWorkflow:
             subscription=subscription,
             event_name="test_event",
             request_id="request-123",
+            end_users=dispatch_mocks["end_users"],
         )
 
         assert dispatched == 0
@@ -224,13 +239,14 @@ class TestDispatchTriggeredWorkflow:
         dispatch_mocks["get_workflows"].return_value = {plugin_trigger.app_id: workflow}
 
         end_user = _end_user()
-        dispatch_mocks["create_end_user_batch"].return_value = {plugin_trigger.app_id: end_user}
+        dispatch_mocks["end_users"].result = {plugin_trigger.app_id: end_user}
 
         dispatched = dispatch_triggered_workflow(
             user_id="user-123",
             subscription=subscription,
             event_name="test_event",
             request_id="request-123",
+            end_users=dispatch_mocks["end_users"],
         )
 
         assert dispatched == 1

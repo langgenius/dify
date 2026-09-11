@@ -9,7 +9,7 @@ import json
 import logging
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Protocol
 
 from celery import shared_task
 from sqlalchemy import select
@@ -27,6 +27,7 @@ from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from enums import QuotaType
+from extensions.ext_application_services import application_services
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import (
     AppTriggerType,
@@ -40,7 +41,6 @@ from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger, WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
 from services.async_workflow_service import AsyncWorkflowService
-from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService, unlimited
 from services.trigger.app_trigger_service import AppTriggerService
@@ -54,6 +54,16 @@ logger = logging.getLogger(__name__)
 
 # Use workflow queue for trigger processing
 TRIGGER_QUEUE = "triggered_workflow_dispatcher"
+
+
+class TriggerEndUserProvisioner(Protocol):
+    def create_end_user_batch(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_ids: list[str],
+        user_id: str,
+    ) -> Mapping[str, EndUser]: ...
 
 
 def dispatch_trigger_debug_event(
@@ -234,6 +244,8 @@ def dispatch_triggered_workflow(
     subscription: TriggerSubscription,
     event_name: str,
     request_id: str,
+    *,
+    end_users: TriggerEndUserProvisioner,
 ) -> int:
     """Process triggered workflows.
 
@@ -266,7 +278,7 @@ def dispatch_triggered_workflow(
     with session_factory.create_session() as session:
         workflows: Mapping[str, Workflow] = _get_published_workflows_by_app_ids(session, subscribers)
 
-    end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(
+    end_users_by_app: Mapping[str, EndUser] = end_users.create_end_user_batch(
         type=EndUserType.TRIGGER,
         tenant_id=subscription.tenant_id,
         app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
@@ -333,7 +345,7 @@ def dispatch_triggered_workflow(
 
                 error_message = e.to_user_friendly_error(plugin_name=trigger_entity.identity.name)
                 try:
-                    end_user = end_users.get(plugin_trigger.app_id)
+                    end_user = end_users_by_app.get(plugin_trigger.app_id)
                     _record_trigger_failure_log(
                         session=session,
                         workflow=workflow,
@@ -384,7 +396,7 @@ def dispatch_triggered_workflow(
 
             # Trigger async workflow
             try:
-                end_user = end_users.get(plugin_trigger.app_id)
+                end_user = end_users_by_app.get(plugin_trigger.app_id)
                 if not end_user:
                     raise ValueError(f"End user not found for app {plugin_trigger.app_id}")
 
@@ -412,6 +424,8 @@ def dispatch_triggered_workflows(
     events: list[str],
     subscription: TriggerSubscription,
     request_id: str,
+    *,
+    end_users: TriggerEndUserProvisioner,
 ) -> int:
     dispatched_count = 0
     for event_name in events:
@@ -421,6 +435,7 @@ def dispatch_triggered_workflows(
                 subscription=subscription,
                 event_name=event_name,
                 request_id=request_id,
+                end_users=end_users,
             )
         except Exception:
             logger.exception(
@@ -494,6 +509,7 @@ def dispatch_triggered_workflows_async(
             events=events,
             subscription=subscription,
             request_id=request_id,
+            end_users=application_services().app_scoped_end_users.commands,
         )
 
         debug_dispatched = dispatch_trigger_debug_event(

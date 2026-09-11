@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,7 +26,15 @@ from models.model import (
     load_annotation_reply_config,
 )
 from models.workflow import Workflow
-from services.end_user_service import EndUserService
+
+
+class AppScopedEndUserProvisioner(Protocol):
+    def get_or_create_end_user(
+        self,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser: ...
 
 
 class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
@@ -70,19 +78,20 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         inputs: Mapping,
         files: list[dict],
         session: Session,
+        end_users: AppScopedEndUserProvisioner,
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke app
         """
         app = cls._get_app(app_id, tenant_id)
         if not user_id:
-            user = EndUserService.get_or_create_end_user(app)
+            user = end_users.get_or_create_end_user(app.tenant_id, app.id, None)
         else:
             try:
                 user = cls._get_user(user_id, app)
             except ValueError:
                 # Plugins such as WeCom Bot pass external sender IDs rather than EndUser UUIDs.
-                user = EndUserService.get_or_create_end_user(app, user_id=user_id)
+                user = end_users.get_or_create_end_user(app.tenant_id, app.id, user_id)
 
         conversation_id = conversation_id or ""
 

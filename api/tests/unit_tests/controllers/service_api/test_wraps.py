@@ -28,9 +28,45 @@ from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
-from models.enums import ApiTokenType
-from models.model import ApiToken, App, AppMode, DatasetApiTokenBinding, IconType
+from models.enums import ApiTokenType, EndUserType
+from models.model import ApiToken, App, AppMode, DatasetApiTokenBinding, EndUser, IconType
 from tests.unit_tests.config_override import config_overrides_context
+
+
+class _RecordingEndUserCommands:
+    def __init__(self, result: EndUser) -> None:
+        self._result = result
+        self.calls: list[tuple[str, str, str | None]] = []
+
+    def get_or_create_end_user(self, tenant_id: str, app_id: str, user_id: str | None = None) -> EndUser:
+        self.calls.append((tenant_id, app_id, user_id))
+        return self._result
+
+
+class _AppScopedEndUserServicesStub:
+    def __init__(self, commands: _RecordingEndUserCommands) -> None:
+        self.commands = commands
+
+
+class _ApplicationServicesStub:
+    def __init__(self, commands: _RecordingEndUserCommands) -> None:
+        self.app_scoped_end_users = _AppScopedEndUserServicesStub(commands)
+
+
+class _RecordingLoginManager:
+    def __init__(self) -> None:
+        self.users: list[EndUser] = []
+
+    def _update_request_context_with_user(self, user: EndUser) -> None:
+        self.users.append(user)
+
+
+class _RecordingSignal:
+    def __init__(self) -> None:
+        self.calls: list[tuple[object, EndUser]] = []
+
+    def send(self, sender: object, *, user: EndUser) -> None:
+        self.calls.append((sender, user))
 
 
 def _configure_current_app_mock(mock_current_app):
@@ -222,6 +258,82 @@ class TestValidateAppToken:
         assert result["success"] is True
         assert result["app_id"] == app_model.id
         assert account.current_tenant_id == tenant.id
+
+    @pytest.mark.parametrize(
+        ("fetch_from", "method", "path", "request_kwargs", "expected_user_id"),
+        [
+            pytest.param(WhereisUserArg.QUERY, "GET", "/?user=query-user", {}, "query-user", id="query"),
+            pytest.param(
+                WhereisUserArg.JSON,
+                "POST",
+                "/",
+                {"json": {"user": "json-user"}},
+                "json-user",
+                id="json",
+            ),
+            pytest.param(
+                WhereisUserArg.FORM,
+                "POST",
+                "/",
+                {"data": {"user": "form-user"}},
+                "form-user",
+                id="form",
+            ),
+        ],
+    )
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @pytest.mark.parametrize("sqlite_session", [(App, Tenant)], indirect=True)
+    def test_fetch_user_arg_resolves_and_injects_end_user(
+        self,
+        mock_validate_token,
+        app: Flask,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        fetch_from: WhereisUserArg,
+        method: str,
+        path: str,
+        request_kwargs: dict[str, object],
+        expected_user_id: str,
+    ) -> None:
+        tenant = Tenant(name="Workspace")
+        app_model = _app_model(tenant_id=tenant.id)
+        sqlite_session.add_all([tenant, app_model])
+        sqlite_session.commit()
+        mock_validate_token.return_value = _api_token(
+            tenant_id=tenant.id,
+            app_id=app_model.id,
+            token_type=ApiTokenType.APP,
+        )
+
+        end_user = EndUser(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant.id,
+            app_id=app_model.id,
+            type=EndUserType.SERVICE_API,
+            session_id=expected_user_id,
+        )
+        commands = _RecordingEndUserCommands(end_user)
+        login_manager = _RecordingLoginManager()
+        signal = _RecordingSignal()
+        app.login_manager = login_manager  # type: ignore[attr-defined]
+        monkeypatch.setattr(wraps_module, "application_services", lambda: _ApplicationServicesStub(commands))
+        monkeypatch.setattr(wraps_module, "user_logged_in", signal)
+
+        @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=fetch_from, required=True))
+        def protected_view(*, app_model: App, end_user: EndUser) -> tuple[App, EndUser]:
+            return app_model, end_user
+
+        with (
+            app.test_request_context(path, method=method, **request_kwargs),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            injected_app, injected_end_user = protected_view()
+
+        assert injected_app is app_model
+        assert injected_end_user is end_user
+        assert commands.calls == [(tenant.id, app_model.id, expected_user_id)]
+        assert login_manager.users == [end_user]
+        assert signal.calls == [(app, end_user)]
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
