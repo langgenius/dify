@@ -129,7 +129,7 @@ class PlaceholderAgent:
             "Emit the final report",
         ]
 
-    def build_nodes(self, plan_items: list[str]) -> list[MutationIntent]:
+    def build_nodes(self, plan_items: list[str], resource_ids: list[str] | None = None) -> list[MutationIntent]:
         # Start -> Knowledge-Retrieval -> LLM -> End. Creates and connects are
         # interleaved so each connect's endpoints already exist when
         # apply_connect validates them.

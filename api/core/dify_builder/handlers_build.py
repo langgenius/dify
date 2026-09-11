@@ -364,7 +364,11 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     )
     progress.activate("build-generate-graph")
     emit_canvas(env, "create_checkpoint")
-    intents = env.agent.build_nodes(list(fc.plan_items))
+    # Pass the user's selected resources so a chosen model resource grounds the
+    # built nodes (not the Builder's session model). resource_ids were already
+    # string-filtered when stored (handle_resource_recommendation).
+    selected_resource_ids = list(fc.resource_selection.get("resource_ids") or [])
+    intents = env.agent.build_nodes(list(fc.plan_items), selected_resource_ids)
 
     if not any(intent.op == "create_node" for intent in intents):
         # Generation produced no nodes (build.build_nodes' honest-empty path when the
