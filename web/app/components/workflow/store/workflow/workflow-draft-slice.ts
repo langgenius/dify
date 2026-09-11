@@ -22,6 +22,8 @@ export type WorkflowDraftSliceShape = {
   syncWorkflowDraftHash: string
   syncWorkflowDraftIsEmpty: boolean | undefined
   setSyncWorkflowDraftHash: (hash: string, graph?: { nodes: unknown[]; edges: unknown[] }) => void
+  workflowDraftGeneration: number
+  invalidateWorkflowDraftSync: () => number
   isSyncingWorkflowDraft: boolean
   setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft: boolean) => void
   isWorkflowDataLoaded: boolean
@@ -31,7 +33,7 @@ export type WorkflowDraftSliceShape = {
   flushPendingSync: () => void
 }
 
-export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (set) => {
+export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (set, get) => {
   // Create the debounced function and store it with access to cancel/flush methods
   const debouncedFn = debounce((syncWorkflowDraft) => {
     syncWorkflowDraft()
@@ -50,6 +52,13 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
           ? graph.nodes.length === 0 && graph.edges.length === 0
           : undefined,
       })),
+    workflowDraftGeneration: 0,
+    invalidateWorkflowDraftSync: () => {
+      debouncedFn.cancel()
+      const workflowDraftGeneration = get().workflowDraftGeneration + 1
+      set({ workflowDraftGeneration, isSyncingWorkflowDraft: false })
+      return workflowDraftGeneration
+    },
     isSyncingWorkflowDraft: false,
     setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft) => set(() => ({ isSyncingWorkflowDraft })),
     isWorkflowDataLoaded: false,
