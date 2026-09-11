@@ -37,6 +37,7 @@ class TraceProviderHttpClient:
         headers: dict[str, str] | None = None,
         *,
         timeout: float = 100,
+        request_timeout: float = 30,
         ssl_context: SSLContext | None = None,
     ):
         parsed = urlsplit(endpoint)
@@ -46,6 +47,7 @@ class TraceProviderHttpClient:
         self.headers = dict(headers or {})
         self.ssl_context = ssl_context
         self.deadline = monotonic() + timeout
+        self.request_timeout = request_timeout
 
     def request(self, method: str, path: str = "", **kwargs: Any) -> httpx.Response:
         remaining = self.deadline - monotonic()
@@ -63,13 +65,17 @@ class TraceProviderHttpClient:
                     f"{self.endpoint}/{path.lstrip('/')}" if path else self.endpoint,
                     headers=headers,
                     max_retries=0,
-                    timeout=min(30.0, remaining),
+                    timeout=min(self.request_timeout, remaining),
                     follow_redirects=False,
                     **kwargs,
                     http_client=http_client,
                 )
         except httpx.RequestError:
             raise TraceExportError("provider_unreachable", retryable=True) from None
+        return self.check_response(response)
+
+    @staticmethod
+    def check_response(response: httpx.Response) -> httpx.Response:
         if not 200 <= response.status_code < 300:
             retry_after = response.headers.get("retry-after", "")
             raise TraceExportError(

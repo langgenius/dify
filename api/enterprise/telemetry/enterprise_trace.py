@@ -207,6 +207,16 @@ class EnterpriseTraceClient:
         )
         return "dataset_retrieval" if operation == "retrieval" else operation
 
+    @staticmethod
+    def _user_id(trace: CompletedTrace, span: TraceSpan, operation_type: str) -> str | None:
+        # Message and retrieval logs historically identify Dify records; workflows
+        # and other operations keep the caller's external actor identifier.
+        if operation_type in {"message", "dataset_retrieval"}:
+            user_id = span.attributes.get("from_end_user_id") or span.attributes.get("from_account_id")
+            if isinstance(user_id, str):
+                return user_id
+        return trace.source.actor_id
+
     def _attributes(self, trace: CompletedTrace, span: TraceSpan, operation_type: str) -> dict[str, Any]:
         captured = captured_fields(span)
         if operation_type == "moderation" and isinstance(span.outputs, dict):
@@ -267,7 +277,7 @@ class EnterpriseTraceClient:
                     for key, value in usage.items()
                     if isinstance(value, (int, float)) or key in {"currency", "total_price", "total_cost"}
                 },
-                "gen_ai.user.id": trace.source.actor_id,
+                "gen_ai.user.id": self._user_id(trace, span, operation_type),
                 "gen_ai.provider.name": captured.get("model_provider") or captured.get("ls_provider"),
                 "gen_ai.request.model": captured.get("model_name") or captured.get("ls_model_name"),
                 "gen_ai.usage.input_tokens": usage.get("prompt_tokens"),
@@ -511,7 +521,7 @@ class EnterpriseTraceClient:
                         "trace_id": UUID(trace_id).hex,
                         "span_id": span_id_bytes(export_span_id(completed_trace, span.span_id)).hex(),
                         "tenant_id": completed_trace.source.tenant_id,
-                        "user_id": completed_trace.source.actor_id,
+                        "user_id": self._user_id(completed_trace, span, operation_type),
                     },
                 )
             if not metrics_from_outer_workflow and not span.attributes.get("metrics_from_parent"):

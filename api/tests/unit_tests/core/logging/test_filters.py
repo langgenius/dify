@@ -4,6 +4,7 @@ import io
 import logging
 from unittest import mock
 
+import httpx
 import pytest
 
 
@@ -27,6 +28,57 @@ def _reset_logging_context():
     clear_request_context()
     yield
     clear_request_context()
+
+
+@pytest.mark.parametrize("mapping_arguments", [False, True])
+def test_httpx_url_filter_redacts_only_url_arguments(mapping_arguments: bool) -> None:
+    from core.logging.filters import HTTPURLRedactionFilter
+
+    url = httpx.URL("https://user:password@collector.example:8443/api/traces?signature=secret#fragment")
+    record = logging.LogRecord(
+        name="httpx",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg="%(url)s %(status)s" if mapping_arguments else "%s %s",
+        args=({"url": url, "status": 202},) if mapping_arguments else (url, 202),
+        exc_info=None,
+    )
+
+    assert HTTPURLRedactionFilter().filter(record) is True
+
+    assert record.getMessage() == "https://collector.example:8443/api/traces 202"
+    assert str(url) == "https://user:password@collector.example:8443/api/traces?signature=secret#fragment"
+
+
+@pytest.mark.parametrize(
+    ("target", "redacted_target"),
+    [
+        ("/api/traces?signature=query-secret#fragment-secret", "/api/traces"),
+        (
+            "https://user:password@collector.example/api/traces?signature=query-secret#fragment-secret",
+            "https://collector.example/api/traces",
+        ),
+    ],
+)
+def test_http_url_filter_redacts_urllib3_request_target(target: str, redacted_target: str) -> None:
+    from core.logging.filters import HTTPURLRedactionFilter
+
+    arguments = ("https", "collector.example", 443, "POST", target, "HTTP/1.1", 202, 0)
+    record = logging.LogRecord(
+        name="urllib3.connectionpool",
+        level=logging.DEBUG,
+        pathname="",
+        lineno=0,
+        msg='%s://%s:%s "%s %s %s" %s %s',
+        args=arguments,
+        exc_info=None,
+    )
+
+    assert HTTPURLRedactionFilter().filter(record) is True
+
+    assert record.getMessage() == f'https://collector.example:443 "POST {redacted_target} HTTP/1.1" 202 0'
+    assert arguments[4] == target
 
 
 class TestTraceContextFilter:
