@@ -30,6 +30,11 @@ class BaseTracingConfig(BaseModel):
         raise NotImplementedError
 
     @classmethod
+    def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
+        """Capture provider-owned deployment settings without constructing an export client."""
+        return {}
+
+    @classmethod
     def validate_endpoint_url(cls, v: str, default_url: str) -> str:
         """
         Common endpoint URL validation logic
@@ -130,6 +135,15 @@ def encrypt_provider_config(
         else:
             encrypted[key] = encrypt_token(tenant_id, value)
     return encrypted
+
+
+def resolve_provider_config(provider_name: str, settings: dict[str, Any]) -> dict[str, Any]:
+    """Include runtime credentials in the destination fingerprint without persisting their contents."""
+    resolved = {key: value for key, value in settings.items() if key != "_runtime_settings"}
+    runtime_settings = get_provider_config_fields(provider_name).config_class.load_runtime_settings(resolved)
+    if runtime_settings:
+        resolved["_runtime_settings"] = runtime_settings
+    return resolved
 
 
 def decrypt_provider_config(tenant_id: str, provider_name: str, settings: dict[str, Any]) -> dict[str, Any]:

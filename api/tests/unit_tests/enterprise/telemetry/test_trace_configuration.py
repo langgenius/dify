@@ -2,6 +2,7 @@
 
 import base64
 import os
+import ssl
 from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import Mock
@@ -24,7 +25,7 @@ def enterprise_configuration(monkeypatch: pytest.MonkeyPatch, config_overrides: 
         SECRET_KEY="enterprise-configuration-test",
     )
     for name in tuple(os.environ):
-        if name.startswith("OTEL_EXPORTER_OTLP"):
+        if name.startswith("OTEL_EXPORTER_OTLP") or name in {"REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"}:
             monkeypatch.delenv(name)
 
 
@@ -106,7 +107,7 @@ def test_tls_contents_and_signal_overrides_are_captured(
     config_overrides: Callable[..., None],
     protocol: str,
 ) -> None:
-    config_overrides(ENTERPRISE_OTLP_PROTOCOL=protocol)
+    config_overrides(ENTERPRISE_OTLP_PROTOCOL=protocol, ENTERPRISE_OTLP_ENDPOINT="https://collector.example")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://collector.example")
     certificates = {}
     for field in ("certificate", "client_key", "client_certificate"):
@@ -186,3 +187,116 @@ def test_client_uses_the_loaded_destination_after_environment_changes(monkeypatc
     assert client.otlp.http.endpoint == "https://trace.example/ingest"
     assert client.otlp.metrics_http.endpoint == "https://metric.example/ingest"
     assert client.otlp.http.headers == client.otlp.metrics_http.headers == {"authorization": "Bearer original"}
+
+
+@pytest.mark.parametrize("protocol", ["grpc", "http/protobuf"])
+def test_empty_signal_ca_suppresses_generic_certificates(
+    protocol: str, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(ENTERPRISE_OTLP_PROTOCOL=protocol, ENTERPRISE_OTLP_ENDPOINT="https://collector.example:4317")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://collector.example:4317")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_CERTIFICATE", "/must/not/be/read")
+    for signal in ("TRACES", "METRICS"):
+        monkeypatch.setenv(f"OTEL_EXPORTER_OTLP_{signal}_CERTIFICATE", "")
+
+    configuration = enterprise_trace.load_enterprise_config()
+
+    assert configuration is not None
+    assert all(settings["tls"] == {} for settings in configuration["signals"].values())
+    client = enterprise_trace.EnterpriseTraceClient(configuration)
+    assert client.otlp.metrics_http is not None
+    if protocol == "grpc":
+        assert client.otlp.grpc_credentials == {}
+        assert all(settings.get("verify", True) for settings in configuration["signals"].values())
+    else:
+        for transport in (client.otlp.http, client.otlp.metrics_http):
+            assert transport.ssl_context is not None
+            assert transport.ssl_context.verify_mode == ssl.CERT_NONE
+
+
+@pytest.mark.parametrize("endpoint_source", ["base", "signal"])
+@pytest.mark.parametrize("signal_certificate", ["", "signal-ca"])
+def test_environment_grpc_endpoint_uses_general_credentials(
+    endpoint_source: str,
+    signal_certificate: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(ENTERPRISE_OTLP_PROTOCOL="grpc")
+    certificates = {}
+    for field in ("certificate", "client_key", "client_certificate"):
+        path = tmp_path / field
+        path.write_bytes(f"general {field}".encode())
+        certificates[field] = base64.b64encode(path.read_bytes()).decode()
+        monkeypatch.setenv(f"OTEL_EXPORTER_OTLP_{field.upper()}", str(path))
+    if endpoint_source == "base":
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://collector.example")
+    for signal in ("TRACES", "METRICS"):
+        if endpoint_source == "signal":
+            monkeypatch.setenv(f"OTEL_EXPORTER_OTLP_{signal}_ENDPOINT", "https://collector.example")
+        monkeypatch.setenv(f"OTEL_EXPORTER_OTLP_{signal}_CERTIFICATE", signal_certificate)
+        monkeypatch.setenv(f"OTEL_EXPORTER_OTLP_{signal}_CLIENT_KEY", "/unused/key/not/read")
+        monkeypatch.setenv(f"OTEL_EXPORTER_OTLP_{signal}_CLIENT_CERTIFICATE", "/unused/cert/not/read")
+
+    configuration = enterprise_trace.load_enterprise_config()
+
+    assert configuration is not None
+    assert all(settings["tls"] == certificates for settings in configuration["signals"].values())
+
+
+@pytest.mark.parametrize("environment_name", ["REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"])
+def test_http_tls_preserves_requests_ca_fallback_and_ignores_unused_client_key(
+    environment_name: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    certificate = tmp_path / "ca.pem"
+    certificate.write_bytes(b"request CA")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://collector.example")
+    monkeypatch.setenv(environment_name, str(certificate))
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_CLIENT_KEY", "/unused/key/not/read")
+    configuration = enterprise_trace.load_enterprise_config()
+    assert configuration is not None
+    assert all(
+        settings["tls"] == {"certificate": base64.b64encode(b"request CA").decode()}
+        for settings in configuration["signals"].values()
+    )
+
+
+def test_blank_ca_bundle_environment_keeps_http_tls_verification_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://collector.example")
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", "")
+    monkeypatch.setenv("CURL_CA_BUNDLE", "")
+    configuration = enterprise_trace.load_enterprise_config()
+    assert configuration is not None
+    assert all(settings["tls"] == {} for settings in configuration["signals"].values())
+    assert all(settings.get("verify", True) for settings in configuration["signals"].values())
+    client = enterprise_trace.EnterpriseTraceClient(configuration)
+    assert client.otlp.http.ssl_context is None
+
+
+@pytest.mark.parametrize("protocol", ["http/protobuf", "grpc"])
+def test_http_ca_directory_rotation_changes_the_configuration_fingerprint(
+    protocol: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(ENTERPRISE_OTLP_PROTOCOL=protocol, ENTERPRISE_OTLP_ENDPOINT="https://collector.example")
+    certificate = tmp_path / "12345678.0"
+    certificate.write_bytes(b"original certificate")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_CERTIFICATE", str(tmp_path))
+    if protocol == "grpc":
+        with pytest.raises(ValueError, match="^Cannot read TLS configuration$"):
+            enterprise_trace.load_enterprise_config()
+        return
+
+    captured = enterprise_trace.load_enterprise_config()
+
+    assert captured is not None
+    assert all("certificate_directory" in settings["tls"] for settings in captured["signals"].values())
+    fingerprint = _settings_hash("tenant", captured)
+    certificate.write_bytes(b"rotated certificate")
+    rotated = enterprise_trace.load_enterprise_config()
+    assert rotated is not None
+    assert _settings_hash("tenant", rotated) != fingerprint
+    assert _settings_hash("tenant", captured) == fingerprint
