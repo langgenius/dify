@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
@@ -26,6 +27,18 @@ from models.tools import MCPToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
+
+
+def _is_uuid(value: str | None) -> bool:
+    """Return True when `value` parses as a UUID, False for anything else."""
+    if not value:
+        return False
+    try:
+        uuid.UUID(value)
+        return True
+    except (ValueError, AttributeError, TypeError):
+        return False
+
 
 # Constants
 UNCHANGED_SERVER_URL_PLACEHOLDER = "[__HIDDEN__]"
@@ -90,8 +103,9 @@ class MCPToolManageService:
         Get MCP provider by ID or server identifier.
 
         Args:
-            provider_id: Provider ID (UUID)
-            server_identifier: Server identifier
+            provider_id: Provider ID (UUID) or human-readable server identifier
+                when the path segment is not a valid UUID
+            server_identifier: Server identifier (overrides `provider_id` when set)
             tenant_id: Tenant ID
 
         Returns:
@@ -99,10 +113,21 @@ class MCPToolManageService:
 
         Raises:
             ValueError: If provider not found
+
+        Notes:
+            The console front-end may pass either the entity UUID or the
+            human-readable `server_identifier` in path segments such as
+            `/tool-provider/mcp/tools/<id>`. A non-UUID value falls back to
+            the `server_identifier` lookup so PostgreSQL does not raise
+            `invalid input syntax for type uuid`.
         """
         if server_identifier:
             stmt = select(MCPToolProvider).where(
                 MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier
+            )
+        elif not _is_uuid(provider_id):
+            stmt = select(MCPToolProvider).where(
+                MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == provider_id
             )
         else:
             stmt = select(MCPToolProvider).where(
