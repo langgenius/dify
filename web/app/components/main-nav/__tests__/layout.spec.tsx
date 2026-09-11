@@ -140,7 +140,12 @@ describe('MainNavLayout', () => {
     expect(main).toHaveFocus()
   })
 
-  it.each(['/datasets/dataset-1/documents', '/datasets/dataset-1/documents/document-1/settings'])(
+  it.each([
+    '/datasets/dataset-1/documents',
+    '/datasets/dataset-1/documents/document-1/settings',
+    '/datasets/dataset-1/documents/create',
+    '/datasets/dataset-1/documents/create-from-pipeline',
+  ])(
     'renders the detail sidebar slot outside the single skip navigation target on route %s',
     (pathname) => {
       ;(usePathname as Mock).mockReturnValue(pathname)
@@ -205,7 +210,7 @@ describe('MainNavLayout', () => {
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
   })
 
-  it.each(['/datasets/create', '/datasets/new/create', '/datasets/dataset-1/documents/create'])(
+  it.each(['/datasets/create', '/datasets/new/create'])(
     'keeps the global main nav on collection and creation route %s',
     (pathname) => {
       ;(usePathname as Mock).mockReturnValue(pathname)
