@@ -160,6 +160,9 @@ class LangSmithTraceClient:
             if "_runtime_settings" in provider_config
             else LangSmithConfig.load_runtime_settings(provider_config)
         )
+        self.hide_inputs = bool(runtime_settings.get("hide_inputs", False))
+        self.hide_outputs = bool(runtime_settings.get("hide_outputs", False))
+        self.hide_metadata = bool(runtime_settings.get("hide_metadata", False))
         api_key = self.config.api_key.strip().strip('"').strip("'")
         headers = {"x-api-key": api_key} if api_key else {}
         if workspace_id := runtime_settings.get("workspace_id"):
@@ -235,6 +238,16 @@ class LangSmithTraceClient:
                     }
                 )
             run_type, tags = _map_run_type_and_tags(span)
+            # Captured metadata contains copies of content hidden by the SDK switches.
+            if self.hide_inputs:
+                for key in ("dify.inputs", "original_inputs", "query"):
+                    metadata.pop(key, None)
+            if self.hide_outputs:
+                metadata.pop("dify.outputs", None)
+            if self.hide_inputs or self.hide_outputs:
+                metadata.pop("files", None)
+                metadata.pop("process_data", None)
+                metadata.pop("dify.events", None)
             run = {
                 "id": span_id,
                 "trace_id": trace_id,
@@ -242,15 +255,18 @@ class LangSmithTraceClient:
                 "run_type": run_type,
                 "start_time": span.started_at.isoformat(),
                 "end_time": span.ended_at.isoformat() if span.ended_at else None,
-                "inputs": inputs,
-                "outputs": outputs,
+                "inputs": {} if self.hide_inputs else inputs,
+                "outputs": {} if self.hide_outputs else outputs,
                 "error": span.error
                 if span.status == "error" or (span.status == "cancelled" and span.span_type == "workflow")
                 else None,
                 "parent_run_id": parent["span_id"] if parent else None,
                 "dotted_order": dotted_order,
                 "session_name": self.config.project,
-                "extra": {"metadata": metadata, "invocation_params": span.attributes.get("model_parameters", {})},
+                "extra": {
+                    "metadata": {} if self.hide_metadata else metadata,
+                    "invocation_params": span.attributes.get("model_parameters", {}),
+                },
                 "tags": tags,
             }
             runs.append(run)

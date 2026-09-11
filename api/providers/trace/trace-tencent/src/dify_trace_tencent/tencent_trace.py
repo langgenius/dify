@@ -4,7 +4,7 @@ import socket
 from typing import Any, override
 
 from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
-from opentelemetry.proto.trace.v1.trace_pb2 import Span
+from opentelemetry.proto.trace.v1.trace_pb2 import Span, Status
 from opentelemetry.sdk.version import __version__ as otel_sdk_version
 from pydantic import JsonValue
 
@@ -85,7 +85,11 @@ class TencentTraceClient(OtlpTraceClient):
         ):
             if (seconds := usage_seconds(span, field, legacy, key)) is not None:
                 attributes[key] = seconds
-        return otlp_span(completed_trace, span, parent_span, attributes=attributes)
+        exported_span = otlp_span(completed_trace, span, parent_span, attributes=attributes)
+        # Existing provider status filters include stopped workflows with a reason.
+        if span.span_type == "workflow" and span.status == "cancelled" and span.error:
+            exported_span.status.code = Status.STATUS_CODE_ERROR
+        return exported_span
 
     @override
     def export_trace(

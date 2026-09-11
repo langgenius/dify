@@ -10,6 +10,7 @@ import pytest
 from dify_trace_weave.config import WeaveConfig
 from dify_trace_weave.weave_trace import WeaveTraceClient
 
+from core.ops.message_trace import MessageTraceRecorder
 from core.ops.provider_export import TraceExportError, basic_auth
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, make_span_id, make_trace_id
 
@@ -354,3 +355,70 @@ def test_weave_complete_call_failure_does_not_fall_back(monkeypatch: pytest.Monk
         client.export_trace(make_trace())
 
     request.assert_called_once()
+
+
+@pytest.mark.parametrize("mode", ["chat", "completion", "agent-chat", "advanced-chat"])
+def test_weave_preserves_tags_on_captured_message_operations(mode: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    trace = make_trace()
+    source = trace.source.model_copy(update={"workflow_run_id": str(uuid4()) if mode == "advanced-chat" else None})
+    recorder = MessageTraceRecorder(source, Mock(), (), attributes={"app_mode": mode})
+    submitted = Mock(return_value=True)
+    monkeypatch.setattr(recorder, "submit_completed_trace", submitted)
+    expected_tags = {
+        "moderation": ["moderation"],
+        "suggested_questions": ["suggested_question"],
+        "generate_conversation_name": ["generate_name"],
+        "dataset_retrieval": ["dataset_retrieval"],
+        "Search": ["tool", "web_search"],
+    }
+    for name, span_type, attributes in (
+        ("moderation", "tool", {"operation_type": "moderation"}),
+        ("suggested_questions", "llm", {"operation_type": "suggested_question"}),
+        ("generate_conversation_name", "llm", {"operation_type": "generate_name"}),
+        ("dataset_retrieval", "retrieval", {}),
+        ("Search", "tool", {"tool_name": "web_search"}),
+    ):
+        recorder.record_operation(name, span_type=span_type, attributes=attributes)
+    recorder.finish_message_trace(
+        {
+            "message_id": source.message_id,
+            "conversation_id": str(uuid4()),
+            "started_at": trace.spans[0].started_at,
+            "ended_at": trace.spans[0].ended_at,
+            "model_name": "gpt-4o",
+            "metadata": {"conversation_mode": mode},
+        },
+        include_llm=mode != "advanced-chat",
+    )
+    captured = submitted.call_args.args[0]
+    original = captured.model_dump_json()
+    client, request = make_client_with_transport(monkeypatch)
+    client.export_trace(captured)
+
+    expected_tags["message"] = ["message", "workflow" if mode == "advanced-chat" else mode]
+    expected_tags["gpt-4o"] = ["message", mode]
+    for call in request.call_args_list:
+        exported = call.kwargs["json"]["batch"][0]
+        assert exported["attributes"]["tags"] == expected_tags[exported["op_name"]]
+        assert exported["attributes"]["dify.tenant_id"] == source.tenant_id
+    assert captured.model_dump_json() == original
+
+
+@pytest.mark.parametrize("node_type", ["node", "llm", "tool"])
+def test_weave_preserves_workflow_node_and_captured_tags(node_type: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    trace = make_trace()
+    node = trace.spans[-1].model_copy(
+        update={
+            "span_type": node_type,
+            "node_execution_id": str(uuid4()),
+            "attributes": {"tags": ["custom", "node_execution"], "custom_field": "preserved"},
+        }
+    )
+    trace = trace.model_copy(update={"spans": (trace.spans[0], node)})
+    client, request = make_client_with_transport(monkeypatch)
+    client.export_trace(trace)
+
+    workflow, node_call = [call.kwargs["json"]["batch"][0] for call in request.call_args_list]
+    assert workflow["attributes"]["tags"] == ["dify_workflow"]
+    assert node_call["attributes"]["tags"] == ["node_execution", "custom"]
+    assert node_call["attributes"]["custom_field"] == "preserved"
