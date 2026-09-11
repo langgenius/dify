@@ -233,23 +233,23 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
     def _wrapper_process_stream_response(
         self, trace_recorder: MessageTraceRecorder | None = None
     ) -> Generator[StreamResponse, None, None]:
-        tenant_id = self._application_generate_entity.app_config.tenant_id
-        task_id = self._application_generate_entity.task_id
         publisher = None
-        text_to_speech_dict = cast(dict[str, Any], self._app_config.app_model_config_dict.get("text_to_speech"))
-        if (
-            self.stream
-            and text_to_speech_dict
-            and text_to_speech_dict.get("autoPlay") == "enabled"
-            and text_to_speech_dict.get("enabled")
-        ):
-            publisher = AppGeneratorTTSPublisher(
-                tenant_id,
-                text_to_speech_dict.get("voice", ""),
-                text_to_speech_dict.get("language", None),
-                get_credit_usage_app_type(self._app_config.app_mode),
-            )
         try:
+            tenant_id = self._application_generate_entity.app_config.tenant_id
+            task_id = self._application_generate_entity.task_id
+            text_to_speech_dict = cast(dict[str, Any], self._app_config.app_model_config_dict.get("text_to_speech"))
+            if (
+                self.stream
+                and text_to_speech_dict
+                and text_to_speech_dict.get("autoPlay") == "enabled"
+                and text_to_speech_dict.get("enabled")
+            ):
+                publisher = AppGeneratorTTSPublisher(
+                    tenant_id,
+                    text_to_speech_dict.get("voice", ""),
+                    text_to_speech_dict.get("language", None),
+                    get_credit_usage_app_type(self._app_config.app_mode),
+                )
             for response in self._process_stream_response(publisher=publisher, trace_recorder=trace_recorder):
                 while audio_response := self._listen_audio_msg(publisher, task_id):
                     yield audio_response
@@ -281,7 +281,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 return
         finally:
             if trace_recorder:
-                trace_recorder.close()
+                trace_recorder.close(submit_pending_operations=True)
             if publisher:
                 publisher.cancel()
 

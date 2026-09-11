@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from core.ops.trace_data import CompletedTrace, QueuedTrace, TraceProviderSettings
+from libs.datetime_utils import ensure_naive_utc
 from models.account import Tenant
 from models.dataset import Pipeline
 from models.model import App, Conversation, Message
@@ -25,7 +26,7 @@ class OpsTraceDeliveryRepository:
 
     @staticmethod
     def database_time(session: Session) -> datetime:
-        return session.execute(sa.select(sa.func.current_timestamp())).scalar_one()
+        return ensure_naive_utc(session.execute(sa.select(sa.func.current_timestamp())).scalar_one())
 
     def reserve_delivery(self, queued_trace: QueuedTrace) -> tuple[OpsTraceDelivery, bool]:
         completed_trace = CompletedTrace.model_validate_json(queued_trace.trace_json)

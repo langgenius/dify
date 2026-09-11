@@ -2,10 +2,57 @@
 
 import json
 
+import pytest
 from dify_trace_aliyun.aliyun_trace import create_trace_client, gen_ai_messages
 from pydantic import JsonValue
 
+from core.ops.trace_data import copy_trace_value
+from core.rag.models.document import Document
+from graphon.variables.segments import ArrayObjectSegment
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace, provider_config
+
+
+@pytest.mark.parametrize("output_shape", ["workflow", "workflow_segment", "message"])
+def test_workflow_and_message_retrieval_documents(output_shape: str) -> None:
+    trace = make_completed_trace()
+    metadata = {"document_id": "document-1", "score": 0.0, "_source": "knowledge", "doc_metadata": {"author": "Dify"}}
+    workflow_result = ArrayObjectSegment(value=[{"content": "Retrieved text", "title": "Guide", "metadata": metadata}])
+    outputs = copy_trace_value(
+        {"result": workflow_result if output_shape == "workflow_segment" else workflow_result.value}
+        if output_shape != "message"
+        else {"documents": [Document(page_content="Retrieved text", metadata=metadata)]}
+    )
+    retrieval = trace.spans[1].model_copy(
+        update={"span_type": "retrieval", "inputs": {"query": "Find guide"}, "outputs": outputs}
+    )
+    attributes = {
+        item.key: item.value
+        for item in create_trace_client(provider_config("aliyun")).build_span(trace, retrieval).attributes
+    }
+    documents = json.loads(attributes["gen_ai.retrieval.documents"].string_value)
+    assert len(documents) == 1
+    document = documents[0]["document"] if output_shape != "message" else documents[0]
+    assert document["content"] == "Retrieved text"
+    assert document["id"] == "document-1"
+    assert document["score"] == 0.0
+    assert document["metadata"]["doc_metadata"] == {"author": "Dify"}
+    if output_shape != "message":
+        assert document["metadata"]["title"] == "Guide"
+        assert document["metadata"]["source"] == "knowledge"
+        assert document["metadata"]["author"] == "Dify"
+    assert attributes["gen_ai.retrieval.query.text"].string_value == "Find guide"
+    assert json.loads(attributes["output.value"].string_value) == outputs
+
+
+@pytest.mark.parametrize("outputs", [{"result": []}, {"documents": []}, {}, None])
+def test_retrieval_without_hits_has_no_documents(outputs: JsonValue) -> None:
+    trace = make_completed_trace()
+    retrieval = trace.spans[1].model_copy(update={"span_type": "retrieval", "outputs": outputs})
+    attributes = {
+        item.key: item.value
+        for item in create_trace_client(provider_config("aliyun")).build_span(trace, retrieval).attributes
+    }
+    assert json.loads(attributes["gen_ai.retrieval.documents"].string_value) == []
 
 
 def test_llm_messages_model_parameters_usage_and_finish_reason() -> None:

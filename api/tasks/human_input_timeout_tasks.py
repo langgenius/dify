@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Sequence
 from datetime import timedelta
 
 from celery import shared_task
@@ -8,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.ops.trace_data import QueuedTrace
+from core.ops.trace_data import CompletedTrace, QueuedTrace, TraceProviderSettings
 from core.ops.workflow_trace import WorkflowTraceRecorder, WorkflowTraceState
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
@@ -80,9 +81,11 @@ def _handle_global_timeout(
             trace_queue = current_app.extensions.get("ops_trace_queue")
             if trace_queue is not None:
 
-                def submit_trace(completed_trace):
+                def submit_trace(
+                    completed_trace: CompletedTrace, provider_settings: Sequence[TraceProviderSettings] | None = None
+                ) -> bool:
                     accepted = False
-                    for settings in state.provider_settings:
+                    for settings in state.provider_settings if provider_settings is None else provider_settings:
                         accepted = (
                             trace_queue.submit_trace(QueuedTrace.from_trace(completed_trace, settings)) or accepted
                         )

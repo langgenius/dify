@@ -892,6 +892,11 @@ class WorkflowTraceRecorder(Layer):
 
     @staticmethod
     def _node_span_type(node_type: str) -> str:
-        return {"llm": "llm", "tool": "tool", "knowledge-retrieval": "retrieval", "agent": "agent"}.get(
-            node_type, "node"
-        )
+        return {
+            "llm": "llm",
+            "question-classifier": "llm",
+            "parameter-extractor": "llm",
+            "tool": "tool",
+            "knowledge-retrieval": "retrieval",
+            "agent": "agent",
+        }.get(node_type, "node")

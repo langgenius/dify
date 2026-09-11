@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, event
@@ -30,6 +31,8 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher
 from core.ops.message_trace import MessageTraceRecorder
+from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource
+from core.ops.trace_queue import TraceQueue
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 from models.enums import ConversationFromSource
@@ -388,6 +391,47 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         assert committed_sessions == [session]
         pipeline._save_message.assert_called_once_with(session=session)
         trace_recorder.record_saved_message.assert_called_once_with(pipeline._message_id)
+
+    def test_tts_initialization_failure_submits_pending_operations_and_releases_budget(self, pipeline):
+        tenant_id, app_id, message_id = (str(uuid4()) for _ in range(3))
+        pipeline._app_config.tenant_id = tenant_id
+        pipeline._app_config.app_id = app_id
+        pipeline._app_config.app_model_config_dict = {"text_to_speech": {"autoPlay": "enabled", "enabled": True}}
+        trace_queue = Mock(spec=TraceQueue)
+        trace_queue.reserve_recording_bytes.return_value = True
+        recorder = MessageTraceRecorder(
+            source=TraceSource(tenant_id=tenant_id, app_id=app_id, operation_id=message_id, message_id=message_id),
+            trace_queue=trace_queue,
+            provider_settings=(
+                TraceProviderSettings(
+                    tenant_id=tenant_id, app_id=app_id, provider_name="recording", config_id=str(uuid4())
+                ),
+            ),
+        )
+        recorder.record_operation("retrieval", outputs="retrieved before audio setup")
+        trace_queue.reserve_recording_bytes.assert_called_once()
+        trace_queue.release_recording_bytes.assert_not_called()
+
+        with (
+            patch(
+                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
+                side_effect=RuntimeError("TTS model lookup failed"),
+            ),
+            pytest.raises(RuntimeError, match="TTS model lookup failed"),
+        ):
+            list(pipeline._wrapper_process_stream_response(trace_recorder=recorder))
+
+        trace_queue.release_recording_bytes.assert_called_once_with(*trace_queue.reserve_recording_bytes.call_args.args)
+        trace_queue.submit_trace.assert_called_once()
+        trace = CompletedTrace.model_validate_json(trace_queue.submit_trace.call_args.args[0].trace_json)
+        assert trace.source.tenant_id == tenant_id
+        assert trace.source.app_id == app_id
+        assert trace.source.message_id == message_id
+        assert trace.source.operation_id != message_id
+        assert len(trace.spans) == 1
+        assert trace.spans[0].span_name == "retrieval"
+        assert trace.spans[0].outputs == "retrieved before audio setup"
+        pipeline.queue_manager.listen.assert_not_called()
 
     def test_multiple_events_sequence(self, pipeline, mock_message_cycle_manager, mock_task_state):
         """Test handling multiple events in sequence."""

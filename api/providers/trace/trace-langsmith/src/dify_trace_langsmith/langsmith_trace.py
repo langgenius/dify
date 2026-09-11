@@ -161,11 +161,15 @@ class LangSmithTraceClient:
         return True
 
     def get_project_url(self) -> str:
-        sessions = self.http.request("GET", "sessions", params={"name": self.config.project, "limit": 1}).json()
-        if sessions and isinstance(sessions, list) and sessions[0].get("id"):
-            tenant_id = quote(str(sessions[0].get("tenant_id", "")), safe="")
-            project_id = quote(str(sessions[0]["id"]), safe="")
-            return f"https://smith.langchain.com/o/{tenant_id}/projects/p/{project_id}"
+        try:
+            sessions = self.http.request("GET", "sessions", params={"name": self.config.project, "limit": 1}).json()
+            if sessions and isinstance(sessions, list) and sessions[0].get("id"):
+                tenant_id = quote(str(sessions[0].get("tenant_id", "")), safe="")
+                project_id = quote(str(sessions[0]["id"]), safe="")
+                return f"https://smith.langchain.com/o/{tenant_id}/projects/p/{project_id}"
+        except Exception:
+            # Project discovery must not prevent reading saved settings.
+            return "https://smith.langchain.com/"
         return "https://smith.langchain.com/"
 
     def export_trace(

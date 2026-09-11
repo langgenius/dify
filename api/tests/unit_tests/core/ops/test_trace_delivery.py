@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from tempfile import TemporaryDirectory
 from threading import Barrier
 from unittest.mock import Mock
@@ -56,6 +56,21 @@ def make_repository(engine: Engine | None = None) -> OpsTraceDeliveryRepository:
     assert isinstance(table, sa.Table)
     table.create(engine)
     return OpsTraceDeliveryRepository(sessionmaker(engine, expire_on_commit=False))
+
+
+@pytest.mark.parametrize("database_timezone", [None, UTC, timezone(timedelta(hours=8))])
+def test_database_time_can_compare_with_persisted_delivery_timestamp(database_timezone: timezone | None) -> None:
+    created_at = datetime(2026, 9, 11, 12)
+    database_now = (created_at + timedelta(hours=2)).replace(tzinfo=UTC)
+    database_now = (
+        database_now.astimezone(database_timezone) if database_timezone else database_now.replace(tzinfo=None)
+    )
+    session = Mock()
+    session.execute.return_value.scalar_one.return_value = database_now
+
+    now = OpsTraceDeliveryRepository.database_time(session)
+
+    assert now - created_at == timedelta(hours=2)
 
 
 def test_claim_is_tenant_scoped_and_stale_attempt_cannot_complete() -> None:
