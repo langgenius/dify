@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi.auth.conditions import (
     EDITION_ENTERPRISE,
     HAS_ALLOWED_ROLES,
@@ -33,7 +34,6 @@ from controllers.openapi.auth.verify import (
     check_workspace_role,
 )
 from enums import DeploymentEdition
-from libs.oauth_bearer import TokenType
 
 account_pipeline = AuthPipeline(
     prepare=[

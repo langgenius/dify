@@ -92,9 +92,9 @@ def test_stop_task_endpoint_registered(openapi_app):
 def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     import uuid
 
+    from constants.oauth_bearer import Scope, TokenType
     from controllers.openapi.app_run import AppRunTaskStopApi
     from controllers.openapi.auth.data import AuthData
-    from libs.oauth_bearer import Scope, TokenType
 
     queue_mock = Mock()
     graph_mock = Mock()

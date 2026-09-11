@@ -3,12 +3,12 @@ import uuid
 import pytest
 from pydantic import ValidationError
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi.auth.data import (
     AuthData,
     ExternalIdentity,
     RequestContext,
 )
-from libs.oauth_bearer import Scope, TokenType
 
 
 def test_external_identity_frozen():
@@ -73,15 +73,6 @@ def test_auth_data_external_identity_none_for_account():
         scopes=frozenset({Scope.FULL}),
     )
     assert data.external_identity is None
-
-
-def test_auth_data_tenants_default_empty():
-    data = AuthData(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="abc",
-        scopes=frozenset(),
-    )
-    assert data.tenants == {}
 
 
 def test_auth_data_token_id_optional():

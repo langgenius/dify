@@ -4,7 +4,7 @@
 step) is the pipeline-level form. Both delegate to `check_surface` so the
 audit emit + canonical-path message are single-sourced.
 
-Subjects come from `libs.oauth_bearer.SubjectType` directly — no parallel
+Subjects come from `constants.oauth_bearer.SubjectType` directly — no parallel
 vocabulary. Caller hits the wrong surface → 403 ``wrong_surface`` + audit
 ``openapi.wrong_surface_denied``.
 """
@@ -18,8 +18,9 @@ from typing import TypeVar
 from flask import request
 from werkzeug.exceptions import Forbidden
 
+from constants.oauth_bearer import SubjectType
 from controllers.openapi._audit import emit_wrong_surface
-from libs.oauth_bearer import SubjectType, try_get_auth_ctx
+from libs.oauth_bearer import try_get_auth_ctx
 
 _CANONICAL_PATH: dict[SubjectType, str] = {
     SubjectType.ACCOUNT: "/openapi/v1/apps",
@@ -41,9 +42,7 @@ def check_surface(accepted: frozenset[SubjectType]) -> None:
     """
     ctx = try_get_auth_ctx()
     if ctx is None:
-        raise RuntimeError(
-            "check_surface called without an auth context; stack validate_bearer or BearerCheck above the surface gate"
-        )
+        raise RuntimeError("check_surface called without an auth context; run BearerCheck before the surface gate")
 
     subject = _coerce_subject_type(getattr(ctx, "subject_type", None))
     if subject in accepted:
