@@ -1,4 +1,5 @@
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
+import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
@@ -109,6 +110,41 @@ describe('variable utils', () => {
         variable: 'usage',
         type: VarType.object,
       })
+    })
+
+    it('deduplicates classic agent output vars and includes usage', () => {
+      const node = createNode<AgentNodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        output_schema: {
+          properties: {
+            text: {
+              type: 'string',
+              description: 'duplicate text from strategy schema',
+            },
+            summary: {
+              type: 'string',
+              description: 'custom summary output',
+            },
+          },
+        },
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatMode: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      const agentVars = availableVars.find((item) => item.nodeId === 'node-1')?.vars ?? []
+      const variableNames = agentVars.map(({ variable }) => variable)
+
+      expect(variableNames).toEqual(['text', 'usage', 'files', 'json', 'summary'])
+      expect(variableNames.filter((name) => name === 'text')).toHaveLength(1)
+      expect(variableNames.filter((name) => name === 'files')).toHaveLength(1)
+      expect(variableNames.filter((name) => name === 'json')).toHaveLength(1)
     })
 
     it('uses Agent v2 declared outputs from graph data', () => {
