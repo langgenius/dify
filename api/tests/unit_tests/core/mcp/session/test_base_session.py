@@ -78,6 +78,13 @@ class MockSession(BaseSession[MockRequest, MockNotification, MockResult, Receive
         self.handled_incoming.append(item)
 
 
+class RaisingMockSession(MockSession):
+    def _handle_incoming(self, item):
+        if isinstance(item, Exception):
+            raise ValueError(str(item))
+        super()._handle_incoming(item)
+
+
 @pytest.fixture
 def streams():
     return queue.Queue(), queue.Queue()
@@ -476,39 +483,46 @@ def test_check_receiver_status_fail(streams):
     executor.shutdown()
 
 
-@pytest.mark.timeout(10)
-def test_receive_loop_unknown_request_id(streams):
+def test_receive_loop_warns_and_continues_for_unknown_request_id(streams, caplog: pytest.LogCaptureFixture):
     read_stream, write_stream = streams
-    session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+    session = RaisingMockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
-    with session:
-        resp = JSONRPCResponse(jsonrpc="2.0", id=999, result={"ok": True})
-        read_stream.put(SessionMessage(message=JSONRPCMessage(resp)))
+    response = JSONRPCResponse(jsonrpc="2.0", id=999, result={"ok": True})
+    notification = JSONRPCNotification(jsonrpc="2.0", method="test/notification", params={"message": "still running"})
+    read_stream.put(SessionMessage(message=JSONRPCMessage(response)))
+    read_stream.put(SessionMessage(message=JSONRPCMessage(notification)))
+    read_stream.put(None)
 
-        for _ in range(30):
-            if any(isinstance(x, RuntimeError) and "Server Error" in str(x) for x in session.handled_incoming):
-                break
-            time.sleep(0.1)
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        session._receive_loop()
 
-    assert any("Server Error" in str(x) for x in session.handled_incoming)
+    assert "Received response with an unknown request ID: 999" in caplog.text
+    assert not any(isinstance(item, Exception) for item in session.handled_incoming)
+    assert len(session.received_notifications) == 1
+    assert session.received_notifications[0].root.params.message == "still running"
 
 
-@pytest.mark.timeout(10)
-def test_receive_loop_http_error_unknown_id(streams):
+def test_receive_loop_warns_and_continues_for_unexpected_http_response(
+    streams,
+    caplog: pytest.LogCaptureFixture,
+):
     read_stream, write_stream = streams
-    session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+    session = RaisingMockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
-    with session:
-        response = Response(status_code=401, request=Request("GET", "http://test"))
-        error = HTTPStatusError("Unauthorized", request=response.request, response=response)
-        read_stream.put(error)
+    response = Response(status_code=401, request=Request("GET", "http://test"))
+    error = HTTPStatusError("Unauthorized", request=response.request, response=response)
+    notification = JSONRPCNotification(jsonrpc="2.0", method="test/notification", params={"message": "still running"})
+    read_stream.put(error)
+    read_stream.put(SessionMessage(message=JSONRPCMessage(notification)))
+    read_stream.put(None)
 
-        for _ in range(30):
-            if any(isinstance(x, RuntimeError) and "unknown request ID" in str(x) for x in session.handled_incoming):
-                break
-            time.sleep(0.1)
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        session._receive_loop()
 
-    assert any("unknown request ID" in str(x) for x in session.handled_incoming)
+    assert "Received response with an unknown request ID" in caplog.text
+    assert not any(isinstance(item, Exception) for item in session.handled_incoming)
+    assert len(session.received_notifications) == 1
+    assert session.received_notifications[0].root.params.message == "still running"
 
 
 @pytest.mark.timeout(10)
