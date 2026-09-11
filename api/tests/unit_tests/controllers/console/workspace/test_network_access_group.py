@@ -406,7 +406,12 @@ def test_current_ip_check_uses_trusted_resolver_after_service_admission_and_disa
     service = MagicMock()
     config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
 
-    def check_current_ip(_context, *, group_id, client_ip_supplier):
+    def check_current_ip(
+        _context: RequestContext,
+        *,
+        group_id: str,
+        client_ip_supplier: Callable[[], str],
+    ) -> dict[str, object]:
         assert group_id == GROUP_ID
         return {"client_ip": client_ip_supplier(), "allowed": True, "policy_version": 4}
 
