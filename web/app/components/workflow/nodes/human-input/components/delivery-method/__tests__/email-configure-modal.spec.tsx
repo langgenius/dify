@@ -115,9 +115,9 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     )
 
     fireEvent.change(
-      screen.getByPlaceholderText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder',
-      ),
+      screen.getByRole('textbox', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subject',
+      }),
       {
         target: { value: 'Budget alert' },
       },
@@ -126,7 +126,11 @@ describe('human-input/delivery-method/email-configure-modal', () => {
       target: { value: 'Please review {{#url#}} now' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'set-workspace-recipient' }))
-    fireEvent.click(screen.getByRole('switch'))
+    fireEvent.click(
+      screen.getByRole('switch', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.debugMode',
+      }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(handleConfirm).toHaveBeenCalledWith({
@@ -151,9 +155,9 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     )
 
     fireEvent.change(
-      screen.getByPlaceholderText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder',
-      ),
+      screen.getByRole('textbox', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subject',
+      }),
       {
         target: { value: 'Subject ready' },
       },

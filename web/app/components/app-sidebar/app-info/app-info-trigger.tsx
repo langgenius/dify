@@ -123,7 +123,7 @@ const AppInfoTrigger = ({
       <div className="flex shrink-0 items-center">
         <div>
           <AppIcon
-            size={expand ? 'large' : 'medium'}
+            size="medium"
             iconType={appDetail.icon_type}
             icon={appDetail.icon}
             background={appDetail.icon_background}

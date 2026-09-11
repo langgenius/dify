@@ -1,10 +1,12 @@
-from contextlib import contextmanager
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
+import core.app.apps.chat.app_generator as generator_module
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -12,7 +14,9 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.moderation.base import ModerationError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from models.model import App, AppMode, IconType
+from models import Account
+from models.enums import ConversationFromSource
+from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, MessageAnnotation
 
 
 class DummyGenerateEntity:
@@ -31,19 +35,8 @@ class DummyQueueManager:
         self.published.append((event, pub_from))
 
 
-@contextmanager
-def patched_create_session(session_factory: sessionmaker[Session]):
-    @contextmanager
-    def create_session():
-        with session_factory() as session:
-            yield session
-
-    with patch("core.app.apps.chat.app_runner.create_session", create_session):
-        yield
-
-
-def _persist_app(session: Session) -> App:
-    app = App(
+def _app() -> App:
+    return App(
         id="app-1",
         tenant_id="tenant-1",
         name="Chat app",
@@ -54,9 +47,75 @@ def _persist_app(session: Session) -> App:
         enable_site=False,
         enable_api=True,
     )
-    session.add(app)
+
+
+def _account() -> Account:
+    account = Account(name="User", email="user-1@example.com")
+    account.id = "user-1"
+    return account
+
+
+def _conversation() -> Conversation:
+    conversation = Conversation(
+        id="c1",
+        app_id="app-1",
+        app_model_config_id=None,
+        model_provider=None,
+        override_model_configs=None,
+        model_id=None,
+        mode=AppMode.CHAT,
+        name="Conversation",
+        inputs={},
+        introduction="",
+        system_instruction="",
+        system_instruction_tokens=0,
+        status="normal",
+        invoke_from=InvokeFrom.SERVICE_API,
+        from_source=ConversationFromSource.API,
+        from_end_user_id=None,
+        from_account_id="user-1",
+    )
+    return conversation
+
+
+def _message() -> Message:
+    return Message(
+        id="m1",
+        app_id="app-1",
+        conversation_id="c1",
+        inputs={},
+        query="hi",
+        message={},
+        message_tokens=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
+        answer="",
+        answer_tokens=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
+        provider_response_latency=0,
+        total_price=Decimal(0),
+        currency="USD",
+        invoke_from=InvokeFrom.SERVICE_API,
+        from_source=ConversationFromSource.API,
+        from_end_user_id=None,
+        from_account_id="user-1",
+        app_mode=AppMode.CHAT,
+    )
+
+
+def _persist_records(session: Session) -> tuple[App, Conversation, Message]:
+    app = _app()
+    conversation = _conversation()
+    message = _message()
+    session.add_all([app, conversation, message])
     session.commit()
-    return app
+    return app, conversation, message
+
+
+@pytest.fixture(autouse=True)
+def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(generator_module.db, "session", sqlite_session)
 
 
 class TestChatAppGenerator:
@@ -65,8 +124,8 @@ class TestChatAppGenerator:
         with pytest.raises(ValueError):
             generator.generate(
                 session=unbound_session,
-                app_model=SimpleNamespace(),
-                user=SimpleNamespace(),
+                app_model=_app(),
+                user=_account(),
                 args={"inputs": {}},
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
@@ -77,8 +136,8 @@ class TestChatAppGenerator:
         with pytest.raises(ValueError):
             generator.generate(
                 session=unbound_session,
-                app_model=SimpleNamespace(),
-                user=SimpleNamespace(),
+                app_model=_app(),
+                user=_account(),
                 args={"query": 1, "inputs": {}},
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
@@ -86,8 +145,8 @@ class TestChatAppGenerator:
 
     def test_generate_debugger_overrides_model_config(self, unbound_session: Session):
         generator = ChatAppGenerator()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        user = SimpleNamespace(id="user-1", session_id="session-1")
+        app_model = _app()
+        user = _account()
         args = {
             "query": "hi",
             "inputs": {},
@@ -119,12 +178,12 @@ class TestChatAppGenerator:
             patch(
                 "core.app.apps.chat.app_generator.ChatAppGenerateResponseConverter.convert", return_value={"ok": True}
             ),
-            patch.object(ChatAppGenerator, "_get_app_model_config", return_value=SimpleNamespace(to_dict=lambda: {})),
+            patch.object(ChatAppGenerator, "_get_app_model_config", return_value=AppModelConfig(app_id="app-1")),
             patch.object(ChatAppGenerator, "_prepare_user_inputs", return_value={}),
             patch.object(
                 ChatAppGenerator,
                 "_init_generate_records",
-                return_value=(SimpleNamespace(id="c1", mode="chat"), SimpleNamespace(id="m1")),
+                return_value=(_conversation(), _message()),
             ),
             patch.object(ChatAppGenerator, "_handle_response", return_value={"response": True}),
             patch("core.app.apps.chat.app_generator.copy_current_request_context", side_effect=lambda f: f),
@@ -141,13 +200,14 @@ class TestChatAppGenerator:
 
     def test_generate_uses_session_for_annotation_reply(self, unbound_session: Session):
         generator = ChatAppGenerator()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        app_model_config = MagicMock(id="config-1", app_id="app-1")
+        app_model = _app()
+        app_model_config = AppModelConfig(app_id="app-1")
         annotation_reply = {"enabled": False}
-        user = SimpleNamespace(id="user-1", session_id="session-1")
+        user = _account()
 
         with (
             patch.object(ChatAppGenerator, "_get_app_model_config", return_value=app_model_config),
+            patch.object(AppModelConfig, "to_dict", return_value={}) as to_dict,
             patch(
                 "core.app.apps.chat.app_generator.load_annotation_reply_config",
                 return_value=annotation_reply,
@@ -168,40 +228,34 @@ class TestChatAppGenerator:
                 )
 
         load_annotation_reply_config.assert_called_once_with(unbound_session, "app-1")
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
         assert get_app_config.call_args.kwargs["annotation_reply"] is annotation_reply
 
     def test_generate_rejects_model_config_override_for_non_debugger(self, unbound_session: Session):
         generator = ChatAppGenerator()
         with pytest.raises(ValueError):
             with (
-                patch.object(
-                    ChatAppGenerator, "_get_app_model_config", return_value=SimpleNamespace(to_dict=lambda: {})
-                ),
+                patch.object(ChatAppGenerator, "_get_app_model_config", return_value=AppModelConfig(app_id="app-1")),
+                patch.object(AppModelConfig, "to_dict", return_value={}),
             ):
                 generator.generate(
                     session=unbound_session,
-                    app_model=SimpleNamespace(tenant_id="t1", id="a1", mode=AppMode.CHAT.value),
-                    user=SimpleNamespace(id="u1", session_id="s1"),
+                    app_model=_app(),
+                    user=_account(),
                     args={"query": "hi", "inputs": {}, "model_config": {"foo": "bar"}},
                     invoke_from=InvokeFrom.SERVICE_API,
                     streaming=False,
                 )
 
-    def test_generate_worker_handles_exceptions(self, unbound_session_factory: sessionmaker[Session]):
+    def test_generate_worker_handles_exceptions(self):
         generator = ChatAppGenerator()
         queue_manager = DummyQueueManager()
         entity = DummyGenerateEntity(task_id="t1", user_id="u1")
 
         with (
-            patch.object(ChatAppGenerator, "_get_conversation", return_value=SimpleNamespace()),
-            patch.object(ChatAppGenerator, "_get_message", return_value=SimpleNamespace()),
+            patch.object(ChatAppGenerator, "_get_conversation", return_value=_conversation()),
+            patch.object(ChatAppGenerator, "_get_message", return_value=_message()),
             patch("core.app.apps.chat.app_generator.ChatAppRunner.run", side_effect=InvokeAuthorizationError()),
-            patch(
-                "core.app.apps.chat.app_generator.session_factory",
-                SimpleNamespace(create_session=unbound_session_factory),
-            ),
-            patch("core.app.apps.chat.app_generator.db.session.close"),
         ):
             generator._generate_worker(
                 flask_app=Mock(app_context=Mock(return_value=Mock(__enter__=Mock(), __exit__=Mock()))),
@@ -214,14 +268,9 @@ class TestChatAppGenerator:
         assert queue_manager.published
 
         with (
-            patch.object(ChatAppGenerator, "_get_conversation", return_value=SimpleNamespace()),
-            patch.object(ChatAppGenerator, "_get_message", return_value=SimpleNamespace()),
+            patch.object(ChatAppGenerator, "_get_conversation", return_value=_conversation()),
+            patch.object(ChatAppGenerator, "_get_message", return_value=_message()),
             patch("core.app.apps.chat.app_generator.ChatAppRunner.run", side_effect=GenerateTaskStoppedError()),
-            patch(
-                "core.app.apps.chat.app_generator.session_factory",
-                SimpleNamespace(create_session=unbound_session_factory),
-            ),
-            patch("core.app.apps.chat.app_generator.db.session.close"),
         ):
             generator._generate_worker(
                 flask_app=Mock(app_context=Mock(return_value=Mock(__enter__=Mock(), __exit__=Mock()))),
@@ -233,7 +282,7 @@ class TestChatAppGenerator:
 
 
 class TestChatAppRunner:
-    def test_run_raises_when_app_missing(self, sqlite_session_factory: sessionmaker[Session], unbound_session: Session):
+    def test_run_raises_when_app_missing(self, sqlite_session: Session):
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
             app_id="app-1", tenant_id="tenant-1", prompt_template=None, external_data_variables=[]
@@ -251,20 +300,17 @@ class TestChatAppRunner:
             invoke_from=InvokeFrom.SERVICE_API,
         )
 
-        with patched_create_session(sqlite_session_factory):
-            with pytest.raises(ValueError):
-                runner.run(
-                    app_generate_entity,
-                    DummyQueueManager(),
-                    SimpleNamespace(),
-                    SimpleNamespace(id="m1"),
-                    unbound_session,
-                )
+        with pytest.raises(ValueError):
+            runner.run(
+                app_generate_entity,
+                DummyQueueManager(),
+                _conversation(),
+                _message(),
+                sqlite_session,
+            )
 
-    def test_run_moderation_error_direct_output(
-        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-    ):
-        _persist_app(sqlite_session)
+    def test_run_moderation_error_direct_output(self, sqlite_session: Session):
+        _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
             app_id="app-1",
@@ -289,7 +335,6 @@ class TestChatAppRunner:
         )
 
         with (
-            patched_create_session(sqlite_session_factory),
             patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
             patch.object(ChatAppRunner, "moderation_for_inputs", side_effect=ModerationError("blocked")),
             patch.object(ChatAppRunner, "direct_output") as mock_direct,
@@ -297,17 +342,15 @@ class TestChatAppRunner:
             runner.run(
                 app_generate_entity,
                 DummyQueueManager(),
-                SimpleNamespace(),
-                SimpleNamespace(id="m1"),
+                conversation,
+                message,
                 sqlite_session,
             )
 
         mock_direct.assert_called_once()
 
-    def test_run_annotation_reply_short_circuits(
-        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-    ):
-        _persist_app(sqlite_session)
+    def test_run_annotation_reply_short_circuits(self, sqlite_session: Session):
+        _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
             app_id="app-1",
@@ -331,26 +374,28 @@ class TestChatAppRunner:
             invoke_from=InvokeFrom.SERVICE_API,
         )
 
-        annotation = SimpleNamespace(id="ann-1", content="answer")
+        annotation = MessageAnnotation(
+            app_id="app-1",
+            question="hi",
+            content="answer",
+            account_id="user-1",
+        )
 
         with (
-            patched_create_session(sqlite_session_factory),
             patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
             patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
             patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=annotation) as annotation_query,
             patch.object(ChatAppRunner, "direct_output") as mock_direct,
         ):
             queue_manager = DummyQueueManager()
-            runner.run(app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"), sqlite_session)
+            runner.run(app_generate_entity, queue_manager, conversation, message, sqlite_session)
 
         assert any(isinstance(item[0], QueueAnnotationReplyEvent) for item in queue_manager.published)
         assert annotation_query.call_args.kwargs["session"] is sqlite_session
         mock_direct.assert_called_once()
 
-    def test_run_returns_when_hosting_moderation_blocks(
-        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-    ):
-        _persist_app(sqlite_session)
+    def test_run_returns_when_hosting_moderation_blocks(self, sqlite_session: Session):
+        _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
             app_id="app-1",
@@ -374,7 +419,6 @@ class TestChatAppRunner:
         )
 
         with (
-            patched_create_session(sqlite_session_factory),
             patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
             patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
             patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
@@ -383,15 +427,13 @@ class TestChatAppRunner:
             runner.run(
                 app_generate_entity,
                 DummyQueueManager(),
-                SimpleNamespace(),
-                SimpleNamespace(id="m1"),
+                conversation,
+                message,
                 sqlite_session,
             )
 
-    def test_run_closes_explicit_session_before_stream_consumption(
-        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-    ):
-        _persist_app(sqlite_session)
+    def test_run_closes_explicit_session_before_stream_consumption(self, sqlite_session: Session):
+        _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
             app_id="app-1",
@@ -418,8 +460,9 @@ class TestChatAppRunner:
         events = []
         queue_manager = DummyQueueManager()
         model_instance = MagicMock()
-        original_commit = sqlite_session.commit
-        original_close = sqlite_session.close
+
+        def record_commit(_session: Session) -> None:
+            events.append("commit")
 
         def invoke_stream():
             events.append("first-chunk")
@@ -429,26 +472,27 @@ class TestChatAppRunner:
             events.append("invoke")
             return invoke_stream()
 
-        with (
-            patched_create_session(sqlite_session_factory),
-            patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
-            patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
-            patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
-            patch.object(ChatAppRunner, "check_hosting_moderation", return_value=False),
-            patch.object(ChatAppRunner, "recalc_llm_max_tokens"),
-            patch.object(
-                ChatAppRunner,
-                "_handle_invoke_result",
-                side_effect=lambda invoke_result, **kwargs: list(invoke_result),
-            ) as mock_handle,
-            patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance),
-            patch.object(sqlite_session, "commit", side_effect=lambda: (events.append("commit"), original_commit())[1]),
-            patch.object(sqlite_session, "close", side_effect=lambda: (events.append("close"), original_close())[1]),
-        ):
-            model_instance.invoke_llm.side_effect = invoke_llm
-            runner.run(app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"), sqlite_session)
+        event.listen(sqlite_session, "after_commit", record_commit)
+        try:
+            with (
+                patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
+                patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
+                patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
+                patch.object(ChatAppRunner, "check_hosting_moderation", return_value=False),
+                patch.object(ChatAppRunner, "recalc_llm_max_tokens"),
+                patch.object(
+                    ChatAppRunner,
+                    "_handle_invoke_result",
+                    side_effect=lambda invoke_result, **kwargs: list(invoke_result),
+                ) as mock_handle,
+                patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance),
+            ):
+                model_instance.invoke_llm.side_effect = invoke_llm
+                runner.run(app_generate_entity, queue_manager, conversation, message, sqlite_session)
+        finally:
+            event.remove(sqlite_session, "after_commit", record_commit)
 
-        assert events == ["commit", "close", "commit", "close", "invoke", "first-chunk"]
+        assert events == ["commit", "commit", "invoke", "first-chunk"]
         mock_handle.assert_called_once_with(
             invoke_result=ANY,
             queue_manager=queue_manager,

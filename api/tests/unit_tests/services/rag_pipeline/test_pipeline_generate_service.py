@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
@@ -76,9 +78,10 @@ def _make_document(
     )
 
 
-def test_get_max_active_requests_uses_smallest_non_zero_limit(mocker: MockerFixture) -> None:
-    mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_DEFAULT_ACTIVE_REQUESTS", 5)
-    mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_MAX_ACTIVE_REQUESTS", 3)
+def test_get_max_active_requests_uses_smallest_non_zero_limit(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(APP_DEFAULT_ACTIVE_REQUESTS=5, APP_MAX_ACTIVE_REQUESTS=3)
 
     app_model = _make_app(max_active_requests=10)
 
@@ -87,9 +90,10 @@ def test_get_max_active_requests_uses_smallest_non_zero_limit(mocker: MockerFixt
     assert result == 3
 
 
-def test_get_max_active_requests_returns_zero_when_all_unlimited(mocker: MockerFixture) -> None:
-    mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_DEFAULT_ACTIVE_REQUESTS", 0)
-    mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_MAX_ACTIVE_REQUESTS", 0)
+def test_get_max_active_requests_returns_zero_when_all_unlimited(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(APP_DEFAULT_ACTIVE_REQUESTS=0, APP_MAX_ACTIVE_REQUESTS=0)
 
     app_model = _make_app(max_active_requests=0)
 

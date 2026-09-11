@@ -14,7 +14,6 @@ from graphon.variables import StringSegment
 from graphon.variables.types import SegmentType
 from models.account import Account, AccountStatus
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
-from services.workflow_draft_variable_service import WorkflowDraftVariableList
 
 pytestmark = [
     pytest.mark.usefixtures("sqlite_session"),
@@ -140,7 +139,7 @@ def test_conversation_variables_returns_empty_list(app: Flask) -> None:
     with app.test_request_context("/"):
         result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
 
-    assert result == WorkflowDraftVariableList(variables=[])
+    assert result == {"items": []}
 
 
 def test_system_variables_returns_empty_list(app: Flask) -> None:
@@ -150,7 +149,7 @@ def test_system_variables_returns_empty_list(app: Flask) -> None:
     with app.test_request_context("/"):
         result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
 
-    assert result == WorkflowDraftVariableList(variables=[])
+    assert result == {"items": []}
 
 
 def test_delete_variable_collection_deletes_only_current_user_variables(
@@ -209,7 +208,7 @@ def test_node_variable_collection_get_lists_persisted_node_variables(
     with app.test_request_context("/"):
         result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"), node_id="llm-1")
 
-    assert [variable.id for variable in result.variables] == [matching.id]
+    assert [variable["id"] for variable in result["items"]] == [matching.id]
     assert controller_sessions().get_bind() is not None
 
 
@@ -263,8 +262,7 @@ def test_variable_patch_returns_persisted_variable_without_committing_when_no_ch
     finally:
         event.remove(session, "after_commit", record_commit)
 
-    assert result.id == variable.id
-    assert result.app_id == "snippet-1"
+    assert result["id"] == variable.id
     assert commits == []
     assert session.in_transaction()
 

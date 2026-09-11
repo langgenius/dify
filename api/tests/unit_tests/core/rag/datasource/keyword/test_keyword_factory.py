@@ -9,6 +9,7 @@ from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.keyword.keyword_type import KeyWordType
 from core.rag.models.document import Document
 from models.dataset import Dataset
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_get_keyword_factory_returns_jieba_factory(monkeypatch: pytest.MonkeyPatch):
@@ -38,7 +39,7 @@ def test_keyword_initialization_uses_configured_factory(monkeypatch: pytest.Monk
     )
     fake_processor = MagicMock()
 
-    monkeypatch.setattr("core.rag.datasource.keyword.keyword_factory.dify_config.KEYWORD_STORE", KeyWordType.JIEBA)
+    apply_config_overrides(monkeypatch, KEYWORD_STORE=KeyWordType.JIEBA)
     monkeypatch.setattr(Keyword, "get_keyword_factory", staticmethod(lambda keyword_type: lambda _: fake_processor))
 
     keyword = Keyword(dataset)

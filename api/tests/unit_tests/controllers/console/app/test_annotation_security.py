@@ -15,10 +15,12 @@ from werkzeug.datastructures import FileStorage
 
 from configs import dify_config
 from controllers.console.wraps import annotation_import_concurrency_limit, annotation_import_rate_limit
+from enums import DeploymentEdition
 from models.account import Account
 from models.model import App, AppMode, IconType
 from services.annotation_service import AppAnnotationService
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _account() -> Account:
@@ -212,6 +214,7 @@ class TestAnnotationImportFileValidation:
 class TestAnnotationImportServiceValidation:
     """Test service layer validation for annotation import."""
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_max_records_limit_enforced(self, sqlite_session: Session):
         """Test that files with too many records are rejected."""
 
@@ -228,8 +231,6 @@ class TestAnnotationImportServiceValidation:
             mock_auth.return_value = (_account(), "tenant_id")
 
             with patch("services.annotation_service.FeatureService") as mock_features:
-                mock_features.get_features.return_value.billing.enabled = False
-
                 result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
 
                 # Should return error about too many records
@@ -273,6 +274,7 @@ class TestAnnotationImportServiceValidation:
             assert "error_msg" in result
             assert "malformed" in result["error_msg"].lower()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_valid_import_succeeds(self, sqlite_session: Session):
         """Test that valid import request succeeds."""
 
@@ -286,8 +288,6 @@ class TestAnnotationImportServiceValidation:
             mock_auth.return_value = (_account(), "tenant_id")
 
             with patch("services.annotation_service.FeatureService") as mock_features:
-                mock_features.get_features.return_value.billing.enabled = False
-
                 with patch("services.annotation_service.batch_import_annotations_task") as mock_task:
                     with patch("services.annotation_service.redis_client"):
                         result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)

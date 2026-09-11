@@ -1,6 +1,14 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
+import {
   Slider,
   SliderControl,
   SliderIndicator,
@@ -8,11 +16,10 @@ import {
   SliderThumb,
   SliderTrack,
 } from '@langgenius/dify-ui/slider'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
 import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import { ChunkStructureEnum, IndexMethodEnum } from '../types'
 import OptionCard from './option-card'
@@ -34,6 +41,7 @@ const IndexMethod = ({
   readonly = false,
 }: IndexMethodProps) => {
   const { t } = useTranslation()
+  const keywordInputId = useId()
   const keywordNumberLabel = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
   const isEconomy = indexMethod === IndexMethodEnum.ECONOMICAL
@@ -46,9 +54,8 @@ const IndexMethod = ({
   )
 
   const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = Number(e.target.value)
-      if (!Number.isNaN(value)) onKeywordNumberChange(value)
+    (value: number | null) => {
+      if (value !== null) onKeywordNumberChange(value)
     },
     [onKeywordNumberChange],
   )
@@ -100,9 +107,12 @@ const IndexMethod = ({
             <Fieldset className="flex items-center">
               <FieldsetLegend className="sr-only">{keywordNumberLabel}</FieldsetLegend>
               <div className="flex grow items-center">
-                <div className="truncate system-xs-medium text-text-secondary">
+                <label
+                  htmlFor={keywordInputId}
+                  className="truncate system-xs-medium text-text-secondary"
+                >
                   {keywordNumberLabel}
-                </div>
+                </label>
                 <Infotip aria-label={keywordNumberLabel} className="ml-0.5 size-3.5">
                   {keywordNumberLabel}
                 </Infotip>
@@ -121,15 +131,23 @@ const IndexMethod = ({
                   </SliderTrack>
                 </SliderControl>
               </Slider>
-              <Input
-                aria-label={keywordNumberLabel}
+              <NumberField
+                id={keywordInputId}
                 disabled={readonly}
-                className="shrink-0"
-                wrapperClassName="shrink-0 w-[72px]"
-                type="number"
+                className="w-18 shrink-0"
+                min={0}
+                format={{ maximumFractionDigits: 0 }}
                 value={keywordNumber}
-                onChange={handleInputChange}
-              />
+                onValueChange={handleInputChange}
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput className="px-2" />
+                  <NumberFieldControls>
+                    <NumberFieldIncrement />
+                    <NumberFieldDecrement />
+                  </NumberFieldControls>
+                </NumberFieldGroup>
+              </NumberField>
             </Fieldset>
           </OptionCard>
         )}

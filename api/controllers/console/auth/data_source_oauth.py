@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from configs import dify_config
 from controllers.common.fields import RedirectResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -17,7 +18,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console.flask_admission import console_account_admission
-from core.rbac import RBACPermission, RBACResourceScope
+from core.rbac import RBACPermission
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
@@ -111,9 +112,7 @@ class OAuthDataSource(Resource):
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @console_account_admission(
         allowed_roles=_ADMIN_OR_OWNER_ROLES,
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.CREDENTIAL_MANAGE,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace())],
     )
     def get(self, request_context: RequestContext, provider: str):
         try:

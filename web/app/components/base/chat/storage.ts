@@ -17,117 +17,120 @@ const [
   _useSetWebAppSidebarCollapseState,
 ] = createLocalStorageState<string>('webappSidebarCollapse', undefined, { raw: true })
 
-const getAppConversationIds = (conversationIdInfo: ConversationIdInfo | null, appId: string) => {
-  const appConversationIds = conversationIdInfo?.[appId]
-  return typeof appConversationIds === 'object' && appConversationIds !== null
-    ? appConversationIds
+const getScopeConversationIds = (
+  conversationIdInfo: ConversationIdInfo | null,
+  scopeId: string,
+) => {
+  const scopeConversationIds = conversationIdInfo?.[scopeId]
+  return typeof scopeConversationIds === 'object' && scopeConversationIds !== null
+    ? scopeConversationIds
     : undefined
 }
 
 const hasConversationId = (
   conversationIdInfo: ConversationIdInfo | null,
-  appId: string,
+  scopeId: string,
   userId: string,
-) => Object.hasOwn(getAppConversationIds(conversationIdInfo, appId) ?? {}, userId)
+) => Object.hasOwn(getScopeConversationIds(conversationIdInfo, scopeId) ?? {}, userId)
 
 const getConversationId = (
   conversationIdInfo: ConversationIdInfo | null,
-  appId: string,
+  scopeId: string,
   userId: string,
-) => getAppConversationIds(conversationIdInfo, appId)?.[userId] ?? ''
+) => getScopeConversationIds(conversationIdInfo, scopeId)?.[userId] ?? ''
 
 const setConversationId = (
   conversationIdInfo: ConversationIdInfo | null,
-  appId: string,
+  scopeId: string,
   userId: string,
   conversationId: string,
 ): ConversationIdInfo => ({
   ...(conversationIdInfo ?? {}),
-  [appId]: {
-    ...getAppConversationIds(conversationIdInfo, appId),
+  [scopeId]: {
+    ...getScopeConversationIds(conversationIdInfo, scopeId),
     [userId]: conversationId,
   },
 })
 
-const removeAppConversationIds = (
+const removeScopeConversationIds = (
   conversationIdInfo: ConversationIdInfo | null,
-  appId: string,
+  scopeId: string,
 ): ConversationIdInfo => {
   const nextConversationIdInfo = { ...(conversationIdInfo ?? {}) }
-  delete nextConversationIdInfo[appId]
+  delete nextConversationIdInfo[scopeId]
   return nextConversationIdInfo
 }
 
 type UseConversationSelectionOptions = {
-  appId?: string
+  scopeId?: string
   userId?: string
   conversationId?: string
 }
 
 const useConversationSelection = ({
-  appId,
+  scopeId,
   userId,
   conversationId,
 }: UseConversationSelectionOptions) => {
   const [lastConversationIdInfo, setLastConversationIdInfo] = useLastConversationIdInfo()
   const [tabConversationIdInfo, setTabConversationIdInfo] = useTabConversationIdInfo()
-  const storageAppId = appId ?? ''
+  const storageScopeId = scopeId ?? ''
   const storageUserId = userId || 'DEFAULT'
   const hasTabConversationId =
-    !!appId && hasConversationId(tabConversationIdInfo, storageAppId, storageUserId)
-  const lastConversationId = appId
-    ? getConversationId(lastConversationIdInfo, storageAppId, storageUserId)
+    !!scopeId && hasConversationId(tabConversationIdInfo, storageScopeId, storageUserId)
+  const lastConversationId = scopeId
+    ? getConversationId(lastConversationIdInfo, storageScopeId, storageUserId)
     : ''
-  const tabConversationId = appId
-    ? getConversationId(tabConversationIdInfo, storageAppId, storageUserId)
+  const tabConversationId = scopeId
+    ? getConversationId(tabConversationIdInfo, storageScopeId, storageUserId)
     : ''
 
   // Seed this tab once from the cross-tab last selection. Later localStorage updates can change
   // the fallback without changing the active conversation already owned by this tab.
   useEffect(() => {
-    if (!appId || hasTabConversationId) return
+    if (!scopeId || hasTabConversationId) return
 
     setTabConversationIdInfo((currentConversationIdInfo) => {
-      if (hasConversationId(currentConversationIdInfo, appId, storageUserId))
+      if (hasConversationId(currentConversationIdInfo, scopeId, storageUserId))
         return currentConversationIdInfo
 
-      return setConversationId(currentConversationIdInfo, appId, storageUserId, lastConversationId)
+      return setConversationId(
+        currentConversationIdInfo,
+        scopeId,
+        storageUserId,
+        lastConversationId,
+      )
     })
-  }, [appId, hasTabConversationId, lastConversationId, setTabConversationIdInfo, storageUserId])
+  }, [scopeId, hasTabConversationId, lastConversationId, setTabConversationIdInfo, storageUserId])
 
   const handleConversationIdInfoChange = useCallback(
     (nextConversationId: string) => {
-      if (!appId) return
+      if (!scopeId) return
 
       setTabConversationIdInfo((currentConversationIdInfo) =>
-        setConversationId(currentConversationIdInfo, appId, storageUserId, nextConversationId),
+        setConversationId(currentConversationIdInfo, scopeId, storageUserId, nextConversationId),
       )
       setLastConversationIdInfo((currentConversationIdInfo) =>
-        setConversationId(currentConversationIdInfo, appId, storageUserId, nextConversationId),
+        setConversationId(currentConversationIdInfo, scopeId, storageUserId, nextConversationId),
       )
     },
-    [appId, setLastConversationIdInfo, setTabConversationIdInfo, storageUserId],
+    [scopeId, setLastConversationIdInfo, setTabConversationIdInfo, storageUserId],
   )
 
-  const removeConversationIdInfo = useCallback(
-    (targetAppId: string) => {
-      setTabConversationIdInfo((currentConversationIdInfo) => {
-        const nextConversationIdInfo = removeAppConversationIds(
-          currentConversationIdInfo,
-          targetAppId,
-        )
-        if (targetAppId !== appId) return nextConversationIdInfo
+  const removeConversationIdInfo = useCallback(() => {
+    if (!scopeId) return
 
-        // An explicit empty entry keeps this tab on New Chat instead of falling back to a last
-        // conversation that another tab may write after the reset.
-        return setConversationId(nextConversationIdInfo, targetAppId, storageUserId, '')
-      })
-      setLastConversationIdInfo((currentConversationIdInfo) =>
-        removeAppConversationIds(currentConversationIdInfo, targetAppId),
-      )
-    },
-    [appId, setLastConversationIdInfo, setTabConversationIdInfo, storageUserId],
-  )
+    setTabConversationIdInfo((currentConversationIdInfo) => {
+      const nextConversationIdInfo = removeScopeConversationIds(currentConversationIdInfo, scopeId)
+
+      // An explicit empty entry keeps this tab on New Chat instead of falling back to a last
+      // conversation that another tab may write after the reset.
+      return setConversationId(nextConversationIdInfo, scopeId, storageUserId, '')
+    })
+    setLastConversationIdInfo((currentConversationIdInfo) =>
+      removeScopeConversationIds(currentConversationIdInfo, scopeId),
+    )
+  }, [scopeId, setLastConversationIdInfo, setTabConversationIdInfo, storageUserId])
 
   return {
     currentConversationId:

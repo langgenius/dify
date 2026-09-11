@@ -3,6 +3,14 @@ import userEvent from '@testing-library/user-event'
 import WeekdaySelector from '../weekday-selector'
 
 describe('trigger-schedule/weekday-selector', () => {
+  it('names the weekday selection group', () => {
+    render(<WeekdaySelector selectedDays={['mon']} onChange={vi.fn()} />)
+
+    expect(
+      screen.getByRole('group', { name: 'workflow.nodes.triggerSchedule.weekdays' }),
+    ).toBeInTheDocument()
+  })
+
   it('keeps at least one weekday selected', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

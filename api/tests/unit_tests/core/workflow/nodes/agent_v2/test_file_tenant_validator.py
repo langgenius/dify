@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy import Engine, event
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
 from extensions.storage.storage_type import StorageType
@@ -25,13 +25,6 @@ TABLES = (ToolFile, UploadFile)
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
 USER_ID = "33333333-3333-3333-3333-333333333333"
-
-
-@pytest.fixture(autouse=True)
-def _bind_sqlite_session_factory(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
-    """Bind the validator's service-owned sessions to the isolated SQLite engine."""
-    sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import type { AgentAppPartial, AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
 import type { ActionItem, AgentSearchResult } from './types'
 import { getI18n } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import AppIcon from '../../base/app-icon'
 
 function getAgentResults(agents: AgentAppPartial[]): AgentSearchResult[] {

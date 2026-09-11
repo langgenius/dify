@@ -1,4 +1,5 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppModeEnum } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,10 +13,12 @@ type VersionInfoUpdate = {
 
 export function useVersionInfo({
   appId,
+  appMode,
   publishedWorkflow,
   onClosePublisher,
 }: {
   appId?: string
+  appMode?: AppModeEnum
   publishedWorkflow?: WorkflowResponse | null
   onClosePublisher: () => void
 }) {
@@ -36,6 +39,8 @@ export function useVersionInfo({
 
     updateWorkflow(
       {
+        appId,
+        appMode,
         url: `/apps/${appId}/workflows/${params.id}`,
         title: params.title,
         releaseNotes: params.releaseNotes,

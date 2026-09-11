@@ -67,7 +67,7 @@
   "subscription.list.item.noUsed": "Hiç işlem akışı kullanılmadı",
   "subscription.list.item.usedByNum": "{{num}} iş akışı tarafından kullanılıyor",
   "subscription.list.tip": "Abonelik aracılığıyla etkinlikleri alın",
-  "subscription.listNum": "{{num}} abonelikler",
+  "subscription.listNum": "{{num}} abonelik",
   "subscription.maxCount": "Maksimum {{num}} abonelik",
   "subscription.noSubscriptionSelected": "Hiçbir abonelik seçilmedi",
   "subscription.selectPlaceholder": "Abonelik seç",

@@ -1,21 +1,10 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import SummaryIndexSetting from '../summary-index-setting'
 
-// Mock useModelList to return a list of text generation models
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({
-    data: [
-      {
-        provider: 'openai',
-        label: { en_US: 'OpenAI' },
-        models: [
-          { model: 'gpt-4', label: { en_US: 'GPT-4' }, model_type: 'llm', status: 'active' },
-        ],
-      },
-    ],
-  }),
-}))
+// Mock the model list query.
 
 // Mock ModelSelector (external component from header module)
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
@@ -221,4 +210,31 @@ describe('SummaryIndexSetting', () => {
       expect(screen.getByTestId('current-model')).toHaveTextContent('none')
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return {
+        data: [
+          {
+            tenant_id: 'test-workspace',
+            provider: 'openai',
+            label: { en_US: 'OpenAI' },
+            models: [
+              { model: 'gpt-4', label: { en_US: 'GPT-4' }, model_type: 'llm', status: 'active' },
+            ],
+          },
+        ],
+      }
+    },
+  }
 })

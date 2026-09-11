@@ -16,15 +16,6 @@ export const AGENT_V2_RESERVED_OUTPUT_NAMES: ReadonlySet<string> = new Set([
   '_session',
 ])
 
-const outputTypeLabels: Record<DeclaredOutputConfig['type'], string> = {
-  array: 'Array',
-  boolean: 'Boolean',
-  file: 'File',
-  number: 'Number',
-  object: 'Object',
-  string: 'String',
-}
-
 const outputVarTypes: Record<DeclaredOutputConfig['type'], VarType> = {
   array: VarType.array,
   boolean: VarType.boolean,
@@ -53,17 +44,6 @@ export function getAgentV2CustomDeclaredOutputs(outputs: readonly DeclaredOutput
 
 export function normalizeAgentV2DeclaredOutputs(outputs: readonly DeclaredOutputConfig[]) {
   return [agentV2SystemTextOutput, ...getAgentV2CustomDeclaredOutputs(outputs)]
-}
-
-/**
- * @public
- */
-// TODO: Remove this marker after the output type label consumer is wired.
-export function getDeclaredOutputTypeLabel(output: DeclaredOutputConfig) {
-  if (output.type === 'array')
-    return `Array[${output.array_item ? outputTypeLabels[output.array_item.type] : 'Object'}]`
-
-  return outputTypeLabels[output.type]
 }
 
 function getDeclaredOutputVarType(output: DeclaredOutputConfig) {

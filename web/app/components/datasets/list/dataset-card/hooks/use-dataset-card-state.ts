@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 
@@ -89,7 +89,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   // Delete flow handlers
   const detectIsUsedByApp = useCallback(async () => {
     try {
-      const { is_using: isUsedByApp } = await queryClient.fetchQuery(
+      const { is_using: isUsedByApp } = await queryClient.query(
         consoleQuery.datasets.byDatasetId.useCheck.get.queryOptions({
           input: {
             params: {

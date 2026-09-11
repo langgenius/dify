@@ -15,6 +15,7 @@ from controllers.inner_api.agent.files import (
 from core.workflow.file_reference import build_file_reference
 from models.account import Account, Tenant
 from services.file_request_service import DownloadFileRequestResult
+from tests.unit_tests.config_override import apply_config_overrides
 
 MODULE = "controllers.inner_api.agent.files"
 
@@ -132,7 +133,7 @@ def test_download_request_binds_frontend_url(
         "file": {"transfer_method": "tool_file", "reference": reference},
         "for_frontend": True,
     }
-    monkeypatch.setattr(f"{MODULE}.dify_config.FILES_URL", "https://files.example.com")
+    apply_config_overrides(monkeypatch, FILES_URL="https://files.example.com")
     session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (

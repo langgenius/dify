@@ -152,6 +152,7 @@ export const Controlled: Story = {
 const LoadingConfirmDemo = () => {
   const [pending, setPending] = React.useState(false)
   const [open, setOpen] = React.useState(false)
+  const confirmLabelId = React.useId()
 
   const handleConfirm = () => {
     setPending(true)
@@ -180,8 +181,13 @@ const LoadingConfirmDemo = () => {
           <AlertDialogCancelButton variant="secondary" disabled={pending}>
             Cancel
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton tone="default" loading={pending} onClick={handleConfirm}>
-            {pending ? 'Archiving…' : 'Archive'}
+          <AlertDialogConfirmButton
+            tone="default"
+            loading={pending}
+            aria-labelledby={confirmLabelId}
+            onClick={handleConfirm}
+          >
+            <span id={confirmLabelId}>{pending ? 'Archiving…' : 'Archive'}</span>
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>
@@ -191,4 +197,16 @@ const LoadingConfirmDemo = () => {
 
 export const LoadingConfirm: Story = {
   render: () => <LoadingConfirmDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Archive workspace' }))
+    const confirmButton = body.getByRole('button', { name: 'Archive' })
+    await userEvent.click(confirmButton)
+
+    await expect(confirmButton).toHaveAccessibleName('Archiving…')
+    await expect(confirmButton).toHaveAttribute('aria-disabled', 'true')
+    await expect(confirmButton).not.toHaveAttribute('aria-busy')
+    await expect(confirmButton).toHaveFocus()
+  },
 }

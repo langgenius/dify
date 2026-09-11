@@ -24,6 +24,7 @@ from controllers.common.schema import (
     register_schema_model,
 )
 from controllers.console.app.wraps import with_session
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.schema import event_stream_response, json_or_event_stream_response, multipart_file_params
@@ -215,7 +216,8 @@ class DatasourceNodeRunApi(DatasetApiResource):
         }
     )
     @service_api_ns.expect(service_api_ns.models[DatasourceNodeRunPayload.__name__])
-    def post(self, tenant_id: str, dataset_id: UUID, node_id: str):
+    @model_validate(DatasourceNodeRunPayload)
+    def post(self, payload: DatasourceNodeRunPayload, tenant_id: str, dataset_id: UUID, node_id: str):
         """Resource for getting datasource plugins."""
         dataset_id_str = str(dataset_id)
         # Verify dataset ownership
@@ -224,7 +226,6 @@ class DatasourceNodeRunApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        payload = DatasourceNodeRunPayload.model_validate(service_api_ns.payload or {})
         assert isinstance(current_user, Account)
         rag_pipeline_service: RagPipelineService = RagPipelineService(db.session())
         pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)

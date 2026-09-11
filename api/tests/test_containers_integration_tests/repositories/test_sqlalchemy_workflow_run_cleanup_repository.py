@@ -4,26 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import override
 from uuid import uuid4
 
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from graphon.entities import WorkflowExecution
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-
-
-class _TestWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
-    """Concrete repository for tests where save() is not under test."""
-
-    @override
-    def save(self, execution: WorkflowExecution) -> None:
-        return None
 
 
 @dataclass
@@ -39,7 +29,7 @@ class _TestScope:
 def _repository(db_session_with_containers: Session) -> DifyAPISQLAlchemyWorkflowRunRepository:
     engine = db_session_with_containers.get_bind()
     assert isinstance(engine, Engine)
-    return _TestWorkflowRunRepository(session_maker=sessionmaker(bind=engine, expire_on_commit=False))
+    return DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sessionmaker(bind=engine, expire_on_commit=False))
 
 
 def _create_workflow_run(

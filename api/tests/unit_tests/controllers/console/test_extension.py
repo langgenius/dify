@@ -8,6 +8,9 @@ from unittest.mock import ANY, MagicMock
 import pytest
 from flask import Flask
 from flask.views import MethodView as FlaskMethodView
+from werkzeug.exceptions import UnprocessableEntity
+
+from tests.unit_tests.config_override import apply_config_overrides
 
 _NEEDS_METHOD_VIEW_CLEANUP = False
 if not hasattr(builtins, "MethodView"):
@@ -63,9 +66,12 @@ def _mock_console_guards(monkeypatch: pytest.MonkeyPatch) -> Account:
     account.id = "account-123"
     account._current_tenant = tenant
 
-    monkeypatch.setattr(wraps_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(wraps_module.dify_config, "INIT_PASSWORD", "")
-    monkeypatch.setattr("libs.login.dify_config.LOGIN_DISABLED", True)
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        INIT_PASSWORD="",
+        LOGIN_DISABLED=True,
+    )
     monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (account, "tenant-123"))
 
     # The login_required decorator consults the shared LocalProxy in libs.login.
@@ -98,6 +104,13 @@ def test_code_based_extension_get_returns_service_data(app: Flask, monkeypatch: 
 
     assert response == {"module": "workflow.tools", "data": service_result}
     service_mock.assert_called_once_with("workflow.tools")
+
+
+def test_code_based_extension_get_rejects_a_missing_module(app: Flask) -> None:
+    """`module` is required, so this is what covers the decorator's rejection path."""
+    with app.test_request_context("/console/api/code-based-extension", method="GET"):
+        with pytest.raises(UnprocessableEntity):
+            CodeBasedExtensionAPI().get()
 
 
 def test_api_based_extension_get_returns_tenant_extensions(app: Flask, monkeypatch: pytest.MonkeyPatch):

@@ -11,6 +11,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
@@ -135,6 +136,26 @@ const createConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig => ({
   ...overrides,
 })
 
+const TestEmailSenderHarness = () => {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open test email sender
+      </button>
+      <EmailSenderModal
+        nodeId="human-node"
+        deliveryId="delivery-1"
+        open={open}
+        onOpenChange={setOpen}
+        jumpToEmailConfigModal={vi.fn()}
+        config={createConfig({ body: '' })}
+      />
+    </>
+  )
+}
+
 const createFormInput = (overrides: Partial<ParagraphFormInput> = {}): FormInputItem => ({
   type: InputVarType.paragraph,
   output_variable_name: 'user_name',
@@ -249,6 +270,70 @@ describe('human-input/delivery-method/test-email-sender', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
 
     expect(handleOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('should start a fresh session after closing and reopening', async () => {
+    const user = userEvent.setup()
+    const { requests } = setupFetch()
+    renderWithProviders(<TestEmailSenderHarness />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+      }),
+    )
+    expect(
+      await screen.findByText('workflow.nodes.humanInput.deliveryMethod.emailSender.done'),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: 'Open test email sender' }))
+
+    expect(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('workflow.nodes.humanInput.deliveryMethod.emailSender.done'),
+    ).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+      }),
+    )
+    await waitFor(() => {
+      expect(
+        requests.filter(
+          (request) => request.method === 'POST' && request.url.endsWith('/delivery-test'),
+        ),
+      ).toHaveLength(2)
+    })
+  })
+
+  it('should stay open when clicking outside the dialog', async () => {
+    const user = userEvent.setup()
+    const handleOpenChange = vi.fn()
+
+    renderWithProviders(
+      <EmailSenderModal
+        nodeId="human-node"
+        deliveryId="delivery-1"
+        open
+        onOpenChange={handleOpenChange}
+        jumpToEmailConfigModal={vi.fn()}
+        config={createConfig({ body: '' })}
+      />,
+    )
+
+    await user.click(document.body)
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(handleOpenChange).not.toHaveBeenCalled()
   })
 
   it('should submit variables referenced by dynamic select option sources', async () => {

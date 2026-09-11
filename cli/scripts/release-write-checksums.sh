@@ -19,7 +19,7 @@ cd "$(cli::root)/dist/bin"
 
 manifest="$(naming checksums "$CLI_VERSION")"
 asset_prefix="$(naming tag-prefix)${CLI_VERSION}-"
-> "$manifest"
+: > "$manifest"
 
 if command -v sha256sum >/dev/null 2>&1; then
     hash_cmd="sha256sum"

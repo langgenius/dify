@@ -46,6 +46,31 @@ describe('GetSchema', () => {
     })
   })
 
+  it('keeps the OK label while importing', async () => {
+    let resolveImport!: (value: { schema: string }) => void
+    importSchemaFromURLMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveImport = resolve
+        }),
+    )
+    fireEvent.click(screen.getByText('tools.createTool.importFromUrl'))
+    fireEvent.change(screen.getByPlaceholderText('tools.createTool.importFromUrlPlaceHolder'), {
+      target: { value: 'https://example.com' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+
+    const importButton = screen.getByRole('button', { name: 'common.operation.ok' })
+    expect(importButton).toHaveTextContent('common.operation.ok')
+    expect(importButton).toHaveAttribute('aria-disabled', 'true')
+
+    resolveImport({ schema: 'result-schema' })
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith('result-schema')
+    })
+  })
+
   it('selects example schema when example option clicked', () => {
     fireEvent.click(screen.getByText('tools.createTool.examples'))
     fireEvent.click(screen.getByText(`tools.createTool.exampleOptions.${examples[0].key}`))

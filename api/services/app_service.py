@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
@@ -49,8 +49,9 @@ from services.agent.workspace_service import AgentWorkspaceService
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
+from services.rbac_agent_access_service import initialize_agent_rbac_access
+from services.system_feature_service import SystemFeatureService
 from services.tag_service import TagService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
@@ -74,6 +75,38 @@ RECENT_APP_MODES: tuple[RecentAppMode, ...] = (
 )
 
 
+@dataclass(frozen=True)
+class _CreatedApp:
+    tenant_id: str
+    creator_account_id: str
+    app_id: str
+    backing_agent_id: str | None
+
+
+def _initialize_created_app_access(created: _CreatedApp) -> None:
+    enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+        created.tenant_id,
+        created.creator_account_id,
+        enterprise_rbac_service.RBACResourceType.APP,
+        created.app_id,
+    )
+
+
+def _initialize_created_agent_access(created: _CreatedApp) -> None:
+    if created.backing_agent_id is None:
+        raise ValueError(f"agent app {created.app_id} was created without a backing agent")
+    initialize_agent_rbac_access(
+        tenant_id=created.tenant_id,
+        agent_id=created.backing_agent_id,
+        creator_account_id=created.creator_account_id,
+    )
+
+
+_CREATED_APP_ACCESS_INITIALIZERS: dict[AppMode, Callable[[_CreatedApp], None]] = {
+    AppMode.AGENT: _initialize_created_agent_access,
+}
+
+
 class AppListBaseParams(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
@@ -90,10 +123,17 @@ class AppListBaseParams(BaseModel):
 class AppListParams(AppListBaseParams):
     status: str | None = None
     openapi_visible: bool = False
+    agent_is_published: bool | None = None
 
 
 class StarredAppListParams(AppListBaseParams):
     pass
+
+
+@dataclass(frozen=True)
+class AgentAppPublicationCounts:
+    published: int
+    drafts: int
 
 
 @dataclass(frozen=True)
@@ -189,6 +229,24 @@ class AppResponseView:
 
 class AppService:
     @staticmethod
+    def _agent_app_exists_filter(tenant_id: str, *, is_published: bool | None = None) -> sa.Exists:
+        agent_filters = [
+            Agent.tenant_id == tenant_id,
+            Agent.app_id == App.id,
+            Agent.scope == AgentScope.ROSTER,
+            Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+            Agent.status == AgentStatus.ACTIVE,
+        ]
+        if is_published is not None:
+            has_published_config = sa.and_(
+                Agent.active_config_snapshot_id.is_not(None),
+                Agent.active_config_is_published.is_(True),
+            )
+            agent_filters.append(has_published_config if is_published else sa.not_(has_published_config))
+
+        return sa.exists().where(*agent_filters).correlate(App)
+
+    @staticmethod
     def _build_app_list_filters(
         user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
@@ -206,17 +264,8 @@ class AppService:
             filters.append(App.mode == AppMode.AGENT_CHAT)
         elif params.mode == "agent":
             filters.append(App.mode == AppMode.AGENT)
-            filters.append(
-                sa.exists()
-                .where(
-                    Agent.tenant_id == tenant_id,
-                    Agent.app_id == App.id,
-                    Agent.scope == AgentScope.ROSTER,
-                    Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                    Agent.status == AgentStatus.ACTIVE,
-                )
-                .correlate(App)
-            )
+            publication_filter = params.agent_is_published if isinstance(params, AppListParams) else None
+            filters.append(AppService._agent_app_exists_filter(tenant_id, is_published=publication_filter))
         elif params.mode == "all":
             filters.append(App.mode != AppMode.AGENT)
 
@@ -373,6 +422,31 @@ class AppService:
             app.is_starred = str(app.id) in starred_app_ids
 
         return app_models
+
+    def get_agent_publication_counts(
+        self,
+        user_id: str,
+        tenant_id: str,
+        params: AppListParams,
+        session: Session,
+    ) -> AgentAppPublicationCounts:
+        unfiltered_params = params.model_copy(update={"agent_is_published": None})
+        filters = self._build_app_list_filters(user_id, tenant_id, unfiltered_params, session)
+        if not filters:
+            return AgentAppPublicationCounts(published=0, drafts=0)
+
+        published_filter = self._agent_app_exists_filter(tenant_id, is_published=True)
+        draft_filter = self._agent_app_exists_filter(tenant_id, is_published=False)
+        published_count, draft_count = session.execute(
+            sa.select(
+                sa.func.coalesce(sa.func.sum(sa.case((published_filter, 1), else_=0)), 0),
+                sa.func.coalesce(sa.func.sum(sa.case((draft_filter, 1), else_=0)), 0),
+            )
+            .select_from(App)
+            .where(*filters)
+        ).one()
+
+        return AgentAppPublicationCounts(published=int(published_count), drafts=int(draft_count))
 
     def get_recent_apps(
         self,
@@ -629,12 +703,13 @@ class AppService:
         # Created in the same transaction so the App and its backing Agent persist
         # atomically; the Agent Soul (model/prompt/tools) is configured afterward
         # in the Composer.
+        backing_agent: Agent | None = None
         if app_mode == AppMode.AGENT:
             from services.agent.roster_service import AgentRosterService
 
             icon_type = AgentIconType(params.icon_type) if params.icon_type else None
             try:
-                AgentRosterService(session).create_backing_agent_for_app(
+                backing_agent = AgentRosterService(session).create_backing_agent_for_app(
                     tenant_id=tenant_id,
                     account_id=account.id,
                     app_id=app.id,
@@ -655,14 +730,17 @@ class AppService:
         session.commit()
         app_was_created.send(app, account=account, session=session)
         session.commit()
-        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
-            tenant_id,
-            account.id,
-            enterprise_rbac_service.RBACResourceType.APP,
-            app.id,
+        initialize_access = _CREATED_APP_ACCESS_INITIALIZERS.get(app_mode, _initialize_created_app_access)
+        initialize_access(
+            _CreatedApp(
+                tenant_id=tenant_id,
+                creator_account_id=account.id,
+                app_id=app.id,
+                backing_agent_id=backing_agent.id if backing_agent else None,
+            )
         )
 
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(app.id, "private")
 
@@ -1114,7 +1192,7 @@ class AppService:
         )
 
         # clean up web app settings
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:

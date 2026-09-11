@@ -12,7 +12,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
@@ -21,8 +21,8 @@ import { Infotip } from '@/app/components/base/infotip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
 
@@ -60,8 +60,10 @@ const ModelLoadBalancingConfigs = ({
   })
   const providerFormSchemaPredefined =
     configurationMethod === ConfigurationMethodEnum.predefinedModel
-  const modelLoadBalancingEnabled = useProviderContextSelector(
-    (state) => state.modelLoadBalancingEnabled,
+  const { data: modelLoadBalancingEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.model_load_balancing_enabled,
+    }),
   )
 
   const updateConfigEntry = useCallback(
@@ -315,7 +317,7 @@ const ModelLoadBalancingConfigs = ({
         )}
       </div>
 
-      {!modelLoadBalancingEnabled && deploymentEdition === 'CLOUD' && (
+      {modelLoadBalancingEnabled === false && deploymentEdition === 'CLOUD' && (
         <GridMask canvasClassName="rounded-xl!">
           <div className="mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md">
             <div className={cn('text-gradient text-sm/tight font-semibold', s.textGradient)}>

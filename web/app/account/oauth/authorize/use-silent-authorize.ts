@@ -1,6 +1,10 @@
 import { toast } from '@langgenius/dify-ui/toast'
+import Cookies from 'js-cookie'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import { flushEvents } from '@/app/components/base/amplitude/utils'
+import { reportOAuthRegistrationIfNewUser } from '@/app/components/oauth-registration-attribution'
 import { useRouter } from '@/next/navigation'
 
 export function buildReturnUrl(pathname: string, search: string) {
@@ -65,8 +69,14 @@ export function useSilentAuthorize({
     }
 
     startedRef.current = true
+    const authorizeSearchParams = new URLSearchParams(searchParams.toString())
+    const persistedNewUser = reportOAuthRegistrationIfNewUser(authorizeSearchParams)
+    if (persistedNewUser) Cookies.remove('utm_info')
+
     void authorize({ body: { client_id: clientId } })
-      .then(({ code }) => {
+      .then(async ({ code }) => {
+        await flushRegistrationSuccess()
+        await flushEvents()
         globalThis.location.href = buildOAuthCallbackUrl(redirectUri, code, state)
       })
       .catch((error: unknown) => {

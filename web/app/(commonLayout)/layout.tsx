@@ -1,7 +1,7 @@
 import * as React from 'react'
 import Zendesk from '@/app/components/base/zendesk'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
-import MainNavLayout from '@/app/components/main-nav/layout'
+import MainNavLayout from '@/app/components/main-nav/server'
 import { CommonLayoutGlobalMounts } from './global-mounts'
 import { ConsoleContextProviders, ConsoleRuntimeProviders } from './providers'
 

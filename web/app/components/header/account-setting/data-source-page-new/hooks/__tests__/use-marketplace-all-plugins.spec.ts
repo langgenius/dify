@@ -25,7 +25,7 @@ vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
 describe('useMarketplaceAllPlugins', () => {
   const mockQueryPlugins = vi.fn()
   const mockQueryPluginsWithDebounced = vi.fn()
-  const mockResetPlugins = vi.fn()
+  const mockResetQueryParams = vi.fn()
   const mockCancelQueryPluginsWithDebounced = vi.fn()
   const mockFetchNextPage = vi.fn()
 
@@ -35,7 +35,7 @@ describe('useMarketplaceAllPlugins', () => {
     ({
       plugins: [],
       total: 0,
-      resetPlugins: mockResetPlugins,
+      resetQueryParams: mockResetQueryParams,
       queryPlugins: mockQueryPlugins,
       queryPluginsWithDebounced: mockQueryPluginsWithDebounced,
       cancelQueryPluginsWithDebounced: mockCancelQueryPluginsWithDebounced,

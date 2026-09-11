@@ -8,6 +8,7 @@ from dify_agent.protocol import (
     DestroyExecutionBindingRequest,
 )
 from dify_agent.runtime_backend import (
+    BindingCapacityExhaustedError,
     BindingCreateError,
     BindingDestroyError,
     ExecutionBindingBackend,
@@ -48,6 +49,8 @@ class ExecutionBindingService:
             )
         except SharedWorkspaceUnsupportedError as exc:
             raise ExecutionBindingServiceError("shared_workspace_unsupported", str(exc), status_code=409) from exc
+        except BindingCapacityExhaustedError as exc:
+            raise ExecutionBindingServiceError("binding_capacity_exhausted", str(exc), status_code=429) from exc
         except BindingCreateError as exc:
             raise ExecutionBindingServiceError("binding_create_failed", str(exc), status_code=502) from exc
         return CreateExecutionBindingResponse(

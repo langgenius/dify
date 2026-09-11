@@ -70,6 +70,10 @@ export function ToolPickerContent({
     select: (s) => s.enable_marketplace,
   })
   const { data: buildInTools } = useAllBuiltInTools()
+  const installedPluginIds = useMemo(
+    () => new Set(buildInTools?.map((provider) => provider.plugin_id || provider.id)),
+    [buildInTools],
+  )
   const shouldFetchCustomTools = scope !== 'plugins' && scope !== 'workflow'
   const { data: customTools } = useAllCustomTools(shouldFetchCustomTools)
   const invalidateCustomTools = useInvalidateAllCustomTools()
@@ -176,6 +180,7 @@ export function ToolPickerContent({
         onSelect={handleSelect as OnSelectBlock}
         onSelectMultiple={handleSelectMultiple}
         buildInTools={builtinToolList || []}
+        installedPluginIds={installedPluginIds}
         customTools={customToolList || []}
         workflowTools={workflowToolList || []}
         mcpTools={mcpTools || []}

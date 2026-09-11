@@ -95,7 +95,7 @@ describe('AppInfoTrigger', () => {
     })
     render(<AppInfoTrigger {...props} />)
 
-    expect(screen.getByText('🤖')).toHaveAttribute('data-size', 'large')
+    expect(screen.getByText('🤖')).toHaveAttribute('data-size', 'medium')
     expect(screen.getByText('My Chatbot')).toBeInTheDocument()
     expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
     expect(screen.getByText('My Chatbot').closest('button')).toBeNull()

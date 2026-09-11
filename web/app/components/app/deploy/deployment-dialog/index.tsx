@@ -1,11 +1,12 @@
 'use client'
 
-import type { DeploymentVersion } from '../version'
-import type { DeploymentDialogRequest } from './types'
+import type { DeploymentDialogRequest } from '../types'
+import type { DeploymentVersion } from '../utils/version'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
-import { DeploymentConfiguration } from './deployment-configuration'
-import { VersionSelection } from './version-selection'
+import { DeploymentConfiguration } from '../shared/deployment-configuration'
+import { VersionSelection } from '../shared/version-selection'
 
 type DeploymentDialogProps = {
   appId: string
@@ -27,7 +28,12 @@ function DeploymentDialogSession({
   )
 
   return (
-    <DialogContent className="flex max-h-[min(44rem,calc(100dvh-32px))] min-h-0 w-120 max-w-[calc(100vw-32px)] flex-col overflow-hidden p-0">
+    <DialogContent
+      className={cn(
+        'flex max-h-[min(44rem,calc(100dvh-32px))] min-h-0 w-120 max-w-[calc(100vw-32px)] flex-col overflow-hidden p-0',
+        !selectedVersion && 'h-[min(44rem,calc(100dvh-32px))]',
+      )}
+    >
       {selectedVersion ? (
         <DeploymentConfiguration
           appId={appId}
@@ -46,7 +52,11 @@ function DeploymentDialogSession({
 
 export function DeploymentDialog({ appId, request, onClose }: DeploymentDialogProps) {
   return (
-    <Dialog open={Boolean(request)} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={Boolean(request)}
+      disablePointerDismissal
+      onOpenChange={(open) => !open && onClose()}
+    >
       {request && (
         <DeploymentDialogSession
           appId={appId}

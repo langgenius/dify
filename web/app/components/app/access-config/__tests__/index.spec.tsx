@@ -8,6 +8,7 @@ import {
   useAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppAccessConfigPage from '../index'
 
@@ -357,6 +358,23 @@ describe('AppAccessConfigPage', () => {
 
   it('should not mount access config data hooks when RBAC is disabled', () => {
     mockIsRbacEnabled = false
+
+    render(<AppAccessConfigPage appId="app-1" />)
+
+    expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument()
+    expect(useAppAccessRules).not.toHaveBeenCalled()
+    expect(useAppUserAccessSettings).not.toHaveBeenCalled()
+  })
+
+  it('should not mount access config data hooks for Agent apps', () => {
+    useStore.setState({
+      appDetail: {
+        id: 'app-1',
+        mode: AppModeEnum.AGENT,
+        maintainer: 'account-1',
+        permission_keys: [AppACLPermission.AccessConfig],
+      } as unknown as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
+    })
 
     render(<AppAccessConfigPage appId="app-1" />)
 

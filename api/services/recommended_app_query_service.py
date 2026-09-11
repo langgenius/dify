@@ -5,6 +5,8 @@ from typing import NamedTuple, Protocol
 
 from constants.languages import languages
 
+_DEFAULT_LANGUAGE = "en-US"
+
 
 class RecommendedAppInfoRecord(NamedTuple):
     id: str
@@ -116,10 +118,9 @@ class RecommendedAppQueryService:
     def list_recommended(
         self,
         *,
-        requested_language: str | None,
-        interface_language: str | None,
+        language: str,
     ) -> RecommendedAppListResult:
-        language = self._resolve_language(requested_language, interface_language)
+        language = language if language in languages else _DEFAULT_LANGUAGE
         page = self._catalog.list_recommended(language)
 
         return RecommendedAppListResult(
@@ -130,10 +131,9 @@ class RecommendedAppQueryService:
     def list_learn_dify(
         self,
         *,
-        requested_language: str | None,
-        interface_language: str | None,
+        language: str,
     ) -> LearnDifyAppListResult:
-        language = self._resolve_language(requested_language, interface_language)
+        language = language if language in languages else _DEFAULT_LANGUAGE
         page = self._catalog.list_learn_dify(language)
         return LearnDifyAppListResult(recommended_apps=self._with_trial_status(page.recommended_apps))
 
@@ -176,11 +176,3 @@ class RecommendedAppQueryService:
             )
             for app in apps
         )
-
-    @staticmethod
-    def _resolve_language(requested_language: str | None, interface_language: str | None) -> str:
-        if requested_language and requested_language in languages:
-            return requested_language
-        if interface_language:
-            return interface_language
-        return languages[0]

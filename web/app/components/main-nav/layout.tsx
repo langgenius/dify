@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { MainNavProps } from './types'
 import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +17,7 @@ import { MAIN_CONTENT_ID, SkipNav } from './skip-nav'
 type MainNavLayoutProps = {
   children: ReactNode
   detailSidebar?: ReactNode
+  initialPlatform?: MainNavProps['initialPlatform']
 }
 
 function AppDetailStoreCleanup() {
@@ -36,7 +38,7 @@ function AppDetailStoreCleanup() {
   return null
 }
 
-const MainNavLayout = ({ children, detailSidebar }: MainNavLayoutProps) => {
+const MainNavLayout = ({ children, detailSidebar, initialPlatform }: MainNavLayoutProps) => {
   const { t } = useTranslation('common')
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
@@ -50,7 +52,11 @@ const MainNavLayout = ({ children, detailSidebar }: MainNavLayoutProps) => {
     <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
       <SkipNav>{t(($) => $['navigation.skipToMain'])}</SkipNav>
       <AppDetailStoreCleanup />
-      {hideMainNavigation ? null : useDetailSidebar ? detailSidebar : <MainNav />}
+      {hideMainNavigation ? null : useDetailSidebar ? (
+        detailSidebar
+      ) : (
+        <MainNav initialPlatform={initialPlatform} />
+      )}
       <main
         id={MAIN_CONTENT_ID}
         tabIndex={-1}

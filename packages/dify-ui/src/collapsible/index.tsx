@@ -11,24 +11,8 @@ function Collapsible({ className, ...props }: CollapsibleProps) {
   return <BaseCollapsible.Root className={cn('flex min-w-0 flex-col', className)} {...props} />
 }
 
-type CollapsibleTriggerProps = Omit<BaseCollapsibleNS.Trigger.Props, 'className'> & {
-  className?: string
-}
-function CollapsibleTrigger({ className, ...props }: CollapsibleTriggerProps) {
-  return (
-    <BaseCollapsible.Trigger
-      className={cn(
-        'group flex min-h-8 w-full touch-manipulation items-center justify-between gap-2 rounded-lg px-2.5 text-start system-sm-medium text-text-secondary outline-hidden select-none',
-        'hover:not-data-disabled:bg-components-panel-on-panel-item-bg-hover hover:not-data-disabled:text-text-primary',
-        'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-        'data-panel-open:text-text-primary',
-        'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent',
-        className,
-      )}
-      {...props}
-    />
-  )
-}
+const CollapsibleTrigger = BaseCollapsible.Trigger
+type CollapsibleTriggerProps = BaseCollapsibleNS.Trigger.Props
 
 type CollapsiblePanelProps = Omit<BaseCollapsibleNS.Panel.Props, 'className'> & {
   className?: string

@@ -1,8 +1,8 @@
 import type { ConditionValueMethodProps } from './condition-value-method'
 import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { VarType } from '@/app/components/workflow/types'
 import ConditionCommonVariableSelector from './condition-common-variable-selector'
 import ConditionValueMethod from './condition-value-method'
@@ -63,18 +63,25 @@ const ConditionNumber = ({
         />
       )}
       {valueMethod === 'constant' && (
-        <Input
-          className="border-none bg-transparent outline-hidden hover:bg-transparent focus:bg-transparent focus:shadow-none"
-          value={value}
-          onChange={(e) => {
-            const v = e.target.value
-            onChange(v ? Number(e.target.value) : undefined)
-          }}
-          placeholder={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
-            ns: 'workflow',
-          })}
-          type="number"
-        />
+        <NumberField
+          className="min-w-0 flex-1"
+          value={typeof value === 'number' ? value : null}
+          format={{ maximumSignificantDigits: 21, useGrouping: false }}
+          onValueChange={(value) => onChange(value ?? undefined)}
+        >
+          <NumberFieldGroup className="border-0 bg-transparent hover:bg-transparent">
+            <NumberFieldInput
+              className="rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+              inputMode="decimal"
+              aria-label={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
+                ns: 'workflow',
+              })}
+              placeholder={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
+                ns: 'workflow',
+              })}
+            />
+          </NumberFieldGroup>
+        </NumberField>
       )}
     </div>
   )

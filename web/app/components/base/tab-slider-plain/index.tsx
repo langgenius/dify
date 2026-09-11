@@ -17,30 +17,31 @@ type ItemProps = Readonly<{
 }>
 const Item: FC<ItemProps> = ({ className, isActive, onClick, option, smallItem }) => {
   return (
-    <div
+    <button
+      type="button"
       key={option.value}
       data-testid={`tab-slider-item-${option.value}`}
       className={cn(
-        'relative pb-2.5',
+        'relative appearance-none border-0 bg-transparent px-0 pt-0 pb-2.5 text-left',
         !isActive && 'cursor-pointer',
         smallItem ? 'system-sm-semibold-uppercase' : 'system-xl-semibold',
         className,
       )}
       onClick={() => !isActive && onClick(option.value)}
     >
-      <div
+      <span
         data-testid="tab-slider-item-text"
-        className={cn(isActive ? 'text-text-primary' : 'text-text-tertiary')}
+        className={cn('block', isActive ? 'text-text-primary' : 'text-text-tertiary')}
       >
         {option.text}
-      </div>
+      </span>
       {isActive && (
-        <div
+        <span
           data-testid="tab-active-indicator"
           className="absolute inset-x-0 bottom-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600"
-        ></div>
+        ></span>
       )}
-    </div>
+    </button>
   )
 }
 

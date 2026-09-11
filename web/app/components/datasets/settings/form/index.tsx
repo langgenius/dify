@@ -127,7 +127,7 @@ const Form = () => {
             className="min-w-24"
             variant="primary"
             loading={loading}
-            disabled={loading || readonly}
+            disabled={readonly}
             onClick={handleSave}
           >
             {t(($) => $['form.save'], { ns: 'datasetSettings' })}

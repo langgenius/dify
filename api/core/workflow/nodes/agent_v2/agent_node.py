@@ -178,6 +178,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 workflow_run_id=workflow_run_id,
                 node_id=self._node_id,
                 node_execution_id=self.execution_id,
+                conversation_id=conversation_id,
             )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
@@ -186,6 +187,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
                 snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
+                conversation_id=conversation_id,
             )
         except WorkflowAgentBindingError as error:
             yield self._failure_event(
@@ -223,6 +225,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             workflow_agent_binding_id=bundle.binding.id,
             agent_id=bundle.agent.id,
             agent_config_snapshot_id=bundle.snapshot.id,
+            conversation_id=conversation_id,
         )
 
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)

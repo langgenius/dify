@@ -114,7 +114,7 @@ _UNTITLED_SKILL_MD_BODY = """# Untitled skill
 
 Describe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.
 """
-_FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n?", re.DOTALL)
+_FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n)?", re.DOTALL)
 _FILE_EXTENSION_RE = re.compile(r"\.[A-Za-z0-9][A-Za-z0-9._+-]*\Z")
 _SKILL_ASSISTANT_SYSTEM_PROMPT = """You are Dify's Skill Authoring assistant.
 
@@ -3614,7 +3614,13 @@ class SkillManagementService:
             )
 
     @staticmethod
-    def _parse_frontmatter(content: str) -> dict[str, Any]:
+    def _normalize_newlines(content: str) -> str:
+        """Normalize Windows/Mac newlines so SKILL.md frontmatter parsing is stable."""
+        return content.replace("\r\n", "\n").replace("\r", "\n")
+
+    @classmethod
+    def _parse_frontmatter(cls, content: str) -> dict[str, Any]:
+        content = cls._normalize_newlines(content)
         match = _FRONTMATTER_RE.match(content)
         if match is None:
             return {}
@@ -3623,7 +3629,7 @@ class SkillManagementService:
         except yaml.YAMLError as exc:
             line = None
             if isinstance(exc, MarkedYAMLError) and exc.problem_mark is not None:
-                line = int(exc.problem_mark.line) + 2
+                line = exc.problem_mark.line + 2
             raise SkillManagementServiceError(
                 "invalid_skill_md",
                 f"SKILL.md frontmatter YAML is invalid: {exc}",
@@ -3639,9 +3645,9 @@ class SkillManagementService:
             )
         return payload
 
-    @staticmethod
-    def _frontmatter_field_line(content: str, field: str) -> int:
-        match = _FRONTMATTER_RE.match(content)
+    @classmethod
+    def _frontmatter_field_line(cls, content: str, field: str) -> int:
+        match = _FRONTMATTER_RE.match(cls._normalize_newlines(content))
         if match is None:
             return 2
         frontmatter_start_line = 2
@@ -3747,14 +3753,22 @@ class SkillManagementService:
 
     @staticmethod
     def _strip_single_root(paths: list[str]) -> dict[str, str]:
-        if not paths:
-            return {}
-        first_segments = {path.split("/", 1)[0] for path in paths if "/" in path}
-        root = next(iter(first_segments)) if len(first_segments) == 1 else None
-        if root is None or f"{root}/{_SKILL_MD}" not in paths or _SKILL_MD in paths:
+        if not paths or _SKILL_MD in paths:
             return {path: path for path in paths}
-        stripped = {path: path.removeprefix(f"{root}/") for path in paths}
-        return stripped
+        # Identify the root by the unique top-level `<root>/SKILL.md`, rather than
+        # requiring every path to share one first segment: tools like macOS Finder's
+        # "Compress" add a sibling `__MACOSX/` metadata folder that must not defeat
+        # stripping of the real skill folder. Entries outside the detected root
+        # (like `__MACOSX/...`) are dropped rather than passed through, matching
+        # skill_package_service._normalize_members(ignore_outside_selected_root=True).
+        skill_md_roots = {
+            path.split("/", 1)[0] for path in paths if path.count("/") == 1 and path.endswith(f"/{_SKILL_MD}")
+        }
+        if len(skill_md_roots) != 1:
+            return {path: path for path in paths}
+        root = next(iter(skill_md_roots))
+        prefix = f"{root}/"
+        return {path: path.removeprefix(prefix) for path in paths if path == root or path.startswith(prefix)}
 
     def _draft_payload_from_zip(
         self,
@@ -3775,6 +3789,8 @@ class SkillManagementService:
                 skill_md_content = ""
                 for info in infos:
                     raw_path = normalize_skill_file_path(info.filename.strip("/"))
+                    if raw_path not in path_map:
+                        continue
                     path = normalize_skill_file_path(path_map[raw_path])
                     if info.is_dir():
                         items.append(SkillDraftTreeItemPayload(path=path, kind=SkillFileKind.DIRECTORY))
@@ -3784,6 +3800,7 @@ class SkillManagementService:
                     if path == _SKILL_MD:
                         if text is None:
                             raise SkillManagementServiceError("invalid_skill_md", "SKILL.md must be UTF-8 text")
+                        text = self._normalize_newlines(text)
                         metadata = self._parse_frontmatter(text)
                         skill_md_content = text
                     if text is not None:

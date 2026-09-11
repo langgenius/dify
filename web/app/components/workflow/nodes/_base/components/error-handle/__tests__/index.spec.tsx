@@ -123,7 +123,8 @@ describe('error-handle path', () => {
       )
     })
 
-    it('should render string forms and surface array forms in the default value editor', () => {
+    it('should edit a labeled string default and preserve the array editor', async () => {
+      const user = userEvent.setup()
       const onFormChange = vi.fn()
       render(
         <DefaultValue
@@ -135,14 +136,36 @@ describe('error-handle path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated' } })
+      const input = screen.getByRole('textbox', { name: 'message' })
+      await user.click(screen.getByText('message'))
+      expect(input).toHaveFocus()
+      await user.type(input, '!')
 
       expect(onFormChange).toHaveBeenCalledWith({
         key: 'message',
         type: VarType.string,
-        value: 'updated',
+        value: 'hello!',
       })
       expect(screen.getByText('items')).toBeInTheDocument()
+    })
+
+    it('should report a numeric default as a string to the workflow owner', async () => {
+      const user = userEvent.setup()
+      const onFormChange = vi.fn()
+      render(
+        <DefaultValue
+          forms={[{ key: 'count', type: VarType.number, value: 12 }]}
+          onFormChange={onFormChange}
+        />,
+      )
+
+      await user.type(screen.getByRole('spinbutton', { name: 'count' }), '3')
+
+      expect(onFormChange).toHaveBeenLastCalledWith({
+        key: 'count',
+        type: VarType.number,
+        value: '123',
+      })
     })
 
     it('should toggle the selector popup and report the selected strategy', async () => {

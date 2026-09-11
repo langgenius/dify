@@ -30,7 +30,7 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 
-from .errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
+from .errors.file import BlockedFileExtensionError, FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -131,21 +131,32 @@ class FileService:
         file_size: int,
         default_file_size_limit: int | None = None,
     ) -> bool:
+        return file_size <= FileService.file_size_limit(
+            extension=extension,
+            default_file_size_limit=default_file_size_limit,
+        )
+
+    @staticmethod
+    def file_size_limit(
+        *,
+        extension: str,
+        default_file_size_limit: int | None = None,
+    ) -> int:
+        """Return the size an extension is allowed, in bytes."""
+
         if extension in IMAGE_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT
         elif extension in VIDEO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT
         elif extension in AUDIO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT
         else:
             # Context-specific uploads may override the default limit without changing media-specific limits.
             file_size_limit = (
-                (default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT)
-                * 1024
-                * 1024
+                default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT
             )
 
-        return file_size <= file_size_limit
+        return file_size_limit * 1024 * 1024
 
     def get_file_base64(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:
@@ -160,14 +171,7 @@ class FileService:
     def get_file_presigned_url(self, *, file_id: str, tenant_id: str) -> str:
         """Generate a direct storage URL for a tenant-owned upload file."""
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(
-                select(UploadFile)
-                .where(
-                    UploadFile.id == file_id,
-                    UploadFile.tenant_id == tenant_id,
-                )
-                .limit(1)
-            )
+            upload_file = self.get_upload_file_by_id(tenant_id, file_id, session=session)
             if upload_file is None:
                 raise NotFound("File not found")
 
@@ -181,10 +185,17 @@ class FileService:
         )
 
     def get_icon_url(self, file_id: str, tenant_id: str) -> str:
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
-            StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
-        ):
-            return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
+        try:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+                StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
+            ):
+                return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
+            with self._session_maker(expire_on_commit=False) as session:
+                upload_file = self.get_upload_file_by_id(tenant_id, file_id, session=session)
+            if upload_file is None:
+                raise NotFound("File not found")
+        except NotFound as exc:
+            raise FileNotExistsError("File reference not found") from exc
         return file_helpers.get_signed_file_url(upload_file_id=file_id)
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
@@ -241,58 +252,6 @@ class FileService:
         text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
         return text[0:PREVIEW_WORDS_LIMIT] if text else ""
 
-    def get_image_preview(self, file_id: str, timestamp: str, nonce: str, sign: str):
-        result = file_helpers.verify_image_signature(
-            upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
-        )
-        if not result:
-            raise NotFound("File not found or signature is invalid")
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-
-        if not upload_file:
-            raise NotFound("File not found or signature is invalid")
-
-        # extract text from file
-        extension = upload_file.extension
-        if extension.lower() not in IMAGE_EXTENSIONS:
-            raise UnsupportedFileTypeError()
-
-        generator = storage.load(upload_file.key, stream=True)
-
-        return generator, upload_file.mime_type
-
-    def get_file_generator_by_file_id(self, file_id: str, timestamp: str, nonce: str, sign: str):
-        result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
-        if not result:
-            raise NotFound("File not found or signature is invalid")
-
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-
-        if not upload_file:
-            raise NotFound("File not found or signature is invalid")
-
-        generator = storage.load(upload_file.key, stream=True)
-
-        return generator, upload_file
-
-    def get_public_image_preview(self, file_id: str):
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-
-        if not upload_file:
-            raise NotFound("File not found or signature is invalid")
-
-        # extract text from file
-        extension = upload_file.extension
-        if extension.lower() not in IMAGE_EXTENSIONS:
-            raise UnsupportedFileTypeError()
-
-        generator = storage.load(upload_file.key)
-
-        return generator, upload_file.mime_type
-
     def get_file_content(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:
             upload_file: UploadFile | None = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
@@ -311,6 +270,17 @@ class FileService:
                 return
             storage.delete(upload_file.key)
             session.delete(upload_file)
+
+    @staticmethod
+    def get_upload_file_by_id(tenant_id: str, upload_file_id: str, *, session: Session) -> UploadFile | None:
+        return session.scalar(
+            select(UploadFile)
+            .where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.id == upload_file_id,
+            )
+            .limit(1)
+        )
 
     @staticmethod
     def get_upload_files_by_ids(

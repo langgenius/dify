@@ -2,9 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import PublishWithMultipleModel from '../publish-with-multiple-model'
 
-const mockUseProviderContext = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
+const mockModelListQuery = vi.fn()
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => mockModelListQuery(),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -18,8 +19,8 @@ vi.mock('../../header/account-setting/model-provider-page/model-icon', () => ({
 describe('PublishWithMultipleModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseProviderContext.mockReturnValue({
-      textGenerationModelList: [
+    mockModelListQuery.mockReturnValue({
+      data: [
         {
           provider: 'openai',
           models: [

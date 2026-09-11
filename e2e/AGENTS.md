@@ -17,6 +17,7 @@ Run commands from the repository root. Install dependencies and browsers once wi
 - Prepare and run external runtime scenarios: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:external`
 - Seed against existing middleware without running Cucumber: `pnpm -C e2e seed -- --profile <prepared|external-runtime|post-merge>`
 - Reset persisted E2E state: `pnpm -C e2e e2e:reset`
+- Build the production Web artifact without starting services: `pnpm -C e2e e2e:web:build`
 - Middleware lifecycle: `pnpm -C e2e e2e:middleware:up` and `pnpm -C e2e e2e:middleware:down`
 - Scoped static checks: `vp check e2e`
 

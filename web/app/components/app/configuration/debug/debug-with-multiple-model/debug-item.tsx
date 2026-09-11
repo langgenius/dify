@@ -8,11 +8,15 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import ChatItem from './chat-item'
 import { useDebugWithMultipleModelContext } from './context'
@@ -29,7 +33,12 @@ const DebugItem: FC<DebugItemProps> = ({ modelAndParameter, className, style }) 
   const { mode } = useDebugConfigurationContext()
   const { multipleModelConfigs, onMultipleModelConfigsChange, onDebugWithMultipleModelChange } =
     useDebugWithMultipleModelContext()
-  const { textGenerationModelList } = useProviderContext()
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
 
   const index = multipleModelConfigs.findIndex((v) => v.id === modelAndParameter.id)
   const currentProvider = textGenerationModelList.find(
@@ -88,7 +97,7 @@ const DebugItem: FC<DebugItemProps> = ({ modelAndParameter, className, style }) 
               </IconButton>
             }
           />
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[160px]">
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
             {showDuplicate && (
               <DropdownMenuItem className="system-md-regular" onClick={handleDuplicate}>
                 {t(($) => $.duplicateModel, { ns: 'appDebug' })}

@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 
 type ExternalAPIPanelProps = {

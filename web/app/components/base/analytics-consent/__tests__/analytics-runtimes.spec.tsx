@@ -14,6 +14,10 @@ vi.mock('@/app/components/base/amplitude/WebAppAmplitudeProvider', () => ({
   WebAppAmplitudeProvider: () => <span data-testid="web-app-amplitude-provider" />,
 }))
 
+vi.mock('@/app/components/base/amplitude/registration-consent-coordinator', () => ({
+  RegistrationConsentCoordinator: () => <span data-testid="registration-consent-coordinator" />,
+}))
+
 vi.mock('@/app/components/external-attribution-recorder', () => ({
   default: () => <span data-testid="external-attribution-recorder" />,
 }))
@@ -24,6 +28,7 @@ describe('analytics runtimes', () => {
 
     expect(screen.getByTestId('cookieyes-consent-bridge')).toBeInTheDocument()
     expect(screen.getByTestId('console-amplitude-provider')).toBeInTheDocument()
+    expect(screen.getByTestId('registration-consent-coordinator')).toBeInTheDocument()
     expect(screen.getByTestId('external-attribution-recorder')).toBeInTheDocument()
     expect(screen.queryByTestId('web-app-amplitude-provider')).toBeNull()
   })
@@ -34,6 +39,7 @@ describe('analytics runtimes', () => {
     expect(screen.getByTestId('cookieyes-consent-bridge')).toBeInTheDocument()
     expect(screen.getByTestId('web-app-amplitude-provider')).toBeInTheDocument()
     expect(screen.queryByTestId('console-amplitude-provider')).toBeNull()
+    expect(screen.queryByTestId('registration-consent-coordinator')).toBeNull()
     expect(screen.queryByTestId('external-attribution-recorder')).toBeNull()
   })
 })

@@ -2,7 +2,7 @@ import { appAction, appSearchQueryOptions } from '../app'
 
 const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: { apps: { get: { queryOptions: serviceMocks.queryOptions } } },
 }))
 

@@ -4,17 +4,17 @@ import type { ModelProvider } from '../declarations'
 import type { ModelProviderPluginSummary } from '../index'
 import type { ModelProviderQuotaGetPaid } from '../utils'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { hasPermission } from '@/utils/permission'
 import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
@@ -46,12 +46,17 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   pluginSummary,
 }) => {
   const { t } = useTranslation()
-  const { data: deploymentEdition } = useSuspenseQuery({
+  const {
+    data: { deploymentEdition, rbacEnabled },
+  } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition }) => deployment_edition,
+    select: ({ deployment_edition, rbac_enabled }) => ({
+      deploymentEdition: deployment_edition,
+      rbacEnabled: rbac_enabled,
+    }),
   })
   const language = useLanguage()
-  const refreshModelProviders = useProviderContextSelector((state) => state.refreshModelProviders)
+  const queryClient = useQueryClient()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentProviderName = provider.provider
   const expanded = useModelProviderListExpanded(currentProviderName)
@@ -63,6 +68,11 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     (method) => method === ConfigurationMethodEnum.customizableModel,
   )
   const systemConfig = provider.system_configuration
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canSetPluginPreferences = hasPermission(
+    workspacePermissionKeys,
+    'plugin.plugin_preferences',
+  )
   const {
     data: modelList = [],
     isFetching: loading,
@@ -71,21 +81,22 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   } = useQuery(
     consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
       input: { params: { provider: currentProviderName } },
-      enabled: expanded,
+      enabled: expanded && canSetPluginPreferences,
       refetchOnWindowFocus: false,
       select: normalizeModelProviderModelsResponse,
     }),
   )
   const hasModelList = hasFetchedModelList && !!modelList.length
-  const showCollapsedSection = !expanded || !hasFetchedModelList
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const showCollapsedSection = !canSetPluginPreferences || !expanded || !hasFetchedModelList
   const showModelProvider =
     systemConfig.enabled &&
     MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) &&
     deploymentEdition === 'CLOUD'
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
-  const canAccessCredentials = canUseCredential || canCreateCredential || canManageCredential
+  const canAccessCredentials = rbacEnabled
+    ? canUseCredential || canCreateCredential || canManageCredential
+    : canManageCredential
   const showCredential = supportsPredefinedModel && canAccessCredentials
   const showCustomModelActions = supportsCustomizableModel && canConfigureModels
 
@@ -102,10 +113,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
 
   const refreshPluginData = useCallback(async () => {
     await Promise.all([
-      refreshModelProviders(),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+      }),
+      queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails }),
       invalidateInstalledPluginList(PluginCategoryEnum.model),
     ])
-  }, [invalidateInstalledPluginList, refreshModelProviders])
+  }, [invalidateInstalledPluginList, queryClient])
 
   const handleOpenModelList = useCallback(() => {
     if (loading) return
@@ -176,7 +190,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           </div>
         </div>
         <div className="absolute right-0 bottom-0 left-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
-          {(showModelProvider || !notConfigured) && (
+          {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
             <button
               type="button"
               className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
@@ -260,7 +274,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {showCollapsedSection && (
         <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pr-2.75 pl-2 system-xs-medium text-text-tertiary">
-          {(showModelProvider || !notConfigured) && (
+          {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
             <button
               type="button"
               className="flex h-6 items-center rounded-lg border-none bg-transparent pr-1.5 pl-1 text-left outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"

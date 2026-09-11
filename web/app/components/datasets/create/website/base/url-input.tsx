@@ -30,7 +30,7 @@ const UrlInput: FC<Props> = ({ isRunning, onRun }) => {
     <div className="flex items-center justify-between gap-x-2">
       <Input value={url} onChange={handleUrlChange} placeholder={docLink()} />
       <Button variant="primary" onClick={handleOnRun} loading={isRunning}>
-        {!isRunning ? t(($) => $[`${I18N_PREFIX}.run`], { ns: 'datasetCreation' }) : ''}
+        {t(($) => $[`${I18N_PREFIX}.run`], { ns: 'datasetCreation' })}
       </Button>
     </div>
   )

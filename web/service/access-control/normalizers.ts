@@ -125,6 +125,7 @@ const normalizeRole = (role: GeneratedRbacRole): ResourceUserAccessSetting['role
   name: role.name,
   is_builtin: role.is_builtin ?? false,
   permission_keys: role.permission_keys ?? [],
+  role_tag: normalizeRoleTag(role.role_tag),
 })
 
 const normalizeResourceUserAccessSetting = (

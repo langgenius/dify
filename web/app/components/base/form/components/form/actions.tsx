@@ -28,7 +28,7 @@ const Actions = ({ CustomActions }: ActionsProps) => {
   return (
     <Button
       variant="primary"
-      disabled={isSubmitting || !canSubmit}
+      disabled={!canSubmit && !isSubmitting}
       loading={isSubmitting}
       onClick={() => form.handleSubmit()}
     >

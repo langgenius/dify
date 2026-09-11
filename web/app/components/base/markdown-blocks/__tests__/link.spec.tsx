@@ -23,9 +23,9 @@ describe('Link component', () => {
   })
 
   // --------------------------
-  // ABBR LINK
+  // ABBR ACTION
   // --------------------------
-  it('renders abbr link and calls onSend when clicked', () => {
+  it('renders abbr action as a button and calls onSend when clicked', () => {
     const node = {
       properties: {
         href: 'abbr:hello%20world',
@@ -35,15 +35,15 @@ describe('Link component', () => {
 
     render(<Link node={node} />)
 
-    const abbr = screen.getByText('Tooltip text')
-    expect(abbr.tagName).toBe('ABBR')
+    const button = screen.getByRole('button', { name: 'Tooltip text' })
+    expect(button.tagName).toBe('BUTTON')
 
-    fireEvent.click(abbr)
+    fireEvent.click(button)
 
     expect(mockOnSend).toHaveBeenCalledWith('hello world')
   })
 
-  it('renders abbr with empty fallback title/value when child value is missing', () => {
+  it('renders abbr action with empty fallback title/value when child value is missing', () => {
     const node = {
       properties: {
         href: 'abbr:hi',
@@ -53,10 +53,10 @@ describe('Link component', () => {
 
     const { container } = render(<Link node={node} />)
 
-    const abbr = container.querySelector('abbr')
-    expect(abbr).toBeTruthy()
-    expect(abbr?.tagName).toBe('ABBR')
-    fireEvent.click(abbr as HTMLElement)
+    const button = container.querySelector('button')
+    expect(button).toBeTruthy()
+    expect(button?.tagName).toBe('BUTTON')
+    fireEvent.click(button as HTMLElement)
     expect(mockOnSend).toHaveBeenCalledWith('hi')
   })
 

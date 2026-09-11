@@ -51,6 +51,16 @@ def test_valid_skill_normalizes_manifest():
     assert len(manifest.hash) == 64
 
 
+def test_validate_and_normalize_accepts_crlf_skill_md():
+    crlf_skill_md = _SKILL_MD.replace("\n", "\r\n")
+    package = _normalize({"SKILL.md": crlf_skill_md.encode()})
+
+    assert package.manifest.name == "pdf-toolkit"
+    assert package.manifest.description == "Tools for working with PDF files."
+    assert b"\r" not in package.skill_md_bytes
+    assert package.skill_md_bytes.decode() == _SKILL_MD
+
+
 def test_name_and_description_are_required_in_frontmatter():
     with pytest.raises(SkillPackageError) as exc_info:
         _normalize({"SKILL.md": b"# heading-name\n\nbody"})
@@ -221,7 +231,9 @@ def test_validate_and_normalize_rejects_archive_too_large_uncompressed(monkeypat
 
 
 def test_validate_and_normalize_rejects_archive_too_large_uploaded_bytes(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(skill_package_service_module.dify_config, "UPLOAD_SKILL_FILE_SIZE_LIMIT", 1)
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=1)
 
     with pytest.raises(SkillPackageError) as exc_info:
         SkillPackageService().validate_and_normalize(content=b"x" * (1024 * 1024 + 1), filename="skill.zip")

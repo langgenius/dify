@@ -8,6 +8,7 @@ from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import ConversationRenamePayload
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
@@ -153,14 +154,13 @@ class ConversationRenameApi(WebApiResource):
     )
     @web_ns.response(200, "Conversation renamed successfully", web_ns.models[SimpleConversation.__name__])
     @web_ns.expect(web_ns.models[ConversationRenamePayload.__name__])
-    def post(self, app_model: App, end_user: EndUser, c_id: UUID):
+    @model_validate(ConversationRenamePayload)
+    def post(self, payload: ConversationRenamePayload, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
-
-        payload = ConversationRenamePayload.model_validate(web_ns.payload or {})
 
         try:
             session = db.session()

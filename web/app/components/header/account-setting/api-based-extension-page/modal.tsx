@@ -12,7 +12,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type ApiBasedExtensionModalProps = {
   open: boolean

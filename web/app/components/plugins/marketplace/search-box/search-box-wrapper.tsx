@@ -8,6 +8,7 @@ type SearchBoxWrapperProps = {
   wrapperClassName?: string
   inputClassName?: string
   inputElementClassName?: string
+  searchIconName?: string
   searchIconClassName?: string
   placeholder?: string
   showTags?: boolean
@@ -18,6 +19,7 @@ const SearchBoxWrapper = ({
   wrapperClassName = 'z-11 mx-auto w-[640px] shrink-0',
   inputClassName = 'w-full',
   inputElementClassName,
+  searchIconName,
   searchIconClassName,
   placeholder,
   showTags = true,
@@ -32,6 +34,7 @@ const SearchBoxWrapper = ({
       wrapperClassName={wrapperClassName}
       inputClassName={inputClassName}
       inputElementClassName={inputElementClassName}
+      searchIconName={searchIconName}
       searchIconClassName={searchIconClassName}
       search={searchPluginText}
       onSearchChange={handleSearchPluginTextChange}

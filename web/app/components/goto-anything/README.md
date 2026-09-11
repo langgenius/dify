@@ -8,6 +8,7 @@ Global command palette that coordinates detached dialog triggers, typed search, 
 - The dialog component owns the transient search input and selected plugin installer state.
 - TanStack Query owns remote search lifecycle and cache state for each generated query contract.
 - Autocomplete owns option registration, highlighting, keyboard navigation, and item activation.
-- ScrollArea Viewport is the only results scroll container; Autocomplete List remains the listbox.
+- ScrollArea Viewport is the only results scroll container; Autocomplete List is a listbox for
+  search results and a named grid for command cards.
 
 Search actions adapt application, knowledge, plugin, workflow, and RAG owners into palette results. They must not duplicate those features' authorization, navigation, or query contracts.

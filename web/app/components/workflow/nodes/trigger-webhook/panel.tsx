@@ -279,7 +279,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
                 <NumberFieldGroup>
                   <NumberFieldInput
                     aria-label={t(($) => $[`${i18nPrefix}.statusCode`], { ns: 'workflow' })}
-                    className="h-8"
                   />
                   <NumberFieldControls>
                     <NumberFieldIncrement />

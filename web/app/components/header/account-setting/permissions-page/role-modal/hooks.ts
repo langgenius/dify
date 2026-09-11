@@ -2,7 +2,7 @@ import type { SelectorKey } from 'i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export const useWorkspacePermissionGroups = () => {
   const { t } = useTranslation()

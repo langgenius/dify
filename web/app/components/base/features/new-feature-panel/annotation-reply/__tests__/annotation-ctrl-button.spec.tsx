@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AnnotationCtrlButton from '../annotation-ctrl-button'
 
 const mockSetShowAnnotationFullModal = vi.fn()
@@ -9,19 +11,6 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 let mockAnnotatedResponseUsage = 5
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: {
-      usage: {
-        get annotatedResponse() {
-          return mockAnnotatedResponseUsage
-        },
-      },
-      total: { annotatedResponse: 100 },
-    },
-    enableBilling: true,
-  }),
-}))
 
 const mockAddAnnotation = vi.fn().mockResolvedValue({
   id: 'annotation-1',
@@ -41,6 +30,13 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     info: vi.fn(),
   },
 }))
+
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { annotation_quota_limit: { size: mockAnnotatedResponseUsage, limit: 100 } },
+  })
+}
 
 describe('AnnotationCtrlButton', () => {
   beforeEach(() => {

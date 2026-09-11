@@ -23,6 +23,7 @@ from tasks.remove_app_and_related_data_task import (
     _delete_workflow_agent_node_bindings,
     delete_draft_variables_batch,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_delete_workflow_agent_node_bindings_is_scoped_to_tenant_and_app(sqlite_session: Session) -> None:
@@ -75,7 +76,7 @@ def test_delete_workflow_agent_node_bindings_is_scoped_to_tenant_and_app(sqlite_
 
 def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest.MonkeyPatch) -> None:
     events: list[str] = []
-    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     other_cleanup_names = (
         "_delete_app_model_configs",
         "_delete_app_site",

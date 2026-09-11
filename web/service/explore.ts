@@ -7,7 +7,7 @@ import type {
 } from '@dify/contracts/api/console/explore/types.gen'
 import type { App, AppCategory } from '@/models/explore'
 import type { AppIconType } from '@/types/app'
-import { consoleClient } from './client'
+import { consoleClient } from '@/service/console'
 
 type ExploreAppsResponse = {
   categories: AppCategory[]

@@ -377,7 +377,7 @@ def test_data_migrate_group_registers_dataset_permission_rbac_migration(command_
 def test_data_migrate_group_registers_resource_whitelist_scope_migration(command_module) -> None:
     command = command_module.data_migrate.commands["rbac-migrate-resource-whitelist-scopes"]
 
-    assert command is command_module.migrate_resource_whitelist_scopes_to_automatic_include
+    assert command is command_module.migrate_only_me_resource_whitelist_scopes_to_automatic_include
 
 
 def test_dataset_permission_rbac_migration_help_mentions_binding_clear_side_effect(command_module) -> None:
@@ -583,6 +583,61 @@ def test_resource_whitelist_scope_migration_all_syncs_workspace_members(
     )
 
     command_module.migrate_resource_whitelist_scopes_to_automatic_include.callback(
+        tenant_id=None,
+        resource_type="dataset",
+        resource_id=None,
+        batch_size=500,
+        member_batch_size=500,
+        dry_run=False,
+    )
+
+    assert replace_whitelist_calls[0]["payload"].automatic_include_workspace_members is True
+    assert replace_policy_calls[0]["payload"].access_policy_ids == ["default"]
+    assert set(replace_policy_calls[0]["payload"].account_ids) == {"maintainer-account-1", "member-account-1"}
+
+
+def test_only_me_resource_whitelist_scope_migration_syncs_workspace_members(
+    command_module,
+    rbac_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+    _persist_dataset(rbac_session, maintainer="maintainer-account-1")
+    rbac_session.add_all(
+        [
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="maintainer-account-1",
+                role=TenantAccountRole.OWNER,
+            ),
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="member-account-1",
+                role=TenantAccountRole.NORMAL,
+            ),
+        ]
+    )
+    rbac_session.commit()
+    replace_whitelist_calls: list[dict[str, object]] = []
+    replace_policy_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "legacy_whitelist_config",
+        lambda **kwargs: SimpleNamespace(rbac_whitelist_scope="only_me", account_ids=[]),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_whitelist",
+        lambda **kwargs: replace_whitelist_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_user_access_policies",
+        lambda **kwargs: replace_policy_calls.append(kwargs),
+    )
+
+    command_module.migrate_only_me_resource_whitelist_scopes_to_automatic_include.callback(
         tenant_id=None,
         resource_type="dataset",
         resource_id=None,

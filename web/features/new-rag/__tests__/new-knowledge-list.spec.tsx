@@ -90,7 +90,7 @@ vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     knowledgeFs: {
       listKnowledgeSpaces: {
@@ -195,7 +195,7 @@ describe('NewKnowledgeList', () => {
     ).toHaveAttribute('href', '/datasets/new/space-2/sources')
     expect(within(list).getByText('Answers for customer support')).toBeInTheDocument()
     expect(within(list).getByText('dataset.newKnowledge.noDescription')).toBeInTheDocument()
-    expect(within(supportCard).getByLabelText('camera')).toBeInTheDocument()
+    expect(within(supportCard).getByTitle('camera')).toBeInTheDocument()
     expect(within(list).getAllByText('dataset.newKnowledge.cardType')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.tags')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.documentsUnavailable')).toHaveLength(2)

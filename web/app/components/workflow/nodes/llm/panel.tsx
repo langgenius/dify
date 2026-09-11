@@ -10,6 +10,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +20,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { extractPluginId } from '../../utils/plugin'
@@ -87,15 +88,17 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
     handleReasoningFormatChange,
   } = useConfig(id, data)
 
-  const isModelProviderInstalled = useProviderContextSelector((state) => {
-    const modelIssue = getLLMModelIssue({ modelProvider: model?.provider })
-    if (modelIssue === LLMModelIssueCode.providerRequired) return true
-
-    const modelProviderPluginId = extractPluginId(model.provider)
-    return state.modelProviders.some(
-      (provider) => extractPluginId(provider.provider) === modelProviderPluginId,
-    )
-  })
+  const isProviderRequired =
+    getLLMModelIssue({ modelProvider: model?.provider }) === LLMModelIssueCode.providerRequired
+  const { data: isModelProviderInstalled = isProviderRequired } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) =>
+        isProviderRequired ||
+        response.data.some(
+          (provider) => extractPluginId(provider.provider) === extractPluginId(model.provider),
+        ),
+    }),
+  )
   const hasModelWarning =
     getLLMModelIssue({
       modelProvider: model?.provider,

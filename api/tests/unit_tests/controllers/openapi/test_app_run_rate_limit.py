@@ -8,8 +8,12 @@ import pytest
 from werkzeug.exceptions import TooManyRequests
 
 from controllers.openapi.app_run import _translate_service_errors
+from controllers.service_api.app.error import TriggerWorkflowServiceModeUnavailableError
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.errors.error import AppInvokeQuotaExceededError
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
 
 
@@ -27,3 +31,11 @@ def test_translate_maps_workflow_quota_to_rate_limit_error():
             raise InvokeRateLimitError("workflow quota exhausted")
     assert exc.value.error_code == "rate_limit_error"
     assert exc.value.code == 429
+
+
+def test_translate_maps_trigger_workflow_to_stable_unavailable_error():
+    with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc:
+        with _translate_service_errors():
+            raise TriggerWorkflowServiceModeUnavailableServiceError()
+    assert exc.value.error_code == "trigger_workflow_service_mode_unavailable"
+    assert exc.value.code == 403

@@ -581,6 +581,7 @@ def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(
     assert store.existing_scope_lookups[0]["node_execution_id"] == node.execution_id
     assert binding_resolver.calls[0]["binding_id"] == "binding-1"
     assert binding_resolver.calls[0]["snapshot_id"] == "snapshot-pinned"
+    assert binding_resolver.calls[0]["conversation_id"] == "conversation-1"
 
 
 def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() -> None:

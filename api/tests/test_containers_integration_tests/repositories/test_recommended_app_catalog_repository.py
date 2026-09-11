@@ -4,6 +4,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
+from models.enums import CustomizeTokenStrategy
 from models.model import App, RecommendedApp, Site
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from services.recommended_app_query_service import RecommendedAppDetailRecord
@@ -46,7 +47,7 @@ def _add_catalog_app(
                 app_id=app.id,
                 title=f"site-{uuid4()}",
                 default_language="en-US",
-                customize_token_strategy="not_allow",
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
                 description="description",
                 copyright="copyright",
                 privacy_policy="privacy",

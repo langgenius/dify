@@ -3,14 +3,15 @@ import type { FC } from 'react'
 import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiDraggable } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
 import AddButton from '../../_base/components/add-button'
 import { useInlineLabelHintDismissed } from '../storage'
@@ -82,6 +83,17 @@ const ClassList: FC<Props> = ({
     [list, onChange, handleEdgeDeleteByDeleteBranch, nodeId],
   )
 
+  const keyboardSort = useKeyboardSortable({
+    items: list,
+    onChange: handleSortTopic,
+    disabled: readonly,
+    getItemLabel: (item) => item.label || item.name,
+  })
+  const sortableTopics = useMemo(
+    () => keyboardSort.items.map((item) => ({ ...item })),
+    [keyboardSort.items],
+  )
+
   const topicCount = list.length
 
   useEffect(() => {
@@ -108,6 +120,7 @@ const ClassList: FC<Props> = ({
 
   return (
     <>
+      {keyboardSort.announcement}
       <div className="mb-2 flex items-center justify-between">
         <button
           type="button"
@@ -136,15 +149,21 @@ const ClassList: FC<Props> = ({
       {!collapsed && (
         <div ref={listContainerRef} className="overflow-y-visible pl-3">
           <ReactSortable
-            list={list.map((item) => ({ ...item }))}
-            setList={handleSortTopic}
+            list={sortableTopics}
+            setList={(items) => {
+              if (
+                !keyboardSort.isSorting &&
+                items.some((item, index) => item.id !== sortableTopics[index]?.id)
+              )
+                handleSortTopic(items)
+            }}
             handle=".handle"
             ghostClass="bg-components-panel-bg"
             animation={150}
-            disabled={readonly}
+            disabled={readonly || keyboardSort.isSorting}
             className="space-y-2"
           >
-            {list.map((item, index) => {
+            {keyboardSort.items.map((item, index) => {
               const canDrag = !readonly && topicCount >= 2
               return (
                 <div
@@ -159,21 +178,23 @@ const ClassList: FC<Props> = ({
                 >
                   <div>
                     {canDrag && (
-                      <RiDraggable
-                        className={cn(
-                          'handle absolute top-3 left-2 hidden size-3 cursor-pointer text-text-tertiary',
-                          'group-hover:block',
-                        )}
-                      />
+                      <IconButton
+                        {...keyboardSort.getHandleProps(index)}
+                        className="handle pointer-events-none absolute top-1.5 left-0.5 z-10 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                      >
+                        <span aria-hidden="true" className="i-ri-draggable size-3" />
+                      </IconButton>
                     )}
                     <Item
                       className={cn(canDrag && 'handle')}
-                      headerClassName={cn(canDrag && 'cursor-grab group-hover:pl-5')}
+                      headerClassName={cn(
+                        canDrag && 'cursor-grab group-focus-within:pl-5 group-hover:pl-5',
+                      )}
                       nodeId={nodeId}
-                      key={list[index]!.id}
+                      key={item.id}
                       payload={item}
-                      onChange={handleClassChange(index)}
-                      onRemove={handleRemoveClass(index)}
+                      onChange={handleClassChange(keyboardSort.getItemKey(index))}
+                      onRemove={handleRemoveClass(keyboardSort.getItemKey(index))}
                       index={index + 1}
                       readonly={readonly}
                       filterVar={filterVar}

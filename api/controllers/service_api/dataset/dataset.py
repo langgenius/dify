@@ -25,7 +25,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.common.session import with_session
-from controllers.console.wraps import edit_permission_required
+from controllers.console.wraps import edit_permission_required, model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from controllers.service_api.wraps import (
@@ -35,7 +35,8 @@ from controllers.service_api.wraps import (
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.base import ResponseModel
-from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResponse
+from fields.dataset_fields import dataset_detail_response_source
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_user
@@ -86,6 +87,11 @@ PartialMemberList = Annotated[
         }
     ),
 ]
+
+
+class DatasetDetailResponse(BaseDatasetDetailResponse):
+    # The Service API dump helpers exclude Console permission metadata.
+    permission_keys: list[str] = Field(default_factory=list, exclude=True)
 
 
 _SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
@@ -430,10 +436,11 @@ class DatasetListApi(DatasetApiResource):
             query_params["tag_ids"] = request.args.getlist("tag_ids")
         query = DatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
+        effective_limit = min(query.limit, 100)
 
         datasets, total = DatasetService.get_datasets(
             query.page,
-            query.limit,
+            effective_limit,
             session,
             tenant_id,
             current_user,
@@ -467,8 +474,8 @@ class DatasetListApi(DatasetApiResource):
                 item["embedding_available"] = True
         response = {
             "data": data,
-            "has_more": len(datasets) == query.limit,
-            "limit": query.limit,
+            "has_more": query.page * effective_limit < total,
+            "limit": effective_limit,
             "total": total,
             "page": query.page,
         }
@@ -504,10 +511,9 @@ class DatasetListApi(DatasetApiResource):
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
-    def post(self, session: Session, tenant_id):
+    @model_validate(DatasetCreatePayload)
+    def post(self, payload: DatasetCreatePayload, session: Session, tenant_id):
         """Resource for creating datasets."""
-        payload = DatasetCreatePayload.model_validate(service_api_ns.payload or {})
-
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
         if embedding_model_provider and embedding_model:
@@ -669,14 +675,13 @@ class DatasetApi(DatasetApiResource):
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
-    def patch(self, session: Session, _, dataset_id: UUID):
+    @model_validate(DatasetUpdatePayload)
+    def patch(self, payload: DatasetUpdatePayload, session: Session, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        payload_dict = service_api_ns.payload or {}
-        payload = DatasetUpdatePayload.model_validate(payload_dict)
         update_data = payload.model_dump(exclude_unset=True)
         if payload.permission is not None:
             update_data["permission"] = str(payload.permission)
@@ -739,18 +744,11 @@ class DatasetApi(DatasetApiResource):
 
     @service_api_ns.doc(
         summary="Delete Knowledge Base",
-        description=(
-            "Permanently delete a knowledge base and all its documents. The knowledge base must not be "
-            "in use by any application."
-        ),
+        description="Permanently delete a knowledge base and all its documents.",
         tags=["Knowledge Bases"],
         responses={
             204: "Success.",
             404: "`not_found` : Dataset not found.",
-            409: (
-                "`dataset_in_use` : The knowledge base is being used by some apps. Please remove it from the "
-                "apps before deleting."
-            ),
         },
     )
     @service_api_ns.doc("delete_dataset")
@@ -761,7 +759,6 @@ class DatasetApi(DatasetApiResource):
             204: "Dataset deleted successfully",
             401: "Unauthorized - invalid API token",
             404: "Dataset not found",
-            409: "Conflict - dataset is in use",
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
@@ -944,13 +941,13 @@ class DatasetTagsApi(DatasetApiResource):
         service_api_ns.models[KnowledgeTagResponse.__name__],
     )
     @with_session
-    def post(self, session: Session, _):
+    @model_validate(TagCreatePayload)
+    def post(self, payload: TagCreatePayload, session: Session, _):
         """Add a knowledge type tag."""
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagCreatePayload.model_validate(service_api_ns.payload or {})
         tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=TagType.KNOWLEDGE), session)
 
         response = KnowledgeTagResponse(id=tag.id, name=tag.name, type=tag.type, binding_count="0")
@@ -982,12 +979,12 @@ class DatasetTagsApi(DatasetApiResource):
         service_api_ns.models[KnowledgeTagResponse.__name__],
     )
     @with_session
-    def patch(self, session: Session, _):
+    @model_validate(TagUpdatePayload)
+    def patch(self, payload: TagUpdatePayload, session: Session, _):
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
         tag_id = payload.tag_id
         tag = TagService.update_tags(
             UpdateTagServicePayload(name=payload.name), tag_id, session, tag_type=TagType.KNOWLEDGE
@@ -1019,9 +1016,9 @@ class DatasetTagsApi(DatasetApiResource):
     )
     @edit_permission_required
     @with_session
-    def delete(self, session: Session, _):
+    @model_validate(TagDeletePayload)
+    def delete(self, payload: TagDeletePayload, session: Session, _):
         """Delete a knowledge type tag."""
-        payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag(payload.tag_id, session, tag_type=TagType.KNOWLEDGE)
 
         return "", 204
@@ -1049,13 +1046,13 @@ class DatasetTagBindingApi(DatasetApiResource):
         }
     )
     @with_session
-    def post(self, session: Session, _):
+    @model_validate(TagBindingPayload)
+    def post(self, payload: TagBindingPayload, session: Session, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagBindingPayload.model_validate(service_api_ns.payload or {})
         TagService.save_tag_binding(
             TagBindingCreatePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE),
             session,
@@ -1086,13 +1083,13 @@ class DatasetTagUnbindingApi(DatasetApiResource):
         }
     )
     @with_session
-    def post(self, session: Session, _):
+    @model_validate(TagUnbindingPayload)
+    def post(self, payload: TagUnbindingPayload, session: Session, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagUnbindingPayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag_binding(
             TagBindingDeletePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE),
             session,

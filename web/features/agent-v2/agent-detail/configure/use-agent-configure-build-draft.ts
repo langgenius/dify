@@ -17,7 +17,7 @@ import isEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
 const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
@@ -451,7 +451,7 @@ export function useAgentConfigureBuildDraftActions({
       await exitBuildDraftMode(true)
       toast.success(tCommon(($) => $['api.actionSuccess']))
     } catch {
-      toast.error(tCommon(($) => $['api.actionFailed']))
+      // Each failed request already surfaces its backend error through the console client.
     } finally {
       setIsApplyingBuildDraftWorkflow(false)
     }

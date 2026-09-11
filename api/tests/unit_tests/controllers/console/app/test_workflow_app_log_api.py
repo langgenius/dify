@@ -50,35 +50,3 @@ def test_workflow_app_log_pagination_response_normalizes_nested_fields():
     assert response["data"][0]["workflow_run"]["status"] == "succeeded"
     assert response["data"][0]["workflow_run"]["created_at"] == int(created_at.timestamp())
     assert response["data"][0]["created_at"] == int(created_at.timestamp())
-
-
-def test_workflow_archived_log_pagination_response_normalizes_nested_fields():
-    created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
-    response = workflow_app_log_module.WorkflowArchivedLogPaginationResponse.model_validate(
-        {
-            "page": 1,
-            "limit": 20,
-            "total": 1,
-            "has_more": False,
-            "data": [
-                {
-                    "id": "archived-1",
-                    "workflow_run": {
-                        "id": "run-1",
-                        "status": WorkflowExecutionStatus.FAILED,
-                    },
-                    "trigger_metadata": {"type": "trigger-plugin"},
-                    "created_by_end_user": {
-                        "id": "eu-1",
-                        "type": "anonymous",
-                        "is_anonymous": True,
-                        "session_id": "session-1",
-                    },
-                    "created_at": created_at,
-                }
-            ],
-        }
-    ).model_dump(mode="json")
-
-    assert response["data"][0]["workflow_run"]["status"] == "failed"
-    assert response["data"][0]["created_at"] == int(created_at.timestamp())

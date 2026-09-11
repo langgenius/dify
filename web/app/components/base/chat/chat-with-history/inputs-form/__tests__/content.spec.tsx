@@ -216,7 +216,7 @@ describe('InputsFormContent', () => {
   it('uses currentConversationInputs when currentConversationId is present', () => {
     const context = createMockContext()
     renderWithContext(<InputsFormContent />, context)
-    const input = screen.getByPlaceholderText('Text Label') as HTMLInputElement
+    const input = screen.getByRole('textbox', { name: 'Text Label' }) as HTMLInputElement
     expect(input.value).toBe('current-value')
   })
 
@@ -227,7 +227,7 @@ describe('InputsFormContent', () => {
     })
 
     renderWithContext(<InputsFormContent />, context)
-    const input = screen.getByPlaceholderText('Text Label') as HTMLInputElement
+    const input = screen.getByRole('textbox', { name: 'Text Label' }) as HTMLInputElement
     expect(input.value).toBe('new-value')
   })
 
@@ -235,7 +235,7 @@ describe('InputsFormContent', () => {
     const user = userEvent.setup()
     const context = createMockContext()
     renderWithContext(<InputsFormContent />, context)
-    const input = screen.getByPlaceholderText('Text Label') as HTMLInputElement
+    const input = screen.getByRole('textbox', { name: 'Text Label' }) as HTMLInputElement
 
     await user.clear(input)
     await user.type(input, 'updated')
@@ -256,7 +256,7 @@ describe('InputsFormContent', () => {
     })
 
     renderWithContext(<InputsFormContent />, context)
-    const input = screen.getByPlaceholderText('Num') as HTMLInputElement
+    const input = screen.getByRole('spinbutton', { name: 'Num' }) as HTMLInputElement
     expect(input).toHaveAttribute('type', 'number')
 
     await user.type(input, '123')
@@ -274,7 +274,7 @@ describe('InputsFormContent', () => {
     })
 
     renderWithContext(<InputsFormContent />, context)
-    const textarea = screen.getByPlaceholderText('Para') as HTMLTextAreaElement
+    const textarea = screen.getByRole('textbox', { name: 'Para' }) as HTMLTextAreaElement
     await user.type(textarea, 'hello')
 
     expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(

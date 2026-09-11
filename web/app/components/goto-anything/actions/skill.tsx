@@ -1,7 +1,7 @@
 import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ActionItem, SkillSearchResult } from './types'
 import { getI18n } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 function getSkillResults(skills: SkillResponse[]): SkillSearchResult[] {
   return skills.map((skill) => ({

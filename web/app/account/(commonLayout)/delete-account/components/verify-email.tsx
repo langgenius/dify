@@ -1,41 +1,48 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
-import { useCallback, useEffect, useState } from 'react'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import Link from '@/next/link'
 import { useAccountDeleteStore, useConfirmDeleteAccount, useSendDeleteAccountEmail } from '../state'
-
-const CODE_EXP = /[A-Z\d]{6}/gi
 
 type DeleteAccountProps = {
   onCancel: () => void
   onConfirm: () => void
 }
 
+type VerifyEmailFormValues = {
+  verificationCode: string
+}
+
 export default function VerifyEmail(props: DeleteAccountProps) {
   const { t } = useTranslation()
   const emailToken = useAccountDeleteStore((state) => state.sendEmailToken)
-  const [verificationCode, setVerificationCode] = useState<string>()
-  const [shouldButtonDisabled, setShouldButtonDisabled] = useState(true)
   const { mutate: sendEmail } = useSendDeleteAccountEmail()
   const { isPending: isDeleting, mutateAsync: confirmDeleteAccount } = useConfirmDeleteAccount()
 
-  useEffect(() => {
-    setShouldButtonDisabled(!(verificationCode && CODE_EXP.test(verificationCode)) || isDeleting)
-  }, [verificationCode, isDeleting])
+  const handleConfirm = useCallback(
+    async (verificationCode: string) => {
+      if (isDeleting) return
 
-  const handleConfirm = useCallback(async () => {
-    try {
-      const ret = await confirmDeleteAccount({ code: verificationCode!, token: emailToken })
-      if (ret.result === 'success') props.onConfirm()
-    } catch (error) {
-      console.error(error)
-    }
-  }, [emailToken, verificationCode, confirmDeleteAccount, props])
+      try {
+        const ret = await confirmDeleteAccount({ code: verificationCode, token: emailToken })
+        if (ret.result === 'success') props.onConfirm()
+      } catch (error) {
+        console.error(error)
+      }
+    },
+    [emailToken, confirmDeleteAccount, isDeleting, props],
+  )
   return (
-    <>
+    <Form<VerifyEmailFormValues>
+      onFormSubmit={({ verificationCode }) => {
+        void handleConfirm(verificationCode)
+      }}
+    >
       <div className="pt-1 body-md-medium text-text-destructive">
         {t(($) => $['account.deleteTip'], { ns: 'common' })}
       </div>
@@ -45,25 +52,33 @@ export default function VerifyEmail(props: DeleteAccountProps) {
           {t(($) => $['account.deletePrivacyLink'], { ns: 'common' })}
         </Link>
       </div>
-      <label className="mt-3 mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
-        {t(($) => $['account.verificationLabel'], { ns: 'common' })}
-      </label>
-      <Input
-        minLength={6}
-        maxLength={6}
-        placeholder={t(($) => $['account.verificationPlaceholder'], { ns: 'common' }) as string}
-        onChange={(e) => {
-          setVerificationCode(e.target.value)
-        }}
-      />
+      <Field name="verificationCode" className="mt-3">
+        <FieldLabel className="system-sm-semibold">
+          {t(($) => $['account.verificationLabel'], { ns: 'common' })}
+        </FieldLabel>
+        <Input
+          autoComplete="one-time-code"
+          inputMode="numeric"
+          required
+          pattern="[0-9]{6}"
+          minLength={6}
+          maxLength={6}
+          placeholder={t(($) => $['account.verificationPlaceholder'], { ns: 'common' }) as string}
+        />
+        <FieldError match="valueMissing">
+          {t(($) => $['account.verificationPlaceholder'], { ns: 'common' })}
+        </FieldError>
+        <FieldError match="patternMismatch">
+          {t(($) => $['account.verificationPlaceholder'], { ns: 'common' })}
+        </FieldError>
+      </Field>
       <div className="mt-3 flex w-full flex-col gap-2">
         <Button
+          type="submit"
           className="w-full"
-          disabled={shouldButtonDisabled}
           loading={isDeleting}
           variant="primary"
           tone="destructive"
-          onClick={handleConfirm}
         >
           {t(($) => $['account.permanentlyDeleteButton'], { ns: 'common' })}
         </Button>
@@ -72,6 +87,6 @@ export default function VerifyEmail(props: DeleteAccountProps) {
         </Button>
         <Countdown onResend={sendEmail} />
       </div>
-    </>
+    </Form>
   )
 }

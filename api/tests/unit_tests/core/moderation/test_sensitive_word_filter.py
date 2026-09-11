@@ -621,13 +621,9 @@ class TestEdgeCases:
         """Test keyword that is only spaces."""
         moderation = self._create_moderation("   ")
 
-        # Text without three consecutive spaces should not match
-        result1 = moderation.moderation_for_inputs({"text": "This has spaces"})
-        assert result1.flagged is False
+        result = moderation.moderation_for_inputs({"text": "This   has   spaces"})
 
-        # Text with three consecutive spaces should match
-        result2 = moderation.moderation_for_inputs({"text": "This   has   spaces"})
-        assert result2.flagged is True
+        assert result.flagged is False
 
     def test_config_not_set_error_for_inputs(self):
         """Test error when config is not set for input moderation."""

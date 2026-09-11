@@ -5,9 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from enums import DeploymentEdition
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _dataset(tenant_id: str) -> Dataset:
@@ -66,6 +68,7 @@ def test_rejects_document_outside_dataset_before_side_effects(sqlite_session: Se
     processor_factory.assert_not_called()
 
 
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 def test_cleanup_is_owner_scoped_and_skips_empty_vector_ids(sqlite_session: Session) -> None:
     tenant_id = str(uuid.uuid4())
     dataset = _dataset(tenant_id)
@@ -83,7 +86,6 @@ def test_cleanup_is_owner_scoped_and_skips_empty_vector_ids(sqlite_session: Sess
     sqlite_session.commit()
 
     features = MagicMock()
-    features.billing.enabled = False
     with (
         patch("tasks.sync_website_document_indexing_task.FeatureService.get_features", return_value=features),
         patch("tasks.sync_website_document_indexing_task.IndexProcessorFactory") as processor_factory,

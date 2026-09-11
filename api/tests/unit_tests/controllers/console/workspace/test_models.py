@@ -154,6 +154,23 @@ class TestModelProviderModelApi:
 
         assert status == 204
 
+    def test_delete_model_via_query_params(self, app: Flask):
+        api = ModelProviderModelApi()
+        method = unwrap(api.delete)
+
+        payload = {
+            "model": "gpt-4",
+            "model_type": ModelType.LLM,
+        }
+
+        with (
+            app.test_request_context("/", method="DELETE", query_string=payload),
+            patch("controllers.console.workspace.models.ModelProviderService"),
+        ):
+            result, status = method(api, ParserDeleteModels.model_validate(payload), "tenant1", "openai")
+
+        assert status == 204
+
     def test_get_models_returns_empty(self, app: Flask):
         api = ModelProviderModelApi()
         method = unwrap(api.get)
@@ -256,6 +273,24 @@ class TestModelProviderModelCredentialApi:
 
         with (
             app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.models.ModelProviderService"),
+        ):
+            result, status = method(api, ParserDeleteCredential.model_validate(payload), "t1", "openai")
+
+        assert status == 204
+
+    def test_delete_credential_via_query_params(self, app: Flask):
+        api = ModelProviderModelCredentialApi()
+        method = unwrap(api.delete)
+
+        payload = {
+            "model": "gpt",
+            "model_type": ModelType.LLM,
+            "credential_id": "123e4567-e89b-12d3-a456-426614174000",
+        }
+
+        with (
+            app.test_request_context("/", method="DELETE", query_string=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
             result, status = method(api, ParserDeleteCredential.model_validate(payload), "t1", "openai")

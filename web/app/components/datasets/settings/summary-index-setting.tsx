@@ -2,12 +2,13 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { consoleQuery } from '@/service/console'
 
 type SummaryIndexSettingProps = {
   entry?: 'knowledge-base' | 'dataset-settings' | 'create-document'
@@ -22,7 +23,12 @@ const SummaryIndexSetting = ({
   readonly = false,
 }: SummaryIndexSettingProps) => {
   const { t } = useTranslation()
-  const { data: textGenerationModelList } = useModelList(ModelTypeEnum.textGeneration)
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
   const summaryIndexModelConfig = useMemo(() => {
     if (!summaryIndexSetting?.model_name || !summaryIndexSetting?.model_provider_name)
       return undefined

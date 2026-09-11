@@ -31,6 +31,8 @@ export function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOpe
   if (!activity) return <span className="text-text-quaternary">--</span>
 
   const failed = activity.status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED
+  const inProgress =
+    activity.status === DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
@@ -40,6 +42,12 @@ export function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOpe
           failed ? 'text-text-warning' : 'text-text-secondary',
         )}
       >
+        {inProgress && (
+          <span
+            aria-hidden
+            className="i-ri-loader-2-line size-3 shrink-0 animate-spin motion-reduce:animate-none"
+          />
+        )}
         {failed && (
           <span aria-hidden className="i-ri-error-warning-fill size-3 shrink-0 text-text-warning" />
         )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -11,7 +11,7 @@ import ExternalAPIPanel from '@/app/components/datasets/external-api/external-ap
 import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
 import { KnowledgeSpaceCard } from './components/knowledge-space-card'
@@ -135,15 +135,17 @@ export function NewKnowledgeList({
           </div>
           {canCreate && (
             <div className="flex items-center gap-1">
-              <Button
-                render={<Link href="/datasets/new/create" />}
-                variant="primary"
-                size="medium"
-                className="px-2 shadow-xs"
+              <Link
+                href="/datasets/new/create"
+                className={buttonVariants({
+                  variant: 'primary',
+                  size: 'medium',
+                  className: 'px-2 shadow-xs',
+                })}
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
                 <span>{createLabel}</span>
-              </Button>
+              </Link>
             </div>
           )}
         </div>

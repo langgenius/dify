@@ -1,10 +1,19 @@
+import type {
+  AgentAppCreatePayload,
+  AgentAppPartial,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 
+type AgentFormField = 'description' | 'name' | 'role'
+
 export type AgentFormValues = {
-  description?: string
-  name?: string
-  role?: string
+  [Field in AgentFormField]-?: NonNullable<AgentAppCreatePayload[Field]>
 }
+
+export type AgentFormSource = Pick<
+  AgentAppPartial,
+  'description' | 'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'name' | 'role'
+>
 
 export type AgentIconSelection =
   | AppIconSelection
@@ -24,6 +33,7 @@ type AgentIconSource = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  icon_url?: string | null
 }
 
 export const createAgentIconSelection = (agent: AgentIconSource): AgentIconSelection => {
@@ -31,7 +41,7 @@ export const createAgentIconSelection = (agent: AgentIconSource): AgentIconSelec
     return {
       type: 'image',
       fileId: agent.icon,
-      url: agent.icon,
+      url: agent.icon_url ?? agent.icon,
     }
   }
 

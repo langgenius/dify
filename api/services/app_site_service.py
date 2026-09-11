@@ -87,7 +87,7 @@ class AppSiteService:
 
     def update(self, context: RequestContext, app_id: str, changes: AppSiteChanges) -> AppSiteCommandResult:
         return self._sites.update_site(
-            workspace_id=self._workspace_id(context),
+            workspace_id=context.active_workspace_id,
             app_id=app_id,
             actor_id=context.account_id,
             changes=changes,
@@ -95,13 +95,7 @@ class AppSiteService:
 
     def reset_access_token(self, context: RequestContext, app_id: str) -> AppSiteCommandResult:
         return self._sites.reset_access_token(
-            workspace_id=self._workspace_id(context),
+            workspace_id=context.active_workspace_id,
             app_id=app_id,
             actor_id=context.account_id,
         )
-
-    @staticmethod
-    def _workspace_id(context: RequestContext) -> str:
-        if context.active_workspace_id is None:
-            raise RuntimeError("Console account admission did not resolve an active workspace")
-        return context.active_workspace_id

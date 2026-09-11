@@ -48,6 +48,10 @@ class WorkspaceMembershipCache(Protocol):
     def invalidate(self, workspace_id: str) -> None: ...
 
 
+class WorkspaceMemberAccessSync(Protocol):
+    def sync(self, workspace_id: str, account_id: str) -> None: ...
+
+
 class InvalidInvitationError(Exception):
     """The invitation is invalid, stale, or missing required activation data."""
 
@@ -73,12 +77,14 @@ class AccountActivationService:
         workspace_policy: WorkspaceInvitePolicy,
         eligibility: AccountActivationEligibility,
         membership_cache: WorkspaceMembershipCache,
+        member_access_sync: WorkspaceMemberAccessSync,
     ) -> None:
         self._tokens = tokens
         self._accounts = accounts
         self._workspace_policy = workspace_policy
         self._eligibility = eligibility
         self._membership_cache = membership_cache
+        self._member_access_sync = member_access_sync
 
     def check(self, invitation: InvitationLookup) -> ActivationCheckResult:
         resolved = self._resolve(invitation)
@@ -128,6 +134,7 @@ class AccountActivationService:
             raise InvalidInvitationError
         if result.membership_created:
             self._membership_cache.invalidate(invitation.workspace_id)
+        self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)

@@ -51,7 +51,7 @@ def external_deps() -> Generator[dict[str, object], None, None]:
         patch("services.app_dsl_service.DependenciesAnalysisService") as mock_dependencies_service,
         patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
         patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-        patch("services.app_service.FeatureService") as mock_feature_service,
+        patch("services.app_service.SystemFeatureService") as mock_feature_service,
         patch("services.app_service.EnterpriseService") as mock_enterprise_service,
     ):
         mock_workflow_service.return_value.get_draft_workflow.return_value = None
@@ -65,7 +65,7 @@ def external_deps() -> Generator[dict[str, object], None, None]:
         mock_model_instance.get_default_model_instance.return_value = None
         mock_model_instance.get_default_provider_model_name.return_value = ("openai", "gpt-3.5-turbo")
 
-        mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+        mock_feature_service.is_webapp_auth_enabled.return_value = False
         mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
         mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
 
@@ -74,8 +74,8 @@ def external_deps() -> Generator[dict[str, object], None, None]:
 
 def _app_and_account(db_session: Session, *, mode: str = "chat") -> tuple[App, Account]:
     fake = Faker()
-    with patch("services.account_service.FeatureService") as mock_account_feature_service:
-        mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+    with patch("services.account_service.SystemFeatureService") as mock_account_feature_service:
+        mock_account_feature_service.is_registration_allowed.return_value = True
         account = AccountService.create_account(
             email=fake.email(),
             name=fake.name(),

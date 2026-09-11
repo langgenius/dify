@@ -174,7 +174,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                   width={20}
                   height={20}
                   className="rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge"
-                  alt="icon"
+                  alt=""
                 />
               </div>
             )}

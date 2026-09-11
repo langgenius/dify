@@ -25,18 +25,18 @@ export const vectorSpace = {
 }
 
 /**
- * Get feature configuration for current tenant
+ * Get current workspace features
  *
- * Get feature configuration for current tenant
+ * Get feature availability and limits for the current workspace
  */
 export const get2 = oc
   .route({
-    description: 'Get feature configuration for current tenant',
+    description: 'Get feature availability and limits for the current workspace',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFeatures',
     path: '/features',
-    summary: 'Get feature configuration for current tenant',
+    summary: 'Get current workspace features',
     tags: ['console'],
   })
   .output(zGetFeaturesResponse)

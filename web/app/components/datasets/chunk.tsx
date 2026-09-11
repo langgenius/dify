@@ -42,11 +42,11 @@ export const QAPreview: FC<QAPreviewProps> = (props) => {
   return (
     <div className="flex flex-col gap-y-2">
       <div className="flex gap-x-1">
-        <label className="shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">Q</label>
+        <span className="shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">Q</span>
         <p className="body-md-regular text-text-secondary">{qa.question}</p>
       </div>
       <div className="flex gap-x-1">
-        <label className="shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">A</label>
+        <span className="shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">A</span>
         <p className="body-md-regular text-text-secondary">{qa.answer}</p>
       </div>
     </div>

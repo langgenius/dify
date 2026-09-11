@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 import core.rag.extractor.word_extractor as we
 from core.rag.extractor.word_extractor import WordExtractor
 from models.model import UploadFile
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class _TextOxmlElement(Protocol):
@@ -131,8 +132,7 @@ def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch, inject_sessio
     monkeypatch.setattr(we, "db", db_stub)
 
     # Patch config values used for URL composition and storage type
-    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
-    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     # Patch external image fetcher
     def fake_make_request(method: str, url: str, **kwargs):
@@ -208,8 +208,7 @@ def test_extract_images_does_not_stage_partial_files_on_storage_failure(
     )
     save = MagicMock(side_effect=[None, RuntimeError("storage failure")])
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=save))
-    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
-    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     extractor = object.__new__(WordExtractor)
     extractor.tenant_id = "00000000-0000-0000-0000-000000000001"
@@ -222,35 +221,24 @@ def test_extract_images_does_not_stage_partial_files_on_storage_failure(
     assert sqlite_session.scalars(select(UploadFile)).all() == []
 
 
-def test_extract_images_from_docx_uses_internal_files_url():
+def test_extract_images_from_docx_uses_internal_files_url(monkeypatch: pytest.MonkeyPatch):
     """Test that INTERNAL_FILES_URL takes precedence over FILES_URL for plugin access."""
     # Test the URL generation logic directly
     from configs import dify_config
 
-    # Mock the configuration values
-    original_files_url = dify_config.FILES_URL
-    original_internal_files_url = dify_config.INTERNAL_FILES_URL
+    apply_config_overrides(
+        monkeypatch,
+        FILES_URL="http://external.example.com",
+        INTERNAL_FILES_URL="http://internal.docker:5001",
+    )
 
-    try:
-        # Set both URLs - INTERNAL should take precedence
-        dify_config.FILES_URL = "http://external.example.com"
-        dify_config.INTERNAL_FILES_URL = "http://internal.docker:5001"
+    upload_file_id = "test_file_id"
 
-        # Test the URL generation logic (same as in word_extractor.py)
-        upload_file_id = "test_file_id"
+    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+    generated_url = f"{base_url}/files/{upload_file_id}/file-preview"
 
-        # This is the pattern we fixed in the word extractor
-        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
-        generated_url = f"{base_url}/files/{upload_file_id}/file-preview"
-
-        # Verify that INTERNAL_FILES_URL is used instead of FILES_URL
-        assert "http://internal.docker:5001" in generated_url, f"Expected internal URL, got: {generated_url}"
-        assert "http://external.example.com" not in generated_url, f"Should not use external URL, got: {generated_url}"
-
-    finally:
-        # Restore original values
-        dify_config.FILES_URL = original_files_url
-        dify_config.INTERNAL_FILES_URL = original_internal_files_url
+    assert "http://internal.docker:5001" in generated_url, f"Expected internal URL, got: {generated_url}"
+    assert "http://external.example.com" not in generated_url, f"Should not use external URL, got: {generated_url}"
 
 
 def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
@@ -258,8 +246,7 @@ def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Se
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
     db_stub = SimpleNamespace(session=unbound_session)
     monkeypatch.setattr(we, "db", db_stub)
-    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
-    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     doc = Document()
     p = doc.add_paragraph("Visit ")
@@ -303,8 +290,7 @@ def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_sess
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
     db_stub = SimpleNamespace(session=unbound_session)
     monkeypatch.setattr(we, "db", db_stub)
-    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
-    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     doc = Document()
     p = doc.add_paragraph()
@@ -476,7 +462,7 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
     db_stub = SimpleNamespace(session=sqlite_session)
     monkeypatch.setattr(we, "db", db_stub)
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda key, data: None))
-    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local")
 
     extractor = object.__new__(WordExtractor)
     extractor.tenant_id = "tenant"

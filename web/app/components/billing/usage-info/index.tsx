@@ -52,11 +52,10 @@ const UsageInfo: FC<Props> = ({
   const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
   const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
 
-  // Single source of truth: sandbox full is visually clamped to 100%; all other
-  // determinate cases show the real percent capped at 100. Tone derives from
-  // this, so we never need a separate tone override.
+  // Zero count quotas have no remaining capacity; storage keeps its separate limit convention.
+  const isZeroQuota = !storageMode && total === 0
   const rawPercent = total > 0 ? (usage / total) * 100 : 0
-  const effectivePercent = isSandboxFull ? 100 : Math.min(rawPercent, 100)
+  const effectivePercent = isSandboxFull || isZeroQuota ? 100 : Math.min(rawPercent, 100)
   const tone: MeterTone =
     effectivePercent >= 100 ? 'error' : effectivePercent >= 80 ? 'warning' : 'neutral'
 

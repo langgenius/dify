@@ -2,51 +2,69 @@
  * Integration test: Pricing Modal Flow
  *
  * Tests the full Pricing modal lifecycle:
- *   Pricing → PlanSwitcher (category + range toggle) → Plans (cloud / self-hosted)
+ *   Pricing → PricingContent (category + billing interval) → cloud / self-hosted plans
  *   → CloudPlanItem / SelfHostedPlanItem → Footer
  *
  * Validates cross-component state propagation when the user switches between
  * cloud / self-hosted categories and monthly / yearly plan ranges.
  */
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
-import Pricing from '@/app/components/billing/pricing'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { Pricing } from '@/app/components/billing/pricing'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+
+function PricingEntry() {
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
+  return <button onClick={() => setPricing('open')}>View pricing</button>
+}
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
-let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
 let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
+let mockCurrentPlan: CloudPlan = 'sandbox'
+let mockEducationEnabled = false
 const mockGetSubscription = vi.hoisted(() => vi.fn())
 
-const render = (ui: React.ReactElement) => {
-  const { wrapper } = createConsoleQueryWrapper({
+const render = async (ui: React.ReactElement) => {
+  const { queryClient, wrapper } = createConsoleQueryWrapper({
     accountProfile: mockConsoleState.userProfile as { email?: string },
     accountProfileMeta: { currentVersion: '1.0.0' },
     educationStatus: mockEducationStatus,
   })
-  return renderWithConsoleState(ui, { wrapper })
+  seedFeatures(queryClient, {
+    billing: {
+      subscription: { interval: 'month', plan: mockCurrentPlan },
+    },
+    education: { enabled: mockEducationEnabled },
+  })
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams: '?pricing=open' })
+  const result = renderWithConsoleState(<NuqsWrapper>{ui}</NuqsWrapper>, { wrapper })
+  await screen.findByRole('heading', { name: 'billing.plans.sandbox.name' })
+  return result
 }
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockProviderCtx,
-}))
-
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
-  useGetPricingPageLanguage: () => 'en',
+  useLocale: () => 'en-US',
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleClient: new Proxy(actual.consoleClient, {
@@ -76,61 +94,20 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// ─── External component mocks (lightweight) ─────────────────────────────────
-vi.mock('@/app/components/base/icons/src/public/billing', () => ({
-  Azure: () => <span data-testid="icon-azure" />,
-  GoogleCloud: () => <span data-testid="icon-gcloud" />,
-  AwsMarketplaceLight: () => <span data-testid="icon-aws-light" />,
-  AwsMarketplaceDark: () => <span data-testid="icon-aws-dark" />,
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
-  useTheme: () => ({ theme: 'light' }),
-}))
-
 // Self-hosted List uses t() with returnObjects which returns string in mock;
 // mock it to avoid deep i18n dependency (unit tests cover this component)
 vi.mock('@/app/components/billing/pricing/plans/self-hosted-plan-item/list', () => ({
-  default: ({ plan }: { plan: string }) => (
-    <div data-testid={`self-hosted-list-${plan}`}>Features</div>
-  ),
+  SelfHostedPlanFeatures: () => null,
 }))
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const defaultPlanData = {
-  type: 'sandbox',
-  usage: {
-    buildApps: 1,
-    teamMembers: 1,
-    documentsUploadQuota: 0,
-    vectorSpace: 10,
-    annotatedResponse: 1,
-    triggerEvents: 0,
-    apiRateLimit: 0,
-  },
-  total: {
-    buildApps: 5,
-    teamMembers: 1,
-    documentsUploadQuota: 50,
-    vectorSpace: 50,
-    annotatedResponse: 10,
-    triggerEvents: 3000,
-    apiRateLimit: 5000,
-  },
-}
-
 const setupContexts = (
-  planOverrides: Record<string, unknown> = {},
+  planOverrides: { type?: CloudPlan } = {},
   appOverrides: Record<string, unknown> = {},
 ) => {
   mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
-  mockProviderCtx = {
-    plan: { ...defaultPlanData, ...planOverrides },
-    enableBilling: true,
-    isFetchedPlan: true,
-    enableEducationPlan: false,
-  }
+  mockCurrentPlan = planOverrides.type ?? 'sandbox'
+  mockEducationEnabled = false
   mockConsoleState = {
     isCurrentWorkspaceManager: true,
     userProfile: { email: 'test@example.com' },
@@ -141,8 +118,6 @@ const setupContexts = (
 
 // ═══════════════════════════════════════════════════════════════════════════════
 describe('Pricing Modal Flow', () => {
-  const onCancel = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
@@ -150,10 +125,31 @@ describe('Pricing Modal Flow', () => {
     setupContexts()
   })
 
+  it('starts a new pricing session after closing and reopening', async () => {
+    const user = userEvent.setup()
+    await render(
+      <>
+        <PricingEntry />
+        <Pricing />
+      </>,
+    )
+    await user.click(screen.getByRole('switch'))
+    expect(screen.getByRole('switch')).toBeChecked()
+    await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'View pricing' }))
+    expect(await screen.findByRole('tab', { name: 'billing.plansCommon.cloud' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByRole('switch')).not.toBeChecked()
+  })
+
   // ─── 1. Initial Rendering ────────────────────────────────────────────────
   describe('Initial rendering', () => {
-    it('should render header with close button and footer with pricing link', () => {
-      render(<Pricing onCancel={onCancel} />)
+    it('should render header with close button and footer with pricing link', async () => {
+      await render(<Pricing />)
 
       // Header close button exists (multiple plan buttons also exist)
       const buttons = screen.getAllByRole('button')
@@ -162,17 +158,20 @@ describe('Pricing Modal Flow', () => {
       expect(screen.getByText(/plansCommon\.comparePlanAndFeatures/i)).toBeInTheDocument()
     })
 
-    it('should default to cloud category with three cloud plans', () => {
-      render(<Pricing onCancel={onCancel} />)
+    it('should default to cloud category with three cloud plans', async () => {
+      await render(<Pricing />)
 
-      expect(screen.getByRole('button', { name: 'billing.plansCommon.cloud' })).toHaveAttribute(
-        'aria-pressed',
+      expect(screen.getByRole('tab', { name: 'billing.plansCommon.cloud' })).toHaveAttribute(
+        'aria-selected',
         'true',
       )
-      expect(screen.getByRole('button', { name: 'billing.plansCommon.self' })).toHaveAttribute(
-        'aria-pressed',
+      expect(screen.getByRole('tab', { name: 'billing.plansCommon.self' })).toHaveAttribute(
+        'aria-selected',
         'false',
       )
+      expect(
+        screen.getByRole('tablist', { name: 'billing.plansCommon.title.plans' }),
+      ).toBeInTheDocument()
 
       // Three cloud plans: sandbox, professional, team
       expect(screen.getByText(/plans\.sandbox\.name/i)).toBeInTheDocument()
@@ -180,35 +179,52 @@ describe('Pricing Modal Flow', () => {
       expect(screen.getByText(/plans\.team\.name/i)).toBeInTheDocument()
     })
 
-    it('should show plan range switcher (annual billing toggle) by default for cloud', () => {
-      render(<Pricing onCancel={onCancel} />)
+    it('should show plan range switcher (annual billing toggle) by default for cloud', async () => {
+      await render(<Pricing />)
 
       expect(
-        screen.getByRole('switch', { name: 'billing.plansCommon.yearlyBilling' }),
+        screen.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ }),
       ).toBeInTheDocument()
       expect(screen.getByText(/plansCommon\.annualBilling/i)).toBeInTheDocument()
     })
 
-    it('should show the tax exclusion notice in the footer for cloud category', () => {
-      render(<Pricing onCancel={onCancel} />)
+    it('should show the tax exclusion notice in the footer for cloud category', async () => {
+      await render(<Pricing />)
 
       expect(screen.getByText('billing.plansCommon.taxTip')).toBeInTheDocument()
     })
   })
 
+  it('tabs directly into the category controls and then the plan panel', async () => {
+    const user = userEvent.setup()
+    await render(<Pricing />)
+    screen.getByRole('button', { name: 'common.operation.close' }).focus()
+    await user.tab()
+    expect(screen.getByRole('tab', { name: 'billing.plansCommon.cloud' })).toHaveFocus()
+    await user.tab()
+    expect(
+      screen.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ }),
+    ).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole('tabpanel', { name: 'billing.plansCommon.cloud' })).toHaveFocus()
+  })
+
   // ─── 2. Category Switching ───────────────────────────────────────────────
   describe('Category switching', () => {
-    it('should switch to self-hosted plans when clicking self-hosted tab', async () => {
+    it('allows arrow navigation before activating a category with Enter', async () => {
       const user = userEvent.setup()
-      render(<Pricing onCancel={onCancel} />)
+      await render(<Pricing />)
 
-      const selfHostedButton = screen.getByRole('button', {
-        name: 'billing.plansCommon.self',
-      })
-      selfHostedButton.focus()
-      await user.keyboard(' ')
+      const cloudTab = screen.getByRole('tab', { name: 'billing.plansCommon.cloud' })
+      const selfHostedTab = screen.getByRole('tab', { name: 'billing.plansCommon.self' })
+      cloudTab.focus()
+      await user.keyboard('{ArrowRight}')
+      expect(selfHostedTab).toHaveFocus()
+      expect(cloudTab).toHaveAttribute('aria-selected', 'true')
+      await user.keyboard('{Enter}')
+      await screen.findByRole('heading', { name: 'billing.plans.community.name' })
 
-      expect(selfHostedButton).toHaveAttribute('aria-pressed', 'true')
+      expect(selfHostedTab).toHaveAttribute('aria-selected', 'true')
 
       // Self-hosted plans should appear
       expect(screen.getByText(/plans\.community\.name/i)).toBeInTheDocument()
@@ -221,9 +237,9 @@ describe('Pricing Modal Flow', () => {
 
     it('should hide plan range switcher for self-hosted category', async () => {
       const user = userEvent.setup()
-      render(<Pricing onCancel={onCancel} />)
+      await render(<Pricing />)
 
-      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.self' }))
+      await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
 
       // Annual billing toggle should not be visible
       expect(screen.queryByText(/plansCommon\.annualBilling/i)).not.toBeInTheDocument()
@@ -231,23 +247,23 @@ describe('Pricing Modal Flow', () => {
 
     it('should hide tax tip in footer for self-hosted category', async () => {
       const user = userEvent.setup()
-      render(<Pricing onCancel={onCancel} />)
+      await render(<Pricing />)
 
-      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.self' }))
+      await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
 
       expect(screen.queryByText('billing.plansCommon.taxTip')).not.toBeInTheDocument()
     })
 
     it('should switch back to cloud plans when clicking cloud tab', async () => {
       const user = userEvent.setup()
-      render(<Pricing onCancel={onCancel} />)
+      await render(<Pricing />)
 
       // Switch to self-hosted
-      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.self' }))
+      await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
       expect(screen.queryByText(/plans\.sandbox\.name/i)).not.toBeInTheDocument()
 
       // Switch back to cloud
-      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.cloud' }))
+      await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.cloud' }))
       expect(screen.getByText(/plans\.sandbox\.name/i)).toBeInTheDocument()
       expect(screen.getByText(/plansCommon\.annualBilling/i)).toBeInTheDocument()
     })
@@ -255,8 +271,8 @@ describe('Pricing Modal Flow', () => {
 
   // ─── 3. Plan Range Switching (Monthly ↔ Yearly) ──────────────────────────
   describe('Plan range switching', () => {
-    it('should show monthly prices by default', () => {
-      render(<Pricing onCancel={onCancel} />)
+    it('should show monthly prices by default', async () => {
+      await render(<Pricing />)
 
       // Professional monthly price: $59
       const proPriceStr = `$${ALL_PLANS.professional.price}`
@@ -267,14 +283,14 @@ describe('Pricing Modal Flow', () => {
       expect(screen.getByText(teamPriceStr)).toBeInTheDocument()
     })
 
-    it('should show "Free" for sandbox plan regardless of range', () => {
-      render(<Pricing onCancel={onCancel} />)
+    it('should show "Free" for sandbox plan regardless of range', async () => {
+      await render(<Pricing />)
 
       expect(screen.getByText(/plansCommon\.free/i)).toBeInTheDocument()
     })
 
-    it('should show "most popular" badge only for professional plan', () => {
-      render(<Pricing onCancel={onCancel} />)
+    it('should show "most popular" badge only for professional plan', async () => {
+      await render(<Pricing />)
 
       expect(screen.getByText(/plansCommon\.mostPopular/i)).toBeInTheDocument()
     })
@@ -284,7 +300,7 @@ describe('Pricing Modal Flow', () => {
   describe('Cloud plan button states', () => {
     it('should allow managers without billing permission keys to change plans', async () => {
       const user = userEvent.setup()
-      render(<Pricing onCancel={onCancel} />)
+      await render(<Pricing />)
 
       await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
 
@@ -297,16 +313,13 @@ describe('Pricing Modal Flow', () => {
 
     it('should default education account managers to yearly checkout', async () => {
       setupContexts()
-      mockProviderCtx = {
-        ...mockProviderCtx,
-        enableEducationPlan: true,
-      }
+      mockEducationEnabled = true
       mockEducationStatus.is_student = true
       const user = userEvent.setup()
-      render(<Pricing onCancel={onCancel} />)
+      await render(<Pricing />)
 
       expect(
-        screen.getByRole('switch', { name: 'billing.plansCommon.yearlyBilling' }),
+        screen.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ }),
       ).toBeChecked()
 
       await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
@@ -327,7 +340,7 @@ describe('Pricing Modal Flow', () => {
         },
       )
       const user = userEvent.setup()
-      render(<Pricing onCancel={onCancel} />)
+      await render(<Pricing />)
 
       await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
 
@@ -336,16 +349,16 @@ describe('Pricing Modal Flow', () => {
       })
     })
 
-    it('should show "Current Plan" for the current plan (sandbox)', () => {
+    it('should show "Current Plan" for the current plan (sandbox)', async () => {
       setupContexts({ type: 'sandbox' })
-      render(<Pricing onCancel={onCancel} />)
+      await render(<Pricing />)
 
       expect(screen.getByText(/plansCommon\.currentPlan/i)).toBeInTheDocument()
     })
 
-    it('should show specific button text for non-current plans', () => {
+    it('should show specific button text for non-current plans', async () => {
       setupContexts({ type: 'sandbox' })
-      render(<Pricing onCancel={onCancel} />)
+      await render(<Pricing />)
 
       // Professional button text
       expect(screen.getByText(/plansCommon\.startBuilding/i)).toBeInTheDocument()
@@ -356,20 +369,9 @@ describe('Pricing Modal Flow', () => {
 
   // ─── 5. Self-Hosted Plan Details ─────────────────────────────────────────
   describe('Self-hosted plan details', () => {
-    it('should show cloud provider icons only for premium plan', async () => {
-      const user = userEvent.setup()
-      render(<Pricing onCancel={onCancel} />)
-
-      await user.click(screen.getByText(/plansCommon\.self/i))
-
-      // Premium plan should show Azure and Google Cloud icons
-      expect(screen.getByTestId('icon-azure')).toBeInTheDocument()
-      expect(screen.getByTestId('icon-gcloud')).toBeInTheDocument()
-    })
-
     it('should show "coming soon" text for premium plan cloud providers', async () => {
       const user = userEvent.setup()
-      render(<Pricing onCancel={onCancel} />)
+      await render(<Pricing />)
 
       await user.click(screen.getByText(/plansCommon\.self/i))
 
@@ -379,13 +381,13 @@ describe('Pricing Modal Flow', () => {
 
   // ─── 6. Pricing URL ─────────────────────────────────────────────────────
   describe('Pricing page URL', () => {
-    it('should render pricing link with correct URL', () => {
-      render(<Pricing onCancel={onCancel} />)
+    it('should render pricing link with correct URL', async () => {
+      await render(<Pricing />)
 
       const link = screen.getByText(/plansCommon\.comparePlanAndFeatures/i)
       expect(link.closest('a')).toHaveAttribute(
         'href',
-        'https://dify.ai/en/pricing#plans-and-features',
+        'https://dify.ai/pricing/dify-cloud#compare',
       )
     })
   })

@@ -41,12 +41,6 @@ let activeTextGenerationModelList: Array<Record<string, unknown>> = [
   },
 ]
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    isAPIKeySet: true,
-  }),
-}))
-
 vi.mock('@/service/use-common', () => ({
   useModelParameterRules: () => ({
     data: {

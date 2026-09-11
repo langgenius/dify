@@ -26,10 +26,19 @@ describe('Countdown', () => {
     localStorage.setItem(COUNT_DOWN_KEY, '30000')
     const container = document.createElement('div')
     container.innerHTML = renderToString(<Countdown />)
-    const root = hydrateRoot(container, <Countdown />)
+    expect(container).toHaveTextContent('login.checkCode.didNotReceiveCode')
+    expect(container).not.toHaveTextContent('30s')
+    expect(container.querySelector('button')).toBeNull()
 
-    await waitFor(() => expect(container).toHaveTextContent('30s'))
-    act(() => root.unmount())
+    const onRecoverableError = vi.fn()
+    const root = hydrateRoot(container, <Countdown />, { onRecoverableError })
+
+    try {
+      await waitFor(() => expect(container).toHaveTextContent('30s'))
+      expect(onRecoverableError).not.toHaveBeenCalled()
+    } finally {
+      act(() => root.unmount())
+    }
   })
 
   it('removes the stored time when the countdown ends', () => {

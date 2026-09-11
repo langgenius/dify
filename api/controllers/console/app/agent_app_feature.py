@@ -16,13 +16,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import AgentId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -83,7 +83,7 @@ class AgentAppFeatureConfigResource(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id

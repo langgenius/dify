@@ -51,6 +51,16 @@ export default defineConfig({
     [eslintFiles]: [eslintFix, formatFix],
     [formatOnlyFiles]: formatFix,
     '.vite-hooks/*': 'sh -n',
+    'api/**/*.{py,pyi}': [
+      // Format first so fixable long lines do not fail the API's E501 check.
+      'uv run --locked --project api --dev ruff format --force-exclude',
+      'uv run --locked --project api --dev ruff check --fix --force-exclude',
+      'uv run --locked --project api --dev ruff format --force-exclude',
+    ],
+    'dify-agent/{src,examples,tests,docs}/**/*.py': [
+      'uv run --locked --project dify-agent --dev ruff check --fix --force-exclude',
+      'uv run --locked --project dify-agent --dev ruff format --force-exclude',
+    ],
   },
   fmt: {
     ignorePatterns: [...nonFrontendIgnores, ...generatedIgnores, ...formatterUnstableInputs],

@@ -1,10 +1,12 @@
 import type { AccessControlSubjects } from '../specific-groups-or-members'
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { SubjectType } from '@/models/access-control'
+import { AccessMode, SubjectType } from '@/models/access-control'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import AccessControlItem from '../access-control-item'
 import AddMemberOrGroupDialog from '../add-member-or-group-pop'
 
 const mockUseSearchForWhiteListCandidates = vi.fn()
@@ -48,6 +50,20 @@ function ControlledDialog({
   }
 
   return <AddMemberOrGroupDialog subjects={subjects} onChange={handleChange} />
+}
+
+function DialogInsideAccessOption() {
+  return (
+    <RadioGroup
+      aria-label="Access"
+      value={AccessMode.SPECIFIC_GROUPS_MEMBERS}
+      onValueChange={() => {}}
+    >
+      <AccessControlItem type={AccessMode.SPECIFIC_GROUPS_MEMBERS}>
+        <ControlledDialog />
+      </AccessControlItem>
+    </RadioGroup>
+  )
 }
 
 describe('AddMemberOrGroupDialog', () => {
@@ -140,6 +156,25 @@ describe('AddMemberOrGroupDialog', () => {
     await user.click(memberToggle)
     expect(onChange).toHaveBeenCalledWith({ groups: [], members: [baseMember] })
     expect(memberToggle).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('should stay open when expanding a group inside an access option', async () => {
+    const user = userEvent.setup()
+    render(<DialogInsideAccessOption />)
+
+    const addButton = screen.getByRole('button', { name: 'common.operation.add' })
+    await user.click(addButton)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'app.accessControlDialog.operateGroupAndMember.expand',
+      }),
+    )
+
+    expect(addButton).toHaveAttribute('aria-expanded', 'true')
+    expect(mockUseSearchForWhiteListCandidates).toHaveBeenLastCalledWith(
+      expect.objectContaining({ groupId: baseGroup.id }),
+      true,
+    )
   })
 
   it('should show the empty state when no candidates are returned', async () => {

@@ -153,6 +153,50 @@ def test_success_and_cancel_intent_commit_exactly_one_matching_terminal(redis_ur
     asyncio.run(scenario())
 
 
+def test_event_stream_is_trimmed_and_keeps_the_terminal_event(redis_url: str) -> None:
+    async def scenario() -> None:
+        client = Redis.from_url(redis_url)
+        prefix = f"bounded-events-{uuid4().hex}"
+        max_length = 100
+        store = RedisRunStore(
+            client,
+            prefix=prefix,
+            run_retention_seconds=60,
+            run_event_stream_max_length=max_length,
+        )
+        run_id: str | None = None
+        try:
+            record = await store.create_run()
+            run_id = record.run_id
+            for _ in range(1000):
+                _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+            result = await store.finalize_run(
+                RunSucceededEvent(
+                    run_id=record.run_id,
+                    data=RunSucceededEventData(
+                        output="done",
+                        session_snapshot=CompositorSessionSnapshot(layers=[]),
+                    ),
+                )
+            )
+
+            assert result.applied is True
+            stream_length = await client.xlen(run_events_key(prefix, record.run_id))
+            assert max_length <= stream_length <= max_length * 2
+            events = await store.get_events(record.run_id, limit=max_length * 2)
+            assert events.events[-1].type == "run_succeeded"
+        finally:
+            if run_id is not None:
+                await client.delete(
+                    run_record_key(prefix, run_id),
+                    run_events_key(prefix, run_id),
+                    run_cancel_intent_key(prefix, run_id),
+                )
+            await client.aclose()
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("terminal_status", ["succeeded", "failed"])
 def test_terminal_first_rejects_late_cancellation(redis_url: str, terminal_status: str) -> None:
     async def scenario() -> None:
@@ -301,6 +345,10 @@ def test_non_owner_scheduler_cancellation_stops_owner_runner(redis_url: str) -> 
 
         @property
         def terminal_session_snapshot(self) -> None:
+            return None
+
+        @property
+        def terminal_usage(self) -> None:
             return None
 
         async def run(self) -> None:

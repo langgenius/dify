@@ -77,7 +77,7 @@ const SubmittedContentItem = ({ content, formInputFields, values }: SubmittedCon
           <SelectPortal>
             <SelectPositioner>
               <SelectPopup>
-                <SelectList className="max-h-[140px] overflow-y-auto">
+                <SelectList className="max-h-35 overflow-y-auto">
                   {field.option_source.value.map((option) => (
                     <SelectItem key={option} value={option}>
                       <SelectItemText>{option}</SelectItemText>

@@ -20,13 +20,13 @@ export type TriggerProps = {
   value: Dayjs | undefined
   selectedDate: Dayjs | undefined
   handleClear: (e: React.MouseEvent) => void
-  handleClickTrigger: (e: React.MouseEvent) => void
 }
 
 export type DatePickerProps = {
   value: Dayjs | undefined
   timezone?: string
   placeholder?: string
+  disabled?: boolean
   needTimePicker?: boolean
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void

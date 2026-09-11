@@ -5,14 +5,14 @@ import CreateAppTemplateDialog from '../index'
 vi.mock('../app-list', () => ({
   default: function MockAppList({
     onCreateFromBlank,
-    onSuccess,
+    onClose,
   }: {
     onCreateFromBlank?: () => void
-    onSuccess: () => void
+    onClose: () => void
   }) {
     return (
       <div role="region" aria-label="App list">
-        <button type="button" onClick={onSuccess}>
+        <button type="button" onClick={onClose}>
           Success
         </button>
         {onCreateFromBlank && (
@@ -28,7 +28,6 @@ vi.mock('../app-list', () => ({
 describe('CreateAppTemplateDialog', () => {
   const defaultProps = {
     show: false,
-    onSuccess: vi.fn(),
     onClose: vi.fn(),
     onCreateFromBlank: vi.fn(),
   }
@@ -103,21 +102,12 @@ describe('CreateAppTemplateDialog', () => {
       expect(screen.getByRole('button', { name: 'Success' }))!.toBeInTheDocument()
     })
 
-    it('should call both onSuccess and onClose when app list success is triggered', () => {
-      const mockOnSuccess = vi.fn()
+    it('should close when an app is created from the list', () => {
       const mockOnClose = vi.fn()
-      render(
-        <CreateAppTemplateDialog
-          {...defaultProps}
-          show={true}
-          onSuccess={mockOnSuccess}
-          onClose={mockOnClose}
-        />,
-      )
+      render(<CreateAppTemplateDialog {...defaultProps} show={true} onClose={mockOnClose} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'Success' }))
 
-      expect(mockOnSuccess).toHaveBeenCalledTimes(1)
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
@@ -143,7 +133,6 @@ describe('CreateAppTemplateDialog', () => {
         render(
           <CreateAppTemplateDialog
             show={true}
-            onSuccess={vi.fn()}
             onClose={vi.fn()}
             // onCreateFromBlank is undefined
           />,
@@ -154,12 +143,7 @@ describe('CreateAppTemplateDialog', () => {
     it('should handle undefined props gracefully', () => {
       expect(() => {
         render(
-          <CreateAppTemplateDialog
-            show={true}
-            onSuccess={vi.fn()}
-            onClose={vi.fn()}
-            onCreateFromBlank={undefined}
-          />,
+          <CreateAppTemplateDialog show={true} onClose={vi.fn()} onCreateFromBlank={undefined} />,
         )
       }).not.toThrow()
     })
@@ -193,7 +177,6 @@ describe('CreateAppTemplateDialog', () => {
     it('should work with all required props only', () => {
       const requiredProps = {
         show: true,
-        onSuccess: vi.fn(),
         onClose: vi.fn(),
       }
 

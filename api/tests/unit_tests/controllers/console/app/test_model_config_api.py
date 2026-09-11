@@ -25,8 +25,9 @@ def _poison_implicit_app_config_properties(monkeypatch: pytest.MonkeyPatch) -> N
     def fail(_app: App) -> Never:
         raise AssertionError("implicit App model-config property was accessed")
 
+    # `App.is_agent` used to be poisoned here too. It no longer exists as an
+    # implicit property, so its absence enforces the same thing outright.
     monkeypatch.setattr(App, "app_model_config", property(fail))
-    monkeypatch.setattr(App, "is_agent", property(fail))
 
 
 @pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION])

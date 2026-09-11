@@ -76,7 +76,7 @@ function LinkPreviewDemo() {
 
       <PreviewCard handle={previewCardHandle}>
         {({ payload = typographyPreviewPayload }) => (
-          <PreviewCardContent className="w-[240px] p-2">
+          <PreviewCardContent className="w-60 p-2">
             <div className="flex flex-col gap-2">
               <img
                 width="224"

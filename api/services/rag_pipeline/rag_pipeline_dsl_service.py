@@ -221,8 +221,11 @@ class RagPipelineDslService:
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
                 pending_data = RagPipelinePendingData(
-                    tenant_id=account.current_tenant_id,
+                    tenant_id=tenant_id,
                     account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
@@ -559,6 +562,11 @@ class RagPipelineDslService:
         rag_pipeline_variables_list = workflow_data.get("rag_pipeline_variables", [])
 
         graph = workflow_data.get("graph", {})
+        if not isinstance(graph, dict):
+            raise ValueError("Workflow graph must be a mapping")
+        # The source canvas position should not determine the imported pipeline's initial view.
+        graph = graph.copy()
+        graph.pop("viewport", None)
         for node in graph.get("nodes", []):
             if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node["data"].get("dataset_ids", [])

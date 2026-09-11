@@ -16,6 +16,7 @@ const Actions = ({ formParams, runDisabled, onBack }: ActionsProps) => {
   const { form, isSubmitting, canSubmit } = formParams
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
+  const loading = isSubmitting || isRunning
 
   return (
     <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
@@ -27,8 +28,8 @@ const Actions = ({ formParams, runDisabled, onBack }: ActionsProps) => {
         onClick={() => {
           form.handleSubmit()
         }}
-        disabled={runDisabled || isSubmitting || !canSubmit || isRunning}
-        loading={isSubmitting || isRunning}
+        disabled={runDisabled || (!canSubmit && !loading)}
+        loading={loading}
       >
         {t(($) => $['operations.process'], { ns: 'datasetPipeline' })}
       </Button>

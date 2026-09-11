@@ -42,7 +42,8 @@ from libs.token import (
 )
 from services.account_service import AccountService
 from services.app_service import AppService
-from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
+from services.entities.auth_audit_entities import LoginFailureReason
+from services.entities.auth_entities import LoginPayloadBase
 from services.webapp_auth_service import WebAppAuthService
 
 logger = logging.getLogger(__name__)

@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   toastPromise: vi.fn((promise: Promise<unknown>) => promise),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     apps: {
       byAppId: {

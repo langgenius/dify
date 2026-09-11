@@ -9,6 +9,7 @@ from clients.agent_backend.factory import create_agent_backend_client, create_ag
 from configs import dify_config
 from services import agent_app_sandbox_service
 from services.agent import home_snapshot_service, workspace_service
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.mark.parametrize(
@@ -78,9 +79,12 @@ def test_default_agent_backend_clients_forward_authentication(
     module: ModuleType,
     extra_kwargs: dict[str, float],
 ) -> None:
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", "http://agent-backend")
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_API_TOKEN", "secret-token")
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS", 123.5)
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_BACKEND_BASE_URL="http://agent-backend",
+        AGENT_BACKEND_API_TOKEN="secret-token",
+        AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS=123.5,
+    )
     create_client = MagicMock()
     monkeypatch.setattr(module, "create_agent_backend_client", create_client)
 

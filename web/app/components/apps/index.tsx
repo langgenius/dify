@@ -5,11 +5,9 @@ import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { EducationExpireNotice } from '@/app/education/expire-notice'
 import AppListContext from '@/context/app-list-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
@@ -31,15 +29,12 @@ const ImportFromMarketplaceTemplateModal = dynamic(
 const AppListProvider = AppListContext.Provider
 
 const AppsContent = () => {
-  const { t } = useTranslation()
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const templateId = searchParams.get('template-id')
   const templateDismissedRef = useRef(false)
-
-  useDocumentTitle(t(($) => $['menus.apps'], { ns: 'common' }))
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(
     undefined,

@@ -3,6 +3,8 @@ import type { FC } from 'react'
 import type { Memory } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
   Slider,
   SliderControl,
@@ -14,9 +16,8 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { MemoryRole } from '../../../types'
 
@@ -31,22 +32,22 @@ type RoleItemProps = {
   onChange: (value: string) => void
 }
 const RoleItem: FC<RoleItemProps> = ({ readonly, title, value, onChange }) => {
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onChange(e.target.value)
-    },
-    [onChange],
-  )
+  const inputId = useId()
   return (
     <div className="flex items-center justify-between">
-      <div className="text-[13px] font-normal text-text-secondary">{title}</div>
-      <Input
-        readOnly={readonly}
-        value={value}
-        onChange={handleChange}
-        className="h-8 w-50"
-        type="text"
-      />
+      <label htmlFor={inputId} className="text-[13px] font-normal text-text-secondary">
+        {title}
+      </label>
+      <div className="w-full">
+        <Input
+          id={inputId}
+          readOnly={readonly}
+          value={value}
+          onValueChange={onChange}
+          className="h-8 w-50"
+          type="text"
+        />
+      </div>
     </div>
   )
 }
@@ -75,6 +76,8 @@ const MemoryConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const payload = config.data
+  const windowInputId = useId()
+  const windowSize = payload?.window?.size ?? WINDOW_SIZE_DEFAULT
   const windowSizeLabel = t(($) => $[`${i18nPrefix}.windowSize`], { ns: 'workflow' })
   const handleMemoryEnabledChange = useCallback(
     (enabled: boolean) => {
@@ -96,35 +99,16 @@ const MemoryConfig: FC<Props> = ({
   )
 
   const handleWindowSizeChange = useCallback(
-    (size: number | string) => {
+    (size: number | null) => {
+      if (size === null) return
       const newPayload = produce(payload || defaultMemory, (draft) => {
         if (!draft.window) draft.window = { enabled: true, size: WINDOW_SIZE_DEFAULT }
-        let limitedSize: null | string | number = size
-        if (limitedSize === '') {
-          limitedSize = null
-        } else {
-          limitedSize = Number.parseInt(limitedSize as string, 10)
-          if (isNaN(limitedSize)) limitedSize = WINDOW_SIZE_DEFAULT
-
-          if (limitedSize < WINDOW_SIZE_MIN) limitedSize = WINDOW_SIZE_MIN
-
-          if (limitedSize > WINDOW_SIZE_MAX) limitedSize = WINDOW_SIZE_MAX
-        }
-
-        draft.window.size = limitedSize as number
+        draft.window.size = size
       })
       onChange(newPayload)
     },
     [payload, defaultMemory, onChange],
   )
-
-  const handleBlur = useCallback(() => {
-    const payload = config.data
-    if (!payload) return
-
-    if (payload.window.size === '' || payload.window.size === null)
-      handleWindowSizeChange(WINDOW_SIZE_DEFAULT)
-  }, [handleWindowSizeChange, config])
 
   const handleRolePrefixChange = useCallback(
     (role: MemoryRole) => {
@@ -168,15 +152,18 @@ const MemoryConfig: FC<Props> = ({
                   size="md"
                   disabled={readonly}
                 />
-                <div className="system-xs-medium-uppercase text-text-tertiary">
+                <label
+                  htmlFor={windowInputId}
+                  className="system-xs-medium-uppercase text-text-tertiary"
+                >
                   {windowSizeLabel}
-                </div>
+                </label>
               </div>
-              <Fieldset className="flex h-8 items-center space-x-2">
+              <Fieldset className="flex h-8 items-center gap-2">
                 <FieldsetLegend className="sr-only">{windowSizeLabel}</FieldsetLegend>
                 <Slider
                   className="w-36"
-                  value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
+                  value={windowSize}
                   min={WINDOW_SIZE_MIN}
                   max={WINDOW_SIZE_MAX}
                   step={1}
@@ -191,19 +178,21 @@ const MemoryConfig: FC<Props> = ({
                     </SliderTrack>
                   </SliderControl>
                 </Slider>
-                <Input
-                  aria-label={windowSizeLabel}
-                  value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
-                  wrapperClassName="w-12"
-                  className="appearance-none pr-0"
-                  type="number"
+                <NumberField
+                  id={windowInputId}
+                  value={windowSize}
+                  className="w-12"
                   min={WINDOW_SIZE_MIN}
                   max={WINDOW_SIZE_MAX}
                   step={1}
-                  onChange={(e) => handleWindowSizeChange(e.target.value)}
-                  onBlur={handleBlur}
+                  format={{ maximumFractionDigits: 0 }}
+                  onValueChange={handleWindowSizeChange}
                   disabled={readonly || !payload.window?.enabled}
-                />
+                >
+                  <NumberFieldGroup>
+                    <NumberFieldInput className="pr-0" />
+                  </NumberFieldGroup>
+                </NumberField>
               </Fieldset>
             </div>
             {canSetRoleName && (

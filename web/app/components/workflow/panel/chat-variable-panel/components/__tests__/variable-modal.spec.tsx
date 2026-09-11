@@ -193,7 +193,7 @@ describe('variable-modal', () => {
     fireEvent.change(input, { target: { value: '1bad' } })
     await userEvent.click(screen.getByText('common.operation.save'))
 
-    expect(input.value).toBe('')
+    expect(input).toHaveValue('')
     expect(mockToastError).toHaveBeenCalled()
     expect(onSave).not.toHaveBeenCalled()
   })
@@ -235,9 +235,9 @@ describe('variable-modal', () => {
       },
     })
 
-    const input = screen.getByDisplayValue('3') as HTMLInputElement
+    const input = screen.getByRole('textbox', { name: 'workflow.chatVariable.modal.value' })
     await user.clear(input)
 
-    expect(input.value).toBe('')
+    expect(input).toHaveValue('')
   })
 })

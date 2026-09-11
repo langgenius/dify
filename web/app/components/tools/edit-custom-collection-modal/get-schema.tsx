@@ -51,7 +51,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
             {t(($) => $['createTool.importFromUrl'], { ns: 'tools' })}
           </span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-start" sideOffset={2} className="w-[300px] p-2">
+        <DropdownMenuContent placement="bottom-start" sideOffset={2} className="w-75 p-2">
           <div className="relative">
             <Input
               type="text"
@@ -68,7 +68,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
               onClick={handleImportFromUrl}
               loading={isParsing}
             >
-              {isParsing ? '' : t(($) => $['operation.ok'], { ns: 'common' })}
+              {t(($) => $['operation.ok'], { ns: 'common' })}
             </Button>
           </div>
         </DropdownMenuContent>

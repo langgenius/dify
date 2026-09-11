@@ -33,6 +33,7 @@ export const DSLExportConfirmContent = ({
 
   const [exportSecrets, setExportSecrets] = useState<boolean>(false)
   const [isExporting, setIsExporting] = useState(false)
+  const exportButtonLabelId = React.useId()
 
   const submit = useCallback(async () => {
     if (isExporting) return
@@ -58,12 +59,12 @@ export const DSLExportConfirmContent = ({
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
               <tr>
-                <td width={220} className="h-7 border-r border-b border-divider-regular pl-3">
+                <th className="h-7 w-55 border-r border-b border-divider-regular pl-3 text-left font-[weight:inherit]">
                   {t(($) => $['env.export.name'], { ns: 'workflow' })}
-                </td>
-                <td className="h-7 border-b border-divider-regular pl-3">
+                </th>
+                <th className="h-7 border-b border-divider-regular pl-3 text-left font-[weight:inherit]">
                   {t(($) => $['env.export.value'], { ns: 'workflow' })}
-                </td>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -131,14 +132,16 @@ export const DSLExportConfirmContent = ({
         <AlertDialogConfirmButton
           tone="default"
           loading={isExporting}
-          disabled={isExporting}
+          aria-labelledby={exportButtonLabelId}
           onClick={submit}
         >
-          {isExporting
-            ? t(($) => $['operation.exporting'], { ns: 'common' })
-            : exportSecrets
-              ? t(($) => $['env.export.export'], { ns: 'workflow' })
-              : t(($) => $['env.export.ignore'], { ns: 'workflow' })}
+          <span id={exportButtonLabelId}>
+            {isExporting
+              ? t(($) => $['operation.exporting'], { ns: 'common' })
+              : exportSecrets
+                ? t(($) => $['env.export.export'], { ns: 'workflow' })
+                : t(($) => $['env.export.ignore'], { ns: 'workflow' })}
+          </span>
         </AlertDialogConfirmButton>
       </AlertDialogActions>
     </AlertDialogContent>

@@ -13,7 +13,7 @@ import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import Loading from '@/app/components/base/loading'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function AgentLogDetailPanel({
   agentId,

@@ -27,7 +27,7 @@ import {
 } from '@/service/use-tools'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Theme } from '@/types/app'
-import ToolPicker from '../tool-picker'
+import ToolPicker, { ToolPickerContent } from '../tool-picker'
 
 const mockNotify = vi.fn()
 const mockInvalidateBuiltInTools = vi.fn()
@@ -549,6 +549,140 @@ describe('ToolPicker', () => {
       }),
     ])
   })
+
+  it.each([
+    {
+      scope: 'custom',
+      filter: 'search',
+      visibleProvider: 'Custom Provider',
+      hiddenProvider: 'Workflow Tool',
+    },
+    {
+      scope: 'custom',
+      filter: 'tag',
+      visibleProvider: 'Custom Provider',
+      hiddenProvider: 'Workflow Tool',
+    },
+    {
+      scope: 'workflow',
+      filter: 'search',
+      visibleProvider: 'Workflow Tool',
+      hiddenProvider: 'Custom Provider',
+    },
+    {
+      scope: 'workflow',
+      filter: 'tag',
+      visibleProvider: 'Workflow Tool',
+      hiddenProvider: 'Custom Provider',
+    },
+  ] as const)(
+    'excludes installed marketplace plugins from $scope pickers filtered by $filter',
+    async ({ scope, filter, visibleProvider, hiddenProvider }) => {
+      const user = userEvent.setup()
+      const installedPlugin = createPlugin({
+        plugin_id: 'installed-plugin',
+        label: { en_US: 'Installed Plugin' },
+      })
+      const availablePlugin = createPlugin({
+        plugin_id: 'available-plugin',
+        label: { en_US: 'Available Plugin' },
+      })
+      mockUseAllBuiltInTools.mockReturnValue({
+        data: [createToolProvider({ ...builtInTools[0], plugin_id: installedPlugin.plugin_id })],
+      } as ReturnType<typeof useAllBuiltInTools>)
+      mockUseMarketplacePlugins.mockImplementation(
+        (params) =>
+          ({
+            data: params
+              ? {
+                  pages: [
+                    {
+                      plugins: [installedPlugin, availablePlugin],
+                      total: 2,
+                      page: 1,
+                      page_size: 40,
+                    },
+                  ],
+                  pageParams: [1],
+                }
+              : undefined,
+            isFetching: false,
+          }) as ReturnType<typeof useMarketplacePlugins>,
+      )
+
+      renderToolPicker({ isShow: true, scope, selectedTools: [] })
+
+      expect(screen.getByText(visibleProvider)).toBeInTheDocument()
+      expect(screen.queryByText(hiddenProvider)).not.toBeInTheDocument()
+      expect(screen.queryByText('Built-in Provider')).not.toBeInTheDocument()
+
+      if (filter === 'search') {
+        await user.type(screen.getByRole('searchbox', { name: 'plugin.searchTools' }), 'plugin')
+      } else {
+        await user.click(screen.getByRole('button', { name: 'pluginTags.allTags' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Weather' }))
+        await user.keyboard('{Escape}')
+      }
+
+      expect(await screen.findByText('Available Plugin')).toBeInTheDocument()
+      expect(screen.queryByText('Installed Plugin')).not.toBeInTheDocument()
+      expect(screen.queryByText('Built-in Provider')).not.toBeInTheDocument()
+    },
+  )
+
+  it.each(['custom', 'workflow'] as const)(
+    'removes newly installed marketplace plugins when %s picker data refreshes',
+    async (scope) => {
+      const user = userEvent.setup()
+      const newlyInstalledPlugin = createPlugin({
+        plugin_id: 'new-plugin',
+        label: { en_US: 'New Plugin' },
+      })
+      const availablePlugin = createPlugin({
+        plugin_id: 'available-plugin',
+        label: { en_US: 'Available Plugin' },
+      })
+      mockUseMarketplacePlugins.mockImplementation(
+        (params) =>
+          ({
+            data: params
+              ? {
+                  pages: [
+                    {
+                      plugins: [newlyInstalledPlugin, availablePlugin],
+                      total: 2,
+                      page: 1,
+                      page_size: 40,
+                    },
+                  ],
+                  pageParams: [1],
+                }
+              : undefined,
+            isFetching: false,
+          }) as ReturnType<typeof useMarketplacePlugins>,
+      )
+      const props = { scope, onSelect: vi.fn(), onSelectMultiple: vi.fn() }
+      const { rerender } = renderWithConsoleQuery(<ToolPickerContent {...props} />, {
+        systemFeatures: { enable_marketplace: true },
+      })
+
+      await user.type(screen.getByRole('searchbox', { name: 'plugin.searchTools' }), 'plugin')
+      expect(await screen.findByText('New Plugin')).toBeInTheDocument()
+      expect(screen.getByText('Available Plugin')).toBeInTheDocument()
+
+      mockUseAllBuiltInTools.mockReturnValue({
+        data: [
+          ...builtInTools,
+          createToolProvider({ id: 'new-provider', plugin_id: newlyInstalledPlugin.plugin_id }),
+        ],
+      } as ReturnType<typeof useAllBuiltInTools>)
+      rerender(<ToolPickerContent {...props} />)
+
+      expect(screen.queryByText('New Plugin')).not.toBeInTheDocument()
+      expect(screen.getByText('Available Plugin')).toBeInTheDocument()
+      expect(screen.queryByText('Built-in Provider')).not.toBeInTheDocument()
+    },
+  )
 
   it('should create a custom collection from the add button and refresh custom tools', async () => {
     const user = userEvent.setup()

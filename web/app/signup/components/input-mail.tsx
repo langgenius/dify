@@ -1,12 +1,10 @@
 'use client'
 import type { MailSendResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel, FieldValidity } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
@@ -19,9 +17,13 @@ import { useSendMail } from '@/service/use-common'
 type Props = {
   onSuccess: (email: string, payload: string) => void
 }
+
+type SignupEmailFormValues = {
+  email: string
+}
+
 export default function SignupEmailForm({ onSuccess }: Props) {
   const { t } = useTranslation()
-  const [email, setEmail] = useState('')
   const locale = useLocale()
   const searchParams = useSearchParams()
   const queryString = searchParams.toString()
@@ -30,44 +32,45 @@ export default function SignupEmailForm({ onSuccess }: Props) {
 
   const { mutateAsync: submitMail, isPending } = useSendMail()
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async (email: string) => {
     if (isPending) return
-
-    if (!email) {
-      toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
-      return
-    }
-    if (!emailRegex.test(email)) {
-      toast.error(t(($) => $['error.emailInValid'], { ns: 'login' }))
-      return
-    }
     const res = await submitMail({ email, language: locale })
     if ((res as MailSendResponse).result === 'success')
       onSuccess(email, (res as MailSendResponse).data)
-  }, [email, locale, submitMail, t, isPending, onSuccess])
+  }
 
   return (
-    <Form
-      onSubmit={(e) => {
-        e.preventDefault()
-        handleSubmit()
-      }}
-    >
-      <Field name="email" className="mb-3">
-        <FieldLabel className="py-0 text-[14px] leading-5 font-semibold text-text-secondary">
-          {t(($) => $.email, { ns: 'login' })}
-        </FieldLabel>
+    <Form<SignupEmailFormValues> onFormSubmit={({ email }) => void handleSubmit(email)}>
+      <Field
+        name="email"
+        validate={(value) => {
+          const emailValue = String(value)
+          return !emailValue || emailRegex.test(emailValue)
+            ? null
+            : t(($) => $['error.emailInValid'], { ns: 'login' })
+        }}
+        className="mb-3"
+      >
+        <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
         <Input
-          value={email}
-          onValueChange={setEmail}
           type="email"
+          required
           autoComplete="email"
           spellCheck={false}
           placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
         />
+        <FieldValidity>
+          {({ validity }) => (
+            <FieldError>
+              {t(($) => $[validity.valueMissing ? 'error.emailEmpty' : 'error.emailInValid'], {
+                ns: 'login',
+              })}
+            </FieldError>
+          )}
+        </FieldValidity>
       </Field>
       <div className="mb-2">
-        <Button variant="primary" type="submit" disabled={isPending || !email} className="w-full">
+        <Button variant="primary" type="submit" loading={isPending} className="w-full">
           {t(($) => $['signup.verifyMail'], { ns: 'login' })}
         </Button>
       </div>

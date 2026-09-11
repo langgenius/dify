@@ -48,14 +48,18 @@ const mockUsePathname = mockNavigation.usePathname
 const mockUseRouter = mockNavigation.useRouter
 const mockFetchAppDetailDirect = vi.mocked(fetchAppDetailDirect)
 
-const createAppDetail = (overrides: Partial<App> = {}) =>
+type AppDetailFixture = App & {
+  bound_agent_id?: string | null
+}
+
+const createAppDetail = (overrides: Partial<AppDetailFixture> = {}) =>
   ({
     id: 'app-1',
     name: 'Demo App',
     mode: AppModeEnum.WORKFLOW,
     permission_keys: [AppACLPermission.ViewLayout, AppACLPermission.Monitor],
     ...overrides,
-  }) as App
+  }) as AppDetailFixture
 
 const waitForAppContent = async () => {
   await waitFor(() => {
@@ -234,9 +238,11 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
-  it('should allow access point pages without app deploy or app ACL permissions', async () => {
+  it('should allow users with Access Point view permission to open the page directly', async () => {
     mockPathname = '/app/app-1/access-point'
-    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [] }))
+    mockFetchAppDetailDirect.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.AccessPointView] }),
+    )
 
     render(
       <AppDetailLayout appId="app-1">
@@ -248,6 +254,40 @@ describe('AppDetailLayout', () => {
 
     expect(mockReplace).not.toHaveBeenCalled()
     expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
+  it('should redirect access point pages when view permission is missing', async () => {
+    mockPathname = '/app/app-1/access-point'
+    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [] }))
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
+    })
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    expect(useStore.getState().appDetail).toBeUndefined()
+  })
+
+  it('should keep cached Access Point content hidden while redirecting without view permission', async () => {
+    mockPathname = '/app/app-1/access-point'
+    useStore.getState().setAppDetail(createAppDetail({ permission_keys: [] }))
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
+    })
+    expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
   })
 
   it('should redirect deploy pages when app deploy ACL permission is missing', async () => {
@@ -313,7 +353,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-point')
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
     expect(useStore.getState().appDetail).toBeUndefined()
@@ -424,11 +464,59 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
+  it('should redirect Agent app access config URLs to the Agent configure page', async () => {
+    mockPathname = '/app/app-1/access-config'
+    mockFetchAppDetailDirect.mockResolvedValue(
+      createAppDetail({
+        mode: AppModeEnum.AGENT,
+        bound_agent_id: 'agent-1',
+        permission_keys: [AppACLPermission.AccessConfig],
+      }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/agents/agent-1/configure')
+    })
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    expect(useStore.getState().appDetail).toBeUndefined()
+  })
+
+  it('should keep Agent app access config content hidden while redirecting cached app data', async () => {
+    mockPathname = '/app/app-1/access-config'
+    useStore.getState().setAppDetail(
+      createAppDetail({
+        mode: AppModeEnum.AGENT,
+        bound_agent_id: 'agent-1',
+        permission_keys: [AppACLPermission.AccessConfig],
+      }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/agents/agent-1/configure')
+    })
+    expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
+  })
+
   it('should redirect access config pages when RBAC is disabled', async () => {
     mockIsRbacEnabled = false
     mockPathname = '/app/app-1/access-config'
     mockFetchAppDetailDirect.mockResolvedValue(
-      createAppDetail({ permission_keys: [AppACLPermission.AccessConfig] }),
+      createAppDetail({
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPointView],
+      }),
     )
 
     render(

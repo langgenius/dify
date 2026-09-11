@@ -12,6 +12,7 @@ from core.mcp import types as mcp_types
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.model import App, AppMCPServer, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.errors.app import TriggerWorkflowServiceModeUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -93,11 +94,16 @@ def handle_mcp_request(
             result=result_data.model_dump(by_alias=True, mode="json", exclude_none=True),
         )
 
-    def create_error_response(code: int, message: str) -> mcp_types.JSONRPCError:
+    def create_error_response(
+        code: int,
+        message: str,
+        *,
+        data: Mapping[str, Any] | None = None,
+    ) -> mcp_types.JSONRPCError:
         """Create error response with error code and message"""
         from core.mcp.types import ErrorData
 
-        error_data = ErrorData(code=code, message=message)
+        error_data = ErrorData(code=code, message=message, data=data)
         return mcp_types.JSONRPCError(
             jsonrpc="2.0",
             id=request_id,
@@ -131,6 +137,12 @@ def handle_mcp_request(
             case _:
                 return create_error_response(mcp_types.METHOD_NOT_FOUND, f"Method not found: {request_type.__name__}")
 
+    except TriggerWorkflowServiceModeUnavailableError as e:
+        return create_error_response(
+            mcp_types.INVALID_REQUEST,
+            str(e),
+            data={"code": e.error_code},
+        )
     except ValueError as e:
         logger.exception("Invalid params")
         return create_error_response(mcp_types.INVALID_PARAMS, str(e))

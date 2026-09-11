@@ -67,5 +67,7 @@ jobs:
           host: ${{ secrets.SSH_NEW_RAG_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Allow the shared deployment lock and Celery warm shutdown to finish.
+          command_timeout: 300m
           script: |
             ${{ vars.SSH_SCRIPT || secrets.SSH_SCRIPT }}

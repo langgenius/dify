@@ -280,15 +280,16 @@ Raises:
     FilenameNotExistsError: File has no filename
     FileTooLargeError: File exceeds size limit
     UnsupportedFileTypeError: File type not supported
+    BlockedFileExtensionError: File extension is blocked
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | Bad request - invalid file or parameters |  |
-| 413 | File too large |  |
-| 415 | Unsupported file type |  |
+| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. |  |
+| 413 | `file_too_large` : File size exceeded. |  |
+| 415 | `unsupported_file_type` : File type not allowed. |  |
 
 ### [POST] /forgot-password
 Send password reset email
@@ -637,7 +638,12 @@ Returns:
     int: HTTP status code 201 for success
 
 Raises:
-    RemoteFileUploadError: Failed to fetch file from remote URL
+    RemoteFileInvalidUrlError: Remote file URL is invalid
+    RemoteFileUrlBlockedError: Remote file URL is blocked
+    RemoteFileNotFoundError: Remote file does not exist
+    RemoteFileAccessDeniedError: Remote file requires authorization
+    RemoteFileUnavailableError: Remote file is unavailable
+    RemoteFileInvalidResponseError: Remote file response is invalid
     FileTooLargeError: File exceeds size limit
     UnsupportedFileTypeError: File type not supported
 
@@ -652,10 +658,13 @@ Raises:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Remote file uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
-| 400 | Bad request - invalid URL or parameters |  |
+| 400 | Invalid, blocked, or inaccessible remote file URL |  |
+| 404 | Remote file not found |  |
 | 413 | File too large |  |
 | 415 | Unsupported file type |  |
-| 500 | Failed to fetch remote file |  |
+| 422 | Request payload validation failed |  |
+| 500 | Internal server error |  |
+| 502 | Remote file unavailable or returned an invalid response |  |
 
 ### [GET] /remote-files/{url}
 **Get information about a remote file**
@@ -686,9 +695,10 @@ Raises:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Remote file information retrieved successfully | **application/json**: [RemoteFileInfo](#remotefileinfo)<br> |
-| 400 | Bad request - invalid URL |  |
+| 400 | Invalid, blocked, or inaccessible remote file URL |  |
 | 404 | Remote file not found |  |
-| 500 | Failed to fetch remote file |  |
+| 500 | Internal server error |  |
+| 502 | Remote file unavailable or returned an invalid response |  |
 
 ### [GET] /saved-messages
 Retrieve paginated list of saved messages for a completion application.
@@ -1019,7 +1029,7 @@ Button styles for user actions.
 | inputs | object | Input variables for the chat | Yes |
 | parent_message_id | string | Parent message ID | No |
 | query | string | User query/message | Yes |
-| response_mode | string | Response mode: blocking or streaming | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
 #### CompletionMessagePayload
@@ -1029,7 +1039,7 @@ Button styles for user actions.
 | files | [ object ] | Files to be processed | No |
 | inputs | object | Input variables for the completion | Yes |
 | query | string | Query text for completion | No |
-| response_mode | string | Response mode: blocking or streaming | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
 #### ConversationInfiniteScrollPagination
@@ -1322,7 +1332,7 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
-| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFile
 

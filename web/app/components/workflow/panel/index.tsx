@@ -8,6 +8,7 @@ import dynamic from '@/next/dynamic'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import EnvPanel from './env-panel'
+import { getPreviewPanelMaxWidth } from './panel-width'
 
 const VersionHistoryPanel = dynamic(
   () => import('@/app/components/workflow/panel/version-history-panel'),
@@ -102,19 +103,10 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
   const previewPanelWidth = useStore((s) => s.previewPanelWidth)
   const setPreviewPanelWidth = useStore((s) => s.setPreviewPanelWidth)
 
-  // When a node is selected and the NodePanel appears, if the current width
-  // of preview/otherPanel is too large, it may result in the total width of
-  // the two panels exceeding the workflowCanvasWidth, causing the NodePanel
-  // to be pushed out. Here we check and, if necessary, reduce the previewPanelWidth
-  // to "workflowCanvasWidth - 400 (minimum NodePanel width) - 400 (minimum canvas space)",
-  // while still ensuring that previewPanelWidth ≥ 400.
-
   useEffect(() => {
-    if (!selectedNode || !workflowCanvasWidth) return
+    if (!workflowCanvasWidth) return
 
-    const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
-    const minNodePanelWidth = 400
-    const maxAllowed = Math.max(workflowCanvasWidth - reservedCanvasWidth - minNodePanelWidth, 400)
+    const maxAllowed = getPreviewPanelMaxWidth(workflowCanvasWidth, !!selectedNode)
 
     if (previewPanelWidth > maxAllowed) setPreviewPanelWidth(maxAllowed)
   }, [selectedNode, workflowCanvasWidth, previewPanelWidth, setPreviewPanelWidth])

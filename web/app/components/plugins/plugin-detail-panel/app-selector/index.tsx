@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
 import { AppPicker } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import { AppTrigger } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const PAGE_SIZE = 20
 

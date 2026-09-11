@@ -22,6 +22,7 @@ from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _build_typed_node_config(node_type: NodeType):
@@ -99,8 +100,7 @@ class TestWorkflowEntryInit:
         observability_layer = sentinel.observability_layer
 
         with (
-            patch.object(workflow_entry.dify_config, "DEBUG", True),
-            patch.object(workflow_entry.dify_config, "ENABLE_OTEL", False),
+            config_overrides_context(DEBUG=True, ENABLE_OTEL=False),
             patch.object(workflow_entry, "is_instrument_flag_enabled", return_value=True),
             patch.object(workflow_entry, "capture_current_context", return_value=sentinel.execution_context),
             patch.object(workflow_entry, "GraphEngine", return_value=graph_engine) as graph_engine_cls,
@@ -193,6 +193,11 @@ class TestWorkflowEntryRun:
             ) as response_stream_filter_cls,
             patch.object(
                 workflow_entry,
+                "HumanInputFormEventFilter",
+                return_value=sentinel.human_input_filter,
+            ),
+            patch.object(
+                workflow_entry,
                 "filter_graph_events",
                 return_value=iter([sentinel.filtered_event]),
             ) as filter_graph_events,
@@ -205,7 +210,7 @@ class TestWorkflowEntryRun:
         filter_graph_events.assert_called_once_with(
             graph_engine.run.return_value,
             context=sentinel.filter_context,
-            filters=[sentinel.response_stream_filter],
+            filters=[sentinel.human_input_filter, sentinel.response_stream_filter],
         )
 
     def test_run_delegates_to_dify_event_iterator(self):

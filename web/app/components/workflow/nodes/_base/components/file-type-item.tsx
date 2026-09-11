@@ -22,6 +22,8 @@ type Props = Readonly<{
   onToggle: (type: SupportUploadFileTypes) => void
   onCustomFileTypesChange?: (customFileTypes: string[]) => void
   customFileTypes?: string[]
+  typeErrorId?: string
+  customFileTypesErrorId?: string
 }>
 
 const FileTypeItem: FC<Props> = ({
@@ -30,6 +32,8 @@ const FileTypeItem: FC<Props> = ({
   onToggle,
   customFileTypes = [],
   onCustomFileTypesChange = noop,
+  typeErrorId,
+  customFileTypesErrorId,
 }) => {
   const { t } = useTranslation()
 
@@ -62,10 +66,15 @@ const FileTypeItem: FC<Props> = ({
               className="shrink-0"
               checked={selected}
               aria-label={t(($) => $[`variableConfig.file.${type}.name`], { ns: 'appDebug' })}
+              aria-invalid={typeErrorId ? true : undefined}
+              aria-describedby={typeErrorId}
             />
           </div>
           <div className="p-3" onClick={(e) => e.stopPropagation()}>
             <TagInput
+              aria-label={t(($) => $['variableConfig.file.custom.name'], { ns: 'appDebug' })}
+              aria-invalid={customFileTypesErrorId ? true : undefined}
+              aria-describedby={customFileTypesErrorId}
               items={customFileTypes}
               onChange={onCustomFileTypesChange}
               placeholder={t(($) => $['variableConfig.file.custom.createPlaceholder'], {
@@ -91,6 +100,8 @@ const FileTypeItem: FC<Props> = ({
             className="shrink-0"
             checked={selected}
             aria-label={t(($) => $[`variableConfig.file.${type}.name`], { ns: 'appDebug' })}
+            aria-invalid={typeErrorId ? true : undefined}
+            aria-describedby={typeErrorId}
           />
         </div>
       )}

@@ -3,7 +3,7 @@ import type { PluginDetail } from './types'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { categoryKeys, tagKeys } from './constants'
 import { PluginCategoryEnum, PluginSource } from './types'
 

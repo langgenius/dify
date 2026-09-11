@@ -71,7 +71,7 @@ export function AgentConfigureClearSessionConfirmDialog({
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton
-            disabled={confirmDisabled || isConfirming}
+            disabled={confirmDisabled}
             loading={isConfirming}
             onClick={handleConfirm}
           >

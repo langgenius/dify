@@ -58,7 +58,7 @@ class TestSpecSchemaDefinitionsApi:
             request_id="request-1",
             trace_id=None,
             account_id="account-1",
-            active_workspace_id=None,
+            active_workspace_id="workspace-1",
         )
         service = create_autospec(SchemaDefinitionService, instance=True, spec_set=True)
         service.list.return_value = ()

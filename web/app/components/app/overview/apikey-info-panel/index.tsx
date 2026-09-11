@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useState } from 'react'
@@ -13,8 +13,8 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 
 const APIKeyInfoPanel: FC = () => {
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -23,14 +23,19 @@ const APIKeyInfoPanel: FC = () => {
   })
   const isCloud = deploymentEdition === 'CLOUD'
 
-  const { isAPIKeySet } = useProviderContext()
+  const { data: hasActiveProvider = false } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: 'llm' } },
+      select: (response) => response.data.some((provider) => provider.status === 'active'),
+    }),
+  )
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   const { t } = useTranslation()
 
   const [isShow, setIsShow] = useState(true)
 
-  if (isAPIKeySet) return null
+  if (hasActiveProvider) return null
 
   if (!isShow) return null
 

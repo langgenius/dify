@@ -20,6 +20,7 @@ type StepOneContentProps = {
   datasourceType: string | undefined
   pipelineNodes: Node<DataSourceNodeType>[]
   supportBatchUpload: boolean
+  showBatchUploadUpgrade: boolean
   isShowVectorSpaceFull: boolean
   isShowVectorSpaceUnavailable: boolean
   isRetryingVectorSpace: boolean
@@ -40,6 +41,7 @@ const StepOneContent = ({
   datasourceType,
   pipelineNodes,
   supportBatchUpload,
+  showBatchUploadUpgrade,
   isShowVectorSpaceFull,
   isShowVectorSpaceUnavailable,
   isRetryingVectorSpace,
@@ -54,7 +56,7 @@ const StepOneContent = ({
   onRetryVectorSpace,
   onNextStep,
 }: StepOneContentProps) => {
-  const showUpgradeCard = !supportBatchUpload && datasourceType === DatasourceType.localFile
+  const showUpgradeCard = showBatchUploadUpgrade && datasourceType === DatasourceType.localFile
 
   return (
     <div className="flex flex-col gap-y-5 pt-4">

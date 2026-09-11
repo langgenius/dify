@@ -1,0 +1,315 @@
+.wrapper {
+  padding-bottom: 30px;
+}
+
+.copy {
+  flex: none;
+  width: 36.9167%;
+  height: 200px;
+}
+
+.recommendVisual {
+  flex: 1;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.recommendCards {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  overflow: hidden;
+  padding: 42px 36px;
+}
+
+.navigation {
+  top: 208px;
+  width: 100%;
+}
+
+.contentTrack {
+  transition: transform 400ms ease-out;
+}
+
+.card {
+  flex: 1 1 161px;
+  width: auto;
+  min-width: 161px;
+  max-width: 210px;
+  box-shadow: 0 8px 7.2px -6px rgb(0 0 0 / 19%);
+  scroll-snap-align: start;
+}
+
+@container (max-width: 751px) {
+  .recommendCards > .card:nth-child(n + 4) {
+    display: none;
+  }
+}
+
+@container (max-width: 578px) {
+  .recommendCards > .card:nth-child(n + 3) {
+    display: none;
+  }
+}
+
+@container (max-width: 405px) {
+  .recommendCards {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .recommendCards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .recommendCards > .card:nth-child(n) {
+    display: flex;
+    flex: 0 0 161px;
+  }
+}
+
+.updatesArt {
+  /* Keep the 400×200 art at design size on PC so shrinking the frame
+     clips overflow on the right instead of scaling the bitmap. */
+  width: 400px;
+  max-width: 400px;
+  flex-shrink: 0;
+  object-position: left;
+}
+
+/* Desktop: crop from the right so left-side artwork stays visible when the
+   6:1 frame is narrower than the image. */
+.imageSlide :is(picture, img) {
+  object-position: left;
+}
+
+/* Desktop and mobile: keep the green label on one line. The title wraps. */
+.blogTag {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blogTitle {
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.updatesDescription {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contentTrack {
+    transition-duration: 0ms;
+  }
+}
+
+@media (max-width: 879px) {
+  :global([data-marketplace-standalone]) .section {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  :global([data-marketplace-standalone]) .wrapper {
+    padding-bottom: 0;
+  }
+
+  :global([data-marketplace-standalone]) .copy {
+    width: 100%;
+    height: 160px;
+  }
+
+  :global([data-marketplace-standalone]) .navigation {
+    position: static;
+    top: auto;
+    width: 100%;
+  }
+
+  /* Recommend mobile: 96px app icons (Figma 1026:24938), not desktop cards. */
+  :global([data-marketplace-standalone]) .recommendBackdrop {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .recommendCards {
+    justify-content: center;
+    gap: 20px;
+    overflow: hidden;
+    padding: 36px 12px;
+  }
+
+  :global([data-marketplace-standalone]) .recommendCards > .card {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    min-width: 96px;
+    max-width: 96px;
+    height: 96px;
+    padding: 0;
+    overflow: visible;
+    background: transparent;
+    border-radius: 20px;
+    box-shadow: none;
+  }
+
+  :global([data-marketplace-standalone]) .recommendCards > .card:nth-child(-n + 3) {
+    display: flex;
+  }
+
+  :global([data-marketplace-standalone]) .recommendCards > .card:nth-child(n + 4) {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .cardIcon {
+    width: 96px;
+    height: 96px;
+    border-color: var(--color-effects-icon-border);
+    border-radius: 20px;
+    box-shadow:
+      0 0.5px 5px 0 var(--color-shadow-shadow-4),
+      0 0.5px 2px -0.5px var(--color-shadow-shadow-4);
+    backdrop-filter: blur(5px);
+  }
+
+  :global([data-marketplace-standalone]) .cardMeta {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .copyDescription {
+    font-size: 15px;
+    letter-spacing: -0.075px;
+  }
+
+  :global([data-marketplace-standalone]) .updatesArt {
+    width: 100%;
+    max-width: none;
+    height: 197px;
+  }
+
+  :global([data-marketplace-standalone]) .carouselRoot {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: auto;
+    border-radius: 0;
+  }
+
+  :global([data-marketplace-standalone]) .slideViewport {
+    height: auto;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  :global([data-marketplace-standalone]) .contentTrack {
+    height: auto;
+    align-items: flex-start;
+  }
+
+  :global([data-marketplace-standalone]) .slide {
+    height: auto;
+  }
+
+  /* Flex rows size to the tallest item. Collapse hidden slides so image
+     banners do not inherit the stacked blog/recommend height. */
+  :global([data-marketplace-standalone]) .slideInactive {
+    height: 0;
+    overflow: hidden;
+  }
+
+  :global([data-marketplace-standalone]) .stackedSlide {
+    display: flex;
+    flex-direction: column-reverse;
+    height: auto;
+  }
+
+  :global([data-marketplace-standalone]) .stackedVisual {
+    flex: none;
+    width: 100%;
+    height: 197px;
+    border-radius: 16px;
+  }
+
+  /* Recommend mobile: already-tinted crop, not the desktop image + mix-blend. */
+  :global([data-marketplace-standalone]) .recommendVisual {
+    border-radius: 12px;
+    background-color: var(--color-text-accent);
+    background-image: url('./assets/recommend-mobile-backdrop.webp');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+  }
+
+  :global([data-marketplace-standalone]) .stackedCopy {
+    flex: none;
+    height: auto;
+    min-height: 160px;
+    padding: 20px;
+    overflow: hidden;
+  }
+
+  :global([data-marketplace-standalone]) .stackedCopyMeta {
+    flex: none;
+    gap: 2px;
+  }
+
+  :global([data-marketplace-standalone]) .blogSubtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :global([data-marketplace-standalone]) .updatesDescription {
+    flex-shrink: 0;
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+  }
+
+  /* Event/ad mobile: show the 800×721 poster whole (ops banner-meta), not
+     cover-cropped into the stacked 357px blog/recommend frame. */
+  :global([data-marketplace-standalone]) .imageSlide {
+    height: auto;
+    aspect-ratio: 800 / 721;
+  }
+
+  :global([data-marketplace-standalone]) .imageSlide :is(picture, img) {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: left;
+  }
+
+  :global([data-marketplace-standalone]) .readMoreDesktop {
+    display: none;
+  }
+}
+
+@media (min-width: 880px) {
+  /* Event/ad: keep the 6:1 bitmap at least 1200px wide so a narrower
+     overflow-hidden frame clips the right, not the left. */
+  .imageSlide img {
+    min-width: 1200px;
+    max-width: none;
+  }
+}
+
+@media (min-width: 1232px) {
+  .marketplaceCopy {
+    width: 443px;
+  }
+}
+
+@media (min-width: 1260px) {
+  .embeddedCopy {
+    width: 431px;
+  }
+}

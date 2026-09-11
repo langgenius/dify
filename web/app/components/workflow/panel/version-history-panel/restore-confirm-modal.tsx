@@ -48,18 +48,10 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
-          <AlertDialogCancelButton
-            nativeButton={false}
-            variant="secondary"
-            closeProps={{ nativeButton: false }}
-          >
+          <AlertDialogCancelButton variant="secondary">
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            nativeButton={false}
-            tone="default"
-            onClick={onRestore.bind(null, versionInfo)}
-          >
+          <AlertDialogConfirmButton tone="default" onClick={onRestore.bind(null, versionInfo)}>
             {t(($) => $['common.restore'], { ns: 'workflow' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

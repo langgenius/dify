@@ -4,8 +4,12 @@ import { useCallback } from 'react'
 import { getTransformedValuesWhenSecretInputPristine } from '../utils/secret-input'
 import { useCheckValidated } from './use-check-validated'
 
-export const useGetFormValues = (form: AnyFormApi, formSchemas: FormSchema[]) => {
-  const { checkValidated } = useCheckValidated(form, formSchemas)
+export const useGetFormValues = (
+  form: AnyFormApi,
+  formSchemas: FormSchema[],
+  onInvalidField?: (name: string) => void,
+) => {
+  const { checkValidated } = useCheckValidated(form, formSchemas, onInvalidField)
 
   const getFormValues = useCallback(
     ({

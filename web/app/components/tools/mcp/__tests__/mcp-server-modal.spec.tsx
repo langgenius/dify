@@ -6,9 +6,6 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MCPServerModal from '../mcp-server-modal'
 
-const mockGetSocket = vi.hoisted(() => vi.fn())
-const mockSocketEmit = vi.hoisted(() => vi.fn())
-
 // Mock the services
 vi.mock('@/service/use-tools', () => ({
   useCreateMCPServer: () => ({
@@ -20,12 +17,6 @@ vi.mock('@/service/use-tools', () => ({
     isPending: false,
   }),
   useInvalidateMCPServerDetail: () => vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
-  webSocketClient: {
-    getSocket: mockGetSocket,
-  },
 }))
 
 describe('MCPServerModal', () => {
@@ -49,7 +40,6 @@ describe('MCPServerModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetSocket.mockReturnValue(null)
   })
 
   describe('Rendering', () => {
@@ -375,31 +365,6 @@ describe('MCPServerModal', () => {
 
       await waitFor(() => {
         expect(onHide).toHaveBeenCalled()
-      })
-    })
-
-    it('should emit a created update when socket exists', async () => {
-      const onHide = vi.fn()
-      mockGetSocket.mockReturnValue({ emit: mockSocketEmit })
-
-      render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
-
-      fireEvent.change(
-        screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder'),
-        {
-          target: { value: 'Test description' },
-        },
-      )
-      fireEvent.click(screen.getByText('tools.mcp.server.modal.confirm'))
-
-      await waitFor(() => {
-        expect(mockSocketEmit).toHaveBeenCalledWith(
-          'collaboration_event',
-          expect.objectContaining({
-            type: 'mcp_server_update',
-            data: expect.objectContaining({ action: 'created' }),
-          }),
-        )
       })
     })
 

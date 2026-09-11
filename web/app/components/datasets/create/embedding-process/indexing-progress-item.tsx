@@ -3,6 +3,7 @@ import type { IndexingStatusResponse } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCheckboxCircleFill, RiErrorWarningFill } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { DataSourceType } from '@/models/datasets'
@@ -14,25 +15,29 @@ type IndexingProgressItemProps = {
   name?: string
   sourceType?: DataSourceType
   notionIcon?: string
-  enableBilling?: boolean
 }
 
 // Status icon component for completed/error states
 const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) => {
+  const { t } = useTranslation()
+
   if (status === 'completed')
     return <RiCheckboxCircleFill className="size-4 shrink-0 text-text-success" />
 
   if (status === 'error') {
+    const errorLabel = error || t(($) => $.error, { ns: 'common' })
+
     return (
       <Tooltip>
-        <TooltipTrigger render={<span aria-label={error || 'Error'} />}>
-          <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
+        <TooltipTrigger render={<span />}>
+          <RiErrorWarningFill aria-hidden className="size-4 shrink-0 text-text-destructive" />
+          <span className="sr-only">{errorLabel}</span>
         </TooltipTrigger>
         <TooltipContent
           sideOffset={4}
           className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-3.5 body-xs-regular text-text-secondary"
         >
-          {error}
+          {errorLabel}
         </TooltipContent>
       </Tooltip>
     )
@@ -65,7 +70,6 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
   name,
   sourceType,
   notionIcon,
-  enableBilling,
 }) => {
   const isEmbedding = isSourceEmbedding(detail)
   const percent = getSourcePercent(detail)
@@ -88,7 +92,7 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
         <SourceTypeIcon sourceType={sourceType} name={name} notionIcon={notionIcon} />
         <div className="flex w-0 grow items-center gap-1" title={name}>
           <div className="truncate system-xs-medium text-text-secondary">{name}</div>
-          {enableBilling && <PriorityLabel className="ml-0" />}
+          <PriorityLabel className="ml-0" />
         </div>
         {isEmbedding && <div className="shrink-0 text-xs text-text-secondary">{`${percent}%`}</div>}
         <StatusIcon status={detail.indexing_status} error={detail.error} />

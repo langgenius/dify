@@ -15,7 +15,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { getFileIconType } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/files/file-icon'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import {
   getSkillErrorCode,
   getSkillErrorDetailNumber,

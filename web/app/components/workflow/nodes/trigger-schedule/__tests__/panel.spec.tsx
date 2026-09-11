@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ScheduleTriggerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -204,7 +203,12 @@ describe('TriggerSchedulePanel', () => {
 
       renderPanel('node-3', createData({ mode: 'cron' }))
 
-      fireEvent.change(screen.getByDisplayValue('0 0 * * *'), { target: { value: '*/5 * * * *' } })
+      fireEvent.change(
+        screen.getByRole('textbox', {
+          name: 'workflow.nodes.triggerSchedule.cronExpression',
+        }),
+        { target: { value: '*/5 * * * *' } },
+      )
 
       expect(handleCronExpressionChange).toHaveBeenCalledWith('*/5 * * * *')
     })
@@ -255,7 +259,11 @@ describe('TriggerSchedulePanel', () => {
           panelProps={panelProps}
         />,
       )
-      expect(screen.getByRole('textbox')).toHaveValue('')
+      expect(
+        screen.getByRole('textbox', {
+          name: 'workflow.nodes.triggerSchedule.cronExpression',
+        }),
+      ).toHaveValue('')
     })
 
     it('should render the hourly minute selector when the frequency is hourly', async () => {

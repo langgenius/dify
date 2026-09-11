@@ -1,17 +1,11 @@
-import type { RefObject } from 'react'
+import type { ReactElement, RefObject } from 'react'
 import type { UploadDropzoneProps } from '../upload-dropzone'
-import type { ProviderContextState } from '@/context/provider-context'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import UploadDropzone from '../upload-dropzone'
 
-let mockEnableBilling = false
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: <T,>(
-    selector: (state: Pick<ProviderContextState, 'enableBilling'>) => T,
-  ): T => selector({ enableBilling: mockEnableBilling }),
-}))
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 
 // Helper to create mock ref objects for testing
 const createMockRef = <T,>(value: T | null = null): RefObject<T | null> => ({ current: value })
@@ -37,7 +31,7 @@ describe('UploadDropzone', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
   })
 
   describe('rendering', () => {
@@ -64,16 +58,20 @@ describe('UploadDropzone', () => {
       expect(icon).toBeInTheDocument()
     })
 
-    it('should render browse label when extensions are allowed', () => {
+    it('should render browse button when extensions are allowed', () => {
       render(<UploadDropzone {...defaultProps} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.uploader.browse')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
+      ).toBeInTheDocument()
     })
 
-    it('should not render browse label when no extensions allowed', () => {
+    it('should not render browse button when no extensions allowed', () => {
       render(<UploadDropzone {...defaultProps} allowedExtensions={[]} />)
 
-      expect(screen.queryByText('datasetCreation.stepOne.uploader.browse')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render file size and count limits', () => {
@@ -85,7 +83,7 @@ describe('UploadDropzone', () => {
 
   describe('tip rendering by billing state', () => {
     it('should render tip without total count limit when billing is disabled', () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
 
       render(<UploadDropzone {...defaultProps} />)
 
@@ -99,7 +97,7 @@ describe('UploadDropzone', () => {
     })
 
     it('should render tip with total count limit when billing is enabled', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
 
       render(<UploadDropzone {...defaultProps} />)
 
@@ -112,7 +110,7 @@ describe('UploadDropzone', () => {
     })
 
     it('should pass file size, batch count and supported types to tip when billing is disabled', () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
 
       render(<UploadDropzone {...defaultProps} />)
 
@@ -124,7 +122,7 @@ describe('UploadDropzone', () => {
     })
 
     it('should additionally pass total count to tip when billing is enabled', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
 
       render(<UploadDropzone {...defaultProps} />)
 
@@ -209,12 +207,14 @@ describe('UploadDropzone', () => {
   })
 
   describe('event handlers', () => {
-    it('should call onSelectFile when browse label is clicked', () => {
+    it('should call onSelectFile when browse button is clicked', () => {
       const onSelectFile = vi.fn()
       render(<UploadDropzone {...defaultProps} onSelectFile={onSelectFile} />)
 
-      const browseLabel = screen.getByText('datasetCreation.stepOne.uploader.browse')
-      fireEvent.click(browseLabel)
+      const browseButton = screen.getByRole('button', {
+        name: 'datasetCreation.stepOne.uploader.browse',
+      })
+      fireEvent.click(browseButton)
 
       expect(onSelectFile).toHaveBeenCalledTimes(1)
     })
@@ -269,11 +269,13 @@ describe('UploadDropzone', () => {
   })
 
   describe('styling', () => {
-    it('should have cursor-pointer on browse label', () => {
+    it('should have cursor-pointer on browse button', () => {
       render(<UploadDropzone {...defaultProps} />)
 
-      const browseLabel = screen.getByText('datasetCreation.stepOne.uploader.browse')
-      expect(browseLabel).toHaveClass('cursor-pointer')
+      const browseButton = screen.getByRole('button', {
+        name: 'datasetCreation.stepOne.uploader.browse',
+      })
+      expect(browseButton).toHaveClass('cursor-pointer')
     })
   })
 
@@ -286,3 +288,10 @@ describe('UploadDropzone', () => {
     })
   })
 })
+
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: {},
+  })
+}

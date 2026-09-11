@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import ToolDatePicker from '../tool-date-picker'
 
@@ -56,10 +57,36 @@ describe('ToolDatePicker', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Select date: May 1, 2024' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.getByRole('button', { name: 'Select date: May 1, 2024' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument()
+  })
+
+  it('opens from the keyboard and restores focus to the date button on dismissal', async () => {
+    const user = userEvent.setup()
+    render(<ToolDatePicker value="2024-05-01" onChange={vi.fn()} timezone="UTC" />)
+
+    const trigger = screen.getByRole('button', { name: 'Select date: May 1, 2024' })
+    expect(within(trigger).queryByRole('button')).not.toBeInTheDocument()
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
+
+  it('lets the keyboard reach and activate clear without opening the calendar', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<ToolDatePicker value="2024-05-01" onChange={onChange} timezone="UTC" />)
+
+    await user.tab()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Clear' })).toHaveFocus()
+    await user.keyboard(' ')
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

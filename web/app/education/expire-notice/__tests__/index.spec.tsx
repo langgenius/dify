@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { EducationExpireNotice } from '../index'
@@ -10,16 +11,6 @@ const mockEducationStatus = vi.hoisted(() => ({
   expireAt: Date.UTC(2099, 0, 1) / 1000,
 }))
 const mockPricingModal = vi.hoisted(() => ({ isOpen: false }))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    enableEducationPlan: true,
-  }),
-}))
-
-vi.mock('@/hooks/use-query-params', () => ({
-  usePricingModal: () => [mockPricingModal.isOpen, vi.fn()],
-}))
 
 vi.mock('@/next/dynamic', () => ({
   default:
@@ -37,13 +28,19 @@ vi.mock('@/next/dynamic', () => ({
 const renderNotice = (accountId = 'user-1') => {
   const { wrapper } = createConsoleQueryWrapper({
     accountProfile: { id: accountId, timezone: 'UTC' },
+    features: { education: { enabled: true } },
     educationStatus: {
       allow_refresh: mockEducationStatus.allowRefresh,
       expire_at: mockEducationStatus.expireAt,
     },
   })
 
-  return render(<EducationExpireNotice />, { wrapper })
+  return render(
+    <NuqsTestingAdapter searchParams={mockPricingModal.isOpen ? '?pricing=open' : ''}>
+      <EducationExpireNotice />
+    </NuqsTestingAdapter>,
+    { wrapper },
+  )
 }
 
 describe('EducationExpireNotice', () => {

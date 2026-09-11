@@ -2,7 +2,7 @@
 
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useLocale } from '@/context/i18n'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { Banner } from './banner'
 
 export function HomeBanner() {

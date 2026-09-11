@@ -1,7 +1,7 @@
 'use client'
 import { useCountDown } from 'ahooks'
-import { useIsClient } from 'foxact/use-is-client'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, use, useEffect, useState } from 'react'
+import { browser } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { COUNT_DOWN_TIME_MS, useCountdownLeftTimeValue, useSetCountdownLeftTime } from './storage'
 
@@ -16,10 +16,6 @@ export default function Countdown({
   resendDisabled,
   restartOnResend = true,
 }: CountdownProps) {
-  const isClient = useIsClient()
-
-  if (!isClient) return <CountdownFallback />
-
   return (
     <Suspense fallback={<CountdownFallback />}>
       <CountdownContent
@@ -42,6 +38,8 @@ function CountdownFallback() {
 }
 
 function CountdownContent({ onResend, resendDisabled, restartOnResend }: CountdownProps) {
+  use(browser())
+
   const { t } = useTranslation()
   const storedLeftTime = useCountdownLeftTimeValue()
   const setStoredLeftTime = useSetCountdownLeftTime()

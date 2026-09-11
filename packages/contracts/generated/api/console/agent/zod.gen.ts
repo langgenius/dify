@@ -35,6 +35,7 @@ export const zAgentApiStatusPayload = z.object({
  */
 export const zApiKeyItem = z.object({
   created_at: z.int().nullish(),
+  dataset_ids: z.array(z.string()).optional().default([]),
   id: z.string(),
   last_used_at: z.int().nullish(),
   token: z.string(),
@@ -205,6 +206,14 @@ export const zAgentConfigSnapshotRestoreResponse = z.object({
 })
 
 /**
+ * AgentPublicationCountsResponse
+ */
+export const zAgentPublicationCountsResponse = z.object({
+  drafts: z.int().gte(0),
+  published: z.int().gte(0),
+})
+
+/**
  * IconType
  */
 export const zIconType = z.enum(['emoji', 'image', 'link'])
@@ -367,7 +376,7 @@ export const zAgentAppDetailWithSite = z.object({
   mode: z.string(),
   model_config: zAppModelConfigResponse.nullish(),
   name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
+  permission_keys: z.array(z.string()),
   role: z.string().nullish(),
   site: zAppDetailSiteResponse.nullish(),
   tags: z.array(zTag).optional(),
@@ -851,7 +860,7 @@ export const zAgentAppPartial = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
+  permission_keys: z.array(z.string()),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
   reference_count: z.int().nullish(),
@@ -871,6 +880,7 @@ export const zAgentAppPagination = z.object({
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
+  publication_counts: zAgentPublicationCountsResponse,
   total: z.int(),
 })
 
@@ -2473,7 +2483,7 @@ export const zAgentAppPartialWritable = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
+  permission_keys: z.array(z.string()),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
   reference_count: z.int().nullish(),
@@ -2493,6 +2503,7 @@ export const zAgentAppPaginationWritable = z.object({
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
+  publication_counts: zAgentPublicationCountsResponse,
   total: z.int(),
 })
 
@@ -2555,7 +2566,7 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   mode: z.string(),
   model_config: zAppModelConfigResponse.nullish(),
   name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
+  permission_keys: z.array(z.string()),
   role: z.string().nullish(),
   site: zAppDetailSiteResponseWritable.nullish(),
   tags: z.array(zTag).optional(),
@@ -2585,6 +2596,7 @@ export const zGetAgentQuery = z.object({
     .default('all'),
   name: z.string().optional(),
   page: z.int().gte(1).lte(99999).optional().default(1),
+  publication_status: z.enum(['drafts', 'published']).optional(),
   sort_by: z
     .enum(['earliest_created', 'last_modified', 'recently_created'])
     .optional()

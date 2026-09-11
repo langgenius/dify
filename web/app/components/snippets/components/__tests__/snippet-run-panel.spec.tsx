@@ -1,10 +1,16 @@
 import type { SnippetInputField } from '@/models/snippet'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { ReactFlowProvider } from 'reactflow'
+import { renderWorkflowComponent as renderWithWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import SnippetRunPanel from '../snippet-run-panel'
+
+const renderWorkflowComponent = (
+  ui: Parameters<typeof renderWithWorkflowStore>[0],
+  options?: Parameters<typeof renderWithWorkflowStore>[1],
+) => renderWithWorkflowStore(<ReactFlowProvider>{ui}</ReactFlowProvider>, options)
 
 const workflowHookMocks = vi.hoisted(() => ({
   handleCancelDebugAndPreviewPanel: vi.fn(),
@@ -96,6 +102,22 @@ describe('SnippetRunPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     checkInputMocks.checkInputsForm.mockReturnValue(true)
+  })
+
+  it('resizes the run panel with the keyboard within the available canvas width', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(<SnippetRunPanel fields={[]} />, {
+      initialStoreState: { previewPanelWidth: 480, workflowCanvasWidth: 1000 },
+    })
+    await user.tab()
+    const handle = screen.getByRole('separator', { name: 'workflow.singleRun.testRun' })
+    expect(handle).toHaveFocus()
+    await user.keyboard('{ArrowLeft}{Shift>}{ArrowLeft}{/Shift}')
+    expect(handle).toHaveAttribute('aria-valuenow', '520')
+    await user.keyboard('{End}{ArrowLeft}')
+    expect(handle).toHaveAttribute('aria-valuenow', '600')
+    await user.keyboard('{Home}{ArrowRight}')
+    expect(handle).toHaveAttribute('aria-valuenow', '400')
   })
 
   it('should render snippet input fields with defaults and run with edited inputs', async () => {

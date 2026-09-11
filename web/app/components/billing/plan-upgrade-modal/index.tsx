@@ -1,11 +1,16 @@
 'use client'
+
 import type { ComponentType, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UpgradeModal } from '@/app/components/base/upgrade-modal'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useModalContext } from '@/context/modal-context'
 import { SquareChecklist } from '../../base/icons/src/vender/other'
 
 type Props = Readonly<{
@@ -15,7 +20,6 @@ type Props = Readonly<{
   extraInfo?: ReactNode
   show: boolean
   onClose: () => void
-  onUpgrade?: () => void
 }>
 
 export function PlanUpgradeModal({
@@ -25,16 +29,14 @@ export function PlanUpgradeModal({
   extraInfo,
   show,
   onClose,
-  onUpgrade,
 }: Props) {
   const { t } = useTranslation()
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   const handleUpgrade = useCallback(() => {
     onClose()
-    if (onUpgrade) onUpgrade()
-    else setShowPricingModal()
-  }, [onClose, onUpgrade, setShowPricingModal])
+    setPricing('open')
+  }, [onClose, setPricing])
 
   return (
     <UpgradeModal

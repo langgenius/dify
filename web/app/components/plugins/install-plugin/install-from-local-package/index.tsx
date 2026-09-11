@@ -1,7 +1,7 @@
 'use client'
 import type { Dependency, PluginCategoryEnum, PluginDeclaration } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -90,10 +90,10 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'w-140 max-w-none! overflow-hidden! text-left align-middle',
+          'w-140 overflow-hidden! text-left align-middle',
           cn(
             modalClassName,
-            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-140 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
+            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
           ),
         )}
       >
@@ -109,8 +109,10 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
           }
         />
 
-        <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <div className="self-stretch title-2xl-semi-bold text-text-primary">{getTitle()}</div>
+        <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
+          <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
+            {getTitle()}
+          </DialogTitle>
         </div>
         {step === InstallStep.uploading && (
           <Uploading

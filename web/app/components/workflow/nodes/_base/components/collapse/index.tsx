@@ -38,11 +38,15 @@ export function CollapseActions({ children }: CollapseActionsProps) {
   return <div className="ml-auto shrink-0">{children}</div>
 }
 
-export function CollapseTrigger({ className, ...props }: CollapsibleTriggerProps) {
+type CollapseTriggerProps = Omit<CollapsibleTriggerProps, 'className'> & {
+  className?: string
+}
+
+export function CollapseTrigger({ className, ...props }: CollapseTriggerProps) {
   return (
     <CollapsibleTrigger
       className={cn(
-        'group/collapse ml-4 flex h-6 min-h-0 w-auto min-w-0 shrink-0 items-center justify-start gap-0 rounded-md px-0 py-0 text-text-secondary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary',
+        'group/collapse ml-4 flex h-6 min-h-0 min-w-0 shrink-0 touch-manipulation items-center justify-start gap-0 rounded-md text-start system-sm-medium text-text-secondary outline-hidden select-none hover:not-data-disabled:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-panel-open:text-text-secondary',
         className,
       )}
       {...props}

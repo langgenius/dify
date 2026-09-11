@@ -25,6 +25,7 @@ from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.tools.signature import bind_file_uri
+from core.workflow.nodes.agent_v2.session_store import resolve_workflow_agent_workspace_owner_scope
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -32,7 +33,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.model import App, AppMode, Conversation
+from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowNodeExecutionModel
 from services.agent.roster_service import AgentRosterService
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
@@ -406,16 +407,26 @@ class WorkflowAgentSandboxService:
                 "this Workflow Agent node execution has no active Workspace Binding",
                 status_code=404,
             )
+        conversation_id = session.scalar(
+            select(Message.conversation_id)
+            .where(
+                Message.app_id == app_id,
+                Message.workflow_run_id == workflow_run_id,
+            )
+            .limit(1)
+        )
         binding = AgentWorkspaceService.get_active_binding(
             session=session,
             tenant_id=tenant_id,
             binding_id=execution.agent_workspace_binding_id,
-            expected_owner_scope=WorkspaceOwnerScope(
+            expected_owner_scope=resolve_workflow_agent_workspace_owner_scope(
                 tenant_id=tenant_id,
                 app_id=app_id,
-                owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
-                owner_id=workflow_run_id,
-                owner_scope_key=f"{node_id}:{workflow_agent_binding_id}",
+                conversation_id=conversation_id,
+                workflow_run_id=workflow_run_id,
+                node_id=node_id,
+                workflow_agent_binding_id=workflow_agent_binding_id,
+                node_execution_id=node_execution_id,
             ),
         )
         if binding is None:

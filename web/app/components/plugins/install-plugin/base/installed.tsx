@@ -80,8 +80,13 @@ const Installed: FC<Props> = ({
   }
   return (
     <>
-      <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
-        <p className="system-md-regular text-text-secondary">
+      <div className="flex min-h-0 min-w-0 flex-col items-start justify-center gap-2 self-stretch overflow-x-hidden overflow-y-auto px-6 py-3">
+        <p
+          className={cn(
+            'w-full max-w-full min-w-0 system-md-regular text-text-secondary',
+            isFailed && 'wrap-anywhere whitespace-pre-wrap',
+          )}
+        >
           {isFailed && errMsg ? (
             errMsg
           ) : categoryTarget ? (
@@ -125,7 +130,7 @@ const Installed: FC<Props> = ({
         )}
       </div>
       {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
+      <div className="flex shrink-0 items-center justify-end gap-2 self-stretch p-6 pt-5">
         {categoryTarget ? (
           <Link
             href={categoryTarget.path}

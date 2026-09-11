@@ -11,11 +11,15 @@ from controllers.web.error import (
     NotWorkflowAppError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.workflow import WorkflowRunApi, WorkflowTaskStopApi
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 
 
 def _workflow_app() -> App:
@@ -67,6 +71,26 @@ class TestWorkflowRunApi:
         with app.test_request_context("/workflows/run", method="POST"):
             with pytest.raises(ProviderNotInitializeError):
                 WorkflowRunApi().post(_workflow_app(), _end_user())
+
+    @patch(
+        "controllers.web.workflow.AppGenerateService.generate",
+        side_effect=TriggerWorkflowServiceModeUnavailableServiceError(),
+    )
+    @patch("controllers.web.workflow.web_ns")
+    def test_trigger_workflow_returns_stable_unavailable_error(
+        self,
+        mock_ns: MagicMock,
+        mock_gen: MagicMock,
+        app: Flask,
+    ) -> None:
+        mock_ns.payload = {"inputs": {}}
+
+        with app.test_request_context("/workflows/run", method="POST"):
+            with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
+                WorkflowRunApi().post(_workflow_app(), _end_user())
+
+        assert exc_info.value.code == 403
+        assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
 
     @patch(
         "controllers.web.workflow.AppGenerateService.generate",

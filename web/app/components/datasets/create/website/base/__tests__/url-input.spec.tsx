@@ -34,11 +34,10 @@ describe('UrlInput', () => {
       expect(button).toHaveTextContent(/run/i)
     })
 
-    it('should render button without run text when running', () => {
+    it('should keep the run label while running', () => {
       render(<UrlInput isRunning={true} onRun={mockOnRun} />)
-      const button = screen.getByRole('button')
-      // Button should not have "run" text when running (shows loading state instead)
-      expect(button).not.toHaveTextContent(/run/i)
+      const button = screen.getByRole('button', { name: /run/i })
+      expect(button).toHaveTextContent(/run/i)
     })
 
     it('should show loading state on button when running', () => {
@@ -139,16 +138,14 @@ describe('UrlInput', () => {
 
       rerender(<UrlInput isRunning={true} onRun={mockOnRun} />)
 
-      // When running, button shows loading state instead of "run" text
-      expect(button).not.toHaveTextContent(/run/i)
+      expect(button).toHaveAccessibleName(/run/i)
     })
 
     it('should update button state when isRunning changes from true to false', () => {
       const { rerender } = render(<UrlInput isRunning={true} onRun={mockOnRun} />)
 
-      const button = screen.getByRole('button')
-      // When running, button shows loading state instead of "run" text
-      expect(button).not.toHaveTextContent(/run/i)
+      const button = screen.getByRole('button', { name: /run/i })
+      expect(button).toHaveTextContent(/run/i)
 
       rerender(<UrlInput isRunning={false} onRun={mockOnRun} />)
 
@@ -283,25 +280,6 @@ describe('UrlInput', () => {
     })
   })
 
-  // Button Text Branch Coverage Tests
-  describe('Button Text Branch Coverage', () => {
-    it('should display run text when isRunning is false (branch: !isRunning = true)', () => {
-      render(<UrlInput isRunning={false} onRun={mockOnRun} />)
-
-      const button = screen.getByRole('button')
-      // When !isRunning is true, button shows the translated "run" text
-      expect(button).toHaveTextContent(/run/i)
-    })
-
-    it('should not display run text when isRunning is true (branch: !isRunning = false)', () => {
-      render(<UrlInput isRunning={true} onRun={mockOnRun} />)
-
-      const button = screen.getByRole('button')
-      // When !isRunning is false, button shows empty string '' (loading state shows spinner)
-      expect(button).not.toHaveTextContent(/run/i)
-    })
-  })
-
   describe('Memoization', () => {
     it('should use useCallback for handleUrlChange', async () => {
       const user = userEvent.setup()
@@ -356,7 +334,7 @@ describe('UrlInput', () => {
 
       // Simulate running state
       rerender(<UrlInput isRunning={true} onRun={mockOnRun} />)
-      expect(screen.getByRole('button')).not.toHaveTextContent(/run/i)
+      expect(screen.getByRole('button')).toHaveAccessibleName(/run/i)
 
       // Simulate finished state
       rerender(<UrlInput isRunning={false} onRun={mockOnRun} />)

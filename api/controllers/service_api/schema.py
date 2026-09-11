@@ -16,8 +16,8 @@ from pydantic import BaseModel, WithJsonSchema
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 
 USER_DESCRIPTION = (
-    "User identifier, unique within the application. This identifier scopes data access; resources created with "
-    "one `user` value are only visible when queried with the same `user` value."
+    "End-user identifier, defined by your app and unique within it. Identifies the end user for this request. "
+    "See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules."
 )
 SCOPED_TASK_STOP_USER_DESCRIPTION = (
     "End-user identifier, defined by your app and unique within it. Send the same `user` value used for the original "

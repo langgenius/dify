@@ -1,8 +1,6 @@
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type {
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
@@ -59,8 +57,8 @@ export type KnowledgeBaseNodeType = CommonNodeType & {
   embedding_model_provider?: string
   keyword_number: number
   retrieval_model: RetrievalSetting
-  _embeddingModelList?: Model[]
+  _embeddingModelList?: ProviderWithModelsResponse[]
   _embeddingProviderModelList?: ModelItem[]
-  _rerankModelList?: Model[]
+  _rerankModelList?: ProviderWithModelsResponse[]
   summary_index_setting?: SummaryIndexSetting
 }

@@ -12,7 +12,7 @@ import type {
   WeaveConfig,
 } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type { Dependency } from '@/app/components/plugins/types'
-import type { App, AppModeEnum, SiteConfig } from '@/types/app'
+import type { App, AppModeEnum } from '@/types/app'
 
 export const DSLImportMode = {
   YAML_CONTENT: 'yaml-content',
@@ -49,8 +49,6 @@ export type DSLImportResponse = {
   permission_keys: string[]
   warnings?: DSLImportWarning[]
 }
-
-export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
 
 export type UpdateAppModelConfigResponse = { result: string }
 

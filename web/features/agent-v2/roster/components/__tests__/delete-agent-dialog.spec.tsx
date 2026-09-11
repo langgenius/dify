@@ -10,7 +10,7 @@ vi.mock('@tanstack/react-query', () => ({
   useMutation: () => mutationMock,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {

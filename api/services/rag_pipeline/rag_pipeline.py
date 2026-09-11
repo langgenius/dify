@@ -1266,7 +1266,9 @@ class RagPipelineService:
             app_id=pipeline.id,
             workflow_run_id=run_id,
         )
-        return assemble_workflow_node_execution_traces(node_executions, self._node_execution_service_repo)
+        return assemble_workflow_node_execution_traces(
+            node_executions, self._node_execution_service_repo, session=self._session
+        )
 
     @staticmethod
     def publish_customized_pipeline_template(

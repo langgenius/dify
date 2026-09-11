@@ -561,4 +561,25 @@ describe('OpeningSettingModal', () => {
     await userEvent.click(screen.getByTestId('cancel-add'))
     expect(onSave).not.toHaveBeenCalled()
   })
+  it('cancels sorting with Escape without closing the dialog, then saves a confirmed reorder', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    const onCancel = vi.fn()
+    render(<OpeningSettingModal data={defaultData} onSave={onSave} onCancel={onCancel} />)
+    const handle = screen.getAllByRole('button', { name: /sort.handle/ })[0]!
+    await user.click(handle)
+    await user.keyboard('{Enter}{ArrowDown}{Escape}')
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(
+      screen
+        .getAllByPlaceholderText('appDebug.openingStatement.openingQuestionPlaceholder')
+        .map((input) => (input as HTMLInputElement).value),
+    ).toEqual(['Question 1', 'Question 2'])
+    expect(handle).toHaveFocus()
+    await user.keyboard('{Enter}{ArrowDown}{Enter}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSave).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ suggested_questions: ['Question 2', 'Question 1'] }),
+    )
+  })
 })

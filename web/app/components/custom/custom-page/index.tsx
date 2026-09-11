@@ -1,9 +1,13 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { contactSalesUrl } from '@/app/components/billing/config'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import CustomWebAppBrand from '../custom-web-app-brand'
 
 const CustomPage = () => {
@@ -12,10 +16,19 @@ const CustomPage = () => {
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { plan, enableBilling } = useProviderContext()
-  const { setShowPricingModal } = useModalContext()
-  const showBillingTip = deploymentEdition === 'CLOUD' && enableBilling && plan.type === 'sandbox'
-  const showContact = enableBilling && (plan.type === 'professional' || plan.type === 'team')
+  const { data: billing } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => ({
+        plan: data.billing.subscription.plan,
+        canReplaceLogo: data.can_replace_logo,
+      }),
+    }),
+  )
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
+  const showBillingTip = deploymentEdition === 'CLOUD' && billing?.canReplaceLogo === false
+  const showContact =
+    deploymentEdition === 'CLOUD' && (billing?.plan === 'professional' || billing?.plan === 'team')
 
   return (
     <div className="flex flex-col overflow-x-hidden">
@@ -32,7 +45,7 @@ const CustomPage = () => {
           <button
             type="button"
             className="flex h-10 w-30 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
-            onClick={() => setShowPricingModal()}
+            onClick={() => setPricing('open')}
           >
             {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
           </button>

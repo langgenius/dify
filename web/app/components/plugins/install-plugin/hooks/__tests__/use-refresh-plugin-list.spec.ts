@@ -1,5 +1,9 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
 import { PluginCategoryEnum } from '../../../types'
 
 // Mock invalidation / refresh functions
@@ -11,7 +15,7 @@ const mockRefetchRerankModelList = vi.fn()
 const mockRefetchSpeech2textModelList = vi.fn()
 const mockRefetchTTSModelList = vi.fn()
 const mockInvalidateDefaultModel = vi.fn()
-const mockRefreshModelProviders = vi.fn()
+const mockInvalidateQueries = vi.fn()
 const mockInvalidateAllToolProviders = vi.fn()
 const mockInvalidateAllBuiltInTools = vi.fn()
 const mockInvalidateAllDataSources = vi.fn()
@@ -36,21 +40,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/declaration
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: (type: string) => {
-    const map: Record<string, { mutate: ReturnType<typeof vi.fn> }> = {
-      llm: { mutate: mockRefetchLLMModelList },
-      'text-embedding': { mutate: mockRefetchEmbeddingModelList },
-      rerank: { mutate: mockRefetchRerankModelList },
-      speech2text: { mutate: mockRefetchSpeech2textModelList },
-      tts: { mutate: mockRefetchTTSModelList },
-    }
-    return map[type] ?? { mutate: vi.fn() }
-  },
   useInvalidateDefaultModel: () => mockInvalidateDefaultModel,
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({ refreshModelProviders: mockRefreshModelProviders }),
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -108,7 +98,12 @@ describe('useRefreshPluginList', () => {
     result.current.refreshPluginList({ category: PluginCategoryEnum.model } as never)
 
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
-    expect(mockRefreshModelProviders).toHaveBeenCalledTimes(1)
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+    })
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: commonQueryKeys.modelProviderDetails,
+    })
     expect(mockRefetchLLMModelList).toHaveBeenCalledTimes(1)
     expect(mockRefetchEmbeddingModelList).toHaveBeenCalledTimes(1)
     expect(mockRefetchRerankModelList).toHaveBeenCalledTimes(1)
@@ -159,7 +154,12 @@ describe('useRefreshPluginList', () => {
     expect(mockInvalidateAllTriggerPlugins).toHaveBeenCalledTimes(1)
     expect(mockInvalidateAllDataSources).toHaveBeenCalledTimes(1)
     expect(mockInvalidateDataSourceListAuth).toHaveBeenCalledTimes(1)
-    expect(mockRefreshModelProviders).toHaveBeenCalledTimes(1)
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+    })
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: commonQueryKeys.modelProviderDetails,
+    })
     expect(mockRefetchLLMModelList).toHaveBeenCalledTimes(1)
     expect(mockRefetchEmbeddingModelList).toHaveBeenCalledTimes(1)
     expect(mockRefetchRerankModelList).toHaveBeenCalledTimes(1)
@@ -176,7 +176,7 @@ describe('useRefreshPluginList', () => {
 
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
     expect(mockInvalidateAllToolProviders).not.toHaveBeenCalled()
-    expect(mockRefreshModelProviders).not.toHaveBeenCalled()
+    expect(mockInvalidateQueries).not.toHaveBeenCalled()
     expect(mockInvalidateAllDataSources).not.toHaveBeenCalled()
     expect(mockInvalidateAllTriggerPlugins).not.toHaveBeenCalled()
     expect(mockInvalidateStrategyProviders).not.toHaveBeenCalled()
@@ -188,9 +188,36 @@ describe('useRefreshPluginList', () => {
     result.current.refreshPluginList({ category: PluginCategoryEnum.tool } as never)
 
     expect(mockInvalidateAllToolProviders).toHaveBeenCalledTimes(1)
-    expect(mockRefreshModelProviders).not.toHaveBeenCalled()
+    expect(mockInvalidateQueries).not.toHaveBeenCalled()
     expect(mockInvalidateAllDataSources).not.toHaveBeenCalled()
     expect(mockInvalidateAllTriggerPlugins).not.toHaveBeenCalled()
     expect(mockInvalidateStrategyProviders).not.toHaveBeenCalled()
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+
+      const type = options.queryKey[1].input?.params?.model_type
+      if (!type) throw new Error('Missing model type in query')
+      const map: Record<string, { refetch: ReturnType<typeof vi.fn> }> = {
+        llm: { refetch: mockRefetchLLMModelList },
+        'text-embedding': { refetch: mockRefetchEmbeddingModelList },
+        rerank: { refetch: mockRefetchRerankModelList },
+        speech2text: { refetch: mockRefetchSpeech2textModelList },
+        tts: { refetch: mockRefetchTTSModelList },
+      }
+      return map[type] ?? { refetch: vi.fn() }
+    },
+  }
 })

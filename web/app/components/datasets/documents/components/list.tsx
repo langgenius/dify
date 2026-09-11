@@ -152,8 +152,8 @@ const DocumentList = ({
           className={`w-full max-w-full min-w-175 border-collapse border-0 text-sm ${s.documentTable}`}
         >
           <thead className="h-8 border-b border-divider-subtle text-xs/8 font-medium text-text-tertiary uppercase">
-            <tr>
-              <td className="w-12">
+            <tr className="[&>th]:text-left [&>th]:font-[weight:inherit]">
+              <th className="w-12">
                 <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
                   {embeddingAvailable && (
                     <Checkbox
@@ -164,15 +164,24 @@ const DocumentList = ({
                   )}
                   #
                 </div>
-              </td>
-              <td>{t(($) => $['list.table.header.fileName'], { ns: 'datasetDocuments' })}</td>
-              <td className="w-32.5">
+              </th>
+              <th>{t(($) => $['list.table.header.fileName'], { ns: 'datasetDocuments' })}</th>
+              <th className="w-32.5">
                 {t(($) => $['list.table.header.chunkingMode'], { ns: 'datasetDocuments' })}
-              </td>
-              <td className="w-24">
+              </th>
+              <th className="w-24">
                 {t(($) => $['list.table.header.words'], { ns: 'datasetDocuments' })}
-              </td>
-              <td className="w-44">
+              </th>
+              <th
+                className="w-44"
+                aria-sort={
+                  sortField === 'hit_count'
+                    ? sortOrder === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : undefined
+                }
+              >
                 <SortHeader
                   field="hit_count"
                   label={t(($) => $['list.table.header.hitCount'], { ns: 'datasetDocuments' })}
@@ -180,8 +189,17 @@ const DocumentList = ({
                   sortOrder={sortOrder}
                   onSort={handleSort}
                 />
-              </td>
-              <td className="w-44">
+              </th>
+              <th
+                className="w-44"
+                aria-sort={
+                  sortField === 'created_at'
+                    ? sortOrder === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : undefined
+                }
+              >
                 <SortHeader
                   field="created_at"
                   label={t(($) => $['list.table.header.uploadTime'], { ns: 'datasetDocuments' })}
@@ -189,13 +207,13 @@ const DocumentList = ({
                   sortOrder={sortOrder}
                   onSort={handleSort}
                 />
-              </td>
-              <td className="w-40">
+              </th>
+              <th className="w-40">
                 {t(($) => $['list.table.header.status'], { ns: 'datasetDocuments' })}
-              </td>
-              <td className="w-20">
+              </th>
+              <th className="w-20">
                 {t(($) => $['list.table.header.action'], { ns: 'datasetDocuments' })}
-              </td>
+              </th>
             </tr>
           </thead>
           <tbody className="text-text-secondary">

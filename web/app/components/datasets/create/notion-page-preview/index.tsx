@@ -56,7 +56,12 @@ const NotionPagePreview = ({ currentPage, notionCredentialId, hidePreview }: IPr
           </button>
         </div>
         <div className={cn(s.fileName, 'system-xs-medium')}>
-          <NotionIcon className="mr-1 shrink-0" type="page" src={currentPage?.page_icon} />
+          <NotionIcon
+            decorative
+            className="mr-1 shrink-0"
+            type="page"
+            src={currentPage?.page_icon}
+          />
           {currentPage?.page_name}
         </div>
       </div>

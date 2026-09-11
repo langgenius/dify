@@ -10,8 +10,9 @@ icon-specific appearance, size, and tone variants.
 ## Accessible name and glyph
 
 Every icon button must provide exactly one accessible-name source: `aria-label` or
-`aria-labelledby`, preserving its [name, role, and value]. A tooltip is a visual enhancement, not
-the button's accessible name.
+`aria-labelledby`, preserving its [name, role, and value]. Follow [Accessible names and
+descriptions] when choosing between those sources. A tooltip is a visual enhancement, not the
+button's accessible name.
 
 Pass exactly one React element containing the decorative glyph and hide that glyph from the
 accessibility tree:
@@ -40,8 +41,10 @@ the icon button.
 ## Related guides
 
 - Read [`Button`] for visible-label actions, submit semantics, and loading state.
+- Read [Accessible names and descriptions] for the cross-component naming and description contract.
 - Read [Base UI Button] for the upstream interaction and composition contract.
 
+[Accessible names and descriptions]: ../../docs/accessible-names-and-descriptions.md
 [Base UI Button]: https://base-ui.com/react/components/button
 [`Button`]: ../button/README.md
 [name, role, and value]: https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html

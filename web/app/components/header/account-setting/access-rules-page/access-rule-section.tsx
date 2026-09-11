@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessPolicyWithBindings } from '@/models/access-control'
+import type { AccessRule } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -15,7 +15,7 @@ import AccessRuleRow from './access-rule-row'
 
 type AccessRuleSectionProps = {
   title: string
-  rules: AccessPolicyWithBindings[]
+  rules: AccessRule[]
   totalCount?: number
   isLoadingRules: boolean
   isFetchingNextPage?: boolean
@@ -24,8 +24,9 @@ type AccessRuleSectionProps = {
   error?: unknown
   defaultExpanded?: boolean
   onCreate?: () => void
-  onViewRule?: (rule: AccessPolicyWithBindings) => void
-  onEditRule?: (rule: AccessPolicyWithBindings) => void
+  onViewRule?: (rule: AccessRule) => void
+  onEditRule?: (rule: AccessRule) => void
+  onRetry?: () => void
   className?: string
 }
 
@@ -42,6 +43,7 @@ const AccessRuleSection = ({
   onCreate,
   onViewRule,
   onEditRule,
+  onRetry,
   className,
 }: AccessRuleSectionProps) => {
   const { t } = useTranslation()
@@ -98,10 +100,7 @@ const AccessRuleSection = ({
       }
     >
       <div className="flex items-center gap-4 p-4">
-        <CollapsibleTrigger
-          className="min-h-0 w-auto min-w-0 flex-1 justify-start gap-0 rounded-none px-0 hover:not-data-disabled:bg-transparent"
-          render={<button type="button" className="min-w-0 flex-1 text-left" />}
-        >
+        <CollapsibleTrigger className="flex min-h-0 min-w-0 flex-1 touch-manipulation items-center justify-start gap-0 text-start system-sm-medium text-text-secondary outline-hidden select-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary">
           <div className="flex min-w-0 items-center gap-4">
             <span className="truncate system-sm-semibold text-text-primary">{title}</span>
             <span className="shrink-0 system-xs-regular text-text-tertiary">
@@ -117,7 +116,7 @@ const AccessRuleSection = ({
             </Button>
           )}
           <CollapsibleTrigger
-            className="size-8 min-h-0 justify-center gap-0 p-1.5 hover:not-data-disabled:text-text-secondary data-panel-open:bg-state-accent-active data-panel-open:text-text-accent data-panel-open:hover:bg-state-accent-active-alt"
+            className="group/collapsible text-text-secondary data-panel-open:bg-state-accent-active data-panel-open:text-text-accent data-panel-open:hover:bg-state-accent-active-alt"
             render={
               <IconButton
                 size="lg"
@@ -129,7 +128,7 @@ const AccessRuleSection = ({
               >
                 <span
                   aria-hidden="true"
-                  className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-data-panel-open:rotate-90"
+                  className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-data-panel-open/collapsible:rotate-90"
                 />
               </IconButton>
             }
@@ -144,7 +143,12 @@ const AccessRuleSection = ({
           />
         }
       >
-        {isLoadingRules ? (
+        {error ? (
+          <div role="alert" className="flex items-center justify-center gap-3 py-8">
+            <span>{t(($) => $['api.actionFailed'], { ns: 'common' })}</span>
+            <Button onClick={onRetry}>{t(($) => $['operation.retry'], { ns: 'common' })}</Button>
+          </div>
+        ) : isLoadingRules ? (
           <div className="px-1 py-8 text-center">
             <Loading type="app" />
           </div>

@@ -4,7 +4,7 @@ import Cookies from 'js-cookie'
 import { useCallback } from 'react'
 import { PARTNER_STACK_CONFIG } from '@/config'
 import { useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const usePSInfo = () => {
   const searchParams = useSearchParams()

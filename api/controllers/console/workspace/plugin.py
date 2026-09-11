@@ -11,6 +11,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.fields import BinaryFileResponse, SuccessResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     register_enum_models,
@@ -21,7 +22,6 @@ from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
     model_validate,
@@ -570,7 +570,7 @@ class PluginDebuggingKeyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_DEBUG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_DEBUG, Workspace()))
     @plugin_permission_required(debug_required=True)
     @with_current_tenant_id
     def get(self, tenant_id: str):
@@ -750,7 +750,7 @@ class PluginUploadFromPkgApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_INSTALL, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str):
@@ -771,7 +771,7 @@ class PluginUploadFromGithubApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_INSTALL, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     @model_validate(ParserGithubUpload)
@@ -793,7 +793,7 @@ class PluginUploadFromBundleApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_INSTALL, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str):
@@ -814,7 +814,7 @@ class PluginInstallFromPkgApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_INSTALL, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     @model_validate(ParserPluginIdentifiers)
@@ -835,7 +835,7 @@ class PluginInstallFromGithubApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_INSTALL, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     @model_validate(ParserGithubInstall)
@@ -862,7 +862,7 @@ class PluginInstallFromMarketplaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_INSTALL, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     @model_validate(ParserPluginIdentifiers)
@@ -883,7 +883,7 @@ class PluginFetchMarketplacePkgApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_INSTALL, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     @model_validate(ParserPluginIdentifierQuery)
@@ -909,7 +909,7 @@ class PluginFetchManifestApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_INSTALL, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     @model_validate(ParserPluginIdentifierQuery)
@@ -1014,7 +1014,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     @model_validate(ParserMarketplaceUpgrade)
@@ -1037,7 +1037,7 @@ class PluginUpgradeFromGithubApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     @model_validate(ParserGithubUpgrade)
@@ -1065,7 +1065,7 @@ class PluginUninstallApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_DELETE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_DELETE, Workspace()))
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     @model_validate(ParserUninstall)
@@ -1138,7 +1138,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -1169,7 +1169,7 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -1201,7 +1201,7 @@ class PluginChangeAutoUpgradeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @with_current_user
     @with_current_tenant_id
     @model_validate(ParserAutoUpgradeChange)
@@ -1256,7 +1256,7 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @with_current_tenant_id
     @model_validate(ParserExcludePlugin)
     def post(self, req_data: ParserExcludePlugin, tenant_id: str):

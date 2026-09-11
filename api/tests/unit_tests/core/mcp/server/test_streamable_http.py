@@ -22,6 +22,7 @@ from core.mcp.server.streamable_http import (
 )
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.model import App, AppMCPServer, AppMode, EndUser
+from services.errors.app import TriggerWorkflowServiceModeUnavailableError
 
 
 class TestHandleMCPRequest:
@@ -156,6 +157,29 @@ class TestHandleMCPRequest:
 
         # Verify AppGenerateService was called
         mock_app_generate.generate.assert_called_once()
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_returns_trigger_workflow_business_error(self, mock_app_generate):
+        mock_call_request = Mock(spec=types.CallToolRequest)
+        mock_call_request.params = Mock()
+        mock_call_request.params.arguments = {"query": "test question"}
+        mock_call_request.id = 123
+        self.mock_request.root = mock_call_request
+        mock_app_generate.generate.side_effect = TriggerWorkflowServiceModeUnavailableError()
+
+        result = handle_mcp_request(
+            Mock(),
+            self.app,
+            self.mock_request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+        )
+
+        assert isinstance(result, types.JSONRPCError)
+        assert result.error.code == types.INVALID_REQUEST
+        assert result.error.data == {"code": "trigger_workflow_service_mode_unavailable"}
 
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_request_threads_protocol_version(self, mock_app_generate):

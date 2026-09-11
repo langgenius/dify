@@ -10,9 +10,10 @@ type Props = Readonly<{
 const FormInputBoolean: FC<Props> = ({ value, onChange }) => {
   return (
     <div className="flex w-full space-x-1">
-      <div
+      <button
+        type="button"
         className={cn(
-          'flex h-8 grow cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
+          'flex h-8 grow cursor-default appearance-none items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
           !value &&
             'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
           value &&
@@ -21,10 +22,11 @@ const FormInputBoolean: FC<Props> = ({ value, onChange }) => {
         onClick={() => onChange(true)}
       >
         True
-      </div>
-      <div
+      </button>
+      <button
+        type="button"
         className={cn(
-          'flex h-8 grow cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
+          'flex h-8 grow cursor-default appearance-none items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
           value &&
             'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
           !value &&
@@ -33,7 +35,7 @@ const FormInputBoolean: FC<Props> = ({ value, onChange }) => {
         onClick={() => onChange(false)}
       >
         False
-      </div>
+      </button>
     </div>
   )
 }

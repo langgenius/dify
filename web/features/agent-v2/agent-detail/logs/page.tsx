@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentLogConversationItemResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentLogsSort } from './components/logs-table'
 import type { SourceFilterValue } from './components/source-picker'
 import {
   Drawer,
@@ -20,15 +21,13 @@ import { SearchInput } from '@/app/components/base/search-input'
 import Sort from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentLogDetailPanel } from './components/log-detail-panel'
 import { AgentLogsTable } from './components/logs-table'
 import { AgentLogSourcePicker } from './components/source-picker'
 
 type PeriodKey = 'last7days' | 'last30days' | 'allTime'
-type LogsSortField = 'created_at' | 'updated_at'
-type LogsSortOrder = 'asc' | 'desc'
 
 type AgentLogsPageProps = {
   agentId: string
@@ -58,12 +57,7 @@ const getPeriodQuery = (period: PeriodKey) => {
   }
 }
 
-const parseSortValue = (
-  value: string,
-): {
-  field: LogsSortField
-  order: LogsSortOrder
-} => {
+const parseSortValue = (value: string): AgentLogsSort => {
   const isDescending = value.startsWith('-')
   const field = isDescending ? value.slice(1) : value
 
@@ -82,7 +76,7 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   const [period, setPeriod] = useState<PeriodKey>('last7days')
   const [source, setSource] = useState<SourceFilterValue>([])
   const [keyword, setKeyword] = useState('')
-  const [sort, setSort] = useState<{ field: LogsSortField; order: LogsSortOrder }>({
+  const [sort, setSort] = useState<AgentLogsSort>({
     field: 'created_at',
     order: 'desc',
   })
@@ -223,6 +217,7 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
           isError={logsQuery.isError}
           isSuccess={logsQuery.isSuccess}
           selectedLogId={selectedLog?.id}
+          sort={sort}
           onOpenLog={setSelectedLog}
           onRetry={() => {
             void logsQuery.refetch()

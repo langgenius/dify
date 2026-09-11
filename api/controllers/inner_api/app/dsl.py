@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import query_params_from_model, register_schema_model
-from controllers.console.wraps import setup_required
+from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_database import db
@@ -61,9 +61,9 @@ class EnterpriseAppDSLImport(Resource):
             404: "Creator account not found or inactive",
         }
     )
-    def post(self, workspace_id: str):
+    @model_validate(InnerAppDSLImportPayload)
+    def post(self, args: InnerAppDSLImportPayload, workspace_id: str):
         """Import a DSL into a workspace on behalf of a specified creator."""
-        args = InnerAppDSLImportPayload.model_validate(inner_api_ns.payload or {})
 
         account = _get_active_account(args.creator_email)
         if account is None:

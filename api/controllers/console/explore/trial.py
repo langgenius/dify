@@ -47,7 +47,7 @@ from controllers.console.explore.error import (
 )
 from controllers.console.explore.wraps import TrialAppResource
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
-from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file_from_request
+from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -472,13 +472,15 @@ class TrialAppRemoteFileUploadApi(TrialAppResource):
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
     @with_current_user
-    def post(self, current_user: Account, app_model: App):
+    @model_validate(RemoteFileUploadPayload)
+    def post(self, payload: RemoteFileUploadPayload, current_user: Account, app_model: App):
         """Upload a remote file into the tenant that owns the trial app."""
-        remote_file = upload_remote_file_from_request(
+        remote_file = upload_remote_file(
+            url=payload.url,
             current_user=current_user,
             resource_tenant_id=app_model.tenant_id,
         )
-        return remote_file.model_dump(mode="json"), 201
+        return dump_response(FileWithSignedUrl, remote_file), 201
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):

@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   updateAccessMode: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     enterprise: {
       appDeploy: {

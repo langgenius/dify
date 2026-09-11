@@ -112,7 +112,7 @@ def batch_create_segment_to_index_task(
         file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
         storage.download(upload_file_key, file_path)
 
-        df = pd.read_csv(file_path)
+        df = pd.read_csv(file_path, dtype=str, keep_default_na=False)
         content = []
         for _, row in df.iterrows():
             if document_config["doc_form"] == IndexStructureType.QA_INDEX:

@@ -12,7 +12,7 @@ from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
@@ -88,9 +88,9 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                 return
 
             # check document limit
-            features = FeatureService.get_features(dataset.tenant_id)
-            try:
-                if features.billing.enabled:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+                features = FeatureService.get_features(dataset.tenant_id)
+                try:
                     vector_space = features.vector_space
                     assert vector_space is not None
                     count = len(document_ids)
@@ -106,20 +106,20 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                             "Your total number of documents plus the number of uploads have exceeded the limit of "
                             "your subscription."
                         )
-            except Exception as e:
-                documents = list(
-                    session.scalars(
-                        select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
-                    ).all()
-                )
-                for document in documents:
-                    if document is not None:
-                        document.indexing_status = IndexingStatus.ERROR
-                        document.error = str(e)
-                        document.stopped_at = naive_utc_now()
-                        session.add(document)
-                session.commit()
-                return
+                except Exception as e:
+                    documents = list(
+                        session.scalars(
+                            select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                        ).all()
+                    )
+                    for document in documents:
+                        if document is not None:
+                            document.indexing_status = IndexingStatus.ERROR
+                            document.error = str(e)
+                            document.stopped_at = naive_utc_now()
+                            session.add(document)
+                    session.commit()
+                    return
 
             documents = list(
                 session.scalars(

@@ -5,8 +5,8 @@ import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from '#i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
-import { docPathProductAvailability } from '@/types/doc-paths'
+import { getDocLanguage, getLanguage } from '@/i18n-config/language'
+import { docPathProductAvailability, isProductlessDocPath } from '@/types/doc-paths'
 
 export const useLocale = () => {
   const { i18n } = useTranslation()
@@ -17,11 +17,6 @@ export const useGetLanguage = () => {
   const locale = useLocale()
 
   return getLanguage(locale)
-}
-export const useGetPricingPageLanguage = () => {
-  const locale = useLocale()
-
-  return getPricingPageLanguage(locale)
 }
 
 export const defaultDocBaseUrl = 'https://docs.dify.ai'
@@ -52,8 +47,9 @@ const splitPathHash = (path: string) => {
 
 const getProductAwarePath = (path: string, deploymentEdition: DeploymentEdition): string => {
   const { pathname, hash } = splitPathHash(path)
-  const availableProducts = docPathProductAvailability[pathname]
-  if (!availableProducts?.length) return path
+  if (!isProductlessDocPath(pathname)) return path
+
+  const availableProducts: readonly DocsProduct[] = docPathProductAvailability[pathname]
 
   const currentProduct = getCurrentDocsProduct(deploymentEdition)
   const targetProduct = availableProducts.includes(currentProduct)

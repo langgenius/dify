@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Position } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import CustomEdge from '../custom-edge'
 import { BlockEnum, NodeRunningStatus } from '../types'
+import { renderWorkflowComponent } from './workflow-test-env'
 
 const mockUseAvailableBlocks = vi.hoisted(() => vi.fn())
 const mockUseNodesInteractions = vi.hoisted(() => vi.fn())
@@ -38,6 +40,9 @@ vi.mock('reactflow', () => ({
     Right: 'right',
     Left: 'left',
   },
+  useStoreApi: () => ({
+    getState: () => ({ getNodes: () => [] }),
+  }),
 }))
 
 vi.mock('../hooks/use-available-blocks', async (importOriginal) => {
@@ -81,8 +86,10 @@ describe('CustomEdge', () => {
     })
   })
 
-  it('should render a gradient edge and its real insert-node trigger', () => {
-    render(
+  it('should render a gradient edge and hide the start tab from its insert-node selector', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-1"
         source="source-node"
@@ -130,10 +137,14 @@ describe('CustomEdge', () => {
       opacity: '0.7',
       zIndex: '1001',
     })
+
+    await user.click(addBlockTrigger)
+
+    expect(screen.queryByRole('tab', { name: 'workflow.tabs.start' })).not.toBeInTheDocument()
   })
 
   it('should prefer the running stroke color when the edge is selected', () => {
-    render(
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-selected"
         source="source-node"
@@ -163,7 +174,7 @@ describe('CustomEdge', () => {
   })
 
   it('should use the fail-branch running color while the connected node is hovering', () => {
-    render(
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-hover"
         source="source-node"
@@ -193,7 +204,7 @@ describe('CustomEdge', () => {
   })
 
   it('should fall back to the default edge color when no highlight state is active', () => {
-    render(
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-default"
         source="source-node"

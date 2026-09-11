@@ -29,7 +29,6 @@ def _build_feature_flags():
     placeholder_quota = SimpleNamespace(limit=0, size=0)
     workspace_members = SimpleNamespace(enabled=False, is_available=lambda count: True)
     return SimpleNamespace(
-        billing=SimpleNamespace(enabled=False),
         workspace_members=workspace_members,
         members=placeholder_quota,
         apps=placeholder_quota,

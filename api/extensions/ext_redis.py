@@ -371,6 +371,18 @@ def _get_base_redis_params() -> RedisBaseParamsDict:
     )
 
 
+def _parse_redis_nodes(value: str) -> list[tuple[str, int]]:
+    nodes = []
+    for raw_node in value.split(","):
+        host, separator, port = raw_node.strip().rpartition(":")
+        if not separator or not host or not port:
+            raise ValueError(f"Invalid Redis node: {raw_node}")
+        if host.startswith("[") and host.endswith("]"):
+            host = host[1:-1]
+        nodes.append((host, int(port)))
+    return nodes
+
+
 def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
     """Create Redis client using Sentinel configuration."""
     if not dify_config.REDIS_SENTINELS:
@@ -379,7 +391,7 @@ def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Re
     if not dify_config.REDIS_SENTINEL_SERVICE_NAME:
         raise ValueError("REDIS_SENTINEL_SERVICE_NAME must be set when REDIS_USE_SENTINEL is True")
 
-    sentinel_hosts = [(node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")]
+    sentinel_hosts = _parse_redis_nodes(dify_config.REDIS_SENTINELS)
 
     health_params = _get_connection_health_params()
 
@@ -409,10 +421,7 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
     if not dify_config.REDIS_CLUSTERS:
         raise ValueError("REDIS_CLUSTERS must be set when REDIS_USE_CLUSTERS is True")
 
-    nodes = [
-        ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
-        for node in dify_config.REDIS_CLUSTERS.split(",")
-    ]
+    nodes = [ClusterNode(host=host, port=port) for host, port in _parse_redis_nodes(dify_config.REDIS_CLUSTERS)]
 
     cluster_kwargs: dict[str, Any] = {
         "startup_nodes": nodes,

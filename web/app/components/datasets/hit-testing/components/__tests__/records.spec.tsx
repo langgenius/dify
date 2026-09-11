@@ -1,5 +1,6 @@
 import type { HitTestingRecord } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Records from '../records'
 
@@ -30,9 +31,15 @@ describe('Records', () => {
 
   it('should render table headers', () => {
     render(<Records records={[]} onClickRecord={mockOnClick} />)
-    expect(screen.getByText('datasetHitTesting.table.header.queryContent')).toBeInTheDocument()
-    expect(screen.getByText('datasetHitTesting.table.header.source')).toBeInTheDocument()
-    expect(screen.getByText('datasetHitTesting.table.header.time')).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'datasetHitTesting.table.header.queryContent' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'datasetHitTesting.table.header.source' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'datasetHitTesting.table.header.time' }),
+    ).toBeInTheDocument()
   })
 
   it('should render records', () => {
@@ -41,10 +48,11 @@ describe('Records', () => {
     expect(screen.getAllByText('query text')).toHaveLength(2)
   })
 
-  it('should call onClickRecord when row clicked', () => {
+  it('should call onClickRecord when row clicked', async () => {
+    const user = userEvent.setup()
     const records = [makeRecord('1', 'app', 1000)]
     render(<Records records={records} onClickRecord={mockOnClick} />)
-    fireEvent.click(screen.getByText('query text'))
+    await user.click(screen.getByText('query text'))
     expect(mockOnClick).toHaveBeenCalledWith(records[0])
   })
 
@@ -61,20 +69,40 @@ describe('Records', () => {
     expect(rows[2]).toHaveTextContent('early')
   })
 
-  it('should toggle sort order on time header click', () => {
+  it('exposes the current sort order and toggles it from the keyboard', async () => {
+    const user = userEvent.setup()
     const records = [makeRecord('1', 'app', 1000, 'early'), makeRecord('2', 'app', 3000, 'late')]
     render(<Records records={records} onClickRecord={mockOnClick} />)
 
-    // Default: desc, so late first
-    let rows = screen.getAllByRole('row').slice(1)
-    expect(rows[0]).toHaveTextContent('late')
+    const header = screen.getByRole('columnheader', { name: 'datasetHitTesting.table.header.time' })
+    expect(header).toHaveAttribute('aria-sort', 'descending')
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'datasetHitTesting.table.header.time' }),
+    ).toHaveFocus()
+    await user.keyboard('{Enter}')
 
-    fireEvent.click(screen.getByText('datasetHitTesting.table.header.time'))
-    rows = screen.getAllByRole('row').slice(1)
-    expect(rows[0]).toHaveTextContent('early')
+    expect(header).toHaveAttribute('aria-sort', 'ascending')
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('early')
+    await user.keyboard(' ')
+    expect(header).toHaveAttribute('aria-sort', 'descending')
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('late')
   })
 
-  it('should render image list for image queries', () => {
+  it('reuses a record once through its keyboard-accessible time button', async () => {
+    const user = userEvent.setup()
+    const record = makeRecord('1', 'app', 1000)
+    render(<Records records={[record]} onClickRecord={mockOnClick} />)
+
+    await user.tab()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'time-1000' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(mockOnClick).toHaveBeenCalledExactlyOnceWith(record)
+  })
+
+  it('provides a reuse button for image-only queries', async () => {
+    const user = userEvent.setup()
     const records = [
       {
         id: '1',
@@ -98,5 +126,7 @@ describe('Records', () => {
     ] as unknown as HitTestingRecord[]
     render(<Records records={records} onClickRecord={mockOnClick} />)
     expect(screen.getByTestId('image-list')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'time-1000' }))
+    expect(mockOnClick).toHaveBeenCalledExactlyOnceWith(records[0])
   })
 })

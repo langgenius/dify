@@ -1888,12 +1888,11 @@ export const tags2 = {
 /**
  * Delete Knowledge Base
  *
- * Permanently delete a knowledge base and all its documents. The knowledge base must not be in use by any application.
+ * Permanently delete a knowledge base and all its documents.
  */
 export const delete8 = oc
   .route({
-    description:
-      'Permanently delete a knowledge base and all its documents. The knowledge base must not be in use by any application.',
+    description: 'Permanently delete a knowledge base and all its documents.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteDatasetsByDatasetId',

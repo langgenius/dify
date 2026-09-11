@@ -21,7 +21,7 @@ const { appListKey, bindTag, listKey, recentAppListKey, starredAppListKey, unbin
   }),
 )
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     tagBindings: {
       post: bindTag,

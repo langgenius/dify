@@ -13,11 +13,11 @@ def make_features(
     restrict_to_marketplace: bool = False,
     scope: PluginInstallationScope = PluginInstallationScope.ALL,
 ) -> MagicMock:
-    """Create a mock FeatureService.get_system_features() result."""
-    features = MagicMock()
-    features.plugin_installation_permission.restrict_to_marketplace_only = restrict_to_marketplace
-    features.plugin_installation_permission.plugin_installation_scope = scope
-    return features
+    """Create a mock plugin installation permission."""
+    permission = MagicMock()
+    permission.restrict_to_marketplace_only = restrict_to_marketplace
+    permission.plugin_installation_scope = scope
+    return permission
 
 
 @pytest.fixture
@@ -30,10 +30,10 @@ def mock_installer(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.fixture
 def mock_features():
-    """Patch FeatureService to return permissive defaults."""
+    """Patch SystemFeatureService to return permissive defaults."""
     from unittest.mock import patch
 
     features = make_features()
-    with patch("core.plugin.plugin_service.FeatureService") as mock_fs:
-        mock_fs.get_system_features.return_value = features
+    with patch("core.plugin.plugin_service.SystemFeatureService") as mock_fs:
+        mock_fs.get_plugin_installation_permission.return_value = features
         yield features

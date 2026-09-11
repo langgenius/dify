@@ -5,7 +5,6 @@ import 'react'
 
 declare module 'react' {
   namespace JSX {
-    // eslint-disable-next-line ts/consistent-type-definitions
     interface IntrinsicElements {
       'em-emoji': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>
     }

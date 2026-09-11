@@ -54,7 +54,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
       get: {
@@ -148,6 +148,12 @@ describe('TagSelector', () => {
   it('renders selected tag names in the combobox trigger', () => {
     render(<TagSelector {...defaultProps} />)
     expect(screen.getByText('Frontend')).toBeInTheDocument()
+  })
+
+  it('adds the owning app name to the combobox accessible name', () => {
+    render(<TagSelector {...defaultProps} contextLabel="Test App" />)
+
+    expect(screen.getByRole('combobox', { name: 'Frontend: Test App' })).toBeInTheDocument()
   })
 
   it('keeps dataset tag interactions inside the tag trigger', async () => {

@@ -425,10 +425,10 @@ export function AgentSkillDetailDialog({
             />
           </div>
         </div>
-        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid">
+        <ScrollArea className="min-h-0 flex-1 overflow-hidden rounded-br-2xl">
           <ScrollAreaViewport
             aria-labelledby={dialogTitleId}
-            className="overscroll-contain outline-none focus-visible:outline-none"
+            className="overscroll-contain"
             role="region"
           >
             <ScrollAreaContent

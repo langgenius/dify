@@ -24,7 +24,7 @@ class TestMessageService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
             patch("services.message_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.message_service.WorkflowService") as mock_workflow_service,
             patch("services.message_service.AdvancedChatAppConfigManager") as mock_app_config_manager,
@@ -33,7 +33,6 @@ class TestMessageService:
             patch("services.message_service.TokenBufferMemory") as mock_token_buffer_memory,
         ):
             # Setup default mock returns
-            mock_account_feature_service.get_features.return_value.billing.enabled = False
 
             # Mock ModelManager
             mock_model_instance = mock_model_manager.return_value.get_default_model_instance.return_value
@@ -86,9 +85,7 @@ class TestMessageService:
         fake = Faker()
 
         # Setup mocks for account creation
-        mock_external_service_dependencies[
-            "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant first
         from services.account_service import AccountService, TenantService

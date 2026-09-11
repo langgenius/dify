@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useIncrementSnippetUseCountMutation } from '@/service/use-snippets'
 import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
@@ -358,7 +358,7 @@ export const useInsertSnippet = () => {
   const handleInsertSnippet = useCallback(
     async (snippetId: string, insertPayload?: SnippetInsertPayload) => {
       try {
-        const workflow = await queryClient.fetchQuery(
+        const workflow = await queryClient.query(
           consoleQuery.snippets.bySnippetId.workflows.publish.get.queryOptions({
             input: {
               params: { snippet_id: snippetId },

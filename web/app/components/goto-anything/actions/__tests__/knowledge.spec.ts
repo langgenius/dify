@@ -6,7 +6,7 @@ import { knowledgeAction, knowledgeSearchQueryOptions } from '../knowledge'
 
 const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: { datasets: { get: { queryOptions: serviceMocks.queryOptions } } },
 }))
 

@@ -224,16 +224,13 @@ const InputField: React.FC<InputFieldProps> = ({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3 pt-0 pb-0">
         <div className="mt-3">
-          <div className="system-xs-medium text-text-secondary">
-            {t(($) => $[`${i18nPrefix}.fieldType`], { ns: 'workflow' })}
-          </div>
-          <div className="mt-1.5">
-            <TypeSelector
-              value={tempPayload.type}
-              items={fieldTypeItems}
-              onSelect={handleTypeChange}
-            />
-          </div>
+          <TypeSelector
+            label={t(($) => $[`${i18nPrefix}.fieldType`], { ns: 'workflow' })}
+            labelClassName="mb-1.5 system-xs-medium"
+            value={tempPayload.type}
+            items={fieldTypeItems}
+            onSelect={handleTypeChange}
+          />
         </div>
         <div className="mt-3">
           <label

@@ -1183,15 +1183,14 @@ describe('useNodesInteractions', () => {
     )
   })
 
-  // Nested container paste restrictions should stay aligned with available block filtering.
-  describe('nested container paste restrictions', () => {
+  // Nested container paste behavior should stay aligned with available block filtering.
+  describe('nested container paste behavior', () => {
     const disallowedNestedPasteNodeTypes = [
       BlockEnum.End,
       BlockEnum.Iteration,
       BlockEnum.Loop,
       BlockEnum.DataSource,
       BlockEnum.KnowledgeBase,
-      BlockEnum.HumanInput,
     ]
 
     const createNodeMeta = (type: BlockEnum) => ({
@@ -1205,7 +1204,7 @@ describe('useNodesInteractions', () => {
       },
     })
 
-    const runDisallowedPasteScenario = async (
+    const pasteNodeIntoContainer = async (
       containerType: BlockEnum.Iteration | BlockEnum.Loop,
       nodeType: BlockEnum,
     ) => {
@@ -1263,23 +1262,48 @@ describe('useNodesInteractions', () => {
 
       const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
 
-      expect(pastedNodes).toHaveLength(1)
-      expect(pastedNodes[0]?.id).toBe(containerId)
-      expect(pastedNodes[0]?.data._children).toEqual([])
-      expect(
-        pastedNodes.some((node) => node.data.type === nodeType && node.parentId === containerId),
-      ).toBe(false)
+      return { containerId, pastedNodes }
     }
 
     it.each(disallowedNestedPasteNodeTypes)(
       'should not paste %s into an iteration container',
       async (nodeType) => {
-        await runDisallowedPasteScenario(BlockEnum.Iteration, nodeType)
+        const { containerId, pastedNodes } = await pasteNodeIntoContainer(
+          BlockEnum.Iteration,
+          nodeType,
+        )
+
+        expect(pastedNodes).toHaveLength(1)
+        expect(pastedNodes[0]?.id).toBe(containerId)
+        expect(pastedNodes[0]?.data._children).toEqual([])
       },
     )
 
-    it('should not paste human-input into a loop container', async () => {
-      await runDisallowedPasteScenario(BlockEnum.Loop, BlockEnum.HumanInput)
-    })
+    it.each([BlockEnum.Iteration, BlockEnum.Loop] as const)(
+      'should paste human-input into a %s container',
+      async (containerType) => {
+        const { containerId, pastedNodes } = await pasteNodeIntoContainer(
+          containerType,
+          BlockEnum.HumanInput,
+        )
+        const container = pastedNodes.find((node) => node.id === containerId)
+        const pastedHumanInput = pastedNodes.find(
+          (node) => node.data.type === BlockEnum.HumanInput && node.parentId === containerId,
+        )
+        const isIteration = containerType === BlockEnum.Iteration
+
+        expect(pastedHumanInput).toBeDefined()
+        expect(pastedHumanInput?.data).toMatchObject({
+          isInIteration: isIteration,
+          iteration_id: isIteration ? containerId : undefined,
+          isInLoop: !isIteration,
+          loop_id: isIteration ? undefined : containerId,
+        })
+        expect(container?.data._children).toContainEqual({
+          nodeId: pastedHumanInput?.id,
+          nodeType: BlockEnum.HumanInput,
+        })
+      },
+    )
   })
 })

@@ -65,6 +65,7 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
       )}
       <div className="flex flex-col items-start gap-2 pb-1">
         <AppIcon
+          decorative
           size="large"
           iconType={appBasicInfo.icon_type}
           icon={appBasicInfo.icon}
