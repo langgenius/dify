@@ -250,8 +250,8 @@ class TestAdvancedChatAppGeneratorInternals:
             "_DummyMessageTraceRecorder",
             (MessageTraceRecorder,),
             {
-                "__init__": lambda self, app_id=None, user_id=None, **_kwargs: setattr(
-                    self, "source", SimpleNamespace(app_id=app_id, actor_id=user_id)
+                "__init__": lambda self, app_id=None, user_id=None, **_kwargs: self.__dict__.update(
+                    source=SimpleNamespace(app_id=app_id, actor_id=user_id), attributes={}
                 )
             },
         )
@@ -1199,8 +1199,8 @@ class TestAdvancedChatAppGeneratorInternals:
             "_DummyMessageTraceRecorder",
             (MessageTraceRecorder,),
             {
-                "__init__": lambda self, app_id=None, user_id=None, **_kwargs: setattr(
-                    self, "source", SimpleNamespace(app_id=app_id, actor_id=user_id)
+                "__init__": lambda self, app_id=None, user_id=None, **_kwargs: self.__dict__.update(
+                    source=SimpleNamespace(app_id=app_id, actor_id=user_id), attributes={}
                 )
             },
         )
@@ -1274,8 +1274,8 @@ class TestAdvancedChatAppGeneratorInternals:
             "_DummyMessageTraceRecorder",
             (MessageTraceRecorder,),
             {
-                "__init__": lambda self, app_id=None, user_id=None, **_kwargs: setattr(
-                    self, "source", SimpleNamespace(app_id=app_id, actor_id=user_id)
+                "__init__": lambda self, app_id=None, user_id=None, **_kwargs: self.__dict__.update(
+                    source=SimpleNamespace(app_id=app_id, actor_id=user_id), attributes={}
                 )
             },
         )

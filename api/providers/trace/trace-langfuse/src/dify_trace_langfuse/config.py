@@ -1,4 +1,5 @@
-from typing import override
+import os
+from typing import Any, override
 
 from pydantic import ValidationInfo, field_validator
 
@@ -19,6 +20,11 @@ class LangfuseConfig(BaseTracingConfig):
     @override
     def secret_fields(cls) -> tuple[str, ...]:
         return ("public_key", "secret_key")
+
+    @classmethod
+    @override
+    def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
+        return {"request_timeout": int(os.environ.get("LANGFUSE_TIMEOUT", "5"))}
 
     @field_validator("host")
     @classmethod
