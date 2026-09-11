@@ -3,7 +3,7 @@ name = "dify-vdb-vastbase"
 version = "0.0.1"
 
 dependencies = [
-    "pyobvector==0.2.25",
+    "pyobvector==0.2.29",
 ]
 description = "Dify vector store backend (dify-vdb-vastbase)."
 
