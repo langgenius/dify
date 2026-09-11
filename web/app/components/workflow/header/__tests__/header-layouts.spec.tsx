@@ -281,17 +281,26 @@ describe('Header layout components', () => {
       expect(screen.getAllByRole('button').at(-1)).toBe(appBuilderButton)
     })
 
-    it('should hide the App Builder entry while its session rail is open', () => {
-      renderWorkflowComponent(<HeaderInNormal controls={{ showDifyBuilderButton: true }} />, {
-        initialStoreState: { showDifyBuilderPanel: true },
+    it('should keep the App Builder entry available to close its panel', async () => {
+      const user = userEvent.setup()
+      const { store } = renderWorkflowComponent(
+        <HeaderInNormal controls={{ showDifyBuilderButton: true }} />,
+        { initialStoreState: { showDifyBuilderPanel: true } },
+      )
+      const appBuilderButton = screen.getByRole('button', {
+        name: 'workflow.difyBuilder.buttonTooltip',
       })
 
-      expect(
-        screen.queryByRole('button', { name: 'workflow.difyBuilder.buttonTooltip' }),
-      ).not.toBeInTheDocument()
+      expect(appBuilderButton).toHaveAttribute('aria-expanded', 'true')
+      expect(appBuilderButton).not.toHaveTextContent('workflow.difyBuilder.buttonTooltip')
+
+      await user.click(appBuilderButton)
+
+      expect(store.getState().showDifyBuilderPanel).toBe(false)
+      expect(appBuilderButton).toHaveTextContent('workflow.difyBuilder.buttonTooltip')
     })
 
-    it('should reopen an existing App Builder session while its canvas lock is active', async () => {
+    it('should toggle an existing App Builder session while its canvas lock is active', async () => {
       const user = userEvent.setup()
       mockNodesReadOnly = true
 
@@ -310,6 +319,9 @@ describe('Header layout components', () => {
       expect(appBuilderButton).toBeEnabled()
       await user.click(appBuilderButton)
       expect(store.getState().showDifyBuilderPanel).toBe(true)
+
+      await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.buttonTooltip' }))
+      expect(store.getState().showDifyBuilderPanel).toBe(false)
     })
 
     it('should keep App Builder disabled on a read-only canvas without a session', () => {

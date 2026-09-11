@@ -16,22 +16,22 @@ function EditingTitle() {
     <div
       role="status"
       aria-label={t(($) => $['common.workflowSaveStatus'], { ns: 'workflow' })}
-      className="flex h-4.5 min-w-75 items-center system-xs-regular whitespace-nowrap text-text-tertiary"
+      className="h-4 system-xs-regular text-text-tertiary"
     >
       {!!draftUpdatedAt && (
-        <span className="flex items-center gap-1">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap">
           <span>{t(($) => $['common.autoSaved'], { ns: 'workflow' })}</span>
           <time dateTime={new Date(draftUpdatedAt).toISOString()}>
             {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
           </time>
         </span>
       )}
-      <span aria-hidden="true" className="mx-1 flex items-center">
+      <span aria-hidden="true" className="mx-1 inline-flex items-center">
         ·
       </span>
       {publishedAt ? (
-        <span className="flex items-center gap-1">
-          <span>{t(($) => $['common.published'], { ns: 'workflow' })}</span>
+        <span>
+          <span>{t(($) => $['common.published'], { ns: 'workflow' })}</span>{' '}
           <time dateTime={new Date(publishedAt).toISOString()}>
             {formatTimeFromNow(publishedAt)}
           </time>
@@ -41,7 +41,7 @@ function EditingTitle() {
       )}
       {isSyncingWorkflowDraft && (
         <>
-          <span aria-hidden="true" className="mx-1 flex items-center">
+          <span aria-hidden="true" className="mx-1 inline-flex items-center">
             ·
           </span>
           <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>

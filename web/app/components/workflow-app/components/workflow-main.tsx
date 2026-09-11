@@ -564,6 +564,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       <div className="flex size-full min-w-0 overflow-hidden">
         <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">
           <WorkflowWithInnerContext
+            className={showDifyBuilderPanel ? 'min-w-0!' : undefined}
             nodes={nodes}
             edges={edges}
             viewport={viewport}

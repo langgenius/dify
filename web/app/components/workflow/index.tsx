@@ -131,6 +131,7 @@ type WorkflowDataUpdatePayload = {
 }
 
 export type WorkflowProps = {
+  className?: string
   nodes: Node[]
   edges: Edge[]
   viewport?: Viewport
@@ -175,6 +176,7 @@ CommentPlacementPreview.displayName = 'CommentPlacementPreview'
 
 export const Workflow: FC<WorkflowProps> = memo(
   ({
+    className,
     nodes: originalNodes,
     edges: originalEdges,
     viewport,
@@ -657,6 +659,7 @@ export const Workflow: FC<WorkflowProps> = memo(
           'relative isolate h-full w-full min-w-240 overflow-hidden',
           workflowReadOnly && 'workflow-panel-animation',
           nodeAnimation && 'workflow-node-animation',
+          className,
         )}
         ref={workflowContainerRef}
       >
