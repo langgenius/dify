@@ -6,6 +6,7 @@ import type {
 } from './types'
 import type { DifyBuilderCanvasNode } from './utils'
 import { atom } from 'jotai'
+import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
 import { requestErrorMessage } from './session/errors'
 import {
   difyBuilderRetryableMessageAtom,
@@ -33,6 +34,16 @@ const canContinueConversation = (status?: string) =>
   status === 'waiting_input' || status === 'waiting_confirmation'
 
 export const difyBuilderRuntimeAtom = atom<DifyBuilderRuntime | null>(null)
+const difyBuilderFixMutationKeyAtom = atom((get) => [
+  'dify-builder',
+  'start-fix',
+  get(difyBuilderRuntimeAtom)?.appId,
+])
+const difyBuilderStartFixMutationAtom = atomWithMutation((get) => ({
+  mutationKey: get(difyBuilderFixMutationKeyAtom),
+  mutationFn: (startFix: () => Promise<boolean>) => startFix(),
+  retry: false,
+}))
 export const difyBuilderSelectedModelAtom = atom<SessionModel | null>(null)
 export const difyBuilderDraftAtom = atom('')
 export const difyBuilderLocalErrorAtom = atom('')
@@ -108,6 +119,7 @@ export const difyBuilderRunActiveAtom = atom((get) =>
 )
 export const difyBuilderInteractionBusyAtom = atom(
   (get) =>
+    get(difyBuilderStartFixMutationAtom).isPending ||
     get(difyBuilderSessionBusyAtom) ||
     (get(difyBuilderRunActiveAtom) && !get(difyBuilderInterruptedAtom)) ||
     get(difyBuilderCanvasRefreshingAtom),
@@ -163,7 +175,7 @@ export const difyBuilderCanStartFixAtom = atom((get) => {
     runtime?.canEdit &&
     !get(difyBuilderInteractionBusyAtom) &&
     get(difyBuilderCanvasReadyAtom) &&
-    (!view || isTerminalStatus(view.run_status))
+    !isActiveStatus(view?.run_status)
   )
 })
 
@@ -254,35 +266,44 @@ export const difyBuilderRetryMessageAtom = atom(null, async (get, set, turnId: s
   return sent
 })
 
-export const difyBuilderStartRunFixAtom = atom(null, async (get, set, failedRunId: string) => {
-  const runtime = get(difyBuilderRuntimeAtom)
-  if (!runtime?.appId || !failedRunId || !get(difyBuilderCanStartFixAtom)) return false
+const startDifyBuilderFixAtom = atom(
+  null,
+  async (get, set, target: { failedRunId: string } | { errors: ChecklistErrorPayload[] }) => {
+    const runtime = get(difyBuilderRuntimeAtom)
+    if (!runtime?.appId || !get(difyBuilderCanStartFixAtom)) return false
+    // The cache updates synchronously, before the mutation observer notifies the UI.
+    if (get(queryClientAtom).isMutating({ mutationKey: get(difyBuilderFixMutationKeyAtom) }))
+      return false
 
-  runtime.setShowPanel(true)
-  if (!(await set(prepareDifyBuilderSessionAtom))) return false
-  return runtime.session.startFix(
-    runtime.appId,
-    failedRunId,
-    get(difyBuilderSelectedModelAtom) ?? undefined,
-  )
-})
+    if ('errors' in target) {
+      set(difyBuilderChecklistErrorsAtom, target.errors)
+      set(difyBuilderChecklistEvaluatedGenerationAtom, get(difyBuilderCanvasRefreshGenerationAtom))
+    }
+    runtime.setShowPanel(true)
+    const appId = runtime.appId
+    const mutation = get(difyBuilderStartFixMutationAtom)
+    // Check preparation guards before this mutation marks Builder interactions busy.
+    const prepared = set(prepareDifyBuilderSessionAtom)
+    return mutation.mutateAsync(async () => {
+      if (!(await prepared)) return false
+
+      set(difyBuilderDraftAtom, '')
+      const model = get(difyBuilderSelectedModelAtom) ?? undefined
+      return 'failedRunId' in target
+        ? runtime.session.startFix(appId, target.failedRunId, model)
+        : runtime.session.startChecklistFix(appId, target.errors, model)
+    })
+  },
+)
+
+export const difyBuilderStartRunFixAtom = atom(null, (_get, set, failedRunId: string) =>
+  failedRunId ? set(startDifyBuilderFixAtom, { failedRunId }) : Promise.resolve(false),
+)
 
 export const difyBuilderStartChecklistFixAtom = atom(
   null,
-  async (get, set, errors: ChecklistErrorPayload[]) => {
-    const runtime = get(difyBuilderRuntimeAtom)
-    if (!runtime?.appId || errors.length === 0 || !get(difyBuilderCanStartFixAtom)) return false
-
-    set(difyBuilderChecklistErrorsAtom, errors)
-    set(difyBuilderChecklistEvaluatedGenerationAtom, get(difyBuilderCanvasRefreshGenerationAtom))
-    runtime.setShowPanel(true)
-    if (!(await set(prepareDifyBuilderSessionAtom))) return false
-    return runtime.session.startChecklistFix(
-      runtime.appId,
-      errors,
-      get(difyBuilderSelectedModelAtom) ?? undefined,
-    )
-  },
+  (_get, set, errors: ChecklistErrorPayload[]) =>
+    errors.length > 0 ? set(startDifyBuilderFixAtom, { errors }) : Promise.resolve(false),
 )
 
 export const difyBuilderSelectModelAtom = atom(null, async (get, set, model: SessionModel) => {
