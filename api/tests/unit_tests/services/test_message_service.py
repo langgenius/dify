@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import ANY, MagicMock
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -760,6 +761,11 @@ class TestMessageServiceSuggestedQuestions:
     ) -> None:
         conversation = factory.create_conversation()
         _, _, llm_generator = self._chat_boundaries(monkeypatch, conversation)
+        message = factory.create_message(message_id="msg-123", conversation_id=conversation.id)
+        message.workflow_run_id = str(uuid4())
+        monkeypatch.setattr(service_module.MessageService, "get_message", MagicMock(return_value=message))
+        create_trace = MagicMock()
+        monkeypatch.setattr(service_module, "create_message_trace", create_trace)
         workflow = factory.create_workflow(features={"suggested_questions_after_answer": {"enabled": True}})
         workflow_service = MagicMock()
         workflow_service.return_value.get_published_workflow.return_value = workflow
@@ -778,6 +784,7 @@ class TestMessageServiceSuggestedQuestions:
 
         assert result == ["Q1?"]
         llm_generator.generate_suggested_questions_after_answer.assert_called_once()
+        assert create_trace.call_args.kwargs["workflow_run_id"] == message.workflow_run_id
 
     @pytest.mark.parametrize("draft_type", [AgentConfigDraftType.DRAFT, AgentConfigDraftType.DEBUG_BUILD])
     def test_agent_debug_uses_matching_draft(

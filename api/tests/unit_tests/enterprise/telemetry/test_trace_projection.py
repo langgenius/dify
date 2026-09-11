@@ -1,11 +1,168 @@
 """Enterprise keeps operational metadata and measurement contracts when content is hidden."""
 
 import json
+from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 
+from core.ops.otlp_trace import otlp_value
 from enterprise.telemetry.enterprise_trace import EnterpriseTraceClient
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace
+
+
+@pytest.mark.parametrize(
+    ("operation_type", "prefix", "extra_fields"),
+    [
+        ("workflow", "dify.workflow", ("query",)),
+        ("node_execution", "dify.node", ("process_data",)),
+        ("draft_node_execution", "dify.node", ("process_data",)),
+        ("message", "dify.message", ()),
+        ("tool", "dify.tool", ("parameters", "config")),
+        ("moderation", "dify.moderation", ("query", "preset_response")),
+        ("suggested_question", "dify.suggested_question", ("questions",)),
+        ("dataset_retrieval", "dify.retrieval", ("query",)),
+        ("generate_name", "dify.generate_name", ()),
+        ("rule_generate", "dify.prompt_generation", ("instruction", "output")),
+    ],
+)
+def test_content_fields_keep_their_json_string_contract(
+    operation_type: str, prefix: str, extra_fields: tuple[str, ...]
+) -> None:
+    trace = make_completed_trace()
+    inputs = {"query": "private question"}
+    outputs = ["private answer", "another answer"]
+    span = trace.spans[0].model_copy(
+        update={
+            "inputs": inputs,
+            "outputs": outputs,
+            "attributes": {
+                "query": inputs,
+                "process_data": inputs,
+                "tool_parameters": inputs,
+                "tool_config": inputs,
+                "preset_response": inputs,
+            },
+        }
+    )
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": True})
+    attributes = client._attributes(trace, span, operation_type)
+    for field in ("inputs", "outputs", *extra_fields):
+        value = attributes[f"{prefix}.{field}"]
+        assert otlp_value(value).WhichOneof("value") == "string_value"
+        assert json.loads(value) == (outputs if field in {"outputs", "output", "questions"} else inputs)
+
+
+@pytest.mark.parametrize("value", [None, "plain text"])
+def test_content_preserves_plain_strings_and_absent_values(value: str | None) -> None:
+    trace = make_completed_trace()
+    span = trace.spans[0].model_copy(update={"inputs": value, "outputs": value, "attributes": {"query": value}})
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": True})
+    attributes = client._attributes(trace, span, "workflow")
+    for field in ("inputs", "outputs", "query"):
+        if value is None:
+            assert f"dify.workflow.{field}" not in attributes
+        else:
+            assert attributes[f"dify.workflow.{field}"] == value
+
+
+@pytest.mark.parametrize("include_content", [True, False])
+def test_retrieval_documents_keep_the_metadata_projection(include_content: bool) -> None:
+    trace = make_completed_trace()
+    message_id = str(uuid4())
+    trace = trace.model_copy(update={"source": trace.source.model_copy(update={"message_id": message_id})})
+    documents = [
+        {
+            "page_content": "private document text",
+            "metadata": {
+                "dataset_id": "dataset",
+                "document_id": "document",
+                "segment_id": "segment",
+                "score": 0.75,
+                "dataset_name": "Knowledge",
+                "other": "private metadata",
+            },
+        },
+        {"page_content": "private document without metadata", "metadata": None},
+        "invalid document entry",
+    ]
+    span = trace.spans[0].model_copy(update={"outputs": {"documents": documents}})
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": include_content})
+    attributes = client._attributes(trace, span, "dataset_retrieval")
+    if include_content:
+        assert json.loads(attributes["dify.dataset.documents"]) == [
+            {"dataset_id": "dataset", "document_id": "document", "segment_id": "segment", "score": 0.75},
+            {"dataset_id": None, "document_id": None, "segment_id": None, "score": None},
+        ]
+        assert json.loads(attributes["output.value"]) == {"documents": documents}
+        assert json.loads(attributes["dify.retrieval.outputs"]) == {"documents": documents}
+    else:
+        assert attributes["dify.dataset.documents"] == f"ref:message_id={message_id}"
+        assert "private" not in str(attributes)
+
+
+@pytest.mark.parametrize("external_trace_id", [None, "external-request-trace"])
+@pytest.mark.parametrize("operation_type", ["generate_name", "rule_generate", "code_generate", "structured_output"])
+def test_generation_content_references_use_the_original_identity(
+    external_trace_id: str | None, operation_type: str
+) -> None:
+    trace = make_completed_trace()
+    conversation_id = str(uuid4())
+    trace = trace.model_copy(
+        update={
+            "source": trace.source.model_copy(
+                update={
+                    "conversation_id": conversation_id,
+                    "message_id": str(uuid4()),
+                    "external_trace_id": external_trace_id,
+                }
+            )
+        }
+    )
+    span = trace.spans[0].model_copy(update={"inputs": "private instruction", "outputs": "private output"})
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": False})
+    attributes = client._attributes(trace, span, operation_type)
+    if operation_type == "generate_name":
+        reference = f"ref:conversation_id={conversation_id}"
+        fields = ("dify.generate_name.inputs", "dify.generate_name.outputs")
+    else:
+        # The producer supplies no external trace ID by default, as in the previous TraceTask.
+        reference = f"ref:trace_id={external_trace_id}"
+        fields = ("dify.prompt_generation.instruction", "dify.prompt_generation.output")
+    for field in ("input.value", "output.value", *fields):
+        assert attributes[field] == reference
+    assert "private" not in str(attributes)
+
+
+@pytest.mark.parametrize("include_content", [True, False])
+@pytest.mark.parametrize("operation_type", ["node_execution", "draft_node_execution", "rule_generate"])
+@pytest.mark.parametrize("price", [None, "0", "0.0012"])
+@pytest.mark.parametrize("usage_field", ["total_price", "total_cost"])
+def test_serialized_usage_prices_remain_numeric_attributes(
+    include_content: bool, operation_type: str, price: str | None, usage_field: str
+) -> None:
+    usage = (
+        LLMUsage.empty_usage()
+        .model_copy(update={"total_price": Decimal(price or "0"), "currency": "USD"})
+        .model_dump(mode="json")
+    )
+    captured_price = usage.pop("total_price")
+    if price is not None:
+        usage[usage_field] = captured_price
+    trace = make_completed_trace()
+    span = trace.spans[-1].model_copy(update={"usage": usage})
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": include_content})
+    attributes = client._attributes(trace, span, operation_type)
+    prefix = "dify.prompt_generation" if operation_type == "rule_generate" else "dify.node"
+    if operation_type == "rule_generate" and price is None:
+        assert f"{prefix}.total_price" not in attributes
+        assert f"{prefix}.currency" not in attributes
+        return
+    value = attributes[f"{prefix}.total_price"]
+    assert value == float(price or "0")
+    assert otlp_value(value).WhichOneof("value") == "double_value"
+    assert attributes[f"{prefix}.currency"] == "USD"
 
 
 @pytest.mark.parametrize(

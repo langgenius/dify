@@ -106,6 +106,22 @@ class DatabricksConfig(BaseTracingConfig):
     def secret_fields(cls) -> tuple[str, ...]:
         return ("personal_access_token", "client_secret")
 
+    @classmethod
+    @override
+    def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
+        # The Databricks SDK uses Requests for both API calls and signed uploads.
+        try:
+            tls = read_tls_files(
+                {"certificate": os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("CURL_CA_BUNDLE")},
+                allow_ca_directory=True,
+            )
+        except ValueError:
+            if urlsplit(cls.model_validate(provider_config).host).scheme != "http":
+                raise
+            # HTTP verification ignores CA files; preserve the failure for HTTPS uploads.
+            return {"tls_read_failed": True}
+        return {"tls": tls}
+
     @field_validator("experiment_id")
     @classmethod
     def experiment_id_validator(cls, v, info: ValidationInfo):

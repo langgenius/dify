@@ -1,5 +1,6 @@
 """Enterprise signal contracts projected from captured executions without record lookups."""
 
+import json
 import logging
 import os
 import socket
@@ -209,6 +210,7 @@ class EnterpriseTraceClient:
                 if field in span.outputs:
                     captured[field] = span.outputs[field]
         usage = span_usage(span)
+        total_price = usage.get("total_price", usage.get("total_cost"))
         attributes: dict[str, Any] = span_attributes(trace, span)
         if not self.include_content:
             # Arbitrary captured attributes may include prompts. Project operational
@@ -296,7 +298,7 @@ class EnterpriseTraceClient:
                     f"{prefix}.error": span.error,
                     f"{prefix}.elapsed_time": duration,
                     f"{prefix}.invoked_by": captured.get("invoked_by") or trace.source.actor_id,
-                    f"{prefix}.total_price": usage.get("total_price", usage.get("total_cost")),
+                    f"{prefix}.total_price": float(total_price) if total_price is not None else 0.0,
                     f"{prefix}.currency": usage.get("currency"),
                 }
             )
@@ -322,11 +324,16 @@ class EnterpriseTraceClient:
                 "dataset_retrieval": "dify.retrieval",
                 "generate_name": "dify.generate_name",
             }.get(operation_type, "dify.prompt_generation")
-            reference = (
-                f"ref:message_id={trace.source.message_id}"
-                if trace.source.message_id
-                else f"ref:operation_id={trace.source.operation_id}"
-            )
+            if operation_type == "generate_name":
+                reference = f"ref:conversation_id={trace.source.conversation_id}"
+            elif prefix == "dify.prompt_generation":
+                reference = f"ref:trace_id={trace.source.external_trace_id}"
+            else:
+                reference = (
+                    f"ref:message_id={trace.source.message_id}"
+                    if trace.source.message_id
+                    else f"ref:operation_id={trace.source.operation_id}"
+                )
             attributes.update(
                 {f"{prefix}.status": status, f"{prefix}.error": span.error, f"{prefix}.duration": duration}
             )
@@ -360,11 +367,14 @@ class EnterpriseTraceClient:
             attributes["dify.suggested_question.count"] = len(questions) if isinstance(questions, list) else 0
         elif prefix == "dify.prompt_generation":
             attributes["dify.prompt_generation.operation_type"] = operation_type
-            attributes["dify.prompt_generation.total_price"] = usage.get("total_price", usage.get("total_cost"))
-            attributes["dify.prompt_generation.currency"] = usage.get("currency")
+            if total_price is not None:
+                attributes["dify.prompt_generation.total_price"] = float(total_price)
+                attributes["dify.prompt_generation.currency"] = usage.get("currency")
 
-        def content(value: Any) -> Any:
-            return value if self.include_content else reference
+        def content(value: Any) -> str | None:
+            if not self.include_content:
+                return reference
+            return value if value is None or isinstance(value, str) else json.dumps(value, default=str)
 
         attributes.update(
             {
@@ -391,6 +401,15 @@ class EnterpriseTraceClient:
             attributes["dify.suggested_question.questions"] = content(span.outputs)
         elif operation_type == "dataset_retrieval":
             documents = self._documents(span)
+            structured_documents = []
+            for document in documents:
+                if not isinstance(document, dict):
+                    continue
+                metadata = document.get("metadata")
+                metadata = metadata if isinstance(metadata, dict) else {}
+                structured_documents.append(
+                    {field: metadata.get(field) for field in ("dataset_id", "document_id", "segment_id", "score")}
+                )
             dataset_models = captured.get("dataset_models", captured.get("embedding_models", {}))
             dataset_models = dataset_models if isinstance(dataset_models, dict) else {}
             datasets = self._dataset_ids(documents)
@@ -409,7 +428,7 @@ class EnterpriseTraceClient:
                     "dify.retrieval.rerank_configuration": captured.get("rerank_configuration"),
                     "dify.retrieval.document_count": len(documents),
                     "dify.retrieval.query": content(span.inputs),
-                    "dify.dataset.documents": content(documents),
+                    "dify.dataset.documents": content(structured_documents),
                 }
             )
         elif prefix == "dify.prompt_generation":
