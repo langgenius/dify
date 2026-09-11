@@ -2122,7 +2122,7 @@ class EndUser(Base, UserMixin):
     app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type: Mapped[EndUserType] = mapped_column(EnumText(EndUserType, length=255), nullable=False)
     external_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    name: Mapped[str] = mapped_column(String(255))
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     _is_anonymous: Mapped[bool] = mapped_column("is_anonymous", sa.Boolean, nullable=False, server_default=sa.true())
 
     @property
