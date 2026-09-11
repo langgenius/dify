@@ -371,25 +371,31 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     # built nodes (not the Builder's session model). resource_ids were already
     # string-filtered when stored (handle_resource_recommendation).
     selected_resource_ids = list(fc.resource_selection.get("resource_ids") or [])
-    intents = env.agent.build_nodes(list(fc.plan_items), selected_resource_ids)
+    build_result = env.agent.build_nodes(list(fc.plan_items), selected_resource_ids)
+    intents = build_result.intents
 
     if not any(intent.op == "create_node" for intent in intents):
         # Generation produced no nodes (build.build_nodes' honest-empty path when the
         # generator + its one retry still fail to yield a valid graph). Do NOT delete
         # the placeholder start or report a successful build -- that would empty the
         # canvas while claiming "Workflow built on the canvas." Surface an honest error
-        # and stay in plan_approval so the user can adjust the goal/plan and re-approve.
-        # (A loop-back re-approve still returns the fixed create intents -- they are only
-        # filtered as already-present below -- so zero create intents means genuine failure.)
+        # WITH the specific reason (build_result.error, e.g. UNRESOLVED_REFERENCE /
+        # non-object JSON / credit_balance_exhausted) so the user can act on it, and stay
+        # in plan_approval so they can adjust the goal/plan and re-approve. (A loop-back
+        # re-approve still returns the fixed create intents -- only filtered as
+        # already-present below -- so zero create intents means genuine failure.)
+        body = (
+            f"I couldn't generate a valid workflow graph: {build_result.error} "
+            "Adjust the goal or the plan and approve again to retry."
+            if build_result.error
+            else (
+                "I couldn't generate a valid workflow graph from this plan. "
+                "Adjust the goal or the plan and approve again to retry."
+            )
+        )
         error_items = append_card(
             fc,
-            ErrorCard(
-                title="Couldn't build the workflow",
-                body=(
-                    "I couldn't generate a valid workflow graph from this plan. "
-                    "Adjust the goal or the plan and approve again to retry."
-                ),
-            ),
+            ErrorCard(title="Couldn't build the workflow", body=body),
         )
         progress.fail_step("build-generate-graph")
         execution = progress.finish(status="error")

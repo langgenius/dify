@@ -49,7 +49,7 @@ def test_build_nodes_grounds_model_and_dataset():
         ),
         patch.object(build.resources, "list_tenant_resources", return_value=fake_resources),
     ):
-        intents = build.build_nodes("t1", {}, ["Retrieve from Company KB", "Summarize"])
+        intents = build.build_nodes("t1", {}, ["Retrieve from Company KB", "Summarize"]).intents
 
     by_type = {}
     for intent in intents:
@@ -83,7 +83,7 @@ def test_build_nodes_grounds_to_selected_model_resource():
     ):
         intents = build.build_nodes(
             "t1", {}, ["Summarize"], resource_ids=["langgenius/openai/openai/chat-latest"]
-        )
+        ).intents
 
     llm_cfg = next(i.args["config"] for i in intents if i.op == "create_node" and i.args["node_type"] == "llm")
     assert llm_cfg["model"]["provider"] == "langgenius/openai/openai"  # selected model, not deepseek
@@ -106,7 +106,7 @@ def test_build_nodes_without_selected_model_grounds_to_session_model():
             ),
         ),
     ):
-        intents = build.build_nodes("t1", {}, ["Summarize"], resource_ids=["kb-1"])  # kb-1 is a dataset, not a model
+        intents = build.build_nodes("t1", {}, ["Summarize"], resource_ids=["kb-1"]).intents  # kb-1 dataset, not a model
 
     llm_cfg = next(i.args["config"] for i in intents if i.op == "create_node" and i.args["node_type"] == "llm")
     assert llm_cfg["model"]["provider"] == "deepseek"
@@ -178,7 +178,7 @@ def test_build_nodes_retries_with_corrective_instruction_on_terminal_error():
             return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
         ),
     ):
-        intents = build.build_nodes("t1", {}, ["Say hello and return result"])
+        intents = build.build_nodes("t1", {}, ["Say hello and return result"]).intents
 
     assert gen.call_count == 2  # retried after the terminal-node failure
     retry_instruction = gen.call_args_list[1].kwargs["instruction"]
@@ -195,7 +195,7 @@ def test_build_nodes_degrades_to_empty_on_generator_error():
             return_value={"graph": {"nodes": [], "edges": []}, "error": "boom", "errors": []},
         ),
     ):
-        assert build.build_nodes("t1", {}, ["x"]) == []
+        assert build.build_nodes("t1", {}, ["x"]).intents == []
 
 
 def test_build_nodes_grounds_model_on_question_classifier_node():
@@ -230,7 +230,7 @@ def test_build_nodes_grounds_model_on_question_classifier_node():
             return_value=gen_graph_qc,
         ),
     ):
-        intents = build.build_nodes("t1", {}, ["Classify the request"])
+        intents = build.build_nodes("t1", {}, ["Classify the request"]).intents
 
     by_type = {}
     for intent in intents:
@@ -280,7 +280,7 @@ def test_build_nodes_dataset_ids_are_independent_lists_per_node():
         ),
         patch.object(build.resources, "list_tenant_resources", return_value=fake_resources),
     ):
-        intents = build.build_nodes("t1", {}, ["Retrieve from Company KB"])
+        intents = build.build_nodes("t1", {}, ["Retrieve from Company KB"]).intents
 
     kb_configs = [
         intent.args["config"]
@@ -300,7 +300,7 @@ def test_build_nodes_logs_when_generator_reports_error(caplog):
              return_value={"graph": {}, "error": "generator boom", "errors": []},
          ), \
          caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.build"):
-        out = build.build_nodes("t1", {}, ["do a thing"])
+        out = build.build_nodes("t1", {}, ["do a thing"]).intents
 
     assert out == []
     warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
@@ -316,10 +316,65 @@ def test_build_nodes_logs_traceback_when_generation_raises(caplog):
              side_effect=RuntimeError("kaboom"),
          ), \
          caplog.at_level(logging.ERROR, logger="services.dify_builder.agent.build"):
-        out = build.build_nodes("t1", {}, ["do a thing"])
+        out = build.build_nodes("t1", {}, ["do a thing"]).intents
 
     assert out == []
     errors = [r for r in caplog.records if r.levelno == logging.ERROR]
     assert len(errors) == 1
     assert "generation failed" in errors[0].getMessage()
     assert errors[0].exc_info is not None
+
+
+def test_build_nodes_returns_specific_generator_error_reason():
+    """On generation failure, the result carries the generator's SPECIFIC reason
+    (e.g. UNRESOLVED_REFERENCE) so the handler can surface it in the error card
+    instead of a hardcoded generic 'couldn't build' message."""
+    reason = "UNRESOLVED_REFERENCE: Reference {#node4.response#} not declared"
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value={"graph": {"nodes": [], "edges": []}, "error": reason, "errors": []},
+        ),
+    ):
+        result = build.build_nodes("t1", {}, ["x"])
+
+    assert result.intents == []
+    assert result.error == reason  # verbatim reason, not a generic fallback
+
+
+def test_build_nodes_returns_exception_text_as_error_reason():
+    """A provider/runtime failure (e.g. credit_balance_exhausted) surfaces its
+    message as the result error, so the user learns WHY the build failed."""
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            side_effect=RuntimeError("credit_balance_exhausted"),
+        ),
+    ):
+        result = build.build_nodes("t1", {}, ["x"])
+
+    assert result.intents == []
+    assert "credit_balance_exhausted" in result.error
+
+
+def test_build_nodes_error_reason_joins_errors_list_when_no_top_level_error():
+    """When the generator reports failure via the structured ``errors`` list (no
+    top-level ``error`` string), the result error joins those details rather than
+    falling back to the generic message."""
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value={
+                "graph": {"nodes": [], "edges": []},
+                "error": "",
+                "errors": [{"code": "NON_OBJECT_JSON", "detail": "top-level value was a list, not an object"}],
+            },
+        ),
+    ):
+        result = build.build_nodes("t1", {}, ["x"])
+
+    assert result.intents == []
+    assert "top-level value was a list" in result.error

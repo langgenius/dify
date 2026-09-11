@@ -217,6 +217,17 @@ class ApplyResult:
 
 
 @dataclass(kw_only=True)
+class BuildNodesResult:
+    """Outcome of ``build_nodes``: the create/connect ``intents`` to apply, plus a
+    human-readable ``error`` explaining WHY generation failed when ``intents`` is
+    empty -- the generator's specific reason (e.g. UNRESOLVED_REFERENCE, non-object
+    JSON) or a provider error (e.g. credit_balance_exhausted). Empty on success."""
+
+    intents: list[MutationIntent] = field(default_factory=list)
+    error: str = ""
+
+
+@dataclass(kw_only=True)
 class DifyBuilderContext:
     """Per-session working state persisted as the commit context.
 
