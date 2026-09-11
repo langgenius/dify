@@ -414,6 +414,7 @@ class DatasetDocumentListApi(Resource):
         param = DocumentDatasetListParam.model_validate(raw_args)
         page = param.page
         limit = param.limit
+        effective_limit = min(limit, 100)
         search = param.search
         sort = param.sort_by
         status = param.status
@@ -484,7 +485,9 @@ class DatasetDocumentListApi(Resource):
                     desc(Document.position),
                 )
 
-        paginated_documents = paginate_query(query, session=session, page=page, per_page=limit, max_per_page=100)
+        paginated_documents = paginate_query(
+            query, session=session, page=page, per_page=effective_limit, max_per_page=100
+        )
         documents = paginated_documents.items
 
         DocumentService.enrich_documents_with_summary_index_status(
@@ -519,8 +522,8 @@ class DatasetDocumentListApi(Resource):
                 document.total_segments = total_segments
         response = {
             "data": document_with_segments_responses(documents, session=session),
-            "has_more": len(documents) == limit,
-            "limit": limit,
+            "has_more": page * effective_limit < paginated_documents.total,
+            "limit": effective_limit,
             "total": paginated_documents.total,
             "page": page,
         }

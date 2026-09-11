@@ -223,6 +223,47 @@ class TestExternalApiTemplateListApi(_UsesSQLiteSession):
         }
         get_external_knowledge_apis.assert_called_once_with(2, 1, "tenant-1", "vector", session=ANY)
 
+    def test_get_has_more_false_on_last_page_exact_limit(self, app: Flask):
+        api = ExternalApiTemplateListApi()
+        method = inspect.unwrap(api.get)
+
+        api_items = [_external_api_object(str(i)) for i in range(20)]
+        with (
+            app.test_request_context("/?page=1&limit=20"),
+            patch.object(
+                ExternalDatasetService,
+                "get_external_knowledge_apis",
+                return_value=(api_items, 20),
+            ) as get_external_knowledge_apis,
+        ):
+            resp, status = method(api, ExternalApiTemplateListQuery(page=1, limit=20), self.session, "tenant-1")
+
+        assert status == 200
+        assert resp["has_more"] is False
+        assert resp["limit"] == 20
+        get_external_knowledge_apis.assert_called_once_with(1, 20, "tenant-1", None, session=ANY)
+
+    def test_get_has_more_true_when_limit_exceeds_cap(self, app: Flask):
+        api = ExternalApiTemplateListApi()
+        method = inspect.unwrap(api.get)
+
+        api_items = [_external_api_object(str(i)) for i in range(100)]
+        with (
+            app.test_request_context("/?page=1&limit=200"),
+            patch.object(
+                ExternalDatasetService,
+                "get_external_knowledge_apis",
+                return_value=(api_items, 150),
+            ) as get_external_knowledge_apis,
+        ):
+            resp, status = method(api, ExternalApiTemplateListQuery(page=1, limit=200), self.session, "tenant-1")
+
+        assert status == 200
+        assert resp["has_more"] is True
+        assert resp["limit"] == 100
+        assert len(resp["data"]) == 100
+        get_external_knowledge_apis.assert_called_once_with(1, 100, "tenant-1", None, session=ANY)
+
     def test_post_success_uses_validated_payload_and_returns_template(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateListApi()
         method = inspect.unwrap(api.post)
