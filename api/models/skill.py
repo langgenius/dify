@@ -66,19 +66,17 @@ class Skill(DefaultFieldsMixin, Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     display_name: Mapped[str] = mapped_column(sa.String(128), nullable=False)
-    icon: Mapped[str] = mapped_column(sa.String(16), nullable=False, default="📄", server_default="📄")
-    description: Mapped[str] = mapped_column(sa.String(1024), nullable=False, default="", server_default="")
+    icon: Mapped[str] = mapped_column(sa.String(16), nullable=False, default="📄")
+    description: Mapped[str] = mapped_column(sa.String(1024), nullable=False, default="")
     name_manually_edited: Mapped[bool] = mapped_column(
         sa.Boolean,
         nullable=False,
         default=False,
-        server_default=sa.false(),
     )
     visibility: Mapped[str] = mapped_column(
         sa.String(32),
         nullable=False,
         default="workspace",
-        server_default="workspace",
     )
     latest_published_version_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -123,8 +121,8 @@ class SkillVersion(DefaultFieldsMixin, Base):
 
     skill_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     version_number: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    version_name: Mapped[str] = mapped_column(sa.String(128), nullable=False, default="", server_default="")
-    publish_note: Mapped[str] = mapped_column(sa.String(1024), nullable=False, default="", server_default="")
+    version_name: Mapped[str] = mapped_column(sa.String(128), nullable=False, default="")
+    publish_note: Mapped[str] = mapped_column(sa.String(1024), nullable=False, default="")
     manifest: Mapped[SkillVersionManifest] = mapped_column(JSONModelColumn(SkillVersionManifest), nullable=False)
     archive_tool_file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     hash_code: Mapped[str] = mapped_column(sa.String(255), nullable=False)
