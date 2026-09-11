@@ -121,6 +121,7 @@ def test_runtime_tls_settings_preserve_sdk_precedence(
     provider: str, endpoint: str, environment: dict[str, str | None], expected: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
+    monkeypatch.delenv("OTEL_TRACES_SAMPLER", raising=False)
     for name in ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
         monkeypatch.delenv(name, raising=False)
     for prefix in ("OTEL_EXPORTER_OTLP", "OTEL_EXPORTER_OTLP_TRACES"):
@@ -137,7 +138,12 @@ def test_runtime_tls_settings_preserve_sdk_precedence(
         lambda filenames, **kwargs: {key: value for key, value in filenames.items() if value},
     )
     config_class = ArizeConfig if provider == "arize" else PhoenixConfig
-    assert config_class.load_runtime_settings({"endpoint": endpoint}) == {**expected, "disabled": False}
+    assert config_class.load_runtime_settings({"endpoint": endpoint}) == {
+        **expected,
+        "disabled": False,
+        "sampling": {"name": "parentbased_always_on", "ratio": 1.0},
+        "span_limits": {},
+    }
 
 
 @pytest.mark.parametrize(
@@ -202,11 +208,14 @@ def test_phoenix_http_uses_captured_tls_without_reloading_files(monkeypatch: pyt
 
 def test_phoenix_plain_http_does_not_read_an_unused_ca_file(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
+    monkeypatch.delenv("OTEL_TRACES_SAMPLER", raising=False)
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE", "/missing/unused-ca.pem")
     assert PhoenixConfig.load_runtime_settings({"endpoint": "http://collector.example:6006"}) == {
         "tls": {},
         "verify": True,
         "disabled": False,
+        "sampling": {"name": "parentbased_always_on", "ratio": 1.0},
+        "span_limits": {},
     }
 
 

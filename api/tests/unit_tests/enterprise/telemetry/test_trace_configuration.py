@@ -42,7 +42,7 @@ def test_otlp_disabled_setting_is_captured_before_delivery(value: str | None, mo
     disabled = (value or "").lower().strip() == "true"
     captured = enterprise_trace.load_enterprise_config()
     assert captured is not None
-    captured = json.loads(json.dumps(captured))
+    assert json.loads(json.dumps(captured)) == captured
     assert captured["otlp_disabled"] is disabled
     tenant_id = str(uuid4())
     fingerprint = _settings_hash(tenant_id, captured)
