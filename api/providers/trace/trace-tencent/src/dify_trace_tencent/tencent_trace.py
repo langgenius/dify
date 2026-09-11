@@ -142,10 +142,17 @@ class TencentTraceClient(OtlpTraceClient):
                             "gen_ai.trace.duration", seconds, span, trace_labels, explicit_bounds=HISTOGRAM_BOUNDS
                         )
                     )
-            # Message roots already carry the call aggregate. Retry/agent detail spans
-            # must not count the same logical call again in the existing metric series.
-            if span.attributes.get("metrics_from_parent") or (span.span_type != "llm" and not is_message):
+            is_model = span.span_type == "llm" or (
+                span.span_type == "node"
+                and span.attributes.get("node_type") in ("llm", "question-classifier", "parameter-extractor")
+            )
+            # Message roots and logical retry nodes carry the call aggregate. Detail
+            # spans must not count the same logical call again in the existing series.
+            if span.attributes.get("metrics_from_parent") or (not is_model and not is_message):
                 continue
+            aggregate_usage = span.attributes.get("aggregate_usage")
+            if not span.usage and isinstance(aggregate_usage, dict):
+                span = span.model_copy(update={"usage": aggregate_usage})
             labels = self._model_labels(span)
             if (latency := usage_seconds(span, "latency", "provider_response_latency")) is not None and latency > 0:
                 metrics.append(

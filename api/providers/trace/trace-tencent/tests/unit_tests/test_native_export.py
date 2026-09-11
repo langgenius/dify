@@ -13,7 +13,18 @@ from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from core.ops.basic_chat_trace import record_basic_chat_result
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource
+from core.ops.workflow_trace import WorkflowTraceRecorder
+from graphon.engine_events import (
+    GraphRunSucceededEvent,
+    NodeRunFailedEvent,
+    NodeRunRetryEvent,
+    NodeRunStartedEvent,
+    NodeRunSucceededEvent,
+)
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import NodeRunResult
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace, provider_config
+from tests.unit_tests.core.ops.test_workflow_trace_limits import workflow_node
 
 
 def test_histogram_distributions_match_the_previous_sdk_instruments() -> None:
@@ -152,6 +163,109 @@ def test_basic_chat_streaming_metrics_count_the_captured_message_once() -> None:
         "gen_ai.streaming.time_to_generate": 1.5,
     }
     assert len([metric for metric in metrics if metric.name == "gen_ai.client.token.usage"]) == 2
+
+
+@pytest.mark.parametrize("node_type", ["llm", "question-classifier", "parameter-extractor"])
+@pytest.mark.parametrize("retry", [False, True])
+def test_workflow_recorder_metrics_count_the_final_model_result_once(node_type: str, retry: bool) -> None:
+    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
+    submitted: list[CompletedTrace] = []
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    node = workflow_node(source, node_type=node_type)
+    started = datetime(2026, 9, 11, tzinfo=UTC)
+    usage = LLMUsage.empty_usage().model_copy(
+        update={
+            "prompt_tokens": 3,
+            "completion_tokens": 5,
+            "total_tokens": 8,
+            "latency": 1.25,
+            "time_to_first_token": 0.25,
+            "time_to_generate": 1.0,
+        }
+    )
+    with recorder.node_run_context(node):
+        recorder.on_event(
+            NodeRunStartedEvent(
+                id=node.execution_id, node_id=node.id, node_type=node_type, node_title=node.title, start_at=started
+            )
+        )
+        if retry:
+            failed_result = NodeRunResult(
+                llm_usage=usage.model_copy(update={"prompt_tokens": 100, "completion_tokens": 200, "latency": 0.75})
+            )
+            recorder.on_node_run_end(
+                node,
+                None,
+                NodeRunFailedEvent(
+                    id=node.execution_id,
+                    node_id=node.id,
+                    node_type=node_type,
+                    start_at=started,
+                    finished_at=started + timedelta(seconds=1),
+                    error="temporary failure",
+                    node_run_result=failed_result,
+                ),
+            )
+            recorder.on_event(
+                NodeRunRetryEvent(
+                    id=node.execution_id,
+                    node_id=node.id,
+                    node_type=node_type,
+                    node_title=node.title,
+                    start_at=started,
+                    retry_index=1,
+                    error="temporary failure",
+                    node_run_result=failed_result,
+                )
+            )
+        recorder.on_event(
+            NodeRunSucceededEvent(
+                id=node.execution_id,
+                node_id=node.id,
+                node_type=node_type,
+                start_at=started + timedelta(seconds=2) if retry else started,
+                finished_at=started + timedelta(seconds=5),
+                node_run_result=NodeRunResult(
+                    llm_usage=usage,
+                    process_data={"model_name": "model", "model_provider": "provider", "model_mode": "completion"},
+                ),
+            )
+        )
+    recorder.on_event(GraphRunSucceededEvent())
+    assert recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted[0].model_dump_json())
+    root, model, *attempts = trace.spans
+    assert root.status == model.status == "ok"
+    assert model.span_type == ("node" if retry else "llm")
+    assert model.started_at == started
+    assert model.ended_at == started + timedelta(seconds=5)
+    if retry:
+        assert not model.usage
+        assert model.attributes["aggregate_usage"] == usage.model_dump(mode="json")
+        assert [attempt.status for attempt in attempts] == ["error", "ok"]
+        assert all(attempt.attributes["metrics_from_parent"] for attempt in attempts)
+
+    metrics = create_trace_client(provider_config("tencent")).build_metrics(trace)
+    assert len(metrics) == 6
+    assert [(metric.name, metric.histogram.data_points[0].sum) for metric in metrics[1:]] == [
+        ("gen_ai.client.operation.duration", 1.25),
+        ("gen_ai.client.token.usage", 3),
+        ("gen_ai.client.token.usage", 5),
+        ("gen_ai.server.time_to_first_token", 0.25),
+        ("gen_ai.streaming.time_to_generate", 1),
+    ]
+    assert {item.key: item.value.string_value for item in metrics[1].histogram.data_points[0].attributes} == {
+        "gen_ai.operation.name": "completion",
+        "gen_ai.system": "provider",
+        "gen_ai.response.model": "model",
+        "stream": "true",
+    }
 
 
 @pytest.mark.parametrize("latency", [None, "unknown", -1, True])
