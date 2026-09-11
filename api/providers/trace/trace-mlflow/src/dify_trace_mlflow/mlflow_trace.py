@@ -103,7 +103,26 @@ def _normalize_databricks_host(host: str) -> str:
 
 def _normalize_messages(value: JsonValue) -> JsonValue:
     if isinstance(value, list):
-        return [_normalize_messages(item) for item in value]
+        messages = [_normalize_messages(item) for item in value]
+        tool_call_ids: list[str] = []
+        for message in messages:
+            if not isinstance(message, dict):
+                continue
+            if message.get("role") == "assistant" and isinstance(tool_calls := message.get("tool_calls"), list):
+                tool_call_ids = [
+                    call_id
+                    for call in tool_calls
+                    if isinstance(call, dict) and isinstance(call_id := call.get("id"), str) and call_id
+                ]
+            elif message.get("role") == "tool":
+                if isinstance(call_id := message.get("tool_call_id"), str) and call_id:
+                    if call_id in tool_call_ids:
+                        tool_call_ids.remove(call_id)
+                elif tool_call_ids:
+                    message["tool_call_id"] = tool_call_ids.pop(0)
+            elif message.get("role") in {"user", "system"}:
+                tool_call_ids = []
+        return messages
     if not isinstance(value, dict):
         return value
     message = dict(value)
@@ -147,6 +166,51 @@ def _format_llm_io(span: TraceSpan) -> tuple[JsonValue, JsonValue]:
         elif "role" in outputs:
             outputs = {"choices": [{"index": 0, "message": outputs}]}
     return inputs, outputs
+
+
+def _native_span_type(span: TraceSpan) -> str:
+    operation_type = span.attributes.get("operation_type")
+    if operation_type == "message":
+        return "LLM"
+    if operation_type == "suggested_question":
+        return "TOOL"
+    if operation_type == "generate_name":
+        return "CHAIN"
+    if span.node_execution_id and isinstance(node_type := span.attributes.get("node_type"), str):
+        return {
+            "llm": "LLM",
+            "question-classifier": "LLM",
+            "knowledge-retrieval": "RETRIEVER",
+            "tool": "TOOL",
+            "code": "TOOL",
+            "http-request": "TOOL",
+            "agent": "AGENT",
+        }.get(node_type, "CHAIN")
+    return {"llm": "LLM", "tool": "TOOL", "retrieval": "RETRIEVER", "agent": "AGENT"}.get(span.span_type, "CHAIN")
+
+
+def _native_usage(completed_trace: CompletedTrace, span: TraceSpan) -> dict[str, JsonValue]:
+    if _native_span_type(span) != "LLM":
+        return {}
+    root = completed_trace.spans[0]
+    if root.attributes.get("operation_type") != "message":
+        return span.usage
+    if span.span_id == root.span_id:
+        # Chatflow model calls are exported with the separately recorded workflow.
+        return {} if completed_trace.source.workflow_run_id else span.usage
+    if not span.attributes.get("metrics_from_parent") or completed_trace.source.workflow_run_id:
+        return span.usage
+    usage = dict(span.usage)
+    # Saved message totals own the synthetic or legacy agent round usage. Keep
+    # detailed costs only when the parent has no captured cost to aggregate.
+    if any(isinstance(root.usage.get(key), int) for key in ("prompt_tokens", "completion_tokens", "total_tokens")):
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+            usage.pop(key, None)
+    cost_fields = ("prompt_price", "completion_price", "total_price", "input_cost", "output_cost", "total_cost")
+    if any(root.usage.get(key) is not None for key in cost_fields):
+        for key in cost_fields:
+            usage.pop(key, None)
+    return usage
 
 
 class MLflowTraceClient:
@@ -229,7 +293,8 @@ class MLflowTraceClient:
 
     def _attributes(self, completed_trace: CompletedTrace, span: TraceSpan, trace_id: str) -> dict[str, str]:
         attributes = span_attributes(completed_trace, span)
-        inputs, outputs = _format_llm_io(span) if span.span_type == "llm" else (span.inputs, span.outputs)
+        native_span_type = _native_span_type(span)
+        inputs, outputs = _format_llm_io(span) if native_span_type == "LLM" else (span.inputs, span.outputs)
         if span.span_type == "retrieval" and isinstance(outputs, dict):
             documents = outputs.get("result", outputs.get("documents"))
             if isinstance(documents, list):
@@ -245,28 +310,33 @@ class MLflowTraceClient:
         attributes.update(
             {
                 "mlflow.traceRequestId": trace_id,
-                "mlflow.spanType": {"llm": "LLM", "tool": "TOOL", "retrieval": "RETRIEVER", "agent": "AGENT"}.get(
-                    span.span_type, "CHAIN"
-                ),
+                "mlflow.spanType": native_span_type,
                 "mlflow.spanInputs": inputs,
                 "mlflow.spanOutputs": outputs,
                 "user.id": completed_trace.source.actor_id,
                 "session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
             }
         )
-        if span.span_type == "llm":
+        if native_span_type == "LLM":
+            usage = _native_usage(completed_trace, span)
             attributes.update(
                 {
                     "mlflow.llm.model": span.attributes.get("model_name"),
                     "mlflow.llm.provider": span.attributes.get("model_provider"),
                     "mlflow.message.format": "openai",
-                    "mlflow.chat.tokenUsage": {
-                        "input_tokens": span.usage.get("prompt_tokens"),
-                        "output_tokens": span.usage.get("completion_tokens"),
-                        "total_tokens": span.usage.get("total_tokens"),
-                    },
                 }
             )
+            token_usage = {
+                target: usage[source]
+                for source, target in (
+                    ("prompt_tokens", "input_tokens"),
+                    ("completion_tokens", "output_tokens"),
+                    ("total_tokens", "total_tokens"),
+                )
+                if usage.get(source) is not None
+            }
+            if token_usage:
+                attributes["mlflow.chat.tokenUsage"] = token_usage
             costs: dict[str, JsonValue] = {
                 target: float(str(cost))
                 for source, target in (
@@ -274,7 +344,7 @@ class MLflowTraceClient:
                     ("completion_price", "output_cost"),
                     ("total_price", "total_cost"),
                 )
-                if (cost := span.usage.get(source, span.usage.get(target))) is not None
+                if (cost := usage.get(source, usage.get(target))) is not None
             }
             if costs:
                 attributes["mlflow.llm.cost"] = costs
@@ -437,7 +507,7 @@ class MLflowTraceClient:
             target: sum(
                 count
                 for span in completed_trace.spans
-                if span.span_type == "llm" and isinstance(count := span.usage.get(source), int)
+                if isinstance(count := _native_usage(completed_trace, span).get(source), int)
             )
             for source, target in (
                 ("prompt_tokens", "input_tokens"),

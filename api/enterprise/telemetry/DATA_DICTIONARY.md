@@ -175,7 +175,7 @@ sum by (app_id) (rate(dify_tokens_total{operation_type!="node_execution"}[1h]))
 
 | Metric | Unit | Description |
 |--------|------|-------------|
-| `dify.errors.total` | `{error}` | Total failed operations |
+| `dify.errors.total` | `{error}` | Total failed operations, including stopped workflows with an error reason |
 
 **Labels by type:**
 

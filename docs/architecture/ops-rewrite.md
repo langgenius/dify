@@ -104,8 +104,8 @@ GraphOn publishes public events before notifying layers. Dify therefore deep-cop
 | Success / exception / failure | Store the normalized outcome, timing, copied values and usage; handled failure remains distinct from fatal failure |
 | Container result | Keep aggregate usage in attributes; leaf usage remains attributable to actual model calls |
 | Graph pause | Record an observed pause event; preserve open nodes and attempt state |
-| Graph terminal result | Record authoritative root outcome; finish only when engine closure completes |
-| Engine closure | Seal once, finalize unfinished nodes as incomplete/cancelled, release recording budget, then submit outside the lock |
+| Graph terminal result | Record authoritative root outcome; failure or abort also fails running nodes at the captured terminal time, matching persistence |
+| Engine closure | Seal once, mark remaining unfinished spans incomplete/cancelled, release recording budget, then submit outside the lock |
 | Host stop/failure | Supply the terminal outcome even when the failure bypasses GraphOn's event hooks |
 
 GraphOn retries reuse execution UUIDs and suppress repeated starts. `retry_index` names the upcoming attempt; a retry event describes the failed attempt. The node completion hook supplies its exact finish timestamp before the dispatcher turns the failure into a retry, excluding retry backoff from attempt duration. Logical retry nodes retain the original start time; model usage lives on attempts to avoid counting it twice. Source `LLMUsage` supplies timing and usage, including TTFT where available. Stream chunks are not retained as spans and dispatcher arrival time is not presented as model-measured timing. GraphOn's naive timestamps are interpreted as UTC.

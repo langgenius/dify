@@ -171,6 +171,12 @@ class LangfuseTraceClient:
                 trace_version = str(parent_span["version"])
             if isinstance(parent_tags := parent_span.get("tags"), list):
                 trace_tags = [tag for tag in parent_tags if isinstance(tag, str)]
+        if (
+            completed_trace.source.message_id
+            and completed_trace.source.workflow_run_id
+            and "workflow" not in trace_tags
+        ):
+            trace_tags.append("workflow")
         span_ids = {span.span_id: span_id_bytes(export_span_id(completed_trace, span.span_id)).hex() for span in spans}
         collector = InMemorySpanExporter()
         provider = TracerProvider(
@@ -208,13 +214,19 @@ class LangfuseTraceClient:
                 metadata={"dify.tenant_id": completed_trace.source.tenant_id},
             ):
                 for span in spans:
+                    inputs = _normalize_messages(span.inputs) if span.span_type == "llm" else span.inputs
+                    if span.node_execution_id and span.attributes.get("node_type") in (
+                        "question-classifier",
+                        "parameter-extractor",
+                    ):
+                        inputs = span.attributes.get("original_inputs", span.inputs)
                     observation_failed = (
                         span.status == "error"
                         or (span.status == "handled_error" and span.span_type != "workflow")
                         or (span.status == "cancelled" and bool(span.error))
                     )
                     attributes = create_span_attributes(
-                        input=_normalize_messages(span.inputs) if span.span_type == "llm" else span.inputs,
+                        input=inputs,
                         output=span.outputs,
                         metadata={**root.attributes, **span_attributes(completed_trace, span)},
                         level="ERROR" if observation_failed else "DEFAULT",
@@ -236,7 +248,16 @@ class LangfuseTraceClient:
                             if value is not None
                         }
                     )
-                    if span.span_type == "llm":
+                    is_generation = span.span_type == "llm" and span.attributes.get("operation_type") != "generate_name"
+                    if span.node_execution_id and isinstance(span.attributes.get("node_type"), str):
+                        process_data = span.attributes.get("process_data")
+                        is_generation = (
+                            span.attributes.get(
+                                "model_mode", process_data.get("model_mode") if isinstance(process_data, dict) else None
+                            )
+                            == "chat"
+                        )
+                    if is_generation:
                         cost = span.usage.get("total_price", span.usage.get("total_cost"))
                         model = span.attributes.get("model_name")
                         completion_start_time = None

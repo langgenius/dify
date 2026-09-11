@@ -1,18 +1,26 @@
 """OpenInference's native message and model fields are provider-owned."""
 
 import json
+from datetime import UTC, datetime
 from unittest.mock import Mock
 from urllib.parse import parse_qs, urlsplit
+from uuid import uuid4
 
 import pytest
 from dify_trace_arize_phoenix.arize_phoenix_trace import create_trace_client
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from pydantic import JsonValue
 
+from core.ops.message_trace import MessageTraceRecorder
 from core.ops.provider_config import decrypt_provider_config, mask_provider_config
-from core.ops.trace_data import copy_trace_value
+from core.ops.trace_data import CompletedTrace, copy_trace_value
+from core.ops.workflow_trace import WorkflowTraceRecorder
 from core.rag.models.document import Document
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
+from graphon.node_events import NodeRunResult
 from graphon.variables.segments import ArrayObjectSegment
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace
+from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
 
 # Pytest importlib mode resolves these hyphenated provider packages.
 from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
@@ -131,3 +139,129 @@ def test_messages_tool_calls_parameters_metadata_and_text_mime_types(provider: s
     assert metadata["dify.tenant_id"] == trace.source.tenant_id
     assert metadata["dify.workflow.version"] == "v2"
     assert attributes["llm.cost.total"].double_value == 0.02
+
+
+@pytest.mark.parametrize("provider", ["arize", "phoenix"])
+def test_captured_auxiliary_operation_categories(provider: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = make_completed_trace().source.model_copy(update={"message_id": str(uuid4())})
+    submitted = Mock(return_value=True)
+    recorder = MessageTraceRecorder(source, Mock(), ())
+    monkeypatch.setattr(recorder, "submit_completed_trace", submitted)
+    now = datetime.now(UTC)
+    for operation in ("moderation", "suggested_question", "generate_name"):
+        recorder.record_operation(
+            operation,
+            span_type="tool" if operation == "moderation" else "llm",
+            inputs="Prompt",
+            outputs="Answer",
+            attributes={"operation_type": operation},
+            timer={"start": now, "end": now},
+            usage={"total_tokens": 8},
+        )
+    recorder.finish_message_trace(
+        {
+            "message_id": source.message_id,
+            "conversation_id": str(uuid4()),
+            "started_at": now,
+            "ended_at": now,
+        }
+    )
+    trace = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    client = create_trace_client(provider, make_provider_config(provider))
+    send = Mock(return_value=b"")
+    monkeypatch.setattr(client, "_send", send)
+    client.export_trace(trace)
+    spans = ExportTraceServiceRequest.FromString(send.call_args.args[1]).resource_spans[0].scope_spans[0].spans
+    assert len(spans) == 4
+    for span in spans[1:]:
+        attrs = {item.key: item.value for item in span.attributes}
+        assert attrs["openinference.span.kind"].string_value == ("CHAIN" if span.name == "generate_name" else "TOOL")
+        assert attrs["llm.token_count.total"].int_value == 8
+
+
+@pytest.mark.parametrize("provider", ["arize", "phoenix"])
+@pytest.mark.parametrize(
+    ("session_id", "conversation_id"), [(None, None), (None, "conversation"), ("session", "conversation")]
+)
+def test_captured_workflow_session_fallback(
+    provider: str,
+    session_id: str | None,
+    conversation_id: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    run_id = str(uuid4())
+    conversation_id = str(uuid4()) if conversation_id else None
+    source = make_completed_trace().source.model_copy(
+        update={
+            "operation_id": run_id,
+            "workflow_run_id": run_id,
+            "message_id": None,
+            "session_id": session_id,
+            "conversation_id": conversation_id,
+        }
+    )
+    submitted = Mock(return_value=True)
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=submitted,
+    )
+    start_node(recorder, workflow_node(source))
+    recorder.on_event(GraphRunSucceededEvent())
+    recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    client = create_trace_client(provider, make_provider_config(provider))
+    send = Mock(return_value=b"")
+    monkeypatch.setattr(client, "_send", send)
+    client.export_trace(trace)
+    spans = ExportTraceServiceRequest.FromString(send.call_args.args[1]).resource_spans[0].scope_spans[0].spans
+    assert len(spans) == 2
+    for span in spans:
+        attrs = {item.key: item.value for item in span.attributes}
+        assert attrs["session.id"].string_value == (session_id or conversation_id or run_id)
+
+
+@pytest.mark.parametrize("provider", ["arize", "phoenix"])
+@pytest.mark.parametrize("node_type", ["llm", "question-classifier", "parameter-extractor"])
+@pytest.mark.parametrize("model_mode", ["chat", "completion", None])
+def test_captured_workflow_model_categories(
+    provider: str, node_type: str, model_mode: str | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_inputs = {"query": "Original query"}
+    prompts = [{"role": "user", "content": "Rendered prompt"}]
+    source = make_completed_trace().source
+    submitted = Mock(return_value=True)
+    recorder = WorkflowTraceRecorder(
+        source=source, workflow_id="workflow", workflow_version="1", inputs={}, submit_completed_trace=submitted
+    )
+    node = workflow_node(source, node_type=node_type)
+    start_node(recorder, node)
+    recorder.on_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type=node_type,
+            start_at=datetime.now(UTC),
+            finished_at=datetime.now(UTC),
+            node_run_result=NodeRunResult(
+                inputs=original_inputs,
+                outputs={"text": "Done"},
+                process_data={"prompts": prompts, **({"model_mode": model_mode} if model_mode else {})},
+            ),
+        )
+    )
+    recorder.on_event(GraphRunSucceededEvent())
+    recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    assert trace.spans[-1].inputs == prompts
+    client = create_trace_client(provider, make_provider_config(provider))
+    send = Mock(return_value=b"")
+    monkeypatch.setattr(client, "_send", send)
+    client.export_trace(trace)
+    spans = ExportTraceServiceRequest.FromString(send.call_args.args[1]).resource_spans[0].scope_spans[0].spans
+    assert len(spans) == 2
+    attrs = {item.key: item.value.string_value for item in spans[-1].attributes}
+    assert attrs["openinference.span.kind"] == ("LLM" if node_type == "llm" else "CHAIN")
+    assert json.loads(attrs["input.value"]) == (prompts if node_type == "llm" else original_inputs)
