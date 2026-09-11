@@ -2,15 +2,18 @@ from datetime import datetime
 from typing import Any, Self
 from uuid import UUID
 
+from flask import Response, after_this_request, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, ValidationError, model_validator
 from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, NotFound, ServiceUnavailable
 
+from configs import dify_config
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import cloud_edition_billing_paid_plan_required, model_validate
+from core.network_access.client_ip import NetworkAccessClientIPUnavailableError, resolve_network_access_client_ip
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -21,6 +24,7 @@ from services.network_access_group_service import (
     NetworkAccessGroupAppNotFoundError,
     NetworkAccessGroupEntitlementUnavailableError,
     NetworkAccessGroupError,
+    NetworkAccessGroupInvalidPolicyError,
     NetworkAccessGroupUnsupportedAccessPointsError,
     NetworkAccessGroupUnsupportedAppModeError,
     NetworkAccessGroupUpstreamError,
@@ -70,6 +74,8 @@ class NetworkAccessGroupAppResponse(ResponseModel):
     icon: str | None = None
     icon_type: str | None = None
     icon_background: str | None = None
+    mode: str
+    bound_agent_id: str | None = None
 
 
 class NetworkAccessGroupResponse(ResponseModel):
@@ -84,6 +90,7 @@ class NetworkAccessGroupResponse(ResponseModel):
     )
     version: int = Field(ge=1)
     used_by_count: int = Field(ge=0, validation_alias=AliasChoices("used_by_count", "usedByCount"))
+    enforcing_count: int = Field(ge=0, validation_alias=AliasChoices("enforcing_count", "enforcingCount"))
     app_ids: list[str] = Field(
         validation_alias=AliasChoices("app_ids", "appIds", "used_by_app_ids", "usedByAppIds"),
     )
@@ -94,6 +101,12 @@ class NetworkAccessGroupResponse(ResponseModel):
     )
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+    @model_validator(mode="after")
+    def validate_enforcing_count(self) -> Self:
+        if self.enforcing_count > self.used_by_count:
+            raise ValueError("enforcing_count must not exceed used_by_count")
+        return self
 
 
 class NetworkAccessGroupListResponse(ResponseModel):
@@ -108,6 +121,12 @@ class NetworkAccessGroupMutationResponse(ResponseModel):
 
 class NetworkAccessGroupDeleteResponse(ResponseModel):
     deleted: bool
+
+
+class NetworkAccessGroupCurrentIPCheckResponse(ResponseModel):
+    client_ip: str
+    allowed: bool
+    policy_version: int = Field(ge=1)
 
 
 class AppNetworkAccessGroupBindingResponse(ResponseModel):
@@ -146,12 +165,14 @@ class AppNetworkAccessGroupResponse(ResponseModel):
     tenant_id: str = Field(validation_alias=AliasChoices("tenant_id", "tenantId"))
     app_id: str = Field(validation_alias=AliasChoices("app_id", "appId"))
     entitled: bool
+    effective_enabled: bool = Field(validation_alias=AliasChoices("effective_enabled", "effectiveEnabled"))
     available_access_points: list[NetworkAccessPoint]
     binding: AppNetworkAccessGroupBindingResponse | None
 
 
 class AppNetworkAccessGroupMutationResponse(ResponseModel):
     binding: AppNetworkAccessGroupBindingResponse
+    effective_enabled: bool = Field(validation_alias=AliasChoices("effective_enabled", "effectiveEnabled"))
     available_access_points: list[NetworkAccessPoint]
 
 
@@ -168,6 +189,7 @@ register_response_schema_models(
     NetworkAccessGroupListResponse,
     NetworkAccessGroupMutationResponse,
     NetworkAccessGroupDeleteResponse,
+    NetworkAccessGroupCurrentIPCheckResponse,
     AppNetworkAccessGroupBindingResponse,
     AppNetworkAccessGroupResponse,
     AppNetworkAccessGroupMutationResponse,
@@ -201,7 +223,7 @@ def _translate_service_error(exc: NetworkAccessGroupError) -> Exception:
     if isinstance(exc, NetworkAccessGroupUpstreamError):
         return _translate_upstream_error(exc)
     if isinstance(exc, NetworkAccessGroupAccessDeniedError):
-        return Forbidden("Only workspace owners and administrators can manage network access groups.")
+        return Forbidden("Your workspace role does not allow this network access operation.")
     if isinstance(exc, NetworkAccessGroupEntitlementUnavailableError):
         return ServiceUnavailable("Billing entitlement is temporarily unavailable.")
     if isinstance(exc, NetworkAccessGroupAppNotFoundError):
@@ -210,6 +232,8 @@ def _translate_service_error(exc: NetworkAccessGroupError) -> Exception:
         return BadRequest(f"Network access control is not supported for app mode '{exc.app_mode}'.")
     if isinstance(exc, NetworkAccessGroupUnsupportedAccessPointsError):
         return BadRequest(f"Unsupported access points for this app: {', '.join(exc.access_points)}.")
+    if isinstance(exc, NetworkAccessGroupInvalidPolicyError):
+        return ServiceUnavailable("Network access policy cannot be evaluated.")
     raise TypeError(f"Unsupported network access group error: {type(exc).__name__}")
 
 
@@ -218,6 +242,15 @@ def _serialize_response(response_model: type[ResponseModel], payload: dict[str, 
         return dump_response(response_model, payload)
     except ValidationError as exc:
         raise BadGateway("Invalid response from the network access group service.") from exc
+
+
+def _resolve_current_network_access_client_ip() -> str:
+    trusted_proxy_cidrs = dify_config.NETWORK_ACCESS_TRUSTED_PROXY_CIDRS
+    if not trusted_proxy_cidrs.strip():
+        # This Cloud-only UI must never label an internal Docker/ALB socket peer
+        # as the user's address when deployment trust configuration is missing.
+        raise NetworkAccessClientIPUnavailableError("network access trusted proxies are not configured")
+    return resolve_network_access_client_ip(request.environ, trusted_proxy_cidrs)
 
 
 @console_ns.route("/workspaces/current/network-access-groups")
@@ -331,6 +364,33 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
         except NetworkAccessGroupError as exc:
             raise _translate_service_error(exc) from exc
         return _serialize_response(NetworkAccessGroupDeleteResponse, payload)
+
+
+@console_ns.route("/workspaces/current/network-access-groups/<uuid:group_id>/check-current-ip")
+class CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi(Resource):
+    @console_ns.response(
+        200,
+        "Current client IP checked against the workspace network access group",
+        console_ns.models[NetworkAccessGroupCurrentIPCheckResponse.__name__],
+    )
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext, group_id: UUID) -> dict[str, Any]:
+        @after_this_request
+        def disable_client_ip_response_cache(response: Response) -> Response:
+            response.headers["Cache-Control"] = "no-store"
+            return response
+
+        try:
+            payload = application_services().network_access_groups.check_current_ip(
+                request_context,
+                group_id=str(group_id),
+                client_ip_supplier=_resolve_current_network_access_client_ip,
+            )
+        except NetworkAccessClientIPUnavailableError as exc:
+            raise ServiceUnavailable("Current client IP is unavailable.") from exc
+        except NetworkAccessGroupError as exc:
+            raise _translate_service_error(exc) from exc
+        return _serialize_response(NetworkAccessGroupCurrentIPCheckResponse, payload)
 
 
 @console_ns.route("/apps/<uuid:app_id>/network-access-group")

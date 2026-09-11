@@ -281,6 +281,15 @@ export const zNetworkAccessGroupUpdatePayload = z.object({
 })
 
 /**
+ * NetworkAccessGroupCurrentIPCheckResponse
+ */
+export const zNetworkAccessGroupCurrentIpCheckResponse = z.object({
+  allowed: z.boolean(),
+  client_ip: z.string(),
+  policy_version: z.int().gte(1),
+})
+
+/**
  * WorkspacePermissionResponse
  */
 export const zWorkspacePermissionResponse = z.object({
@@ -2335,10 +2344,12 @@ export const zModelProviderSummaryListResponse = z.object({
  * NetworkAccessGroupAppResponse
  */
 export const zNetworkAccessGroupAppResponse = z.object({
+  bound_agent_id: z.string().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
   id: z.string(),
+  mode: z.string(),
   name: z.string(),
 })
 
@@ -2351,6 +2362,7 @@ export const zNetworkAccessGroupResponse = z.object({
   apps: z.array(zNetworkAccessGroupAppResponse),
   created_at: z.iso.datetime(),
   description: z.string().optional().default(''),
+  enforcing_count: z.int().gte(0),
   id: z.string(),
   name: z.string(),
   tenant_id: z.string(),
@@ -4694,6 +4706,16 @@ export const zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdPath = z.object({
  */
 export const zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
   zNetworkAccessGroupMutationResponse
+
+export const zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpPath = z.object({
+  group_id: z.uuid(),
+})
+
+/**
+ * Current client IP checked against the workspace network access group
+ */
+export const zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponse =
+  zNetworkAccessGroupCurrentIpCheckResponse
 
 /**
  * Success

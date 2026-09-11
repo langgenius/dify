@@ -401,6 +401,12 @@ export type NetworkAccessGroupUpdatePayload = {
   name: string
 }
 
+export type NetworkAccessGroupCurrentIpCheckResponse = {
+  allowed: boolean
+  client_ip: string
+  policy_version: number
+}
+
 export type WorkspacePermissionResponse = {
   allow_member_invite: boolean
   allow_owner_transfer: boolean
@@ -1538,6 +1544,7 @@ export type NetworkAccessGroupResponse = {
   apps: Array<NetworkAccessGroupAppResponse>
   created_at: string
   description?: string
+  enforcing_count: number
   id: string
   name: string
   tenant_id: string
@@ -2238,10 +2245,12 @@ export type ProviderModelWithStatusEntity = {
 export type CustomConfigurationStatus = 'active' | 'no-configure'
 
 export type NetworkAccessGroupAppResponse = {
+  bound_agent_id?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
   id: string
+  mode: string
   name: string
 }
 
@@ -3988,6 +3997,22 @@ export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses = {
 
 export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
   PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses[keyof PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpData = {
+  body?: never
+  path: {
+    group_id: string
+  }
+  query?: never
+  url: '/workspaces/current/network-access-groups/{group_id}/check-current-ip'
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponses = {
+  200: NetworkAccessGroupCurrentIpCheckResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponse =
+  GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponses[keyof GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponses]
 
 export type GetWorkspacesCurrentPermissionData = {
   body?: never

@@ -16,6 +16,7 @@ from controllers.console.workspace.network_access_group import (
     AppNetworkAccessGroupApi,
     AppNetworkAccessGroupUpdatePayload,
     CurrentWorkspaceNetworkAccessGroupApi,
+    CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi,
     CurrentWorkspaceNetworkAccessGroupsApi,
     NetworkAccessGroupCreatePayload,
     NetworkAccessGroupDeleteQuery,
@@ -23,12 +24,14 @@ from controllers.console.workspace.network_access_group import (
     _translate_service_error,
     _translate_upstream_error,
 )
+from core.network_access.client_ip import NetworkAccessClientIPUnavailableError
 from machinery.context import RequestContext
 from services.network_access_group_service import (
     NetworkAccessGroupAccessDeniedError,
     NetworkAccessGroupAppNotFoundError,
     NetworkAccessGroupEntitlementUnavailableError,
     NetworkAccessGroupError,
+    NetworkAccessGroupInvalidPolicyError,
     NetworkAccessGroupUnsupportedAccessPointsError,
     NetworkAccessGroupUnsupportedAppModeError,
     NetworkAccessGroupUpstreamError,
@@ -68,6 +71,7 @@ def _group_payload(*, app_ids: list[str] | None = None) -> dict[str, object]:
         "description": "Reusable office egress addresses",
         "allowedCidrs": ["203.0.113.7/32"],
         "usedByCount": len(app_ids),
+        "enforcingCount": 0,
         "usedByAppIds": app_ids,
         "apps": [],
         "version": "2",
@@ -191,11 +195,13 @@ def test_app_get_and_put_forward_app_id_without_orm_models() -> None:
         "tenantId": TENANT_ID,
         "appId": APP_ID,
         "entitled": True,
+        "effectiveEnabled": False,
         "available_access_points": ["webapp", "service_api", "mcp"],
         "binding": None,
     }
     service.update_app_binding.return_value = {
         "binding": _binding_payload(),
+        "effectiveEnabled": True,
         "available_access_points": ["webapp", "service_api", "mcp"],
     }
     request_payload = AppNetworkAccessGroupUpdatePayload(
@@ -225,7 +231,9 @@ def test_app_get_and_put_forward_app_id_without_orm_models() -> None:
         expected_version=2,
     )
     assert get_result["binding"] is None
+    assert get_result["effective_enabled"] is False
     assert put_result["binding"]["version"] == 3
+    assert put_result["effective_enabled"] is True
 
 
 @pytest.mark.parametrize(
@@ -269,11 +277,12 @@ def test_internal_secret_error_is_not_reported_as_tenant_input_failure() -> None
 @pytest.mark.parametrize(
     ("service_error", "expected_exception", "expected_message"),
     [
-        (NetworkAccessGroupAccessDeniedError(), Forbidden, "owners and administrators"),
+        (NetworkAccessGroupAccessDeniedError(), Forbidden, "workspace role"),
         (NetworkAccessGroupEntitlementUnavailableError(), ServiceUnavailable, "temporarily unavailable"),
         (NetworkAccessGroupAppNotFoundError(), AppNotFoundError, "not found"),
         (NetworkAccessGroupUnsupportedAppModeError("channel"), BadRequest, "channel"),
         (NetworkAccessGroupUnsupportedAccessPointsError(["trigger"]), BadRequest, "trigger"),
+        (NetworkAccessGroupInvalidPolicyError(), ServiceUnavailable, "cannot be evaluated"),
     ],
 )
 def test_application_error_mapping(
@@ -322,7 +331,7 @@ def test_controller_maps_service_error_before_serialization() -> None:
     service = MagicMock()
     service.list_groups.side_effect = NetworkAccessGroupAccessDeniedError
 
-    with _application_services(service), pytest.raises(Forbidden, match="owners and administrators"):
+    with _application_services(service), pytest.raises(Forbidden, match="workspace role"):
         unwrap(CurrentWorkspaceNetworkAccessGroupsApi().get)(
             CurrentWorkspaceNetworkAccessGroupsApi(),
             request_context=_request_context(),
@@ -388,3 +397,98 @@ def test_app_config_accepts_policy_id_alias_and_disabled_draft() -> None:
 
     assert str(payload.group_id) == GROUP_ID
     assert payload.access_points == ["webapp", "service_api"]
+
+
+def test_current_ip_check_uses_trusted_resolver_after_service_admission_and_disables_caching(
+    config_overrides: Callable[..., None],
+) -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
+
+    def check_current_ip(_context, *, group_id, client_ip_supplier):
+        assert group_id == GROUP_ID
+        return {"client_ip": client_ip_supplier(), "allowed": True, "policy_version": 4}
+
+    service.check_current_ip.side_effect = check_current_ip
+    api = CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi()
+
+    with (
+        app.test_request_context(
+            headers={"X-Forwarded-For": "203.0.113.7"},
+            environ_base={"REMOTE_ADDR": "172.18.0.3"},
+        ),
+        _application_services(service),
+        patch(
+            "controllers.console.workspace.network_access_group.resolve_network_access_client_ip",
+            return_value="203.0.113.7",
+        ) as resolve_client_ip,
+    ):
+        result = unwrap(api.get)(api, request_context=_request_context(), group_id=UUID(GROUP_ID))
+        response = app.process_response(app.make_response(result))
+
+    assert result == {"client_ip": "203.0.113.7", "allowed": True, "policy_version": 4}
+    assert response.headers["Cache-Control"] == "no-store"
+    assert resolve_client_ip.call_args.args[1] == "172.18.0.0/16"
+
+
+def test_current_ip_check_maps_unavailable_client_ip_to_503(config_overrides: Callable[..., None]) -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
+    service.check_current_ip.side_effect = lambda _context, *, group_id, client_ip_supplier: (
+        client_ip_supplier() if group_id == GROUP_ID else None
+    )
+    api = CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi()
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "172.18.0.3"}),
+        _application_services(service),
+        patch(
+            "controllers.console.workspace.network_access_group.resolve_network_access_client_ip",
+            side_effect=NetworkAccessClientIPUnavailableError,
+        ),
+        pytest.raises(ServiceUnavailable, match="Current client IP is unavailable"),
+    ):
+        unwrap(api.get)(api, request_context=_request_context(), group_id=UUID(GROUP_ID))
+
+
+def test_current_ip_check_fails_closed_when_trusted_proxy_config_is_empty(
+    config_overrides: Callable[..., None],
+) -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="")
+    service.check_current_ip.side_effect = lambda _context, *, group_id, client_ip_supplier: (
+        client_ip_supplier() if group_id == GROUP_ID else None
+    )
+    api = CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi()
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "172.18.0.3"}),
+        _application_services(service),
+        patch(
+            "controllers.console.workspace.network_access_group.resolve_network_access_client_ip"
+        ) as resolve_client_ip,
+        pytest.raises(ServiceUnavailable, match="Current client IP is unavailable"),
+    ):
+        unwrap(api.get)(api, request_context=_request_context(), group_id=UUID(GROUP_ID))
+
+    resolve_client_ip.assert_not_called()
+
+
+def test_group_response_rejects_enforcing_count_greater_than_used_by_count() -> None:
+    service = MagicMock()
+    group = _group_payload(app_ids=[APP_ID])
+    group["enforcingCount"] = 2
+    service.list_groups.return_value = {
+        "tenantId": TENANT_ID,
+        "entitled": True,
+        "groups": [group],
+    }
+
+    with _application_services(service), pytest.raises(BadGateway, match="Invalid response"):
+        unwrap(CurrentWorkspaceNetworkAccessGroupsApi().get)(
+            CurrentWorkspaceNetworkAccessGroupsApi(),
+            request_context=_request_context(),
+        )

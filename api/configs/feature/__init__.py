@@ -416,6 +416,13 @@ class EndpointConfig(BaseSettings):
         default="",
     )
 
+    NETWORK_ACCESS_TRUSTED_PROXY_CIDRS: str = Field(
+        description="Comma-separated trusted proxy CIDRs for network-access current-IP previews. "
+        "Only verified socket peers may supply X-Forwarded-For; empty disables Cloud IP previews. "
+        "Match the Gateway trust boundary and sanitize or append the client IP at the edge.",
+        default="",
+    )
+
 
 class FileAccessConfig(BaseSettings):
     """

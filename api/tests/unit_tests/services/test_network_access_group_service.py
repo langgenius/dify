@@ -13,9 +13,11 @@ from services.network_access_group_service import (
     NetworkAccessGroupAppRecord,
     NetworkAccessGroupControlPlane,
     NetworkAccessGroupEntitlement,
+    NetworkAccessGroupInvalidPolicyError,
     NetworkAccessGroupService,
     NetworkAccessGroupUnsupportedAccessPointsError,
     NetworkAccessGroupUnsupportedAppModeError,
+    NetworkAccessGroupUpstreamError,
     WorkspaceMembershipRoleQuery,
 )
 
@@ -42,7 +44,13 @@ def _context() -> RequestContext:
     )
 
 
-def _app(*, app_id: str = APP_ID, mode: str = "workflow", name: str = "App") -> NetworkAccessGroupAppRecord:
+def _app(
+    *,
+    app_id: str = APP_ID,
+    mode: str = "workflow",
+    name: str = "App",
+    bound_agent_id: str | None = None,
+) -> NetworkAccessGroupAppRecord:
     return NetworkAccessGroupAppRecord(
         id=app_id,
         mode=mode,
@@ -50,6 +58,7 @@ def _app(*, app_id: str = APP_ID, mode: str = "workflow", name: str = "App") -> 
         icon=f"{app_id}.png",
         icon_type="image",
         icon_background="#FFFFFF",
+        bound_agent_id=bound_agent_id,
     )
 
 
@@ -153,14 +162,111 @@ def test_mutations_reject_non_privileged_persisted_roles_before_control_plane(
     assert harness.control_plane.method_calls == []
 
 
-@pytest.mark.parametrize("role", ["owner", "admin"])
-def test_reads_allow_persisted_owner_and_admin(role: str) -> None:
+@pytest.mark.parametrize("role", ["owner", "admin", "editor"])
+def test_policy_reads_allow_persisted_owner_admin_and_editor(role: str) -> None:
     harness = _harness(role=role)
     harness.control_plane.list_groups.return_value = {"entitled": True, "groups": list[object]()}
+    harness.control_plane.get_group.return_value = {"group": {"id": GROUP_ID}}
 
     harness.service.list_groups(_context())
+    harness.service.get_group(_context(), group_id=GROUP_ID)
 
     harness.control_plane.list_groups.assert_called_once_with(WORKSPACE_ID, ACCOUNT_ID)
+    harness.control_plane.get_group.assert_called_once_with(WORKSPACE_ID, GROUP_ID, ACCOUNT_ID)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        pytest.param(
+            lambda service, context: service.create_group(
+                context,
+                name="Office",
+                description="Office network",
+                allowed_cidrs=["203.0.113.0/24"],
+            ),
+            id="create-group",
+        ),
+        pytest.param(
+            lambda service, context: service.update_group(
+                context,
+                group_id=GROUP_ID,
+                name="Office",
+                description="Office network",
+                allowed_cidrs=["203.0.113.0/24"],
+                expected_version=1,
+            ),
+            id="update-group",
+        ),
+        pytest.param(
+            lambda service, context: service.delete_group(
+                context,
+                group_id=GROUP_ID,
+                expected_version=1,
+            ),
+            id="delete-group",
+        ),
+    ],
+)
+def test_policy_mutations_reject_editor_before_control_plane(mutation: Mutation) -> None:
+    harness = _harness(role="editor")
+
+    with pytest.raises(NetworkAccessGroupAccessDeniedError):
+        mutation(harness.service, _context())
+
+    assert harness.control_plane.method_calls == []
+
+
+def test_app_binding_get_and_put_allow_editor() -> None:
+    harness = _harness(role="editor")
+    harness.control_plane.get_app_binding.return_value = {"entitled": True, "binding": None}
+    harness.control_plane.update_app_binding.return_value = {
+        "effective_enabled": True,
+        "binding": {"enabled": True, "group_id": GROUP_ID, "access_points": ["webapp"]},
+    }
+
+    harness.service.get_app_binding(_context(), app_id=APP_ID)
+    harness.service.update_app_binding(
+        _context(),
+        app_id=APP_ID,
+        enabled=True,
+        group_id=GROUP_ID,
+        access_points=["webapp"],
+        expected_version=1,
+    )
+
+    harness.control_plane.get_app_binding.assert_called_once_with(WORKSPACE_ID, APP_ID, ACCOUNT_ID)
+    harness.control_plane.update_app_binding.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        pytest.param(
+            lambda service, context: service.get_app_binding(context, app_id=APP_ID),
+            id="get",
+        ),
+        pytest.param(
+            lambda service, context: service.update_app_binding(
+                context,
+                app_id=APP_ID,
+                enabled=True,
+                group_id=GROUP_ID,
+                access_points=["webapp"],
+                expected_version=1,
+            ),
+            id="put",
+        ),
+    ],
+)
+def test_app_binding_rejects_normal_role_before_app_lookup(operation: Mutation) -> None:
+    harness = _harness(role="normal")
+
+    with pytest.raises(NetworkAccessGroupAccessDeniedError):
+        operation(harness.service, _context())
+
+    harness.apps.get_manageable_app.assert_not_called()
+    assert harness.control_plane.method_calls == []
 
 
 def test_mutation_does_not_repeat_http_paid_plan_admission() -> None:
@@ -328,7 +434,10 @@ def test_app_binding_rejects_missing_or_inaccessible_app_before_control_plane() 
         harness.service.get_app_binding(_context(), app_id=APP_ID)
 
     harness.apps.get_manageable_app.assert_called_once_with(workspace_id=WORKSPACE_ID, app_id=APP_ID)
-    harness.memberships.get_role_for_account.assert_not_called()
+    harness.memberships.get_role_for_account.assert_called_once_with(
+        workspace_id=WORKSPACE_ID,
+        account_id=ACCOUNT_ID,
+    )
     harness.control_plane.get_app_binding.assert_not_called()
 
 
@@ -347,7 +456,10 @@ def test_update_app_binding_rejects_missing_or_inaccessible_app_before_control_p
         )
 
     harness.apps.get_manageable_app.assert_called_once_with(workspace_id=WORKSPACE_ID, app_id=APP_ID)
-    harness.memberships.get_role_for_account.assert_not_called()
+    harness.memberships.get_role_for_account.assert_called_once_with(
+        workspace_id=WORKSPACE_ID,
+        account_id=ACCOUNT_ID,
+    )
     harness.control_plane.update_app_binding.assert_not_called()
 
 
@@ -378,6 +490,7 @@ def test_app_binding_materializes_protojson_defaults() -> None:
     result = harness.service.get_app_binding(_context(), app_id=APP_ID)
 
     assert result["binding"] == {"enabled": False, "access_points": []}
+    assert result["effective_enabled"] is False
 
 
 def test_app_binding_normalizes_camel_case_and_filters_stale_access_points() -> None:
@@ -390,6 +503,7 @@ def test_app_binding_normalizes_camel_case_and_filters_stale_access_points() -> 
     result = harness.service.get_app_binding(_context(), app_id=APP_ID)
 
     assert result["binding"] == {"enabled": True, "access_points": ["webapp", "mcp"]}
+    assert result["effective_enabled"] is False
 
 
 def test_group_payloads_are_enriched_with_tenant_scoped_app_metadata() -> None:
@@ -424,6 +538,8 @@ def test_group_payloads_are_enriched_with_tenant_scoped_app_metadata() -> None:
             "icon": "app-1.png",
             "icon_type": "image",
             "icon_background": "#FFFFFF",
+            "mode": "workflow",
+            "bound_agent_id": None,
         }
     ]
     call_kwargs = harness.apps.list_apps.call_args.kwargs
@@ -442,3 +558,183 @@ def test_app_query_failure_degrades_group_enrichment_to_empty_apps() -> None:
 
     assert result["group"]["app_ids"] == [APP_ID]
     assert result["group"]["apps"] == []
+
+
+@pytest.mark.parametrize(("paid", "expected"), [(True, True), (False, False)])
+def test_app_effective_enabled_is_bounded_by_final_entitlement(paid: bool, expected: bool) -> None:
+    harness = _harness(paid=paid, app_mode="chat")
+    harness.control_plane.get_app_binding.return_value = {
+        "entitled": True,
+        "effectiveEnabled": True,
+        "binding": {
+            "enabled": True,
+            "groupId": GROUP_ID,
+            "accessPoints": ["webapp", "service_api"],
+        },
+    }
+
+    result = harness.service.get_app_binding(_context(), app_id=APP_ID)
+
+    assert result["effective_enabled"] is expected
+    assert result["binding"]["enabled"] is True
+
+
+def test_app_effective_enabled_does_not_reenable_an_incomplete_filtered_binding() -> None:
+    harness = _harness(app_mode="agent")
+    harness.control_plane.update_app_binding.return_value = {
+        "effectiveEnabled": True,
+        "binding": {
+            "enabled": True,
+            "groupId": GROUP_ID,
+            "accessPoints": ["mcp"],
+        },
+    }
+
+    result = harness.service.update_app_binding(
+        _context(),
+        app_id=APP_ID,
+        enabled=False,
+        group_id=GROUP_ID,
+        access_points=[],
+        expected_version=1,
+    )
+
+    assert result["binding"]["enabled"] is True
+    assert result["binding"]["access_points"] == []
+    assert result["effective_enabled"] is False
+
+
+@pytest.mark.parametrize(("paid", "expected"), [(True, 2), (False, 0)])
+def test_group_enforcing_count_is_normalized_and_bounded_by_final_entitlement(
+    paid: bool,
+    expected: int,
+) -> None:
+    harness = _harness(paid=paid)
+    harness.control_plane.list_groups.return_value = {
+        "entitled": True,
+        "groups": [{"id": GROUP_ID, "enforcingCount": 2, "usedByCount": 3}],
+    }
+
+    result = harness.service.list_groups(_context())
+
+    assert result["groups"][0]["enforcing_count"] == expected
+
+
+def test_group_enforcing_count_materializes_omitted_protojson_zero() -> None:
+    harness = _harness()
+    harness.control_plane.get_group.return_value = {"group": {"id": GROUP_ID}}
+
+    result = harness.service.get_group(_context(), group_id=GROUP_ID)
+
+    assert result["group"]["enforcing_count"] == 0
+
+
+def test_group_enrichment_includes_agent_routing_metadata() -> None:
+    harness = _harness()
+    harness.control_plane.get_group.return_value = {
+        "group": {"id": GROUP_ID, "used_by_app_ids": [APP_ID], "used_by_count": 1}
+    }
+    harness.apps.list_apps.return_value = [_app(app_id=APP_ID, mode="agent", name="Agent", bound_agent_id="agent-1")]
+
+    result = harness.service.get_group(_context(), group_id=GROUP_ID)
+
+    assert result["group"]["apps"] == [
+        {
+            "id": APP_ID,
+            "name": "Agent",
+            "icon": f"{APP_ID}.png",
+            "icon_type": "image",
+            "icon_background": "#FFFFFF",
+            "mode": "agent",
+            "bound_agent_id": "agent-1",
+        }
+    ]
+
+
+def test_current_ip_check_authorizes_and_loads_tenant_policy_before_reading_ip() -> None:
+    harness = _harness(role="editor")
+    order: list[str] = []
+    harness.memberships.get_role_for_account.side_effect = lambda **_kwargs: order.append("role") or "editor"
+    harness.control_plane.get_group.side_effect = lambda *_args: (
+        order.append("policy") or {"group": {"version": "7", "allowedCidrs": ["2001:db8::/32"]}}
+    )
+
+    result = harness.service.check_current_ip(
+        _context(),
+        group_id=GROUP_ID,
+        client_ip_supplier=lambda: order.append("ip") or "2001:db8::42",
+    )
+
+    assert order == ["role", "policy", "ip"]
+    assert result == {"client_ip": "2001:db8::42", "allowed": True, "policy_version": 7}
+
+
+def test_current_ip_check_rejects_role_before_policy_or_ip_lookup() -> None:
+    harness = _harness(role="normal")
+    supplier = MagicMock(return_value="203.0.113.7")
+
+    with pytest.raises(NetworkAccessGroupAccessDeniedError):
+        harness.service.check_current_ip(_context(), group_id=GROUP_ID, client_ip_supplier=supplier)
+
+    harness.control_plane.get_group.assert_not_called()
+    supplier.assert_not_called()
+
+
+def test_current_ip_check_does_not_read_ip_when_tenant_scoped_policy_lookup_fails() -> None:
+    harness = _harness(role="admin")
+    harness.control_plane.get_group.side_effect = NetworkAccessGroupUpstreamError(404)
+    supplier = MagicMock(return_value="203.0.113.7")
+
+    with pytest.raises(NetworkAccessGroupUpstreamError):
+        harness.service.check_current_ip(_context(), group_id=GROUP_ID, client_ip_supplier=supplier)
+
+    supplier.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("allowed_cidrs", "client_ip", "expected"),
+    [
+        (["203.0.113.0/24"], "::ffff:203.0.113.7", True),
+        (["::ffff:203.0.113.0/120"], "203.0.113.7", True),
+        (["2001:db8::/32"], "2001:db8:1::1", True),
+        (["2001:db8::/48"], "2001:db9::1", False),
+    ],
+)
+def test_current_ip_check_matches_ipv4_ipv6_and_mapped_addresses_consistently(
+    allowed_cidrs: list[str],
+    client_ip: str,
+    expected: bool,
+) -> None:
+    harness = _harness()
+    harness.control_plane.get_group.return_value = {"group": {"version": 1, "allowed_cidrs": allowed_cidrs}}
+
+    result = harness.service.check_current_ip(
+        _context(),
+        group_id=GROUP_ID,
+        client_ip_supplier=lambda: client_ip,
+    )
+
+    assert result["allowed"] is expected
+
+
+@pytest.mark.parametrize(
+    "allowed_cidrs",
+    [
+        [],
+        ["0.0.0.0/0", "not-a-cidr"],
+        ["fe80::1%eth0/128"],
+        ["::ffff:0:0/80"],
+    ],
+)
+def test_current_ip_check_rejects_malformed_policy_without_short_circuiting(
+    allowed_cidrs: list[str],
+) -> None:
+    harness = _harness()
+    harness.control_plane.get_group.return_value = {"group": {"version": 1, "allowed_cidrs": allowed_cidrs}}
+
+    with pytest.raises(NetworkAccessGroupInvalidPolicyError):
+        harness.service.check_current_ip(
+            _context(),
+            group_id=GROUP_ID,
+            client_ip_supplier=lambda: "203.0.113.7",
+        )
