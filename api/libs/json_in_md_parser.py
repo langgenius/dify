@@ -15,6 +15,16 @@ def parse_json_markdown(json_string: str):
     start_candidates = [i for i in (json_string.find("{"), json_string.find("[")) if i != -1]
     if start_candidates:
         start_index = min(start_candidates)
+
+        # For unfenced model output, decode the first complete JSON value instead
+        # of greedily slicing through the last closing bracket. This preserves a
+        # valid first object when the model emits another JSON object afterwards.
+        # Keep fenced output on the existing path so multiple explicit JSON
+        # blocks remain an error rather than being silently ignored.
+        if "```" not in json_string:
+            parsed, _ = json.JSONDecoder().raw_decode(json_string[start_index:])
+            return parsed
+
         end_index = max(json_string.rfind("}"), json_string.rfind("]"))
         if end_index != -1 and start_index < end_index:
             end_index += 1
