@@ -4,7 +4,7 @@ import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dif
 import * as React from 'react'
 import { useEffect } from 'react'
 
-export type IConfigStringProps = {
+type IConfigStringProps = {
   id?: string
   value: number | undefined
   maxLength: number
