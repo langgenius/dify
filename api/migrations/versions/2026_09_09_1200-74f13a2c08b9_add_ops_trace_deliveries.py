@@ -1,7 +1,7 @@
 """Add durable tenant-owned OPS trace deliveries and configuration revisions.
 
 Revision ID: 74f13a2c08b9
-Revises: c3f1a9b2e6d4
+Revises: d8e4a6b1c902
 """
 
 import json
@@ -12,7 +12,7 @@ from alembic import op
 from models.types import StringUUID
 
 revision = "74f13a2c08b9"
-down_revision = "c3f1a9b2e6d4"
+down_revision = "d8e4a6b1c902"
 branch_labels = None
 depends_on = None
 
