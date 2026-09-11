@@ -71,9 +71,13 @@ Then('Agent v2 API keys should not expose a secret by default', async function (
   await expect(dialog.getByText('CREATED', { exact: true })).toBeVisible()
   await expect(dialog.getByText('LAST USED', { exact: true })).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Create new Secret key' })).toBeVisible()
-  if (existingSecret)
+  if (existingSecret) {
     await expect(dialog.getByText(existingSecret, { exact: true })).not.toBeVisible()
-  await expect(dialog.getByText(/^app-/)).not.toBeVisible()
+    // Lists now show masked values (prefix + '...' + last 4); only the full secret must stay hidden.
+    const maskedSecret =
+      existingSecret.length <= 8 ? '***' : `${existingSecret.slice(0, 5)}...${existingSecret.slice(-4)}`
+    await expect(dialog.getByText(maskedSecret, { exact: true })).toBeVisible()
+  }
   await expect(page.getByRole('dialog', { name: 'Internal Server Error' })).not.toBeVisible()
 })
 
@@ -138,7 +142,9 @@ Then(
 
     await expect(apiKeyDialog).toBeVisible()
     await expect(apiKeyDialog.getByText(fullSecret, { exact: true })).not.toBeVisible()
-    await expect(apiKeyDialog.getByText(/^app-/)).not.toBeVisible()
+    const maskedSecret =
+      fullSecret.length <= 8 ? '***' : `${fullSecret.slice(0, 5)}...${fullSecret.slice(-4)}`
+    await expect(apiKeyDialog.getByText(maskedSecret, { exact: true })).toBeVisible()
     await expect(apiKeyDialog.getByLabel('Copy').first()).toBeVisible()
   },
 )
