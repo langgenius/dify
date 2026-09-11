@@ -203,7 +203,7 @@ class AgentDslService:
             package=package,
             package_path="agent",
         )
-        if app.app_model_config is None:
+        if app.app_model_config_with_session(session=self.session) is None:
             model_config = AppModelConfig(app_id=app.id, created_by=account.id, updated_by=account.id)
             self.session.add(model_config)
             self.session.flush()

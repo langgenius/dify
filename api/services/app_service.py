@@ -809,9 +809,12 @@ class AppService:
                 def __init__(self, app):
                     self.__dict__.update(app.__dict__)
 
-                @property
                 @override
-                def app_model_config(self):
+                def app_model_config_with_session(self, *, session: Session) -> AppModelConfig | None:
+                    # Hand back the in-memory config the masking pass above produced, and
+                    # deliberately ignore `session`: re-reading the row here would undo the
+                    # masking. Response paths resolve the config through this accessor
+                    # (`AppResponseView.app_model_config`), so the override has to sit here.
                     return model_config
 
             app = ModifiedApp(app)
