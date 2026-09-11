@@ -1508,12 +1508,12 @@ def test_failed_run_prefers_run_failure_type_over_binding_lost_reason() -> None:
     assert raised.value.reason == "binding_lost"
 
 
-def test_agent_backend_failure_to_exception_maps_rate_limit_reason() -> None:
+def test_agent_backend_failure_to_exception_maps_rate_limit_error_type() -> None:
     err = app_runner_module._agent_backend_failure_to_exception(
         AgentBackendRunFailedInternalEvent(
             run_id="run-1",
             error="quota exceeded",
-            reason="InvokeRateLimitError",
+            error_type=RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
         )
     )
 

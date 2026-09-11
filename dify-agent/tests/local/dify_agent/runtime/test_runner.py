@@ -86,6 +86,7 @@ from dify_agent.runtime_backend import (
     RuntimeLayout,
     RuntimeLease,
 )
+from dify_agent.runtime_backend.errors import BindingLostError
 from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease, create_shellctl_lease
 from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
@@ -177,7 +178,7 @@ class FakeRunnerExecutionBindingBackend:
         del spec
 
 
-def test_run_failed_error_payload_preserves_plugin_rate_limit_error() -> None:
+def test_run_failed_error_payload_classifies_plugin_rate_limit_error() -> None:
     exc = ModelHTTPError(
         429,
         "gpt-4o-mini",
@@ -187,18 +188,28 @@ def test_run_failed_error_payload_preserves_plugin_rate_limit_error() -> None:
     message, error_type, reason = _run_failed_error_payload(exc)
 
     assert message == "quota exceeded"
-    assert error_type is None
-    assert reason == "InvokeRateLimitError"
+    assert error_type is RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR
+    assert reason is None
 
 
-def test_run_failed_error_payload_infers_rate_limit_reason_from_status_code() -> None:
+def test_run_failed_error_payload_infers_rate_limit_type_from_status_code() -> None:
     exc = ModelHTTPError(429, "gpt-4o-mini", {"message": "too many requests"})
 
     message, error_type, reason = _run_failed_error_payload(exc)
 
     assert message == "too many requests"
-    assert error_type is None
-    assert reason == "InvokeRateLimitError"
+    assert error_type is RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR
+    assert reason is None
+
+
+def test_run_failed_error_payload_classifies_binding_lost() -> None:
+    exc = BindingLostError("binding lost mid-run")
+
+    message, error_type, reason = _run_failed_error_payload(exc)
+
+    assert message == "binding lost mid-run"
+    assert error_type is RunFailureType.BINDING_LOST
+    assert reason is None
 
 
 def test_run_failed_error_payload_preserves_knowledge_error_code() -> None:
