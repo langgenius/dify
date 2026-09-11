@@ -1,11 +1,24 @@
+from sqlalchemy import select
+
 from configs import dify_config
 from extensions.ext_database import db
-from models.model import AccountTrialAppRecord, TrialApp
+from models.model import AccountTrialAppRecord, App, TrialApp
 from services.feature_service import FeatureService
 from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFactory
 
 
 class RecommendedAppService:
+    @classmethod
+    def get_app(cls, app_id: str) -> App | None:
+        """Return a normal app only when it belongs to the recommended catalog."""
+        mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
+        retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
+        recommended_app_detail = retrieval_instance.get_recommend_app_detail(app_id)
+        if recommended_app_detail is None:
+            return None
+
+        return db.session.scalar(select(App).where(App.id == app_id, App.status == "normal").limit(1))
+
     @classmethod
     def get_recommended_apps_and_categories(cls, language: str):
         """
