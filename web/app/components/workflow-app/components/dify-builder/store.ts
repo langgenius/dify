@@ -6,6 +6,7 @@ import type {
 } from './types'
 import type { DifyBuilderCanvasNode } from './utils'
 import { atom } from 'jotai'
+import { requestErrorMessage } from './session/errors'
 import {
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
@@ -40,6 +41,9 @@ export const difyBuilderCanvasRefreshGenerationAtom = atom(0)
 export const difyBuilderCanvasRefreshingAtom = atom(false)
 export const difyBuilderCanvasRefreshFailedAtom = atom(false)
 export const difyBuilderCanvasRefreshRetryRequestAtom = atom(0)
+export const difyBuilderCanvasAppliedViewAtom = atom<{ sessionId: string; version: number } | null>(
+  null,
+)
 export const difyBuilderChecklistEvaluatedGenerationAtom = atom(-1)
 
 export const difyBuilderScopedAtoms = [
@@ -52,6 +56,7 @@ export const difyBuilderScopedAtoms = [
   difyBuilderCanvasRefreshingAtom,
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshRetryRequestAtom,
+  difyBuilderCanvasAppliedViewAtom,
   difyBuilderChecklistEvaluatedGenerationAtom,
 ] as const
 
@@ -81,6 +86,20 @@ export const difyBuilderSessionIdAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.session_id ?? null,
 )
 export const difyBuilderPhaseAtom = atom((get) => get(difyBuilderSessionViewAtom)?.phase)
+export const DIFY_BUILDER_CANVAS_REFRESH_PHASES = new Set([
+  'modify',
+  'test',
+  'review',
+  'publish',
+  'complete',
+])
+export const difyBuilderCanvasReadyAtom = atom((get) => {
+  if (get(difyBuilderCanvasRefreshingAtom) || get(difyBuilderCanvasRefreshFailedAtom)) return false
+  const view = get(difyBuilderSessionViewAtom)
+  if (!view?.phase || !DIFY_BUILDER_CANVAS_REFRESH_PHASES.has(view.phase)) return true
+  const applied = get(difyBuilderCanvasAppliedViewAtom)
+  return applied?.sessionId === view.session_id && applied.version === view.version
+})
 export const difyBuilderSessionModelAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.model ?? null,
 )
@@ -101,7 +120,7 @@ export const difyBuilderRetryCanvasRefreshAtom = atom(null, (get, set) => {
   return true
 })
 export const difyBuilderCanComposeAtom = atom((get) => {
-  if (get(difyBuilderInteractionBusyAtom)) return false
+  if (get(difyBuilderInteractionBusyAtom) || !get(difyBuilderCanvasReadyAtom)) return false
   const view = get(difyBuilderSessionViewAtom)
   if (view?.recovery || view?.app_revision?.conflicted) return false
   return !view || isTerminalStatus(view.run_status) || canContinueConversation(view.run_status)
@@ -113,6 +132,7 @@ export const difyBuilderModelReadonlyAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
   return (
     get(difyBuilderInteractionBusyAtom) ||
+    !get(difyBuilderCanvasReadyAtom) ||
     isActiveStatus(view?.run_status) ||
     view?.run_status === 'paused' ||
     !!view?.recovery ||
@@ -122,13 +142,12 @@ export const difyBuilderModelReadonlyAtom = atom((get) => {
 export const difyBuilderCanvasLockedAtom = atom(
   (get) =>
     get(difyBuilderSessionBusyAtom) ||
-    get(difyBuilderCanvasRefreshingAtom) ||
+    !get(difyBuilderCanvasReadyAtom) ||
     !!get(difyBuilderSessionViewAtom)?.canvas_read_only,
 )
 export const difyBuilderRecheckReadyAtom = atom(
   (get) =>
-    !get(difyBuilderCanvasRefreshingAtom) &&
-    !get(difyBuilderCanvasRefreshFailedAtom) &&
+    get(difyBuilderCanvasReadyAtom) &&
     get(difyBuilderChecklistEvaluatedGenerationAtom) ===
       get(difyBuilderCanvasRefreshGenerationAtom),
 )
@@ -143,20 +162,28 @@ export const difyBuilderCanStartFixAtom = atom((get) => {
     get(difyBuilderAvailableAtom) &&
     runtime?.canEdit &&
     !get(difyBuilderInteractionBusyAtom) &&
+    get(difyBuilderCanvasReadyAtom) &&
     (!view || isTerminalStatus(view.run_status))
   )
 })
 
 const prepareDifyBuilderSessionAtom = atom(null, async (get, set) => {
   const runtime = get(difyBuilderRuntimeAtom)
-  if (!runtime?.enabled || !runtime.appId || get(difyBuilderInteractionBusyAtom)) return false
+  if (
+    !runtime?.enabled ||
+    !runtime.appId ||
+    get(difyBuilderInteractionBusyAtom) ||
+    !get(difyBuilderCanvasReadyAtom)
+  )
+    return false
 
   set(difyBuilderLocalErrorAtom, '')
   try {
     await runtime.onSyncDraft()
     return true
   } catch (error) {
-    set(difyBuilderLocalErrorAtom, String(error))
+    const message = await requestErrorMessage(error)
+    if (get(difyBuilderRuntimeAtom) === runtime) set(difyBuilderLocalErrorAtom, message)
     return false
   }
 })
@@ -215,7 +242,8 @@ export const difyBuilderRetryMessageAtom = atom(null, async (get, set, turnId: s
     !retryableMessage ||
     retryableMessage.turnId !== turnId ||
     retryableMessage.sessionId !== view?.session_id ||
-    get(difyBuilderInteractionBusyAtom)
+    get(difyBuilderInteractionBusyAtom) ||
+    !get(difyBuilderCanvasReadyAtom)
   )
     return false
 
@@ -264,6 +292,7 @@ export const difyBuilderSelectModelAtom = atom(null, async (get, set, model: Ses
     !runtime?.enabled ||
     !runtime.canEdit ||
     get(difyBuilderSessionBusyAtom) ||
+    !get(difyBuilderCanvasReadyAtom) ||
     isActiveStatus(view?.run_status) ||
     view?.run_status === 'paused' ||
     !!view?.recovery ||
@@ -283,7 +312,13 @@ export const difyBuilderSubmitActionAtom = atom(
   null,
   (get, set, actionId: string, payload: Record<string, unknown> = {}) => {
     const runtime = get(difyBuilderRuntimeAtom)
-    if (!runtime?.enabled || !runtime.canEdit) return Promise.resolve(false)
+    if (
+      !runtime?.enabled ||
+      !runtime.canEdit ||
+      get(difyBuilderInteractionBusyAtom) ||
+      !get(difyBuilderCanvasReadyAtom)
+    )
+      return Promise.resolve(false)
 
     set(difyBuilderLocalErrorAtom, '')
     if (actionId === 'recheck') {
@@ -322,5 +357,6 @@ export const difyBuilderResetAtom = atom(null, (get, set) => {
   set(difyBuilderCanvasRefreshGenerationAtom, 0)
   set(difyBuilderCanvasRefreshingAtom, false)
   set(difyBuilderCanvasRefreshFailedAtom, false)
+  set(difyBuilderCanvasAppliedViewAtom, null)
   set(difyBuilderChecklistEvaluatedGenerationAtom, -1)
 })

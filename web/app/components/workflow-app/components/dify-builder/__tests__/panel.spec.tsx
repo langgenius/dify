@@ -9,6 +9,7 @@ import {
   difyBuilderSessionViewAtom,
 } from '../session/state'
 import {
+  difyBuilderCanvasAppliedViewAtom,
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderDraftAtom,
@@ -90,6 +91,7 @@ const renderPanel = (
 ) => {
   const store = createStore()
   store.set(difyBuilderSessionViewAtom, view)
+  store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: view.session_id, version: view.version })
   store.set(difyBuilderConversationAtom, conversation)
   store.set(difyBuilderRuntimeAtom, {
     appId: 'app-1',
@@ -407,6 +409,10 @@ describe('DifyBuilderPanel', () => {
     })
 
     expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('AI agents')
+    expect(screen.getByRole('button', { name: 'Provide test data' })).toBeDisabled()
+    act(() =>
+      store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: view.session_id, version: 2 }),
+    )
     await user.click(screen.getByRole('button', { name: 'Provide test data' }))
     expect(mocks.runAction).toHaveBeenCalledWith('provide_testdata', {
       mode: 'provide',
@@ -556,6 +562,10 @@ describe('DifyBuilderPanel', () => {
 
     const retry = screen.getByRole('button', { name: 'common.operation.retry' })
     expect(retry).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Approve plan' })).toBeDisabled()
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+    ).toBeDisabled()
 
     await user.click(retry)
 

@@ -23,7 +23,6 @@ import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resour
 import { HooksStoreContextProvider } from '@/app/components/workflow/hooks-store'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -39,7 +38,6 @@ import { getAppACLCapabilities } from '@/utils/permission'
 import { useDSLByCanEdit } from '../hooks/use-DSL'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
-import { useWorkflowDraftGraphForCanvas } from '../hooks/use-workflow-draft-graph-for-canvas'
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRunByCanEdit } from '../hooks/use-workflow-run'
 import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
@@ -83,7 +81,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   })
   const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null)
   const reactFlow = useReactFlow()
-  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
 
   const reactFlowStore = useMemo(
     () => ({
@@ -229,7 +226,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const varsUpdateSyncRequestRef = useRef(0)
   const varsUpdateCompletedSyncRef = useRef(0)
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const {
     handleBackupDraft,
     handleLoadBackupDraft,
@@ -342,33 +338,16 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
 
+    let disposed = false
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
-      try {
-        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-
-        if (response.hash)
-          workflowStore.getState().setSyncWorkflowDraftHash(response.hash, response.graph)
-
-        // Handle features, variables etc.
-        handleWorkflowDataUpdate(response)
-
-        // Update workflow canvas (nodes, edges, viewport)
-        if (response.graph)
-          handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
-      } catch (error) {
-        console.error('Failed to fetch updated workflow:', error)
-      }
+      await handleRefreshWorkflowDraft(false, { shouldApply: () => !disposed })
     })
 
-    return unsubscribe
-  }, [
-    appId,
-    getWorkflowDraftGraphForCanvas,
-    handleWorkflowDataUpdate,
-    handleUpdateWorkflowCanvas,
-    isCollaborationEnabled,
-    workflowStore,
-  ])
+    return () => {
+      disposed = true
+      unsubscribe()
+    }
+  }, [appId, handleRefreshWorkflowDraft, isCollaborationEnabled])
 
   // The server directs this request to the selected saver. Do not gate it on the
   // local leader flag because the preceding status event may still be in flight.
@@ -410,7 +389,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       }
 
       const isCurrent = () => !disposed && collaborationManager.isGraphReloadCurrent(request)
-      const refreshed = await handleRefreshWorkflowDraft(false, { shouldApply: isCurrent })
+      const refreshed = await handleRefreshWorkflowDraft(false, {
+        shouldApply: isCurrent,
+        syncToCollaboration: false,
+      })
       if (!isCurrent()) return
 
       if (refreshed) {
@@ -563,9 +545,15 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     const result = await doSyncWorkflowDraft()
     if (!result) throw new Error('Workflow draft sync failed.')
   }, [doSyncWorkflowDraft])
-  const handleDifyBuilderRefreshCanvas = useCallback(async () => {
-    return handleRefreshWorkflowDraft()
-  }, [handleRefreshWorkflowDraft])
+  const handleDifyBuilderRefreshCanvas = useCallback(
+    async (shouldApply: () => boolean) => {
+      const refreshed = await handleRefreshWorkflowDraft(false, { shouldApply })
+      if (refreshed && appId && isCollaborationEnabled)
+        collaborationManager.emitWorkflowUpdate(appId)
+      return refreshed
+    },
+    [appId, handleRefreshWorkflowDraft, isCollaborationEnabled],
+  )
   const handleDifyBuilderFocusCanvas = useCallback(() => {
     const duration = window.matchMedia(REDUCED_MOTION_QUERY).matches ? 0 : 800
     void reactFlow.fitView({ duration })

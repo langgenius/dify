@@ -271,10 +271,9 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       run_status: 'waiting_input',
     })
     const latest = createSessionView({ ...waiting, version: 3, state: 'fix.await_verify' })
-    clientMocks.action.mockRejectedValue({
-      status: 409,
-      data: { status: 409, body: { code: 'conflict' } },
-    })
+    clientMocks.action.mockRejectedValue(
+      new Response(JSON.stringify({ code: 'conflict' }), { status: 409 }),
+    )
     clientMocks.get.mockResolvedValue(latest)
     const { result, store } = renderSessionHook()
     act(() => {
@@ -588,5 +587,30 @@ describe('useDifyBuilderSessionController lifecycle', () => {
 
     expect(store.get(difyBuilderActiveSessionIdAtom)).toBeNull()
     expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('HTTP 404: not_found')
+  })
+
+  it('does not restore an obsolete error after reset while its response body is being read', async () => {
+    let resolveBody!: (value: unknown) => void
+    const body = new Promise((resolve) => {
+      resolveBody = resolve
+    })
+    const response = new Response(null, { status: 409 })
+    const clone = new Response(null, { status: 409 })
+    vi.spyOn(clone, 'json').mockReturnValue(body)
+    const cloneSpy = vi.spyOn(response, 'clone').mockReturnValue(clone)
+    clientMocks.create.mockRejectedValue(response)
+    const { result, store } = renderSessionHook()
+    let pending!: Promise<boolean>
+    act(() => {
+      pending = result.current.startBuild('app-1', 'Build a workflow')
+    })
+    await waitFor(() => expect(cloneSpy).toHaveBeenCalled())
+    act(() => result.current.reset())
+    await act(async () => {
+      resolveBody({ code: 'conflict' })
+      expect(await pending).toBe(false)
+    })
+    expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('')
+    expect(store.get(difyBuilderSessionViewAtom)).toBeNull()
   })
 })
