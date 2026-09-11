@@ -9,6 +9,7 @@ from collections.abc import Generator
 import pytest
 import yaml
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
@@ -42,6 +43,7 @@ from services.agent.errors import (
     RosterAgentPackageDependenciesMissingError,
     RosterAgentPackageImportFailedError,
     RosterAgentPackageResourceUnavailableError,
+    RosterAgentPackageTooLargeError,
 )
 from services.agent.roster_package_cleanup import PackageCleanupCache, PackageCleanupJob, RosterPackageCleanup
 from services.agent.roster_package_entities import (
@@ -363,6 +365,27 @@ def test_invalid_utf8_skill_filename_is_recovered(monkeypatch, sqlite_session_fa
             assert archive.read("scripts/\ufffda.py") == b"print('ok')\n"
 
 
+@pytest.mark.parametrize("names", [["INVALID-NAME"], ["TOKEN", "TOKEN"]])
+def test_import_rejects_invalid_shell_environment_before_writes(monkeypatch, sqlite_session_factory, names):
+    with zipfile.ZipFile(io.BytesIO(_package())) as archive:
+        members = {name: archive.read(name) for name in archive.namelist()}
+    app = yaml.safe_load(members["app.yaml"])
+    app["agent_packages"]["agent_1"]["soul"]["env"]["variables"] = [{"name": name, "value": "value"} for name in names]
+    members["app.yaml"] = yaml.safe_dump(app).encode()
+    manifest = yaml.safe_load(members["manifest.yaml"])
+    manifest["apps"][0].update(size=len(members["app.yaml"]), sha256=hashlib.sha256(members["app.yaml"]).hexdigest())
+    members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
+    monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
+    storage = _MemoryStorage()
+    with pytest.raises(InvalidRosterAgentPackageError, match="Soul is invalid"):
+        RosterAgentPackageImporter(storage_backend=storage).import_package(
+            source=io.BytesIO(_zip(members)), tenant_id="tenant-1", account=_account()
+        )
+    assert storage.save_count == 0
+    with sqlite_session_factory() as session:
+        assert _count(session, App) == 0
+
+
 def test_import_clears_source_credentials(monkeypatch, sqlite_session_factory):
     with zipfile.ZipFile(io.BytesIO(_package())) as archive:
         members = {name: archive.read(name) for name in archive.namelist()}
@@ -518,6 +541,45 @@ def test_cleanup_checkpoint_failure_preserves_blobs(monkeypatch, sqlite_session_
     assert storage.files == {}
 
 
+def test_empty_dependencies_do_not_require_plugin_service(monkeypatch):
+    from services.agent.roster_package_dependencies import check_package_dependencies
+
+    def unavailable(**_kwargs):
+        raise OSError("plugin service unavailable")
+
+    monkeypatch.setattr(DependenciesAnalysisService, "get_leaked_dependencies", unavailable)
+    check_package_dependencies(tenant_id="tenant-1", account=_account(), dependencies=[])
+
+
+def test_periodic_cleanup_defers_failures_to_avoid_starvation(monkeypatch):
+    from tasks import cleanup_roster_package_task as task
+
+    cache = _CleanupCache()
+    cache.save(PackageCleanupJob(tenant_id="tenant-1", app_id="failed"))
+    cache.save(PackageCleanupJob(tenant_id="tenant-1", app_id="next"))
+    deferred = set()
+    save = cache.save
+
+    def reschedule(job):
+        save(job)
+        deferred.add(job.key)
+
+    # Model two worker ticks before a deferred job becomes due again.
+    monkeypatch.setattr(cache, "save", reschedule)
+    monkeypatch.setattr(cache, "due", lambda: [key for key in cache.jobs if key not in deferred][:1])
+    cleanup = RosterPackageCleanup(cache=cache, storage_backend=_MemoryStorage())
+
+    def remove_database(job):
+        if job.app_id == "failed":
+            raise OSError("database unavailable")
+
+    monkeypatch.setattr(cleanup, "_remove_database", remove_database)
+    monkeypatch.setattr(task, "RosterPackageCleanup", lambda: cleanup)
+    task.cleanup_roster_packages.run()
+    task.cleanup_roster_packages.run()
+    assert set(cache.jobs) == {"tenant-1:failed"}
+
+
 def test_periodic_cleanup_continues_after_one_failed_job(monkeypatch):
     from tasks import cleanup_roster_package_task as task
 
@@ -585,6 +647,12 @@ def test_import_materializes_agent_resources_and_unpublished_draft(
         agent = session.get(Agent, result.agent_id)
         assert app is not None
         assert app.name == "Imported Agent"
+        assert app.mode == "agent"
+        assert app.enable_site is False
+        assert app.enable_api is False
+        model_config = session.get(AppModelConfig, app.app_model_config_id)
+        assert model_config is not None
+        assert model_config.app_id == app.id
         assert agent is not None
         assert agent.source == AgentSource.IMPORTED
         assert agent.scope == AgentScope.ROSTER
@@ -708,10 +776,22 @@ def test_import_rejects_duplicate_agent_name_before_staging(
     assert storage.files == {}
 
 
+@pytest.mark.parametrize("fail_after_write", [False, True])
 def test_import_cleans_staged_resources_when_storage_fails(
     sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    fail_after_write: bool,
 ) -> None:
-    storage = _MemoryStorage(fail_save_at=2)
+    storage = _MemoryStorage(fail_save_at=None if fail_after_write else 2)
+    if fail_after_write:
+        save = storage.save
+
+        def save_then_fail(filename: str, data: bytes) -> None:
+            save(filename, data)
+            if storage.save_count == 2:
+                raise OSError("storage write completed but acknowledgement failed")
+
+        monkeypatch.setattr(storage, "save", save_then_fail)
     cache = _CleanupCache()
 
     with pytest.raises(RosterAgentPackageResourceUnavailableError):
@@ -728,6 +808,38 @@ def test_import_cleans_staged_resources_when_storage_fails(
     with sqlite_session_factory() as session:
         assert _count(session, App) == 0
         assert _count(session, ToolFile) == 0
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected"),
+    [
+        (AgentNameConflictError(), AgentNameConflictError),
+        (InvalidRosterAgentPackageError(), InvalidRosterAgentPackageError),
+        (RosterAgentPackageTooLargeError(), RosterAgentPackageTooLargeError),
+        (RosterAgentPackageResourceUnavailableError(), RosterAgentPackageResourceUnavailableError),
+        (IntegrityError("insert", {}, RuntimeError("roster_unique_name")), AgentNameConflictError),
+        (IntegrityError("insert", {}, RuntimeError("other constraint")), RosterAgentPackageImportFailedError),
+        (RuntimeError("unexpected failure"), RosterAgentPackageImportFailedError),
+    ],
+)
+def test_import_compensates_once_and_preserves_error_mapping(monkeypatch, failure, expected):
+    importer = RosterAgentPackageImporter(storage_backend=_MemoryStorage())
+    cleanups = []
+
+    def fail(**_kwargs):
+        raise failure
+
+    monkeypatch.setattr(importer, "_ensure_name_available", fail)
+    monkeypatch.setattr(importer, "_cleanup_failed_import", lambda **kwargs: cleanups.append(kwargs))
+    with pytest.raises(expected) as caught:
+        importer.import_package(source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account())
+    assert len(cleanups) == 1
+    assert cleanups[0]["tenant_id"] == "tenant-1"
+    assert cleanups[0]["staged"] == []
+    if isinstance(failure, expected):
+        assert caught.value is failure
+    else:
+        assert caught.value.__cause__ is failure
 
 
 def test_import_cleans_external_state_when_database_write_fails(
