@@ -45,6 +45,34 @@ def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
     return list(spans.values())
 
 
+def _make_span_tags(completed_trace: CompletedTrace, span: TraceSpan) -> list[JsonValue]:
+    operation_type = span.attributes.get("operation_type", span.span_type)
+    if not isinstance(operation_type, str):
+        operation_type = span.span_type
+    mode = span.attributes.get("conversation_mode", span.attributes.get("app_mode"))
+    tags: list[str] = []
+    if span.node_execution_id or span.attributes.get("node_execution_id") or span.span_type == "node":
+        tags.append("node_execution")
+    elif span.span_type == "workflow":
+        tags.append("dify_workflow")
+    elif operation_type == "message" or (operation_type == "llm" and isinstance(mode, str) and mode):
+        # The legacy message generation inherited its message's tags.
+        tags.append("message")
+        if operation_type == "message" and completed_trace.source.workflow_run_id:
+            tags.append("workflow")
+        elif isinstance(mode, str) and mode:
+            tags.append(mode)
+    elif operation_type in {"moderation", "suggested_question", "dataset_retrieval", "generate_name"}:
+        tags.append(operation_type)
+    elif operation_type == "tool" or span.span_type == "tool":
+        tags.append("tool")
+        if isinstance(tool_name := span.attributes.get("tool_name", span.span_name), str) and tool_name:
+            tags.append(tool_name)
+    if isinstance(captured_tags := span.attributes.get("tags"), list):
+        tags.extend(tag for tag in captured_tags if isinstance(tag, str))
+    return list(dict.fromkeys(tags))
+
+
 class WeaveTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
         self.config = WeaveConfig.model_validate(provider_config)
@@ -126,7 +154,10 @@ class WeaveTraceClient:
                 if span.parent_span_id
                 else (parent_span["span_id"] if parent_span else None),
                 "started_at": span.started_at.isoformat(),
-                "attributes": span_attributes(completed_trace, span),
+                "attributes": {
+                    **span_attributes(completed_trace, span),
+                    "tags": _make_span_tags(completed_trace, span),
+                },
                 "inputs": span.inputs if isinstance(span.inputs, dict) else {"input": span.inputs},
                 "wb_user_id": None,
             }

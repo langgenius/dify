@@ -1103,7 +1103,8 @@ def test_mlflow_uses_captured_tls_for_verification_otlp_and_same_origin_artifact
     client._upload_mlflow_artifact("mlflow-artifacts:/trace", b"{}")
     client._upload_mlflow_artifact("https://MLFLOW.example:443/trace", b"{}")
     client._upload_mlflow_artifact("https://artifacts.example/trace", b"{}")
-    assert contexts == [context, context, context, context, context, context, None]
+    assert contexts == [context] * 7
+    build_context.assert_called_with({"certificate": runtime_settings["tls"]["certificate"]}, verify=True)
 
 
 @pytest.mark.parametrize("insecure", ["true", "TRUE", "1", "false", "FALSE", "0"])
@@ -1171,19 +1172,21 @@ def test_mlflow_preserves_requests_ca_bundle_precedence(
     assert (base64.b64decode(certificate).decode() if certificate else None) == expected
 
 
-def test_mlflow_does_not_read_unused_tls_files_for_http(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mlflow_http_defers_ca_failures_and_does_not_read_client_certificates(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MLFLOW_TRACKING_SERVER_CERT_PATH", "/missing/ca.pem")
     monkeypatch.setenv("MLFLOW_TRACKING_CLIENT_CERT_PATH", "/missing/client.pem")
     monkeypatch.delenv("MLFLOW_TRACKING_INSECURE_TLS", raising=False)
-    read_files = Mock(side_effect=AssertionError("Plain HTTP must not load TLS files"))
+    read_files = Mock(side_effect=ValueError("Cannot read TLS configuration"))
     monkeypatch.setattr("dify_trace_mlflow.config.read_tls_files", read_files)
     config = {"tracking_uri": "http://mlflow.example"}
-    assert MLflowConfig.load_runtime_settings(config) == {}
+    assert MLflowConfig.load_runtime_settings(config) == {"verify": True, "artifact_tls_read_failed": True}
     ssl_context = MLflowTraceClient("mlflow", config).http.ssl_context
     assert isinstance(ssl_context, ssl.SSLContext)
     assert ssl_context.verify_mode == ssl.CERT_REQUIRED
     assert ssl_context.check_hostname is True
-    read_files.assert_not_called()
+    read_files.assert_called_with(
+        {"certificate": "/missing/ca.pem", "client_certificate": None}, allow_ca_directory=True
+    )
 
 
 def test_mlflow_explicit_blank_ca_disables_verification_without_ca_bundle_fallback(
