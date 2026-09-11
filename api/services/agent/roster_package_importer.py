@@ -48,10 +48,7 @@ from services.agent.errors import (
 )
 from services.agent.roster_package_cleanup import CleanupResource, PackageCleanupJob, RosterPackageCleanup
 from services.agent.roster_package_dependencies import check_package_dependencies
-from services.agent.roster_package_entities import (
-    PreparedRosterAgentPackage,
-    RosterAgentPackageMetadata,
-)
+from services.agent.roster_package_entities import PreparedRosterAgentPackage
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.roster_service import AgentRosterService
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
@@ -107,23 +104,26 @@ class RosterAgentPackageImporter:
         account: Account,
     ) -> RosterAgentPackageImportResult:
         with self._reader.read(source) as package:
-            package.manifest = package.manifest.model_copy(
-                update={"soul": make_portable_agent_soul(package.manifest.soul)}
-            )
-            self._validate_supported_resources(package)
+            if len(package.apps) != 1:
+                raise InvalidRosterAgentPackageError("Import requires exactly one Agent App")
+            app_dsl = next(iter(package.apps.values()))
+            agent_package = app_dsl.package
+            agent_package.soul = make_portable_agent_soul(agent_package.soul)
+            self._validate_supported_resources(package, soul=agent_package.soul)
             try:
-                ComposerConfigValidator.validate_importable_agent_soul(package.manifest.soul)
+                ComposerConfigValidator.validate_importable_agent_soul(agent_package.soul)
             except (InvalidComposerConfigError, PlaintextSecretNotAllowedError) as exc:
                 raise InvalidRosterAgentPackageError("Roster Agent package Soul is invalid") from exc
 
-            check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=package.manifest.dependencies)
+            check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=app_dsl.dependencies)
             app_id = str(uuid4())
             staged: list[_StagedResource] = []
             skill_warnings: list[DslImportWarning] = []
             try:
-                self._ensure_name_available(tenant_id=tenant_id, name=package.manifest.metadata.name)
+                self._ensure_name_available(tenant_id=tenant_id, name=agent_package.metadata.name)
                 soul = self._stage_resources(
                     package=package,
+                    agent_package=agent_package,
                     tenant_id=tenant_id,
                     account_id=account.id,
                     staged=staged,
@@ -131,7 +131,7 @@ class RosterAgentPackageImporter:
                 )
                 resolved_soul, warnings = self._resolve_target_soul(
                     tenant_id=tenant_id,
-                    metadata=package.manifest.metadata,
+                    metadata=agent_package.metadata,
                     soul=soul,
                 )
                 warnings = [*skill_warnings, *warnings]
@@ -139,7 +139,7 @@ class RosterAgentPackageImporter:
                     app_id=app_id,
                     tenant_id=tenant_id,
                     account=account,
-                    metadata=package.manifest.metadata,
+                    metadata=agent_package.metadata,
                     soul=resolved_soul,
                     staged=staged,
                 )
@@ -172,24 +172,22 @@ class RosterAgentPackageImporter:
                 raise RosterAgentPackageImportFailedError() from exc
 
     @classmethod
-    def _validate_supported_resources(cls, package: PreparedRosterAgentPackage) -> None:
-        if any(item.role == "binary_dependency" for item in package.manifest.files):
-            raise InvalidRosterAgentPackageError(
-                "Roster Agent package binary_dependency resources are not supported yet"
-            )
-        skill_names = [item.name for item in package.manifest.soul.config_skills]
+    def _validate_supported_resources(cls, package: PreparedRosterAgentPackage, *, soul: AgentSoulConfig) -> None:
+        skill_names = [item.name for item in soul.config_skills]
         skill_names.extend(item.name for item in package.manifest.skills if item.scope == "workspace")
         if len(skill_names) != len(set(skill_names)):
             raise InvalidRosterAgentPackageError("Roster Agent package contains duplicate effective Skill names")
-        file_names = [item.name for item in package.manifest.soul.config_files]
+        file_names = [item.name for item in soul.config_files]
         if len(file_names) != len(set(file_names)):
             raise InvalidRosterAgentPackageError("Roster Agent package contains duplicate config file names")
+        file_refs = {item.file_id: item for item in soul.config_files if not item.is_missing}
         for resource in package.manifest.files:
-            extension = cls._extension(resource.original_name)
+            filename = file_refs[resource.id].name
+            extension = cls._extension(filename)
             limit = FileService.file_size_limit(extension=extension)
             if resource.size > limit:
                 raise InvalidRosterAgentPackageError(
-                    f"Roster Agent package file {resource.original_name!r} exceeds its file size limit"
+                    f"Roster Agent package file {filename!r} exceeds its file size limit"
                 )
             if extension and extension in dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST:
                 raise InvalidRosterAgentPackageError(
@@ -216,12 +214,13 @@ class RosterAgentPackageImporter:
         self,
         *,
         package: PreparedRosterAgentPackage,
+        agent_package: AgentPackage,
         tenant_id: str,
         account_id: str,
         staged: list[_StagedResource],
         warnings: list[DslImportWarning],
     ) -> AgentSoulConfig:
-        soul_data = package.manifest.soul.model_dump(mode="json")
+        soul_data = agent_package.soul.model_dump(mode="json")
         skill_refs_by_package_id = {
             item["file_id"]: item for item in soul_data["config_skills"] if not item["is_missing"]
         }
@@ -229,10 +228,12 @@ class RosterAgentPackageImporter:
             item["file_id"]: item for item in soul_data["config_files"] if not item["is_missing"]
         }
 
+        skill_descriptions = {item.name: item.description for item in agent_package.workspace_skills}
+        skill_descriptions.update({item.name: item.description for item in agent_package.soul.config_skills})
         for skill_resource in package.manifest.skills:
             missing_ref = {
                 "name": skill_resource.name,
-                "description": skill_resource.description,
+                "description": skill_descriptions.get(skill_resource.name, ""),
                 "file_kind": "tool_file",
                 "file_id": "",
                 "is_missing": True,
@@ -298,7 +299,8 @@ class RosterAgentPackageImporter:
         for file_resource in package.manifest.files:
             package_ref = file_refs_by_package_id[file_resource.id]
             file_kind = package_ref["file_kind"]
-            extension = self._extension(file_resource.original_name)
+            mime_type = package_ref["mime_type"] or "application/octet-stream"
+            extension = self._extension(package_ref["name"])
             limit = FileService.file_size_limit(extension=extension)
             payload = self._reader.read_member_bytes(package, file_resource.path, max_bytes=limit)
             if file_kind == "tool_file":
@@ -308,8 +310,8 @@ class RosterAgentPackageImporter:
                     tenant_id=tenant_id,
                     conversation_id=None,
                     file_key=storage_key,
-                    mimetype=file_resource.mime_type,
-                    name=file_resource.original_name,
+                    mimetype=mime_type,
+                    name=package_ref["name"],
                     size=len(payload),
                     original_url=None,
                 )
@@ -321,10 +323,10 @@ class RosterAgentPackageImporter:
                     tenant_id=tenant_id,
                     storage_type=StorageType(dify_config.STORAGE_TYPE),
                     key=storage_key,
-                    name=file_resource.original_name,
+                    name=package_ref["name"],
                     size=len(payload),
                     extension=extension,
-                    mime_type=file_resource.mime_type,
+                    mime_type=mime_type,
                     created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=account_id,
                     created_at=now,
@@ -341,7 +343,7 @@ class RosterAgentPackageImporter:
                     "is_missing": False,
                     "size": row.size,
                     "hash": hash_value,
-                    "mime_type": file_resource.mime_type,
+                    "mime_type": mime_type,
                 }
             )
 
@@ -366,7 +368,7 @@ class RosterAgentPackageImporter:
     def _resolve_target_soul(
         *,
         tenant_id: str,
-        metadata: RosterAgentPackageMetadata,
+        metadata: AgentPackageMetadata,
         soul: AgentSoulConfig,
     ) -> tuple[AgentSoulConfig, list[DslImportWarning]]:
         package = AgentPackage(
@@ -390,7 +392,7 @@ class RosterAgentPackageImporter:
         app_id: str,
         tenant_id: str,
         account: Account,
-        metadata: RosterAgentPackageMetadata,
+        metadata: AgentPackageMetadata,
         soul: AgentSoulConfig,
         staged: Sequence[_StagedResource],
     ) -> tuple[str, str]:
