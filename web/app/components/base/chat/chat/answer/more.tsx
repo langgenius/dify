@@ -9,6 +9,12 @@ type MoreProps = {
 }
 const More: FC<MoreProps> = ({ more }) => {
   const { t } = useTranslation()
+  const latencyLabel = more?.latencyIsWorkflowTime
+    ? t(($) => $['detail.workflowTimeConsuming'], { ns: 'appLog' })
+    : t(($) => $['detail.timeConsuming'], { ns: 'appLog' })
+  const latencyTooltip = more?.latencyIsWorkflowTime
+    ? t(($) => $['detail.workflowTimeConsumingTip'], { ns: 'appLog' })
+    : t(($) => $['detail.responseTimeConsumingTip'], { ns: 'appLog' })
 
   return (
     <div
@@ -19,10 +25,10 @@ const More: FC<MoreProps> = ({ more }) => {
         <>
           <div
             className="mr-2 max-w-[25%] shrink-0 truncate"
-            title={`${t(($) => $['detail.timeConsuming'], { ns: 'appLog' })} ${more.latency}${t(($) => $['detail.second'], { ns: 'appLog' })}`}
+            title={latencyTooltip}
             data-testid="more-latency"
           >
-            {`${t(($) => $['detail.timeConsuming'], { ns: 'appLog' })} ${more.latency}${t(($) => $['detail.second'], { ns: 'appLog' })}`}
+            {`${latencyLabel} ${more.latency}${t(($) => $['detail.second'], { ns: 'appLog' })}`}
           </div>
           <div
             className="mr-2 max-w-[25%] shrink-0 truncate"
