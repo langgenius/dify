@@ -1,15 +1,23 @@
 """Aliyun receives valid GenAI messages and agent/tool projections."""
 
 import json
+from datetime import UTC, datetime, timedelta
+from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 from dify_trace_aliyun.aliyun_trace import create_trace_client, gen_ai_messages
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from pydantic import JsonValue
 
-from core.ops.trace_data import copy_trace_value
+from core.ops.trace_data import CompletedTrace, TraceSource, copy_trace_value
+from core.ops.workflow_trace import WorkflowTraceRecorder
 from core.rag.models.document import Document
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
+from graphon.node_events import NodeRunResult
 from graphon.variables.segments import ArrayObjectSegment
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace, provider_config
+from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
 
 
 @pytest.mark.parametrize("output_shape", ["workflow", "workflow_segment", "message"])
@@ -151,3 +159,68 @@ def test_agent_round_tool_and_skill_fields_survive_generic_capture() -> None:
     thought_attributes = {item.key: item.value.string_value for item in client.build_span(trace, thought).attributes}
     assert thought_attributes["gen_ai.request.model"] == "model-name"
     assert thought_attributes["gen_ai.provider.name"] == "plugin-provider"
+
+
+@pytest.mark.parametrize(
+    ("data", "completion"),
+    [
+        ({"thought": "Thinking", "action": "search"}, "Thinking"),
+        ({"thought": "", "action": "search"}, "search"),
+        ({"action": {"tool": "search"}}, "{'tool': 'search'}"),
+        ({"text": "Answer"}, "Answer"),
+        ({}, ""),
+    ],
+)
+def test_recorded_agent_thought_preserves_completion_aliases(
+    data: dict[str, JsonValue], completion: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()), actor_id="user")
+    submitted: list[CompletedTrace] = []
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    node = workflow_node(source, node_type="agent")
+    start_node(recorder, node)
+    started = datetime.now(UTC)
+    recorder.on_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type="agent",
+            start_at=started,
+            finished_at=started + timedelta(seconds=1),
+            node_run_result=NodeRunResult(
+                outputs={
+                    "json": [
+                        {
+                            "id": "thought",
+                            "label": "model Thought",
+                            "status": "success",
+                            "data": data,
+                            "metadata": {"provider": "plugin-provider"},
+                        }
+                    ]
+                }
+            ),
+        )
+    )
+    recorder.on_event(GraphRunSucceededEvent())
+    assert recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted[0].model_dump_json())
+    thought = next(span for span in trace.spans if span.span_type == "llm")
+    assert thought.outputs == data
+
+    client = create_trace_client(provider_config("aliyun"))
+    send_traces = Mock()
+    monkeypatch.setattr(client, "send_traces", send_traces)
+    client.export_trace(trace)
+    request = ExportTraceServiceRequest.FromString(send_traces.call_args.args[0].SerializeToString())
+    exported = next(span for span in request.resource_spans[0].scope_spans[0].spans if span.name == "model Thought")
+    attributes = {item.key: item.value.string_value for item in exported.attributes}
+    assert attributes["gen_ai.completion"] == completion
+    assert attributes["gen_ai.request.model"] == "model"
+    assert attributes["gen_ai.provider.name"] == "plugin-provider"

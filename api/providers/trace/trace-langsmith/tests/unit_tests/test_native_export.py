@@ -4,9 +4,11 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from dify_trace_langsmith.config import LangSmithConfig
 from dify_trace_langsmith.langsmith_trace import LangSmithTraceClient
 from pydantic import JsonValue
 
+from core.ops.provider_config import resolve_provider_config
 from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, make_span_id, make_trace_id
 
@@ -118,6 +120,58 @@ def test_langsmith_native_llm_prompt_usage_cost_and_model(monkeypatch: pytest.Mo
     assert run["extra"]["metadata"]["ls_model_name"] == "gpt-4o"
     assert run["extra"]["metadata"]["ls_provider"] == "openai"
     assert run["extra"]["invocation_params"] == {"temperature": 0.2}
+    assert trace.model_dump_json() == original
+
+
+@pytest.mark.parametrize(
+    ("hide_inputs", "hide_outputs", "hide_metadata"),
+    [(False, False, False), (True, False, False), (False, True, False), (False, False, True), (True, True, True)],
+)
+def test_privacy_switches_hide_content_and_captured_copies_without_mutating_trace(
+    hide_inputs: bool, hide_outputs: bool, hide_metadata: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name, hidden in (("INPUTS", hide_inputs), ("OUTPUTS", hide_outputs), ("METADATA", hide_metadata)):
+        monkeypatch.setenv(f"LANGSMITH_HIDE_{name}", str(hidden).lower())
+    trace = make_trace()
+    child = trace.spans[-1]
+    child = child.model_copy(
+        update={
+            "attributes": {
+                **child.attributes,
+                "original_inputs": {"query": "Rendered prompt"},
+                "query": "Rendered prompt",
+                "files": [{"url": "private-file"}],
+                "process_data": {"prompts": child.inputs, "thought": "World"},
+            },
+            "events": ({"inputs": child.inputs, "outputs": child.outputs},),
+        }
+    )
+    trace = trace.model_copy(update={"spans": (trace.spans[0], child)})
+    original = trace.model_dump_json()
+    settings = resolve_provider_config("langsmith", {"api_key": "key", "project": "project"})
+    # The worker must use its authorized snapshot, even if deployment settings change.
+    for name in ("INPUTS", "OUTPUTS", "METADATA"):
+        monkeypatch.delenv(f"LANGSMITH_HIDE_{name}")
+    monkeypatch.setattr(LangSmithConfig, "load_runtime_settings", Mock(side_effect=AssertionError("snapshot reread")))
+    client = LangSmithTraceClient(settings)
+    request = Mock(return_value=httpx.Response(202, json={}))
+    monkeypatch.setattr(client.http, "request", request)
+
+    client.export_trace(trace)
+
+    for call in request.call_args_list:
+        run = call.kwargs["json"]["post"][0]
+        assert bool(run["inputs"]) is not hide_inputs
+        assert bool(run["outputs"]) is not hide_outputs
+        metadata = run["extra"]["metadata"]
+        assert bool(metadata) is not hide_metadata
+        if hide_inputs:
+            assert not {"dify.inputs", "original_inputs", "query"}.intersection(metadata)
+        if hide_outputs:
+            assert "dify.outputs" not in metadata
+        if hide_inputs or hide_outputs:
+            assert not {"files", "process_data", "dify.events"}.intersection(metadata)
+    assert request.call_args.kwargs["json"]["post"][0]["extra"]["invocation_params"] == {"temperature": 0.2}
     assert trace.model_dump_json() == original
 
 

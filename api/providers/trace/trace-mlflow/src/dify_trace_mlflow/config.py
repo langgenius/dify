@@ -10,7 +10,7 @@ from pydantic import ValidationInfo, field_validator
 from core.helper.ssl_context import read_tls_files
 from core.ops.provider_config import BaseTracingConfig
 from core.ops.utils import validate_integer_id, validate_url_with_path
-from dify_trace_mlflow.deployment_auth import resolve_deployment_auth
+from dify_trace_mlflow.deployment_auth import resolve_aws_credentials, resolve_deployment_auth
 
 
 class MLflowConfig(BaseTracingConfig):
@@ -47,7 +47,10 @@ class MLflowConfig(BaseTracingConfig):
             settings["headers"] = {"Authorization": authorization}
         elif token := os.environ.get("MLFLOW_TRACKING_TOKEN"):
             settings["headers"] = {"Authorization": f"Bearer {token}"}
-        if headers := resolve_deployment_auth(settings.get("headers", {})):
+        aws_credentials = resolve_aws_credentials()
+        if aws_credentials is not None:
+            settings["aws_sigv4"] = aws_credentials
+        if headers := resolve_deployment_auth(settings.get("headers", {}), aws_sigv4=aws_credentials is not None):
             settings["headers"] = headers
         insecure_tls = os.environ.get("MLFLOW_TRACKING_INSECURE_TLS", "false").lower()
         if insecure_tls not in {"true", "false", "1", "0"}:
@@ -56,24 +59,28 @@ class MLflowConfig(BaseTracingConfig):
         certificate = os.environ.get("MLFLOW_TRACKING_SERVER_CERT_PATH")
         if not verify and certificate is not None:
             raise ValueError("MLflow TLS verification cannot be disabled with a server certificate configured")
-        if urlsplit(config.tracking_uri).scheme == "http":
-            return settings
         # The SDK passes an explicitly blank CA path to Requests as verify="".
         verify = verify and certificate != ""
         if certificate is None and verify:
             certificate = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("CURL_CA_BUNDLE")
-        return {
-            **settings,
-            "verify": verify,
-            "tls": read_tls_files(
+        settings["verify"] = verify
+        http_tracking = urlsplit(config.tracking_uri).scheme == "http"
+        try:
+            settings["tls"] = read_tls_files(
                 {
                     "certificate": certificate,
                     # Requests accepts a PEM containing both the certificate and key.
-                    "client_certificate": os.environ.get("MLFLOW_TRACKING_CLIENT_CERT_PATH"),
+                    "client_certificate": None if http_tracking else os.environ.get("MLFLOW_TRACKING_CLIENT_CERT_PATH"),
                 },
                 allow_ca_directory=True,
-            ),
-        }
+            )
+        except ValueError:
+            if not http_tracking:
+                raise
+            # An HTTP tracker may return HTTPS artifacts. Capture their CA now,
+            # but an unreadable CA must not prevent requests that remain HTTP.
+            settings["artifact_tls_read_failed"] = True
+        return settings
 
     @field_validator("tracking_uri")
     @classmethod

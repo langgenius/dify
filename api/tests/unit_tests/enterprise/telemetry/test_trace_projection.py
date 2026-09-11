@@ -1,15 +1,85 @@
 """Enterprise keeps operational metadata and measurement contracts when content is hidden."""
 
 import json
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
 
 from core.ops.otlp_trace import otlp_value
+from core.ops.trace_data import CompletedTrace, TraceSource
+from core.ops.workflow_trace import WorkflowTraceRecorder
 from enterprise.telemetry.enterprise_trace import EnterpriseTraceClient
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
+from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import NodeRunResult
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace
+from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
+
+
+@pytest.mark.parametrize("include_content", [True, False])
+def test_recorded_tool_node_exports_its_name_in_spans_and_logs(
+    include_content: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()), actor_id="user")
+    submitted: list[CompletedTrace] = []
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    node = workflow_node(source, node_type="tool")
+    start_node(recorder, node)
+    started = datetime.now(UTC)
+    recorder.on_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type="tool",
+            start_at=started,
+            finished_at=started + timedelta(seconds=1),
+            node_run_result=NodeRunResult(
+                inputs={"query": "private question"},
+                outputs={"answer": "private answer"},
+                metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: {"tool_name": "google_search"}},
+            ),
+        )
+    )
+    recorder.on_event(GraphRunSucceededEvent())
+    assert recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted[0].model_dump_json())
+    assert trace.spans[-1].attributes["metadata"] == {"tool_info": {"tool_name": "google_search"}}
+
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": include_content})
+    send_traces = Mock()
+    log = Mock()
+    monkeypatch.setattr(client.otlp, "send_traces", send_traces)
+    monkeypatch.setattr(client.otlp, "send_metrics", Mock())
+    monkeypatch.setattr(client.logger, "info", log)
+    client.export_trace(trace)
+    exported = send_traces.call_args.args[0].resource_spans[0].scope_spans[0].spans[-1]
+    attributes = {item.key: item.value.string_value for item in exported.attributes}
+    log_attributes = log.call_args.kwargs["extra"]["attributes"]
+    for fields in (attributes, log_attributes):
+        assert fields["gen_ai.tool.name"] == "google_search"
+        assert fields["dify.node.title"] == node.title
+        if not include_content:
+            assert "private" not in str(fields)
+
+
+@pytest.mark.parametrize("operation_type", ["node_execution", "draft_node_execution"])
+@pytest.mark.parametrize("tool_info", [None, "invalid", {}])
+def test_explicit_tool_name_survives_missing_or_invalid_tool_metadata(operation_type: str, tool_info: object) -> None:
+    trace = make_completed_trace()
+    span = trace.spans[-1].model_copy(update={"attributes": {"tool_name": "search", "tool_info": tool_info}})
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": False})
+    attributes = client._attributes(trace, span, operation_type)
+    assert attributes["gen_ai.tool.name"] == "search"
 
 
 @pytest.mark.parametrize(

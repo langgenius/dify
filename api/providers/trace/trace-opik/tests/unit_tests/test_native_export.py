@@ -7,6 +7,7 @@ import httpx
 import pytest
 from dify_trace_opik.opik_trace import OpikTraceClient
 
+from core.ops.message_trace import MessageTraceRecorder
 from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, make_span_id, make_trace_id
 
@@ -232,3 +233,71 @@ def test_opik_invalid_late_span_fails_before_any_write(monkeypatch: pytest.Monke
     with pytest.raises(TraceExportError, match="time_invalid"):
         client.export_trace(trace)
     request.assert_not_called()
+
+
+@pytest.mark.parametrize("mode", ["chat", "completion", "agent-chat", "advanced-chat"])
+def test_opik_preserves_tags_on_captured_message_operations(mode: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    trace = make_trace()
+    source = trace.source.model_copy(update={"workflow_run_id": str(uuid4()) if mode == "advanced-chat" else None})
+    recorder = MessageTraceRecorder(source, Mock(), (), attributes={"app_mode": mode})
+    submitted = Mock(return_value=True)
+    monkeypatch.setattr(recorder, "submit_completed_trace", submitted)
+    expected_tags = {
+        "moderation": ["dify", "tool", "moderation"],
+        "suggested_questions": ["dify", "llm", "suggested_question"],
+        "generate_conversation_name": ["dify", "llm", "generate_name"],
+        "dataset_retrieval": ["dify", "retrieval", "dataset_retrieval"],
+        "Search": ["dify", "tool", "web_search"],
+    }
+    for name, span_type, attributes in (
+        ("moderation", "tool", {"operation_type": "moderation"}),
+        ("suggested_questions", "llm", {"operation_type": "suggested_question"}),
+        ("generate_conversation_name", "llm", {"operation_type": "generate_name"}),
+        ("dataset_retrieval", "retrieval", {}),
+        ("Search", "tool", {"tool_name": "web_search"}),
+    ):
+        recorder.record_operation(name, span_type=span_type, attributes=attributes)
+    recorder.finish_message_trace(
+        {
+            "message_id": source.message_id,
+            "conversation_id": str(uuid4()),
+            "started_at": trace.spans[0].started_at,
+            "ended_at": trace.spans[0].ended_at,
+            "model_name": "gpt-4o",
+            "metadata": {"conversation_mode": mode},
+        },
+        include_llm=mode != "advanced-chat",
+    )
+    captured = submitted.call_args.args[0]
+    original = captured.model_dump_json()
+    client, request = make_client_with_transport(monkeypatch)
+    client.export_trace(captured)
+
+    expected_tags["message"] = ["dify", "operation", "message", "workflow" if mode == "advanced-chat" else mode]
+    expected_tags["gpt-4o"] = ["dify", "llm", mode]
+    for call in request.call_args_list:
+        exported = call.kwargs["json"]
+        assert exported["tags"] == expected_tags[exported["name"]]
+        assert exported["metadata"]["created_from"] == "dify"
+        assert exported["metadata"]["dify.tenant_id"] == source.tenant_id
+    assert captured.model_dump_json() == original
+
+
+@pytest.mark.parametrize("message_id", [None, "12345678-1234-4234-8234-123456789abc"])
+@pytest.mark.parametrize("node_type", ["node", "llm", "tool"])
+def test_opik_preserves_workflow_trace_and_node_tags(
+    message_id: str | None, node_type: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    trace = make_trace()
+    node = trace.spans[-1].model_copy(update={"span_type": node_type, "node_execution_id": str(uuid4())})
+    trace = trace.model_copy(
+        update={"source": trace.source.model_copy(update={"message_id": message_id}), "spans": (trace.spans[0], node)}
+    )
+    client, request = make_client_with_transport(monkeypatch)
+    client.export_trace(trace)
+
+    root, root_span, node_span = [call.kwargs["json"] for call in request.call_args_list]
+    assert root["tags"] == (["dify", "message", "workflow"] if message_id else ["dify", "workflow"])
+    assert root_span["tags"] == ["dify", "workflow"]
+    assert node_span["tags"] == ["dify", node_type, "node_execution"]
+    assert all(exported["metadata"]["created_from"] == "dify" for exported in (root, root_span, node_span))

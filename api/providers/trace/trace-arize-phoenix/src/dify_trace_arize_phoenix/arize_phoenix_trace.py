@@ -3,7 +3,7 @@
 from typing import Any, override
 from urllib.parse import quote, urlsplit
 
-from opentelemetry.proto.trace.v1.trace_pb2 import Span
+from opentelemetry.proto.trace.v1.trace_pb2 import Span, Status
 from pydantic import JsonValue
 
 from core.helper.ssl_context import create_grpc_credentials, create_ssl_context
@@ -132,7 +132,11 @@ class OpenInferenceTraceClient(OtlpTraceClient):
                         f"{path}.metadata": json_text(document_metadata),
                     }
                 )
-        return otlp_span(completed_trace, span, parent_span, attributes=attributes)
+        exported_span = otlp_span(completed_trace, span, parent_span, attributes=attributes)
+        # Existing provider status filters include stopped workflows with a reason.
+        if span.span_type == "workflow" and span.status == "cancelled" and span.error:
+            exported_span.status.code = Status.STATUS_CODE_ERROR
+        return exported_span
 
 
 def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> OpenInferenceTraceClient:

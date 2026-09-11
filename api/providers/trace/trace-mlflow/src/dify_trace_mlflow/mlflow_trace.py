@@ -2,10 +2,13 @@
 
 import base64
 import json
-from typing import Any
+from functools import partial
+from ssl import SSLContext
+from typing import Any, override
 from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 from uuid import UUID
 
+import httpx
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
@@ -26,6 +29,26 @@ from core.ops.provider_export import (
 )
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
+from dify_trace_mlflow.deployment_auth import sign_aws_request
+
+
+class MLflowHttpClient(TraceProviderHttpClient):
+    def __init__(
+        self,
+        endpoint: str,
+        headers: dict[str, str],
+        *,
+        ssl_context: SSLContext | None,
+        aws_sigv4: dict[str, Any] | None,
+    ):
+        super().__init__(endpoint, headers, ssl_context=ssl_context)
+        self.aws_sigv4 = dict(aws_sigv4) if aws_sigv4 is not None else None
+
+    @override
+    def request(self, method: str, path: str = "", **kwargs: Any) -> httpx.Response:
+        if self.aws_sigv4 is not None:
+            kwargs["auth"] = partial(sign_aws_request, credentials=self.aws_sigv4)
+        return super().request(method, path, **kwargs)
 
 
 def _span_failed(span: TraceSpan) -> bool:
@@ -109,6 +132,7 @@ class MLflowTraceClient:
             if "_runtime_settings" in provider_config
             else self.config.load_runtime_settings(provider_config)
         )
+        self._aws_sigv4 = dict(runtime_settings["aws_sigv4"]) if runtime_settings.get("aws_sigv4") else None
         if isinstance(self.config, DatabricksConfig):
             self._databricks_tls_settings = runtime_settings
             endpoint = _normalize_databricks_host(self.config.host)
@@ -119,6 +143,13 @@ class MLflowTraceClient:
                 else create_ssl_context({}),
             )
         else:
+            self._artifact_tls = {
+                key: value
+                for key, value in runtime_settings.get("tls", {}).items()
+                if key in {"certificate", "certificate_directory"}
+            }
+            self._artifact_verify = runtime_settings.get("verify", True)
+            self._artifact_tls_read_failed = runtime_settings.get("artifact_tls_read_failed", False)
             headers = {
                 **runtime_settings.get("headers", {}),
                 **(
@@ -129,12 +160,15 @@ class MLflowTraceClient:
             }
             if headers.get("Authorization") == "":
                 raise TraceExportError("mlflow_credentials_missing")
-            self.http = TraceProviderHttpClient(
+            http_tracking = urlsplit(self.config.tracking_uri).scheme == "http"
+            self.http = MLflowHttpClient(
                 self.config.tracking_uri,
                 headers,
                 ssl_context=create_ssl_context(
-                    runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)
+                    {} if http_tracking else runtime_settings.get("tls", {}),
+                    verify=True if http_tracking else runtime_settings.get("verify", True),
                 ),
+                aws_sigv4=self._aws_sigv4,
             )
 
     def _authenticate_databricks(self) -> None:
@@ -262,6 +296,12 @@ class MLflowTraceClient:
                 {"service.name": "dify"},
                 self.get_project_url(),
                 ssl_context=self.http.ssl_context,
+            )
+            client.http = MLflowHttpClient(
+                client.http.endpoint,
+                client.http.headers,
+                ssl_context=self.http.ssl_context,
+                aws_sigv4=self._aws_sigv4,
             )
             client.http.deadline = self.http.deadline
             try:
@@ -547,10 +587,16 @@ class MLflowTraceClient:
             tracking.port if tracking.port is not None else (443 if tracking.scheme == "https" else 80),
         )
         headers = self.http.headers if same_origin else {}
-        client = TraceProviderHttpClient(
+        ssl_context = self.http.ssl_context if same_origin else None
+        if not same_origin and artifact.scheme == "https":
+            if self._artifact_tls_read_failed:
+                raise ValueError("Cannot read TLS configuration")
+            ssl_context = create_ssl_context(self._artifact_tls, verify=self._artifact_verify)
+        client = MLflowHttpClient(
             urlunsplit(artifact._replace(path=artifact.path.rstrip("/") + "/traces.json")),
             headers,
-            ssl_context=self.http.ssl_context if same_origin else None,
+            ssl_context=ssl_context,
+            aws_sigv4=self._aws_sigv4 if same_origin else None,
         )
         client.deadline = self.http.deadline
         client.request("PUT", content=trace_json, headers={"Content-Type": "application/json"})

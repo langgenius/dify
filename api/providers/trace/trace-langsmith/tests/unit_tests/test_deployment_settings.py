@@ -76,6 +76,30 @@ def test_workspace_snapshot_does_not_reread_environment(monkeypatch: pytest.Monk
     assert first_client.http.headers["X-Tenant-Id"] == "first-workspace"
 
 
+@pytest.mark.parametrize(
+    ("current", "legacy", "hidden"),
+    [
+        (None, None, False),
+        (None, "true", True),
+        (" ", "true", True),
+        ("false", "true", False),
+        ("true", "false", True),
+        ("TRUE", "true", False),
+        (" true ", "true", False),
+    ],
+)
+def test_privacy_switches_keep_sdk_namespace_and_boolean_semantics(
+    current: str | None, legacy: str | None, hidden: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name in ("HIDE_INPUTS", "HIDE_OUTPUTS", "HIDE_METADATA"):
+        if current is not None:
+            monkeypatch.setenv(f"LANGSMITH_{name}", current)
+        if legacy is not None:
+            monkeypatch.setenv(f"LANGCHAIN_{name}", legacy)
+    settings = LangSmithConfig.load_runtime_settings({"api_key": "key", "project": "project"})
+    assert all(settings[name] is hidden for name in ("hide_inputs", "hide_outputs", "hide_metadata"))
+
+
 @pytest.mark.parametrize("directory", [False, True])
 def test_requests_ca_precedence_and_directory_capture(
     directory: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

@@ -6,7 +6,7 @@ import socket
 from typing import Any, override
 from urllib.parse import quote, urljoin, urlsplit
 
-from opentelemetry.proto.trace.v1.trace_pb2 import Span
+from opentelemetry.proto.trace.v1.trace_pb2 import Span, Status
 from pydantic import JsonValue
 
 from configs import dify_config
@@ -135,13 +135,20 @@ class AliyunTraceClient(OtlpTraceClient):
             model_name = captured.get("model_name") or (
                 span.span_name.removesuffix(" Thought") if span.span_name.endswith(" Thought") else None
             )
+            completion = span.outputs
+            if isinstance(completion, dict):
+                completion = (
+                    str(completion.get("thought") or completion.get("action") or completion.get("text") or "")
+                    if span.span_name.endswith(" Thought")
+                    else completion.get("text")
+                )
             attributes.update(
                 {
                     "gen_ai.request.model": model_name,
                     "gen_ai.response.model": model_name,
                     "gen_ai.provider.name": captured.get("model_provider") or captured.get("provider"),
                     "gen_ai.prompt": json_text(span.inputs),
-                    "gen_ai.completion": span.outputs.get("text") if isinstance(span.outputs, dict) else span.outputs,
+                    "gen_ai.completion": completion,
                     "gen_ai.input.messages": json_text(gen_ai_messages(span.inputs, "user")),
                     "gen_ai.output.messages": json_text(gen_ai_messages(span.outputs, "assistant")),
                 }
@@ -243,7 +250,11 @@ class AliyunTraceClient(OtlpTraceClient):
                     "gen_ai.provider.name": captured.get("embedding_model_provider"),
                 }
             )
-        return otlp_span(completed_trace, span, parent_span, attributes=attributes)
+        exported_span = otlp_span(completed_trace, span, parent_span, attributes=attributes)
+        # Existing provider status filters include stopped workflows with a reason.
+        if span.span_type == "workflow" and span.status == "cancelled" and span.error:
+            exported_span.status.code = Status.STATUS_CODE_ERROR
+        return exported_span
 
 
 def create_trace_client(provider_config: dict[str, Any]) -> AliyunTraceClient:

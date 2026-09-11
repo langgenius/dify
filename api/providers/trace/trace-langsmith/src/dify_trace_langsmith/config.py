@@ -49,6 +49,18 @@ class LangSmithConfig(BaseTracingConfig):
                     workspace_id = profile["workspace_id"]
         certificate = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("CURL_CA_BUNDLE")
         return {
+            **{
+                name.lower(): next(
+                    (
+                        value
+                        for prefix in ("LANGSMITH", "LANGCHAIN")
+                        if (value := os.environ.get(f"{prefix}_{name}")) and value.strip()
+                    ),
+                    None,
+                )
+                == "true"
+                for name in ("HIDE_INPUTS", "HIDE_OUTPUTS", "HIDE_METADATA")
+            },
             "workspace_id": workspace_id.strip().strip('"').strip("'") if workspace_id else None,
             "tls": read_tls_files({"certificate": certificate}, allow_ca_directory=True),
         }
