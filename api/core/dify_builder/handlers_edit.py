@@ -40,11 +40,12 @@ from core.dify_builder.handlers_fix import (
     launch_error_text,
     merge_known_keys,
     mint_checkpoint,
+    model_config_error_text,
     perform_revert,
     start_schema,
     testdata_form_fields,
 )
-from core.dify_builder.models import DifyBuilderContext, NodeEvent, Run, Session, TestInput, Turn
+from core.dify_builder.models import Diagnosis, DifyBuilderContext, NodeEvent, Risk, Run, Session, TestInput, Turn
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
@@ -504,6 +505,62 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             next=PcState.EDIT_AWAIT_TESTDATA,
             context=fc,
             items=[*test_items, *form_items, *turn_items],
+            run=run,
+            run_id_sink=[run.id],
+        )
+
+    model_error = model_config_error_text(run)
+    if model_error is not None:
+        # Model-config failure: the run references a model that isn't
+        # configured/available -- not a workflow-logic bug. Surface it with a clear
+        # diagnosis and NO staged repair (diagnosing/repairing the graph thrashes);
+        # the user configures the model (update_model) and re-runs.
+        root_cause = (
+            "The workflow uses a model that isn't configured or available for this workspace, so "
+            "it can't run. This is a model-configuration issue, not a workflow-logic problem -- "
+            "configure the model (or choose a different one) and re-run the test. "
+            f"Details: {model_error}"
+        )
+        fc.diagnosis = Diagnosis(culprit_node_id=first_failed_node(per_node), root_cause=root_cause, severity="high")
+        fc.staged_repair = []
+        fc.risk = Risk(level="high", reason="model not configured", has_external_side_effect=False)
+        test_items = append_card(
+            fc,
+            TestResultCard(
+                title="Affected-path tests",
+                subtitle="Failed",
+                tone="error",
+                stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
+                run_ids=[run.id],
+            ),
+        )
+        error_items = append_card(
+            fc,
+            ErrorCard(
+                title="Model not configured",
+                body=root_cause,
+                tone="danger",
+                node_id=fc.diagnosis.culprit_node_id,
+            ),
+        )
+        execution = progress.finish()
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=progress.operation_id,
+                stage_id=str(s.current_state),
+                execution=execution,
+                reply_text=(
+                    "The test failed because the workflow's model isn't configured. Configure it "
+                    "(or change the model), then re-run — this isn't a workflow-logic issue."
+                ),
+                cards=["test_result", "error"],
+            ),
+        )
+        return StepResult(
+            next=PcState.EDIT_AWAIT_REPAIR,
+            context=fc,
+            items=[*test_items, *error_items, *turn_items],
             run=run,
             run_id_sink=[run.id],
         )

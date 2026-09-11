@@ -64,9 +64,13 @@ PLAIN: frozenset[str] = frozenset(
         "Draft kept",
         "Edit published",
         "High-impact rules",
+        "Model not configured",
         "Proceeding with sensible defaults",
         "Test failed",
         "Validation",
+        # model-config-failure surface (build + edit)
+        "The test failed because the workflow's model isn't configured. Configure it "
+        "(or change the model), then re-run — this isn't a workflow-logic issue.",
         # subtitles
         "All checks passed",
         "Failed",

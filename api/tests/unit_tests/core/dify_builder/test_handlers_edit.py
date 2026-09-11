@@ -443,6 +443,29 @@ def test_edit_test_config_failure_still_routes_to_repair_gate():
     assert result.context.test_input_ref == "ti-1"  # untouched on the config path
 
 
+def test_edit_test_model_config_failure_surfaces_without_repair():
+    """A model-config failure must be surfaced (no diagnose/propose_repair
+    thrash); no node-mutation repair is staged."""
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.models import TestInput
+
+    env, _ = _new_env(agent=StubAgent())
+    env.dify.verify_pass = False
+    env.dify.fail_error = "Provider openai does not exist."  # model-config error
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(edit_target_node_ids=["llm"], test_input_ref="ti-1")
+
+    result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert result.context.staged_repair == []  # no node-mutation repair proposed
+    kinds = [i.kind for i in result.items]
+    assert "change_set" not in kinds
+    error = next(i for i in result.items if i.kind == "error")
+    assert "model" in error.payload["body"].lower()
+
+
 def test_review_publish_enters_working_publish_before_side_effect():
     from core.dify_builder.handlers_edit import handle_publish, handle_review
 
