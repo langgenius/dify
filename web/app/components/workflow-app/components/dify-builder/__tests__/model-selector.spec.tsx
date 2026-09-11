@@ -10,11 +10,10 @@ import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import DifyBuilderModelSelector from '../model-selector'
+import DifyBuilderComposer from '../composer'
 import { createSessionView } from '../session/__tests__/fixtures'
 import { difyBuilderSessionViewAtom } from '../session/state'
-import { difyBuilderSelectedModelAtom } from '../store'
-import { useDifyBuilderModel } from '../use-dify-builder-model'
+import { difyBuilderDraftAtom, difyBuilderSelectedModelAtom } from '../store'
 
 vi.mock('@/service/common', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/common')>()),
@@ -63,11 +62,6 @@ const userModel: SessionModel = {
   completion_params: {},
 }
 
-const ModelSelectorWithData = () => {
-  const props = useDifyBuilderModel()
-  return <DifyBuilderModelSelector {...props} />
-}
-
 const renderSelector = ({
   configuredDefault = defaultModel,
   availableModels = modelList,
@@ -84,9 +78,17 @@ const renderSelector = ({
   const queryClient = createConsoleQueryClient()
   const store = createStore()
   store.set(queryClientAtom, queryClient)
+  store.set(difyBuilderDraftAtom, 'Build an expense assistant')
   if (selectedModel) store.set(difyBuilderSelectedModelAtom, selectedModel)
   if (sessionModel)
-    store.set(difyBuilderSessionViewAtom, createSessionView({ model: sessionModel }))
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        model: sessionModel,
+        run_status: 'waiting_input',
+        canvas_read_only: false,
+      }),
+    )
   if (!defaultLoading)
     queryClient.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
       data: configuredDefault,
@@ -117,7 +119,7 @@ const renderSelector = ({
   return renderWithConsoleQuery(
     <Provider store={store}>
       <NuqsWrapper>
-        <ModelSelectorWithData />
+        <DifyBuilderComposer />
       </NuqsWrapper>
     </Provider>,
     { queryClient },
@@ -203,4 +205,31 @@ describe('DifyBuilderModelSelector', () => {
 
     expect(screen.getByRole('button', { name: userModel.name })).toBeInTheDocument()
   })
+
+  it.each(['selected', 'session'])(
+    'requires a new selection when the %s model becomes unavailable',
+    (source) => {
+      renderSelector({
+        ...(source === 'selected' ? { selectedModel: userModel } : { sessionModel: userModel }),
+        availableModels: modelList.map((provider) => ({
+          ...provider,
+          models: provider.models.map((model) => ({
+            ...model,
+            status: model.model === userModel.name ? 'disabled' : model.status,
+          })),
+        })),
+      })
+
+      expect(screen.getByRole('button', { name: userModel.name })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }),
+      ).toBeDisabled()
+      expect(
+        screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+      ).toBeEnabled()
+      expect(
+        screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+      ).toHaveAccessibleDescription('workflow.workflowGenerator.modelRequired')
+    },
+  )
 })

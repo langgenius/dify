@@ -1,4 +1,5 @@
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
+import { zBuilderErrorCode } from '@dify/contracts/api/console/dify-builder/zod.gen'
 
 export const UNEXPECTED_EOF_ERROR = 'Builder stream ended before a terminal event.'
 
@@ -10,6 +11,23 @@ export const requestErrorStatus = (error: unknown): number | undefined => {
     if (typeof data === 'object' && data !== null && 'status' in data)
       return typeof data.status === 'number' ? data.status : undefined
   }
+}
+
+export const requestErrorCode = async (error: unknown) => {
+  let body: unknown = error
+  if (error instanceof Response) {
+    try {
+      body = await error.clone().json()
+    } catch {
+      return null
+    }
+  } else if (typeof error === 'object' && error !== null && 'data' in error) {
+    const data = error.data
+    body = typeof data === 'object' && data !== null && 'body' in data ? data.body : data
+  }
+  if (typeof body !== 'object' || body === null || !('code' in body)) return null
+  const code = zBuilderErrorCode.safeParse(body.code)
+  return code.success ? code.data : null
 }
 
 export const requestErrorMessage = async (error: unknown): Promise<string> => {

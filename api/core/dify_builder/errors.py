@@ -27,3 +27,7 @@ class BadRequestError(Exception):
 
     Maps to HTTP 400 in services.dify_builder.wiring.dify_builder_error_response.
     """
+
+
+class ModelUnavailableError(BadRequestError):
+    """The chosen or default Builder model cannot be used with its current configuration."""
