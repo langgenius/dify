@@ -248,7 +248,11 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
             if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or resource != "add_segment":
                 return view(*args, **kwargs)
 
-            features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
+            tenant_id = api_token.tenant_id
+            if tenant_id is None:
+                raise Unauthorized("Tenant id is required for this token.")
+
+            features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
             if features.billing.subscription.plan == CloudPlan.SANDBOX:
                 raise Forbidden(
                     "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
