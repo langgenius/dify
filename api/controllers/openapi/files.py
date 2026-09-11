@@ -53,7 +53,6 @@ class AppFileUploadApi(Resource):
             CheckAppAccess(),
         ),
         returns=(201, FileResponse, "File uploaded"),
-        write=False,
     )
     def post(self, ctx: Context, app_id: str):
         if "file" not in request.files:

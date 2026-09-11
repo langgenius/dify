@@ -107,7 +107,6 @@ def endpoint(
     body: type[BaseModel] | None = None,
     returns: ReturnSpec | Sequence[ReturnSpec] | None = None,
     edition: frozenset[DeploymentEdition] | None = None,
-    write: bool = True,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
     serialisation — auth, then ``accepts``, then ``returns``. Exposes
@@ -124,7 +123,7 @@ def endpoint(
     for requirement in requirements:
         if not isinstance(requirement, Requirement):
             raise TypeError(f"requirements must be instances of Requirement, not {requirement!r}")
-    spec = EndpointSpec(requirements=requirements, edition=edition, write=write)
+    spec = EndpointSpec(requirements=requirements, edition=edition)
     return_specs = _normalize_returns(returns)
 
     def decorator(view: Callable[..., Any]) -> Callable[..., Any]:

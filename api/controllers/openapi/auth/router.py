@@ -57,6 +57,9 @@ class AuthRouter:
         subject = subject_from_auth(auth)
         pipeline = pipeline_for_subject(subject)
 
+        # One session spans the loaders and the handler, so the objects the
+        # requirements load stay attached while the handler reads them. It is
+        # finalised here, like `with_session` does, until repositories own it.
         with session_factory.create_session() as session:
             ctx = Context(subject, session, dict(request.view_args or {}))
             try:
@@ -69,11 +72,9 @@ class AuthRouter:
                     call=call,
                 )
             except Exception:
-                if spec.write:
-                    session.rollback()  # guard-ignore: no-new-controller-sqlalchemy -- spec.write owns the rollback
+                session.rollback()  # guard-ignore: no-new-controller-sqlalchemy -- the router owns the rollback
                 raise
-            if spec.write:
-                session.commit()
+            session.commit()
             return result
 
 

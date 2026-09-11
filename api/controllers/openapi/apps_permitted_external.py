@@ -48,7 +48,6 @@ class PermittedExternalAppsListApi(Resource):
         query=PermittedExternalAppsListQuery,
         returns=(200, PermittedExternalAppsListResponse, "Permitted external apps list"),
         edition=_ENTERPRISE_ONLY,
-        write=False,
     )
     def get(self, ctx: Context, *, query: PermittedExternalAppsListQuery):
         page_result = list_permitted_apps(
@@ -105,7 +104,6 @@ class PermittedExternalAppDescribeApi(Resource):
         query=AppDescribeQuery,
         returns=(200, AppDescribeResponse, "Permitted external app description"),
         edition=_ENTERPRISE_ONLY,
-        write=False,
     )
     def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
         # The pipeline has already loaded and ACL-checked the app; project it.

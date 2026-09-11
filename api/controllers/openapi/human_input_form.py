@@ -96,7 +96,6 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
             CheckFormSurface(),
         ),
         returns=(200, HumanInputFormDefinitionResponse, "Form definition"),
-        write=False,
     )
     def get(self, ctx: Context, app_id: str, form_token: str):
         service = HumanInputService(db.engine)
@@ -123,7 +122,6 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         ),
         body=HumanInputFormSubmitPayload,
         returns=(200, FormSubmitResponse, "Form submitted"),
-        write=False,
     )
     def post(self, ctx: Context, app_id: str, form_token: str, *, body: HumanInputFormSubmitPayload):
         service = HumanInputService(db.engine)
