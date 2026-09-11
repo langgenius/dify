@@ -7,6 +7,7 @@ import zipfile
 from collections.abc import Generator
 
 import pytest
+import yaml
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
@@ -29,6 +30,12 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppModelConfig, Conversation, InstalledApp, Site, UploadFile
 from models.tools import ToolFile
+from services.agent.dsl_entities import (
+    AgentPackage,
+    AgentPackageMetadata,
+    AgentPackageWorkspaceSkill,
+    make_agent_app_dsl,
+)
 from services.agent.errors import (
     AgentNameConflictError,
     InvalidRosterAgentPackageError,
@@ -40,9 +47,9 @@ from services.agent.roster_package_cleanup import PackageCleanupCache, PackageCl
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
+    RosterAgentPackageApp,
     RosterAgentPackageFile,
     RosterAgentPackageManifest,
-    RosterAgentPackageMetadata,
     RosterAgentPackageSkill,
 )
 from services.agent.roster_package_importer import RosterAgentPackageImporter
@@ -159,19 +166,13 @@ def _package(
     files = [
         RosterAgentPackageFile(
             id="f_000001",
-            role="agent_config_file",
             path="f_000001.pdf",
-            original_name="guide.pdf",
-            mime_type="application/pdf",
             size=len(guide),
             sha256=hashlib.sha256(guide).hexdigest(),
         ),
         RosterAgentPackageFile(
             id="f_000002",
-            role="agent_config_file",
             path="f_000002.txt",
-            original_name="notes.txt",
-            mime_type="text/plain",
             size=len(notes),
             sha256=hashlib.sha256(notes).hexdigest(),
         ),
@@ -182,37 +183,41 @@ def _package(
         "f_000001.pdf": guide,
         "f_000002.txt": notes,
     }
-    if binary_dependency:
-        binary = b"binary-content"
-        files.append(
-            RosterAgentPackageFile(
-                id="f_000003",
-                role="binary_dependency",
-                path="f_000003.so",
-                original_name="tool.so",
-                mime_type="application/octet-stream",
-                platform="linux",
-                arch="amd64",
-                size=len(binary),
-                sha256=hashlib.sha256(binary).hexdigest(),
-            )
-        )
-        members["f_000003.so"] = binary
     dependency = PluginDependency(
         type=PluginDependencyType.Marketplace,
         value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier="langgenius/example:1.0.0@digest"),
     )
+    app = make_agent_app_dsl(
+        App(name=name, mode="agent"),
+        package_ref="agent_1",
+        packages={
+            "agent_1": AgentPackage(
+                metadata=AgentPackageMetadata(name=name, description="Imported description", role="researcher"),
+                soul=soul,
+                workspace_skills=[
+                    AgentPackageWorkspaceSkill(
+                        name="workspace-skill",
+                        display_name="Workspace Skill",
+                        description="workspace-skill description.",
+                        priority=0,
+                    )
+                ],
+            )
+        },
+        dependencies=[dependency],
+    )
+    app_bytes = yaml.safe_dump(app.model_dump(mode="json")).encode()
     manifest = RosterAgentPackageManifest(
         format=ROSTER_AGENT_PACKAGE_FORMAT,
         format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
-        metadata=RosterAgentPackageMetadata(name=name, description="Imported description", role="researcher"),
-        soul=soul,
+        apps=[
+            RosterAgentPackageApp(path="app.yaml", size=len(app_bytes), sha256=hashlib.sha256(app_bytes).hexdigest())
+        ],
         skills=[
             RosterAgentPackageSkill(
                 id="s_000001",
                 scope="agent_config",
                 name="config-skill",
-                description="config-skill description.",
                 path="s_000001.zip",
                 size=len(config_skill),
                 sha256=hashlib.sha256(config_skill).hexdigest(),
@@ -221,18 +226,17 @@ def _package(
                 id="s_000002",
                 scope="workspace",
                 name="workspace-skill",
-                display_name="Workspace Skill",
-                description="workspace-skill description.",
-                priority=0,
                 path="s_000002.zip",
                 size=len(workspace_skill),
                 sha256=hashlib.sha256(workspace_skill).hexdigest(),
             ),
         ],
         files=files,
-        dependencies=[dependency],
     )
-    return _zip({"manifest.json": manifest.model_dump_json(exclude_none=True).encode(), **members})
+    manifest_data = manifest.model_dump(mode="json", exclude_none=True)
+    if binary_dependency:
+        manifest_data["files"][0]["role"] = "binary_dependency"
+    return _zip({"manifest.yaml": yaml.safe_dump(manifest_data).encode(), "app.yaml": app_bytes, **members})
 
 
 def _count(session: Session, model) -> int:
@@ -246,7 +250,7 @@ def _count(session: Session, model) -> int:
 def test_damaged_skill_becomes_missing_with_warning(monkeypatch, sqlite_session_factory, skill_index, damage):
     with zipfile.ZipFile(io.BytesIO(_package())) as archive:
         members = {name: archive.read(name) for name in archive.namelist()}
-    manifest = json.loads(members["manifest.json"])
+    manifest = yaml.safe_load(members["manifest.yaml"])
     skill = manifest["skills"][skill_index]
     path = skill["path"]
     if damage == "invalid_zip":
@@ -259,7 +263,7 @@ def test_damaged_skill_becomes_missing_with_warning(monkeypatch, sqlite_session_
         members[path] = _skill_archive("different-name")
     skill["size"] = len(members[path]) + (1 if damage == "size" else 0)
     skill["sha256"] = "0" * 64 if damage == "checksum" else hashlib.sha256(members[path]).hexdigest()
-    members["manifest.json"] = json.dumps(manifest).encode()
+    members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
     storage = _MemoryStorage()
     monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
     result = RosterAgentPackageImporter(storage_backend=storage).import_package(
@@ -296,6 +300,36 @@ def test_damaged_ordinary_file_still_rejects_package():
     assert storage.save_count == 0
 
 
+def test_import_rejects_multiple_apps_before_writes():
+    with zipfile.ZipFile(io.BytesIO(_package())) as archive:
+        members = {name: archive.read(name) for name in archive.namelist()}
+    manifest = yaml.safe_load(members["manifest.yaml"])
+    members["second.yaml"] = members["app.yaml"]
+    manifest["apps"].append({**manifest["apps"][0], "path": "second.yaml"})
+    members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
+    storage = _MemoryStorage()
+    with pytest.raises(InvalidRosterAgentPackageError, match="exactly one Agent App"):
+        RosterAgentPackageImporter(storage_backend=storage).import_package(
+            source=io.BytesIO(_zip(members)), tenant_id="tenant-1", account=_account()
+        )
+    assert storage.save_count == 0
+
+
+def test_import_uses_indexed_app_path(monkeypatch, sqlite_session_factory):
+    with zipfile.ZipFile(io.BytesIO(_package())) as archive:
+        members = {name: archive.read(name) for name in archive.namelist()}
+    manifest = yaml.safe_load(members["manifest.yaml"])
+    members["custom.yml"] = members.pop("app.yaml")
+    manifest["apps"][0]["path"] = "custom.yml"
+    members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
+    monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
+    result = RosterAgentPackageImporter(storage_backend=_MemoryStorage()).import_package(
+        source=io.BytesIO(_zip(members)), tenant_id="tenant-1", account=_account()
+    )
+    with sqlite_session_factory() as session:
+        assert session.get(App, result.app_id).name == "Imported Agent"
+
+
 @pytest.mark.parametrize("use_zip64", [False, True])
 def test_invalid_utf8_skill_filename_is_recovered(monkeypatch, sqlite_session_factory, use_zip64):
     with zipfile.ZipFile(io.BytesIO(_package())) as archive:
@@ -310,10 +344,10 @@ def test_invalid_utf8_skill_filename_is_recovered(monkeypatch, sqlite_session_fa
             }
         ).replace(b"\xc3\xa9.py", b"\xffa.py")
     members["s_000001.zip"] = skill
-    manifest = json.loads(members["manifest.json"])
+    manifest = yaml.safe_load(members["manifest.yaml"])
     manifest["skills"][0]["size"] = len(skill)
     manifest["skills"][0]["sha256"] = hashlib.sha256(skill).hexdigest()
-    members["manifest.json"] = json.dumps(manifest).encode()
+    members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
     storage = _MemoryStorage()
     monkeypatch.setattr(AppService, "finalize_created_app", lambda *_args, **_kwargs: None)
     result = RosterAgentPackageImporter(storage_backend=storage).import_package(
@@ -332,8 +366,9 @@ def test_invalid_utf8_skill_filename_is_recovered(monkeypatch, sqlite_session_fa
 def test_import_clears_source_credentials(monkeypatch, sqlite_session_factory):
     with zipfile.ZipFile(io.BytesIO(_package())) as archive:
         members = {name: archive.read(name) for name in archive.namelist()}
-    manifest = json.loads(members["manifest.json"])
-    manifest["soul"]["tools"]["dify_tools"] = [
+    app = yaml.safe_load(members["app.yaml"])
+    soul = app["agent_packages"]["agent_1"]["soul"]
+    soul["tools"]["dify_tools"] = [
         {
             "provider_id": "langgenius/example/example",
             "provider_type": "plugin",
@@ -342,14 +377,17 @@ def test_import_clears_source_credentials(monkeypatch, sqlite_session_factory):
             "runtime_parameters": {"api_key": "source-secret", "query": "keep"},
         }
     ]
-    manifest["soul"]["model"] = {
+    soul["model"] = {
         "plugin_id": "langgenius/example",
         "model_provider": "langgenius/example/example",
         "model": "example",
         "credential_ref": {"type": "provider", "id": "source-model"},
     }
-    manifest["soul"]["env"]["secret_refs"] = [{"name": "TOKEN", "value": "source-secret", "id": "source-id"}]
-    members["manifest.json"] = json.dumps(manifest).encode()
+    soul["env"]["secret_refs"] = [{"name": "TOKEN", "value": "source-secret", "id": "source-id"}]
+    members["app.yaml"] = yaml.safe_dump(app).encode()
+    manifest = yaml.safe_load(members["manifest.yaml"])
+    manifest["apps"][0].update(size=len(members["app.yaml"]), sha256=hashlib.sha256(members["app.yaml"]).hexdigest())
+    members["manifest.yaml"] = yaml.safe_dump(manifest).encode()
     monkeypatch.setattr(AppService, "finalize_created_app", lambda *_a, **_k: None)
     result = RosterAgentPackageImporter(storage_backend=_MemoryStorage()).import_package(
         source=io.BytesIO(_zip(members)), tenant_id="tenant-1", account=_account()
@@ -580,7 +618,7 @@ def test_import_rejects_binary_dependencies_before_side_effects(
         storage_backend=storage, cleanup=RosterPackageCleanup(cache=cache, storage_backend=storage)
     )
 
-    with pytest.raises(InvalidRosterAgentPackageError, match="binary_dependency"):
+    with pytest.raises(InvalidRosterAgentPackageError, match="manifest is invalid"):
         importer.import_package(
             source=io.BytesIO(_package(binary_dependency=True)),
             tenant_id="tenant-1",
