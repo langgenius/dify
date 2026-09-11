@@ -28,6 +28,9 @@ class AliyunConfig(BaseTracingConfig):
     @override
     def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
         endpoint = cls.model_validate(provider_config).endpoint
+        request_timeout = float(
+            os.environ.get("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT", os.environ.get("OTEL_EXPORTER_OTLP_TIMEOUT", "10"))
+        )
         raw_headers = os.environ.get(
             "OTEL_EXPORTER_OTLP_TRACES_HEADERS", os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "")
         )
@@ -54,7 +57,12 @@ class AliyunConfig(BaseTracingConfig):
                 filenames["client_key"] = None
             verify = filenames["certificate"] != ""
             tls = read_tls_files(filenames, allow_ca_directory=True)
-        return {"headers": parse_env_headers(headers, liberal=True), "tls": tls, "verify": verify}
+        return {
+            "headers": parse_env_headers(headers, liberal=True),
+            "tls": tls,
+            "verify": verify,
+            "request_timeout": str(request_timeout),
+        }
 
     @field_validator("app_name")
     @classmethod

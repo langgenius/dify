@@ -196,6 +196,8 @@ class LangfuseTraceClient:
             ),
             shutdown_on_exit=False,
         )
+        # This provider only serializes observations; the previous HTTP API ignored OTEL_SDK_DISABLED.
+        provider._disabled = False
         token = context.attach(context.Context())
         try:
             processor = LangfuseSpanProcessor(

@@ -11,7 +11,7 @@ from core.helper.ssl_context import read_tls_files
 from core.ops.provider_config import BaseTracingConfig
 from core.ops.utils import validate_integer_id, validate_url_with_path
 from dify_trace_mlflow.deployment_auth import resolve_aws_credentials, resolve_deployment_auth
-from dify_trace_mlflow.request_auth import capture_request_auth_provider
+from dify_trace_mlflow.request_auth import capture_netrc_auth, capture_request_auth_provider
 
 
 def _load_sampling_ratio() -> float:
@@ -62,7 +62,17 @@ class MLflowConfig(BaseTracingConfig):
             if credentials.has_section("mlflow"):
                 username = username or credentials.get("mlflow", "mlflow_tracking_username", fallback=None)
                 password = password or credentials.get("mlflow", "mlflow_tracking_password", fallback=None)
-        settings: dict[str, Any] = {"sampling_ratio": _load_sampling_ratio()}
+        request_timeout = int(os.environ.get("MLFLOW_HTTP_REQUEST_TIMEOUT", "120"))
+        if request_timeout <= 0:
+            raise ValueError("MLflow HTTP request timeout must be positive")
+        settings: dict[str, Any] = {
+            "sampling_ratio": _load_sampling_ratio(),
+            "request_timeout": request_timeout,
+            "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
+        }
+        if os.environ.get("MLFLOW_TRACKING_AUTH") in {"kubernetes", "kubernetes-namespaced"}:
+            # These built-in Requests auth objects suppress netrc and URL authentication.
+            settings["use_implicit_auth"] = False
         if username and password:
             authorization = "Basic " + base64.b64encode(f"{username}:{password}".encode()).decode()
             settings["headers"] = {"Authorization": authorization}
@@ -77,6 +87,9 @@ class MLflowConfig(BaseTracingConfig):
             "kubernetes-namespaced",
         }:
             settings["request_auth_provider"] = capture_request_auth_provider(auth_provider)
+        if aws_credentials is None and settings.get("use_implicit_auth", True):
+            if netrc_auth := capture_netrc_auth():
+                settings["netrc_auth"] = netrc_auth
         if headers := resolve_deployment_auth(
             settings.get("headers", {}),
             aws_sigv4=aws_credentials is not None,
@@ -149,10 +162,13 @@ class DatabricksConfig(BaseTracingConfig):
     @classmethod
     @override
     def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
-        sampling_ratio = _load_sampling_ratio()
+        settings: dict[str, Any] = {
+            "sampling_ratio": _load_sampling_ratio(),
+            "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
+        }
         # The Databricks SDK uses Requests for both API calls and signed uploads.
         try:
-            tls = read_tls_files(
+            settings["tls"] = read_tls_files(
                 {"certificate": os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("CURL_CA_BUNDLE")},
                 allow_ca_directory=True,
             )
@@ -160,8 +176,8 @@ class DatabricksConfig(BaseTracingConfig):
             if urlsplit(cls.model_validate(provider_config).host).scheme != "http":
                 raise
             # HTTP verification ignores CA files; preserve the failure for HTTPS uploads.
-            return {"sampling_ratio": sampling_ratio, "tls_read_failed": True}
-        return {"sampling_ratio": sampling_ratio, "tls": tls}
+            settings["tls_read_failed"] = True
+        return settings
 
     @field_validator("experiment_id")
     @classmethod

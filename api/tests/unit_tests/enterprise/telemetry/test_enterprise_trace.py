@@ -2,6 +2,7 @@
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Unpack
@@ -15,6 +16,7 @@ from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 
 from core.moderation.base import ModerationAction, ModerationInputsResult
 from core.ops.message_trace import MessageTraceRecorder
+from core.ops.otlp_trace import OtlpTraceClient
 from core.ops.provider_export import TraceExportError, export_trace
 from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource, TraceSpan
 from core.ops.trace_export_state import TraceExportState
@@ -284,3 +286,87 @@ def test_business_logs_survive_transport_failure_without_repeating_on_retry(
         assert retry_state.has_completed_signal("business_logs")
     assert len(caplog.records) == len(trace.spans)
     assert all(record.__dict__["tenant_id"] == trace.source.tenant_id for record in caplog.records)
+
+
+@pytest.mark.parametrize("protocol", ["http/protobuf", "grpc"])
+def test_disabled_otlp_preserves_business_logs_and_late_child_suppression(
+    protocol: str, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setenv("OTEL_SDK_DISABLED", " TrUe ")
+    trace = make_completed_trace()
+    settings = TraceProviderSettings(
+        tenant_id=trace.source.tenant_id, destination_type="enterprise", provider_name="enterprise"
+    )
+    state = make_export_state(trace, settings)
+    config = {"endpoint": "https://collector.example", "protocol": protocol}
+    send = Mock(return_value=b"")
+    monkeypatch.setattr(OtlpTraceClient, "_send", send)
+    client = EnterpriseTraceClient(config)
+    client.export_state = state
+    with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+        receipts = client.export_trace(trace)
+        client.export_state = TraceExportState(state.repository, state.delivery)
+        client.export_trace(trace)
+        assert len(caplog.records) == len(trace.spans)
+        assert state.has_completed_signal("business_logs")
+        assert not state.has_completed_signal("metrics")
+
+        monkeypatch.setenv("OTEL_SDK_DISABLED", "false")
+        child_span = trace.spans[0].model_copy(
+            update={
+                "span_id": str(uuid4()),
+                "span_name": "message",
+                "span_type": "operation",
+                "attributes": {"operation_type": "message"},
+            }
+        )
+        child_trace = trace.model_copy(
+            update={
+                "trace_id": str(uuid4()),
+                "root_span_id": child_span.span_id,
+                "spans": (child_span,),
+                "source": trace.source.model_copy(update={"operation_id": str(uuid4()), "message_id": str(uuid4())}),
+            }
+        )
+        child_client = EnterpriseTraceClient(config)
+        child_client.export_state = make_export_state(child_trace, settings)
+        child_receipts = child_client.export_trace(child_trace, receipts.spans[trace.root_span_id])
+
+    send.assert_not_called()
+    assert all(receipt["disabled"] is True for receipt in child_receipts.spans.values())
+    assert len(caplog.records) == len(trace.spans) + 1
+    assert caplog.records[-1].__dict__["attributes"]["dify.event.name"] == "dify.message.run"
+    assert all(record.__dict__["tenant_id"] == trace.source.tenant_id for record in caplog.records)
+
+
+@pytest.mark.parametrize("protocol", ["http/protobuf", "grpc"])
+def test_concurrent_tenants_keep_independent_otlp_disabled_settings(
+    protocol: str, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    traces = [
+        trace.model_copy(update={"source": trace.source.model_copy(update={"actor_id": str(uuid4())})})
+        for trace in (make_completed_trace(), make_completed_trace())
+    ]
+    sent_signals: list[str] = []
+    monkeypatch.setattr(OtlpTraceClient, "_send", lambda _self, signal, _data: sent_signals.append(signal) or b"")
+
+    def export(index: int) -> None:
+        trace = traces[index]
+        client = EnterpriseTraceClient(
+            {"endpoint": "https://collector.example", "protocol": protocol, "otlp_disabled": bool(index)}
+        )
+        settings = TraceProviderSettings(
+            tenant_id=trace.source.tenant_id, destination_type="enterprise", provider_name="enterprise"
+        )
+        client.export_state = make_export_state(trace, settings)
+        client.export_trace(trace)
+
+    monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
+    with caplog.at_level(logging.INFO, logger="dify.telemetry"), ThreadPoolExecutor(max_workers=2) as executor:
+        list(executor.map(export, range(len(traces))))
+
+    assert sorted(sent_signals) == ["metrics", "trace"]
+    for trace in traces:
+        records = [record for record in caplog.records if record.__dict__.get("tenant_id") == trace.source.tenant_id]
+        assert len(records) == len(trace.spans)
+        assert all(record.__dict__["user_id"] == trace.source.actor_id for record in records)

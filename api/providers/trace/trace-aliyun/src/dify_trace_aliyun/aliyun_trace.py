@@ -345,5 +345,6 @@ def create_trace_client(provider_config: dict[str, Any]) -> AliyunTraceClient:
             "acs.arms.service.feature": "genai_app",
         },
         "https://arms.console.aliyun.com/#/llm",
+        request_timeout=float(runtime_settings.get("request_timeout", 10)),
         ssl_context=create_ssl_context(runtime_settings["tls"], verify=runtime_settings["verify"]),
     )

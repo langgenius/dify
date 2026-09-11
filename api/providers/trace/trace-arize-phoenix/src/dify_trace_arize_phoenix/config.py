@@ -52,7 +52,11 @@ class ArizeConfig(BaseTracingConfig):
             if not insecure and os.environ.get(f"{prefix}_CERTIFICATE")
             else {}
         )
-        return {"insecure": insecure, "tls": tls}
+        return {
+            "insecure": insecure,
+            "tls": tls,
+            "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
+        }
 
     @field_validator("project")
     @classmethod
@@ -82,8 +86,9 @@ class PhoenixConfig(BaseTracingConfig):
     @classmethod
     @override
     def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
+        disabled = os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true"
         if urlsplit(cls.model_validate(provider_config).endpoint).scheme != "https":
-            return {"tls": {}, "verify": True}
+            return {"tls": {}, "verify": True, "disabled": disabled}
         filenames = {
             field: os.environ.get(
                 f"OTEL_EXPORTER_OTLP_TRACES_{field.upper()}", os.environ.get(f"OTEL_EXPORTER_OTLP_{field.upper()}")
@@ -94,7 +99,11 @@ class PhoenixConfig(BaseTracingConfig):
             filenames["certificate"] = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("CURL_CA_BUNDLE") or None
         if not filenames["client_certificate"]:
             filenames["client_key"] = None
-        return {"tls": read_tls_files(filenames, allow_ca_directory=True), "verify": filenames["certificate"] != ""}
+        return {
+            "tls": read_tls_files(filenames, allow_ca_directory=True),
+            "verify": filenames["certificate"] != "",
+            "disabled": disabled,
+        }
 
     @field_validator("project")
     @classmethod
