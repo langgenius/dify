@@ -23,8 +23,11 @@ export type SkillsInstallResult =
   | { readonly kind: 'ok'; readonly text: string; readonly wrote: readonly string[] }
   | { readonly kind: 'usage'; readonly message: string }
 
+// One write target. Several agents may resolve to the same path (the shared
+// `~/.agents/skills` convention), so a target carries every agent name that
+// maps to it and the path is written (and listed) once.
 type InstallTarget = {
-  readonly name: string
+  readonly names: readonly string[]
   readonly path: string
 }
 
@@ -38,19 +41,28 @@ async function writeSkill(content: string, target: string): Promise<void> {
   await rename(tmp, target)
 }
 
+// Group agents by their resolved SKILL.md path, preserving registry order.
+// Agents sharing a skillDir collapse into one target with the names merged.
+function groupByPath(agents: readonly AgentEntry[], home: string): InstallTarget[] {
+  const groups = new Map<string, string[]>()
+  for (const agent of agents) {
+    const path = join(agent.skillDir(home), 'SKILL.md')
+    const names = groups.get(path)
+    if (names) names.push(agent.name)
+    else groups.set(path, [agent.name])
+  }
+  return [...groups].map(([path, names]) => ({ names, path }))
+}
+
 function resolveTargets(
   opts: SkillsInstallOptions,
   home: string,
 ): InstallTarget[] | SkillsInstallResult {
   // Explicit directory: skip detection entirely.
   if (opts.dir !== undefined && opts.dir !== '')
-    return [{ name: opts.dir, path: join(resolve(opts.dir), 'SKILL.md') }]
+    return [{ names: [opts.dir], path: join(resolve(opts.dir), 'SKILL.md') }]
 
   const detected = detectAgents(home)
-  const target = (a: AgentEntry): InstallTarget => ({
-    name: a.name,
-    path: join(a.skillDir(home), 'SKILL.md'),
-  })
 
   // An explicit --agent must name agents that are actually detected. This is
   // checked before the zero-detected guidance below: naming an agent that is
@@ -64,7 +76,10 @@ function resolveTargets(
         message: `unknown or undetected agent(s): ${unknown.join(', ')} (detected: ${[...known].join(', ') || 'none'})`,
       }
     }
-    return detected.filter((a) => opts.agents.includes(a.name)).map(target)
+    return groupByPath(
+      detected.filter((a) => opts.agents.includes(a.name)),
+      home,
+    )
   }
 
   // No --agent and nothing detected: not an error — guide the user, write nothing.
@@ -80,7 +95,7 @@ function resolveTargets(
     }
   }
 
-  return detected.map(target)
+  return groupByPath(detected, home)
 }
 
 export async function runSkillsInstall(opts: SkillsInstallOptions): Promise<SkillsInstallResult> {
@@ -96,13 +111,13 @@ export async function runSkillsInstall(opts: SkillsInstallOptions): Promise<Skil
 
   // Dry-run: list where the skill would land, write nothing.
   if (!opts.write) {
-    const lines = targets.map((t) => `would write to ${t.name}: ${t.path}`).join('\n')
+    const lines = targets.map((t) => `would write to ${t.names.join(', ')}: ${t.path}`).join('\n')
 
     // Explicit <dir>: no detection happened, so no agent summary / selectors.
     if (opts.dir !== undefined && opts.dir !== '')
       return { kind: 'ok', text: `${lines}\n\nRe-run with --yes to write.\n`, wrote: [] }
 
-    const names = targets.map((t) => t.name)
+    const names = targets.flatMap((t) => t.names)
     const selected = opts.agents.length > 0
     const header = `${selected ? 'Selected' : 'Detected'} ${names.length} agent${names.length === 1 ? '' : 's'}: ${names.join(', ')}`
     // Only suggest --agent when the user hasn't already used it and there is more
