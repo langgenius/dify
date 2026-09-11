@@ -11,6 +11,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
+from configs import dify_config
 from core.ops.trace_data import CompletedTrace, QueuedTrace, TraceProviderSettings
 from libs.datetime_utils import ensure_naive_utc
 from models.account import Tenant
@@ -76,6 +77,8 @@ class OpsTraceDeliveryRepository:
                 next_attempt_at=now,
                 attempt_token=str(uuid4()),
                 lease_expires_at=now + timedelta(minutes=5),
+                created_at=now,
+                updated_at=now,
             )
             try:
                 session.add(delivery)
@@ -112,6 +115,7 @@ class OpsTraceDeliveryRepository:
 
     def accept_upload(self, delivery: OpsTraceDelivery) -> bool:
         with self.session_factory() as session:
+            now = self.database_time(session)
             result = session.execute(
                 sa.update(OpsTraceDelivery)
                 .where(
@@ -119,11 +123,9 @@ class OpsTraceDeliveryRepository:
                     OpsTraceDelivery.id == delivery.id,
                     OpsTraceDelivery.status == "staging",
                     OpsTraceDelivery.attempt_token == delivery.attempt_token,
-                    OpsTraceDelivery.lease_expires_at > sa.func.current_timestamp(),
+                    OpsTraceDelivery.lease_expires_at > now,
                 )
-                .values(
-                    status="pending", attempt_token=None, lease_expires_at=None, updated_at=sa.func.current_timestamp()
-                )
+                .values(status="pending", attempt_token=None, lease_expires_at=None, updated_at=now)
             )
             session.commit()
             return cast(CursorResult, result).rowcount == 1
@@ -141,19 +143,36 @@ class OpsTraceDeliveryRepository:
             return delivery
 
     def claim_delivery(self, tenant_id: str, delivery_id: str, lease_seconds: int = 300) -> OpsTraceDelivery | None:
+        """Claim due work, or terminalize it when crashed workers used its attempt budget."""
         attempt_token = str(uuid4())
         with self.session_factory() as session:
             now = self.database_time(session)
+            due_delivery_filters = (
+                OpsTraceDelivery.tenant_id == str(UUID(tenant_id)),
+                OpsTraceDelivery.id == str(UUID(delivery_id)),
+                sa.or_(
+                    sa.and_(OpsTraceDelivery.status == "pending", OpsTraceDelivery.next_attempt_at <= now),
+                    sa.and_(OpsTraceDelivery.status == "sending", OpsTraceDelivery.lease_expires_at <= now),
+                ),
+            )
+            exhausted = session.execute(
+                sa.update(OpsTraceDelivery)
+                .where(*due_delivery_filters, OpsTraceDelivery.attempt_count >= dify_config.OPS_TRACE_MAX_ATTEMPTS)
+                .values(
+                    status="failed",
+                    error_code="attempts_exhausted",
+                    attempt_token=None,
+                    lease_expires_at=None,
+                    finished_at=now,
+                    updated_at=now,
+                )
+            )
+            if cast(CursorResult, exhausted).rowcount == 1:
+                session.commit()
+                return None
             result = session.execute(
                 sa.update(OpsTraceDelivery)
-                .where(
-                    OpsTraceDelivery.tenant_id == str(UUID(tenant_id)),
-                    OpsTraceDelivery.id == str(UUID(delivery_id)),
-                    sa.or_(
-                        sa.and_(OpsTraceDelivery.status == "pending", OpsTraceDelivery.next_attempt_at <= now),
-                        sa.and_(OpsTraceDelivery.status == "sending", OpsTraceDelivery.lease_expires_at <= now),
-                    ),
-                )
+                .where(*due_delivery_filters, OpsTraceDelivery.attempt_count < dify_config.OPS_TRACE_MAX_ATTEMPTS)
                 .values(
                     status="sending",
                     attempt_token=attempt_token,
@@ -222,7 +241,7 @@ class OpsTraceDeliveryRepository:
                     OpsTraceDelivery.id == delivery.id,
                     OpsTraceDelivery.status == "sending",
                     OpsTraceDelivery.attempt_token == delivery.attempt_token,
-                    OpsTraceDelivery.lease_expires_at > sa.func.current_timestamp(),
+                    OpsTraceDelivery.lease_expires_at > now,
                 )
                 .values(lease_expires_at=now + timedelta(seconds=lease_seconds), updated_at=now)
             )
@@ -353,11 +372,12 @@ class OpsTraceDeliveryRepository:
 
     def cancel_expired_uploads(self, limit: int = 100) -> None:
         with self.session_factory() as session:
+            now = self.database_time(session)
             rows = session.execute(
                 sa.select(OpsTraceDelivery.tenant_id, OpsTraceDelivery.id)
                 .where(
                     OpsTraceDelivery.status == "staging",
-                    OpsTraceDelivery.lease_expires_at <= sa.func.current_timestamp(),
+                    OpsTraceDelivery.lease_expires_at <= now,
                 )
                 .limit(limit)
             ).all()
@@ -368,13 +388,13 @@ class OpsTraceDeliveryRepository:
                         OpsTraceDelivery.tenant_id == tenant_id,
                         OpsTraceDelivery.id == delivery_id,
                         OpsTraceDelivery.status == "staging",
-                        OpsTraceDelivery.lease_expires_at <= sa.func.current_timestamp(),
+                        OpsTraceDelivery.lease_expires_at <= now,
                     )
                     .values(
                         status="cancelled",
                         error_code="upload_expired",
-                        finished_at=sa.func.current_timestamp(),
-                        updated_at=sa.func.current_timestamp(),
+                        finished_at=now,
+                        updated_at=now,
                         attempt_token=None,
                         lease_expires_at=None,
                     )
@@ -420,6 +440,7 @@ class OpsTraceDeliveryRepository:
 
     def record_trace_deleted(self, delivery: OpsTraceDelivery) -> None:
         with self.session_factory() as session:
+            now = self.database_time(session)
             session.execute(
                 sa.update(OpsTraceDelivery)
                 .where(
@@ -427,7 +448,7 @@ class OpsTraceDeliveryRepository:
                     OpsTraceDelivery.id == delivery.id,
                     OpsTraceDelivery.status.in_(("succeeded", "failed", "cancelled")),
                 )
-                .values(trace_deleted_at=sa.func.current_timestamp())
+                .values(trace_deleted_at=now, updated_at=now)
             )
             session.commit()
 
