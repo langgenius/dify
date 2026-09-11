@@ -1,8 +1,9 @@
 import type { FC } from 'react'
 import type { ToolNodeType } from './types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { Node, NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNodes } from 'reactflow'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
@@ -18,6 +19,8 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
   const { currCollection } = useCurrentToolCollection(data.provider_type, data.provider_id)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
   const showAuthorizationWarning = isToolAuthorizationRequired(data.provider_type, currCollection)
+
+  const nodes: Node[] = useNodes()
 
   const hasConfigs = toolConfigs.length > 0
 
@@ -76,14 +79,24 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
                       : tool_configurations[key].value}
                   </div>
                 )}
-                {Array.isArray(tool_configurations[key].value) && (
-                  <div
-                    title={tool_configurations[key].value.join(', ')}
-                    className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
-                  >
-                    {tool_configurations[key].value.join(', ')}
-                  </div>
-                )}
+                {Array.isArray(tool_configurations[key].value) &&
+                  (() => {
+                    const varRef = tool_configurations[key].value as string[]
+                    const refNodeId = varRef[0]
+                    const refVarName = varRef.slice(1).join('.')
+                    const refNode = nodes.find((n) => n.id === refNodeId)
+                    const display = refNode
+                      ? `${refNode.data.title} / ${refVarName}`
+                      : varRef.join(', ')
+                    return (
+                      <div
+                        title={display}
+                        className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                      >
+                        {display}
+                      </div>
+                    )
+                  })()}
                 {typeof tool_configurations[key] !== 'string' &&
                   tool_configurations[key]?.type === FormTypeEnum.modelSelector && (
                     <div
@@ -91,6 +104,17 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
                       className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
                     >
                       {tool_configurations[key].model}
+                    </div>
+                  )}
+                {typeof tool_configurations[key].value === 'object' &&
+                  !Array.isArray(tool_configurations[key].value) &&
+                  tool_configurations[key].value !== null &&
+                  tool_configurations[key].value.model && (
+                    <div
+                      title={String(tool_configurations[key].value.model)}
+                      className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                    >
+                      {String(tool_configurations[key].value.model)}
                     </div>
                   )}
               </div>
