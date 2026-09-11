@@ -38,7 +38,7 @@ export function availabilityFromAccessPoints(
   const allowed = new Set(
     availableAccessPoints.flatMap((accessPoint) => {
       if (accessPoint in API_TO_ACCESS_POINT)
-        return [API_TO_ACCESS_POINT[accessPoint as NetworkAccessPoint]]
+        return [toUiAccessPoint(accessPoint as NetworkAccessPoint)]
       return []
     }),
   )
@@ -73,7 +73,7 @@ export function scopesFromAccessPoints(
   const selected = new Set(
     accessPoints.flatMap((accessPoint) => {
       if (accessPoint in API_TO_ACCESS_POINT)
-        return [API_TO_ACCESS_POINT[accessPoint as NetworkAccessPoint]]
+        return [toUiAccessPoint(accessPoint as NetworkAccessPoint)]
       return []
     }),
   )
