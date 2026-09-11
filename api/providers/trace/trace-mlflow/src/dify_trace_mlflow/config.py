@@ -1,3 +1,5 @@
+from typing import override
+
 from pydantic import ValidationInfo, field_validator
 
 from core.ops.provider_config import BaseTracingConfig
@@ -13,6 +15,11 @@ class MLflowConfig(BaseTracingConfig):
     experiment_id: str = "0"  # Default experiment id in MLflow is 0
     username: str | None = None
     password: str | None = None
+
+    @classmethod
+    @override
+    def secret_fields(cls) -> tuple[str, ...]:
+        return ("password",)
 
     @field_validator("tracking_uri")
     @classmethod
@@ -39,6 +46,11 @@ class DatabricksConfig(BaseTracingConfig):
     client_id: str | None = None
     client_secret: str | None = None
     personal_access_token: str | None = None
+
+    @classmethod
+    @override
+    def secret_fields(cls) -> tuple[str, ...]:
+        return ("personal_access_token", "client_secret")
 
     @field_validator("experiment_id")
     @classmethod

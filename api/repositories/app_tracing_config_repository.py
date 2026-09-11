@@ -1,5 +1,6 @@
 """SQLAlchemy persistence adapter for app tracing provider configurations."""
 
+import json
 from typing import Any, override
 
 from sqlalchemy import select
@@ -74,6 +75,12 @@ class SQLAlchemyAppTracingConfigRepository(AppTracingConfigStore):
 
             if app.tracing_revision != expected_revision:
                 raise AppTracingConfigChangedError
+            if config.tracing_config == tracing_config:
+                return True
+            # Only the selected destination can invalidate deliveries for this app.
+            selected = json.loads(app.tracing) if app.tracing else {}
+            if selected.get("enabled") and selected.get("tracing_provider") == tracing_provider:
+                app.tracing_destination_revision += 1
             app.tracing_revision += 1
             config.tracing_config = dict(tracing_config)
             return True

@@ -11,7 +11,7 @@ from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans
 from pydantic import JsonValue
 
-from core.ops.otlp_trace import OtlpTraceClient, otlp_attributes, otlp_span
+from core.ops.otlp_trace import OtlpTraceClient, otlp_span
 from core.ops.provider_export import (
     TraceExportError,
     TraceProviderHttpClient,
@@ -25,6 +25,61 @@ from core.ops.provider_export import (
 )
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
+
+
+def _parse_trace_uuid(identifier: str) -> str:
+    value = UUID(identifier.removeprefix("tr-"))
+    if not value.int:
+        raise ValueError("Trace ID cannot be zero")
+    return str(value)
+
+
+def _normalize_messages(value: JsonValue) -> JsonValue:
+    if isinstance(value, list):
+        return [_normalize_messages(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    message = dict(value)
+    if "role" in message:
+        if message["role"] == "human":
+            message["role"] = "user"
+        elif message["role"] == "ai":
+            message["role"] = "assistant"
+        if "text" in message and "content" not in message:
+            message["content"] = message.pop("text")
+    if "messages" in message:
+        message["messages"] = _normalize_messages(message["messages"])
+    return message
+
+
+def _format_llm_io(span: TraceSpan) -> tuple[JsonValue, JsonValue]:
+    inputs: JsonValue = _normalize_messages(span.inputs)
+    if isinstance(inputs, list):
+        inputs = {"messages": inputs}
+    elif isinstance(inputs, str):
+        inputs = {"messages": [{"role": "user", "content": inputs}]}
+    elif isinstance(inputs, dict) and "role" in inputs:
+        inputs = {"messages": [inputs]}
+    outputs: JsonValue = _normalize_messages(span.outputs)
+    if isinstance(outputs, (str, list)):
+        outputs = {"choices": [{"index": 0, "message": {"role": "assistant", "content": outputs}}]}
+    elif isinstance(outputs, dict) and "choices" not in outputs:
+        if "text" in outputs:
+            message: dict[str, JsonValue] = {"role": "assistant", "content": outputs["text"]}
+            if "tool_calls" in outputs:
+                message["tool_calls"] = outputs["tool_calls"]
+            outputs = {
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": message,
+                        "finish_reason": outputs.get("finish_reason"),
+                    }
+                ]
+            }
+        elif "role" in outputs:
+            outputs = {"choices": [{"index": 0, "message": outputs}]}
+    return inputs, outputs
 
 
 class MLflowTraceClient:
@@ -75,14 +130,17 @@ class MLflowTraceClient:
 
     def _attributes(self, completed_trace: CompletedTrace, span: TraceSpan, trace_id: str) -> dict[str, str]:
         attributes = span_attributes(completed_trace, span)
+        inputs, outputs = _format_llm_io(span) if span.span_type == "llm" else (span.inputs, span.outputs)
         attributes.update(
             {
                 "mlflow.traceRequestId": trace_id,
                 "mlflow.spanType": {"llm": "LLM", "tool": "TOOL", "retrieval": "RETRIEVER", "agent": "AGENT"}.get(
                     span.span_type, "CHAIN"
                 ),
-                "mlflow.spanInputs": span.inputs,
-                "mlflow.spanOutputs": span.outputs,
+                "mlflow.spanInputs": inputs,
+                "mlflow.spanOutputs": outputs,
+                "user.id": completed_trace.source.actor_id,
+                "session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
                 "mlflow.chat.tokenUsage": {
                     "input_tokens": span.usage.get("prompt_tokens"),
                     "output_tokens": span.usage.get("completion_tokens"),
@@ -90,30 +148,52 @@ class MLflowTraceClient:
                 },
             }
         )
-        return {key: json_text(value) for key, value in attributes.items()}
+        if span.span_type == "llm":
+            attributes.update(
+                {
+                    "mlflow.llm.model": span.attributes.get("model_name"),
+                    "mlflow.llm.provider": span.attributes.get("model_provider"),
+                    "mlflow.message.format": "openai",
+                }
+            )
+            costs: dict[str, JsonValue] = {
+                target: float(str(cost))
+                for source, target in (
+                    ("prompt_price", "input_cost"),
+                    ("completion_price", "output_cost"),
+                    ("total_price", "total_cost"),
+                )
+                if (cost := span.usage.get(source, span.usage.get(target))) is not None
+            }
+            if costs:
+                attributes["mlflow.llm.cost"] = costs
+        return {key: json_text(value) for key, value in attributes.items() if value is not None}
 
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
         trace_id = provider_uuid(completed_trace.trace_id)
+        if parent_span is None and (external_id := completed_trace.source.external_trace_id):
+            try:
+                trace_id = _parse_trace_uuid(external_id)
+            except ValueError:
+                pass
         if self.provider_name == "databricks":
             self._export_databricks(completed_trace, trace_id, parent_span)
         else:
-            trace_id = str(parent_span["trace_id"]) if parent_span else trace_id
+            trace_id = _parse_trace_uuid(str(parent_span["trace_id"])) if parent_span else trace_id
             spans = []
             for span in completed_trace.spans:
-                exported_span = otlp_span(completed_trace, span, parent_span)
-                del exported_span.attributes[:]
-                exported_span.attributes.extend(
-                    otlp_attributes(
-                        {
-                            key: json.loads(value)
-                            for key, value in self._attributes(
-                                completed_trace, span, "tr-" + UUID(trace_id).hex
-                            ).items()
-                        }
-                    )
+                exported_span = otlp_span(
+                    completed_trace,
+                    span,
+                    parent_span,
+                    attributes={
+                        key: json.loads(value)
+                        for key, value in self._attributes(completed_trace, span, "tr-" + UUID(trace_id).hex).items()
+                    },
                 )
+                exported_span.trace_id = UUID(trace_id).bytes
                 spans.append(exported_span)
             client = OtlpTraceClient(
                 self.http.endpoint + "/v1/traces",
@@ -154,17 +234,28 @@ class MLflowTraceClient:
         metadata = {
             "dify.tenant_id": completed_trace.source.tenant_id,
             "dify.app_id": completed_trace.source.app_id or "",
+            "dify.operation_id": completed_trace.source.operation_id,
         }
+        if completed_trace.source.actor_id is not None:
+            metadata["mlflow.trace.user"] = completed_trace.source.actor_id
+        if session_id := completed_trace.source.session_id or completed_trace.source.conversation_id:
+            metadata["mlflow.trace.session"] = session_id
+        links = []
         if parent_span:
+            linked_trace_id = "tr-" + UUID(_parse_trace_uuid(str(parent_span["trace_id"]))).hex
+            linked_span_id = span_id_bytes(str(parent_span["span_id"])).hex()
             metadata.update(
                 {
-                    "dify.linked_trace_id": str(parent_span["trace_id"]),
-                    "dify.linked_parent_span_id": str(parent_span["span_id"]),
+                    "dify.linked_trace_id": linked_trace_id,
+                    "dify.linked_parent_span_id": linked_span_id,
                 }
+            )
+            links.append(
+                {"trace_id": linked_trace_id, "span_id": linked_span_id, "attributes": {"dify.relationship": "parent"}}
             )
         trace_info = {
             "trace_id": request_id,
-            "client_request_id": completed_trace.source.operation_id,
+            "client_request_id": completed_trace.source.external_trace_id or completed_trace.source.operation_id,
             "trace_location": {
                 "type": "MLFLOW_EXPERIMENT",
                 "mlflow_experiment": {"experiment_id": self.config.experiment_id},
@@ -186,7 +277,8 @@ class MLflowTraceClient:
             # failed. Verify identity before reusing this deterministic record.
             existing = self.http.request("GET", f"api/3.0/mlflow/traces/{request_id}").json()["trace"]["trace_info"]
             if (
-                existing.get("client_request_id") != completed_trace.source.operation_id
+                existing.get("client_request_id") != trace_info["client_request_id"]
+                or existing.get("trace_metadata", {}).get("dify.operation_id") != completed_trace.source.operation_id
                 or existing.get("trace_metadata", {}).get("dify.tenant_id") != completed_trace.source.tenant_id
                 or existing.get("trace_metadata", {}).get("dify.app_id") != completed_trace.source.app_id
                 or existing.get("trace_location", {}).get("mlflow_experiment", {}).get("experiment_id")
@@ -206,6 +298,7 @@ class MLflowTraceClient:
                 "start_time_unix_nano": timestamp_ns(span.started_at),
                 "end_time_unix_nano": timestamp_ns(span.ended_at),
                 "attributes": self._attributes(completed_trace, span, request_id),
+                "links": links if span.span_id == completed_trace.root_span_id else [],
                 "events": [
                     {
                         "name": event.name,

@@ -2,12 +2,153 @@
 
 from typing import Any
 from urllib.parse import quote
+from uuid import UUID
 
 from pydantic import JsonValue
 
 from core.ops.provider_export import TraceExportError, TraceProviderHttpClient, export_span_id, span_attributes
-from core.ops.trace_data import CompletedTrace, ExportedParentSpans
+from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_langsmith.config import LangSmithConfig
+
+
+def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
+    """Keep untimed details as marked instants at a captured endpoint, never export time."""
+    spans: dict[str, TraceSpan] = {}
+    for span in completed_trace.spans:
+        if span.started_at is None or span.ended_at is None:
+            parent = spans.get(span.parent_span_id or "")
+            anchor = span.started_at or span.ended_at or (parent.started_at if parent else None)
+            if anchor is None:
+                raise TraceExportError("langsmith_span_time_missing")
+            span = span.model_copy(
+                update={
+                    "started_at": anchor,
+                    "ended_at": anchor,
+                    "attributes": {
+                        **span.attributes,
+                        "dify.timing.estimated": True,
+                        "dify.timing.source": "captured_endpoint",
+                    },
+                }
+            )
+        assert span.started_at is not None
+        assert span.ended_at is not None
+        if span.ended_at < span.started_at:
+            raise TraceExportError("langsmith_span_time_invalid")
+        spans[span.span_id] = span
+    return list(spans.values())
+
+
+def _normalize_messages(value: JsonValue) -> JsonValue:
+    if isinstance(value, list):
+        return [_normalize_messages(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    message = dict(value)
+    if "role" in message:
+        if message["role"] == "human":
+            message["role"] = "user"
+        elif message["role"] == "ai":
+            message["role"] = "assistant"
+        if "text" in message and "content" not in message:
+            message["content"] = message.pop("text")
+    if "messages" in message:
+        message["messages"] = _normalize_messages(message["messages"])
+    return message
+
+
+def _format_llm_inputs(value: JsonValue) -> dict[str, JsonValue]:
+    value = _normalize_messages(value)
+    if isinstance(value, dict) and "messages" in value:
+        return value
+    if isinstance(value, list):
+        return {"messages": value}
+    if isinstance(value, dict) and "role" in value:
+        return {"messages": [value]}
+    if isinstance(value, str):
+        return {"messages": [{"role": "user", "content": value}]}
+    return value if isinstance(value, dict) else {"input": value}
+
+
+def _format_llm_outputs(value: JsonValue) -> dict[str, JsonValue]:
+    value = _normalize_messages(value)
+    if isinstance(value, dict) and "choices" in value:
+        return dict(value)
+    message: dict[str, JsonValue]
+    if isinstance(value, dict) and "role" in value:
+        message = dict(value)
+    elif isinstance(value, dict) and isinstance(value.get("text"), str):
+        message = {"role": "assistant", "content": value["text"]}
+    elif isinstance(value, (str, list)):
+        message = {"role": "assistant", "content": value}
+    else:
+        return dict(value) if isinstance(value, dict) else {"output": value}
+    choice: dict[str, JsonValue] = {"index": 0, "message": message}
+    if isinstance(value, dict):
+        if "finish_reason" in value:
+            choice["finish_reason"] = value["finish_reason"]
+        if "tool_calls" in value:
+            message["tool_calls"] = value["tool_calls"]
+    return {"choices": [choice]}
+
+
+def _map_usage_metadata(span: TraceSpan) -> dict[str, JsonValue]:
+    usage = {
+        target: span.usage[source]
+        for source, target in (
+            ("prompt_tokens", "input_tokens"),
+            ("completion_tokens", "output_tokens"),
+            ("total_tokens", "total_tokens"),
+        )
+        if isinstance(span.usage.get(source), int)
+    }
+    for source, target in (
+        ("prompt_price", "input_cost"),
+        ("completion_price", "output_cost"),
+        ("total_price", "total_cost"),
+    ):
+        if (cost := span.usage.get(source, span.usage.get(target))) is not None:
+            usage[target] = float(str(cost))
+    return usage
+
+
+def _map_run_type_and_tags(span: TraceSpan) -> tuple[str, list[str]]:
+    operation_type = span.attributes.get("operation_type", span.span_type)
+    if not isinstance(operation_type, str):
+        operation_type = span.span_type
+    is_node_execution = bool(
+        span.node_execution_id
+        or span.attributes.get("node_execution_id")
+        or span.span_type == "node"
+        or operation_type == "draft_node_execution"
+    )
+    if span.span_type == "llm":
+        run_type = "llm"
+    elif span.span_type in {"retrieval", "knowledge-retrieval"} or operation_type == "dataset_retrieval":
+        run_type = "retriever"
+    elif operation_type == "message":
+        run_type = "chain"
+    elif (
+        span.span_type in {"workflow", "tool"}
+        or is_node_execution
+        or operation_type in {"moderation", "suggested_question", "generate_name", "tool"}
+    ):
+        run_type = "tool"
+    else:
+        run_type = "chain"
+
+    tags = ["dify", span.span_type]
+    if operation_type:
+        tags.append(operation_type)
+    if is_node_execution:
+        tags.append("node_execution")
+    if operation_type == "message" or span.span_type == "llm":
+        if isinstance(mode := span.attributes.get("conversation_mode", span.attributes.get("app_mode")), str) and mode:
+            tags.append(mode)
+    if span.span_type == "tool" or operation_type == "tool":
+        if isinstance(tool_name := span.attributes.get("tool_name"), str) and tool_name:
+            tags.append(tool_name)
+    return run_type, list(dict.fromkeys(tags))
 
 
 class LangSmithTraceClient:
@@ -30,38 +171,64 @@ class LangSmithTraceClient:
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
+        spans = _prepare_timed_spans(completed_trace)
+        span_ids = {span.span_id: export_span_id(completed_trace, span.span_id) for span in spans}
+        if parent_span is None and (external_id := completed_trace.source.external_trace_id):
+            try:
+                external_uuid = UUID(external_id)
+                if external_uuid.int:
+                    span_ids[completed_trace.root_span_id] = str(external_uuid)
+            except ValueError:
+                pass
         receipts: dict[str, dict[str, JsonValue]] = {}
-        trace_id = (
-            str(parent_span["trace_id"])
-            if parent_span
-            else export_span_id(completed_trace, completed_trace.root_span_id)
-        )
-        for span in completed_trace.spans:
+        trace_id = str(parent_span["trace_id"]) if parent_span else span_ids[completed_trace.root_span_id]
+        runs = []
+        for span in spans:
             parent = receipts.get(span.parent_span_id or "") or parent_span
-            if span.started_at is None:
-                raise TraceExportError("langsmith_span_start_missing")
-            span_id = export_span_id(completed_trace, span.span_id)
+            assert span.started_at is not None
+            assert span.ended_at is not None
+            span_id = span_ids[span.span_id]
             own_order = span.started_at.strftime("%Y%m%dT%H%M%S%fZ") + span_id
             if parent is not None and not parent.get("dotted_order"):
                 raise TraceExportError("langsmith_parent_order_missing")
             dotted_order = f"{parent['dotted_order']}.{own_order}" if parent else own_order
+            inputs = span.inputs if isinstance(span.inputs, dict) else {"input": span.inputs}
+            outputs = span.outputs if isinstance(span.outputs, dict) else {"output": span.outputs}
+            metadata = span_attributes(completed_trace, span)
+            if span.span_type == "llm":
+                inputs, outputs = _format_llm_inputs(span.inputs), _format_llm_outputs(span.outputs)
+                outputs["usage_metadata"] = _map_usage_metadata(span)
+                metadata.update(
+                    {
+                        key: value
+                        for key, value in {
+                            "ls_model_name": span.attributes.get("model_name"),
+                            "ls_provider": span.attributes.get("model_provider"),
+                            "ls_model_type": "chat",
+                        }.items()
+                        if value is not None
+                    }
+                )
+            run_type, tags = _map_run_type_and_tags(span)
             run = {
                 "id": span_id,
                 "trace_id": trace_id,
                 "name": span.span_name,
-                "run_type": {"llm": "llm", "tool": "tool", "retrieval": "retriever"}.get(span.span_type, "chain"),
+                "run_type": run_type,
                 "start_time": span.started_at.isoformat(),
                 "end_time": span.ended_at.isoformat() if span.ended_at else None,
-                "inputs": span.inputs if isinstance(span.inputs, dict) else {"input": span.inputs},
-                "outputs": span.outputs if isinstance(span.outputs, dict) else {"output": span.outputs},
+                "inputs": inputs,
+                "outputs": outputs,
                 "error": span.error if span.status == "error" else None,
                 "parent_run_id": parent["span_id"] if parent else None,
                 "dotted_order": dotted_order,
                 "session_name": self.config.project,
-                "extra": {"metadata": span_attributes(completed_trace, span)},
-                "tags": ["dify", span.span_type],
+                "extra": {"metadata": metadata, "invocation_params": span.attributes.get("model_parameters", {})},
+                "tags": tags,
             }
-            # /runs/batch upserts client-assigned run IDs; retrying retains IDs and ancestor order.
-            self.http.request("POST", "runs/batch", json={"post": [run]})
+            runs.append(run)
             receipts[span.span_id] = {"trace_id": trace_id, "span_id": span_id, "dotted_order": dotted_order}
+        # Build and validate every run before posting; retries retain IDs and ancestor order.
+        for run in runs:
+            self.http.request("POST", "runs/batch", json={"post": [run]})
         return ExportedParentSpans(spans=receipts)

@@ -103,6 +103,7 @@ class TestInputModeration:
         assert call.kwargs["inputs"] == {"inputs": inputs, "query": query}
         assert call.kwargs["outputs"] == mock_result
         assert call.kwargs["message_id"] == message_id
+        assert call.kwargs["attributes"] == {"operation_type": "moderation", "moderation_type": "keywords"}
         assert call.kwargs["timer"]["start"] <= call.kwargs["timer"]["end"]
 
     @patch("core.moderation.input_moderation.ModerationFactory")

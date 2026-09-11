@@ -8,6 +8,7 @@ from queue import Empty, Full, Queue
 from threading import Event, Lock, Thread
 from time import sleep
 
+from opentelemetry import metrics
 from sqlalchemy.exc import SQLAlchemyError
 
 from core.ops.trace_data import QueuedTrace
@@ -51,6 +52,7 @@ class TraceQueue:
         self.closed = Event()
         self.writer_thread: Thread | None = None
         self.admission_counts: Counter[str] = Counter()
+        self.dropped_traces = metrics.get_meter("dify.ops").create_counter("dify.ops.trace.dropped")
 
     def start(self) -> None:
         with self.queue_lock:
@@ -84,6 +86,10 @@ class TraceQueue:
                     reason = "queue_items_full"
             if reason:
                 self.admission_counts[reason] += 1
+                self.dropped_traces.add(1, {"reason": reason})
+                count = self.admission_counts[reason]
+                if count & (count - 1) == 0:
+                    self.logger.warning("OPS trace rejected reason=%s count=%s tenant_id=%s", reason, count, tenant_id)
                 return False
             self.queued_bytes += trace_size
             self.tenant_queued_bytes[tenant_id] += trace_size
@@ -100,6 +106,7 @@ class TraceQueue:
                 or self.recording_bytes + byte_count > self.max_recording_bytes
                 or self.tenant_recording_bytes[tenant_id] + byte_count > self.max_recording_bytes // 2
             ):
+                self.dropped_traces.add(1, {"reason": "recording_budget"})
                 return False
             self.recording_bytes += byte_count
             self.tenant_recording_bytes[tenant_id] += byte_count

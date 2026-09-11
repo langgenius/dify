@@ -25,6 +25,7 @@ from core.llm_generator.prompts import (
 )
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
+from core.ops.message_trace import MessageTraceRecorder
 from core.ops.trace_source import create_message_trace
 from core.ops.utils import measure_time
 from core.plugin.impl.base import use_plugin_daemon_request_timeout
@@ -234,6 +235,7 @@ class LLMGenerator:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        user_id: str | None = None,
     ):
         prompt = CONVERSATION_TITLE_PROMPT
 
@@ -283,6 +285,7 @@ class LLMGenerator:
             app_id=app_id,
             message_id=message_id,
             conversation_id=conversation_id,
+            user_id=user_id,
         )
         if trace_recorder:
             trace_recorder.record_operation(
@@ -293,7 +296,12 @@ class LLMGenerator:
                 usage=response.usage.model_dump(mode="json"),
                 timer=timer,
                 independent=True,
-                attributes={"operation_type": "generate_name", "model_name": response.model},
+                attributes={
+                    "operation_type": "generate_name",
+                    "model_name": response.model,
+                    "model_provider": model_instance.provider,
+                    "model_parameters": {"max_tokens": 500, "temperature": 1},
+                },
             )
 
         return name
@@ -307,6 +315,7 @@ class LLMGenerator:
         *,
         instruction_prompt: str | None = None,
         model_config: object | None = None,
+        trace_recorder: MessageTraceRecorder | None = None,
     ) -> Sequence[str]:
         output_parser = SuggestedQuestionsAfterAnswerOutputParser(instruction_prompt=instruction_prompt)
         format_instructions = output_parser.get_format_instructions()
@@ -354,9 +363,12 @@ class LLMGenerator:
         prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt)]
 
         questions: Sequence[str] = []
+        response: LLMResult | None = None
+        error: str | None = None
+        timer: dict[str, Any] = {}
+        model_parameters: dict[str, object] = {}
 
         try:
-            model_parameters: dict[str, object]
             stop: list[str]
             configured_completion_params = configured_model.get("completion_params")
             if use_configured_model and isinstance(configured_completion_params, dict):
@@ -369,8 +381,8 @@ class LLMGenerator:
                 model_parameters = _default_suggested_questions_model_parameters(model_instance)
                 stop = []
 
-            with use_plugin_daemon_request_timeout(_SUGGESTED_QUESTIONS_TIMEOUT_SECONDS):
-                response: LLMResult = model_instance.invoke_llm(
+            with use_plugin_daemon_request_timeout(_SUGGESTED_QUESTIONS_TIMEOUT_SECONDS), measure_time() as timer:
+                response = model_instance.invoke_llm(
                     prompt_messages=list(prompt_messages),
                     model_parameters=model_parameters,
                     stop=stop,
@@ -379,9 +391,28 @@ class LLMGenerator:
 
             text_content = response.message.get_text_content()
             questions = output_parser.parse(text_content) if text_content else []
-        except Exception:
+        except Exception as exc:
             logger.exception("Failed to generate suggested questions after answer")
             questions = []
+            error = type(exc).__name__
+
+        if trace_recorder and timer:
+            trace_recorder.record_operation(
+                "suggested_questions",
+                span_type="llm",
+                inputs=prompt_messages,
+                outputs=list(questions),
+                timer=timer,
+                error=error,
+                usage=response.usage.model_dump(mode="json") if response else {},
+                attributes={
+                    "operation_type": "suggested_question",
+                    "model_name": model_instance.model_name,
+                    "model_provider": model_instance.provider,
+                    "model_parameters": model_parameters,
+                },
+                independent=True,
+            )
 
         return questions
 

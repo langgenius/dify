@@ -188,11 +188,15 @@ class TestLLMGenerator:
 
         with patch("core.llm_generator.llm_generator.create_message_trace") as mock_trace:
             name = LLMGenerator.generate_conversation_name(
-                "tenant_id", "test query", "conversation-1", "app-1", message_id="message-1"
+                "tenant_id", "test query", "conversation-1", "app-1", message_id="message-1", user_id="actor-1"
             )
             assert name == "Test Conversation Name"
             mock_trace.assert_called_once_with(
-                tenant_id="tenant_id", app_id="app-1", message_id="message-1", conversation_id="conversation-1"
+                tenant_id="tenant_id",
+                app_id="app-1",
+                message_id="message-1",
+                conversation_id="conversation-1",
+                user_id="actor-1",
             )
             call = mock_trace.return_value.record_operation.call_args
             assert call.args == ("generate_conversation_name",)

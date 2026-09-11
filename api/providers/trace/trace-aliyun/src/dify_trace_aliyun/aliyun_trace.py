@@ -1,13 +1,225 @@
 """Aliyun receives every captured span directly, including nested agent operations."""
 
-from typing import Any
+import json
+import re
+from typing import Any, override
 from urllib.parse import quote, urljoin, urlsplit
 
-from core.ops.otlp_trace import OtlpTraceClient
+from opentelemetry.proto.trace.v1.trace_pb2 import Span
+from pydantic import JsonValue
+
+from core.ops.otlp_trace import OtlpTraceClient, otlp_span
+from core.ops.provider_export import json_text, span_attributes
+from core.ops.trace_data import CompletedTrace, TraceSpan
 from dify_trace_aliyun.config import AliyunConfig
 
 
-def create_trace_client(provider_config: dict[str, Any]) -> OtlpTraceClient:
+def message_parts(content: JsonValue) -> list[JsonValue]:
+    if isinstance(content, str):
+        return [{"type": "text", "content": content}] if content else []
+    if not isinstance(content, list):
+        return [{"type": "text", "content": json_text(content)}] if content is not None else []
+    parts: list[JsonValue] = []
+    for item in content:
+        if not isinstance(item, dict):
+            parts.extend(message_parts(item))
+        elif item.get("type") in {"text", "reasoning"}:
+            parts.append({"type": item["type"], "content": item.get("content", item.get("text", item.get("data", "")))})
+        elif item.get("type") in {"image", "image_url", "audio", "video", "file"}:
+            image_url = item.get("image_url")
+            uri = image_url.get("url") if isinstance(image_url, dict) else image_url
+            parts.append(
+                {
+                    "type": "uri",
+                    "uri": uri or item.get("url") or item.get("data"),
+                    "modality": str(item["type"]).removesuffix("_url"),
+                }
+            )
+        else:
+            parts.append(item)
+    return parts
+
+
+def gen_ai_messages(value: JsonValue, default_role: str) -> list[dict[str, JsonValue]]:
+    """Convert captured Dify/OpenAI messages into Aliyun's ordered role/parts schema."""
+    if isinstance(value, dict) and isinstance(value.get("messages"), list):
+        value = value["messages"]
+    values = value if isinstance(value, list) else [value]
+    messages: list[dict[str, JsonValue]] = []
+    for item in values:
+        if item is None:
+            continue
+        message = item if isinstance(item, dict) else {"content": item}
+        role = str(message.get("role") or default_role)
+        content = message.get("content", message.get("text", message.get("answer", message.get("thought"))))
+        existing_parts = message.get("parts")
+        parts: list[JsonValue] = list(existing_parts) if isinstance(existing_parts, list) else message_parts(content)
+        if role == "tool":
+            parts = [{"type": "tool_call_response", "id": message.get("tool_call_id"), "result": content}]
+        else:
+            tool_calls = message.get("tool_calls")
+            for tool_call in tool_calls if isinstance(tool_calls, list) else []:
+                if not isinstance(tool_call, dict):
+                    continue
+                function = tool_call.get("function")
+                if not isinstance(function, dict):
+                    function = tool_call
+                arguments = function.get("arguments")
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except ValueError:
+                        pass
+                parts.append(
+                    {
+                        "type": "tool_call",
+                        "id": tool_call.get("id"),
+                        "name": function.get("name"),
+                        "arguments": arguments,
+                    }
+                )
+        formatted: dict[str, JsonValue] = {"role": role, "parts": parts}
+        if message.get("finish_reason") is not None:
+            formatted["finish_reason"] = message["finish_reason"]
+        messages.append(formatted)
+    return messages
+
+
+class AliyunTraceClient(OtlpTraceClient):
+    @override
+    def build_span(
+        self, completed_trace: CompletedTrace, span: TraceSpan, parent_span: dict[str, JsonValue] | None = None
+    ) -> Span:
+        process_data = span.attributes.get("process_data")
+        captured = {**(process_data if isinstance(process_data, dict) else {}), **span.attributes}
+        attributes: dict[str, Any] = {
+            **span_attributes(completed_trace, span),
+            "input.value": json_text(span.inputs),
+            "output.value": span.outputs if isinstance(span.outputs, str) else json_text(span.outputs),
+            "gen_ai.session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
+            "gen_ai.user.id": completed_trace.source.actor_id,
+            "gen_ai.conversation.id": completed_trace.source.conversation_id,
+            "gen_ai.framework": "dify",
+            "gen_ai.span.kind": {
+                "llm": "LLM",
+                "tool": "TOOL",
+                "retrieval": "RETRIEVER",
+                "agent": "AGENT",
+            }.get(span.span_type, "CHAIN"),
+            "gen_ai.operation.name": {
+                "llm": "chat",
+                "tool": "execute_tool",
+                "retrieval": "retrieval",
+                "agent": "invoke_agent",
+            }.get(span.span_type, span.span_type),
+        }
+        attributes.pop("dify.inputs", None)
+        attributes.pop("dify.outputs", None)
+        usage = span.usage or captured.get("aggregate_usage")
+        if isinstance(usage, dict):
+            for field, key in (
+                ("prompt_tokens", "gen_ai.usage.input_tokens"),
+                ("completion_tokens", "gen_ai.usage.output_tokens"),
+                ("total_tokens", "gen_ai.usage.total_tokens"),
+            ):
+                attributes[key] = usage.get(field)
+            ttft = usage.get("time_to_first_token", captured.get("gen_ai_server_time_to_first_token"))
+            if isinstance(ttft, (int, float)) and not isinstance(ttft, bool):
+                attributes["gen_ai.response.time_to_first_token"] = int(ttft * 1_000_000_000)
+        if span.span_type == "llm":
+            # Aliyun's existing ReAct projection identifies plugin thought entries
+            # by this label suffix; keep that compatibility at the destination.
+            model_name = captured.get("model_name") or (
+                span.span_name.removesuffix(" Thought") if span.span_name.endswith(" Thought") else None
+            )
+            attributes.update(
+                {
+                    "gen_ai.request.model": model_name,
+                    "gen_ai.response.model": model_name,
+                    "gen_ai.provider.name": captured.get("model_provider") or captured.get("provider"),
+                    "gen_ai.prompt": json_text(span.inputs),
+                    "gen_ai.completion": span.outputs.get("text") if isinstance(span.outputs, dict) else span.outputs,
+                    "gen_ai.input.messages": json_text(gen_ai_messages(span.inputs, "user")),
+                    "gen_ai.output.messages": json_text(gen_ai_messages(span.outputs, "assistant")),
+                }
+            )
+            if isinstance(span.outputs, dict) and (finish_reason := span.outputs.get("finish_reason")):
+                attributes["gen_ai.response.finish_reason"] = finish_reason
+                attributes["gen_ai.response.finish_reasons"] = [finish_reason]
+            parameters = captured.get("model_parameters")
+            if isinstance(parameters, dict):
+                for field in (
+                    "temperature",
+                    "top_p",
+                    "top_k",
+                    "max_tokens",
+                    "frequency_penalty",
+                    "presence_penalty",
+                    "seed",
+                ):
+                    attributes[f"gen_ai.request.{field}"] = parameters.get(field)
+                if parameters.get("tools"):
+                    attributes["gen_ai.tool.definitions"] = json_text(parameters["tools"])
+        elif span.span_type == "agent":
+            attributes["gen_ai.agent.name"] = captured.get("agent_name") or span.span_name
+            round_match = re.fullmatch(r"ROUND\s+(\d+)", span.span_name, re.IGNORECASE)
+            round_number = captured.get("agent_round") or (int(round_match[1]) if round_match else None)
+            if round_number is not None:
+                attributes.update(
+                    {"gen_ai.span.kind": "STEP", "gen_ai.operation.name": "react", "gen_ai.react.round": round_number}
+                )
+                if span.error:
+                    attributes["gen_ai.react.finish_reason"] = "error"
+        elif span.span_type == "tool":
+            tool_output = span.outputs if isinstance(span.outputs, dict) else {}
+            tool_name = (
+                captured.get("tool_name") or tool_output.get("tool_name") or span.span_name.removeprefix("CALL ")
+            )
+            provider_type = captured.get("provider_type") or tool_output.get("provider_type")
+            tool_type = (
+                "datastore"
+                if provider_type in {"dataset-retrieval", "datastore"}
+                else "extension"
+                if provider_type == "extension"
+                else "function"
+            )
+            attributes.update(
+                {
+                    "gen_ai.tool.name": tool_name,
+                    "gen_ai.tool.type": tool_type,
+                    "gen_ai.tool.description": captured.get("tool_description")
+                    or captured.get("description")
+                    or tool_output.get("description"),
+                    "gen_ai.tool.call.id": captured.get("tool_call_id") or span.span_id,
+                    "gen_ai.tool.call.arguments": json_text(
+                        span.inputs
+                        if span.inputs is not None
+                        else tool_output.get("tool_call_args", tool_output.get("tool_call_input"))
+                    ),
+                    "gen_ai.tool.call.result": json_text(tool_output.get("output", span.outputs)),
+                }
+            )
+            for field in ("id", "name", "description", "version"):
+                attributes[f"gen_ai.skill.{field}"] = captured.get(f"skill_{field}") or tool_output.get(
+                    f"skill_{field}"
+                )
+        elif span.span_type == "retrieval":
+            documents = span.outputs.get("documents", []) if isinstance(span.outputs, dict) else span.outputs
+            attributes.update(
+                {
+                    "gen_ai.retrieval.query.text": span.inputs
+                    if isinstance(span.inputs, str)
+                    else json_text(span.inputs),
+                    "gen_ai.retrieval.documents": json_text(documents),
+                    "gen_ai.data_source.id": captured.get("dataset_id"),
+                    "gen_ai.request.model": captured.get("embedding_model"),
+                    "gen_ai.provider.name": captured.get("embedding_model_provider"),
+                }
+            )
+        return otlp_span(completed_trace, span, parent_span, attributes=attributes)
+
+
+def create_trace_client(provider_config: dict[str, Any]) -> AliyunTraceClient:
     config = AliyunConfig.model_validate(provider_config)
     hostname = urlsplit(config.endpoint).hostname or ""
     path = (
@@ -16,7 +228,7 @@ def create_trace_client(provider_config: dict[str, Any]) -> OtlpTraceClient:
         else "api/otlp/traces"
     )
     endpoint = urljoin(config.endpoint, f"adapt_{quote(config.license_key, safe='')}/{path}")
-    return OtlpTraceClient(
+    return AliyunTraceClient(
         endpoint,
         {},
         {"service.name": config.app_name, "acs.arms.service.feature": "genai_app"},

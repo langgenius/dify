@@ -13,7 +13,6 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelManager
 from core.ops.trace_source import create_message_trace
-from core.ops.utils import measure_time
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -432,33 +431,21 @@ class MessageService:
             instruction_prompt = None
 
         configured_model = suggested_questions_after_answer_config.get("model")
-        with (
-            measure_time() as timer,
-            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}),
-        ):
+        trace_recorder = create_message_trace(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            user_id=user.id if isinstance(user, Account) else user.session_id,
+            message_id=message_id,
+            conversation_id=conversation.id,
+        )
+        with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}):
             questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id,
                 histories=histories,
                 instruction_prompt=instruction_prompt,
                 model_config=configured_model,
+                trace_recorder=trace_recorder,
             )
             questions: list[str] = list(questions_sequence)
-
-        trace_recorder = create_message_trace(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            message_id=message_id,
-            conversation_id=conversation.id,
-        )
-        if trace_recorder:
-            trace_recorder.record_operation(
-                "suggested_questions",
-                span_type="llm",
-                attributes={"operation_type": "suggested_question"},
-                inputs=histories,
-                outputs=questions,
-                timer=timer,
-                independent=True,
-            )
 
         return questions

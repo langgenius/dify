@@ -8,6 +8,7 @@ from uuid import UUID
 
 from flask import current_app
 
+from configs import dify_config
 from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import CompletedTrace
 from repositories.ops_trace_delivery_repository import OpsTraceDeliveryRepository
@@ -80,10 +81,12 @@ def export_trace_delivery(tenant_id: str, delivery_id: str) -> None:
         receipt_error = None
         if len(json.dumps(parent_references).encode()) > 64 * 1024:
             parent_references, receipt_error = {}, "parent_reference_too_large"
-        repository.finish_attempt(delivery, "succeeded", receipt_error, parent_references=parent_references)
-    except Exception as error:
-        from configs import dify_config
+        if repository.finish_attempt(delivery, "succeeded", receipt_error, parent_references=parent_references):
+            if dify_config.OPS_TRACE_SUCCESS_RETENTION_SECONDS == 0:
+                from tasks.ops_trace_maintenance_task import delete_trace_body
 
+                delete_trace_body(delivery)
+    except Exception as error:
         # Exception strings can contain credentials or traced inputs; persist only bounded codes.
         retryable = (
             error.retryable
@@ -114,7 +117,11 @@ def export_trace_delivery(tenant_id: str, delivery_id: str) -> None:
         if isinstance(error, TraceExportError) and error.retry_after is not None:
             delay = min(max(delay, error.retry_after), 3600)
         status = "pending" if retry else "cancelled" if error_code == "configuration_changed" else "failed"
-        repository.finish_attempt(delivery, status, error_code, retry_delay_seconds=delay)
+        if repository.finish_attempt(delivery, status, error_code, retry_delay_seconds=delay):
+            if status != "pending" and dify_config.OPS_TRACE_FAILURE_RETENTION_SECONDS == 0:
+                from tasks.ops_trace_maintenance_task import delete_trace_body
+
+                delete_trace_body(delivery)
         logger.warning(
             "OPS export failed tenant_id=%s delivery_id=%s retry=%s error_code=%s",
             tenant_id,

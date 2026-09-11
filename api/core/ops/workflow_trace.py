@@ -12,7 +12,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from threading import Lock
-from typing import Any, override
+from typing import Any, Literal, overload, override
 
 from pydantic import BaseModel, Field
 
@@ -42,7 +42,16 @@ from graphon.engine_events import (
     NodeRunSucceededEvent,
 )
 from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
+
+
+def build_workflow_trace_inputs(inputs: Mapping[str, Any], system_variables: Mapping[str, Any]) -> dict[str, Any]:
+    """Include the authorized run's system inputs alongside its user variables."""
+    return {
+        **inputs,
+        **{f"sys.{name}": value for name, value in system_variables.items() if name != "conversation_id"},
+    }
 
 
 class ChildWorkflowTrace(BaseModel):
@@ -52,6 +61,7 @@ class ChildWorkflowTrace(BaseModel):
     root_span_id: str
     provider_settings: list[TraceProviderSettings]
     node_span_ids: list[str] = Field(default_factory=list)
+    failed_attempt_span_id: str | None = None
     submitted: bool = False
 
 
@@ -83,6 +93,7 @@ class WorkflowTraceRecorder(Layer):
         workflow_version: str,
         inputs: Mapping[str, Any],
         submit_completed_trace: Callable[..., bool],
+        attributes: Mapping[str, Any] | None = None,
         load_provider_settings: Callable[[str, str], Sequence[TraceProviderSettings]] | None = None,
         provider_settings: Sequence[TraceProviderSettings] = (),
         pause_state: Mapping[str, Any] | None = None,
@@ -114,6 +125,7 @@ class WorkflowTraceRecorder(Layer):
         self._incomplete_reasons: list[str] = []
         self._execution_span_ids: dict[str, str] = {}
         self._attempts: dict[str, int] = {}
+        self._failed_attempt_times: dict[tuple[str, datetime], datetime] = {}
         self._trace_id = make_trace_id(source.tenant_id, source.operation_id)
         self._root_span_id = self._span_id("root")
         self._spans: dict[str, TraceSpan] = {}
@@ -135,6 +147,7 @@ class WorkflowTraceRecorder(Layer):
                 started_at=datetime.now(UTC),
                 status="incomplete",
                 inputs=self._copy_value(inputs),
+                attributes=self._copy_attributes(attributes) if attributes else {},
             )
             if resumed_without_state:
                 self._incomplete_reasons.append("pre_upgrade_checkpoint")
@@ -210,12 +223,54 @@ class WorkflowTraceRecorder(Layer):
                             span_name=node.title[:512],
                             span_type=self._node_span_type(str(node.node_type)),
                             status="incomplete",
-                            attributes={"node_type": str(node.node_type), "node_version": node.version()},
+                            attributes={
+                                **{
+                                    key: value
+                                    for key, value in self._spans[self._root_span_id].attributes.items()
+                                    if key
+                                    in ("workspace_name", "from_source", "invoke_from", "invoked_by", "triggered_from")
+                                    or (key == "app_name" and run_context.app_id == self.source.app_id)
+                                },
+                                "node_type": str(node.node_type),
+                                "node_version": node.version(),
+                            },
                         )
                         child = self._child_workflows.get(run_context.workflow_tool_invocation_id or "")
                         if child is not None:
                             child.node_span_ids.append(span_id)
         yield
+
+    @override
+    def on_node_run_end(self, node: Node, error: Exception | None, result_event: NodeEvent | None = None) -> None:
+        """Keep the original failure time before GraphOn replaces it with a retry event."""
+        if not isinstance(result_event, NodeRunFailedEvent) or result_event.finished_at is None:
+            return
+        started_at = self._utc(result_event.start_at)
+        finished_at = self._utc(result_event.finished_at)
+        assert started_at is not None
+        assert finished_at is not None
+        with self._lock:
+            span_id = self._execution_span_ids.get(result_event.id)
+            if self._closed or self._ownership_rejected or span_id is None:
+                return
+            # Worker completion and coordinator retry handling can arrive in either order.
+            for attempt in range(min(self._attempts[result_event.id], self._max_spans)):
+                attempt_span_id = self._span_id(f"{result_event.id}:attempt:{attempt}")
+                span = self._spans.get(attempt_span_id)
+                if span is not None and span.started_at == started_at:
+                    finished_attempt = span.model_copy(update={"ended_at": finished_at})
+                    self._spans[attempt_span_id] = finished_attempt
+                    for child in self._child_workflows.values():
+                        if child.failed_attempt_span_id == attempt_span_id and not child.submitted:
+                            self._finish_child_trace(child, root_span=finished_attempt)
+                    break
+            else:
+                if span_id in self._open_span_ids and len(self._failed_attempt_times) < self._max_spans:
+                    self._failed_attempt_times[(result_event.id, started_at)] = finished_at
+            pending = self._pending_child_traces
+            self._pending_child_traces = []
+        for trace, settings in pending:
+            self._submit_completed_trace(trace, settings)
 
     def register_workflow_source(
         self,
@@ -302,7 +357,11 @@ class WorkflowTraceRecorder(Layer):
             case GraphRunAbortedEvent():
                 status, error, outputs = "cancelled", event.reason, event.outputs
             case GraphRunFailedEvent():
-                status, error, outputs = "error", event.error, {}
+                status, error, outputs = (
+                    "error",
+                    event.error,
+                    self.runtime_state.outputs if self._runtime_state is not None else {},
+                )
             case _:
                 return
         self._paused = False
@@ -313,6 +372,15 @@ class WorkflowTraceRecorder(Layer):
                 "error": self._copy_value(error),
                 "ended_at": datetime.now(UTC),
                 "outputs": self._copy_value(outputs),
+                "attributes": {
+                    **root.attributes,
+                    "workflow_run_status": {
+                        "ok": "succeeded",
+                        "handled_error": "partial-succeeded",
+                        "cancelled": "stopped",
+                        "error": "failed",
+                    }[status],
+                },
             }
         )
 
@@ -327,9 +395,27 @@ class WorkflowTraceRecorder(Layer):
             self._mark_incomplete("missing_execution_identity")
             return
         span = self._spans[span_id]
+        from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
+
+        if isinstance(event, NodeRunAgentLogEvent):
+            self._record_agent_entry(
+                span,
+                {
+                    "id": event.message_id,
+                    "parent_id": event.parent_id,
+                    "label": event.label,
+                    "status": event.status,
+                    "error": event.error,
+                    "data": event.data,
+                    "metadata": event.metadata,
+                },
+                observed_at=datetime.now(UTC),
+            )
+            return
         if isinstance(event, NodeRunRetryEvent):
             attempt = self._attempts[event.id]
             attempt_span_id = self._span_id(f"{event.id}:attempt:{attempt}")
+            finished_at = self._failed_attempt_times.pop((event.id, self._utc(event.start_at)), None)
             if len(self._spans) < self._max_spans and self._reserve_recording_budget(1024):
                 self._spans[attempt_span_id] = span.model_copy(
                     update={
@@ -340,11 +426,15 @@ class WorkflowTraceRecorder(Layer):
                         "status": "error",
                         "error": self._copy_value(event.error),
                         "started_at": self._utc(event.start_at),
-                        "ended_at": None,
-                        "inputs": self._copy_value(event.node_run_result.inputs),
+                        "ended_at": finished_at,
+                        "inputs": self._node_inputs(span, event.node_run_result),
                         "outputs": self._copy_value(event.node_run_result.outputs),
                         "usage": self._usage(event.node_run_result.llm_usage),
-                        "attributes": {**span.attributes, "metrics_from_parent": True},
+                        "attributes": {
+                            **self._node_result_attributes(span, event.node_run_result),
+                            "node_status": "failed",
+                            "metrics_from_parent": True,
+                        },
                         "events": (),
                     }
                 )
@@ -353,8 +443,11 @@ class WorkflowTraceRecorder(Layer):
                 self._mark_incomplete("span_limit")
             failed_attempt = self._spans.get(attempt_span_id)
             for child in self._child_workflows.values():
-                if child.root_span_id == span_id and not child.submitted:
-                    self._finish_child_trace(child, root_span=failed_attempt)
+                if child.root_span_id == span_id and not child.submitted and child.failed_attempt_span_id is None:
+                    if failed_attempt is not None and failed_attempt.ended_at is None:
+                        child.failed_attempt_span_id = attempt_span_id
+                    else:
+                        self._finish_child_trace(child, root_span=failed_attempt)
             self._attempts[event.id] = event.retry_index
             return
         if isinstance(event, NodeRunStartedEvent):
@@ -375,6 +468,7 @@ class WorkflowTraceRecorder(Layer):
             else "error"
         )
         self._open_span_ids.discard(span_id)
+        self._failed_attempt_times.pop((event.id, self._utc(event.start_at)), None)
         is_container = str(event.node_type) in ("iteration", "loop", "agent") or any(
             child.root_span_id == span_id for child in self._child_workflows.values()
         )
@@ -387,12 +481,11 @@ class WorkflowTraceRecorder(Layer):
                     event.error if isinstance(event, (NodeRunExceptionEvent, NodeRunFailedEvent)) else None
                 ),
                 "attempt": self._attempts[event.id],
-                "inputs": self._copy_value(event.node_run_result.inputs),
+                "inputs": self._node_inputs(span, event.node_run_result),
                 "outputs": self._copy_value(event.node_run_result.outputs),
                 "attributes": {
-                    **span.attributes,
-                    "metadata": self._copy_value(event.node_run_result.metadata),
-                    "process_data": self._copy_value(event.node_run_result.process_data),
+                    **self._node_result_attributes(span, event.node_run_result),
+                    "node_status": {"ok": "succeeded", "handled_error": "exception", "error": "failed"}[status],
                     **({"aggregate_usage": self._usage(event.node_run_result.llm_usage)} if is_container else {}),
                 },
                 "usage": {} if is_container else self._usage(event.node_run_result.llm_usage),
@@ -429,7 +522,7 @@ class WorkflowTraceRecorder(Layer):
         if str(event.node_type) == "agent":
             self._record_agent_results(self._spans[span_id], event.node_run_result.outputs)
         for child in self._child_workflows.values():
-            if child.root_span_id == span_id and not child.submitted:
+            if child.root_span_id == span_id and not child.submitted and child.failed_attempt_span_id is None:
                 self._finish_child_trace(child, root_span=child_root)
 
     def finish_workflow_trace(self, error: str | None = None) -> bool:
@@ -438,10 +531,11 @@ class WorkflowTraceRecorder(Layer):
             if self._closed:
                 return False
             self._closed = True
-            self._release_recording_budget()
             if self._paused and error is None:
+                self._release_recording_budget()
                 return False
             if self._ownership_rejected:
+                self._release_recording_budget()
                 return False
             root = self._spans[self._root_span_id]
             if error is not None or root.span_id in self._open_span_ids:
@@ -455,6 +549,10 @@ class WorkflowTraceRecorder(Layer):
                 )
             if self._runtime_state is not None:
                 root = root.model_copy(update={"usage": self._usage(self.runtime_state.llm_usage)})
+                if root.status in ("error", "cancelled", "incomplete") and (
+                    runtime_outputs := self.runtime_state.outputs
+                ):
+                    root = root.model_copy(update={"outputs": self._copy_value(runtime_outputs)})
             self._spans[root.span_id] = root
             self._open_span_ids.discard(root.span_id)
             for span_id, span in self._spans.items():
@@ -468,7 +566,7 @@ class WorkflowTraceRecorder(Layer):
                     )
             for child in self._child_workflows.values():
                 if not child.submitted:
-                    self._finish_child_trace(child)
+                    self._finish_child_trace(child, root_span=self._spans.get(child.failed_attempt_span_id or ""))
             completed_trace = CompletedTrace(
                 source=self.source,
                 trace_id=self._trace_id,
@@ -482,9 +580,27 @@ class WorkflowTraceRecorder(Layer):
             )
             pending = self._pending_child_traces
             self._pending_child_traces = []
+            self._release_recording_budget()
         for trace, settings in pending:
             self._submit_completed_trace(trace, settings)
         return self._submit_completed_trace(completed_trace)
+
+    def _node_inputs(self, span: TraceSpan, result: NodeRunResult) -> Any:
+        prompts = result.process_data.get("prompts")
+        return self._copy_value(prompts if span.span_type == "llm" and prompts is not None else result.inputs)
+
+    def _node_result_attributes(self, span: TraceSpan, result: NodeRunResult) -> dict[str, Any]:
+        attributes = {
+            **span.attributes,
+            "metadata": self._copy_value(result.metadata),
+            "process_data": self._copy_value(result.process_data),
+        }
+        for name in ("model_name", "model_provider", "model_parameters", "model_mode", "finish_reason"):
+            if name in result.process_data:
+                attributes[name] = self._copy_value(result.process_data[name])
+        if span.span_type == "llm":
+            attributes["original_inputs"] = self._copy_value(result.inputs)
+        return attributes
 
     def save_pause_state(self) -> dict[str, Any]:
         """Freeze this execution attempt before writing its owning pause checkpoint."""
@@ -600,19 +716,34 @@ class WorkflowTraceRecorder(Layer):
         for span in self._parent_first_spans():
             if span.span_id == child.root_span_id:
                 span = root_span or span
+                # The parent may handle a failed Workflow Tool invocation; the child still failed.
+                child_status = "error" if span.status == "handled_error" else span.status
                 spans.append(
                     span.model_copy(
                         update={
                             "span_id": child.root_span_id,
                             "parent_span_id": None,
                             "span_type": "workflow",
+                            "status": child_status,
                             "source_app_id": child.source.app_id,
                             "source_pipeline_id": None,
                             "source_workflow_id": child.workflow_id,
                             "source_workflow_version": child.workflow_version,
                             "usage": span.attributes.get("aggregate_usage", span.usage),
                             "attributes": {
-                                key: value for key, value in span.attributes.items() if key != "metrics_from_parent"
+                                **{
+                                    key: value
+                                    for key, value in span.attributes.items()
+                                    if key != "metrics_from_parent"
+                                    and not (key == "app_name" and child.source.app_id != self.source.app_id)
+                                },
+                                "workflow_run_status": {
+                                    "ok": "succeeded",
+                                    "error": "failed",
+                                    "cancelled": "stopped",
+                                    "incomplete": "incomplete",
+                                }[child_status],
+                                "workflow_run_status_source": "workflow_tool_invocation",
                             },
                         }
                     )
@@ -640,46 +771,78 @@ class WorkflowTraceRecorder(Layer):
         if not isinstance(entries, list):
             return
         for entry in entries[: self._max_spans]:
-            if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
-                continue
-            if len(self._spans) >= self._max_spans or not self._reserve_recording_budget(1024):
-                self._omitted_spans += 1
-                self._mark_incomplete("span_limit")
-                return
-            label = str(entry.get("label") or "Agent step")[:512]
-            entry_metadata = entry.get("metadata")
-            metadata = entry_metadata if isinstance(entry_metadata, dict) else {}
-            entry_parent_id = entry.get("parent_id")
-            span_id = self._span_id(f"{parent_span.node_execution_id}:agent:{entry['id']}")
-            self._spans[span_id] = TraceSpan(
-                span_id=span_id,
-                parent_span_id=self._span_id(f"{parent_span.node_execution_id}:agent:{entry_parent_id}")
-                if entry_parent_id
-                else parent_span.span_id,
-                source_app_id=parent_span.source_app_id,
-                source_pipeline_id=parent_span.source_pipeline_id,
-                source_workflow_id=parent_span.source_workflow_id,
-                source_workflow_version=parent_span.source_workflow_version,
-                span_name=label,
-                span_type="tool" if label.startswith("CALL ") else "llm" if label.endswith(" Thought") else "agent",
-                status="error" if entry.get("error") or entry.get("status") == "error" else "ok",
-                error=self._copy_value(entry.get("error")),
-                # Agent timestamps are monotonic. Keep the original values as
-                # metadata instead of inventing wall-clock times.
-                outputs=self._copy_value(entry.get("data")),
-                attributes={**self._copy_value(metadata), "metrics_from_parent": True},
-                usage=self._copy_value(
-                    {
-                        key: metadata[key]
-                        for key in ("prompt_tokens", "completion_tokens", "total_tokens", "total_price", "currency")
-                        if key in metadata
-                    }
-                ),
-            )
+            if isinstance(entry, dict):
+                self._record_agent_entry(parent_span, entry)
+
+    def _record_agent_entry(
+        self, parent_span: TraceSpan, entry: Mapping[str, Any], *, observed_at: datetime | None = None
+    ) -> None:
+        if not isinstance(entry.get("id"), str):
+            return
+        span_id = self._span_id(f"{parent_span.node_execution_id}:agent:{entry['id']}")
+        previous = self._spans.get(span_id)
+        if previous is None and (len(self._spans) >= self._max_spans or not self._reserve_recording_budget(1024)):
+            self._omitted_spans += 1
+            self._mark_incomplete("span_limit")
+            return
+        label = str(entry.get("label") or "Agent step")[:512]
+        entry_metadata = entry.get("metadata")
+        metadata = entry_metadata if isinstance(entry_metadata, Mapping) else {}
+        entry_parent_id = entry.get("parent_id")
+        status: Literal["ok", "error", "incomplete"] = (
+            "error"
+            if entry.get("error") or entry.get("status") == "error"
+            else "incomplete"
+            if entry.get("status") in ("start", "running")
+            else "ok"
+        )
+        started_at = previous.started_at if previous is not None else observed_at
+        ended_at = previous.ended_at if previous is not None else None
+        if observed_at is not None and status != "incomplete":
+            ended_at = observed_at
+        if status == "incomplete":
+            self._open_span_ids.add(span_id)
+        else:
+            self._open_span_ids.discard(span_id)
+        self._spans[span_id] = TraceSpan(
+            span_id=span_id,
+            parent_span_id=self._span_id(f"{parent_span.node_execution_id}:agent:{entry_parent_id}")
+            if entry_parent_id
+            else parent_span.span_id,
+            source_app_id=parent_span.source_app_id,
+            source_pipeline_id=parent_span.source_pipeline_id,
+            source_workflow_id=parent_span.source_workflow_id,
+            source_workflow_version=parent_span.source_workflow_version,
+            span_name=label,
+            span_type="tool" if label.startswith("CALL ") else "llm" if label.endswith(" Thought") else "agent",
+            status=status,
+            error=self._copy_value(entry.get("error")),
+            started_at=started_at,
+            ended_at=ended_at,
+            outputs=self._copy_value(entry.get("data")),
+            # Plugin timestamps can be monotonic or from another process. Only
+            # host-observed event times are comparable with the workflow clock.
+            attributes={
+                **self._copy_attributes(metadata),
+                "metrics_from_parent": True,
+                "timing_source": "observed" if started_at is not None else "unavailable",
+            },
+            usage=self._copy_value(
+                {
+                    key: metadata[key]
+                    for key in ("prompt_tokens", "completion_tokens", "total_tokens", "total_price", "currency")
+                    if key in metadata
+                }
+            ),
+        )
 
     def _mark_incomplete(self, reason: str) -> None:
         if reason not in self._incomplete_reasons:
             self._incomplete_reasons.append(reason)
+
+    def _copy_attributes(self, attributes: Mapping[str, Any]) -> dict[str, Any]:
+        copied = self._copy_value(attributes)
+        return copied if isinstance(copied, dict) else {"capture_note": copied}
 
     def _copy_value(self, value: Any) -> Any:
         if self._captured_bytes >= 7 * 1024 * 1024:
@@ -714,6 +877,14 @@ class WorkflowTraceRecorder(Layer):
     @staticmethod
     def _usage(usage: LLMUsage | None) -> dict[str, Any]:
         return usage.model_dump(mode="json") if usage is not None else {}
+
+    @staticmethod
+    @overload
+    def _utc(timestamp: datetime) -> datetime: ...
+
+    @staticmethod
+    @overload
+    def _utc(timestamp: None) -> None: ...
 
     @staticmethod
     def _utc(timestamp: datetime | None) -> datetime | None:

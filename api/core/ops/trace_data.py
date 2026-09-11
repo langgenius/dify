@@ -6,6 +6,7 @@ cross a thread boundary; frozen Pydantic models alone do not freeze dictionaries
 
 import json
 import math
+import re
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -199,6 +200,30 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
     """Copy bounded JSON and remove credential fields without retaining input objects."""
     remaining = max_bytes
 
+    def redact_url(match: re.Match[str], clipped: bool) -> str:
+        text = match.group()
+        address = text.rstrip(".,;:!)]}")
+        suffix = text[len(address) :]
+        if clipped and match.end() == len(match.string):
+            return "[truncated URL]" + suffix
+        try:
+            url = urlsplit(address)
+            if (
+                len(address) > 16384
+                or url.username
+                or any(
+                    key.lower() in {"sig", "sign", "key"}
+                    or any(
+                        secret in key.lower() for secret in ("signature", "token", "credential", "secret", "api_key")
+                    )
+                    for key, _ in parse_qsl(url.query)
+                )
+            ):
+                return urlunsplit((url.scheme, url.netloc.rsplit("@", 1)[-1], url.path, "", "")) + suffix
+        except ValueError:
+            return "[invalid URL]" + suffix
+        return text
+
     def copy_value(item: object, depth: int) -> JsonValue:
         nonlocal remaining
         if remaining <= 32 or depth > 12:
@@ -224,21 +249,13 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
         if isinstance(item, datetime | Decimal | UUID):
             item = str(item)
         if isinstance(item, str):
-            if item.startswith(("https://", "http://")):
-                url = urlsplit(item[:16384])
-                if (
-                    len(item) > 16384
-                    or url.username
-                    or any(
-                        any(
-                            secret in key.lower()
-                            for secret in ("signature", "token", "credential", "secret", "api_key")
-                        )
-                        for key, _ in parse_qsl(url.query)
-                    )
-                ):
-                    host = url.netloc.rsplit("@", 1)[-1]
-                    item = urlunsplit((url.scheme, host, url.path, "", ""))
+            clipped = len(item) > remaining
+            item = re.sub(
+                r"(?:https?://|/files/)[^\s<>\"']+",
+                lambda match: redact_url(match, clipped),
+                item[:remaining],
+                flags=re.IGNORECASE,
+            )
             # Bound JSON bytes, including escaped controls and multibyte characters.
             end = min(len(item), remaining)
             prefix = item[:end]
@@ -253,7 +270,7 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
                         high = middle - 1
                 end = low
                 prefix = item[:end]
-            result = prefix if end == len(item) else prefix + "[truncated]"
+            result = prefix if end == len(item) and not clipped else prefix + "[truncated]"
             remaining -= len(json.dumps(result, ensure_ascii=False).encode())
             return result
         if isinstance(item, BaseModel):
@@ -269,13 +286,17 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
                     break
                 if not isinstance(key, str):
                     continue
-                if key.lower().replace("-", "_") in {
+                if key.lower().replace("-", "").replace("_", "") in {
                     "authorization",
-                    "api_key",
-                    "secret_key",
+                    "apikey",
+                    "secretkey",
                     "password",
                     "credentials",
-                    "access_token",
+                    "accesstoken",
+                    "refreshtoken",
+                    "personalaccesstoken",
+                    "clientsecret",
+                    "privatekey",
                     "secret",
                     "token",
                 }:

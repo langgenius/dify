@@ -12,8 +12,36 @@ from core.ops.provider_export import (
     export_span_id,
     span_attributes,
 )
-from core.ops.trace_data import CompletedTrace, ExportedParentSpans
+from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_weave.config import WeaveConfig
+
+
+def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
+    """Keep untimed details as marked instants at a captured endpoint, never export time."""
+    spans: dict[str, TraceSpan] = {}
+    for span in completed_trace.spans:
+        if span.started_at is None or span.ended_at is None:
+            parent = spans.get(span.parent_span_id or "")
+            anchor = span.started_at or span.ended_at or (parent.started_at if parent else None)
+            if anchor is None:
+                raise TraceExportError("weave_span_time_missing")
+            span = span.model_copy(
+                update={
+                    "started_at": anchor,
+                    "ended_at": anchor,
+                    "attributes": {
+                        **span.attributes,
+                        "dify.timing.estimated": True,
+                        "dify.timing.source": "captured_endpoint",
+                    },
+                }
+            )
+        assert span.started_at is not None
+        assert span.ended_at is not None
+        if span.ended_at < span.started_at:
+            raise TraceExportError("weave_span_time_invalid")
+        spans[span.span_id] = span
+    return list(spans.values())
 
 
 class WeaveTraceClient:
@@ -44,11 +72,17 @@ class WeaveTraceClient:
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
+        spans = _prepare_timed_spans(completed_trace)
+        trace_id = (
+            str(parent_span["trace_id"])
+            if parent_span
+            else completed_trace.source.external_trace_id or completed_trace.trace_id
+        )
+        # Timing is checked before project discovery, which can itself send a request.
         project_id = self._project_id()
-        trace_id = str(parent_span["trace_id"]) if parent_span else completed_trace.trace_id
-        for span in completed_trace.spans:
-            if span.started_at is None or span.ended_at is None:
-                raise TraceExportError("weave_span_time_missing")
+        for span in spans:
+            assert span.started_at is not None
+            assert span.ended_at is not None
             self.http.request(
                 "POST",
                 "call/start",
@@ -80,7 +114,13 @@ class WeaveTraceClient:
                         "output": span.outputs,
                         "summary": {
                             "usage": {str(span.attributes.get("model_name", "unknown")): span.usage},
-                            "weave": {"latency_ms": (span.ended_at - span.started_at).total_seconds() * 1000},
+                            "status_counts": {
+                                "error": int(span.status == "error"),
+                                "success": int(span.status != "error"),
+                            },
+                            "weave": {
+                                "latency_ms": (span.ended_at - span.started_at).total_seconds() * 1000,
+                            },
                         },
                     }
                 },

@@ -62,6 +62,7 @@ def message_fields(recorder: MessageTraceRecorder) -> dict[str, object]:
         "message_id": recorder.source.message_id,
         "conversation_id": recorder.source.conversation_id,
         "inputs": [{"role": "user", "text": "hello"}],
+        "original_inputs": {"topic": "example", "api_key": "do-not-export"},
         "outputs": "answer",
         "model_name": "test-model",
         "prompt_tokens": 2,
@@ -92,6 +93,8 @@ def test_parallel_operations_are_copied_and_message_submission_releases_budget(
     assert len(trace.spans) == 102
     assert trace.source.external_trace_id == "external"
     assert trace.source.session_id == "session"
+    assert trace.spans[0].attributes["original_inputs"] == {"topic": "example"}
+    assert trace.spans[1].usage["time_to_first_token"] == 0.5
     for span in trace.spans[2:]:
         assert span.inputs == {"query": ["original"]}
         assert span.parent_span_id == trace.root_span_id
@@ -154,6 +157,18 @@ def test_json_byte_budget_accounts_for_escaped_characters_and_signed_urls() -> N
     copied = copy_trace_value({"value": "\x00" * 100000})
     assert len(json.dumps(copied, ensure_ascii=False).encode()) <= 65536
     assert copy_trace_value("https://files.example/a?X-Amz-Signature=secret&name=x") == "https://files.example/a"
+    assert (
+        copy_trace_value(
+            'result link: [file](https://files.example/a?sig=secret); "https://user:password@files.example/b"'
+        )
+        == 'result link: [file](https://files.example/a); "https://files.example/b"'
+    )
+    assert copy_trace_value({"apiKey": "hidden", "client_secret": "hidden", "limit": 7}) == {"limit": 7}
+    assert copy_trace_value("invalid https://[broken?token=secret") == "invalid [invalid URL]"
+    assert copy_trace_value("tool link: /files/tools/a.png?timestamp=1&nonce=2&sign=secret") == (
+        "tool link: /files/tools/a.png"
+    )
+    assert "password" not in str(copy_trace_value("https://user:" + "password" * 1000 + "@files.example", 512))
     for value in ({"字段" * 128 + str(i): "value" for i in range(256)}, [1e200] * 256, [2**1000] * 256):
         assert len(json.dumps(copy_trace_value(value, max_bytes=512), ensure_ascii=False).encode()) <= 512
 
@@ -286,6 +301,9 @@ def test_legacy_agent_thoughts_preserve_usage_and_tenant_query(monkeypatch: pyte
         thought="reasoning",
         answer="answer",
         tool="search;calculate",
+        tool_input='{"query":"weather"}',
+        observation="sunny",
+        message_files='["image-id"]',
         latency=0.5,
         message_token=2,
         answer_token=3,
@@ -313,7 +331,14 @@ def test_legacy_agent_thoughts_preserve_usage_and_tenant_query(monkeypatch: pyte
     root, captured = trace.spans
     assert root.span_name == "Legacy Agent"
     assert captured.inputs == "question"
-    assert captured.outputs == {"thought": "reasoning", "answer": "answer", "tools": ["search", "calculate"]}
+    assert captured.outputs == {
+        "thought": "reasoning",
+        "answer": "answer",
+        "tools": ["search", "calculate"],
+        "tool_input": '{"query":"weather"}',
+        "observation": "sunny",
+        "files": '["image-id"]',
+    }
     assert captured.usage["total_tokens"] == 5
     assert captured.attributes["metrics_from_parent"] is True
     assert captured.started_at == thought.created_at

@@ -1,3 +1,5 @@
+from typing import override
+
 from pydantic import ValidationInfo, field_validator
 
 from core.ops.provider_config import BaseTracingConfig
@@ -12,6 +14,11 @@ class LangSmithConfig(BaseTracingConfig):
     api_key: str
     project: str
     endpoint: str = "https://api.smith.langchain.com"
+
+    @classmethod
+    @override
+    def secret_fields(cls) -> tuple[str, ...]:
+        return ("api_key",)
 
     @field_validator("endpoint")
     @classmethod

@@ -37,7 +37,7 @@ def test_invalid_queue_budget_is_rejected(budget: str) -> None:
 
 
 @pytest.mark.parametrize("reason", ["trace_too_large", "queue_items_full", "queue_bytes_full", "tenant_bytes_full"])
-def test_admission_rejection_does_not_charge_tenant_budget(reason: str) -> None:
+def test_admission_rejection_does_not_charge_tenant_budget(reason: str, caplog: pytest.LogCaptureFixture) -> None:
     queued = make_queued_trace()
     size = len(queued.trace_json)
     queue, _, _, _ = make_queue(
@@ -57,6 +57,7 @@ def test_admission_rejection_does_not_charge_tenant_budget(reason: str) -> None:
     charged_items = dict(queue.tenant_queued_items)
     assert not queue.submit_trace(queued)
     assert queue.admission_counts[reason] == 1
+    assert f"OPS trace rejected reason={reason} count=1" in caplog.text
     assert queue.queued_bytes == charged_bytes
     assert dict(queue.tenant_queued_items) == charged_items
 

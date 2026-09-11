@@ -2,7 +2,7 @@ import json
 from collections.abc import Iterator
 from datetime import datetime
 from decimal import Decimal
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -844,6 +844,7 @@ class TestMessageServiceSuggestedQuestions:
         assert result == ["Q1?"]
         roster_service.assert_not_called()
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt=f"{draft_type.value} prompt",
@@ -909,6 +910,7 @@ class TestMessageServiceSuggestedQuestions:
         assert result == ["Q1?"]
         roster_service.assert_not_called()
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt="bound snapshot prompt",
@@ -944,6 +946,7 @@ class TestMessageServiceSuggestedQuestions:
             app_id="app-123",
         )
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt="published prompt",
@@ -1007,6 +1010,7 @@ class TestMessageServiceSuggestedQuestions:
 
         assert result == ["Q1?"]
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt="legacy prompt",
@@ -1098,6 +1102,7 @@ class TestMessageServiceSuggestedQuestions:
             model_instance=model_manager.get_default_model_instance.return_value,
         )
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt=expected_prompt,
@@ -1127,6 +1132,7 @@ class TestMessageServiceSuggestedQuestions:
 
         assert result == ["Q1?"]
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt="legacy prompt",

@@ -35,11 +35,13 @@ class MessageTraceRecorder:
         load_message_fields: Callable[[str], Mapping[str, Any]] | None = None,
         record_message_result: Callable[[MessageTraceRecorder, Mapping[str, Any]], None] | None = None,
         load_provider_settings: Callable[[str, str], tuple[TraceProviderSettings, ...]] | None = None,
+        attributes: Mapping[str, Any] | None = None,
     ):
         self.source = source
         self.trace_queue = trace_queue
         self.provider_settings = tuple(provider_settings)
         self.load_provider_settings = load_provider_settings
+        self.attributes = copy_trace_fields(attributes or {})
         self._load_message_fields = load_message_fields
         self._record_message_result = record_message_result
         self._lock = Lock()
@@ -100,6 +102,7 @@ class MessageTraceRecorder:
         workflow_version: str,
         workflow_run_id: str,
         inputs: Mapping[str, Any],
+        attributes: Mapping[str, Any] | None = None,
         workflow_trace_state: Mapping[str, Any] | None = None,
         resumed_without_state: bool = False,
     ):
@@ -118,6 +121,7 @@ class MessageTraceRecorder:
             workflow_id=workflow_id,
             workflow_version=workflow_version,
             inputs=inputs,
+            attributes={**self.attributes, **(attributes or {})},
             submit_completed_trace=self.submit_completed_trace,
             provider_settings=self.provider_settings,
             pause_state=workflow_trace_state,
@@ -190,7 +194,11 @@ class MessageTraceRecorder:
             status="error" if error else "ok",
             error=error,
             attributes=copy_trace_fields(
-                {"operation_type": "tool" if span_type == "tool" else span_name, **(attributes or {})}
+                {
+                    **self.attributes,
+                    "operation_type": "tool" if span_type == "tool" else span_name,
+                    **(attributes or {}),
+                }
             ),
             usage=copy_trace_fields(usage or {}),
         )
@@ -302,12 +310,14 @@ class MessageTraceRecorder:
                 usage=copy_trace_fields(usage),
                 attributes=copy_trace_fields(
                     {
+                        **self.attributes,
                         **metadata,
                         "operation_type": "message",
                         "query": message_fields.get("query"),
-                        "gen_ai_server_time_to_first_token": usage.get("time_to_first_token"),
-                        "llm_streaming_time_to_generate": usage.get("time_to_generate"),
-                        "is_streaming_request": usage.get("time_to_first_token") is not None,
+                        "original_inputs": message_fields.get("original_inputs"),
+                        "is_streaming_request": self.attributes.get(
+                            "is_streaming_request", usage.get("time_to_first_token") is not None
+                        ),
                         "model_provider": message_fields.get("model_provider"),
                         "model_name": message_fields.get("model_name"),
                         "files": message_fields.get("files", []),

@@ -784,6 +784,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             created_by_role=self._created_by_role,
             created_by=self._user_id,
         )
+        if workflow_app_log_id := self._application_generate_entity.extras.get("workflow_app_log_id"):
+            workflow_app_log.id = workflow_app_log_id
 
         session.add(workflow_app_log)
 

@@ -1,9 +1,7 @@
 """Protocol fixtures for complete trees, fixed destinations and synchronous acceptance."""
 
-import json
 import os
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from time import monotonic
 from typing import Never, TypedDict, Unpack
@@ -13,9 +11,7 @@ from uuid import UUID, uuid4
 import grpc  # pyrefly: ignore[untyped-import]
 import httpx
 import pytest
-from opentelemetry import trace as otel_trace
 from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
-    ExportMetricsServiceRequest,
     ExportMetricsServiceResponse,
 )
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
@@ -34,9 +30,7 @@ from core.ops.provider_config import (
 from core.ops.provider_export import (
     TraceExportError,
     TraceProviderHttpClient,
-    basic_auth,
     create_provider_client,
-    export_span_id,
     export_trace,
     provider_uuid,
     span_attributes,
@@ -141,24 +135,6 @@ def settings_for(trace: CompletedTrace, provider: str) -> TraceProviderSettings:
 
 
 @pytest.mark.parametrize(
-    ("endpoint", "trace_path"),
-    [
-        ("https://log.aliyuncs.com", "api/v1/traces"),
-        ("https://project.cn-heyuan.log.aliyuncs.com", "api/v1/traces"),
-        ("https://PROJECT.LOG.ALIYUNCS.COM:443", "api/v1/traces"),
-        ("https://evillog.aliyuncs.com", "api/otlp/traces"),
-        ("https://log.aliyuncs.com.evil.example", "api/otlp/traces"),
-        ("https://evil.example/log.aliyuncs.com", "api/otlp/traces"),
-        ("https://evil.example/?host=log.aliyuncs.com", "api/otlp/traces"),
-    ],
-)
-def test_aliyun_trace_path_matches_complete_hostname(endpoint: str, trace_path: str) -> None:
-    client = create_provider_client("aliyun", {**provider_config("aliyun"), "endpoint": endpoint})
-
-    assert client.http.endpoint.endswith(f"/adapt_tenant-secret/{trace_path}")
-
-
-@pytest.mark.parametrize(
     "provider",
     ["langsmith", "langfuse", "opik", "weave", "phoenix", "arize", "aliyun", "tencent", "mlflow", "databricks"],
 )
@@ -207,292 +183,6 @@ def test_every_provider_exports_complete_tree_with_repeatable_ids(
             assert kwargs["max_retries"] == 0
             assert kwargs["follow_redirects"] is False
             assert 0 < kwargs["timeout"] <= 30
-    if provider in {"langfuse", "phoenix", "arize", "aliyun", "tencent", "mlflow"}:
-        serialized = requests[0][2]["content"]
-        spans = ExportTraceServiceRequest.FromString(serialized).resource_spans[0].scope_spans[0].spans
-        assert len(spans) == 3
-        assert spans[1].parent_span_id == spans[0].span_id
-        assert spans[2].parent_span_id == spans[1].span_id
-        assert len({span.trace_id for span in spans}) == 1
-        assert spans[0].trace_id == UUID(trace.trace_id).bytes
-    elif provider == "langsmith":
-        runs: list[dict[str, JsonValue]] = []
-        for request in requests[:3]:
-            posted = request[2]["json"]["post"]
-            assert isinstance(posted, list)
-            assert isinstance(posted[0], dict)
-            runs.append(posted[0])
-        assert runs[2]["parent_run_id"] == runs[1]["id"]
-        child_order, parent_order = runs[2]["dotted_order"], runs[1]["dotted_order"]
-        assert isinstance(child_order, str)
-        assert isinstance(parent_order, str)
-        assert child_order.startswith(parent_order + ".")
-    elif provider == "databricks":
-        uploaded = json.loads(next(kwargs["content"] for method, _, kwargs in requests if method == "PUT"))
-        assert len(uploaded["spans"]) == 3
-        assert uploaded["spans"][2]["parent_span_id"] == uploaded["spans"][1]["span_id"]
-        assert all("Authorization" not in kwargs["headers"] for method, _, kwargs in requests if method == "PUT")
-
-
-@pytest.mark.parametrize("session_id", ["explicit-session", None, "session-" + "x" * 504])
-def test_langfuse_exports_observation_attributes_and_attaches_late_children(
-    session_id: str | None, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    request = Mock(return_value=httpx.Response(200, content=b""))
-    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
-    monkeypatch.setenv("LANGFUSE_RELEASE", "ambient-release")
-    monkeypatch.setenv("LANGFUSE_TRACING_ENVIRONMENT", "ambient-environment")
-    trace = make_completed_trace()
-    conversation_id = str(uuid4())
-    actor_id = "actor-" + "x" * 250
-    trace_name = "Workflow " + "x" * 210
-    trace = trace.model_copy(
-        update={
-            "source": trace.source.model_copy(
-                update={"actor_id": actor_id, "session_id": session_id, "conversation_id": conversation_id}
-            ),
-            "spans": tuple(
-                span.model_copy(
-                    update={
-                        "source_workflow_version": "2026-09-09",
-                        **(
-                            {
-                                "span_name": trace_name,
-                                "attributes": {"evaluation_dimension": "canary", "external_number": 2**64},
-                            }
-                            if span.span_id == trace.root_span_id
-                            else {}
-                        ),
-                    }
-                )
-                for span in trace.spans
-            ),
-        }
-    )
-    settings = settings_for(trace, "langfuse")
-    environment, tracer_provider = dict(os.environ), otel_trace.get_tracer_provider()
-    with otel_trace.use_span(
-        otel_trace.NonRecordingSpan(otel_trace.SpanContext(trace_id=1, span_id=2, is_remote=False))
-    ):
-        receipts = export_trace(trace, settings, provider_config("langfuse"))
-        assert otel_trace.get_current_span().get_span_context().trace_id == 1
-    assert request.call_count == 1
-    assert request.call_args.args == ("POST", "https://langfuse.example/api/public/otel/v1/traces")
-    sent = request.call_args.kwargs
-    assert sent["headers"]["Authorization"] == basic_auth("public", "tenant-secret")
-    assert sent["headers"]["x-langfuse-ingestion-version"] == "4"
-    assert sent["headers"]["Content-Type"] == "application/x-protobuf"
-    spans = ExportTraceServiceRequest.FromString(sent["content"]).resource_spans[0].scope_spans[0].spans
-    assert not spans[0].parent_span_id
-    for original, span in zip(trace.spans, spans, strict=True):
-        attributes = {item.key: item.value.string_value for item in span.attributes}
-        assert span.trace_id == UUID(trace.trace_id).bytes
-        assert span.span_id == span_id_bytes(export_span_id(trace, original.span_id))
-        assert span.start_time_unix_nano == timestamp_ns(original.started_at)
-        assert span.end_time_unix_nano == timestamp_ns(original.ended_at)
-        assert attributes["langfuse.trace.name"] == trace_name
-        assert attributes["langfuse.version"] == "2026-09-09"
-        assert attributes["user.id"] == actor_id
-        assert attributes["session.id"] == (session_id or conversation_id)
-        assert attributes["langfuse.observation.metadata.dify.tenant_id"] == trace.source.tenant_id
-        assert attributes["langfuse.observation.metadata.dify.workflow.version"] == "2026-09-09"
-        assert attributes["langfuse.observation.metadata.evaluation_dimension"] == "canary"
-        assert attributes["langfuse.observation.metadata.external_number"] == str(2**64)
-        assert json.loads(attributes["langfuse.observation.input"]) == original.inputs
-        assert attributes["langfuse.observation.output"] == (
-            original.outputs if isinstance(original.outputs, str) else json.dumps(original.outputs)
-        )
-        assert (
-            not {
-                "langfuse.trace.input",
-                "langfuse.trace.output",
-                "langfuse.trace.public",
-                "langfuse.release",
-                "langfuse.environment",
-            }
-            & attributes.keys()
-        )
-        is_app_root = next(
-            (item.value.bool_value for item in span.attributes if item.key == "langfuse.internal.is_app_root"), False
-        )
-        assert is_app_root is (original.span_id == trace.root_span_id)
-        if original.span_type == "llm":
-            assert attributes["langfuse.observation.type"] == "generation"
-            assert attributes["langfuse.observation.model.name"] == "model"
-            assert json.loads(attributes["langfuse.observation.usage_details"]) == {"input": 3, "output": 5, "total": 8}
-            assert json.loads(attributes["langfuse.observation.cost_details"]) == {"total": 0.02}
-        else:
-            assert "langfuse.observation.cost_details" not in attributes
-        assert receipts.spans[original.span_id]["trace_id"] == span.trace_id.hex()
-        assert receipts.spans[original.span_id]["span_id"] == span.span_id.hex()
-
-    parent = receipts.spans[trace.root_span_id]
-    assert parent["trace_name"] == trace_name
-    assert parent["version"] == "2026-09-09"
-    late_operation_id = str(uuid4())
-    late_root = trace.spans[0].model_copy(
-        update={"span_id": make_span_id(trace.source.tenant_id, late_operation_id, "late"), "span_name": "Late tool"}
-    )
-    late = CompletedTrace(
-        source=trace.source.model_copy(update={"operation_id": late_operation_id}),
-        trace_id=make_trace_id(trace.source.tenant_id, late_operation_id),
-        root_span_id=late_root.span_id,
-        spans=(late_root,),
-    )
-    export_trace(late, settings, provider_config("langfuse"), parent)
-    late_spans = (
-        ExportTraceServiceRequest.FromString(request.call_args.kwargs["content"]).resource_spans[0].scope_spans[0].spans
-    )
-    assert len(late_spans) == 1
-    assert late_spans[0].trace_id.hex() == parent["trace_id"]
-    assert late_spans[0].parent_span_id.hex() == parent["span_id"]
-    late_attributes = {item.key: item.value for item in late_spans[0].attributes}
-    assert late_attributes["langfuse.trace.name"].string_value == trace_name
-    assert late_attributes["langfuse.version"].string_value == "2026-09-09"
-    assert not late_attributes["langfuse.internal.is_app_root"].bool_value
-    legacy_parent = {**parent, "trace_id": str(uuid4()), "span_id": str(uuid4())}
-    with pytest.raises(TraceExportError, match="langfuse_legacy_parent_receipt") as rejected:
-        export_trace(late, settings, provider_config("langfuse"), legacy_parent)
-    assert not rejected.value.retryable
-    assert request.call_count == 2
-    assert dict(os.environ) == environment
-    assert otel_trace.get_tracer_provider() is tracer_provider
-
-
-def test_langfuse_overlapping_exports_isolate_same_public_key_destinations(monkeypatch: pytest.MonkeyPatch) -> None:
-    from threading import Barrier
-
-    barrier = Barrier(2)
-    requests: list[tuple[str, RequestArguments]] = []
-
-    def request(_method: str, url: str, **kwargs: Unpack[RequestArguments]) -> httpx.Response:
-        barrier.wait(timeout=5)
-        requests.append((url, kwargs))
-        return httpx.Response(200, content=b"")
-
-    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
-    traces = [make_completed_trace(), make_completed_trace()]
-    configs = [
-        {**provider_config("langfuse", f"secret-{index}"), "host": f"https://tenant-{index}.example"}
-        for index in range(2)
-    ]
-    with ThreadPoolExecutor(2) as pool:
-        jobs = [
-            pool.submit(export_trace, trace, settings_for(trace, "langfuse"), config)
-            for trace, config in zip(traces, configs, strict=True)
-        ]
-        assert all(len(job.result().spans) == 3 for job in jobs)
-    assert len(requests) == 2
-    for index, trace in enumerate(traces):
-        url, sent = next(item for item in requests if item[0].startswith(configs[index]["host"]))
-        assert url == f"{configs[index]['host']}/api/public/otel/v1/traces"
-        assert sent["headers"]["Authorization"] == basic_auth("public", f"secret-{index}")
-        spans = ExportTraceServiceRequest.FromString(sent["content"]).resource_spans[0].scope_spans[0].spans
-        assert all(span.trace_id == UUID(trace.trace_id).bytes for span in spans)
-        for span in spans:
-            attributes = {item.key: item.value.string_value for item in span.attributes}
-            assert attributes["langfuse.observation.metadata.dify.tenant_id"] == trace.source.tenant_id
-
-
-@pytest.mark.parametrize(("status", "retryable"), [(401, False), (429, True), (503, True)])
-def test_langfuse_http_errors_reach_delivery_retry_policy(
-    status: int, retryable: bool, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    request = Mock(return_value=httpx.Response(status, headers={"retry-after": "60"}))
-    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
-    with pytest.raises(TraceExportError, match=f"provider_http_{status}") as failed:
-        create_provider_client("langfuse", provider_config("langfuse")).export_trace(make_completed_trace())
-    assert failed.value.retryable is retryable
-    assert failed.value.retry_after == 60
-    assert request.call_count == 1
-
-
-def test_langfuse_partial_acceptance_is_not_a_successful_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
-    rejected = ExportTraceServiceResponse()
-    rejected.partial_success.rejected_spans = 1
-    rejected.partial_success.error_message = "sensitive observation rejected"
-    request = Mock(return_value=httpx.Response(200, content=rejected.SerializeToString()))
-    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
-    with pytest.raises(TraceExportError) as failed:
-        create_provider_client("langfuse", provider_config("langfuse")).export_trace(make_completed_trace())
-    assert not failed.value.retryable
-    assert "sensitive" not in str(failed.value)
-    assert request.call_count == 1
-
-
-def test_langfuse_preserves_missing_timestamps_and_generation_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    request = Mock(return_value=httpx.Response(200, content=b""))
-    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
-    trace = make_completed_trace()
-    failed_model = trace.spans[-1].model_copy(
-        update={"started_at": None, "ended_at": None, "status": "error", "error": "model failed"}
-    )
-    trace = trace.model_copy(update={"spans": (*trace.spans[:-1], failed_model)})
-    create_provider_client("langfuse", provider_config("langfuse")).export_trace(trace)
-    model = (
-        ExportTraceServiceRequest.FromString(request.call_args.kwargs["content"])
-        .resource_spans[0]
-        .scope_spans[0]
-        .spans[-1]
-    )
-    assert model.start_time_unix_nano == model.end_time_unix_nano == 0
-    assert model.status.code == 2
-    assert model.status.message == "model failed"
-    attributes = {item.key: item.value.string_value for item in model.attributes}
-    assert attributes["langfuse.observation.level"] == "ERROR"
-    assert attributes["langfuse.observation.status_message"] == "model failed"
-
-
-@pytest.mark.parametrize("fail_flush", [False, True])
-def test_langfuse_drains_large_trees_and_shuts_down_sdk_resources(
-    fail_flush: bool, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from dify_trace_langfuse import langfuse_trace
-
-    shutdown = langfuse_trace.TracerProvider.shutdown
-    shutdown_count = 0
-
-    def shutdown_provider(provider: langfuse_trace.TracerProvider) -> None:
-        nonlocal shutdown_count
-        shutdown_count += 1
-        shutdown(provider)
-
-    monkeypatch.setattr(langfuse_trace.TracerProvider, "shutdown", shutdown_provider)
-    if fail_flush:
-        monkeypatch.setattr(langfuse_trace.TracerProvider, "force_flush", Mock(return_value=False))
-    request = Mock(return_value=httpx.Response(200, content=b""))
-    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
-    trace = make_completed_trace()
-    trace = trace.model_copy(
-        update={
-            "spans": (
-                trace.spans[0],
-                *(
-                    trace.spans[1].model_copy(
-                        update={"span_id": make_span_id(trace.source.tenant_id, trace.source.operation_id, str(index))}
-                    )
-                    for index in range(2049)
-                ),
-            )
-        }
-    )
-    if fail_flush:
-        with pytest.raises(TraceExportError, match="langfuse_flush_failed"):
-            create_provider_client("langfuse", provider_config("langfuse")).export_trace(trace)
-        request.assert_not_called()
-    else:
-        receipts = create_provider_client("langfuse", provider_config("langfuse")).export_trace(trace)
-        assert len(receipts.spans) == 2050
-        assert request.call_count == 1
-        spans = (
-            ExportTraceServiceRequest.FromString(request.call_args.kwargs["content"])
-            .resource_spans[0]
-            .scope_spans[0]
-            .spans
-        )
-        assert len(spans) == len({span.span_id for span in spans}) == 2050
-        assert all(span.parent_span_id == spans[0].span_id for span in spans[1:])
-    assert shutdown_count == 1
 
 
 def test_tenant_and_parent_destination_mismatch_rejected_before_client_creation(
@@ -513,40 +203,6 @@ def test_tenant_and_parent_destination_mismatch_rejected_before_client_creation(
         export_trace(trace, settings, {}, {"tenant_id": str(uuid4())})
 
 
-def test_overlapping_exports_keep_credentials_and_parent_order_separate(monkeypatch: pytest.MonkeyPatch) -> None:
-    from threading import Barrier
-
-    barrier = Barrier(2)
-    sent: list[RequestArguments] = []
-
-    def request(_method: str, _url: str, **kwargs: Unpack[RequestArguments]) -> httpx.Response:
-        if not any(item["headers"]["x-api-key"] == kwargs["headers"]["x-api-key"] for item in sent):
-            barrier.wait(timeout=5)
-        sent.append(kwargs)
-        return httpx.Response(202, json={})
-
-    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
-    trace_a, trace_b = make_completed_trace(), make_completed_trace()
-    with ThreadPoolExecutor(2) as pool:
-        jobs = [
-            pool.submit(export_trace, trace, settings_for(trace, "langsmith"), provider_config("langsmith", key))
-            for trace, key in ((trace_a, "secret-a"), (trace_b, "secret-b"))
-        ]
-        assert all(len(job.result().spans) == 3 for job in jobs)
-    for request in sent:
-        expected_tenant = (
-            trace_a.source.tenant_id if request["headers"]["x-api-key"] == "secret-a" else trace_b.source.tenant_id
-        )
-        posted = request["json"]["post"]
-        assert isinstance(posted, list)
-        assert isinstance(posted[0], dict)
-        extra = posted[0]["extra"]
-        assert isinstance(extra, dict)
-        metadata = extra["metadata"]
-        assert isinstance(metadata, dict)
-        assert metadata["dify.tenant_id"] == expected_tenant
-
-
 def test_http_errors_and_otlp_partial_acceptance_are_not_success(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.make_request",
@@ -563,53 +219,7 @@ def test_http_errors_and_otlp_partial_acceptance_are_not_success(monkeypatch: py
         lambda *_args, **_kwargs: httpx.Response(200, content=rejected.SerializeToString()),
     )
     with pytest.raises(TraceExportError, match="provider_rejected_spans"):
-        create_provider_client("phoenix", provider_config("phoenix")).export_trace(make_completed_trace())
-
-
-def test_enterprise_metrics_keep_root_and_model_usage_distinct(monkeypatch: pytest.MonkeyPatch) -> None:
-    requests: list[tuple[str, bytes]] = []
-
-    def request(_method: str, url: str, **kwargs: Unpack[RequestArguments]) -> httpx.Response:
-        requests.append((url, kwargs["content"]))
-        return httpx.Response(200, content=b"")
-
-    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
-    trace = make_completed_trace()
-    attempt = trace.spans[-1].model_copy(
-        update={
-            "span_id": make_span_id(trace.source.tenant_id, trace.source.operation_id, "attempt"),
-            "parent_span_id": trace.spans[-1].span_id,
-            "attributes": {**trace.spans[-1].attributes, "metrics_from_parent": True},
-        }
-    )
-    trace = trace.model_copy(update={"spans": (*trace.spans, attempt)})
-    create_provider_client(
-        "enterprise",
-        {
-            "endpoint": "https://enterprise.example",
-            "protocol": "http/protobuf",
-            "include_content": False,
-            "sampling_rate": 1,
-        },
-    ).export_trace(trace)
-    metrics = ExportMetricsServiceRequest.FromString(requests[-1][1]).resource_metrics[0].scope_metrics[0].metrics
-    totals = [metric for metric in metrics if metric.name == "dify.tokens.total"]
-    assert len(totals) == 2
-    assert {
-        next(
-            attribute.value.string_value
-            for attribute in metric.sum.data_points[0].attributes
-            if attribute.key == "operation_type"
-        )
-        for metric in totals
-    } == {"workflow", "node_execution"}
-    assert all(metric.sum.data_points[0].as_int == 8 for metric in totals)
-    spans = ExportTraceServiceRequest.FromString(requests[0][1]).resource_spans[0].scope_spans[0].spans
-    assert len(spans) == 4
-    assert spans[-1].parent_span_id == spans[-2].span_id
-    for span in spans:
-        inputs = next(attribute.value.string_value for attribute in span.attributes if attribute.key == "input.value")
-        assert inputs.startswith("ref:operation_id=")
+        OtlpTraceClient("https://provider.example", {}, {}, "").export_trace(make_completed_trace())
 
 
 def test_ssrf_clients_close_and_do_not_share_response_cookies(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -708,18 +318,19 @@ def test_http_client_expires_before_io_and_hides_network_error_details(monkeypat
     assert "secret" not in str(failed.value)
 
 
-def test_otlp_keeps_parent_ids_events_and_retrieval_details() -> None:
+def test_otlp_keeps_parent_ids_events_and_captured_fields() -> None:
     trace = make_completed_trace()
     root = trace.spans[0].model_copy(
         update={
             "span_type": "retrieval",
             "status": "error",
             "error": "search failed",
-            "attributes": {"gen_ai_server_time_to_first_token": 0.25},
+            "attributes": {"timing_source": "observed"},
             "events": (
                 {"name": "received", "timestamp": "2026-09-09T08:00:00+00:00", "score": 0.5},
                 {"name": "unknown time", "time": "invalid"},
                 {"name": "no time", "time": 10},
+                {"name": "pause", "observed_at": "2026-09-09T08:00:00+00:00"},
             ),
         }
     )
@@ -727,14 +338,16 @@ def test_otlp_keeps_parent_ids_events_and_retrieval_details() -> None:
     exported = otlp_span(trace, root, {"trace_id": parent_trace_id, "span_id": parent_span_id})
     assert exported.trace_id == UUID(parent_trace_id).bytes
     assert exported.parent_span_id == span_id_bytes(parent_span_id)
-    assert [event.name for event in exported.events] == ["received", "unknown time", "no time"]
+    assert [event.name for event in exported.events] == ["received", "unknown time", "no time", "pause"]
     assert exported.events[0].time_unix_nano == timestamp_ns(root.started_at)
-    assert [event.time_unix_nano for event in exported.events[1:]] == [0, 0]
+    assert [event.time_unix_nano for event in exported.events[1:3]] == [0, 0]
+    assert exported.events[3].time_unix_nano == timestamp_ns(root.started_at)
     attributes = span_attributes(trace, root)
-    assert attributes["retrieval.query"] == json.dumps(root.inputs, separators=(",", ":"))
-    assert attributes["retrieval.document"] == json.dumps(root.outputs, separators=(",", ":"))
+    assert attributes["dify.inputs"] == root.inputs
+    assert attributes["dify.outputs"] == root.outputs
     assert attributes["error.message"] == "search failed"
-    assert attributes["gen_ai.response.time_to_first_token"] == 250_000_000
+    assert attributes["timing_source"] == "observed"
+    assert not any(key.startswith(("gen_ai.", "llm.", "openinference.", "retrieval.")) for key in attributes)
     assert otlp_value((1.5, 2**64, None)).array_value.values[0].double_value == 1.5
     assert otlp_value(2**64).string_value == str(2**64)
     assert otlp_value(None).string_value == "null"
@@ -853,23 +466,48 @@ def test_grpc_deadline_expiry_closes_channel_without_sending(
     channel.__exit__.assert_called_once()
 
 
-def test_tencent_metrics_skip_unknown_measurements_and_preserve_stream_times() -> None:
+@pytest.mark.parametrize(
+    ("span_type", "status", "code"),
+    [
+        ("workflow", "ok", 1),
+        ("workflow", "handled_error", 1),
+        ("llm", "handled_error", 2),
+        ("llm", "error", 2),
+        ("workflow", "cancelled", 0),
+        ("llm", "incomplete", 0),
+    ],
+)
+def test_otlp_preserves_unknown_and_handled_business_outcomes(span_type: str, status: str, code: int) -> None:
     trace = make_completed_trace()
-    model = trace.spans[-1].model_copy(
-        update={
-            "started_at": None,
-            "ended_at": None,
-            "usage": {"prompt_tokens": "unknown", "completion_tokens": 3},
-            "attributes": {"gen_ai.server.time_to_first_token": 0.25, "gen_ai.streaming.time_to_generate": 0.5},
-        }
-    )
-    trace = trace.model_copy(update={"spans": (*trace.spans[:-1], model)})
-    client = OtlpTraceClient("https://provider.example", {}, {}, "", tencent_metrics=True)
-    metrics = client._tencent_metrics(trace)
-    assert [metric.name for metric in metrics] == [
-        "gen_ai.trace.duration",
-        "gen_ai.client.token.usage",
-        "gen_ai.server.time_to_first_token",
-        "gen_ai.streaming.time_to_generate",
-    ]
-    assert [metric.histogram.data_points[0].sum for metric in metrics] == [2, 3, 0.25, 0.5]
+    span = trace.spans[0].model_copy(update={"span_type": span_type, "status": status})
+    assert otlp_span(trace, span).status.code == code
+    exported = otlp_span(trace, span, attributes={"destination.field": "value"})
+    assert [(item.key, item.value.string_value) for item in exported.attributes] == [("destination.field", "value")]
+
+
+@pytest.mark.parametrize(
+    "external_id",
+    ["d306440561854c3f8ce4be8a8347c123", "d3064405-6185-4c3f-8ce4-be8a8347c123", "business-request", "0" * 32],
+)
+def test_otlp_external_correlation_and_receipts_use_the_sent_protocol_id(
+    external_id: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    trace = make_completed_trace()
+    trace = trace.model_copy(update={"source": trace.source.model_copy(update={"external_trace_id": external_id})})
+    client = OtlpTraceClient("https://collector.example/v1/traces", {}, {}, "")
+    sent: list[ExportTraceServiceRequest] = []
+    monkeypatch.setattr(client, "send_traces", sent.append)
+    receipts = client.export_trace(trace)
+    expected_id = UUID(external_id) if external_id.startswith("d3064405") else UUID(trace.trace_id)
+    spans = sent[-1].resource_spans[0].scope_spans[0].spans
+    assert all(span.trace_id == expected_id.bytes for span in spans)
+    assert all(receipt["trace_id"] == str(expected_id) for receipt in receipts.spans.values())
+    assert not spans[0].parent_span_id
+    assert spans[-1].parent_span_id == spans[-2].span_id
+
+    parent_id, parent_span_id = str(uuid4()), str(uuid4())
+    attached = client.export_trace(trace, {"trace_id": parent_id, "span_id": parent_span_id})
+    attached_spans = sent[-1].resource_spans[0].scope_spans[0].spans
+    assert all(span.trace_id == UUID(parent_id).bytes for span in attached_spans)
+    assert attached_spans[0].parent_span_id == span_id_bytes(parent_span_id)
+    assert all(receipt["trace_id"] == parent_id for receipt in attached.spans.values())

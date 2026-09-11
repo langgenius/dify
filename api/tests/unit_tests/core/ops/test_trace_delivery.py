@@ -299,6 +299,27 @@ def test_expired_parent_exports_a_linked_root(monkeypatch: pytest.MonkeyPatch) -
     result = repository.get_delivery(delivery.tenant_id, delivery.id)
     assert result is not None
     assert result.status == "succeeded"
+    assert result.trace_deleted_at is not None
+    app.extensions["ops_trace_storage"].delete.assert_called_once_with(delivery.trace_storage_key())
+
+
+@pytest.mark.parametrize("status", ["succeeded", "failed", "cancelled"])
+def test_terminal_trace_retention_is_explicit_and_keeps_parent_receipts(status: str) -> None:
+    repository = make_repository()
+    queued = make_queued_trace()
+    delivery, _ = repository.reserve_delivery(queued)
+    assert repository.accept_upload(delivery)
+    attempt = repository.claim_delivery(delivery.tenant_id, delivery.id)
+    assert attempt is not None
+    reference = {delivery.root_span_id: {"span_id": delivery.root_span_id}}
+    assert repository.finish_attempt(attempt, status, parent_references=reference)
+    assert [expired.id for expired in repository.expired_traces()] == [delivery.id]
+    assert not repository.expired_traces(success_retention_seconds=3600, failure_retention_seconds=3600)
+    repository.record_trace_deleted(delivery)
+    assert not repository.expired_traces()
+    receipt = repository.get_delivery(delivery.tenant_id, delivery.id)
+    assert receipt is not None
+    assert receipt.parent_references == reference
 
 
 def test_foreign_parent_is_rejected_even_after_wait_expiry() -> None:

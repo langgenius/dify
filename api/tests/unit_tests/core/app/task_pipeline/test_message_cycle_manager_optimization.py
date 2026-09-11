@@ -11,10 +11,12 @@ from flask import Flask, current_app
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRetrieverResourcesEvent
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata
 from core.app.task_pipeline import message_cycle_manager as message_cycle_manager_module
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
+from core.ops.message_trace import MessageTraceRecorder
 from core.rag.entities import RetrievalSourceMetadata
 from graphon.file import FileTransferMethod, FileType
 from models import model as model_module
@@ -58,13 +60,21 @@ def _app(*, app_id: str = "app-id", tenant_id: str = "tenant-1") -> App:
     )
 
 
-def _conversation(*, conversation_id: str = "conv-1", app_id: str = "app-id") -> Conversation:
+def _conversation(
+    *,
+    conversation_id: str = "conv-1",
+    app_id: str = "app-id",
+    account_id: str | None = "account-1",
+    end_user_id: str | None = None,
+) -> Conversation:
     conversation = Conversation(
         app_id=app_id,
         mode=AppMode.CHAT,
         name="",
         status="normal",
-        from_source=ConversationFromSource.API,
+        from_source=ConversationFromSource.API if end_user_id else ConversationFromSource.CONSOLE,
+        from_account_id=account_id,
+        from_end_user_id=end_user_id,
         inputs={},
     )
     conversation.id = conversation_id
@@ -96,10 +106,14 @@ class TestMessageCycleManagerOptimization:
     """Test cases for the message cycle manager optimization that prevents N+1 queries."""
 
     @pytest.fixture
-    def mock_application_generate_entity(self):
+    def mock_application_generate_entity(self) -> Mock:
         """Create a mock application generate entity."""
         entity = Mock()
         entity.task_id = "test-task-id"
+        entity.app_config = SimpleNamespace(app_id="app-id", tenant_id="tenant-1")
+        entity.user_id = "account-1"
+        entity.invoke_from = InvokeFrom.DEBUGGER
+        entity.trace_recorder = None
         return entity
 
     @pytest.fixture
@@ -341,6 +355,35 @@ class TestMessageCycleManagerOptimization:
         assert cycle_db.get(Conversation, "conv-1").name == ""
         assert cycle_db.get(App, "app-id") is None
 
+    @pytest.mark.parametrize(
+        ("app_id", "tenant_id"),
+        [("foreign-app", "tenant-1"), ("foreign-app", "foreign-tenant"), ("app-id", "foreign-tenant")],
+    )
+    def test_generate_conversation_name_worker_rejects_foreign_owners(
+        self,
+        message_cycle_manager: MessageCycleManager,
+        cycle_db: Session,
+        sqlite_engine: Engine,
+        app_id: str,
+        tenant_id: str,
+    ) -> None:
+        cycle_db.add_all([_app(app_id=app_id, tenant_id=tenant_id), _conversation(app_id=app_id)])
+        cycle_db.commit()
+
+        with (
+            patch("core.app.task_pipeline.message_cycle_manager.redis_client") as cache,
+            patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as generator,
+        ):
+            message_cycle_manager._generate_conversation_name_worker(Flask(__name__), "conv-1", "private query")
+
+        cache.get.assert_not_called()
+        cache.setex.assert_not_called()
+        generator.generate_conversation_name.assert_not_called()
+        with Session(sqlite_engine) as session:
+            conversation = session.get(Conversation, "conv-1")
+            assert conversation is not None
+            assert conversation.name == ""
+
     def test_generate_conversation_name_worker_uses_cached_name(
         self, message_cycle_manager, cycle_db: Session, sqlite_engine: Engine
     ):
@@ -365,13 +408,39 @@ class TestMessageCycleManagerOptimization:
         mock_llm_generator.generate_conversation_name.assert_not_called()
         mock_redis.setex.assert_not_called()
 
+    @pytest.mark.parametrize(
+        ("invoke_from", "user_id", "trace_user_id"),
+        [
+            (InvokeFrom.DEBUGGER, "account-1", None),
+            (InvokeFrom.SERVICE_API, "end-user-1", None),
+            (InvokeFrom.WEB_APP, "end-user-1", "end-user-session"),
+        ],
+    )
     def test_generate_conversation_name_worker_generates_and_caches_name(
-        self, message_cycle_manager, cycle_db: Session, sqlite_engine: Engine
-    ):
+        self,
+        message_cycle_manager: MessageCycleManager,
+        cycle_db: Session,
+        sqlite_engine: Engine,
+        invoke_from: InvokeFrom,
+        user_id: str,
+        trace_user_id: str | None,
+    ) -> None:
         """Generate conversation name and write it to redis cache on cache miss."""
         flask_app = Flask(__name__)
-        cycle_db.add_all([_app(), _conversation()])
+        is_account = invoke_from == InvokeFrom.DEBUGGER
+        cycle_db.add_all(
+            [
+                _app(),
+                _conversation(account_id=user_id if is_account else None, end_user_id=None if is_account else user_id),
+            ]
+        )
         cycle_db.commit()
+        message_cycle_manager._application_generate_entity.invoke_from = invoke_from
+        message_cycle_manager._application_generate_entity.user_id = user_id
+        if trace_user_id:
+            message_cycle_manager._application_generate_entity.trace_recorder = Mock(
+                spec=MessageTraceRecorder, user_id=trace_user_id
+            )
 
         with (
             patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
@@ -390,9 +459,52 @@ class TestMessageCycleManagerOptimization:
         assert conversation is not None
         assert conversation.name == "generated-title"
         mock_llm_generator.generate_conversation_name.assert_called_once_with(
-            "tenant-1", "hello", "conv-1", "app-id", message_id="message-1"
+            "tenant-1",
+            "hello",
+            "conv-1",
+            "app-id",
+            message_id="message-1",
+            user_id=trace_user_id or message_cycle_manager._application_generate_entity.user_id,
         )
         mock_redis.setex.assert_called_once()
+
+    @pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API])
+    def test_generate_conversation_name_worker_rejects_another_user_in_the_same_app(
+        self,
+        message_cycle_manager: MessageCycleManager,
+        cycle_db: Session,
+        sqlite_engine: Engine,
+        invoke_from: InvokeFrom,
+    ) -> None:
+        is_account = invoke_from == InvokeFrom.DEBUGGER
+        cycle_db.add_all(
+            [
+                _app(),
+                _conversation(
+                    account_id="another-user" if is_account else None,
+                    end_user_id=None if is_account else "another-user",
+                ),
+            ]
+        )
+        cycle_db.commit()
+        message_cycle_manager._application_generate_entity.invoke_from = invoke_from
+        message_cycle_manager._application_generate_entity.trace_recorder = Mock(
+            spec=MessageTraceRecorder, user_id="another-user"
+        )
+
+        with (
+            patch("core.app.task_pipeline.message_cycle_manager.redis_client") as cache,
+            patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as generator,
+        ):
+            message_cycle_manager._generate_conversation_name_worker(Flask(__name__), "conv-1", "private query")
+
+        cache.get.assert_not_called()
+        cache.setex.assert_not_called()
+        generator.generate_conversation_name.assert_not_called()
+        with Session(sqlite_engine) as session:
+            conversation = session.get(Conversation, "conv-1")
+            assert conversation is not None
+            assert conversation.name == ""
 
     def test_generate_conversation_name_worker_falls_back_when_generation_fails(
         self,

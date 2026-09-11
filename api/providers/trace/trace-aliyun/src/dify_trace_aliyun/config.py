@@ -1,3 +1,5 @@
+from typing import override
+
 from pydantic import ValidationInfo, field_validator
 
 from core.ops.provider_config import BaseTracingConfig
@@ -12,6 +14,11 @@ class AliyunConfig(BaseTracingConfig):
     app_name: str = "dify_app"
     license_key: str
     endpoint: str
+
+    @classmethod
+    @override
+    def secret_fields(cls) -> tuple[str, ...]:
+        return ("license_key",)
 
     @field_validator("app_name")
     @classmethod

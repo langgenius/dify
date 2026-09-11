@@ -440,6 +440,7 @@ class App(Base):
     is_universal: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.false())
     tracing = mapped_column(LongText, nullable=True)
     tracing_revision: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="0", default=0)
+    tracing_destination_revision: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="0", default=0)
     max_active_requests: Mapped[int | None]
     created_by = mapped_column(StringUUID, nullable=True)
     maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True)

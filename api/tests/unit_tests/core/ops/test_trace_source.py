@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops import trace_source
 from core.ops.message_trace import MessageTraceRecorder
@@ -95,6 +95,46 @@ def test_settings_hash_is_keyed_tenant_scoped_and_detects_credential_changes(
         trace_source._settings_hash(tenant_id, settings)
 
 
+def test_noop_and_inactive_config_changes_preserve_pending_destination(
+    trace_owner: tuple[Tenant, App, TraceAppConfig],
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+
+    tenant, app, config = trace_owner
+    settings = trace_source.get_trace_provider_settings(tenant.id, app.id)[0]
+    monkeypatch.setattr(trace_source, "decrypt_provider_config", lambda *args: args[-1])
+    repository = SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory)
+    owner = {"workspace_id": tenant.id, "app_id": app.id}
+    update_app_trace_settings(tenant_id=tenant.id, app_id=app.id, enabled=True, tracing_provider="langfuse")
+    selected = repository.get(**owner, tracing_provider="langfuse")
+    assert selected is not None
+    assert repository.update(
+        **owner,
+        tracing_provider="langfuse",
+        tracing_config=dict(config.tracing_config or {}),
+        expected_revision=selected.revision,
+    )
+    assert repository.create(**owner, tracing_provider="opik", tracing_config={"project": "inactive"})
+    inactive = repository.get(**owner, tracing_provider="opik")
+    assert inactive is not None
+    assert repository.update(
+        **owner,
+        tracing_provider="opik",
+        tracing_config={"project": "changed"},
+        expected_revision=inactive.revision,
+    )
+    assert repository.delete(**owner, tracing_provider="opik")
+    assert trace_source.get_trace_provider_settings(tenant.id, app.id)[0] == settings
+    assert trace_source.load_trace_provider_config(settings) == config.tracing_config
+
+    update_app_trace_settings(tenant_id=tenant.id, app_id=app.id, enabled=False, tracing_provider="langfuse")
+    update_app_trace_settings(tenant_id=tenant.id, app_id=app.id, enabled=True, tracing_provider="langfuse")
+    with pytest.raises(ValueError, match="configuration_changed"):
+        trace_source.load_trace_provider_config(settings)
+
+
 def test_message_lookup_checks_tenant_app_and_conversation(
     sqlite_session: Session, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -118,7 +158,7 @@ def test_message_lookup_checks_tenant_app_and_conversation(
     message = Message(
         app_id=app.id,
         conversation_id=conversation.id,
-        inputs={},
+        inputs={"topic": "original user variable"},
         total_price=0,
         query="question",
         message="prompt",
@@ -132,6 +172,9 @@ def test_message_lookup_checks_tenant_app_and_conversation(
     sqlite_session.commit()
     fields = trace_source.read_message_trace_fields(tenant.id, app.id, message.id)
     assert fields["outputs"] == "private answer"
+    assert fields["original_inputs"] == {"topic": "original user variable"}
+    assert fields["metadata"]["conversation_mode"] == AppMode.CHAT
+    assert fields["metadata"]["invoke_from"] == "web-app"
     for tenant_id, app_id in ((str(uuid4()), app.id), (tenant.id, str(uuid4()))):
         with pytest.raises(ValueError, match="not found"):
             trace_source.read_message_trace_fields(tenant_id, app_id, message.id)
@@ -277,6 +320,8 @@ def test_message_factory_uses_the_app_queue_and_rejects_foreign_pipelines(
         assert recorder.source.operation_id == message_id
         assert recorder.source.conversation_id == conversation_id
         assert recorder.provider_settings[0].app_id == app.id
+        assert recorder.attributes["app_name"] == app.name
+        assert recorder.attributes["workspace_name"] == tenant.name
         pipeline_recorder = trace_source.create_message_trace(tenant_id=tenant.id, pipeline_id=pipeline.id)
         assert pipeline_recorder is not None
         assert pipeline_recorder.source.pipeline_id == pipeline.id

@@ -50,6 +50,7 @@ from core.base.tts import AppGeneratorTTSPublisher
 from core.db.session_factory import session_factory
 from core.model_manager import ModelInstance
 from core.ops.message_trace import MessageTraceRecorder
+from core.ops.trace_data import copy_trace_fields
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
@@ -91,6 +92,16 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         )
         self._model_config = application_generate_entity.model_conf
         self._app_config = application_generate_entity.app_config
+        if application_generate_entity.trace_recorder:
+            application_generate_entity.trace_recorder.attributes.update(
+                copy_trace_fields(
+                    {
+                        "model_parameters": self._model_config.parameters,
+                        "invoke_from": application_generate_entity.invoke_from,
+                        "is_streaming_request": stream,
+                    }
+                )
+            )
 
         self._conversation_id = conversation.id
         self._conversation_mode = conversation.mode

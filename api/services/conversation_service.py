@@ -158,7 +158,12 @@ class ConversationService:
             use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}),
         ):
             name = LLMGenerator.generate_conversation_name(
-                app_model.tenant_id, message.query, conversation.id, app_model.id
+                app_model.tenant_id,
+                message.query,
+                conversation.id,
+                app_model.id,
+                message_id=message.id,
+                user_id=message.from_account_id or message.from_end_user_id,
             )
             conversation.name = name
 

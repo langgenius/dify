@@ -7,6 +7,7 @@ from celery.signals import worker_process_init, worker_process_shutdown, worker_
 from flask import Flask
 from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from core.ops.trace_queue import TraceQueue
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -54,6 +55,9 @@ def init_app(app: Flask) -> None:
             publish_delivery=publish_delivery,
             open_app_context=app.app_context,
             logger=app.logger,
+            max_items=dify_config.OPS_TRACE_QUEUE_MAX_ITEMS,
+            max_queue_bytes=dify_config.OPS_TRACE_QUEUE_MAX_BYTES,
+            max_recording_bytes=dify_config.OPS_TRACE_RECORDING_MAX_BYTES,
         )
         app.extensions["ops_trace_storage"] = storage
         app.extensions["ops_trace_delivery_repository"] = repository

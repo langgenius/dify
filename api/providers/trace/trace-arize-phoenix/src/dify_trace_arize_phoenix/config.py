@@ -1,3 +1,5 @@
+from typing import override
+
 from pydantic import ValidationInfo, field_validator
 
 from core.ops.provider_config import BaseTracingConfig
@@ -13,6 +15,11 @@ class ArizeConfig(BaseTracingConfig):
     space_id: str | None = None
     project: str | None = None
     endpoint: str = "https://otlp.arize.com"
+
+    @classmethod
+    @override
+    def secret_fields(cls) -> tuple[str, ...]:
+        return ("api_key",)
 
     @field_validator("project")
     @classmethod
@@ -33,6 +40,11 @@ class PhoenixConfig(BaseTracingConfig):
     api_key: str | None = None
     project: str | None = None
     endpoint: str = "https://app.phoenix.arize.com"
+
+    @classmethod
+    @override
+    def secret_fields(cls) -> tuple[str, ...]:
+        return ("api_key",)
 
     @field_validator("project")
     @classmethod

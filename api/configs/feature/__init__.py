@@ -1337,6 +1337,17 @@ class NewAgentBetaConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_QUEUE_MAX_ITEMS: PositiveInt = Field(default=64, description="Maximum pending OPS traces per process.")
+    OPS_TRACE_QUEUE_MAX_BYTES: PositiveInt = Field(default=128 * 1024 * 1024, description="OPS admission byte budget.")
+    OPS_TRACE_RECORDING_MAX_BYTES: PositiveInt = Field(
+        default=128 * 1024 * 1024, description="OPS live recording byte budget per process."
+    )
+    OPS_TRACE_SUCCESS_RETENTION_SECONDS: NonNegativeInt = Field(
+        default=0, description="Retain successful OPS trace bodies for this many seconds; zero deletes immediately."
+    )
+    OPS_TRACE_FAILURE_RETENTION_SECONDS: NonNegativeInt = Field(
+        default=0, description="Retain failed or cancelled OPS trace bodies for this many seconds."
+    )
     OPS_TRACE_MAX_ATTEMPTS: PositiveInt = Field(default=20, description="Maximum delivery attempts for one OPS trace.")
     OPS_TRACE_RETRY_DELAY_SECONDS: PositiveInt = Field(
         default=5, description="Initial delay before retrying an OPS export."

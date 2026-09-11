@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import Callable, Generator, Mapping
 from copy import deepcopy
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm import Session
@@ -54,11 +55,15 @@ class Tool(ABC):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        *,
+        on_parameters: Callable[[Mapping[str, Any]], None] | None = None,
     ) -> Generator[ToolInvokeMessage]:
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
         tool_parameters = self._transform_tool_parameters_type(tool_parameters)
+        if on_parameters is not None:
+            on_parameters(MappingProxyType(tool_parameters))
 
         result = self._invoke(
             session=session,
