@@ -97,9 +97,6 @@ from services.file_service import FileService
 logger = logging.getLogger(__name__)
 
 _SKILL_MD = "SKILL.md"
-_MAX_SKILL_BYTES = 200 * 1024 * 1024
-_MAX_FILES_PER_SKILL = 5000
-_MAX_ZIP_COMPRESSION_RATIO = 1000
 _MAX_FILE_CHECK_ITEMS = 100
 _MAX_SKILLS_PER_WORKSPACE = 500
 _MAX_AGENT_SKILLS = 20
@@ -506,6 +503,20 @@ class PublishedSkillArchive:
     filename: str
     mime_type: str
     payload: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeAgentSkillArchive:
+    skill_id: str
+    version_id: str
+    tool_file_id: str
+    storage_key: str
+    name: str
+    display_name: str
+    description: str
+    priority: int
+    size: int
+    hash: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -2267,6 +2278,32 @@ class SkillManagementService:
         include_draft: bool = False,
     ) -> list[dict[str, Any]]:
         """Return workspace Skills from the Agent draft or active published snapshot."""
+        return [
+            {
+                "id": item.skill_id,
+                "name": item.name,
+                "file_id": item.tool_file_id,
+                "description": item.description,
+                "size": item.size,
+                "hash": item.hash,
+                "mime_type": "application/zip",
+            }
+            for item in self.list_runtime_agent_skill_archives(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                include_draft=include_draft,
+            )
+        ]
+
+    def list_runtime_agent_skill_archives(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        include_draft: bool = False,
+    ) -> list[RuntimeAgentSkillArchive]:
+        """Return export-ready workspace Skill archives with published identity compatibility."""
+
         with self._session_scope() as session:
             binding_model = AgentSkillBinding if include_draft else AgentSkillBindingSnapshot
             conditions = [
@@ -2279,29 +2316,37 @@ class SkillManagementService:
                 conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
             rows = list(
                 session.execute(
-                    select(binding_model, Skill, SkillVersion)
+                    select(binding_model, Skill, SkillVersion, ToolFile)
                     .join(Skill, Skill.id == binding_model.skill_id)
                     .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
                     .join(Agent, Agent.id == binding_model.agent_id)
+                    .join(
+                        ToolFile,
+                        (ToolFile.id == SkillVersion.archive_tool_file_id) & (ToolFile.tenant_id == tenant_id),
+                    )
                     .where(*conditions)
                     .order_by(Skill.name)
                 )
             )
-            return [
-                {
-                    "id": skill.id,
-                    "name": published_name,
-                    "file_id": version.archive_tool_file_id,
-                    "description": published_description,
-                    "size": version.archive_size,
-                    "hash": version.hash_code,
-                    "mime_type": "application/zip",
-                }
-                for _binding, skill, version in rows
-                for published_name, _published_display_name, published_description in [
-                    self._published_skill_identity(skill, version)
-                ]
+
+        return [
+            RuntimeAgentSkillArchive(
+                skill_id=skill.id,
+                version_id=version.id,
+                tool_file_id=version.archive_tool_file_id,
+                storage_key=tool_file.file_key,
+                name=published_name,
+                display_name=published_display_name,
+                description=published_description,
+                priority=binding.priority,
+                size=version.archive_size,
+                hash=version.hash_code,
+            )
+            for binding, skill, version, tool_file in rows
+            for published_name, published_display_name, published_description in [
+                self._published_skill_identity(skill, version)
             ]
+        ]
 
     def pull_runtime_agent_skill(
         self,
@@ -3895,7 +3940,7 @@ class SkillManagementService:
     def _validate_archive_limits(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
         """Validate ZIP metadata before any member is decompressed or persisted."""
         infos = archive.infolist()
-        if len(infos) > _MAX_FILES_PER_SKILL:
+        if len(infos) > dify_config.SKILL_PACKAGE_MAX_ENTRIES:
             raise SkillManagementServiceError("too_many_files", "skill file count limit exceeded")
 
         total_uncompressed = 0
@@ -3904,16 +3949,13 @@ class SkillManagementService:
                 raise SkillManagementServiceError("invalid_skill_package", "skill package has invalid ZIP metadata")
 
             total_uncompressed += info.file_size
-            if total_uncompressed > _MAX_SKILL_BYTES:
-                raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
+            if total_uncompressed > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
+                raise SkillManagementServiceError("skill_too_large", "skill exceeds uncompressed size limit")
 
             if info.is_dir() or info.file_size == 0:
                 continue
-            if info.compress_size == 0 or info.file_size / info.compress_size > _MAX_ZIP_COMPRESSION_RATIO:
-                raise SkillManagementServiceError(
-                    "invalid_skill_package",
-                    "skill package compression ratio exceeds the allowed limit",
-                )
+            if info.compress_size == 0:
+                raise SkillManagementServiceError("invalid_skill_package", "skill package has invalid ZIP metadata")
         return infos
 
     def _draft_rows_from_archive_bytes(
@@ -4103,7 +4145,7 @@ class SkillManagementService:
                     )
                 parent = posixpath.dirname(parent)
 
-        if len(entries_by_path) > _MAX_FILES_PER_SKILL:
+        if len(entries_by_path) > dify_config.SKILL_PACKAGE_MAX_ENTRIES:
             raise SkillManagementServiceError("too_many_files", "skill file count limit exceeded")
 
         rows: list[SkillDraftFile] = []
@@ -4136,8 +4178,8 @@ class SkillManagementService:
                 )
             )
 
-        if total_size > _MAX_SKILL_BYTES:
-            raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
+        if total_size > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
+            raise SkillManagementServiceError("skill_too_large", "skill exceeds uncompressed size limit")
         return rows
 
     def _sync_skill_metadata_from_draft_skill_md(self, *, skill: Skill, content: str) -> None:
@@ -4397,8 +4439,8 @@ class SkillManagementService:
     @staticmethod
     def _enforce_total_size(files: list[SkillDraftFile]) -> None:
         total = sum(file.size or 0 for file in {file.path: file for file in files}.values())
-        if total > _MAX_SKILL_BYTES:
-            raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
+        if total > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
+            raise SkillManagementServiceError("skill_too_large", "skill exceeds uncompressed size limit")
 
     @staticmethod
     def _load_tool_file_bytes(*, tenant_id: str, file_id: str) -> bytes:
@@ -4406,14 +4448,15 @@ class SkillManagementService:
             tool_file = session.scalar(select(ToolFile).where(ToolFile.tenant_id == tenant_id, ToolFile.id == file_id))
             if tool_file is None:
                 raise SkillManagementServiceError("skill_archive_missing", "skill archive is missing", status_code=404)
-            try:
-                return storage.load_once(tool_file.file_key)
-            except (OSError, SQLAlchemyError) as exc:
-                raise SkillManagementServiceError(
-                    "skill_archive_missing",
-                    "skill archive is missing",
-                    status_code=404,
-                ) from exc
+            file_key = tool_file.file_key
+        try:
+            return storage.load_once(file_key)
+        except (OSError, SQLAlchemyError) as exc:
+            raise SkillManagementServiceError(
+                "skill_archive_missing",
+                "skill archive is missing",
+                status_code=404,
+            ) from exc
 
     @staticmethod
     def _load_assistant_tool_file_bytes(*, tenant_id: str, file_id: str) -> bytes:

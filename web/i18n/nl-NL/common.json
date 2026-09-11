@@ -107,6 +107,7 @@
   "avatar.deleteDescription": "Are you sure you want to remove your profile picture? Your account will use the default initial avatar.",
   "avatar.deleteTitle": "Remove Avatar",
   "avatar.editAction": "Avatar bewerken",
+  "calendar.selectedDate": "Geselecteerd",
   "chat.citation.characters": "Characters:",
   "chat.citation.hitCount": "Retrieval count:",
   "chat.citation.hitScore": "Retrieval Score:",

@@ -117,7 +117,7 @@ const DatasetCard = ({
     'group relative col-span-1 flex h-41.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-[background-color,box-shadow] duration-200 ease-in-out',
     isPreviewOnly
       ? 'cursor-not-allowed opacity-60 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
-      : 'cursor-pointer hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5',
+      : 'cursor-pointer hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 hover:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)]',
   )
 
   return (

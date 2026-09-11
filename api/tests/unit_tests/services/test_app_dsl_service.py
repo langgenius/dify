@@ -9,11 +9,13 @@ import yaml
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode, Tenant
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow, WorkflowType
+from services.agent.dsl_entities import AgentPackage
 from services.app_dsl_service import AppDslService, Import, PendingData
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportStatus
@@ -594,6 +596,45 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
     assert sqlite_session.in_transaction()
 
 
+def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
+    service = AppDslService(session=session)
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+    )
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    imported_graph: dict[str, object] = {
+        "nodes": [],
+        "edges": [],
+        "viewport": {"x": 100, "y": 200, "zoom": 1.5},
+    }
+
+    service._create_or_update_app(
+        app=cast(App, app),
+        data={
+            "app": {"mode": AppMode.WORKFLOW.value},
+            "workflow": {"graph": imported_graph},
+        },
+        account=Mock(id="account-1"),
+    )
+
+    assert workflow_service.sync_draft_workflow.call_args.kwargs["graph"] == {
+        "nodes": [],
+        "edges": [],
+    }
+    assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
+
+
 def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
     session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
     service = AppDslService(session=session)
@@ -756,3 +797,56 @@ def test_append_workflow_export_data_reports_missing_selected_workflow(
             session=unbound_session,
             workflow_id=workflow_id,
         )
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [AppMode.AGENT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION],
+)
+def test_export_dsl_preserves_envelope_and_mode_specific_content(
+    mode: AppMode, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    app = _app(mode=mode)
+    package = AgentPackage.model_validate({"metadata": {"name": app.name}, "soul": {}})
+    monkeypatch.setattr(
+        "services.app_dsl_service.AgentDslService.export_agent_app",
+        Mock(return_value=("agent_1", {"agent_1": package})),
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", Mock(return_value=[])
+    )
+
+    def append_workflow(*, export_data: dict[str, object], **_kwargs: object) -> None:
+        export_data["workflow"] = {"fixture": "workflow"}
+
+    def append_model(export_data: dict[str, object], *_args: object, **_kwargs: object) -> None:
+        export_data["model_config"] = {"fixture": "model"}
+
+    monkeypatch.setattr(AppDslService, "_append_workflow_export_data", Mock(side_effect=append_workflow))
+    monkeypatch.setattr(AppDslService, "_append_model_config_export_data", Mock(side_effect=append_model))
+    data = yaml.safe_load(AppDslService.export_dsl(app, session=unbound_session))
+    assert data["version"] == CURRENT_APP_DSL_VERSION
+    assert data["kind"] == "app"
+    assert data["app"] == {
+        "name": "Existing app",
+        "description": "",
+        "mode": mode.value,
+        "icon_type": "emoji",
+        "icon": "robot",
+        "icon_background": "#FFFFFF",
+        "use_icon_as_answer_icon": False,
+    }
+    if mode == AppMode.AGENT:
+        assert data["agent"] == {"package_ref": "agent_1"}
+        assert AgentPackage.model_validate(data["agent_packages"]["agent_1"]) == package
+        assert data["dependencies"] == []
+        assert "workflow" not in data
+        assert "model_config" not in data
+    elif mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+        assert data["workflow"] == {"fixture": "workflow"}
+        assert "agent" not in data
+        assert "model_config" not in data
+    else:
+        assert data["model_config"] == {"fixture": "model"}
+        assert "agent" not in data
+        assert "workflow" not in data

@@ -131,7 +131,7 @@ function PopupItem({
       <div className="sticky top-0 z-1 flex min-h-5.5 min-w-0 items-center justify-between gap-2 bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
         <CollapsibleTrigger
           id={providerHeadingId}
-          className="group/provider min-h-0 w-auto min-w-0 justify-start gap-0 rounded-none p-0 text-xs font-medium text-text-tertiary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-tertiary data-panel-open:text-text-tertiary"
+          className="group/provider flex min-h-0 min-w-0 touch-manipulation items-center justify-start gap-0 text-xs font-medium text-text-tertiary outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
           <span className="truncate">{providerLabel}</span>
           <span

@@ -120,8 +120,8 @@ catalog:
   '@types/negotiator': 0.6.5
   '@types/node': 25.9.5
   '@types/qs': 6.15.1
-  '@types/react': 19.2.18
-  '@types/react-dom': 19.2.5
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
   '@types/sortablejs': 1.15.9
   '@typescript-eslint/parser': 8.69.0
   '@typescript/native': npm:typescript@7.0.2
@@ -132,6 +132,7 @@ catalog:
   abcjs: 6.7.0
   agentation: 3.0.2
   ahooks: 3.9.7
+  bowser: 2.14.1
   c12: 4.0.0-beta.5
   chokidar: 5.0.0
   class-variance-authority: 0.7.1
@@ -213,19 +214,19 @@ catalog:
   postcss: 8.5.26
   qrcode.react: 4.2.0
   qs: 6.16.0
-  react: 19.2.8
-  react-dom: 19.2.8
+  react: 19.3.0
+  react-dom: 19.3.0
   react-easy-crop: 6.2.3
   react-i18next: 17.0.12
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
-  react-server-dom-webpack: 19.2.8
+  react-server-dom-webpack: 19.3.0
   react-sortablejs: 6.1.4
   react-textarea-autosize: 8.5.9
   reactflow: 11.11.4
   remark-breaks: 4.0.0
   remark-directive: 4.0.0
-  scheduler: 0.27.0
+  scheduler: 0.28.0
   server-only: 0.0.1
   shiki: 4.4.3
   socket.io-client: 4.8.3
