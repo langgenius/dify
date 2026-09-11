@@ -12,11 +12,11 @@ import {
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath,
+  zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsQuery,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath,
+  zDeleteWorkspacesCurrentModelProvidersByProviderModelsQuery,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse,
   zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
   zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse,
@@ -1383,8 +1383,8 @@ export const delete6 = oc
   })
   .input(
     z.object({
-      body: zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody,
       params: zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath,
+      query: zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsQuery,
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
@@ -1575,8 +1575,8 @@ export const delete7 = oc
   })
   .input(
     z.object({
-      body: zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody,
       params: zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath,
+      query: zDeleteWorkspacesCurrentModelProvidersByProviderModelsQuery,
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse)
