@@ -2,7 +2,7 @@ import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import Response
@@ -13,9 +13,20 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
 from extensions.storage.storage_type import StorageType
+from factories.file_factory.builders import _resolve_file_type
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
 from factories.file_factory.builders import build_from_mappings as _build_from_mappings
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
+from graphon.file.file_manager import to_prompt_message_content
+from graphon.model_runtime.entities import (
+    DocumentPromptMessageContent,
+    ImagePromptMessageContent,
+    PromptMessageRole,
+    TextPromptMessageContent,
+)
+from graphon.nodes.llm import llm_utils
+from graphon.nodes.llm.entities import LLMNodeChatModelMessage
+from graphon.runtime import VariablePool
 from models import CreatorUserRole, ToolFile, UploadFile
 
 # Test Data
@@ -485,7 +496,11 @@ def test_disallowed_extensions(file_records: FileRecords):
 
 
 def test_custom_file_type_uses_extension_validation_under_strict_mode(file_records: FileRecords):
-    """Custom form uploads are classified by the configured extension list."""
+    """Custom form uploads are classified by the configured extension list.
+
+    Strict MIME matching is skipped for the custom bucket, but the File still
+    carries the detected type so LLM nodes can read known formats (#41236).
+    """
     file_records.upload_file.extension = "txt"
     file_records.upload_file.name = "notes.txt"
     file_records.upload_file.mime_type = "text/plain"
@@ -508,4 +523,164 @@ def test_custom_file_type_uses_extension_validation_under_strict_mode(file_recor
         strict_type_validation=True,
     )
 
-    assert file.type == FileType.CUSTOM
+    assert file.type == FileType.DOCUMENT
+
+
+@pytest.mark.parametrize(
+    ("extension", "name", "mime_type", "expected_type"),
+    [
+        ("jpg", "photo.jpg", "image/jpeg", FileType.IMAGE),
+        ("pdf", "report.pdf", "application/pdf", FileType.DOCUMENT),
+        ("m4a", "notes.m4a", "audio/mp4", FileType.AUDIO),
+        ("mp4", "clip.mp4", "video/mp4", FileType.VIDEO),
+        ("wma", "meeting.wma", "audio/x-ms-wma", FileType.AUDIO),
+        ("xyz", "blob.xyz", "application/octet-stream", FileType.CUSTOM),
+    ],
+)
+def test_custom_bucket_preserves_detected_type_for_llm(
+    file_records: FileRecords,
+    extension: str,
+    name: str,
+    mime_type: str,
+    expected_type: FileType,
+):
+    """Other File Types is an upload bucket, not a prompt-content type.
+
+    Graphon LLM nodes skip ``FileType.CUSTOM``, so known files accepted through
+    that bucket must keep their detected image/document/audio/video type.
+    """
+    file_records.upload_file.extension = extension
+    file_records.upload_file.name = name
+    file_records.upload_file.mime_type = mime_type
+    file_records.session.commit()
+
+    custom_config = FileUploadConfig(
+        allowed_file_types=[FileType.CUSTOM],
+        allowed_file_extensions=[f".{extension}"],
+    )
+    mapping = {
+        "transfer_method": "local_file",
+        "upload_file_id": TEST_UPLOAD_FILE_ID,
+        "type": "custom",
+    }
+
+    file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=custom_config)
+
+    assert file.type == expected_type
+    assert file.filename == name
+
+
+@pytest.mark.parametrize(
+    ("detected", "specified", "strict", "expected"),
+    [
+        (FileType.IMAGE, "custom", True, FileType.IMAGE),
+        (FileType.DOCUMENT, "custom", False, FileType.DOCUMENT),
+        (FileType.CUSTOM, "custom", True, FileType.CUSTOM),
+        (FileType.IMAGE, None, True, FileType.IMAGE),
+        (FileType.AUDIO, "audio", True, FileType.AUDIO),
+    ],
+)
+def test_resolve_file_type_custom_bucket_keeps_detected_type(
+    detected: FileType,
+    specified: str | None,
+    strict: bool,
+    expected: FileType,
+):
+    assert (
+        _resolve_file_type(
+            detected_file_type=detected,
+            specified_type=specified,
+            strict_type_validation=strict,
+        )
+        == expected
+    )
+
+
+def test_custom_bucket_document_is_attached_to_llm_prompt(file_records: FileRecords):
+    """A Start-node Other File Types PDF must reach LLM prompt conversion (#41236)."""
+    file_records.upload_file.extension = "pdf"
+    file_records.upload_file.name = "report.pdf"
+    file_records.upload_file.mime_type = "application/pdf"
+    file_records.session.commit()
+
+    file = build_from_mapping(
+        mapping={
+            "transfer_method": "local_file",
+            "upload_file_id": TEST_UPLOAD_FILE_ID,
+            "type": "custom",
+        },
+        tenant_id=TEST_TENANT_ID,
+        config=FileUploadConfig(
+            allowed_file_types=[FileType.CUSTOM],
+            allowed_file_extensions=[".pdf"],
+        ),
+    )
+    assert file.type == FileType.DOCUMENT
+
+    variable_pool = VariablePool.empty()
+    variable_pool.add(["start", "file"], file)
+    prompt_content = DocumentPromptMessageContent(
+        format="pdf",
+        url="https://example.com/report.pdf",
+        mime_type="application/pdf",
+        filename="report.pdf",
+    )
+
+    with patch(
+        "graphon.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
+        return_value=prompt_content,
+    ) as mock_to_prompt:
+        prompt_messages = llm_utils.handle_list_messages(
+            messages=[
+                LLMNodeChatModelMessage(
+                    text="Read {{#start.file#}}",
+                    role=PromptMessageRole.USER,
+                    edition_type="basic",
+                )
+            ],
+            context="",
+            jinja2_variables=[],
+            variable_pool=variable_pool,
+            vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+        )
+
+    mock_to_prompt.assert_called_once()
+    assert mock_to_prompt.call_args.args[0] is file
+    last_content = prompt_messages[-1].content
+    assert isinstance(last_content, list)
+    assert any(part is prompt_content for part in last_content)
+
+
+def test_custom_bucket_pdf_converts_to_document_prompt_content(file_records: FileRecords):
+    """Detected type must produce document prompt content, not an unsupported placeholder."""
+    file_records.upload_file.extension = "pdf"
+    file_records.upload_file.name = "report.pdf"
+    file_records.upload_file.mime_type = "application/pdf"
+    file_records.session.commit()
+
+    file = build_from_mapping(
+        mapping={
+            "transfer_method": "local_file",
+            "upload_file_id": TEST_UPLOAD_FILE_ID,
+            "type": "custom",
+        },
+        tenant_id=TEST_TENANT_ID,
+        config=FileUploadConfig(
+            allowed_file_types=[FileType.CUSTOM],
+            allowed_file_extensions=[".pdf"],
+        ),
+    )
+    assert file.type == FileType.DOCUMENT
+
+    runtime = MagicMock()
+    runtime.multimodal_send_format = "url"
+    with (
+        patch("graphon.file.file_manager.get_workflow_file_runtime", return_value=runtime),
+        patch("graphon.file.helpers.resolve_file_url", return_value="https://files.example/report.pdf"),
+    ):
+        content = to_prompt_message_content(file)
+
+    assert isinstance(content, DocumentPromptMessageContent)
+    assert content.mime_type == "application/pdf"
+    assert content.filename == "report.pdf"
+    assert not isinstance(content, TextPromptMessageContent)
