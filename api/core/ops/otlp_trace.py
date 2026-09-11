@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from bisect import bisect_left
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from datetime import datetime
 from ipaddress import ip_address, ip_network
 from ssl import SSLContext
@@ -191,6 +191,60 @@ def counter(name: str, value: int, span: TraceSpan, attributes: dict[str, Any]) 
     )
 
 
+def _length_delimited_size(size: int) -> int:
+    """Include a one-byte protobuf field tag and its variable-length size prefix."""
+    return 1 + max(1, (size.bit_length() + 6) // 7) + size
+
+
+def _trace_request_batches(trace_request: ExportTraceServiceRequest) -> Iterator[ExportTraceServiceRequest]:
+    """Fit multi-span requests in the default gRPC receive limit without changing spans."""
+    max_request_bytes = 4 * 1024 * 1024
+    if trace_request.ByteSize() <= max_request_bytes or not trace_request.resource_spans:
+        yield trace_request
+        return
+
+    request_metadata = ExportTraceServiceRequest()
+    request_metadata.CopyFrom(trace_request)
+    request_metadata.ClearField("resource_spans")
+    request_metadata_size = request_metadata.ByteSize()
+    for resource_spans in trace_request.resource_spans:
+        resource_request = ExportTraceServiceRequest()
+        resource_request.CopyFrom(request_metadata)
+        resource_metadata = resource_request.resource_spans.add()
+        resource_metadata.CopyFrom(resource_spans)
+        resource_metadata.ClearField("scope_spans")
+        if not resource_spans.scope_spans:
+            yield resource_request
+            continue
+        resource_size = resource_metadata.ByteSize()
+        for scope_spans in resource_spans.scope_spans:
+            empty_batch = ExportTraceServiceRequest()
+            empty_batch.CopyFrom(resource_request)
+            scope_metadata = empty_batch.resource_spans[0].scope_spans.add()
+            scope_metadata.CopyFrom(scope_spans)
+            scope_metadata.ClearField("spans")
+            scope_size = scope_metadata.ByteSize()
+            batch = ExportTraceServiceRequest()
+            batch.CopyFrom(empty_batch)
+            batch_spans = batch.resource_spans[0].scope_spans[0].spans
+            spans_size = 0
+            for span in scope_spans.spans:
+                span_size = _length_delimited_size(span.ByteSize())
+                request_size = request_metadata_size + _length_delimited_size(
+                    resource_size + _length_delimited_size(scope_size + spans_size + span_size)
+                )
+                if batch_spans and request_size > max_request_bytes:
+                    yield batch
+                    batch = ExportTraceServiceRequest()
+                    batch.CopyFrom(empty_batch)
+                    batch_spans = batch.resource_spans[0].scope_spans[0].spans
+                    spans_size = 0
+                # A single large span remains eligible for receivers configured with a higher limit.
+                batch_spans.append(span)
+                spans_size += span_size
+            yield batch
+
+
 class OtlpTraceClient:
     def __init__(
         self,
@@ -222,10 +276,11 @@ class OtlpTraceClient:
         return True
 
     def send_traces(self, trace_request: ExportTraceServiceRequest) -> None:
-        response = self._send("trace", trace_request.SerializeToString())
-        accepted = ExportTraceServiceResponse.FromString(response)
-        if accepted.partial_success.rejected_spans:
-            raise TraceExportError("provider_rejected_spans")
+        for batch in _trace_request_batches(trace_request):
+            response = self._send("trace", batch.SerializeToString())
+            accepted = ExportTraceServiceResponse.FromString(response)
+            if accepted.partial_success.rejected_spans:
+                raise TraceExportError("provider_rejected_spans")
 
     def send_metrics(self, metrics: list[Metric]) -> None:
         if not metrics:

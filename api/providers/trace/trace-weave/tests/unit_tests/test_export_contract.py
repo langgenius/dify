@@ -22,7 +22,7 @@ def test_export_complete_tree_with_repeatable_ids(monkeypatch: pytest.MonkeyPatc
 
     def request(method: str, url: str, **kwargs: Unpack[RequestArguments]) -> httpx.Response:
         requests.append((method, url, kwargs))
-        return httpx.Response(200, json={})
+        return httpx.Response(200, json={"data": {"project": {"name": "project"}}})
 
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
     assert_provider_exports_complete_tree_with_repeatable_ids("weave", make_provider_config(), requests)

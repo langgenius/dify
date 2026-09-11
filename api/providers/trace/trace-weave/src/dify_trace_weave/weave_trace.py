@@ -73,6 +73,47 @@ def _make_span_tags(completed_trace: CompletedTrace, span: TraceSpan) -> list[Js
     return list(dict.fromkeys(tags))
 
 
+def _normalize_io(value: JsonValue, span: TraceSpan, *, output: bool = False) -> JsonValue:
+    """Preserve Weave's message envelopes without modifying captured prompt data."""
+    if value is None or value == {}:
+        return value
+    usage: dict[str, JsonValue] = {}
+    for native, captured in (
+        ("input_tokens", "prompt_tokens"),
+        ("output_tokens", "completion_tokens"),
+        ("total_tokens", "total_tokens"),
+    ):
+        usage[native] = span.usage.get(captured)
+    files = span.attributes.get("files")
+    file_urls: list[JsonValue] = []
+    if isinstance(files, list):
+        for file in files:
+            url = file.get("url") if isinstance(file, dict) else file
+            if isinstance(url, str) and url:
+                file_urls.append(url)
+    metadata: dict[str, JsonValue] = {"usage_metadata": usage, "file_list": file_urls}
+    role = "ai" if output else "user"
+    if isinstance(value, str):
+        return {"choices" if output else "messages": {"role": role, "content": value, **metadata}}
+    if isinstance(value, list):
+        if value and all(isinstance(message, dict) for message in value):
+            messages: list[JsonValue] = []
+            for message in value:
+                assert isinstance(message, dict)
+                normalized = dict(message)
+                # Saved Dify prompts use text; native content blocks and tool arguments must stay intact.
+                if "text" in normalized and "content" not in normalized:
+                    normalized["content"] = normalized.pop("text")
+                messages.append(normalized if output else {**normalized, **metadata})
+            if not output:
+                return {"messages": messages}
+            return {"choices": {"role": role, "content": messages, **metadata}}
+        return {"choices": {"role": role, "content": str(value), **metadata}}
+    if isinstance(value, dict):
+        return {**value, **metadata}
+    return value
+
+
 class WeaveTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
         self.config = WeaveConfig.model_validate(provider_config)
@@ -93,8 +134,28 @@ class WeaveTraceClient:
                 runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)
             ),
         )
+        self.account_http = TraceProviderHttpClient(
+            self.config.host or "https://api.wandb.ai", self.http.headers, ssl_context=self.account_ssl_context
+        )
+        self._ready_project_id: str | None = None
+
+    def _account_query(self, query: str, variables: dict[str, str] | None = None) -> dict[str, Any]:
+        self.account_http.deadline = self.http.deadline
+        try:
+            response = self.account_http.request(
+                "POST", "graphql", json={"query": query, "variables": variables or {}}
+            ).json()
+        except ValueError:
+            raise TraceExportError("weave_account_response_invalid") from None
+        if not isinstance(response, dict) or not isinstance(response.get("data"), dict):
+            raise TraceExportError("weave_account_response_invalid")
+        if response.get("errors"):
+            raise TraceExportError("weave_account_query_failed")
+        return response["data"]
 
     def _project_id(self) -> str:
+        if self._ready_project_id is not None:
+            return self._ready_project_id
         entity = self.config.entity
         project = self.config.project
         if not entity and "/" in project:
@@ -102,20 +163,42 @@ class WeaveTraceClient:
             if not entity:
                 raise TraceExportError("weave_project_invalid")
         if not entity:
-            account = TraceProviderHttpClient(
-                self.config.host or "https://api.wandb.ai", self.http.headers, ssl_context=self.account_ssl_context
-            )
-            account.deadline = self.http.deadline
-            response = account.request("POST", "graphql", json={"query": "query { viewer { entity } }"}).json()
-            entity = (response.get("data", {}).get("viewer") or {}).get("entity")
-        if not entity:
+            viewer = self._account_query("query { viewer { entity } }").get("viewer")
+            entity = viewer.get("entity") if isinstance(viewer, dict) else None
+        if not isinstance(entity, str) or not entity:
             raise TraceExportError("weave_entity_unavailable")
         if not project or "/" in entity or "/" in project:
             raise TraceExportError("weave_project_invalid")
         return f"{entity}/{project}"
 
+    def _ensure_project_id(self) -> str:
+        if self._ready_project_id is not None:
+            return self._ready_project_id
+        entity, project = self._project_id().split("/", 1)
+        variables = {"entity": entity, "name": project}
+        result = self._account_query(
+            "query($entity: String!, $name: String!) { project(entityName: $entity, name: $name) { name } }",
+            variables,
+        )
+        if "project" not in result:
+            raise TraceExportError("weave_account_response_invalid")
+        project_data = result["project"]
+        if project_data is None:
+            result = self._account_query(
+                "mutation($entity: String!, $name: String!) { "
+                "upsertModel(input: {entityName: $entity, name: $name}) { model { name } } }",
+                variables,
+            )
+            upsert = result.get("upsertModel")
+            project_data = upsert.get("model") if isinstance(upsert, dict) else None
+        name = project_data.get("name") if isinstance(project_data, dict) else None
+        if not isinstance(name, str) or not name or "/" in name:
+            raise TraceExportError("weave_project_unavailable")
+        self._ready_project_id = f"{entity}/{name}"
+        return self._ready_project_id
+
     def verify_credentials(self) -> bool:
-        self.http.request("POST", "calls/query_stats", json={"project_id": self._project_id()})
+        self.http.request("POST", "calls/query_stats", json={"project_id": self._ensure_project_id()})
         return True
 
     def get_project_url(self) -> str:
@@ -136,7 +219,7 @@ class WeaveTraceClient:
             else completed_trace.source.external_trace_id or completed_trace.trace_id
         )
         # Timing is checked before project discovery, which can itself send a request.
-        project_id = self._project_id()
+        project_id = self._ensure_project_id()
         complete_calls_endpoint = f"v2/{quote(project_id, safe='/')}/calls/complete"
         use_complete_calls = True
         for span in spans:
@@ -148,6 +231,7 @@ class WeaveTraceClient:
                 "parameter-extractor",
             ):
                 inputs = span.attributes.get("original_inputs", inputs)
+            inputs = _normalize_io(inputs, span)
             has_error = span.status == "error" or (
                 span.status == "cancelled" and span.span_type == "workflow" and bool(span.error)
             )
@@ -164,7 +248,7 @@ class WeaveTraceClient:
                     **span_attributes(completed_trace, span),
                     "tags": _make_span_tags(completed_trace, span),
                 },
-                "inputs": inputs if isinstance(inputs, dict) else {"input": inputs},
+                "inputs": inputs if isinstance(inputs, dict) else {} if inputs is None else {"inputs": str(inputs)},
                 "wb_user_id": None,
             }
             summary: dict[str, JsonValue] = {
@@ -178,7 +262,7 @@ class WeaveTraceClient:
                 "id": start["id"],
                 "ended_at": span.ended_at.isoformat(),
                 "exception": span.error if has_error else None,
-                "output": span.outputs,
+                "output": _normalize_io(span.outputs, span, output=True),
                 "summary": summary,
             }
             if use_complete_calls:

@@ -63,7 +63,9 @@ def test_authorized_destination_is_used_for_discovery_and_export(monkeypatch: py
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(200, json={"data": {"viewer": {"entity": "account-team"}}})
+        return httpx.Response(
+            200, json={"data": {"viewer": {"entity": "account-team"}, "project": {"name": "project"}}}
+        )
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
@@ -76,7 +78,9 @@ def test_authorized_destination_is_used_for_discovery_and_export(monkeypatch: py
     second_client.export_trace(make_completed_trace())
     assert [request.url.host for request in requests] == [
         "first-account.example",
+        "first-account.example",
         "first-ingest.example",
+        "second-account.example",
         "second-account.example",
         "second-ingest.example",
         "second-ingest.example",
