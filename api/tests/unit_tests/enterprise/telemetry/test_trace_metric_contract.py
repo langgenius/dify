@@ -36,6 +36,7 @@ from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from tests.unit_tests.core.ops.test_provider_export import RequestArguments, make_completed_trace
+from tests.unit_tests.core.ops.test_trace_export_state import make_export_state
 from tests.unit_tests.core.ops.test_workflow_trace_limits import workflow_node
 
 
@@ -92,7 +93,7 @@ def test_enterprise_metrics_keep_root_and_model_usage_distinct(monkeypatch: pyte
         }
     )
     trace = trace.model_copy(update={"spans": (*trace.spans, attempt)})
-    create_provider_client(
+    client = create_provider_client(
         "enterprise",
         {
             "endpoint": "https://enterprise.example",
@@ -100,19 +101,25 @@ def test_enterprise_metrics_keep_root_and_model_usage_distinct(monkeypatch: pyte
             "include_content": False,
             "sampling_rate": 1,
         },
-    ).export_trace(trace)
+    )
+    client.export_state = make_export_state(
+        trace,
+        TraceProviderSettings(
+            tenant_id=trace.source.tenant_id,
+            app_id=trace.source.app_id,
+            destination_type="enterprise",
+            provider_name="enterprise",
+        ),
+    )
+    client.export_trace(trace)
     metrics = ExportMetricsServiceRequest.FromString(requests[-1][1]).resource_metrics[0].scope_metrics[0].metrics
-    totals = [metric for metric in metrics if metric.name == "dify.tokens.total"]
+    totals = [point for metric in metrics if metric.name == "dify.tokens.total" for point in metric.sum.data_points]
     assert len(totals) == 2
     assert {
-        next(
-            attribute.value.string_value
-            for attribute in metric.sum.data_points[0].attributes
-            if attribute.key == "operation_type"
-        )
-        for metric in totals
+        next(attribute.value.string_value for attribute in point.attributes if attribute.key == "operation_type")
+        for point in totals
     } == {"workflow", "node_execution"}
-    assert all(metric.sum.data_points[0].as_int == 8 for metric in totals)
+    assert all(point.as_int == 8 for point in totals)
     spans = ExportTraceServiceRequest.FromString(requests[0][1]).resource_spans[0].scope_spans[0].spans
     assert len(spans) == 4
     assert spans[-1].parent_span_id == spans[-2].span_id
@@ -226,6 +233,7 @@ def test_child_workflow_views_preserve_spans_without_recounting_execution_metric
                 trace,
                 queued_trace.provider_settings,
                 {"endpoint": "https://enterprise.example", "protocol": "http/protobuf", "sampling_rate": sampling_rate},
+                export_state=make_export_state(trace, queued_trace.provider_settings),
             )
             assert set(receipt.spans) == {span.span_id for span in trace.spans}
     trace_requests = [body for url, body in requests if url.endswith("/traces")]

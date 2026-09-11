@@ -762,6 +762,7 @@ class TestMessageService:
             user_id=account.id,
             message_id=message.id,
             conversation_id=conversation.id,
+            workflow_run_id=message.workflow_run_id,
         )
         assert (
             mock_external_service_dependencies[
@@ -899,6 +900,7 @@ class TestMessageService:
             user_id=account.id,
             message_id=message.id,
             conversation_id=conversation.id,
+            workflow_run_id=message.workflow_run_id,
         )
         assert (
             mock_external_service_dependencies[

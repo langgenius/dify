@@ -5,7 +5,7 @@ import logging
 import os
 import socket
 import ssl
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
@@ -20,6 +20,9 @@ from core.helper.ssl_context import create_grpc_credentials, create_ssl_context,
 from core.ops.otlp_trace import OtlpTraceClient, counter, histogram, otlp_span, otlp_trace_id
 from core.ops.provider_export import TraceProviderHttpClient, export_span_id, json_text, span_attributes, span_id_bytes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
+
+if TYPE_CHECKING:
+    from core.ops.trace_export_state import TraceExportState
 
 # Preserve the explicit buckets used by the previous enterprise SDK histograms.
 HISTOGRAM_BOUNDS = (0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000)
@@ -189,6 +192,7 @@ class EnterpriseTraceClient:
         self.include_content = bool(provider_config.get("include_content", False))
         self.sampling_rate = float(provider_config.get("sampling_rate", 1))
         self.logger = logging.getLogger("dify.telemetry")
+        self.export_state: TraceExportState | None = None
 
     def _operation_type(self, span: TraceSpan) -> str:
         if span.span_type == "workflow":
@@ -455,6 +459,8 @@ class EnterpriseTraceClient:
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
+        self.otlp.export_state = self.export_state
+        emit_logs = self.export_state is None or not self.export_state.has_completed_signal("business_logs")
         trace_id = otlp_trace_id(completed_trace, parent_span)
         sampled = UUID(trace_id).int / 2**128 < self.sampling_rate
         exported_spans = []
@@ -491,19 +497,22 @@ class EnterpriseTraceClient:
                 "draft_node_execution": "dify.node.execution.draft",
             }.get(operation_type, "dify.prompt_generation.execution")
             signal = "span_detail" if sends_span else "metric_only"
-            self.logger.info(
-                "telemetry.%s",
-                signal,
-                extra={
-                    "attributes": {**attributes, "dify.event.name": event_name, "dify.event.signal": signal},
-                    "trace_id": UUID(trace_id).hex,
-                    "span_id": span_id_bytes(export_span_id(completed_trace, span.span_id)).hex(),
-                    "tenant_id": completed_trace.source.tenant_id,
-                    "user_id": completed_trace.source.actor_id,
-                },
-            )
+            if emit_logs:
+                self.logger.info(
+                    "telemetry.%s",
+                    signal,
+                    extra={
+                        "attributes": {**attributes, "dify.event.name": event_name, "dify.event.signal": signal},
+                        "trace_id": UUID(trace_id).hex,
+                        "span_id": span_id_bytes(export_span_id(completed_trace, span.span_id)).hex(),
+                        "tenant_id": completed_trace.source.tenant_id,
+                        "user_id": completed_trace.source.actor_id,
+                    },
+                )
             if not metrics_from_outer_workflow and not span.attributes.get("metrics_from_parent"):
                 metrics.extend(self._metrics(completed_trace, span, operation_type))
+        if emit_logs and self.export_state is not None:
+            self.export_state.complete_signal("business_logs")
         if exported_spans:
             self.otlp.send_traces(
                 ExportTraceServiceRequest(

@@ -1,4 +1,4 @@
-"""Send Tencent spans and delta metrics through their explicitly captured transports."""
+"""Send Tencent spans and cumulative metrics through their explicitly captured transports."""
 
 import socket
 from typing import Any, override

@@ -33,6 +33,9 @@ def test_metric_protocol_is_captured_and_dispatches_separately_from_traces(
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "changed")
     monkeypatch.setattr(TencentConfig, "load_runtime_settings", Mock(side_effect=AssertionError("snapshot was reread")))
     client = tencent_trace.create_trace_client({**config, "_runtime_settings": runtime})
+    client.export_state = Mock()
+    client.export_state.has_completed_signal.return_value = False
+    client.export_state.prepare_metrics.side_effect = lambda metrics, resource, scope_name: metrics
     grpc_send = Mock(return_value=b"")
     monkeypatch.setattr(client, "_send_grpc", grpc_send)
     if protocol == "grpc":

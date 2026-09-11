@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 from ssl import SSLContext
 from time import monotonic
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlsplit
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -14,6 +14,9 @@ from pydantic import JsonValue
 
 from core.helper import ssrf_proxy
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceProviderSettings, TraceSpan
+
+if TYPE_CHECKING:
+    from core.ops.trace_export_state import TraceExportState
 
 
 class TraceExportError(Exception):
@@ -192,6 +195,8 @@ def export_trace(
     provider_settings: TraceProviderSettings,
     provider_config: dict[str, Any],
     parent_span: dict[str, JsonValue] | None = None,
+    *,
+    export_state: "TraceExportState | None" = None,
 ) -> ExportedParentSpans:
     if completed_trace.source.tenant_id != provider_settings.tenant_id:
         raise TraceExportError("trace_tenant_mismatch")
@@ -203,7 +208,10 @@ def export_trace(
     receipt_owner = provider_settings.model_dump(mode="json")
     if parent_span is not None and any(parent_span.get(key) != value for key, value in receipt_owner.items()):
         raise TraceExportError("trace_parent_destination_mismatch")
+    if export_state is not None:
+        export_state.validate_owner(completed_trace, provider_settings)
     client = create_provider_client(provider_settings.provider_name, provider_config)
+    client.export_state = export_state
     exported_parents = client.export_trace(completed_trace, parent_span)
     return ExportedParentSpans(
         spans={span_id: {**receipt, **receipt_owner} for span_id, receipt in exported_parents.spans.items()}

@@ -9,7 +9,7 @@ import json
 import sqlalchemy as sa
 from alembic import op
 
-from models.types import StringUUID
+from models.types import BinaryData, StringUUID
 
 revision = "74f13a2c08b9"
 down_revision = "d8e4a6b1c902"
@@ -103,6 +103,7 @@ def upgrade():
         sa.Column("parent_delivery_id", StringUUID()),
         sa.Column("parent_span_id", StringUUID()),
         sa.Column("parent_references", sa.JSON()),
+        sa.Column("export_state", sa.JSON()),
         sa.Column("error_code", sa.String(64)),
         sa.Column("finished_at", sa.DateTime()),
         sa.Column("trace_deleted_at", sa.DateTime()),
@@ -132,9 +133,19 @@ def upgrade():
     op.create_index(
         "ops_trace_delivery_owner_idx", "ops_trace_deliveries", ["tenant_id", "app_id", "message_id", "workflow_run_id"]
     )
+    op.create_table(
+        "ops_trace_metric_series",
+        sa.Column("tenant_id", StringUUID(), primary_key=True),
+        sa.Column("destination_key", sa.String(64), primary_key=True),
+        sa.Column("series_key", sa.String(64), primary_key=True),
+        sa.Column("metric_data", BinaryData(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=False),
+    )
+    op.create_index("ops_trace_metric_series_idle_idx", "ops_trace_metric_series", ["updated_at"])
 
 
 def downgrade():
+    op.drop_table("ops_trace_metric_series")
     op.drop_table("ops_trace_deliveries")
     with op.batch_alter_table("trace_app_config") as batch:
         batch.drop_constraint("trace_app_config_app_provider_unique", type_="unique")

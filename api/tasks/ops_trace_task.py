@@ -11,6 +11,7 @@ from flask import current_app
 from configs import dify_config
 from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import CompletedTrace
+from core.ops.trace_export_state import TraceExportState
 from repositories.ops_trace_delivery_repository import OpsTraceDeliveryRepository
 
 
@@ -78,7 +79,13 @@ def export_trace_delivery(tenant_id: str, delivery_id: str) -> None:
         provider_config: dict[str, Any] = load_trace_provider_config(provider_settings)
         if not repository.extend_attempt_lease(delivery):
             return
-        parent_spans = export_trace(completed_trace, provider_settings, provider_config, parent_reference)
+        parent_spans = export_trace(
+            completed_trace,
+            provider_settings,
+            provider_config,
+            parent_reference,
+            export_state=TraceExportState(repository, delivery),
+        )
         # Late operations attach to the original root; nested trees export together.
         root_reference = parent_spans.spans.get(completed_trace.root_span_id)
         parent_references = {completed_trace.root_span_id: root_reference} if root_reference is not None else {}

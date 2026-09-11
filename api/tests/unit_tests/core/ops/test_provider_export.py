@@ -47,6 +47,8 @@ from core.ops.trace_data import (
     make_span_id,
     make_trace_id,
 )
+from core.ops.trace_export_state import TraceExportState
+from tests.unit_tests.core.ops.test_trace_export_state import make_export_state
 
 
 class RequestArguments(TypedDict, total=False):
@@ -185,9 +187,15 @@ def test_every_provider_exports_complete_tree_with_repeatable_ids(
     monkeypatch.setattr(OtlpTraceClient, "_send_grpc", grpc_request)
     trace = make_completed_trace()
     settings = settings_for(trace, provider)
+    state = make_export_state(trace, settings)
     environment = dict(os.environ)
-    first = export_trace(trace, settings, provider_config(provider))
-    second = export_trace(trace, settings, provider_config(provider))
+    first = export_trace(trace, settings, provider_config(provider), export_state=state)
+    second = export_trace(
+        trace,
+        settings,
+        provider_config(provider),
+        export_state=TraceExportState(state.repository, state.delivery),
+    )
     assert first == second
     assert len(first.spans) == 3
     assert all(receipt["tenant_id"] == trace.source.tenant_id for receipt in first.spans.values())
@@ -216,6 +224,26 @@ def test_tenant_and_parent_destination_mismatch_rejected_before_client_creation(
         export_trace(trace, settings.model_copy(update={"app_id": str(uuid4())}), {})
     with pytest.raises(TraceExportError, match="trace_parent_destination_mismatch"):
         export_trace(trace, settings, {}, {"tenant_id": str(uuid4())})
+
+
+@pytest.mark.parametrize("different_destination", [False, True])
+def test_export_state_owner_is_checked_before_client_creation(
+    monkeypatch: pytest.MonkeyPatch, different_destination: bool
+) -> None:
+    trace = make_completed_trace()
+    settings = settings_for(trace, "langsmith")
+    state_trace = trace if different_destination else make_completed_trace()
+    state = make_export_state(
+        state_trace,
+        settings.model_copy(update={"config_revision": settings.config_revision + 1})
+        if different_destination
+        else settings_for(state_trace, "langsmith"),
+    )
+    create_client = Mock(side_effect=AssertionError("Mismatched state must not reach a provider"))
+    monkeypatch.setattr("core.ops.provider_export.create_provider_client", create_client)
+    with pytest.raises((ValueError, TraceExportError)):
+        export_trace(trace, settings, {}, export_state=state)
+    create_client.assert_not_called()
 
 
 def test_http_errors_and_otlp_partial_acceptance_are_not_success(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -477,8 +505,10 @@ def test_otlp_probes_credentials_and_checks_partial_metric_acceptance(monkeypatc
     rejected = ExportMetricsServiceResponse()
     rejected.partial_success.rejected_data_points = 1
     send.return_value = rejected.SerializeToString()
+    trace = make_completed_trace()
+    client.export_state = make_export_state(trace, settings_for(trace, "langsmith"))
     with pytest.raises(TraceExportError, match="provider_rejected_metrics") as failed:
-        client.send_metrics([counter("operations", 1, make_completed_trace().spans[0], {})])
+        client.send_metrics([counter("operations", 1, trace.spans[0], {})])
     assert not failed.value.retryable
 
 

@@ -6,6 +6,8 @@ from uuid import uuid4
 
 import pytest
 from dify_trace_tencent.tencent_trace import create_trace_client
+from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import ExportMetricsServiceRequest
+from opentelemetry.proto.metrics.v1.metrics_pb2 import AggregationTemporality
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import Histogram as SdkHistogram
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
@@ -24,7 +26,91 @@ from graphon.engine_events import (
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace, provider_config
+from tests.unit_tests.core.ops.test_trace_export_state import make_export_state
 from tests.unit_tests.core.ops.test_workflow_trace_limits import workflow_node
+
+
+def test_fresh_clients_preserve_cumulative_histograms_across_operations(monkeypatch: pytest.MonkeyPatch) -> None:
+    first_trace, second_trace = make_completed_trace(), make_completed_trace()
+    second_trace = second_trace.model_copy(
+        update={
+            "source": second_trace.source.model_copy(
+                update={"tenant_id": first_trace.source.tenant_id, "app_id": first_trace.source.app_id}
+            )
+        }
+    )
+    first_trace = first_trace.model_copy(
+        update={
+            "spans": (
+                *first_trace.spans[:-1],
+                first_trace.spans[-1].model_copy(update={"usage": {"prompt_tokens": 5}}),
+            )
+        }
+    )
+    second_trace = second_trace.model_copy(
+        update={
+            "spans": (
+                *second_trace.spans[:-1],
+                second_trace.spans[-1].model_copy(update={"usage": {"prompt_tokens": 10001}}),
+            )
+        }
+    )
+    settings = TraceProviderSettings(
+        tenant_id=first_trace.source.tenant_id,
+        app_id=first_trace.source.app_id,
+        provider_name="tencent",
+        config_id=str(uuid4()),
+    )
+    first_state = make_export_state(first_trace, settings)
+    exports: list[ExportMetricsServiceRequest] = []
+
+    def receive(signal: str, serialized: bytes, **kwargs: object) -> bytes:
+        if signal == "metrics":
+            exports.append(ExportMetricsServiceRequest.FromString(serialized))
+        return b""
+
+    for trace, state in (
+        (first_trace, first_state),
+        (second_trace, make_export_state(second_trace, settings, first_state.repository)),
+    ):
+        client = create_trace_client(
+            {
+                **provider_config("tencent"),
+                "_runtime_settings": {
+                    "metrics_protocol": "grpc",
+                    "metrics_verify": True,
+                    "trace_tls": {},
+                    "metrics_tls": {},
+                },
+            }
+        )
+        client.export_state = state
+        monkeypatch.setattr(client, "_send_grpc", receive)
+        client.export_trace(trace)
+
+    histograms = [
+        next(
+            metric.histogram
+            for metric in request.resource_metrics[0].scope_metrics[0].metrics
+            if metric.name == "gen_ai.client.token.usage"
+        )
+        for request in exports
+    ]
+    assert len(histograms) == 2
+    assert all(
+        histogram.aggregation_temporality == AggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE
+        for histogram in histograms
+    )
+    first, second = (histogram.data_points[0] for histogram in histograms)
+    assert (first.count, first.sum, first.min, first.max) == (1, 5, 5, 5)
+    assert (second.count, second.sum, second.min, second.max) == (2, 10006, 5, 10001)
+    assert second.explicit_bounds == first.explicit_bounds
+    assert second.bucket_counts[1] == second.bucket_counts[-1] == 1
+    assert sum(second.bucket_counts) == second.count
+    assert 0 < first.start_time_unix_nano == second.start_time_unix_nano
+    assert first.time_unix_nano < second.time_unix_nano
+    assert first.attributes == second.attributes
+    assert exports[0].resource_metrics[0].resource == exports[1].resource_metrics[0].resource
 
 
 def test_histogram_distributions_match_the_previous_sdk_instruments() -> None:

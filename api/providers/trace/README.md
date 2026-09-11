@@ -1,6 +1,6 @@
 # Trace providers
 
-OPS sends every provider an immutable `CompletedTrace` containing the full span tree. Provider code translates these spans and performs synchronous, bounded network calls. It does not query Dify records, reconstruct workflow trees, retain credentials between exports, or configure a global SDK.
+OPS sends every provider an immutable `CompletedTrace` containing the full span tree. Provider code translates these spans and performs synchronous, bounded network calls. It does not query Dify source records, reconstruct workflow trees, retain credentials between exports, or configure a global SDK.
 
 The shared types live in [`trace_data.py`](../../core/ops/trace_data.py). Configuration schemas, encryption and secret-field selection live in [`provider_config.py`](../../core/ops/provider_config.py). [`provider_export.py`](../../core/ops/provider_export.py) selects a fresh client for each delivery and adds destination ownership to returned parent receipts.
 
@@ -12,6 +12,8 @@ To add a provider:
 4. Exercise the real request serialization with a fake HTTP transport. Cover parent-first trees, deterministic IDs, auth isolation, retryable failures, and supported parent receipts.
 
 Use `TraceProviderHttpClient` for HTTP. It creates and closes an SSRF-aware HTTP client per request, disables redirects, and limits the overall export duration. Use the shared OTLP builder for OTLP providers. gRPC exports use an explicit channel and the configured SSRF proxy; they fail closed if proxy bypass rules would skip that proxy.
+
+The delivery worker supplies an operation-owned `export_state` to each fresh client. OTLP metric exports require this state: measurements are accumulated once per delivery and retries send the saved cumulative snapshot, including its original resource identity. Forward `export_state` when a provider wraps an `OtlpTraceClient`. Keep metric names, labels and buckets in the provider package; the shared transport owns accumulation and timestamps. Do not send execution intervals directly as independent DELTA series.
 
 Providers that support deployment-level transport settings implement `Config.load_runtime_settings(provider_config)`. Keep environment names and precedence in the provider directory, return JSON-safe copied values, and use the shared TLS helpers to capture certificate contents. OPS includes those values in the destination fingerprint and passes the checked snapshot as `_runtime_settings` to the client. A client receiving that key must use its contents without rereading environment variables or certificate files. Direct verification resolves a fresh snapshot. Runtime credentials are never saved in trace bodies or configuration API responses.
 
