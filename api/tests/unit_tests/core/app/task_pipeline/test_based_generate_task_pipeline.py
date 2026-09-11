@@ -13,7 +13,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.errors.error import QuotaExceededError
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
+from core.plugin.impl.exc import PluginDaemonUnavailableError
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeRateLimitError
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Message
 
@@ -76,10 +77,26 @@ class TestBasedGenerateTaskPipeline:
         assert isinstance(err, InvokeAuthorizationError)
         assert str(err) == "Incorrect API key provided"
 
-    def test_handle_error_preserves_invoke_error(self, pipeline):
-        event = QueueErrorEvent(error=InvokeError("bad"))
+    def test_handle_error_preserves_plugin_daemon_unavailable_error(self, pipeline):
+        event = QueueErrorEvent(error=PluginDaemonUnavailableError("no available node, plugin runtime not found"))
         err = pipeline.handle_error(event=event)
         assert err is event.error
+
+    def test_stream_converter_maps_plugin_daemon_unavailable_error(self):
+        data = AppGenerateResponseConverter._error_to_stream_response(
+            PluginDaemonUnavailableError("no available node, plugin runtime not found")
+        )
+
+        assert data == {
+            "code": "plugin_daemon_unavailable",
+            "status": 503,
+            "message": "no available node, plugin runtime not found",
+        }
+
+    def test_stream_converter_keeps_value_error_as_invalid_param(self):
+        data = AppGenerateResponseConverter._error_to_stream_response(ValueError("query is required"))
+
+        assert data == {"code": "invalid_param", "status": 400, "message": "query is required"}
 
     def test_handle_error_preserves_agent_backend_run_failed_error(self, pipeline):
         event = QueueErrorEvent(
