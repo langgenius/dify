@@ -13,6 +13,10 @@ from dify_trace_weave.weave_trace import WeaveTraceClient
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.provider_export import TraceExportError, basic_auth
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, make_span_id, make_trace_id
+from core.ops.workflow_trace import WorkflowTraceRecorder
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
+from graphon.node_events import NodeRunResult
+from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
 
 
 def make_trace() -> CompletedTrace:
@@ -422,3 +426,54 @@ def test_weave_preserves_workflow_node_and_captured_tags(node_type: str, monkeyp
     assert workflow["attributes"]["tags"] == ["dify_workflow"]
     assert node_call["attributes"]["tags"] == ["node_execution", "custom"]
     assert node_call["attributes"]["custom_field"] == "preserved"
+
+
+@pytest.mark.parametrize("legacy_server", [False, True])
+@pytest.mark.parametrize("node_type", ["llm", "question-classifier", "parameter-extractor"])
+def test_recorded_model_nodes_preserve_native_inputs(
+    node_type: str, legacy_server: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()), actor_id=str(uuid4()))
+    submitted: list[CompletedTrace] = []
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    node = workflow_node(source, node_type=node_type)
+    start_node(recorder, node)
+    started = datetime.now(UTC)
+    original_inputs = {"query": "Original query"}
+    prompts = [{"role": "user", "text": "Rendered prompt"}]
+    recorder.on_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type=node_type,
+            start_at=started,
+            finished_at=started + timedelta(seconds=1),
+            node_run_result=NodeRunResult(
+                inputs=original_inputs,
+                process_data={"model_mode": "chat", "prompts": prompts},
+                outputs={"result": "answer"},
+            ),
+        )
+    )
+    recorder.on_event(GraphRunSucceededEvent())
+    assert recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted[0].model_dump_json())
+    assert trace.spans[1].inputs == prompts
+    original_trace = trace.model_dump_json()
+    client, request = make_client_with_transport(monkeypatch)
+    if legacy_server:
+        request.side_effect = [TraceExportError("provider_http_404"), *[httpx.Response(200)] * 4]
+    client.export_trace(trace)
+    if legacy_server:
+        calls = [call.kwargs["json"]["start"] for call in request.call_args_list if call.args[1] == "call/start"]
+    else:
+        calls = [call.kwargs["json"]["batch"][0] for call in request.call_args_list]
+    assert calls[1]["inputs"] == ({"input": prompts} if node_type == "llm" else original_inputs)
+    assert calls[1]["attributes"]["dify.tenant_id"] == source.tenant_id
+    assert trace.model_dump_json() == original_trace

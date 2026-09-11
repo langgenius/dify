@@ -29,6 +29,7 @@ from models.enums import CreatorUserRole
 from models.model import MessageAgentThought
 from tests.unit_tests.core.ops.test_message_trace import RecordingQueue, message_fields
 from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
+from tests.unit_tests.core.workflow.nodes.http_request.test_http_request_node import _build_http_node
 
 from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
 from .test_native_export import read_attribute_value  # pyrefly: ignore[missing-import]
@@ -124,7 +125,7 @@ def test_recorded_concrete_node_and_auxiliary_categories(provider: str, monkeypa
                 node_type=node_type,
                 start_at=started,
                 finished_at=started + timedelta(seconds=1),
-                node_run_result=NodeRunResult(outputs={"text": "answer"}),
+                node_run_result=NodeRunResult(inputs={"query": "hello"}, outputs={"text": "answer"}),
             )
         )
     recorder.on_event(GraphRunSucceededEvent())
@@ -132,6 +133,7 @@ def test_recorded_concrete_node_and_auxiliary_categories(provider: str, monkeypa
     trace = CompletedTrace.model_validate_json(submitted[0].model_dump_json())
     attributes = export_attributes(provider, trace, monkeypatch)
     assert [span["mlflow.spanType"] for span in attributes] == ["CHAIN", *expected_types.values()]
+    assert attributes[list(expected_types).index("http-request") + 1]["mlflow.spanInputs"] == {"query": "hello"}
 
     message, queue = message_recorder(provider)
     for operation in ("suggested_question", "generate_name"):
@@ -142,9 +144,62 @@ def test_recorded_concrete_node_and_auxiliary_categories(provider: str, monkeypa
             outputs="answer",
             attributes={"operation_type": operation},
         )
+    message.record_operation(
+        "HTTP helper",
+        span_type="tool",
+        inputs={"query": "hello"},
+        outputs="answer",
+        attributes={"node_type": "http-request", "process_data": {"request": "unrelated"}},
+    )
     message.finish_message_trace(message_fields(message))
     operations = export_attributes(provider, CompletedTrace.model_validate_json(queue.items[0].trace_json), monkeypatch)
-    assert [span["mlflow.spanType"] for span in operations] == ["LLM", "TOOL", "CHAIN"]
+    assert [span["mlflow.spanType"] for span in operations] == ["LLM", "TOOL", "CHAIN", "TOOL"]
+    assert operations[-1]["mlflow.spanInputs"] == {"query": "hello"}
+
+
+@pytest.mark.parametrize("provider", ["mlflow", "databricks"])
+def test_recorded_http_request_uses_native_request_inputs(provider: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    http_node = _build_http_node()
+    transport = Mock()
+    transport.get.return_value = httpx.Response(
+        200,
+        headers={"content-type": "text/plain"},
+        text="answer",
+        request=httpx.Request("GET", "http://example.com"),
+    )
+    monkeypatch.setattr(http_node, "_http_client", transport)
+    result = http_node._run()
+    assert result.inputs == {}
+    assert result.process_data == {"request": "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n"}
+
+    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
+    submitted: list[CompletedTrace] = []
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    node = workflow_node(source, node_type="http-request")
+    start_node(recorder, node)
+    started = datetime.now(UTC)
+    recorder.on_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type="http-request",
+            start_at=started,
+            finished_at=started + timedelta(seconds=1),
+            node_run_result=result,
+        )
+    )
+    recorder.on_event(GraphRunSucceededEvent())
+    assert recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted[0].model_dump_json())
+    assert trace.spans[1].inputs == {}
+    attributes = export_attributes(provider, trace, monkeypatch)
+    assert attributes[1]["mlflow.spanInputs"] == result.process_data
 
 
 @pytest.mark.parametrize("provider", ["mlflow", "databricks"])
