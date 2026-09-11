@@ -26,6 +26,7 @@ from core.dify_builder.contract import ConversationPage, ResourceOption
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
+    BuildNodesResult,
     ChangeSet,
     ChecklistError,
     Checkpoint,
@@ -82,7 +83,7 @@ class DifyBuilderAgent(Protocol):
 
     def bind_resources(self, plan_items: list[str], resource_ids: list[str], conflict_policy: str) -> list[str]: ...
 
-    def build_nodes(self, plan_items: list[str], resource_ids: list[str] | None = None) -> list[MutationIntent]: ...
+    def build_nodes(self, plan_items: list[str], resource_ids: list[str] | None = None) -> BuildNodesResult: ...
 
     def learn_from_build(
         self,

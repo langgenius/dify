@@ -155,7 +155,7 @@ def test_build_nodes_emits_start_knowledge_llm_end_with_valid_connects():
         PlaceholderAgent,
     )
 
-    intents = PlaceholderAgent().build_nodes(["Retrieve", "Summarize", "Emit"])
+    intents = PlaceholderAgent().build_nodes(["Retrieve", "Summarize", "Emit"]).intents
     creates = [i for i in intents if i.op == "create_node"]
     connects = [i for i in intents if i.op == "connect"]
     assert [i.args["node_id"] for i in creates] == [

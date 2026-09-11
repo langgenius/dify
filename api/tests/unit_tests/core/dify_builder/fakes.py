@@ -40,6 +40,7 @@ from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
+    BuildNodesResult,
     ChecklistError,
     Checkpoint,
     ConversationItem,
@@ -418,7 +419,7 @@ class StubAgent:
         return []
 
     def build_nodes(self, _plan_items, _resource_ids=None):
-        return []
+        return BuildNodesResult(intents=[])
 
     def learn_from_build(self, _goal_text, _requirements, _plan_items, _built_node_ids):
         self.learn_calls = getattr(self, "learn_calls", 0) + 1

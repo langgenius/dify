@@ -12,6 +12,7 @@ from typing import Any
 
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import (
+    BuildNodesResult,
     ChecklistError,
     ConversationItem,
     Diagnosis,
@@ -129,11 +130,11 @@ class PlaceholderAgent:
             "Emit the final report",
         ]
 
-    def build_nodes(self, plan_items: list[str], resource_ids: list[str] | None = None) -> list[MutationIntent]:
+    def build_nodes(self, plan_items: list[str], resource_ids: list[str] | None = None) -> BuildNodesResult:
         # Start -> Knowledge-Retrieval -> LLM -> End. Creates and connects are
         # interleaved so each connect's endpoints already exist when
         # apply_connect validates them.
-        return [
+        return BuildNodesResult(intents=[
             MutationIntent(
                 op="create_node",
                 args={
@@ -169,7 +170,7 @@ class PlaceholderAgent:
                 },
             ),
             MutationIntent(op="connect", args={"from_node": BUILD_LLM_ID, "to_node": BUILD_END_ID}),
-        ]
+        ])
 
     def learn_from_build(
         self,
