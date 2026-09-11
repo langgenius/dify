@@ -298,6 +298,17 @@ class AppRunner:
         usage = None
         try:
             for result in invoke_result:
+                # Stop button: actually cancel the upstream LLM stream.
+                # Without this, plugin_daemon and the upstream provider keep
+                # generating tokens for a request the user has already abandoned.
+                # The Stop button only paused the SSE output on Dify; MTPLX and
+                # other inference servers continued generating until completion.
+                # Raising GenerateTaskStoppedError here short-circuits the
+                # loop and triggers the explicit `invoke_result.close()` in
+                # the except handler below, which cancels the upstream stream.
+                if queue_manager.is_stopped():
+                    raise GenerateTaskStoppedError()
+
                 if not agent:
                     queue_manager.publish(QueueLLMChunkEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
                 else:
