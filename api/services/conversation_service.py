@@ -159,6 +159,8 @@ class ConversationService:
                 conversation_id=conversation.id,
                 query=message.query,
                 app_mode=app_model.mode,
+                message_id=message.id,
+                user_id=message.from_account_id or message.from_end_user_id,
             )
 
         session.commit()
@@ -166,10 +168,21 @@ class ConversationService:
         return conversation
 
     @staticmethod
-    def generate_name(*, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str) -> str:
-        """Generate a conversation title with the appropriate credit usage metadata."""
+    def generate_name(
+        *,
+        tenant_id: str,
+        app_id: str,
+        conversation_id: str,
+        query: str,
+        app_mode: str,
+        message_id: str,
+        user_id: str | None,
+    ) -> str:
+        """Generate a title with explicit attribution; user_id is None for messages without a recorded author."""
         with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_mode)}):
-            return LLMGenerator.generate_conversation_name(tenant_id, query, conversation_id, app_id)
+            return LLMGenerator.generate_conversation_name(
+                tenant_id, query, conversation_id, app_id, message_id=message_id, user_id=user_id
+            )
 
     @classmethod
     def get_conversation(

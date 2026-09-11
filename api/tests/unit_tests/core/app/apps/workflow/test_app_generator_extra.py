@@ -493,9 +493,7 @@ class TestWorkflowAppGeneratorGenerate:
         app = _persist_app(sqlite_generator_session)
         workflow = _persist_workflow(sqlite_generator_session)
         user = _persist_end_user(sqlite_generator_session)
-        monkeypatch.setattr(
-            app_generator_module, "create_message_trace", Mock(return_value=Mock(spec=MessageTraceRecorder))
-        )
+        monkeypatch.setattr(app_generator_module, "create_message_trace", lambda **kwargs: None)
         execute = Mock(return_value={"ok": True})
         monkeypatch.setattr(generator, "_generate", execute)
         return generator, app, workflow, user, execute
@@ -580,7 +578,10 @@ class TestWorkflowAppGeneratorGenerate:
 
 
 class TestWorkflowAppGeneratorResume:
-    def test_resume_restores_trace_recorder_when_missing(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.parametrize("workflow_app_log_id", [None, "00000000-0000-0000-0000-000000000007"])
+    def test_resume_restores_trace_recorder_when_missing(
+        self, monkeypatch: pytest.MonkeyPatch, workflow_app_log_id: str | None
+    ):
         generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -603,6 +604,8 @@ class TestWorkflowAppGeneratorResume:
             workflow_execution_id="run-id",
             call_depth=0,
         )
+        if workflow_app_log_id:
+            application_generate_entity.extras["workflow_app_log_id"] = workflow_app_log_id
         DummyMessageTraceRecorder = type(
             "_DummyMessageTraceRecorder",
             (MessageTraceRecorder,),
@@ -644,6 +647,10 @@ class TestWorkflowAppGeneratorResume:
         assert trace_recorder.source.external_trace_id == "external-run"
         assert trace_recorder.source.session_id == "external-session"
         assert trace_recorder.source.operation_id == "run-id"
+        assert trace_recorder.source.attributes == (
+            {"workflow_app_log_id": workflow_app_log_id} if workflow_app_log_id else None
+        )
+        assert captured_entity.extras.get("workflow_app_log_id") == workflow_app_log_id
 
     def test_resume_preserves_existing_trace_recorder(self, monkeypatch: pytest.MonkeyPatch):
         generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)

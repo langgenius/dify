@@ -27,6 +27,7 @@ _REF = InstalledAppRef(
 _ACCOUNT_ID = "44444444-4444-4444-8444-444444444444"
 _CONVERSATION_ID = "55555555-5555-4555-8555-555555555555"
 _OWNER_TENANT_ID = "66666666-6666-4666-8666-666666666666"
+_MESSAGE_ID = "77777777-7777-4777-8777-777777777777"
 _UPDATED_AT = datetime(2024, 1, 1)
 
 
@@ -65,7 +66,7 @@ class _Store:
         assert (installed_app, account_id, conversation_id) == (_REF, _ACCOUNT_ID, _CONVERSATION_ID)
         if self.conversation is None:
             raise ConversationNotExistsError()
-        return ConversationNameSource(tenant_id=_OWNER_TENANT_ID, query="First query")
+        return ConversationNameSource(tenant_id=_OWNER_TENANT_ID, message_id=_MESSAGE_ID, query="First query")
 
     def rename(
         self,
@@ -113,14 +114,26 @@ class _Orchestration:
     generation_action: Callable[[], None] | None = None
     cleanup_calls: list[tuple[str, str, tuple[str, ...]]] = field(default_factory=list)
 
-    def generate_name(self, *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str) -> str:
+    def generate_name(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        conversation_id: str,
+        query: str,
+        app_mode: str,
+        message_id: str,
+        user_id: str,
+    ) -> str:
         self.store.events.append("generate")
-        assert (tenant_id, app_id, conversation_id, query, app_mode) == (
+        assert (tenant_id, app_id, conversation_id, query, app_mode, message_id, user_id) == (
             _OWNER_TENANT_ID,
             _REF.app_id,
             _CONVERSATION_ID,
             "First query",
             "chat",
+            _MESSAGE_ID,
+            _ACCOUNT_ID,
         )
         if self.generation_error is not None:
             raise self.generation_error

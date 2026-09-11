@@ -100,6 +100,7 @@ class SQLAlchemyInstalledAppConversationRepository(InstalledAppConversationStore
                 raise MessageNotExistsError(f"Conversation {conversation_id} has no message to generate a name from.")
             return ConversationNameSource(
                 tenant_id=app.tenant_id,
+                message_id=message.id,
                 query=message.query,
             )
 

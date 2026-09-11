@@ -1,3 +1,5 @@
+from typing import override
+
 from pydantic import ValidationInfo, field_validator
 
 from core.ops.provider_config import BaseTracingConfig
@@ -11,6 +13,11 @@ class TencentConfig(BaseTracingConfig):
     token: str
     endpoint: str
     service_name: str
+
+    @classmethod
+    @override
+    def secret_fields(cls) -> tuple[str, ...]:
+        return ("token",)
 
     @field_validator("token")
     @classmethod

@@ -289,6 +289,7 @@ def test_name_source_uses_first_message_and_real_app_owner_tenant(
         conversation = _conversation(session, installation)
         _message(session, conversation, query="Later", created_at=_TIME)
         _message(session, conversation, query="First", created_at=_TIME - timedelta(hours=1))
+        first_message_id = session.scalar(select(Message.id).where(Message.query == "First"))
     repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
     connection_events: list[str] = []
 
@@ -305,6 +306,7 @@ def test_name_source_uses_first_message_and_real_app_owner_tenant(
     )
     assert connection_events == ["checkout", "checkin"]
     assert result.tenant_id == _OWNER_TENANT_ID != installation.tenant_id
+    assert result.message_id == first_message_id
     assert result.query == "First"
     record = repository.get(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
     assert record.name == "Original name"

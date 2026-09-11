@@ -1,6 +1,7 @@
 """Build deterministic OTLP messages without a global tracer or SDK span queue."""
 
 import os
+from collections.abc import Mapping
 from datetime import datetime
 from ipaddress import ip_address, ip_network
 from time import monotonic
@@ -66,16 +67,34 @@ def otlp_attributes(attributes: dict[str, Any]) -> list[KeyValue]:
     return [KeyValue(key=key, value=otlp_value(value)) for key, value in attributes.items() if value is not None]
 
 
+def otlp_trace_id(completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None) -> str:
+    """Use protocol-valid external correlation; an explicitly attached parent takes precedence."""
+    if parent_span:
+        return str(UUID(str(parent_span["trace_id"])))
+    if completed_trace.source.external_trace_id:
+        try:
+            external_id = UUID(completed_trace.source.external_trace_id)
+            if external_id.int:
+                return str(external_id)
+        except ValueError:
+            pass
+    return provider_uuid(completed_trace.trace_id)
+
+
 def otlp_span(
-    completed_trace: CompletedTrace, span: TraceSpan, parent_span: dict[str, JsonValue] | None = None
+    completed_trace: CompletedTrace,
+    span: TraceSpan,
+    parent_span: dict[str, JsonValue] | None = None,
+    *,
+    attributes: Mapping[str, Any] | None = None,
 ) -> Span:
-    trace_id = str(parent_span["trace_id"]) if parent_span else provider_uuid(completed_trace.trace_id)
+    trace_id = otlp_trace_id(completed_trace, parent_span)
     parent_id = export_span_id(completed_trace, span.parent_span_id) if span.parent_span_id else None
     if span.span_id == completed_trace.root_span_id and parent_span:
         parent_id = str(parent_span["span_id"])
     events: list[Span.Event] = []
     for event in span.events:
-        occurred_at = event.get("timestamp") or event.get("time")
+        occurred_at = event.get("timestamp") or event.get("time") or event.get("observed_at")
         try:
             event_time = datetime.fromisoformat(occurred_at) if isinstance(occurred_at, str) else None
         except ValueError:
@@ -95,9 +114,18 @@ def otlp_span(
         kind=Span.SPAN_KIND_INTERNAL,
         start_time_unix_nano=timestamp_ns(span.started_at),
         end_time_unix_nano=timestamp_ns(span.ended_at),
-        attributes=otlp_attributes(span_attributes(completed_trace, span)),
+        attributes=otlp_attributes(
+            dict(attributes) if attributes is not None else span_attributes(completed_trace, span)
+        ),
         status=Status(
-            code=Status.STATUS_CODE_ERROR if span.status == "error" else Status.STATUS_CODE_OK, message=span.error or ""
+            code=(
+                Status.STATUS_CODE_ERROR
+                if span.status == "error" or (span.status == "handled_error" and span.span_type != "workflow")
+                else Status.STATUS_CODE_OK
+                if span.status in {"ok", "handled_error"}
+                else Status.STATUS_CODE_UNSET
+            ),
+            message=span.error or "",
         ),
         events=events,
         flags=1,
@@ -152,13 +180,11 @@ class OtlpTraceClient:
         project_url: str,
         *,
         protocol: str = "http/protobuf",
-        tencent_metrics: bool = False,
     ):
         self.http = TraceProviderHttpClient(endpoint, headers)
         self.resource = Resource(attributes=otlp_attributes(resource_attributes))
         self.project_url = project_url
         self.protocol = protocol
-        self.tencent_metrics = tencent_metrics
 
     def get_project_url(self) -> str:
         return self.project_url
@@ -255,28 +281,16 @@ class OtlpTraceClient:
                 },
             ) from None
 
+    def build_span(
+        self, completed_trace: CompletedTrace, span: TraceSpan, parent_span: dict[str, JsonValue] | None = None
+    ) -> Span:
+        """Let destinations project captured data without replacing OTLP transport."""
+        return otlp_span(completed_trace, span, parent_span)
+
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
-        spans = [otlp_span(completed_trace, span, parent_span) for span in completed_trace.spans]
-        if self.tencent_metrics:
-            for exported_span, span in zip(spans, completed_trace.spans, strict=True):
-                for attribute in exported_span.attributes:
-                    if attribute.key == "gen_ai.span.kind":
-                        attribute.value.string_value = {
-                            "llm": "GENERATION",
-                            "workflow": "WORKFLOW",
-                            "operation": "WORKFLOW",
-                        }.get(span.span_type, attribute.value.string_value)
-                exported_span.attributes.extend(
-                    otlp_attributes(
-                        {
-                            "gen_ai.is_entry": "true" if span.span_id == completed_trace.root_span_id else "false",
-                            "gen_ai.entity.input": json_text(span.inputs),
-                            "gen_ai.entity.output": json_text(span.outputs),
-                        }
-                    )
-                )
+        spans = [self.build_span(completed_trace, span, parent_span) for span in completed_trace.spans]
         self.send_traces(
             ExportTraceServiceRequest(
                 resource_spans=[
@@ -287,50 +301,12 @@ class OtlpTraceClient:
                 ]
             )
         )
-        if self.tencent_metrics:
-            self.send_metrics(self._tencent_metrics(completed_trace))
         return ExportedParentSpans(
             spans={
                 span.span_id: {
-                    "trace_id": str(parent_span["trace_id"])
-                    if parent_span
-                    else provider_uuid(completed_trace.trace_id),
+                    "trace_id": otlp_trace_id(completed_trace, parent_span),
                     "span_id": export_span_id(completed_trace, span.span_id),
                 }
                 for span in completed_trace.spans
             }
         )
-
-    def _tencent_metrics(self, completed_trace: CompletedTrace) -> list[Metric]:
-        metrics: list[Metric] = []
-        for span in completed_trace.spans:
-            labels = {
-                "gen_ai.operation.name": span.attributes.get("operation_type", span.span_type),
-                "gen_ai.system": span.attributes.get("model_provider", ""),
-                "gen_ai.request.model": span.attributes.get("model_name", ""),
-                "gen_ai.response.model": span.attributes.get("model_name", ""),
-                "dify.tenant_id": completed_trace.source.tenant_id,
-                "dify.app_id": completed_trace.source.app_id or "",
-            }
-            if span.started_at and span.ended_at:
-                seconds = (span.ended_at - span.started_at).total_seconds()
-                if span.span_id == completed_trace.root_span_id:
-                    metrics.append(histogram("gen_ai.trace.duration", seconds, span, labels))
-                if span.span_type == "llm":
-                    metrics.append(histogram("gen_ai.client.operation.duration", seconds, span, labels))
-            if span.span_type == "llm":
-                for field, token_type in (("prompt_tokens", "input"), ("completion_tokens", "output")):
-                    if isinstance(tokens := span.usage.get(field), (int, float)):
-                        metrics.append(
-                            histogram(
-                                "gen_ai.client.token.usage",
-                                float(tokens),
-                                span,
-                                {**labels, "gen_ai.token.type": token_type},
-                                "token",
-                            )
-                        )
-                for field in ("gen_ai.server.time_to_first_token", "gen_ai.streaming.time_to_generate"):
-                    if isinstance(streaming_seconds := span.attributes.get(field), (int, float)):
-                        metrics.append(histogram(field, float(streaming_seconds), span, labels))
-        return metrics

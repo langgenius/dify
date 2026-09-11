@@ -398,6 +398,18 @@ def test_retried_workflow_tool_exports_each_invocation_without_the_other_attempt
                     node_run_result=NodeRunResult(outputs={"attempt": attempt}),
                 )
             )
+            recorder.on_node_run_end(
+                node(tool_execution_id),
+                None,
+                NodeRunFailedEvent(
+                    id=tool_execution_id,
+                    node_id="tool",
+                    node_type="tool",
+                    start_at=started,
+                    finished_at=datetime.now(UTC),
+                    error="retry child",
+                ),
+            )
         else:
             recorder.record_workflow_event(
                 NodeRunSucceededEvent(

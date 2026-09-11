@@ -195,6 +195,15 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 **extract_parent_trace_context_from_args(args),
                 **extract_trace_session_id_from_args(args),
             }
+            trace_attributes = {
+                "from_account_id": user.id if isinstance(user, Account) else None,
+                "from_end_user_id": user.id if isinstance(user, EndUser) else None,
+            }
+            if invoke_from in (InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI, InvokeFrom.EXPLORE, InvokeFrom.WEB_APP):
+                # The engine can finish tracing before the queued start event creates the app log.
+                workflow_app_log_id = str(uuid.uuid4())
+                extras["workflow_app_log_id"] = workflow_app_log_id
+                trace_attributes["workflow_app_log_id"] = workflow_app_log_id
             workflow_run_id = str(workflow_run_id or uuid.uuid4())
             trace_recorder = create_message_trace(
                 tenant_id=app_model.tenant_id,
@@ -203,6 +212,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 operation_id=workflow_run_id,
                 external_trace_id=extras.get("external_trace_id"),
                 session_id=extras.get("trace_session_id"),
+                attributes=trace_attributes,
             )
             root_node_id = root_node_id or get_default_root_node_id(workflow.graph_dict)
             root_node_config = workflow.get_node_config_by_id(root_node_id)
@@ -246,6 +256,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
             else:
                 workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
+            if trace_recorder:
+                trace_recorder.attributes["triggered_from"] = workflow_triggered_from.value
             workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
                 tenant_id=app_model.tenant_id,
@@ -298,6 +310,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         so resumed executions rebuild it here before persistence layers receive the entity.
         """
         if application_generate_entity.trace_recorder is None:
+            workflow_app_log_id = application_generate_entity.extras.get("workflow_app_log_id")
             application_generate_entity = application_generate_entity.model_copy(
                 update={
                     "trace_recorder": create_message_trace(
@@ -307,6 +320,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         operation_id=application_generate_entity.workflow_execution_id,
                         external_trace_id=application_generate_entity.extras.get("external_trace_id"),
                         session_id=application_generate_entity.extras.get("trace_session_id"),
+                        attributes={"workflow_app_log_id": workflow_app_log_id} if workflow_app_log_id else None,
                     )
                 }
             )

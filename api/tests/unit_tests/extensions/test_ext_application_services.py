@@ -1427,7 +1427,9 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
 
     naming_sessions: list[Session] = []
 
-    def generate_name(tenant_id: str, query: str, c_id: str, app_id: str) -> str:
+    def generate_name(
+        tenant_id: str, query: str, c_id: str, app_id: str, *, message_id: str, user_id: str | None
+    ) -> str:
         assert active_connections == 0
         assert get_credit_usage_metadata() == {"app_type": CreditUsageAppType.CHATBOT, "request_id": "naming-request"}
         assert (tenant_id, query, c_id, app_id) == (
@@ -1436,6 +1438,14 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             conversation_id,
             installed_app_ref.app_id,
         )
+        assert user_id == account_id
+        with sqlite_session_factory() as session:
+            source_message = session.get(Message, message_id)
+            assert source_message is not None
+            assert source_message.app_id == app_id
+            assert source_message.conversation_id == c_id
+            assert source_message.query == query
+            assert source_message.from_account_id == user_id
         # Provider/tracing code still uses the Flask-scoped session. Exercise
         # that lifecycle rather than letting a pure callback hide a leaked read.
         naming_session = db.session()

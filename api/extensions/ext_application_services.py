@@ -263,14 +263,20 @@ _EXTENSION_KEY = "application_services"
 
 
 def _generate_installed_app_conversation_name(
-    *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str
+    *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str, message_id: str, user_id: str
 ) -> str:
     # Legacy provider and tracing lookups use db.session. Give them their own
     # scope so teardown releases it before the conversation write transaction,
     # without removing a session owned by the surrounding request.
     with current_app.app_context():
         return ConversationService.generate_name(
-            tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id, query=query, app_mode=app_mode
+            tenant_id=tenant_id,
+            app_id=app_id,
+            conversation_id=conversation_id,
+            query=query,
+            app_mode=app_mode,
+            message_id=message_id,
+            user_id=user_id,
         )
 
 

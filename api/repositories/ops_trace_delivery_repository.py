@@ -380,7 +380,9 @@ class OpsTraceDeliveryRepository:
                 )
             session.commit()
 
-    def expired_traces(self, limit: int = 100) -> list[OpsTraceDelivery]:
+    def expired_traces(
+        self, limit: int = 100, *, success_retention_seconds: int = 0, failure_retention_seconds: int = 0
+    ) -> list[OpsTraceDelivery]:
         with self.session_factory() as session:
             now = self.database_time(session)
             rows = list(
@@ -391,11 +393,11 @@ class OpsTraceDeliveryRepository:
                         sa.or_(
                             sa.and_(
                                 OpsTraceDelivery.status == "succeeded",
-                                OpsTraceDelivery.finished_at <= now - timedelta(days=1),
+                                OpsTraceDelivery.finished_at <= now - timedelta(seconds=success_retention_seconds),
                             ),
                             sa.and_(
                                 OpsTraceDelivery.status.in_(("failed", "cancelled")),
-                                OpsTraceDelivery.finished_at <= now - timedelta(days=7),
+                                OpsTraceDelivery.finished_at <= now - timedelta(seconds=failure_retention_seconds),
                             ),
                         ),
                         # Cancelled staging uploads can finish after cancellation: revisit their immutable key.

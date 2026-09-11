@@ -1,3 +1,5 @@
+from typing import override
+
 from pydantic import ValidationInfo, field_validator
 
 from core.ops.provider_config import BaseTracingConfig
@@ -14,6 +16,11 @@ class WeaveConfig(BaseTracingConfig):
     project: str
     endpoint: str = "https://trace.wandb.ai"
     host: str | None = None
+
+    @classmethod
+    @override
+    def secret_fields(cls) -> tuple[str, ...]:
+        return ("api_key",)
 
     @field_validator("endpoint")
     @classmethod
