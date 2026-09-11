@@ -583,6 +583,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       <HooksStoreContextProvider {...(hooksStore as unknown as Partial<HooksStoreShape>)}>
         <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
           <Workflow
+            className={showDifyBuilderPanel ? 'min-w-0!' : undefined}
             nodes={nodes}
             edges={edges}
             viewport={viewport}
