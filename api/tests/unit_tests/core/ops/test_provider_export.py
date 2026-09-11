@@ -1,6 +1,7 @@
 """Protocol fixtures for complete trees, fixed destinations and synchronous acceptance."""
 
 import os
+import ssl
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from time import monotonic
@@ -162,8 +163,11 @@ def test_every_provider_exports_complete_tree_with_repeatable_ids(
             return httpx.Response(200, content=b"")
         return httpx.Response(200, json={})
 
-    def grpc_request(client: OtlpTraceClient, signal: str, serialized: bytes) -> bytes:
-        requests.append(("GRPC", signal, {"content": serialized, "headers": dict(client.http.headers)}))
+    def grpc_request(
+        client: OtlpTraceClient, signal: str, serialized: bytes, *, http_client: TraceProviderHttpClient | None = None
+    ) -> bytes:
+        transport = http_client if http_client is not None else client.http
+        requests.append(("GRPC", signal, {"content": serialized, "headers": dict(transport.headers)}))
         return b""
 
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
@@ -240,6 +244,89 @@ def test_ssrf_clients_close_and_do_not_share_response_cookies(monkeypatch: pytes
     TraceProviderHttpClient("https://same-provider.example", {"Authorization": "tenant-b"}).request("GET")
     assert received_cookies == [None, None]
     assert all(client.is_closed for client in clients)
+
+
+@pytest.mark.parametrize("separate_metrics", [False, True])
+def test_otlp_http_preserves_signal_destination_authentication_tls_and_deadline(
+    separate_metrics: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    trace_context, metrics_context = ssl.create_default_context(), ssl.create_default_context()
+    contexts: list[ssl.SSLContext | None] = []
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, content=b"")
+
+    def create_client(*, ssl_context: ssl.SSLContext | None = None) -> httpx.Client:
+        contexts.append(ssl_context)
+        return httpx.Client(transport=httpx.MockTransport(respond), trust_env=False)
+
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.create_http_client", create_client)
+    metrics = TraceProviderHttpClient(
+        "https://metrics.example/custom", {"Authorization": "metrics-key"}, ssl_context=metrics_context
+    )
+    client = OtlpTraceClient(
+        "https://traces.example/v1/traces",
+        {"Authorization": "trace-key"},
+        {},
+        "",
+        ssl_context=trace_context,
+        metrics_http=metrics if separate_metrics else None,
+    )
+    client.http.deadline = monotonic() + 10
+    client._send("trace", b"trace")
+    client._send("metrics", b"metrics")
+    assert [(str(request.url), request.headers["authorization"], request.content) for request in requests] == [
+        ("https://traces.example/v1/traces", "trace-key", b"trace"),
+        (
+            "https://metrics.example/custom" if separate_metrics else "https://traces.example/v1/metrics",
+            "metrics-key" if separate_metrics else "trace-key",
+            b"metrics",
+        ),
+    ]
+    assert contexts == [trace_context, metrics_context if separate_metrics else trace_context]
+    if separate_metrics:
+        assert metrics.deadline == client.http.deadline
+    client.http.deadline = monotonic() - 1
+    with pytest.raises(TraceExportError, match="export_deadline_exceeded"):
+        client._send("metrics", b"expired")
+    assert len(requests) == 2
+
+
+def test_otlp_grpc_preserves_signal_destination_authentication_and_credentials(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(SSRF_PROXY_ALL_URL="", SSRF_PROXY_HTTP_URL="", SSRF_PROXY_HTTPS_URL="")
+    credentials = {"trace": object(), "metrics": object()}
+    channels = [MagicMock(), MagicMock()]
+    for channel in channels:
+        channel.unary_unary.return_value.return_value = b""
+    secure_channel = Mock(side_effect=channels)
+    monkeypatch.setattr(grpc, "secure_channel", secure_channel)
+    metrics = TraceProviderHttpClient("https://metrics.example:9443", {"authorization": "metrics-key"})
+    client = OtlpTraceClient(
+        "https://traces.example:8443",
+        {"authorization": "trace-key"},
+        {},
+        "",
+        protocol="grpc",
+        metrics_http=metrics,
+        grpc_credentials=credentials,
+    )
+    for signal in ("trace", "metrics"):
+        assert client._send(signal, signal.encode()) == b""
+    assert [call.args for call in secure_channel.call_args_list] == [
+        ("traces.example:8443", credentials["trace"]),
+        ("metrics.example:9443", credentials["metrics"]),
+    ]
+    for channel, signal in zip(channels, ("trace", "metrics"), strict=True):
+        send = channel.unary_unary.return_value
+        assert send.call_args.args == (signal.encode(),)
+        assert send.call_args.kwargs["metadata"] == (("authorization", f"{signal}-key"),)
+        assert 0 < send.call_args.kwargs["timeout"] <= 30
+        channel.__exit__.assert_called_once()
+    assert metrics.deadline == client.http.deadline
 
 
 @pytest.mark.parametrize(

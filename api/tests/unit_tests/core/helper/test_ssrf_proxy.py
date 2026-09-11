@@ -1,4 +1,5 @@
 import gzip
+import ssl
 from collections.abc import Callable
 from typing import override
 from unittest.mock import ANY, MagicMock, call, patch
@@ -15,6 +16,7 @@ from core.helper.ssrf_proxy import (
     _get_user_provided_host_header,
     _to_graphon_http_response,
     buffer_response,
+    create_http_client,
     graphon_ssrf_proxy,
     make_request,
     max_retries_exceeded_error,
@@ -142,8 +144,10 @@ def test_force_list_response_returns_when_retries_disabled(mock_get_client):
     mock_client.send.assert_called_once()
 
 
+@pytest.mark.parametrize("verify", [False, ssl.create_default_context()])
 def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports(
     config_overrides: Callable[..., None],
+    verify: bool | ssl.SSLContext,
 ):
     config_overrides(
         SSRF_PROXY_ALL_URL=None,
@@ -158,20 +162,36 @@ def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports(
         patch("core.helper.ssrf_proxy.httpx.HTTPTransport", side_effect=[http_transport, https_transport]) as transport,
         patch("core.helper.ssrf_proxy.httpx.Client", return_value=mock_client) as client,
     ):
-        ssrf_client = _build_ssrf_client(verify=False)
+        ssrf_client = _build_ssrf_client(verify=verify)
 
     assert ssrf_client is mock_client
     transport.assert_has_calls(
         [
-            call(proxy="http://proxy.example.com:8080", verify=False),
-            call(proxy="http://proxy.example.com:8443", verify=False),
+            call(proxy="http://proxy.example.com:8080", verify=verify),
+            call(proxy="http://proxy.example.com:8443", verify=verify),
         ],
     )
     client.assert_called_once_with(
         mounts={"http://": http_transport, "https://": https_transport},
-        verify=False,
+        verify=verify,
         limits=ANY,
     )
+
+
+@pytest.mark.parametrize("proxy", [None, "http://proxy.example.com:8080"])
+def test_owned_client_preserves_explicit_tls_context(proxy: str | None, config_overrides: Callable[..., None]) -> None:
+    config_overrides(SSRF_PROXY_ALL_URL=proxy, SSRF_PROXY_HTTP_URL=None, SSRF_PROXY_HTTPS_URL=None)
+    context = ssl.create_default_context()
+    with patch("core.helper.ssrf_proxy.httpx.Client") as client:
+        create_http_client(ssl_context=context)
+    assert client.call_args.kwargs["verify"] is context
+    assert client.call_args.kwargs.get("proxy") == proxy
+
+
+@pytest.mark.parametrize("context", [True, "/untrusted/certificate.pem"])
+def test_owned_client_rejects_invalid_tls_context(context: object) -> None:
+    with pytest.raises(ValueError, match="must be an SSLContext"):
+        create_http_client(ssl_context=context)  # type: ignore[arg-type]
 
 
 class TestGetUserProvidedHostHeader:

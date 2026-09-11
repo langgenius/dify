@@ -1,17 +1,25 @@
 """Enterprise signal contracts projected from captured executions without record lookups."""
 
+import base64
 import logging
+import os
+import socket
+import ssl
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
 from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans
+from opentelemetry.util.re import _LIBERAL_HEADER_PATTERN, parse_env_headers
 from pydantic import JsonValue
 
 from core.ops.otlp_trace import OtlpTraceClient, counter, histogram, otlp_span, otlp_trace_id
-from core.ops.provider_export import export_span_id, json_text, span_attributes, span_id_bytes
+from core.ops.provider_export import TraceProviderHttpClient, export_span_id, json_text, span_attributes, span_id_bytes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 
 # Preserve the explicit buckets used by the previous enterprise SDK histograms.
@@ -24,7 +32,7 @@ def load_enterprise_config() -> dict[str, Any] | None:
 
     if not is_enterprise_telemetry_enabled():
         return None
-    return {
+    config: dict[str, Any] = {
         "endpoint": dify_config.ENTERPRISE_OTLP_ENDPOINT,
         "protocol": dify_config.ENTERPRISE_OTLP_PROTOCOL,
         "headers": _parse_otlp_headers(dify_config.ENTERPRISE_OTLP_HEADERS),
@@ -33,6 +41,86 @@ def load_enterprise_config() -> dict[str, Any] | None:
         "include_content": dify_config.ENTERPRISE_INCLUDE_CONTENT,
         "sampling_rate": dify_config.ENTERPRISE_OTEL_SAMPLING_RATE,
     }
+    config["signals"] = resolve_enterprise_signal_settings(config)
+    return config
+
+
+def resolve_enterprise_signal_settings(provider_config: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Freeze the previous SDK's destination/auth defaults before their configuration is fingerprinted."""
+    if "signals" in provider_config:
+        return provider_config["signals"]
+    protocol = provider_config.get("protocol", "grpc")
+    configured_endpoint = str(provider_config.get("endpoint") or "").rstrip("/")
+    configured_headers = dict(provider_config.get("headers") or {})
+    if provider_config.get("api_key"):
+        configured_headers["authorization"] = f"Bearer {provider_config['api_key']}"
+    signals: dict[str, dict[str, Any]] = {}
+    for signal, env_signal in (("trace", "TRACES"), ("metrics", "METRICS")):
+        prefix = f"OTEL_EXPORTER_OTLP_{env_signal}_"
+        if configured_endpoint:
+            endpoint = configured_endpoint
+            if protocol != "grpc":
+                endpoint += "/v1/" + ("traces" if signal == "trace" else signal)
+        elif os.environ.get(prefix + "ENDPOINT"):
+            endpoint = os.environ[prefix + "ENDPOINT"]
+        else:
+            endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or (
+                "http://localhost:4317" if protocol == "grpc" else "http://localhost:4318"
+            )
+            if protocol != "grpc":
+                endpoint = endpoint.rstrip("/") + "/v1/" + ("traces" if signal == "trace" else signal)
+        if protocol == "grpc":
+            if "://" not in endpoint:
+                endpoint = f"http://{endpoint}"
+            parsed = urlsplit(endpoint)
+            if parsed.hostname and parsed.port is None:
+                # The SDK passed a portless target to gRPC, whose DNS default is 443 even without TLS.
+                endpoint = urlunsplit(parsed._replace(netloc=f"{parsed.netloc}:443"))
+        raw_headers = os.environ.get(prefix + "HEADERS", os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", ""))
+        # The SDK logs rejected header text; filter it with its own grammar before parsing credentials.
+        valid_headers = ",".join(
+            header for header in raw_headers.split(",") if _LIBERAL_HEADER_PATTERN.fullmatch(header.strip())
+        )
+        headers = configured_headers or parse_env_headers(valid_headers, liberal=True)
+        tls: dict[str, str] = {}
+        if urlsplit(endpoint).scheme == "https":
+            # gRPC selects the complete signal-specific credential set when its CA is set.
+            tls_prefix = (
+                prefix if protocol != "grpc" or os.environ.get(prefix + "CERTIFICATE") else "OTEL_EXPORTER_OTLP_"
+            )
+            for field in ("certificate", "client_key", "client_certificate"):
+                if protocol == "grpc" and not os.environ.get(tls_prefix + "CERTIFICATE"):
+                    break
+                filename = os.environ.get(tls_prefix + field.upper())
+                if protocol != "grpc" and filename is None:
+                    filename = os.environ.get("OTEL_EXPORTER_OTLP_" + field.upper())
+                if filename:
+                    try:
+                        # Contents, not mutable filenames, enter the settings HMAC and authorized export.
+                        tls[field] = base64.b64encode(Path(filename).read_bytes()).decode("ascii")
+                    except OSError:
+                        raise ValueError("Cannot read enterprise TLS configuration") from None
+        signals[signal] = {"endpoint": endpoint, "headers": dict(headers), "tls": tls}
+    return signals
+
+
+def create_enterprise_http_ssl_context(tls: dict[str, str]) -> ssl.SSLContext | None:
+    if not tls:
+        return None
+    certificate = base64.b64decode(tls["certificate"]) if tls.get("certificate") else None
+    context = ssl.create_default_context(
+        cadata=certificate.decode("ascii") if certificate and b"-----BEGIN" in certificate else certificate
+    )
+    if tls.get("client_certificate"):
+        # SSLContext only accepts filenames for a client chain. Private temporary files are removed after loading.
+        with NamedTemporaryFile() as certificate_file, NamedTemporaryFile() as key_file:
+            certificate_file.write(base64.b64decode(tls["client_certificate"]))
+            certificate_file.flush()
+            if tls.get("client_key"):
+                key_file.write(base64.b64decode(tls["client_key"]))
+                key_file.flush()
+            context.load_cert_chain(certificate_file.name, key_file.name if tls.get("client_key") else None)
+    return context
 
 
 def business_status(span: TraceSpan, operation_type: str) -> str:
@@ -78,22 +166,42 @@ def invocation_source(captured: dict[str, Any], operation_type: str) -> Any:
 
 class EnterpriseTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
-        endpoint = str(provider_config["endpoint"]).rstrip("/")
         protocol = str(provider_config.get("protocol", "grpc"))
-        if protocol == "grpc" and "://" not in endpoint:
-            # The previous gRPC exporter accepted bare host:port as insecure.
-            # Normalize before the shared endpoint validation and SSRF proxy policy.
-            endpoint = f"http://{endpoint}"
-        headers = dict(provider_config.get("headers") or {})
-        if provider_config.get("api_key"):
-            headers["authorization"] = f"Bearer {provider_config['api_key']}"
+        signals = resolve_enterprise_signal_settings(provider_config)
+        trace_settings, metrics_settings = signals["trace"], signals["metrics"]
+        ssl_contexts: dict[str, ssl.SSLContext | None] = {}
+        grpc_credentials: dict[str, Any] = {}
+        for signal, settings in signals.items():
+            tls = settings["tls"]
+            if protocol == "grpc" and tls:
+                import grpc  # pyrefly: ignore[untyped-import]
+
+                grpc_credentials[signal] = grpc.ssl_channel_credentials(
+                    root_certificates=base64.b64decode(tls["certificate"]) if tls.get("certificate") else None,
+                    private_key=base64.b64decode(tls["client_key"]) if tls.get("client_key") else None,
+                    certificate_chain=base64.b64decode(tls["client_certificate"])
+                    if tls.get("client_certificate")
+                    else None,
+                )
+            elif protocol != "grpc":
+                ssl_contexts[signal] = create_enterprise_http_ssl_context(tls)
         self.otlp = OtlpTraceClient(
-            endpoint if protocol == "grpc" else endpoint + "/v1/traces",
-            headers,
-            {"service.name": provider_config.get("service_name", "dify")},
+            trace_settings["endpoint"],
+            trace_settings["headers"],
+            {"service.name": provider_config.get("service_name", "dify"), "host.name": socket.gethostname()},
             "",
             protocol=protocol,
+            ssl_context=ssl_contexts.get("trace"),
+            metrics_http=TraceProviderHttpClient(
+                metrics_settings["endpoint"], metrics_settings["headers"], ssl_context=ssl_contexts.get("metrics")
+            ),
+            grpc_credentials=grpc_credentials,
         )
+        if protocol != "grpc":
+            # Standard per-signal HTTP endpoints are exact, including a trailing slash.
+            self.otlp.http.endpoint = trace_settings["endpoint"]
+            assert self.otlp.metrics_http is not None
+            self.otlp.metrics_http.endpoint = metrics_settings["endpoint"]
         self.include_content = bool(provider_config.get("include_content", False))
         self.sampling_rate = float(provider_config.get("sampling_rate", 1))
         self.logger = logging.getLogger("dify.telemetry")
@@ -528,4 +636,15 @@ class EnterpriseTraceClient:
                         },
                     )
                 )
+        counter_units = {
+            "dify.tokens.input": "{token}",
+            "dify.tokens.output": "{token}",
+            "dify.tokens.total": "{token}",
+            "dify.requests.total": "{request}",
+            "dify.errors.total": "{error}",
+            "dify.dataset.retrievals.total": "{retrieval}",
+        }
+        for metric in metrics:
+            if metric.name in counter_units:
+                metric.unit = counter_units[metric.name]
         return metrics

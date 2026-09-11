@@ -56,6 +56,11 @@ class WeaveTraceClient:
 
     def _project_id(self) -> str:
         entity = self.config.entity
+        project = self.config.project
+        if not entity and "/" in project:
+            entity, project = project.split("/", 1)
+            if not entity:
+                raise TraceExportError("weave_project_invalid")
         if not entity:
             account = TraceProviderHttpClient(self.config.host or "https://api.wandb.ai", self.http.headers)
             account.deadline = self.http.deadline
@@ -63,7 +68,9 @@ class WeaveTraceClient:
             entity = (response.get("data", {}).get("viewer") or {}).get("entity")
         if not entity:
             raise TraceExportError("weave_entity_unavailable")
-        return f"{entity}/{self.config.project}"
+        if not project or "/" in entity or "/" in project:
+            raise TraceExportError("weave_project_invalid")
+        return f"{entity}/{project}"
 
     def verify_credentials(self) -> bool:
         self.http.request("POST", "calls/query_stats", json={"project_id": self._project_id()})
@@ -88,54 +95,56 @@ class WeaveTraceClient:
         )
         # Timing is checked before project discovery, which can itself send a request.
         project_id = self._project_id()
+        complete_calls_endpoint = f"v2/{quote(project_id, safe='/')}/calls/complete"
+        use_complete_calls = True
         for span in spans:
             assert span.started_at is not None
             assert span.ended_at is not None
             has_error = span.status == "error" or (
                 span.status == "cancelled" and span.span_type == "workflow" and bool(span.error)
             )
-            self.http.request(
-                "POST",
-                "call/start",
-                json={
-                    "start": {
-                        "project_id": project_id,
-                        "id": export_span_id(completed_trace, span.span_id),
-                        "op_name": span.span_name,
-                        "trace_id": trace_id,
-                        "parent_id": export_span_id(completed_trace, span.parent_span_id)
-                        if span.parent_span_id
-                        else (parent_span["span_id"] if parent_span else None),
-                        "started_at": span.started_at.isoformat(),
-                        "attributes": span_attributes(completed_trace, span),
-                        "inputs": span.inputs if isinstance(span.inputs, dict) else {"input": span.inputs},
-                        "wb_user_id": None,
-                    }
+            start: dict[str, JsonValue] = {
+                "project_id": project_id,
+                "id": export_span_id(completed_trace, span.span_id),
+                "op_name": span.span_name,
+                "trace_id": trace_id,
+                "parent_id": export_span_id(completed_trace, span.parent_span_id)
+                if span.parent_span_id
+                else (parent_span["span_id"] if parent_span else None),
+                "started_at": span.started_at.isoformat(),
+                "attributes": span_attributes(completed_trace, span),
+                "inputs": span.inputs if isinstance(span.inputs, dict) else {"input": span.inputs},
+                "wb_user_id": None,
+            }
+            end: dict[str, JsonValue] = {
+                "project_id": project_id,
+                "id": start["id"],
+                "ended_at": span.ended_at.isoformat(),
+                "exception": span.error if has_error else None,
+                "output": span.outputs,
+                "summary": {
+                    "usage": {str(span.attributes.get("model_name", "unknown")): span.usage},
+                    "status_counts": {
+                        "error": int(has_error),
+                        "success": int(not has_error),
+                    },
+                    "weave": {
+                        "latency_ms": (span.ended_at - span.started_at).total_seconds() * 1000,
+                    },
                 },
-            )
-            self.http.request(
-                "POST",
-                "call/end",
-                json={
-                    "end": {
-                        "project_id": project_id,
-                        "id": export_span_id(completed_trace, span.span_id),
-                        "ended_at": span.ended_at.isoformat(),
-                        "exception": span.error if has_error else None,
-                        "output": span.outputs,
-                        "summary": {
-                            "usage": {str(span.attributes.get("model_name", "unknown")): span.usage},
-                            "status_counts": {
-                                "error": int(has_error),
-                                "success": int(not has_error),
-                            },
-                            "weave": {
-                                "latency_ms": (span.ended_at - span.started_at).total_seconds() * 1000,
-                            },
-                        },
-                    }
-                },
-            )
+            }
+            if use_complete_calls:
+                try:
+                    # Weave v2 accepts completed calls for both old and migrated projects.
+                    self.http.request("POST", complete_calls_endpoint, json={"batch": [{**start, **end}]})
+                except TraceExportError as error:
+                    if str(error) != "provider_http_404":
+                        raise
+                    # Older self-hosted servers do not expose the v2 endpoint.
+                    use_complete_calls = False
+            if not use_complete_calls:
+                self.http.request("POST", "call/start", json={"start": start})
+                self.http.request("POST", "call/end", json={"end": end})
         return ExportedParentSpans(
             spans={
                 span.span_id: {"trace_id": trace_id, "span_id": export_span_id(completed_trace, span.span_id)}

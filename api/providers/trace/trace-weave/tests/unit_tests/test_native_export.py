@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
@@ -116,7 +117,7 @@ def test_weave_verification_and_export_use_saved_destination(
         *discovery,
         f"{trace_endpoint}/calls/query_stats",
         *discovery,
-        *[f"{trace_endpoint}/call/{event}" for _span in trace.spans for event in ("start", "end")],
+        *[f"{trace_endpoint}/v2/entity/project/calls/complete" for _span in trace.spans],
     ]
     assert all(request.headers["Authorization"] == basic_auth("api", "saved-key") for request in requests)
     assert dict(os.environ) == environment
@@ -154,17 +155,16 @@ def test_weave_preserves_untimed_children_and_status_counts(missing: dict, monke
     trace = trace.model_copy(update={"spans": (trace.spans[0], child)})
     client, request = make_client_with_transport(monkeypatch)
     receipt = client.export_trace(trace)
-    start = request.call_args_list[-2].kwargs["json"]["start"]
-    end = request.call_args_list[-1].kwargs["json"]["end"]
+    call = request.call_args.kwargs["json"]["batch"][0]
     anchor = child.started_at or trace.spans[0].started_at
     assert anchor is not None
-    assert start["started_at"] == end["ended_at"] == anchor.isoformat()
-    assert start["attributes"]["dify.timing.estimated"] is True
-    assert end["output"] == child.outputs
-    assert end["exception"] == "attempt failed"
-    assert end["summary"]["status_counts"] == {"success": 0, "error": 1}
-    assert end["summary"]["usage"]["gpt-4o"]["total_tokens"] == 8
-    assert start["parent_id"] == receipt.spans[trace.root_span_id]["span_id"]
+    assert call["started_at"] == call["ended_at"] == anchor.isoformat()
+    assert call["attributes"]["dify.timing.estimated"] is True
+    assert call["output"] == child.outputs
+    assert call["exception"] == "attempt failed"
+    assert call["summary"]["status_counts"] == {"success": 0, "error": 1}
+    assert call["summary"]["usage"]["gpt-4o"]["total_tokens"] == 8
+    assert call["parent_id"] == receipt.spans[trace.root_span_id]["span_id"]
 
 
 def test_weave_preflight_happens_before_project_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -188,7 +188,7 @@ def test_weave_external_correlation_and_parent_take_precedence(monkeypatch: pyte
     client, request = make_client_with_transport(monkeypatch)
     receipt = client.export_trace(trace).spans[trace.root_span_id]
     assert receipt["trace_id"] == "external-request"
-    assert request.call_args_list[0].kwargs["json"]["start"]["trace_id"] == "external-request"
+    assert request.call_args_list[0].kwargs["json"]["batch"][0]["trace_id"] == "external-request"
     request.reset_mock()
     child = make_trace()
     assert client.export_trace(child, receipt).spans[child.root_span_id]["trace_id"] == receipt["trace_id"]
@@ -220,6 +220,87 @@ def test_weave_preserves_cancelled_workflow_reason_without_inventing_errors(
 
     client.export_trace(trace)
 
-    end = request.call_args.kwargs["json"]["end"]
-    assert end["exception"] == expected_error
-    assert end["summary"]["status_counts"] == {"error": int(bool(expected_error)), "success": int(not expected_error)}
+    call = request.call_args.kwargs["json"]["batch"][0]
+    assert call["exception"] == expected_error
+    assert call["summary"]["status_counts"] == {"error": int(bool(expected_error)), "success": int(not expected_error)}
+
+
+@pytest.mark.parametrize("legacy_server", [False, True])
+def test_weave_exports_complete_calls_and_falls_back_for_legacy_servers(
+    monkeypatch: pytest.MonkeyPatch, legacy_server: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path.endswith("/calls/complete"):
+            return httpx.Response(404 if legacy_server else 200, json={})
+        if not legacy_server:
+            return httpx.Response(400, json={"error_code": "CALLS_COMPLETE_MODE_REQUIRED"})
+        return httpx.Response(200, json={})
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+    )
+    trace = make_trace()
+    client = WeaveTraceClient(
+        {"api_key": "saved-key", "entity": "team", "project": "project", "host": "https://wandb.example"}
+    )
+
+    first_receipts = client.export_trace(trace)
+    first_requests = list(requests)
+    requests.clear()
+    second_receipts = WeaveTraceClient(client.config.model_dump()).export_trace(trace)
+
+    assert second_receipts == first_receipts
+    assert [request.content for request in requests] == [request.content for request in first_requests]
+    paths = [request.url.path for request in requests]
+    if legacy_server:
+        assert paths == ["/traces/v2/team/project/calls/complete"] + [
+            f"/traces/call/{event}" for _span in trace.spans for event in ("start", "end")
+        ]
+        payloads = [json.loads(request.content) for request in requests[1:]]
+        calls = [{**payloads[index]["start"], **payloads[index + 1]["end"]} for index in range(0, len(payloads), 2)]
+    else:
+        assert paths == ["/traces/v2/team/project/calls/complete"] * len(trace.spans)
+        calls = [json.loads(request.content)["batch"][0] for request in requests]
+    assert all(request.headers["Authorization"] == basic_auth("api", "saved-key") for request in requests)
+    assert calls[1]["parent_id"] == calls[0]["id"]
+    for span, call in zip(trace.spans, calls, strict=True):
+        assert span.started_at is not None
+        assert span.ended_at is not None
+        assert call["id"] == first_receipts.spans[span.span_id]["span_id"]
+        assert call["trace_id"] == first_receipts.spans[span.span_id]["trace_id"]
+        assert call["started_at"] == span.started_at.isoformat()
+        assert call["ended_at"] == span.ended_at.isoformat()
+        assert call["output"] == span.outputs
+
+
+@pytest.mark.parametrize("entity", [None, ""])
+def test_weave_qualified_project_skips_default_entity_discovery(
+    monkeypatch: pytest.MonkeyPatch, entity: str | None
+) -> None:
+    client = WeaveTraceClient({"api_key": "saved-key", "entity": entity, "project": "team/project"})
+    request = Mock(return_value=httpx.Response(200, json={}))
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
+
+    assert client.verify_credentials() is True
+    assert client.get_project_url() == "https://wandb.ai/team/project/weave"
+    client.export_trace(make_trace())
+
+    assert request.call_args_list[0].args[1] == "https://trace.wandb.ai/calls/query_stats"
+    assert request.call_args_list[0].kwargs["json"] == {"project_id": "team/project"}
+    assert all(call.args[1].endswith("/v2/team/project/calls/complete") for call in request.call_args_list[1:])
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 429, 503])
+def test_weave_complete_call_failure_does_not_fall_back(monkeypatch: pytest.MonkeyPatch, status: int) -> None:
+    client = WeaveTraceClient({"api_key": "saved-key", "entity": "team", "project": "project"})
+    request = Mock(return_value=httpx.Response(status))
+    monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
+
+    with pytest.raises(TraceExportError, match=f"provider_http_{status}"):
+        client.export_trace(make_trace())
+
+    request.assert_called_once()

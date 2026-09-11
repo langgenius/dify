@@ -260,7 +260,8 @@ class WorkflowEntry:
             if workflow_trace is not None:
                 workflow_trace.record_workflow_event(GraphRunAbortedEvent(reason="Workflow execution stopped"))
         except Exception as e:
-            execution_error = str(e)
+            # GraphOn rethrows its recorded failure after publishing the terminal event.
+            execution_error = None if e is graph_engine.runtime_state.graph_execution.error else str(e)
             logger.exception("Unknown Error when workflow entry running")
             yield GraphRunFailedEvent(error=str(e))
             return

@@ -12,6 +12,7 @@ client.
 
 import logging
 import time
+from ssl import SSLContext
 from typing import Any
 
 import httpx
@@ -69,7 +70,7 @@ request_error = httpx.RequestError
 max_retries_exceeded_error = MaxRetriesExceededError
 
 
-def _create_proxy_mounts(verify: bool) -> dict[str, httpx.HTTPTransport]:
+def _create_proxy_mounts(verify: bool | SSLContext) -> dict[str, httpx.HTTPTransport]:
     """Build per-scheme proxy transports with the same TLS policy as the SSRF client."""
     return {
         "http://": httpx.HTTPTransport(
@@ -83,7 +84,7 @@ def _create_proxy_mounts(verify: bool) -> dict[str, httpx.HTTPTransport]:
     }
 
 
-def _build_ssrf_client(verify: bool) -> httpx.Client:
+def _build_ssrf_client(verify: bool | SSLContext) -> httpx.Client:
     if dify_config.SSRF_PROXY_ALL_URL:
         return httpx.Client(
             proxy=dify_config.SSRF_PROXY_ALL_URL,
@@ -101,7 +102,7 @@ def _build_ssrf_client(verify: bool) -> httpx.Client:
     return httpx.Client(verify=verify, limits=_SSRF_CLIENT_LIMITS)
 
 
-def create_http_client(*, ssl_verify: bool = True) -> httpx.Client:
+def create_http_client(*, ssl_verify: bool = True, ssl_context: SSLContext | None = None) -> httpx.Client:
     """Create an independently owned SSRF-protected client; the caller must close it.
 
     Use this when response cookies or authentication must not survive an operation.
@@ -109,7 +110,9 @@ def create_http_client(*, ssl_verify: bool = True) -> httpx.Client:
     """
     if not isinstance(ssl_verify, bool):
         raise ValueError("SSRF client verify flag must be a boolean")
-    return _build_ssrf_client(ssl_verify)
+    if ssl_context is not None and not isinstance(ssl_context, SSLContext):
+        raise ValueError("SSRF client TLS context must be an SSLContext")
+    return _build_ssrf_client(ssl_context if ssl_context is not None else ssl_verify)
 
 
 def _get_ssrf_client(ssl_verify_enabled: bool) -> httpx.Client:
