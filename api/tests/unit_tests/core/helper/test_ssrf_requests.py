@@ -139,6 +139,7 @@ def test_native_https_uses_captured_ca_and_client_certificate_after_files_are_re
     client_context = create_ssl_context(captured)
     original_roots = client_context.get_ca_certs(binary_form=True)
     server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    server_context.minimum_version = ssl.TLSVersion.TLSv1_2
     server_context.load_cert_chain(certificate_file, key_file)
     server_context.load_verify_locations(cafile=str(certificate_file))
     server_context.verify_mode = ssl.CERT_REQUIRED

@@ -12,7 +12,8 @@ def isolate_deployment_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(Path, "home", Mock(return_value=tmp_path))
     monkeypatch.setattr(Path, "cwd", Mock(return_value=tmp_path))
     for name in tuple(os.environ):
-        if name.startswith(("MLFLOW_", "AWS_")) or name in {
+        if name.startswith(("MLFLOW_", "AWS_", "DATABRICKS_")) or name in {
+            "_MLFLOW_DATABRICKS_TRAFFIC_ID",
             "BOTO_CONFIG",
             "REQUESTS_CA_BUNDLE",
             "CURL_CA_BUNDLE",
@@ -20,5 +21,9 @@ def isolate_deployment_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
             "SSL_CERT_DIR",
             "NETRC",
             "OTEL_SDK_DISABLED",
+            "OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT",
+            "OTEL_ATTRIBUTE_COUNT_LIMIT",
+            "OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT",
+            "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT",
         }:
             monkeypatch.delenv(name)

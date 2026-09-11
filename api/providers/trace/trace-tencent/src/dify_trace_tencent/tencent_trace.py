@@ -2,18 +2,21 @@
 
 import socket
 from typing import Any, override
+from uuid import UUID
 
+from opentelemetry.context import Context
 from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 from opentelemetry.proto.trace.v1.trace_pb2 import Span, Status
 from opentelemetry.sdk.version import __version__ as otel_sdk_version
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, set_span_in_context
 from pydantic import JsonValue
 
 from configs import dify_config
 from core.helper.ssl_context import create_grpc_credentials, create_ssl_context
-from core.ops.otlp_trace import OtlpTraceClient, histogram, otlp_span, otlp_trace_id
-from core.ops.provider_export import TraceProviderHttpClient, export_span_id, json_text, span_attributes
+from core.ops.otlp_trace import OtlpTraceClient, histogram, limit_span_attributes, otlp_span, otlp_trace_id
+from core.ops.provider_export import TraceProviderHttpClient, export_span_id, json_text, span_attributes, span_id_bytes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
-from dify_trace_tencent.config import TencentConfig
+from dify_trace_tencent.config import TencentConfig, create_trace_sampler
 
 # Preserve the explicit buckets used by the previous Tencent SDK histograms.
 HISTOGRAM_BOUNDS = (0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000)
@@ -29,7 +32,36 @@ def usage_seconds(span: TraceSpan, field: str, *legacy_attributes: str) -> float
 class TencentTraceClient(OtlpTraceClient):
     """Project Tencent's span attributes and existing metric series from captured calls."""
 
-    disabled: bool = False
+    def __init__(
+        self,
+        *args: Any,
+        sampling: dict[str, Any] | None = None,
+        span_limits: dict[str, int | None] | None = None,
+        disabled: bool = False,
+        **kwargs: Any,
+    ):
+        super().__init__(*args, **kwargs)
+        self.sampler = create_trace_sampler(sampling or {})
+        self.span_limits = dict(span_limits or {})
+        self.disabled = disabled
+
+    def _should_sample(self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None) -> bool:
+        trace_id = UUID(otlp_trace_id(completed_trace, parent_span)).int
+        parent = Context()
+        if parent_span:
+            parent = set_span_in_context(
+                NonRecordingSpan(
+                    SpanContext(
+                        trace_id=trace_id,
+                        span_id=int.from_bytes(span_id_bytes(str(parent_span["span_id"]))),
+                        is_remote=True,
+                        trace_flags=TraceFlags(0 if parent_span.get("sampled") is False else 1),
+                    )
+                ),
+                parent,
+            )
+        # All six built-ins make the same decision for this root and its local tree.
+        return self.sampler.should_sample(parent, trace_id, completed_trace.spans[0].span_name).decision.is_sampled()
 
     @override
     def build_span(
@@ -136,25 +168,32 @@ class TencentTraceClient(OtlpTraceClient):
         # Existing provider status filters include stopped workflows with a reason.
         if span.span_type == "workflow" and span.status == "cancelled" and span.error:
             exported_span.status.code = Status.STATUS_CODE_ERROR
-        return exported_span
+        return limit_span_attributes(exported_span, **self.span_limits)
 
     @override
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
-        if self.disabled or (parent_span is not None and parent_span.get("disabled") is True):
-            return ExportedParentSpans(
+        disabled = self.disabled or (parent_span is not None and parent_span.get("disabled") is True)
+        sampled = not disabled and self._should_sample(completed_trace, parent_span)
+        if sampled:
+            receipt = super().export_trace(completed_trace, parent_span)
+        else:
+            receipt = ExportedParentSpans(
                 spans={
                     span.span_id: {
                         "trace_id": otlp_trace_id(completed_trace, parent_span),
                         "span_id": export_span_id(completed_trace, span.span_id),
-                        "disabled": True,
+                        **({"disabled": True} if disabled else {}),
                     }
                     for span in completed_trace.spans
                 }
             )
-        receipt = super().export_trace(completed_trace, parent_span)
-        self.send_metrics(self.build_metrics(completed_trace))
+        for exported_span in receipt.spans.values():
+            exported_span["sampled"] = sampled
+        if not disabled:
+            # Native meter collection is independent of the trace sampler.
+            self.send_metrics(self.build_metrics(completed_trace))
         return receipt
 
     @staticmethod
@@ -295,6 +334,9 @@ def create_trace_client(provider_config: dict[str, Any]) -> TencentTraceClient:
         },
         "https://console.cloud.tencent.com/apm",
         protocol="grpc",
+        sampling=runtime_settings.get("sampling"),
+        span_limits=runtime_settings.get("span_limits"),
+        disabled=bool(runtime_settings.get("disabled", False)),
         metrics_http=TraceProviderHttpClient(
             config.endpoint,
             headers,
@@ -309,5 +351,4 @@ def create_trace_client(provider_config: dict[str, Any]) -> TencentTraceClient:
             **({"metrics": create_grpc_credentials(runtime_settings["metrics_tls"])} if not http_metrics else {}),
         },
     )
-    client.disabled = bool(runtime_settings.get("disabled", False))
     return client

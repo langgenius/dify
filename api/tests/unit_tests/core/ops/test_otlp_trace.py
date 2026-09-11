@@ -18,13 +18,56 @@ from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span
 
-from core.ops.otlp_trace import OtlpTraceClient, otlp_attributes
+from core.ops.otlp_trace import OtlpTraceClient, limit_span_attributes, otlp_attributes
 from core.ops.provider_export import TraceExportError, TraceProviderHttpClient
 from core.ops.trace_data import CompletedTrace, TraceSource
 from core.ops.workflow_trace import WorkflowTraceRecorder
 from graphon.engine_events import GraphRunSucceededEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from tests.unit_tests.core.ops.test_workflow_trace_limits import workflow_node
+
+
+def test_explicit_attribute_limits_preserve_nested_otlp_values_and_count_drops() -> None:
+    attributes = {
+        "first": "oldest",
+        "nested": ["abcdefgh", 42, {"deep": "αβγδε", "enabled": True}, [1.5, "longtext"]],
+        "last": "last value",
+    }
+    span = Span(attributes=otlp_attributes(attributes), dropped_attributes_count=4)
+
+    assert limit_span_attributes(span, max_attributes=2, max_value_length=3) is span
+
+    assert span.attributes == otlp_attributes(
+        {"nested": ["abc", 42, {"deep": "αβγ", "enabled": True}, [1.5, "lon"]], "last": "las"}
+    )
+    assert span.dropped_attributes_count == 5
+    assert attributes["last"] == "last value"
+    span.attributes[0].value.array_value.values.add()
+    limit_span_attributes(span, max_value_length=0)
+    assert span.attributes[0].value.array_value.values[0].string_value == ""
+    assert span.attributes[0].value.array_value.values[-1].WhichOneof("value") is None
+    assert span.attributes[1].value.string_value == ""
+    limit_span_attributes(span, max_attributes=0)
+    assert not span.attributes
+    assert span.dropped_attributes_count == 7
+
+
+def test_omitted_attribute_limits_preserve_the_complete_protocol_message() -> None:
+    span = Span(attributes=otlp_attributes({f"field-{index}": "full value" for index in range(160)}))
+    before = span.SerializeToString()
+
+    limit_span_attributes(span)
+
+    assert span.SerializeToString() == before
+
+
+@pytest.mark.parametrize("limits", [{"max_attributes": -1}, {"max_value_length": -1}])
+def test_negative_attribute_limits_fail_before_changing_the_span(limits: dict[str, int]) -> None:
+    span = Span(attributes=otlp_attributes({"field": "value"}))
+    before = span.SerializeToString()
+    with pytest.raises(ValueError, match="must be non-negative"):
+        limit_span_attributes(span, **limits)
+    assert span.SerializeToString() == before
 
 
 def make_trace_request(span_count: int = 5, text_size: int = 2_000_000) -> ExportTraceServiceRequest:

@@ -74,6 +74,32 @@ def otlp_attributes(attributes: dict[str, Any]) -> list[KeyValue]:
     return [KeyValue(key=key, value=otlp_value(value)) for key, value in attributes.items() if value is not None]
 
 
+def limit_span_attributes(
+    span: Span, *, max_attributes: int | None = None, max_value_length: int | None = None
+) -> Span:
+    """Bound one owned OTLP span while preserving structured attribute values."""
+    if any(limit is not None and limit < 0 for limit in (max_attributes, max_value_length)):
+        raise ValueError("OTLP attribute limits must be non-negative")
+    if max_attributes is not None and len(span.attributes) > max_attributes:
+        dropped = len(span.attributes) - max_attributes
+        del span.attributes[:dropped]
+        span.dropped_attributes_count += dropped
+    if max_value_length is not None:
+        values = [attribute.value for attribute in span.attributes]
+        while values:
+            value = values.pop()
+            match value.WhichOneof("value"):
+                case "string_value":
+                    value.string_value = value.string_value[:max_value_length]
+                case "array_value":
+                    values.extend(value.array_value.values)
+                case "kvlist_value":
+                    values.extend(attribute.value for attribute in value.kvlist_value.values)
+                case _:
+                    pass
+    return span
+
+
 def otlp_trace_id(completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None) -> str:
     """Use protocol-valid external correlation; an explicitly attached parent takes precedence."""
     if parent_span:

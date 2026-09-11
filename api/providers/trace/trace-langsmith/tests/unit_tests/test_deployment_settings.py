@@ -158,6 +158,7 @@ def test_captured_private_ca_is_used_by_the_real_https_transport(
 
     server = HTTPServer(("localhost", 0), ProviderHandler)
     server_tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    server_tls.minimum_version = ssl.TLSVersion.TLSv1_2
     server_tls.load_cert_chain(ca_file, key_file)
     server.socket = server_tls.wrap_socket(server.socket, server_side=True)
     thread = Thread(target=server.serve_forever, daemon=True)

@@ -11,14 +11,15 @@ from uuid import UUID
 
 import httpx
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
-from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
-from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
+from opentelemetry.proto.common.v1.common_pb2 import AnyValue, InstrumentationScope, KeyValue
+from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span, Status
 from pydantic import JsonValue
 from requests.auth import _basic_auth_str
+from requests.structures import CaseInsensitiveDict
 from requests.utils import get_auth_from_url
 
 from core.helper.ssl_context import create_ssl_context
-from core.ops.otlp_trace import OtlpTraceClient, otlp_span
+from core.ops.otlp_trace import OtlpTraceClient, limit_span_attributes, otlp_attributes, otlp_span, otlp_value
 from core.ops.provider_export import (
     TraceExportError,
     TraceProviderHttpClient,
@@ -34,6 +35,7 @@ from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from dify_trace_mlflow.deployment_auth import sign_aws_request
 from dify_trace_mlflow.request_auth import load_request_auth_provider, send_authenticated_request
+from dify_trace_mlflow.request_headers import MLflowRequestHeaders
 
 
 def _prepare_timed_spans(completed_trace: CompletedTrace) -> tuple[TraceSpan, ...]:
@@ -73,6 +75,8 @@ class MLflowHttpClient(TraceProviderHttpClient):
         ssl_context: SSLContext | None,
         aws_sigv4: dict[str, Any] | None,
         request_auth_provider: Any = None,
+        request_headers: MLflowRequestHeaders | None = None,
+        default_authorization: bool = False,
         netrc_auth: Mapping[str, list[str] | tuple[str, str]] | None = None,
         url_auth: tuple[str, str] | None = None,
         use_implicit_auth: bool = True,
@@ -90,9 +94,29 @@ class MLflowHttpClient(TraceProviderHttpClient):
         super().__init__(endpoint, headers, ssl_context=ssl_context, request_timeout=request_timeout)
         self.aws_sigv4 = dict(aws_sigv4) if aws_sigv4 is not None else None
         self.request_auth_provider = request_auth_provider
+        self.request_headers = request_headers
+        self.default_authorization = default_authorization
 
     @override
-    def request(self, method: str, path: str = "", **kwargs: Any) -> httpx.Response:
+    def request(
+        self, method: str, path: str = "", *, include_mlflow_headers: bool = True, **kwargs: Any
+    ) -> httpx.Response:
+        if not include_mlflow_headers:
+            return super().request(method, path, **kwargs)
+        headers = CaseInsensitiveDict(self.request_headers.resolve() if self.request_headers is not None else {})
+        for key, value in self.headers.items():
+            default_header = key.lower() == "x-mlflow-workspace" or (
+                self.default_authorization and key.lower() == "authorization"
+            )
+            if not default_header or key not in headers:
+                headers[key] = value
+        headers.update(kwargs.get("headers", {}))
+        for key in self.headers:
+            # The base HTTP owner also merges its headers; keep each existing key's casing.
+            headers[key] = headers.pop(key)
+        kwargs["headers"] = dict(headers)
+        if kwargs["headers"].get("Authorization") == "":
+            raise TraceExportError("mlflow_credentials_missing")
         if self.aws_sigv4 is not None:
             kwargs["auth"] = partial(sign_aws_request, credentials=self.aws_sigv4)
         elif self.request_auth_provider is not None:
@@ -100,10 +124,9 @@ class MLflowHttpClient(TraceProviderHttpClient):
                 self, self.request_auth_provider, method, path, fallback_auth=self.implicit_auth, **kwargs
             )
         elif self.implicit_auth:
-            kwargs["headers"] = {
-                **kwargs.get("headers", {}),
-                "Authorization": _basic_auth_str(*self.implicit_auth),
-            }
+            authenticated_headers = CaseInsensitiveDict(kwargs["headers"])
+            authenticated_headers["Authorization"] = _basic_auth_str(*self.implicit_auth)
+            kwargs["headers"] = dict(authenticated_headers)
         return super().request(method, path, **kwargs)
 
 
@@ -241,6 +264,16 @@ def _native_usage(completed_trace: CompletedTrace, span: TraceSpan) -> dict[str,
     return usage
 
 
+def _read_span_attribute(value: str | None) -> Any:
+    if not value:
+        return None
+    try:
+        return json.loads(value)
+    except ValueError:
+        # Native MLflow returns the original JSON string when a length limit cuts it short.
+        return value
+
+
 class MLflowTraceClient:
     def __init__(self, provider_name: str, provider_config: dict[str, Any]):
         self.provider_name = provider_name
@@ -254,16 +287,26 @@ class MLflowTraceClient:
         )
         self.sampling_ratio = float(runtime_settings.get("sampling_ratio", 1.0))
         self.disabled = bool(runtime_settings.get("disabled", False))
+        self.span_attribute_limits = dict(runtime_settings.get("span_attribute_limits", {}))
         self._aws_sigv4 = dict(runtime_settings["aws_sigv4"]) if runtime_settings.get("aws_sigv4") else None
         self._request_auth_provider = load_request_auth_provider(runtime_settings.get("request_auth_provider"))
+        self._request_headers = MLflowRequestHeaders(runtime_settings.get("request_headers", {}))
         if isinstance(self.config, DatabricksConfig):
             self._databricks_tls_settings = runtime_settings
             endpoint = _normalize_databricks_host(self.config.host)
-            self.http = TraceProviderHttpClient(
+            if urlsplit(endpoint).username or urlsplit(endpoint).password:
+                raise ValueError("Databricks requires a host without embedded credentials")
+            verify = runtime_settings.get("verify", True)
+            self.http = MLflowHttpClient(
                 endpoint,
-                ssl_context=create_ssl_context(runtime_settings.get("tls", {}))
+                runtime_settings.get("headers", {}),
+                ssl_context=create_ssl_context(runtime_settings.get("tls", {}) if verify else {}, verify=verify)
                 if urlsplit(endpoint).scheme == "https"
                 else create_ssl_context({}),
+                aws_sigv4=None,
+                request_headers=self._request_headers,
+                use_implicit_auth=False,
+                request_timeout=30,
             )
         else:
             self._artifact_tls = dict(runtime_settings.get("tls", {}))
@@ -277,7 +320,7 @@ class MLflowTraceClient:
                     else {}
                 ),
             }
-            if headers.get("Authorization") == "":
+            if headers.get("Authorization") == "" and not self._request_headers.providers:
                 raise TraceExportError("mlflow_credentials_missing")
             http_tracking = urlsplit(self.config.tracking_uri).scheme == "http"
             self.http = MLflowHttpClient(
@@ -289,6 +332,9 @@ class MLflowTraceClient:
                 ),
                 aws_sigv4=self._aws_sigv4,
                 request_auth_provider=self._request_auth_provider,
+                request_headers=self._request_headers,
+                default_authorization=runtime_settings.get("default_authorization", False)
+                and not (self.config.username and self.config.password),
                 netrc_auth=runtime_settings.get("netrc_auth"),
                 use_implicit_auth=runtime_settings.get("use_implicit_auth", True),
                 request_timeout=runtime_settings.get("request_timeout", 120),
@@ -302,6 +348,7 @@ class MLflowTraceClient:
                 self.http.request(
                     "POST",
                     "oidc/v1/token",
+                    include_mlflow_headers=False,
                     headers={"Authorization": basic_auth(self.config.client_id, self.config.client_secret)},
                     data={"grant_type": "client_credentials", "scope": "all-apis"},
                 )
@@ -384,7 +431,15 @@ class MLflowTraceClient:
             }
             if costs:
                 attributes["mlflow.llm.cost"] = costs
-        return {key: json_text(value) for key, value in attributes.items() if value is not None}
+        if not self.span_attribute_limits:
+            return {key: json_text(value) for key, value in attributes.items() if value is not None}
+        # LiveSpan JSON-encodes values before the SDK applies SpanLimits. Preserve
+        # its separators and bound that string once, before either wire projection.
+        serialized = {
+            key: json.dumps(value, ensure_ascii=False) for key, value in attributes.items() if value is not None
+        }
+        bounded = limit_span_attributes(Span(attributes=otlp_attributes(serialized)), **self.span_attribute_limits)
+        return {attribute.key: attribute.value.string_value for attribute in bounded.attributes}
 
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
@@ -430,10 +485,11 @@ class MLflowTraceClient:
                     completed_trace,
                     span,
                     parent_span,
-                    attributes={
-                        key: json.loads(value)
-                        for key, value in self._attributes(completed_trace, span, "tr-" + UUID(trace_id).hex).items()
-                    },
+                    attributes={},
+                )
+                exported_span.attributes.extend(
+                    KeyValue(key=key, value=otlp_value(_read_span_attribute(value)) if value else AnyValue())
+                    for key, value in self._attributes(completed_trace, span, "tr-" + UUID(trace_id).hex).items()
                 )
                 exported_span.trace_id = UUID(trace_id).bytes
                 if _span_failed(span):
@@ -455,6 +511,8 @@ class MLflowTraceClient:
                 ssl_context=self.http.ssl_context,
                 aws_sigv4=self._aws_sigv4,
                 request_auth_provider=self._request_auth_provider,
+                request_headers=self._request_headers,
+                default_authorization=self.http.default_authorization,
                 netrc_auth=self.http.netrc_auth,
                 url_auth=self.http.url_auth,
                 use_implicit_auth=self.http.use_implicit_auth,
@@ -511,6 +569,13 @@ class MLflowTraceClient:
             metadata["mlflow.trace.user"] = completed_trace.source.actor_id
         if session_id := completed_trace.source.session_id or completed_trace.source.conversation_id:
             metadata["mlflow.trace.session"] = session_id
+        request_preview = json_text(root.inputs)
+        response_preview = json_text(root.outputs)
+        if self.span_attribute_limits:
+            # Native trace previews are copied from the root's bounded span attributes.
+            attributes = self._attributes(completed_trace, root, request_id)
+            request_preview = attributes.get("mlflow.spanInputs", "")
+            response_preview = attributes.get("mlflow.spanOutputs", "")
         return {
             "trace_id": request_id,
             "client_request_id": completed_trace.source.external_trace_id or completed_trace.source.operation_id,
@@ -521,8 +586,8 @@ class MLflowTraceClient:
             "request_time": root.started_at.isoformat(),
             "execution_duration": f"{(root.ended_at - root.started_at).total_seconds():.6f}s",
             "state": "ERROR" if _span_failed(root) else "OK",
-            "request_preview": json_text(root.inputs)[:10000],
-            "response_preview": json_text(root.outputs)[:10000],
+            "request_preview": request_preview[:10000],
+            "response_preview": response_preview[:10000],
             "trace_metadata": metadata,
             "tags": {"mlflow.traceName": root.span_name},
         }
@@ -559,6 +624,15 @@ class MLflowTraceClient:
                 ("total_tokens", "total_tokens"),
             )
         }
+        if self.span_attribute_limits:
+            # Client-side usage aggregation also reads the bounded native span values.
+            token_usage = {}
+            for span in completed_trace.spans:
+                attributes = self._attributes(completed_trace, span, request_id)
+                if isinstance(usage := _read_span_attribute(attributes.get("mlflow.chat.tokenUsage")), dict):
+                    for key in ("input_tokens", "output_tokens", "total_tokens"):
+                        if isinstance(count := usage.get(key), int):
+                            token_usage[key] = token_usage.get(key, 0) + count
         if any(token_usage.values()):
             metadata["mlflow.trace.tokenUsage"] = json_text(token_usage)
         links = []
@@ -767,6 +841,8 @@ class MLflowTraceClient:
             ssl_context=ssl_context,
             aws_sigv4=self._aws_sigv4,
             request_auth_provider=self._request_auth_provider,
+            request_headers=self._request_headers,
+            default_authorization=self.http.default_authorization,
             netrc_auth=self.http.netrc_auth,
             use_implicit_auth=self.http.use_implicit_auth,
             request_timeout=self.http.request_timeout,
@@ -781,9 +857,9 @@ class MLflowTraceClient:
         # These URLs are returned by the authenticated provider, never by trace
         # content. Use only their own signed headers; do not forward the API key.
         headers = {entry["name"]: entry["value"] for entry in upload.get("headers", [])}
-        # Databricks captures only CA roots, so this context carries no client credentials.
+        # Native signed uploads verify storage TLS independently of legacy workspace settings.
         ssl_context = self.http.ssl_context
-        if urlsplit(self.http.endpoint).scheme == "http":
+        if urlsplit(self.http.endpoint).scheme == "http" or not self._databricks_tls_settings.get("verify", True):
             if self._databricks_tls_settings.get("tls_read_failed"):
                 raise ValueError("Cannot read TLS configuration")
             ssl_context = create_ssl_context(self._databricks_tls_settings.get("tls", {}))
