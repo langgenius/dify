@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any, cast
+from typing import Any, cast, get_args, get_origin
 from urllib.parse import unquote
 
 import httpx
@@ -115,6 +115,113 @@ def _normalize_plugin_daemon_response_for_type(json_response: Any, type_: type[o
             }
 
     return json_response
+
+
+def plugin_daemon_item_identity_hint(item: Any) -> str:
+    """Build a log-friendly identity from a plugin-daemon list element."""
+    if not isinstance(item, dict):
+        return f"non-object {type(item).__name__}"
+
+    parts: list[str] = []
+    for key in ("plugin_id", "provider", "plugin_unique_identifier"):
+        value = item.get(key)
+        if value is not None and value != "":
+            parts.append(f"{key}={value}")
+
+    declaration = item.get("declaration")
+    if isinstance(declaration, dict):
+        identity = declaration.get("identity")
+        if isinstance(identity, dict):
+            name = identity.get("name")
+            if name:
+                parts.append(f"identity.name={name}")
+
+    return ", ".join(parts) if parts else "unknown identity"
+
+
+def keep_declaration_items_with_identity(
+    items: Any,
+    provider_name: Any,
+    *,
+    item_kind: str,
+    provider_hint: str,
+    mutate_item: Callable[[dict[str, Any]], None] | None = None,
+) -> list[Any]:
+    """Keep inner declaration items that have a dict identity and set identity.provider.
+
+    A missing identity on one tool/datasource/event/strategy is skipped so it cannot
+    KeyError the whole management list.
+    """
+    if not isinstance(items, list):
+        return []
+
+    kept_items: list[Any] = []
+    for item in items:
+        if not isinstance(item, dict) or not isinstance(item.get("identity"), dict):
+            logger.warning(
+                "Skipping %s without a usable identity in plugin provider (%s)",
+                item_kind,
+                provider_hint,
+            )
+            continue
+        item["identity"]["provider"] = provider_name
+        try:
+            if mutate_item is not None:
+                mutate_item(item)
+        except Exception as exc:
+            logger.warning(
+                "Skipping %s that failed transformation in plugin provider (%s): %s",
+                item_kind,
+                provider_hint,
+                exc,
+            )
+            continue
+        kept_items.append(item)
+    return kept_items
+
+
+def _plugin_daemon_structured_list_item_type(type_: Any) -> type[BaseModel] | None:
+    if get_origin(type_) is not list:
+        return None
+    args = get_args(type_)
+    if not args:
+        return None
+    item_type = args[0]
+    try:
+        if inspect.isclass(item_type) and issubclass(item_type, BaseModel):
+            return item_type
+    except TypeError:
+        return None
+    return None
+
+
+def _filter_valid_plugin_daemon_list_items[T: BaseModel](
+    items: list[Any],
+    item_type: type[T],
+    path: str,
+) -> list[T]:
+    valid_items: list[T] = []
+    for index, item in enumerate(items):
+        identity = plugin_daemon_item_identity_hint(item)
+        if not isinstance(item, dict):
+            logger.warning(
+                "Skipping invalid plugin daemon list item at index %s for %s (%s): expected an object",
+                index,
+                path,
+                identity,
+            )
+            continue
+        try:
+            valid_items.append(item_type.model_validate(item))
+        except Exception as exc:
+            logger.warning(
+                "Skipping invalid plugin daemon list item at index %s for %s (%s): %s",
+                index,
+                path,
+                identity,
+                exc,
+            )
+    return valid_items
 
 
 class BasePluginClient:
@@ -306,6 +413,11 @@ class BasePluginClient:
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
+
+        List payloads of Pydantic models are validated per item: malformed elements are
+        skipped and logged so one invalid plugin declaration cannot fail the whole page.
+        Single-object payloads stay strict. HTTP errors and daemon ``code != 0`` are
+        unchanged.
         """
         try:
             response = self._request(method, path, headers, data, params, files)
@@ -321,13 +433,19 @@ class BasePluginClient:
             logger.exception("Failed to request plugin daemon, url: %s", path)
             raise ValueError(msg) from e
 
+        list_item_type: type[BaseModel] | None = None
         try:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
             json_response = _normalize_plugin_daemon_response_for_type(json_response, type_)
+            list_item_type = _plugin_daemon_structured_list_item_type(type_)
             # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
-            rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
+            if list_item_type is not None:
+                # Validate the envelope only; individual list elements are checked below.
+                rep = PluginDaemonBasicResponse[list[Any]].model_validate(json_response)
+            else:
+                rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
         except Exception as e:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
@@ -347,7 +465,10 @@ class BasePluginClient:
             frame = inspect.currentframe()
             raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
 
-        return rep.data
+        if list_item_type is not None:
+            items = rep.data if isinstance(rep.data, list) else []
+            return cast(T, _filter_valid_plugin_daemon_list_items(items, list_item_type, path))
+        return cast(T, rep.data)
 
     def _request_with_plugin_daemon_response_stream[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
         self,

@@ -54,6 +54,44 @@ class TestPluginDatasourceManager:
         assert result[1].declaration.datasources[0].identity.provider == "org/plugin/remote"
         repack.assert_called_once_with(tenant_id="tenant-1", provider=provider)
 
+    def test_fetch_datasource_providers_skips_datasource_without_identity(self, mocker: MockerFixture):
+        manager = PluginDatasourceManager()
+        sibling = _datasource_provider("good")
+        mocker.patch("core.plugin.impl.datasource.ToolTransformService.repack_provider")
+        mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs", return_value={"resolved": True})
+
+        def fake_request(method, path, type_, **kwargs):
+            transformer = kwargs["transformer"]
+            payload = {
+                "data": [
+                    {
+                        "plugin_id": "org/plugin",
+                        "declaration": {
+                            "identity": {"name": "good"},
+                            "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/doc"}}],
+                        },
+                    },
+                    {
+                        "plugin_id": "org/broken",
+                        "declaration": {
+                            "identity": {"name": "broken"},
+                            "datasources": [{"name": "missing-identity"}],
+                        },
+                    },
+                ]
+            }
+            transformed = transformer(payload)
+            assert transformed["data"][0]["declaration"]["datasources"][0]["identity"]["provider"] == "good"
+            assert transformed["data"][1]["declaration"]["datasources"] == []
+            return [sibling]
+
+        request_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
+
+        result = manager.fetch_datasource_providers("tenant-1")
+
+        assert request_mock.call_count == 1
+        assert result[1].declaration.identity.name == "org/plugin/good"
+
     def test_fetch_installed_datasource_providers(self, mocker: MockerFixture):
         manager = PluginDatasourceManager()
         provider = _datasource_provider("remote")

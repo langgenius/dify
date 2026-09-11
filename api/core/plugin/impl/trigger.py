@@ -11,7 +11,11 @@ from core.plugin.entities.request import (
     TriggerSubscriptionResponse,
     TriggerValidateProviderCredentialsResponse,
 )
-from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.base import (
+    BasePluginClient,
+    keep_declaration_items_with_identity,
+    plugin_daemon_item_identity_hint,
+)
 from core.plugin.utils.http_parser import serialize_request
 from core.trigger.entities.entities import Subscription
 from models.provider_ids import TriggerProviderID
@@ -24,11 +28,28 @@ class PluginTriggerClient(BasePluginClient):
         """
 
         def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            for provider in json_response.get("data", []):
-                declaration = provider.get("declaration", {}) or {}
-                provider_id = provider.get("plugin_id") + "/" + provider.get("provider")
-                for event in declaration.get("events", []):
-                    event["identity"]["provider"] = provider_id
+            providers = json_response.get("data")
+            if not isinstance(providers, list):
+                return json_response
+            for provider in providers:
+                if not isinstance(provider, dict):
+                    continue
+                declaration = provider.get("declaration")
+                if not isinstance(declaration, dict):
+                    continue
+                plugin_id = provider.get("plugin_id")
+                provider_name = provider.get("provider")
+                provider_id = (
+                    f"{plugin_id}/{provider_name}"
+                    if isinstance(plugin_id, str) and isinstance(provider_name, str)
+                    else None
+                )
+                declaration["events"] = keep_declaration_items_with_identity(
+                    declaration.get("events"),
+                    provider_id,
+                    item_kind="event",
+                    provider_hint=plugin_daemon_item_identity_hint(provider),
+                )
 
             return json_response
 
