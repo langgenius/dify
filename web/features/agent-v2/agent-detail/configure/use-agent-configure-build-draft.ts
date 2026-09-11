@@ -156,7 +156,6 @@ export function useAgentConfigureBuildDraftData({
   setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
   soulSourceOverride: AgentConfigureSoulSource | null
 }) {
-  const shouldSilenceBuildDraftCheckRef = useRef(true)
   const buildDraftQueryInput = {
     params: {
       agent_id: agentId,
@@ -166,16 +165,9 @@ export function useAgentConfigureBuildDraftData({
     input: {
       params: buildDraftQueryInput.params,
     },
-    context: {},
-  })
-  const silentBuildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
-    input: {
-      params: buildDraftQueryInput.params,
-    },
     context: {
       silent: true,
     },
-    queryKey: buildDraftQueryOptions.queryKey,
   })
   const buildDraftQuery = useQuery({
     ...buildDraftQueryOptions,
@@ -186,12 +178,7 @@ export function useAgentConfigureBuildDraftData({
       soulSourceOverride !== 'view-version',
     queryFn: async (context) => {
       try {
-        const queryOptions = shouldSilenceBuildDraftCheckRef.current
-          ? silentBuildDraftQueryOptions
-          : buildDraftQueryOptions
-
-        shouldSilenceBuildDraftCheckRef.current = false
-        return await queryOptions.queryFn(context)
+        return await buildDraftQueryOptions.queryFn(context)
       } catch (error) {
         if (isNotFoundResponse(error)) setSoulSourceOverride('draft')
         throw error
