@@ -36,13 +36,11 @@ def read_tls_files(filenames: Mapping[str, str | None], *, allow_ca_directory: b
         raise ValueError("Cannot read TLS configuration") from None
 
 
-def create_ssl_context(tls: Mapping[str, str], *, verify: bool = True) -> ssl.SSLContext | None:
+def create_ssl_context(tls: Mapping[str, str], *, verify: bool = True) -> ssl.SSLContext:
     if not isinstance(verify, bool):
         raise ValueError("TLS verification flag must be a boolean")
     if tls.get("client_key") and not tls.get("client_certificate"):
         raise ValueError("TLS client key requires a client certificate")
-    if not tls and verify:
-        return None
     certificate = base64.b64decode(tls["certificate"]) if "certificate" in tls else None
     if certificate == b"":
         raise ValueError("TLS CA certificate is empty")

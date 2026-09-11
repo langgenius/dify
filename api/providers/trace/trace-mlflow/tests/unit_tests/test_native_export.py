@@ -15,6 +15,7 @@ from opentelemetry.proto.common.v1.common_pb2 import AnyValue
 from pydantic import JsonValue
 
 from core.ops.otlp_trace import OtlpTraceClient
+from core.ops.provider_config import decrypt_provider_config, encrypt_provider_config, mask_provider_config
 from core.ops.provider_export import TraceExportError, basic_auth, export_span_id, span_id_bytes
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, copy_trace_value, make_span_id, make_trace_id
 from core.rag.models.document import Document
@@ -543,7 +544,9 @@ def test_mlflow_filestore_upload_retry_and_late_operations(otlp_status: int, mon
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
-        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+        lambda *, ssl_context=None: httpx.Client(
+            transport=httpx.MockTransport(respond), verify=ssl_context or True, trust_env=False
+        ),
     )
     client = MLflowTraceClient(
         "mlflow",
@@ -656,7 +659,9 @@ def test_mlflow_v2_server_ids_retries_and_late_links(failure_stage: str, monkeyp
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
-        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+        lambda *, ssl_context=None: httpx.Client(
+            transport=httpx.MockTransport(respond), verify=ssl_context or True, trust_env=False
+        ),
     )
     config = {
         "tracking_uri": "https://mlflow.example/prefix",
@@ -749,7 +754,9 @@ def test_mlflow_does_not_fallback_after_other_otlp_failures(status: int, monkeyp
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
-        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+        lambda *, ssl_context=None: httpx.Client(
+            transport=httpx.MockTransport(respond), verify=ssl_context or True, trust_env=False
+        ),
     )
     client = MLflowTraceClient("mlflow", {"tracking_uri": "https://mlflow.example"})
     with pytest.raises(TraceExportError, match=f"provider_http_{status}"):
@@ -792,7 +799,9 @@ def test_mlflow_artifact_paths_and_credentials(
 
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.create_http_client",
-        lambda: httpx.Client(transport=httpx.MockTransport(respond), trust_env=False),
+        lambda *, ssl_context=None: httpx.Client(
+            transport=httpx.MockTransport(respond), verify=ssl_context or True, trust_env=False
+        ),
     )
     client = MLflowTraceClient(
         "mlflow", {"tracking_uri": "https://mlflow.example/prefix", "username": "user", "password": "secret"}
@@ -827,7 +836,11 @@ def test_mlflow_uses_captured_tls_for_verification_otlp_and_same_origin_artifact
 
     def create_http_client(*, ssl_context: ssl.SSLContext | None = None) -> httpx.Client:
         contexts.append(ssl_context)
-        return httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=b"")), trust_env=False)
+        return httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, content=b"")),
+            verify=ssl_context or True,
+            trust_env=False,
+        )
 
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.create_http_client", create_http_client)
     client = MLflowTraceClient(
@@ -852,12 +865,13 @@ def test_mlflow_direct_clients_preserve_tls_verification_setting(
     monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
     monkeypatch.delenv("CURL_CA_BUNDLE", raising=False)
     client = MLflowTraceClient("mlflow", {"tracking_uri": "https://mlflow.example"})
+    assert isinstance(client.http.ssl_context, ssl.SSLContext)
     if insecure.lower() in {"true", "1"}:
-        assert client.http.ssl_context is not None
         assert client.http.ssl_context.verify_mode == ssl.CERT_NONE
         assert client.http.ssl_context.check_hostname is False
     else:
-        assert client.http.ssl_context is None
+        assert client.http.ssl_context.verify_mode == ssl.CERT_REQUIRED
+        assert client.http.ssl_context.check_hostname is True
 
 
 @pytest.mark.parametrize("scheme", ["http", "https"])
@@ -914,7 +928,10 @@ def test_mlflow_does_not_read_unused_tls_files_for_http(monkeypatch: pytest.Monk
     monkeypatch.setattr("dify_trace_mlflow.config.read_tls_files", read_files)
     config = {"tracking_uri": "http://mlflow.example"}
     assert MLflowConfig.load_runtime_settings(config) == {}
-    assert MLflowTraceClient("mlflow", config).http.ssl_context is None
+    ssl_context = MLflowTraceClient("mlflow", config).http.ssl_context
+    assert isinstance(ssl_context, ssl.SSLContext)
+    assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+    assert ssl_context.check_hostname is True
     read_files.assert_not_called()
 
 
@@ -958,3 +975,17 @@ def test_mlflow_captures_ca_directory_before_delivery(
     ssl_context = MLflowTraceClient("mlflow", config).http.ssl_context
     assert ssl_context is not None
     assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+
+
+def test_mlflow_optional_credentials_do_not_call_encryption(monkeypatch: pytest.MonkeyPatch) -> None:
+    encrypt = Mock()
+    decrypt = Mock()
+    monkeypatch.setattr("core.helper.encrypter.encrypt_token", encrypt)
+    monkeypatch.setattr("core.helper.encrypter.batch_decrypt_token", decrypt)
+    settings = {"tracking_uri": "https://mlflow.example", "experiment_id": "1"}
+    saved = encrypt_provider_config(str(uuid4()), "mlflow", settings)
+    assert saved["password"] is None
+    assert mask_provider_config("mlflow", saved) == saved
+    assert decrypt_provider_config(str(uuid4()), "mlflow", saved) == saved
+    encrypt.assert_not_called()
+    decrypt.assert_not_called()

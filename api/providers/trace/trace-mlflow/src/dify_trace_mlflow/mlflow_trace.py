@@ -105,15 +105,19 @@ class MLflowTraceClient:
                 if "_runtime_settings" in provider_config
                 else self.config.load_runtime_settings(provider_config)
             )
+            headers = {
+                **runtime_settings.get("headers", {}),
+                **(
+                    {"Authorization": basic_auth(self.config.username, self.config.password)}
+                    if self.config.username and self.config.password
+                    else {}
+                ),
+            }
+            if headers.get("Authorization") == "":
+                raise TraceExportError("mlflow_credentials_missing")
             self.http = TraceProviderHttpClient(
                 self.config.tracking_uri,
-                {
-                    **(
-                        {"Authorization": basic_auth(self.config.username, self.config.password or "")}
-                        if self.config.username
-                        else {}
-                    ),
-                },
+                headers,
                 ssl_context=create_ssl_context(
                     runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)
                 ),

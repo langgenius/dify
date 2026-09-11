@@ -12,9 +12,9 @@ from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 from core.moderation.base import ModerationAction, ModerationInputsResult
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource, TraceSpan
-from core.ops.trace_source import record_enterprise_operation
 from core.telemetry.events import DraftNodeExecutionTraceEvent, TelemetryContext
 from enterprise.telemetry.enterprise_trace import EnterpriseTraceClient
+from enterprise.telemetry.operation_trace import record_enterprise_operation
 from models.workflow import WorkflowType
 from tests.unit_tests.core.ops.test_message_trace import RecordingQueue
 
@@ -44,7 +44,7 @@ def test_draft_node_identity_and_content_survive_capture(
     session_context.__exit__ = Mock(return_value=False)
     monkeypatch.setattr("sqlalchemy.orm.Session", Mock(return_value=session_context))
     monkeypatch.setattr("extensions.ext_database.db", SimpleNamespace(engine=Mock()))
-    monkeypatch.setattr("core.ops.trace_source.create_message_trace", Mock(return_value=recorder))
+    monkeypatch.setattr("enterprise.telemetry.operation_trace.create_message_trace", Mock(return_value=recorder))
     process_data = {"prompts": [{"role": "user", "text": "private prompt"}]}
     structure = {
         "index": 0,
