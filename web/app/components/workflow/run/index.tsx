@@ -7,7 +7,6 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import DifyBuilderEntry from '@/app/components/workflow/dify-builder-entry'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
 import { useStore } from '../store'
@@ -22,8 +21,6 @@ type RunProps = {
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
   runDetailUrl: string
   tracingListUrl: string
-  onFixRun?: (runId: string) => void
-  fixWithBuilderDisabled?: boolean
 }
 type RunTab = NonNullable<RunProps['activeTab']>
 
@@ -33,8 +30,6 @@ const RunPanel: FC<RunProps> = ({
   getResultCallback,
   runDetailUrl,
   tracingListUrl,
-  onFixRun,
-  fixWithBuilderDisabled,
 }) => {
   const { t } = useTranslation()
   const [currentTab, setCurrentTab] = useState<RunTab>(activeTab)
@@ -160,21 +155,7 @@ const RunPanel: FC<RunProps> = ({
           </div>
         )}
         {!loading && currentTab === 'RESULT' && runDetail && (
-          <>
-            <OutputPanel outputs={runDetail.outputs} error={runDetail.error} height={height} />
-            {runDetail.status === WorkflowRunningStatus.Failed && runDetail.id && onFixRun && (
-              <div className="px-6 pb-4">
-                <DifyBuilderEntry
-                  label={t(($) => $['difyBuilder.fixWithAppBuilder'], { ns: 'workflow' })}
-                  description={t(($) => $['difyBuilder.runFixScopeDescription'], {
-                    ns: 'workflow',
-                  })}
-                  disabled={fixWithBuilderDisabled}
-                  onClick={() => onFixRun(runDetail.id)}
-                />
-              </div>
-            )}
-          </>
+          <OutputPanel outputs={runDetail.outputs} error={runDetail.error} height={height} />
         )}
         {!loading && currentTab === 'DETAIL' && runDetail && (
           <ResultPanel
@@ -194,8 +175,6 @@ const RunPanel: FC<RunProps> = ({
             isListening={isListening}
             workflowRunId={runDetail.id}
             onOpenTracingTab={() => void switchTab('TRACING')}
-            onFixRun={onFixRun}
-            fixWithBuilderDisabled={fixWithBuilderDisabled}
           />
         )}
         {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (

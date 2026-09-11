@@ -37,7 +37,6 @@ const mockSetShowMessageLogModal = vi.fn()
 const mockSetShowPanel = vi.fn()
 const mockStartFix = vi.fn(async () => true)
 const mockSyncDraft = vi.fn(async () => undefined)
-const mockLoadBackupDraft = vi.fn()
 
 let appStoreState: AppStoreState
 let workflowStoreState: WorkflowStoreState
@@ -48,13 +47,6 @@ vi.mock('@/app/components/app/store', () => ({
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: WorkflowStoreState) => T) => selector(workflowStoreState),
-  useWorkflowStore: () => ({
-    setState: (state: Partial<WorkflowStoreState>) => Object.assign(workflowStoreState, state),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({ handleLoadBackupDraft: mockLoadBackupDraft }),
 }))
 
 vi.mock('@/app/components/workflow/panel', () => ({
@@ -126,26 +118,7 @@ vi.mock('@/app/components/base/message-log-modal', () => ({
 }))
 
 vi.mock('@/app/components/workflow/panel/record', () => ({
-  default: ({
-    fixWithBuilderDisabled,
-    onFixRun,
-  }: {
-    fixWithBuilderDisabled?: boolean
-    onFixRun?: (runId: string) => void
-  }) => (
-    <div data-testid="record-panel">
-      record
-      {onFixRun && (
-        <button
-          type="button"
-          disabled={fixWithBuilderDisabled}
-          onClick={() => onFixRun('failed-run-1')}
-        >
-          Fix failed run with App Builder
-        </button>
-      )}
-    </div>
-  ),
+  default: () => <div data-testid="record-panel">record</div>,
 }))
 
 vi.mock('@/app/components/workflow/panel/chat-record', () => ({
@@ -157,7 +130,26 @@ vi.mock('@/app/components/workflow/panel/debug-and-preview', () => ({
 }))
 
 vi.mock('@/app/components/workflow/panel/workflow-preview', () => ({
-  default: () => <div data-testid="workflow-preview-panel">preview</div>,
+  default: ({
+    fixWithBuilderDisabled,
+    onFixRun,
+  }: {
+    fixWithBuilderDisabled?: boolean
+    onFixRun?: (runId: string) => void
+  }) => (
+    <div data-testid="workflow-preview-panel">
+      preview
+      {onFixRun && (
+        <button
+          type="button"
+          disabled={fixWithBuilderDisabled}
+          onClick={() => onFixRun('failed-run-1')}
+        >
+          Fix failed run with App Builder
+        </button>
+      )}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/panel/chat-variable-panel', () => ({
@@ -307,12 +299,12 @@ describe('WorkflowPanel', () => {
     expect(screen.queryByTestId('chat-variable-panel')).not.toBeInTheDocument()
   })
 
-  it('should hide run Fix when Builder is disabled and start it when enabled', async () => {
+  it('should hide live run Fix when Builder is disabled and start it when enabled', async () => {
     const user = userEvent.setup()
-    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+    workflowStoreState.showDebugAndPreviewPanel = true
 
     const { unmount } = renderWorkflowPanel({ enabled: false })
-    await screen.findByTestId('record-panel')
+    await screen.findByTestId('workflow-preview-panel')
     expect(
       screen.queryByRole('button', { name: 'Fix failed run with App Builder' }),
     ).not.toBeInTheDocument()
@@ -327,7 +319,7 @@ describe('WorkflowPanel', () => {
   })
 
   it('should keep run Fix disabled without edit access or while the Builder session is busy', async () => {
-    workflowStoreState.historyWorkflowData = { id: 'history-1' }
+    workflowStoreState.showDebugAndPreviewPanel = true
 
     const { unmount } = renderWorkflowPanel({ canEdit: false, enabled: true })
     expect(
@@ -341,21 +333,16 @@ describe('WorkflowPanel', () => {
     ).toBeDisabled()
   })
 
-  it('restores the editing draft and exits history before syncing and starting Fix', async () => {
-    const user = userEvent.setup()
+  it('should hide run Fix while viewing history even when the live preview is open', async () => {
     workflowStoreState.historyWorkflowData = { id: 'history-1' }
-    const preparation: string[] = []
-    mockLoadBackupDraft.mockImplementationOnce(() => preparation.push('restore'))
-    mockSyncDraft.mockImplementationOnce(async () => {
-      if (workflowStoreState.historyWorkflowData) throw new Error('Workflow draft sync failed.')
-      preparation.push('sync')
-    })
+    workflowStoreState.showDebugAndPreviewPanel = true
     renderWorkflowPanel({ enabled: true })
 
-    await user.click(await screen.findByRole('button', { name: 'Fix failed run with App Builder' }))
-
-    expect(preparation).toEqual(['restore', 'sync'])
-    expect(workflowStoreState.historyWorkflowData).toBeUndefined()
-    expect(mockStartFix).toHaveBeenCalledExactlyOnceWith('app-123', 'failed-run-1', undefined)
+    await screen.findByTestId('record-panel')
+    await screen.findByTestId('workflow-preview-panel')
+    expect(
+      screen.queryByRole('button', { name: 'Fix failed run with App Builder' }),
+    ).not.toBeInTheDocument()
+    expect(mockStartFix).not.toHaveBeenCalled()
   })
 })

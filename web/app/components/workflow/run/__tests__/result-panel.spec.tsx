@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { withSelectorKey } from '@/test/i18n-mock'
+import userEvent from '@testing-library/user-event'
+import { createReactI18nextMock, withSelectorKey } from '@/test/i18n-mock'
 import { BlockEnum, NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import ResultPanel from '../result-panel'
 
@@ -17,6 +18,7 @@ const mockRetryLogTrigger = vi.hoisted(() => vi.fn())
 const mockAgentLogTrigger = vi.hoisted(() => vi.fn())
 
 vi.mock('react-i18next', () => ({
+  ...createReactI18nextMock(),
   useTranslation: () => mockUseTranslation(),
 }))
 
@@ -364,7 +366,8 @@ describe('ResultPanel', () => {
     expect(screen.getByText('COMMON.OUTPUT')).toBeInTheDocument()
   })
 
-  it('should offer App Builder only for a failed workflow run', () => {
+  it('should offer App Builder only for a failed workflow run', async () => {
+    const user = userEvent.setup()
     const onFixRun = vi.fn()
     const { rerender } = render(
       <ResultPanel
@@ -374,7 +377,7 @@ describe('ResultPanel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'difyBuilder.fixWithAppBuilder' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' }))
     expect(onFixRun).toHaveBeenCalledWith('run-failed-1')
 
     rerender(
@@ -385,7 +388,7 @@ describe('ResultPanel', () => {
       />,
     )
     expect(
-      screen.queryByRole('button', { name: 'difyBuilder.fixWithAppBuilder' }),
+      screen.queryByRole('button', { name: 'workflow.difyBuilder.fixRun' }),
     ).not.toBeInTheDocument()
   })
 })

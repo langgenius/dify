@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
-import { useTranslation } from 'react-i18next'
-import DifyBuilderEntry from '@/app/components/workflow/dify-builder-entry'
+import { Button } from '@langgenius/dify-ui/button'
+import { Trans, useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -100,13 +100,29 @@ const ResultPanel: FC<ResultPanelProps> = ({
         />
       </div>
       {status === WorkflowRunningStatus.Failed && workflowRunId && onFixRun && (
-        <div className="px-4 py-2">
-          <DifyBuilderEntry
-            label={t(($) => $['difyBuilder.fixWithAppBuilder'], { ns: 'workflow' })}
-            description={t(($) => $['difyBuilder.runFixScopeDescription'], { ns: 'workflow' })}
+        <div className="flex items-start px-4 pb-3">
+          <Button
+            variant="secondary"
+            size="medium"
             disabled={fixWithBuilderDisabled}
             onClick={() => onFixRun(workflowRunId)}
-          />
+          >
+            <span className="inline-flex items-center gap-1">
+              <Trans
+                i18nKey={($) => $['difyBuilder.fixRun']}
+                ns="workflow"
+                components={{
+                  builder: <span className="inline-flex items-center gap-1 font-semibold" />,
+                  icon: (
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-public-app-builder-builder-mark size-4 shrink-0"
+                    />
+                  ),
+                }}
+              />
+            </span>
+          </Button>
         </div>
       )}
       <div className="px-4">

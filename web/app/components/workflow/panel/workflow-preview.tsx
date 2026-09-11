@@ -22,7 +22,12 @@ import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
 
-const WorkflowPreview = () => {
+type WorkflowPreviewProps = {
+  onFixRun?: (runId: string) => void
+  fixWithBuilderDisabled?: boolean
+}
+
+const WorkflowPreview = ({ onFixRun, fixWithBuilderDisabled }: WorkflowPreviewProps) => {
   const { t } = useTranslation()
   const panelId = useId()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
@@ -138,7 +143,9 @@ const WorkflowPreview = () => {
       <div className="relative flex grow flex-col">
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {showInputsPanel && (
-            <div
+            <button
+              type="button"
+              aria-pressed={currentTab === 'INPUT'}
               className={cn(
                 'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
                 currentTab === 'INPUT' && 'border-[rgb(21,94,239)]! text-text-secondary',
@@ -146,47 +153,47 @@ const WorkflowPreview = () => {
               onClick={() => switchTab('INPUT')}
             >
               {t(($) => $.input, { ns: 'runLog' })}
-            </div>
+            </button>
           )}
-          <div
+          <button
+            type="button"
+            aria-pressed={currentTab === 'RESULT'}
+            disabled={!workflowRunningData}
             className={cn(
               'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'RESULT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('RESULT')
-            }}
+            onClick={() => switchTab('RESULT')}
           >
             {t(($) => $.result, { ns: 'runLog' })}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            aria-pressed={currentTab === 'DETAIL'}
+            disabled={!workflowRunningData}
             className={cn(
               'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('DETAIL')
-            }}
+            onClick={() => switchTab('DETAIL')}
           >
             {t(($) => $.detail, { ns: 'runLog' })}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            aria-pressed={currentTab === 'TRACING'}
+            disabled={!workflowRunningData}
             className={cn(
               'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('TRACING')
-            }}
+            onClick={() => switchTab('TRACING')}
           >
             {t(($) => $.tracing, { ns: 'runLog' })}
-          </div>
+          </button>
         </div>
         <div
           className={cn(
@@ -268,7 +275,10 @@ const WorkflowPreview = () => {
               created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
               exceptionCounts={workflowRunningData?.result?.exceptions_count}
+              workflowRunId={workflowRunningData?.result.id}
               onOpenTracingTab={handleOpenTracingTab}
+              onFixRun={onFixRun}
+              fixWithBuilderDisabled={fixWithBuilderDisabled}
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (

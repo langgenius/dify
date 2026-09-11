@@ -293,7 +293,7 @@ describe('WorkflowPreview', () => {
       },
     })
 
-    await user.click(screen.getByText('runLog.result'))
+    await user.click(screen.getByRole('button', { name: 'runLog.result' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
 
     expect(mockCopy).toHaveBeenCalledWith('final answer')
@@ -333,9 +333,9 @@ describe('WorkflowPreview', () => {
       },
     })
 
-    await user.click(screen.getByText('runLog.result'))
-    await user.click(screen.getByText('runLog.detail'))
-    await user.click(screen.getByText('runLog.tracing'))
+    await user.click(screen.getByRole('button', { name: 'runLog.result' }))
+    await user.click(screen.getByRole('button', { name: 'runLog.detail' }))
+    await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
     expect(screen.getByRole('button', { name: 'run-inputs' })).toBeInTheDocument()
 
     store.setState({
@@ -351,16 +351,16 @@ describe('WorkflowPreview', () => {
       } as NonNullable<Shape['workflowRunningData']>,
     })
 
-    await user.click(screen.getByText('runLog.result'))
+    await user.click(screen.getByRole('button', { name: 'runLog.result' }))
     expect(screen.getByTestId('result-text')).toBeInTheDocument()
 
-    await user.click(screen.getByText('runLog.detail'))
+    await user.click(screen.getByRole('button', { name: 'runLog.detail' }))
     expect(screen.getByTestId('result-panel')).toBeInTheDocument()
 
-    await user.click(screen.getByText('runLog.tracing'))
+    await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
     expect(screen.getByTestId('tracing-panel')).toHaveTextContent('1')
 
-    await user.click(screen.getByText('runLog.result'))
+    await user.click(screen.getByRole('button', { name: 'runLog.result' }))
     await user.click(screen.getByRole('button', { name: 'open-detail' }))
     expect(screen.getByTestId('result-panel')).toBeInTheDocument()
   })
@@ -380,7 +380,7 @@ describe('WorkflowPreview', () => {
       },
     })
 
-    await user.click(screen.getByText('runLog.result'))
+    await user.click(screen.getByRole('button', { name: 'runLog.result' }))
 
     // one panel that carries both nodes' reasoning; still running → timer keeps ticking
     const panels = screen.getAllByTestId('reasoning-panel')
@@ -404,7 +404,7 @@ describe('WorkflowPreview', () => {
       },
     })
 
-    await user.click(screen.getByText('runLog.result'))
+    await user.click(screen.getByRole('button', { name: 'runLog.result' }))
 
     // answer-started (resultText non-empty) freezes the timer even though the run is still Running
     expect(screen.getByTestId('reasoning-panel')).toHaveAttribute('data-done', 'true')
@@ -425,7 +425,7 @@ describe('WorkflowPreview', () => {
       },
     })
 
-    await user.click(screen.getByText('runLog.result'))
+    await user.click(screen.getByRole('button', { name: 'runLog.result' }))
 
     expect(screen.queryByTestId('reasoning-panel')).not.toBeInTheDocument()
   })
@@ -448,7 +448,7 @@ describe('WorkflowPreview', () => {
       },
     })
 
-    await user.click(screen.getByText('runLog.detail'))
+    await user.click(screen.getByRole('button', { name: 'runLog.detail' }))
     await user.click(screen.getByRole('button', { name: 'open-tracing' }))
 
     expect(screen.getByTestId('tracing-panel')).toHaveTextContent('1')

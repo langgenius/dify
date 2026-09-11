@@ -1,6 +1,7 @@
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import RunPanel from '../index'
@@ -137,8 +138,8 @@ describe('RunPanel', () => {
     })
   })
 
-  it('opens a fix session for the failed run from the result tab', async () => {
-    const handleFixRun = vi.fn()
+  it('does not offer Fix from any tab of a failed historical run', async () => {
+    const user = userEvent.setup()
     mockFetchRunDetail.mockResolvedValue(
       createRunDetail({
         id: 'failed-run-1',
@@ -151,16 +152,19 @@ describe('RunPanel', () => {
       <RunPanel
         runDetailUrl="/console/api/runs/failed-run-1"
         tracingListUrl="/console/api/runs/failed-run-1/tracing"
-        onFixRun={handleFixRun}
       />,
     )
 
-    const fixButton = await screen.findByRole('button', {
-      name: /difyBuilder\.fixWithAppBuilder$/,
-    })
-    fireEvent.click(fixButton)
+    await screen.findByText('Workflow failed')
+    expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
 
-    expect(handleFixRun).toHaveBeenCalledWith('failed-run-1')
+    await user.click(screen.getByRole('button', { name: 'runLog.detail' }))
+    expect(screen.getByRole('status')).toHaveTextContent('FAIL')
+    expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+    await screen.findByText('Trace Node')
+    expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
   })
 
   it('switches between detail, tracing, and result tabs with real child panels', async () => {
