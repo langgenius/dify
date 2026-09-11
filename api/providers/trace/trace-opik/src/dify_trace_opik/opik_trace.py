@@ -78,6 +78,61 @@ def _make_span_tags(completed_trace: CompletedTrace, span: TraceSpan) -> list[Js
     return list(dict.fromkeys(tags))
 
 
+def _map_span_type(span: TraceSpan) -> str:
+    if span.node_execution_id and isinstance(span.attributes.get("node_type"), str):
+        process_data = span.attributes.get("process_data")
+        model_mode = span.attributes.get(
+            "model_mode", process_data.get("model_mode") if isinstance(process_data, dict) else None
+        )
+        return "llm" if model_mode == "chat" else "tool"
+    operation_type = span.attributes.get("operation_type")
+    if not isinstance(operation_type, str):
+        operation_type = span.span_type
+    if operation_type == "generate_name":
+        return "general"
+    if operation_type in {"moderation", "suggested_question", "dataset_retrieval", "tool"}:
+        return "tool"
+    if span.span_type == "llm":
+        return "llm"
+    if (
+        span.span_type in {"tool", "node", "retrieval", "knowledge-retrieval"}
+        or span.node_execution_id
+        or span.attributes.get("node_execution_id")
+    ):
+        return "tool"
+    return "general"
+
+
+def _map_span_usage(spans: list[TraceSpan]) -> dict[str, dict[str, JsonValue]]:
+    usages: dict[str, dict[str, JsonValue]] = {}
+    spans_with_agent_usage: set[str] = set()
+    for span in spans:
+        usage = span.usage if span.span_type == "llm" else {}
+        aggregate_usage = span.attributes.get("aggregate_usage")
+        is_agent = span.span_type == "agent" or span.attributes.get("node_type") == "agent"
+        if (
+            is_agent
+            and isinstance(aggregate_usage, dict)
+            and any(
+                key.endswith("tokens") and isinstance(value, int) and not isinstance(value, bool) and value > 0
+                for key, value in aggregate_usage.items()
+            )
+        ):
+            usage = aggregate_usage
+            spans_with_agent_usage.add(span.span_id)
+        if span.parent_span_id in spans_with_agent_usage:
+            spans_with_agent_usage.add(span.span_id)
+            # Agent log usage is part of the aggregate, even when only some logs were captured.
+            if span.attributes.get("metrics_from_parent"):
+                usage = {}
+        usages[span.span_id] = {
+            key: value
+            for key, value in usage.items()
+            if key.endswith("tokens") and isinstance(value, int) and not isinstance(value, bool)
+        }
+    return usages
+
+
 class OpikTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
         self.config = OpikConfig.model_validate(provider_config)
@@ -130,6 +185,7 @@ class OpikTraceClient:
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
         spans = _prepare_timed_spans(completed_trace)
+        usages = _map_span_usage(spans)
         root = spans[0]
         trace_seed = completed_trace.trace_id
         if external_id := completed_trace.source.external_trace_id:
@@ -154,14 +210,20 @@ class OpikTraceClient:
         for span in spans:
             assert span.started_at is not None
             assert span.ended_at is not None
+            inputs = span.inputs
+            if span.node_execution_id and span.attributes.get("node_type") in (
+                "question-classifier",
+                "parameter-extractor",
+            ):
+                inputs = span.attributes.get("original_inputs", inputs)
             values: dict[str, JsonValue] = {
                 "name": span.span_name,
                 "start_time": span.started_at.isoformat(),
                 "end_time": span.ended_at.isoformat() if span.ended_at else None,
                 "project_name": self.config.project or "Default Project",
-                "input": span.inputs
-                if isinstance(span.inputs, dict)
-                else {"messages" if span.span_type == "llm" else "input": span.inputs},
+                "input": inputs
+                if isinstance(inputs, dict)
+                else {"messages" if span.span_type == "llm" else "input": inputs},
                 "output": span.outputs if isinstance(span.outputs, dict) else {"output": span.outputs},
                 "metadata": {**span_attributes(completed_trace, span), "created_from": "dify"},
                 "tags": _make_span_tags(completed_trace, span),
@@ -189,12 +251,10 @@ class OpikTraceClient:
                     "parent_span_id": span_ids[span.parent_span_id]
                     if span.parent_span_id
                     else (parent_span["span_id"] if parent_span else None),
-                    "type": span.span_type if span.span_type in {"llm", "tool"} else "general",
+                    "type": _map_span_type(span),
                     "model": span.attributes.get("model_name"),
                     "provider": span.attributes.get("model_provider"),
-                    "usage": {key: value for key, value in span.usage.items() if key.endswith("tokens")}
-                    if span.span_type == "llm"
-                    else {},
+                    "usage": usages[span.span_id],
                 }
             )
             if (

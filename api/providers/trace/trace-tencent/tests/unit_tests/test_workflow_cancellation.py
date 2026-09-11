@@ -18,7 +18,7 @@ from .test_export_contract import make_provider_config  # pyrefly: ignore[missin
 
 
 @pytest.mark.parametrize("reason", ["Workflow execution stopped", ""])
-def test_stopped_workflow_preserves_native_status_without_reclassifying_nodes(
+def test_stopped_workflow_and_running_node_preserve_persisted_failures(
     reason: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()), actor_id="user")
@@ -35,7 +35,10 @@ def test_stopped_workflow_preserves_native_status_without_reclassifying_nodes(
     recorder.on_event(GraphRunAbortedEvent(reason=reason))
     assert recorder.finish_workflow_trace()
     trace = CompletedTrace.model_validate_json(submitted[0].model_dump_json())
-    assert all(span.status == "cancelled" for span in trace.spans)
+    assert [span.status for span in trace.spans] == ["cancelled", "error"]
+    expected_reason = reason or "Workflow execution aborted"
+    assert all(span.error == expected_reason for span in trace.spans)
+    assert trace.spans[1].ended_at == trace.spans[0].ended_at
 
     client = create_trace_client(make_provider_config())
     send_traces = Mock()
@@ -44,10 +47,10 @@ def test_stopped_workflow_preserves_native_status_without_reclassifying_nodes(
     client.export_trace(trace)
     request = ExportTraceServiceRequest.FromString(send_traces.call_args.args[0].SerializeToString())
     root, node = request.resource_spans[0].scope_spans[0].spans
-    assert root.status.code == (Status.STATUS_CODE_ERROR if reason else Status.STATUS_CODE_UNSET)
-    assert root.status.message == reason
-    assert node.status.code == Status.STATUS_CODE_UNSET
-    assert node.status.message == reason
+    assert root.status.code == Status.STATUS_CODE_ERROR
+    assert root.status.message == expected_reason
+    assert node.status.code == Status.STATUS_CODE_ERROR
+    assert node.status.message == expected_reason
     assert {attribute.key: attribute.value.string_value for attribute in root.attributes}[
         "dify.span.status"
     ] == "cancelled"

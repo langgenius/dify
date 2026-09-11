@@ -37,6 +37,7 @@ from graphon.engine_events import (
     NodeEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
+    NodeRunPauseRequestedEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
@@ -364,7 +365,7 @@ class WorkflowTraceRecorder(Layer):
             case GraphRunPartialSucceededEvent():
                 status, error, outputs = "handled_error", None, event.outputs
             case GraphRunAbortedEvent():
-                status, error, outputs = "cancelled", event.reason, event.outputs
+                status, error, outputs = "cancelled", event.reason or "Workflow execution aborted", event.outputs
             case GraphRunFailedEvent():
                 status, error, outputs = (
                     "error",
@@ -375,11 +376,13 @@ class WorkflowTraceRecorder(Layer):
                 return
         self._paused = False
         self._open_span_ids.discard(root.span_id)
+        ended_at = datetime.now(UTC)
+        captured_error = self._copy_value(error)
         self._spans[root.span_id] = root.model_copy(
             update={
                 "status": status,
-                "error": self._copy_value(error),
-                "ended_at": datetime.now(UTC),
+                "error": captured_error,
+                "ended_at": ended_at,
                 "outputs": self._copy_value(outputs),
                 "attributes": {
                     **root.attributes,
@@ -392,6 +395,25 @@ class WorkflowTraceRecorder(Layer):
                 },
             }
         )
+        if isinstance(event, (GraphRunFailedEvent, GraphRunAbortedEvent)):
+            # Persistence fails RUNNING node executions at the terminal event.
+            # Retry waits, paused nodes and plugin details have no such outcome.
+            for span_id in tuple(self._open_span_ids):
+                span = self._spans[span_id]
+                if (
+                    span.node_execution_id is not None
+                    and span.started_at is not None
+                    and span.attributes.get("node_status") not in {"retry", "paused"}
+                ):
+                    self._spans[span_id] = span.model_copy(
+                        update={
+                            "status": "error",
+                            "error": captured_error,
+                            "ended_at": ended_at,
+                            "attributes": {**span.attributes, "node_status": "failed"},
+                        }
+                    )
+                    self._open_span_ids.discard(span_id)
 
     @override
     def on_event(self, event: EngineEvent) -> None:
@@ -458,9 +480,10 @@ class WorkflowTraceRecorder(Layer):
                     else:
                         self._finish_child_trace(child, root_span=failed_attempt)
             self._attempts[event.id] = event.retry_index
+            self._spans[span_id] = span.model_copy(update={"attributes": {**span.attributes, "node_status": "retry"}})
             return
         if isinstance(event, NodeRunStartedEvent):
-            attributes = dict(span.attributes)
+            attributes = {**span.attributes, "node_status": "running"}
             if event.predecessor_node_id is not None:
                 attributes["predecessor_node_id"] = self._copy_value(event.predecessor_node_id[:512])
             self._spans[span_id] = span.model_copy(
@@ -470,6 +493,9 @@ class WorkflowTraceRecorder(Layer):
                     "attributes": attributes,
                 }
             )
+            return
+        if isinstance(event, NodeRunPauseRequestedEvent):
+            self._spans[span_id] = span.model_copy(update={"attributes": {**span.attributes, "node_status": "paused"}})
             return
         if not isinstance(event, (NodeRunSucceededEvent, NodeRunExceptionEvent, NodeRunFailedEvent)):
             return

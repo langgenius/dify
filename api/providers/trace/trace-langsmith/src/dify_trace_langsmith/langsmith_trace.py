@@ -124,7 +124,15 @@ def _map_run_type_and_tags(span: TraceSpan) -> tuple[str, list[str]]:
         or span.span_type == "node"
         or operation_type == "draft_node_execution"
     )
-    if span.span_type == "llm":
+    if operation_type in {"suggested_question", "generate_name"}:
+        run_type = "tool"
+    elif span.node_execution_id and isinstance(node_type := span.attributes.get("node_type"), str):
+        process_data = span.attributes.get("process_data")
+        model_mode = span.attributes.get(
+            "model_mode", process_data.get("model_mode") if isinstance(process_data, dict) else None
+        )
+        run_type = "llm" if model_mode == "chat" else "retriever" if node_type == "knowledge-retrieval" else "tool"
+    elif span.span_type == "llm":
         run_type = "llm"
     elif span.span_type in {"retrieval", "knowledge-retrieval"} or operation_type == "dataset_retrieval":
         run_type = "retriever"
@@ -252,6 +260,12 @@ class LangSmithTraceClient:
                         if value is not None
                     }
                 )
+            if span.node_execution_id and span.attributes.get("node_type") in (
+                "question-classifier",
+                "parameter-extractor",
+            ):
+                original_inputs = span.attributes.get("original_inputs", span.inputs)
+                inputs = original_inputs if isinstance(original_inputs, dict) else {"input": original_inputs}
             run_type, tags = _map_run_type_and_tags(span)
             # Captured metadata contains copies of content hidden by the SDK switches.
             if self.hide_inputs:

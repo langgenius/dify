@@ -10,6 +10,12 @@ from dify_trace_opik.opik_trace import OpikTraceClient
 from core.ops.message_trace import MessageTraceRecorder
 from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, make_span_id, make_trace_id
+from core.ops.workflow_trace import WorkflowTraceRecorder
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
+from graphon.enums import WorkflowNodeExecutionMetadataKey
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import NodeRunResult
+from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
 
 
 def make_trace() -> CompletedTrace:
@@ -268,7 +274,7 @@ def test_opik_preserves_tags_on_captured_message_operations(mode: str, monkeypat
         },
         include_llm=mode != "advanced-chat",
     )
-    captured = submitted.call_args.args[0]
+    captured = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
     original = captured.model_dump_json()
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(captured)
@@ -280,6 +286,19 @@ def test_opik_preserves_tags_on_captured_message_operations(mode: str, monkeypat
         assert exported["tags"] == expected_tags[exported["name"]]
         assert exported["metadata"]["created_from"] == "dify"
         assert exported["metadata"]["dify.tenant_id"] == source.tenant_id
+        if "type" in exported:
+            assert (
+                exported["type"]
+                == {
+                    "message": "general",
+                    "gpt-4o": "llm",
+                    "moderation": "tool",
+                    "suggested_questions": "tool",
+                    "generate_conversation_name": "general",
+                    "dataset_retrieval": "tool",
+                    "Search": "tool",
+                }[exported["name"]]
+            )
     assert captured.model_dump_json() == original
 
 
@@ -301,3 +320,121 @@ def test_opik_preserves_workflow_trace_and_node_tags(
     assert root_span["tags"] == ["dify", "workflow"]
     assert node_span["tags"] == ["dify", node_type, "node_execution"]
     assert all(exported["metadata"]["created_from"] == "dify" for exported in (root, root_span, node_span))
+
+
+@pytest.mark.parametrize(
+    ("node_type", "model_mode", "expected_type"),
+    [
+        ("code", None, "tool"),
+        ("http-request", None, "tool"),
+        ("knowledge-retrieval", None, "tool"),
+        ("agent", None, "tool"),
+        ("llm", "chat", "llm"),
+        ("llm", "completion", "tool"),
+        ("llm", None, "tool"),
+        ("question-classifier", "chat", "llm"),
+        ("question-classifier", "completion", "tool"),
+        ("question-classifier", None, "tool"),
+        ("parameter-extractor", "chat", "llm"),
+        ("parameter-extractor", "completion", "tool"),
+        ("parameter-extractor", None, "tool"),
+    ],
+)
+def test_opik_captured_workflow_node_categories(
+    node_type: str, model_mode: str | None, expected_type: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_inputs = {"query": "Original query"}
+    prompts = [{"role": "user", "content": "Rendered prompt"}]
+    source = make_trace().source
+    submitted = Mock(return_value=True)
+    recorder = WorkflowTraceRecorder(
+        source=source, workflow_id="workflow", workflow_version="1", inputs={}, submit_completed_trace=submitted
+    )
+    node = workflow_node(source, node_type=node_type)
+    start_node(recorder, node)
+    recorder.on_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type=node_type,
+            start_at=datetime.now(UTC),
+            finished_at=datetime.now(UTC),
+            node_run_result=NodeRunResult(
+                inputs=original_inputs,
+                outputs={"text": "Done"},
+                process_data={"prompts": prompts, **({"model_mode": model_mode} if model_mode else {})},
+            ),
+        )
+    )
+    recorder.on_event(GraphRunSucceededEvent())
+    recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    client, request = make_client_with_transport(monkeypatch)
+    client.export_trace(trace)
+    assert request.call_args.kwargs["json"]["type"] == expected_type
+    assert request.call_args.kwargs["json"]["input"] == (
+        {"messages": prompts} if node_type == "llm" else original_inputs
+    )
+
+
+@pytest.mark.parametrize("details", ["absent", "tokens", "partial", "empty", "sibling", "unaggregated"])
+def test_opik_agent_usage_fallback_counts_tokens_once(details: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = make_trace().source
+    submitted = Mock(return_value=True)
+    recorder = WorkflowTraceRecorder(
+        source=source, workflow_id="workflow", workflow_version="1", inputs={}, submit_completed_trace=submitted
+    )
+    usage = LLMUsage.empty_usage().model_copy(update={"prompt_tokens": 3, "completion_tokens": 5, "total_tokens": 8})
+    node_usage = LLMUsage.empty_usage() if details == "unaggregated" else usage
+    nodes = [workflow_node(source, node_type="agent")]
+    if details == "sibling":
+        nodes.append(workflow_node(source, node_type="llm"))
+    for node in nodes:
+        start_node(recorder, node)
+        recorder.on_event(
+            NodeRunSucceededEvent(
+                id=node.execution_id,
+                node_id=node.id,
+                node_type=node.node_type,
+                start_at=datetime.now(UTC),
+                finished_at=datetime.now(UTC),
+                node_run_result=NodeRunResult(
+                    outputs={
+                        "text": "Answer",
+                        "usage": node_usage.model_dump(mode="json"),
+                        "json": [
+                            {
+                                "id": "thought",
+                                "label": "1 Thought",
+                                "metadata": {
+                                    "prompt_tokens": 1 if details == "partial" else 3,
+                                    "completion_tokens": 2 if details == "partial" else 5,
+                                    "total_tokens": 3 if details == "partial" else 8,
+                                }
+                                if details in {"tokens", "partial", "unaggregated"}
+                                else {},
+                            }
+                        ]
+                        if details in {"tokens", "partial", "empty", "unaggregated"}
+                        else [],
+                    },
+                    metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: node_usage.total_tokens},
+                    llm_usage=node_usage,
+                ),
+            )
+        )
+    recorder.on_event(GraphRunSucceededEvent())
+    recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    original = trace.model_dump_json()
+    client, request = make_client_with_transport(monkeypatch)
+    client.export_trace(trace)
+    spans = [call.kwargs["json"] for call in request.call_args_list if call.args[1].endswith("/spans")]
+    assert sum(span["usage"].get("total_tokens", 0) for span in spans) == (16 if details == "sibling" else 8)
+    assert spans[1]["usage"] == (
+        {} if details == "unaggregated" else {"prompt_tokens": 3, "completion_tokens": 5, "total_tokens": 8}
+    )
+    if details in {"tokens", "partial"}:
+        assert spans[2]["usage"] == {}
+        assert spans[2]["metadata"]["dify.usage"]["total_tokens"] == (3 if details == "partial" else 8)
+    assert trace.model_dump_json() == original

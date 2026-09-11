@@ -8,9 +8,14 @@ from dify_trace_langsmith.config import LangSmithConfig
 from dify_trace_langsmith.langsmith_trace import LangSmithTraceClient
 from pydantic import JsonValue
 
+from core.ops.message_trace import MessageTraceRecorder
 from core.ops.provider_config import resolve_provider_config
 from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, make_span_id, make_trace_id
+from core.ops.workflow_trace import WorkflowTraceRecorder
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
+from graphon.node_events import NodeRunResult
+from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
 
 
 def make_trace() -> CompletedTrace:
@@ -272,8 +277,8 @@ def test_langsmith_keeps_multimodal_blocks_and_tool_calls(monkeypatch: pytest.Mo
         ),
         ("llm", {"operation_type": "llm", "conversation_mode": "chat"}, None, "llm", ["llm", "chat"]),
         ("tool", {"operation_type": "moderation"}, None, "tool", ["tool", "moderation"]),
-        ("llm", {"operation_type": "suggested_question"}, None, "llm", ["llm", "suggested_question"]),
-        ("llm", {"operation_type": "generate_name"}, None, "llm", ["llm", "generate_name"]),
+        ("llm", {"operation_type": "suggested_question"}, None, "tool", ["llm", "suggested_question"]),
+        ("llm", {"operation_type": "generate_name"}, None, "tool", ["llm", "generate_name"]),
         ("operation", {"operation_type": "generate_name"}, None, "tool", ["operation", "generate_name"]),
         ("retrieval", {"operation_type": "dataset_retrieval"}, None, "retriever", ["retrieval", "dataset_retrieval"]),
         ("tool", {"operation_type": "tool", "tool_name": "web_search"}, None, "tool", ["tool", "web_search"]),
@@ -336,3 +341,75 @@ def test_langsmith_preserves_cancelled_workflow_reason_without_inventing_errors(
 
     run = request.call_args.kwargs["json"]["post"][0]
     assert run["error"] == expected_error
+
+
+def test_langsmith_captured_auxiliary_operations_keep_tool_category(monkeypatch: pytest.MonkeyPatch) -> None:
+    trace = make_trace()
+    recorder = MessageTraceRecorder(trace.source, Mock(), ())
+    submitted = Mock(return_value=True)
+    monkeypatch.setattr(recorder, "submit_completed_trace", submitted)
+    for operation in ("moderation", "suggested_question", "generate_name"):
+        recorder.record_operation(
+            operation,
+            span_type="tool" if operation == "moderation" else "llm",
+            inputs="Prompt",
+            outputs="Answer",
+            timer={"start": trace.spans[0].started_at, "end": trace.spans[0].ended_at},
+            attributes={"operation_type": operation},
+            usage={"total_tokens": 8},
+        )
+    recorder.finish_message_trace(
+        {
+            "message_id": trace.source.message_id,
+            "conversation_id": str(uuid4()),
+            "started_at": trace.spans[0].started_at,
+            "ended_at": trace.spans[0].ended_at,
+        }
+    )
+    captured = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    client, request = make_client_with_transport(monkeypatch)
+    client.export_trace(captured)
+    assert len(request.call_args_list) == 4
+    for call in request.call_args_list[1:]:
+        run = call.kwargs["json"]["post"][0]
+        assert run["run_type"] == "tool"
+        assert run["extra"]["metadata"]["dify.usage"]["total_tokens"] == 8
+
+
+@pytest.mark.parametrize("node_type", ["llm", "question-classifier", "parameter-extractor"])
+@pytest.mark.parametrize("model_mode", ["chat", "completion", None])
+def test_langsmith_captured_workflow_model_categories(
+    node_type: str, model_mode: str | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_inputs = {"query": "Original query"}
+    prompts = [{"role": "user", "content": "Rendered prompt"}]
+    source = make_trace().source
+    submitted = Mock(return_value=True)
+    recorder = WorkflowTraceRecorder(
+        source=source, workflow_id="workflow", workflow_version="1", inputs={}, submit_completed_trace=submitted
+    )
+    node = workflow_node(source, node_type=node_type)
+    start_node(recorder, node)
+    recorder.on_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type=node_type,
+            start_at=datetime.now(UTC),
+            finished_at=datetime.now(UTC),
+            node_run_result=NodeRunResult(
+                inputs=original_inputs,
+                outputs={"text": "Done"},
+                process_data={"prompts": prompts, **({"model_mode": model_mode} if model_mode else {})},
+            ),
+        )
+    )
+    recorder.on_event(GraphRunSucceededEvent())
+    recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    assert trace.spans[-1].inputs == prompts
+    client, request = make_client_with_transport(monkeypatch)
+    client.export_trace(trace)
+    run = request.call_args.kwargs["json"]["post"][0]
+    assert run["run_type"] == ("llm" if model_mode == "chat" else "tool")
+    assert run["inputs"] == ({"messages": prompts} if node_type == "llm" else original_inputs)

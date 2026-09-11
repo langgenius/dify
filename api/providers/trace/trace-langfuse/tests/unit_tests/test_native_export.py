@@ -6,9 +6,14 @@ from uuid import UUID, uuid4
 import pytest
 from dify_trace_langfuse.langfuse_trace import LangfuseTraceClient
 
+from core.ops.message_trace import MessageTraceRecorder
 from core.ops.otlp_trace import OtlpTraceClient
 from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan, make_span_id, make_trace_id
+from core.ops.workflow_trace import WorkflowTraceRecorder
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
+from graphon.node_events import NodeRunResult
+from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
 
 
 def make_trace() -> CompletedTrace:
@@ -175,3 +180,112 @@ def test_langfuse_basic_chat_tags_use_captured_mode(monkeypatch: pytest.MonkeyPa
     for span in spans:
         tags = next(item.value for item in span.attributes if item.key == "langfuse.trace.tags")
         assert [tag.string_value for tag in tags.array_value.values] == ["message", "chat"]
+
+
+def test_langfuse_captured_auxiliary_observation_categories(monkeypatch: pytest.MonkeyPatch) -> None:
+    template = make_trace()
+    recorder = MessageTraceRecorder(template.source, Mock(), ())
+    submitted = Mock(return_value=True)
+    monkeypatch.setattr(recorder, "submit_completed_trace", submitted)
+    for operation in ("moderation", "suggested_question", "generate_name"):
+        recorder.record_operation(
+            operation,
+            span_type="tool" if operation == "moderation" else "llm",
+            inputs="Prompt",
+            outputs="Answer",
+            attributes={"operation_type": operation},
+            usage={"total_tokens": 8},
+            timer={"start": template.spans[0].started_at, "end": template.spans[0].ended_at},
+        )
+    recorder.finish_message_trace(
+        {
+            "message_id": template.source.message_id,
+            "conversation_id": str(uuid4()),
+            "started_at": template.spans[0].started_at,
+            "ended_at": template.spans[0].ended_at,
+        }
+    )
+    captured = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    _, spans = export_request(captured, monkeypatch)
+    assert len(spans) == 4
+    for span in spans[1:]:
+        attrs = {item.key: item.value.string_value for item in span.attributes}
+        assert attrs["langfuse.observation.type"] == ("generation" if span.name == "suggested_question" else "span")
+        assert json.loads(attrs["langfuse.observation.metadata.dify.usage"])["total_tokens"] == 8
+
+
+def test_langfuse_captured_chatflow_and_child_receipt_keep_workflow_tag(monkeypatch: pytest.MonkeyPatch) -> None:
+    template = make_trace()
+    run_id = str(uuid4())
+    source = template.source.model_copy(update={"workflow_run_id": run_id})
+    recorder = MessageTraceRecorder(source, Mock(), (), attributes={"app_mode": "advanced-chat"})
+    submitted = Mock(return_value=True)
+    monkeypatch.setattr(recorder, "submit_completed_trace", submitted)
+    recorder.finish_message_trace(
+        {
+            "message_id": source.message_id,
+            "conversation_id": str(uuid4()),
+            "workflow_run_id": run_id,
+            "started_at": template.spans[0].started_at,
+            "ended_at": template.spans[0].ended_at,
+            "metadata": {"conversation_mode": "advanced-chat"},
+        }
+    )
+    trace = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    receipts, spans = export_request(trace, monkeypatch)
+    parent = receipts.spans[trace.root_span_id]
+    assert parent["tags"] == ["message", "advanced-chat", "workflow"]
+    workflow = WorkflowTraceRecorder(
+        source=recorder.source.model_copy(update={"operation_id": run_id}),
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=submitted,
+    )
+    workflow.on_event(GraphRunSucceededEvent())
+    workflow.finish_workflow_trace()
+    child = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    child_receipts, child_spans = export_request(child, monkeypatch, parent)
+    assert child_receipts.spans[child.root_span_id]["tags"] == parent["tags"]
+    for span in (*spans, *child_spans):
+        tags = next(item.value for item in span.attributes if item.key == "langfuse.trace.tags")
+        assert "workflow" in [tag.string_value for tag in tags.array_value.values]
+
+
+@pytest.mark.parametrize("node_type", ["llm", "question-classifier", "parameter-extractor"])
+@pytest.mark.parametrize("model_mode", ["chat", "completion", None])
+def test_langfuse_captured_workflow_model_categories(
+    node_type: str, model_mode: str | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_inputs = {"query": "Original query"}
+    prompts = [{"role": "user", "content": "Rendered prompt"}]
+    source = make_trace().source
+    submitted = Mock(return_value=True)
+    recorder = WorkflowTraceRecorder(
+        source=source, workflow_id="workflow", workflow_version="1", inputs={}, submit_completed_trace=submitted
+    )
+    node = workflow_node(source, node_type=node_type)
+    start_node(recorder, node)
+    recorder.on_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type=node_type,
+            start_at=datetime.now(UTC),
+            finished_at=datetime.now(UTC),
+            node_run_result=NodeRunResult(
+                inputs=original_inputs,
+                outputs={"text": "Done"},
+                process_data={"prompts": prompts, **({"model_mode": model_mode} if model_mode else {})},
+            ),
+        )
+    )
+    recorder.on_event(GraphRunSucceededEvent())
+    recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
+    assert trace.spans[-1].inputs == prompts
+    _, spans = export_request(trace, monkeypatch)
+    assert len(spans) == 2
+    attrs = {item.key: item.value.string_value for item in spans[-1].attributes}
+    assert attrs["langfuse.observation.type"] == ("generation" if model_mode == "chat" else "span")
+    assert json.loads(attrs["langfuse.observation.input"]) == (prompts if node_type == "llm" else original_inputs)
