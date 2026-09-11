@@ -261,6 +261,30 @@ const filterContractOperations = (document: SwaggerDocument) => {
   }
 }
 
+const includeMultipartRequestSchemas = (document: SwaggerDocument) => {
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation) || !isObject(operation.requestBody))
+        continue
+      const content = operation.requestBody.content
+      if (!isObject(content)) continue
+      const json = content['application/json']
+      const multipart = content['multipart/form-data']
+      if (
+        !isObject(json) ||
+        !isObject(json.schema) ||
+        !isObject(multipart) ||
+        !isObject(multipart.schema)
+      )
+        continue
+
+      // hey-api selects JSON for mixed request media; retain the multipart shape
+      // so the generated client can serialize File values as FormData.
+      json.schema = { anyOf: [json.schema, multipart.schema] }
+    }
+  }
+}
+
 const includeNonJsonResponseSchemas = (document: SwaggerDocument) => {
   for (const pathItem of Object.values(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
@@ -370,6 +394,7 @@ const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
+  includeMultipartRequestSchemas(document)
   includeNonJsonResponseSchemas(document)
   // OpenAPI defaults describe server behavior. Keep them in the exported specs,
   // but do not let Zod synthesize omitted transport fields during client-side

@@ -199,6 +199,34 @@ describe('consoleQuery transport context', () => {
     vi.restoreAllMocks()
   })
 
+  it('uploads ifpkg imports as multipart files without decoding their bytes as YAML', async () => {
+    const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])
+    const file = new File([bytes], 'agent.ifpkg', { type: 'application/zip' })
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: 'import-1', status: 'completed' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const mutation = new MutationObserver(
+      new QueryClient(),
+      consoleQuery.apps.imports.post.mutationOptions(),
+    )
+    await mutation.mutate({ body: { file } })
+
+    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(outgoing.url).toContain('/apps/imports')
+    expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
+    const form = await outgoing.formData()
+    expect(Array.from(form.keys())).toEqual(['file'])
+    const uploaded = form.get('file')
+    expect(uploaded).toBeInstanceOf(File)
+    if (!(uploaded instanceof File)) throw new TypeError('Expected an uploaded archive')
+    expect(uploaded.name).toBe('agent.ifpkg')
+    expect(new Uint8Array(await uploaded.arrayBuffer())).toEqual(bytes)
+  })
+
   it('preserves archive bytes and the download filename for App exports', async () => {
     const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])
     const request = vi.fn().mockResolvedValue(

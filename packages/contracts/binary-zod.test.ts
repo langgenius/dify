@@ -1,9 +1,21 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { zGetAppsByAppIdExportResponse } from './generated/api/console/apps/zod.gen'
+import {
+  zGetAppsByAppIdExportResponse,
+  zPostAppsImportsBody,
+} from './generated/api/console/apps/zod.gen'
 import { zPostFilesUploadBody } from './generated/api/console/files/zod.gen'
 import { zPostWorkspacesCurrentPluginUploadPkgBody } from './generated/api/console/workspaces/zod.gen'
 
 describe('generated binary schemas', () => {
+  it('accepts binary package imports alongside YAML import requests', () => {
+    const file = new File(['PK'], 'agent.ifpkg', { type: 'application/zip' })
+    expect(zPostAppsImportsBody.safeParse({ file }).success).toBe(true)
+    expect(
+      zPostAppsImportsBody.safeParse({ mode: 'yaml-content', yaml_content: 'kind: app' }).success,
+    ).toBe(true)
+    expect(zPostAppsImportsBody.safeParse({ file: 'not a binary file' }).success).toBe(false)
+  })
+
   it('accepts both Agent archives and YAML JSON export responses', () => {
     const archive = new File(['PK'], 'agent.ifpkg', { type: 'application/zip' })
     expect(zGetAppsByAppIdExportResponse.safeParse(archive).success).toBe(true)
