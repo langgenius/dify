@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
@@ -100,9 +101,17 @@ class MCPToolManageService:
         Raises:
             ValueError: If provider not found
         """
-        if server_identifier:
+        is_valid_uuid = False
+        if provider_id:
+            try:
+                uuid.UUID(provider_id)
+                is_valid_uuid = True
+            except (ValueError, AttributeError):
+                is_valid_uuid = False
+        if server_identifier or (provider_id and not is_valid_uuid):
+            target_identifier = server_identifier or provider_id
             stmt = select(MCPToolProvider).where(
-                MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier
+                MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == target_identifier
             )
         else:
             stmt = select(MCPToolProvider).where(
