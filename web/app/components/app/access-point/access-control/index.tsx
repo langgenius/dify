@@ -25,6 +25,7 @@ import { consoleQuery } from '@/service/console'
 import { AccessControlChipAffix } from './chip-affix'
 import { getAccessControlChipState } from './chip-status'
 import { AccessControlConfigPanel } from './config-panel'
+import { AccessControlDowngradePanel } from './downgrade-panel'
 import { canSaveAccessControl, isAccessControlDraftEqual } from './draft'
 import { AccessControlFreePaywall } from './free-paywall'
 import {
@@ -118,7 +119,8 @@ export function AccessControlEntry() {
   })
   const chip = getAccessControlChipState({ entitled, assignment })
   const showPaywall = chip.kind === 'pro'
-  const showStatus = Boolean(assignment) && (view === 'status' || !canMutate)
+  const showDowngrade = Boolean(assignment) && !canMutate
+  const showStatus = Boolean(assignment) && canMutate && view === 'status'
 
   const tooltip =
     chip.kind === 'pro'
@@ -148,9 +150,13 @@ export function AccessControlEntry() {
     if (gtag) gtag('event', 'click_upgrade_btn', { loc: 'access-control-paywall' })
   }
 
-  const handleCancel = () => {
+  const discardDraft = () => {
     setDraft(null)
     setShowBack(false)
+  }
+
+  const handleCancel = () => {
+    discardDraft()
     if (assignment) {
       setView('status')
       return
@@ -159,7 +165,7 @@ export function AccessControlEntry() {
   }
 
   const handleBack = () => {
-    setShowBack(false)
+    discardDraft()
     setView('status')
   }
 
@@ -230,9 +236,8 @@ export function AccessControlEntry() {
         accessPoints: persistableAccessPoints,
       },
       () => {
-        setDraft(null)
+        discardDraft()
         setView('status')
-        setShowBack(false)
       },
     )
   }
@@ -250,8 +255,12 @@ export function AccessControlEntry() {
           onOpenChange={(nextOpen) => {
             setOpen(nextOpen)
             if (!nextOpen) {
-              setDraft(null)
-              setShowBack(false)
+              if (!dirty) discardDraft()
+              return
+            }
+            if (dirty) {
+              setView('config')
+              setShowBack(Boolean(assignment) && canMutate)
               return
             }
             setView(assignment || !canMutate ? 'status' : 'config')
@@ -277,6 +286,8 @@ export function AccessControlEntry() {
           >
             {showPaywall ? (
               <AccessControlFreePaywall onTurnOn={handleTurnOn} />
+            ) : showDowngrade && assignment ? (
+              <AccessControlDowngradePanel assignment={assignment} onTurnOn={handleTurnOn} />
             ) : showStatus && assignment ? (
               <AccessControlStatusPanel
                 draft={resolvedDraft}

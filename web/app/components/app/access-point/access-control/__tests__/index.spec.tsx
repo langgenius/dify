@@ -14,6 +14,7 @@ import { AccessControlEntry } from '..'
 const mockSetPricing = vi.fn()
 const mockSetSettingsDestination = vi.fn()
 const accessControlTranslations = vi.hoisted(() => ({
+  'operation.back': 'Back',
   'operation.cancel': 'Cancel',
   'operation.close': 'Close',
   'operation.save': 'Save',
@@ -38,6 +39,8 @@ const accessControlTranslations = vi.hoisted(() => ({
   'studio.accessControl.applyToHelp': 'Choose which access points to protect.',
   'studio.accessControl.applyToHelpSelected': 'Choose which access points this policy protects.',
   'studio.accessControl.createIpPolicy': 'Create an IP policy',
+  'studio.accessControl.downgradeDescription': 'Access control needs the Pro plan.',
+  'studio.accessControl.downgradeTitle': 'This app is no longer protected',
   'studio.accessControl.emptyPoliciesTitle': 'No IP policies in this workspace yet',
   'studio.accessControl.chipOff': 'Off',
   'studio.accessControl.chipOn': 'ON',
@@ -53,6 +56,8 @@ const accessControlTranslations = vi.hoisted(() => ({
   'studio.accessControl.previewCaption':
     "This app is only available on your organization's network.",
   'studio.accessControl.proBadge': 'PRO',
+  'studio.accessControl.protectsCoverage': 'Protects {{n}} of {{m}} access points',
+  'studio.accessControl.readyToResume': 'Ready to resume',
   'studio.accessControl.selectPolicy': 'Select a policy',
   'studio.accessControl.tooltipOff': 'Not set up',
   'studio.accessControl.tooltipPro': 'Access control requires the Pro plan',
@@ -143,7 +148,7 @@ describe('AccessControlEntry', () => {
     expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
   })
 
-  it('shows a saved assignment on Cloud sandbox instead of hiding it behind the paywall', async () => {
+  it('shows a resume paywall for a saved assignment on Cloud sandbox', async () => {
     const user = userEvent.setup()
     renderEntry({
       plan: 'sandbox',
@@ -163,9 +168,17 @@ describe('AccessControlEntry', () => {
 
     expect(within(getChip()).getByText('3 of 4')).toBeInTheDocument()
     await user.click(getChip())
-    expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Turn on Access Control' })).toBeInTheDocument()
+    expect(screen.getByText('This app is no longer protected')).toBeInTheDocument()
+    expect(screen.getByText('Access control needs the Pro plan.')).toBeInTheDocument()
+    expect(screen.getByText('Ready to resume')).toBeInTheDocument()
+    expect(screen.getByText('Internal Network')).toBeInTheDocument()
+    expect(screen.getByText('Protects 3 of 4 access points')).toBeInTheDocument()
+    expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Restrict by IP address' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Turn on Access Control' }))
+    expect(mockSetPricing).toHaveBeenCalledWith('open')
   })
 
   it('renders a single chip with a non-interactive PRO badge for Cloud sandbox', () => {
@@ -401,6 +414,223 @@ describe('AccessControlEntry', () => {
     await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
     await user.click(screen.getByRole('button', { name: 'Turn off' }))
 
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    expect(within(getChip()).getByText('3 of 4')).toBeInTheDocument()
+  })
+
+  it('discards an unsaved first-time draft on Cancel', async () => {
+    const user = userEvent.setup()
+    renderEntry({ plan: 'professional' })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('switch', { name: 'Trigger' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('No IP policies in this workspace yet')).not.toBeInTheDocument()
+    })
+
+    await user.click(getChip())
+    expect(screen.getByRole('switch', { name: 'Trigger' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+
+  it('restores an unsaved first-time draft after Escape', async () => {
+    const user = userEvent.setup()
+    renderEntry({ plan: 'professional' })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('switch', { name: 'Trigger' }))
+    expect(screen.getByRole('switch', { name: 'Trigger' })).not.toBeChecked()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByText('No IP policies in this workspace yet')).not.toBeInTheDocument()
+    })
+
+    await user.click(getChip())
+    expect(screen.getByText('No IP policies in this workspace yet')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Trigger' })).not.toBeChecked()
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+
+  it('restores an unsaved edit after Escape and keeps the saved chip', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: {
+        id: 'binding-1',
+        tenant_id: 'workspace-1',
+        app_id: 'app-1',
+        enabled: true,
+        group_id: 'group-1',
+        access_points: ['webapp', 'service_api', 'mcp'],
+        version: 2,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+    expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toBeChecked()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    })
+    expect(within(getChip()).getByText('3 of 4')).toBeInTheDocument()
+
+    await user.click(getChip())
+    expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Trigger' })).not.toBeChecked()
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    expect(within(getChip()).getByText('3 of 4')).toBeInTheDocument()
+  })
+
+  it('discards an unsaved edit on Cancel', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: {
+        id: 'binding-1',
+        tenant_id: 'workspace-1',
+        app_id: 'app-1',
+        enabled: true,
+        group_id: 'group-1',
+        access_points: ['webapp', 'service_api', 'mcp'],
+        version: 2,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
+    })
+
+    await user.click(getChip())
+    expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
+
+  it('discards an unsaved edit on Back', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: {
+        id: 'binding-1',
+        tenant_id: 'workspace-1',
+        app_id: 'app-1',
+        enabled: true,
+        group_id: 'group-1',
+        access_points: ['webapp', 'service_api', 'mcp'],
+        version: 2,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+
+    expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
+    })
+
+    await user.click(getChip())
+    expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
+
+  it('does not restore a clean edit session after Escape', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: {
+        id: 'binding-1',
+        tenant_id: 'workspace-1',
+        app_id: 'app-1',
+        enabled: true,
+        group_id: 'group-1',
+        access_points: ['webapp', 'service_api', 'mcp'],
+        version: 2,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    })
+
+    await user.click(getChip())
+    expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
+  })
+
+  it('reopens the edit layer after dismissing a paused draft with Escape', async () => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: {
+        id: 'binding-1',
+        tenant_id: 'workspace-1',
+        app_id: 'app-1',
+        enabled: true,
+        group_id: 'group-1',
+        access_points: ['webapp', 'service_api', 'mcp'],
+        version: 2,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
+    await user.click(screen.getByRole('button', { name: 'Turn off' }))
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    })
+    expect(within(getChip()).getByText('3 of 4')).toBeInTheDocument()
+
+    await user.click(getChip())
+    expect(screen.queryByText('Restricted to Internal Network')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
     expect(within(getChip()).getByText('3 of 4')).toBeInTheDocument()
   })
