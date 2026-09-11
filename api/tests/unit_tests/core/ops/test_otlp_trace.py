@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 from uuid import uuid4
 
 import grpc  # pyrefly: ignore[untyped-import]
@@ -19,7 +19,7 @@ from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span
 
 from core.ops.otlp_trace import OtlpTraceClient, otlp_attributes
-from core.ops.provider_export import TraceExportError
+from core.ops.provider_export import TraceExportError, TraceProviderHttpClient
 from core.ops.trace_data import CompletedTrace, TraceSource
 from core.ops.workflow_trace import WorkflowTraceRecorder
 from graphon.engine_events import GraphRunSucceededEvent, NodeRunStartedEvent, NodeRunSucceededEvent
@@ -62,8 +62,14 @@ def span_records(request: ExportTraceServiceRequest) -> list[tuple[Resource, str
     ]
 
 
-def test_complete_workflow_recording_reaches_default_grpc_receiver(config_overrides: Callable[..., None]) -> None:
+@pytest.mark.parametrize("bypass_setting", ["no_grpc_proxy", "no_proxy"])
+def test_complete_workflow_recording_reaches_default_grpc_receiver(
+    bypass_setting: str, config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+) -> None:
     config_overrides(SSRF_PROXY_ALL_URL="", SSRF_PROXY_HTTP_URL="", SSRF_PROXY_HTTPS_URL="")
+    monkeypatch.setenv("grpc_proxy", "http://unused.invalid:3128")
+    monkeypatch.delenv("no_grpc_proxy", raising=False)
+    monkeypatch.setenv(bypass_setting, "127.0.0.1")
     source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
     submitted: list[CompletedTrace] = []
 
@@ -261,3 +267,60 @@ def test_http_batches_share_one_export_deadline(monkeypatch: pytest.MonkeyPatch)
     assert send.call_count == 1
     assert send.call_args is not None
     assert send.call_args.kwargs["timeout"] == 1
+
+
+@pytest.mark.parametrize("remaining", [100.0, 7.0, 0.0])
+@pytest.mark.parametrize("trace_timeout", [60.0, float("nan"), float("inf")])
+@pytest.mark.parametrize(
+    ("protocol", "separate_metrics"), [("http/protobuf", False), ("http/protobuf", True), ("grpc", True)]
+)
+def test_signal_timeouts_share_one_export_deadline(
+    protocol: str,
+    separate_metrics: bool,
+    remaining: float,
+    trace_timeout: float,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(SSRF_PROXY_ALL_URL="", SSRF_PROXY_HTTP_URL="", SSRF_PROXY_HTTPS_URL="")
+    clock = Mock(return_value=0.0)
+    monkeypatch.setattr("core.ops.provider_export.monotonic", clock)
+    monkeypatch.setattr("core.ops.otlp_trace.monotonic", clock)
+    metrics_client = (
+        TraceProviderHttpClient("https://collector.example/metrics", {}, request_timeout=70)
+        if separate_metrics
+        else None
+    )
+    client = OtlpTraceClient(
+        "https://collector.example/traces",
+        {},
+        {},
+        "",
+        protocol=protocol,
+        request_timeout=trace_timeout,
+        metrics_http=metrics_client,
+    )
+    if metrics_client is not None:
+        metrics_client.deadline = 1_000
+    if protocol == "grpc":
+        send = Mock(return_value=b"")
+        channel = MagicMock()
+        channel.unary_unary.return_value = send
+        monkeypatch.setattr(grpc, "secure_channel", Mock(return_value=channel))
+    else:
+        send = Mock(return_value=httpx.Response(200, content=b""))
+        monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", send)
+    clock.return_value = 100 - remaining
+
+    for signal, request_timeout in (("trace", trace_timeout), ("metrics", 70 if separate_metrics else trace_timeout)):
+        if remaining == 0:
+            with pytest.raises(TraceExportError, match="export_deadline_exceeded"):
+                client._send(signal, b"")
+            send.assert_not_called()
+        else:
+            assert client._send(signal, b"") == b""
+            assert send.call_args.kwargs["timeout"] == min(remaining, request_timeout)
+
+    assert client.http.deadline == 100
+    if metrics_client is not None:
+        assert metrics_client.deadline == client.http.deadline

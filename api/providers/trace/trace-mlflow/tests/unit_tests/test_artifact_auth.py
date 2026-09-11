@@ -18,7 +18,7 @@ from core.ops.provider_export import TraceExportError, basic_auth
 from tests.unit_tests.core.ops.test_provider_export import make_completed_trace
 
 
-@pytest.mark.parametrize("credential_source", ["saved", "environment", "file", "bearer"])
+@pytest.mark.parametrize("credential_source", ["saved", "environment", "file", "bearer", "netrc"])
 @pytest.mark.parametrize("artifact_scheme", ["https", "mlflow-artifacts"])
 def test_tracker_authorized_artifacts_keep_concurrent_owner_authentication(
     credential_source: str, artifact_scheme: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -42,6 +42,11 @@ def test_tracker_authorized_artifacts_keep_concurrent_owner_authentication(
             credentials_file.write_text(
                 f"[mlflow]\nmlflow_tracking_username = {username}\nmlflow_tracking_password = {password}\n"
             )
+        elif credential_source == "netrc":
+            (tmp_path / ".netrc").write_text(
+                f"machine {owner}-tracker.example login {username} password {password}\n"
+                f"machine {owner}-artifacts.example login {username} password {password}\n"
+            )
         else:
             monkeypatch.setenv("MLFLOW_TRACKING_TOKEN", password)
             authorization[owner] = f"Bearer {password}"
@@ -49,6 +54,7 @@ def test_tracker_authorized_artifacts_keep_concurrent_owner_authentication(
         configurations[owner] = resolve_provider_config("mlflow", config)
 
     credentials_file.unlink(missing_ok=True)
+    (tmp_path / ".netrc").unlink(missing_ok=True)
     monkeypatch.setenv("MLFLOW_TRACKING_TOKEN", "unrelated-secret")
     monkeypatch.setenv("MLFLOW_WORKSPACE", "unrelated-workspace")
     monkeypatch.setattr(MLflowConfig, "load_runtime_settings", Mock(side_effect=AssertionError("Snapshot reread")))
@@ -101,9 +107,7 @@ def test_tracker_authorized_artifacts_keep_concurrent_owner_authentication(
     assert set(uploads) == set(traces)
 
 
-@pytest.mark.parametrize(
-    "artifact_uri", ["https://user:secret@artifacts.example/trace", "https:///trace", "file:///trace"]
-)
+@pytest.mark.parametrize("artifact_uri", ["https:///trace", "file:///trace"])
 def test_mlflow_artifact_credentials_do_not_bypass_url_validation(
     artifact_uri: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:

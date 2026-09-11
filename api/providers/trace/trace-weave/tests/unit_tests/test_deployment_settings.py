@@ -64,7 +64,7 @@ def test_authorized_destination_is_used_for_discovery_and_export(monkeypatch: py
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         return httpx.Response(
-            200, json={"data": {"viewer": {"entity": "account-team"}, "project": {"name": "project"}}}
+            200, json={"data": {"viewer": {"defaultEntity": {"name": "account-team"}}, "project": {"name": "project"}}}
         )
 
     monkeypatch.setattr(

@@ -254,12 +254,13 @@ class OtlpTraceClient:
         project_url: str,
         *,
         protocol: str = "http/protobuf",
+        request_timeout: float = 30,
         ssl_context: SSLContext | None = None,
         metrics_http: TraceProviderHttpClient | None = None,
         metrics_protocol: str | None = None,
         grpc_credentials: Mapping[str, Any] | None = None,
     ):
-        self.http = TraceProviderHttpClient(endpoint, headers, ssl_context=ssl_context)
+        self.http = TraceProviderHttpClient(endpoint, headers, request_timeout=request_timeout, ssl_context=ssl_context)
         self.metrics_http = metrics_http
         self.metrics_protocol = metrics_protocol or protocol
         self.grpc_credentials = dict(grpc_credentials or {})
@@ -316,16 +317,23 @@ class OtlpTraceClient:
         if signal == "metrics" and self.metrics_http is None:
             endpoint = endpoint.rsplit("/", 1)[0] + "/metrics"
         if endpoint != client.endpoint:
-            client = TraceProviderHttpClient(endpoint, client.headers, ssl_context=client.ssl_context)
+            client = TraceProviderHttpClient(
+                endpoint,
+                client.headers,
+                request_timeout=client.request_timeout,
+                connect_timeout=client.connect_timeout,
+                pool_timeout=client.pool_timeout,
+                ssl_context=client.ssl_context,
+            )
         client.deadline = self.http.deadline
         response = client.request("POST", content=serialized, headers={"Content-Type": "application/x-protobuf"})
         return response.content
 
-    def _remaining_seconds(self) -> float:
+    def _remaining_seconds(self, request_timeout: float) -> float:
         remaining = self.http.deadline - monotonic()
         if remaining <= 0:
             raise TraceExportError("export_deadline_exceeded", retryable=True)
-        return min(30.0, remaining)
+        return min(remaining, request_timeout)
 
     def _send_grpc(
         self, signal: str, serialized: bytes, *, http_client: TraceProviderHttpClient | None = None
@@ -337,8 +345,8 @@ class OtlpTraceClient:
         http_client = http_client if http_client is not None else self.http
         endpoint = urlsplit(http_client.endpoint)
         target = endpoint.netloc if endpoint.port else f"{endpoint.hostname}:4317"
-        # gRPC supports an explicit HTTP CONNECT proxy option. Use Dify's SSRF
-        # proxy policy instead of inheriting a user's process proxy environment.
+        # An explicit Dify SSRF CONNECT proxy takes precedence. Otherwise let
+        # gRPC discover process proxy settings and apply its native bypass rules.
         proxy = dify_config.SSRF_PROXY_ALL_URL or (
             dify_config.SSRF_PROXY_HTTPS_URL if endpoint.scheme == "https" else dify_config.SSRF_PROXY_HTTP_URL
         )
@@ -357,7 +365,7 @@ class OtlpTraceClient:
                         pass
                 if matches:
                     raise TraceExportError("grpc_proxy_bypass_disabled")
-        options = [("grpc.http_proxy", proxy)] if proxy else [("grpc.enable_http_proxy", 0)]
+        options = [("grpc.http_proxy", proxy)] if proxy else []
         credentials = self.grpc_credentials.get(signal)
         channel = (
             grpc.secure_channel(
@@ -370,7 +378,11 @@ class OtlpTraceClient:
         try:
             with channel:
                 send = channel.unary_unary(f"/opentelemetry.proto.collector.{signal}.v1.{service}/Export")
-                return send(serialized, timeout=self._remaining_seconds(), metadata=tuple(http_client.headers.items()))
+                return send(
+                    serialized,
+                    timeout=self._remaining_seconds(http_client.request_timeout),
+                    metadata=tuple(http_client.headers.items()),
+                )
         except grpc.RpcError as error:
             raise TraceExportError(
                 "provider_grpc_rejected",

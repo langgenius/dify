@@ -51,6 +51,9 @@ class WeaveConfig(BaseTracingConfig):
         certificate = os.environ.get("SSL_CERT_FILE") or os.environ.get("SSL_CERT_DIR")
         account_certificate = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("CURL_CA_BUNDLE")
         return {
+            "disabled": os.environ.get("WEAVE_DISABLED", "").lower() in {"yes", "true", "1", "on"},
+            # Numeric text keeps even the SDK's accepted non-finite values JSON-safe.
+            "request_timeout": str(float(os.environ.get("WEAVE_HTTP_TIMEOUT") or 30)),
             "host": host,
             "endpoint": endpoint,
             "entity": entity,

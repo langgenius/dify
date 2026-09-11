@@ -122,6 +122,7 @@ class WeaveTraceClient:
             if "_runtime_settings" in provider_config
             else WeaveConfig.load_runtime_settings(provider_config)
         )
+        self.disabled = bool(runtime_settings.get("disabled", False))
         self.config = self.config.model_copy(
             update={key: runtime_settings[key] for key in ("host", "endpoint", "entity") if key in runtime_settings}
         )
@@ -130,12 +131,16 @@ class WeaveTraceClient:
         self.http = TraceProviderHttpClient(
             self.config.endpoint,
             {"Authorization": basic_auth("api", self.config.api_key)},
+            request_timeout=float(runtime_settings.get("request_timeout", 30)),
             ssl_context=create_ssl_context(
                 runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)
             ),
         )
         self.account_http = TraceProviderHttpClient(
-            self.config.host or "https://api.wandb.ai", self.http.headers, ssl_context=self.account_ssl_context
+            self.config.host or "https://api.wandb.ai",
+            self.http.headers,
+            request_timeout=5,
+            ssl_context=self.account_ssl_context,
         )
         self._ready_project_id: str | None = None
 
@@ -162,9 +167,10 @@ class WeaveTraceClient:
             entity, project = project.split("/", 1)
             if not entity:
                 raise TraceExportError("weave_project_invalid")
-        if not entity:
-            viewer = self._account_query("query { viewer { entity } }").get("viewer")
-            entity = viewer.get("entity") if isinstance(viewer, dict) else None
+        if entity is None:
+            viewer = self._account_query("query { viewer { defaultEntity { name } } }").get("viewer")
+            default_entity = viewer.get("defaultEntity") if isinstance(viewer, dict) else None
+            entity = default_entity.get("name") if isinstance(default_entity, dict) else None
         if not isinstance(entity, str) or not entity:
             raise TraceExportError("weave_entity_unavailable")
         if not project or "/" in entity or "/" in project:
@@ -198,11 +204,15 @@ class WeaveTraceClient:
         return self._ready_project_id
 
     def verify_credentials(self) -> bool:
+        if self.disabled:
+            return False
         self.http.request("POST", "calls/query_stats", json={"project_id": self._ensure_project_id()})
         return True
 
     def get_project_url(self) -> str:
         host = self.project_host.rstrip("/")
+        if self.disabled:
+            return f"{host}/"
         try:
             return f"{host}/{quote(self._project_id(), safe='/')}/weave"
         except Exception:
@@ -212,12 +222,23 @@ class WeaveTraceClient:
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
-        spans = _prepare_timed_spans(completed_trace)
         trace_id = (
             str(parent_span["trace_id"])
             if parent_span
             else completed_trace.source.external_trace_id or completed_trace.trace_id
         )
+        if self.disabled or (parent_span is not None and parent_span.get("disabled") is True):
+            return ExportedParentSpans(
+                spans={
+                    span.span_id: {
+                        "trace_id": trace_id,
+                        "span_id": export_span_id(completed_trace, span.span_id),
+                        "disabled": True,
+                    }
+                    for span in completed_trace.spans
+                }
+            )
+        spans = _prepare_timed_spans(completed_trace)
         # Timing is checked before project discovery, which can itself send a request.
         project_id = self._ensure_project_id()
         complete_calls_endpoint = f"v2/{quote(project_id, safe='/')}/calls/complete"

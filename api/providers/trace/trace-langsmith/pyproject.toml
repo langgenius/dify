@@ -1,7 +1,7 @@
 [project]
 name = "dify-trace-langsmith"
 version = "0.0.1"
-dependencies = ["pydantic"]
+dependencies = ["pydantic", "requests"]
 description = "Dify ops tracing provider (LangSmith)."
 
 [tool.setuptools.packages.find]
