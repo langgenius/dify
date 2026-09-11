@@ -30,6 +30,7 @@ from core.ops.provider_export import (
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from dify_trace_mlflow.deployment_auth import sign_aws_request
+from dify_trace_mlflow.request_auth import load_request_auth_provider, send_authenticated_request
 
 
 def _prepare_timed_spans(completed_trace: CompletedTrace) -> tuple[TraceSpan, ...]:
@@ -68,14 +69,18 @@ class MLflowHttpClient(TraceProviderHttpClient):
         *,
         ssl_context: SSLContext | None,
         aws_sigv4: dict[str, Any] | None,
+        request_auth_provider: Any = None,
     ):
         super().__init__(endpoint, headers, ssl_context=ssl_context)
         self.aws_sigv4 = dict(aws_sigv4) if aws_sigv4 is not None else None
+        self.request_auth_provider = request_auth_provider
 
     @override
     def request(self, method: str, path: str = "", **kwargs: Any) -> httpx.Response:
         if self.aws_sigv4 is not None:
             kwargs["auth"] = partial(sign_aws_request, credentials=self.aws_sigv4)
+        elif self.request_auth_provider is not None:
+            return send_authenticated_request(self, self.request_auth_provider, method, path, **kwargs)
         return super().request(method, path, **kwargs)
 
 
@@ -226,6 +231,7 @@ class MLflowTraceClient:
         )
         self.sampling_ratio = float(runtime_settings.get("sampling_ratio", 1.0))
         self._aws_sigv4 = dict(runtime_settings["aws_sigv4"]) if runtime_settings.get("aws_sigv4") else None
+        self._request_auth_provider = load_request_auth_provider(runtime_settings.get("request_auth_provider"))
         if isinstance(self.config, DatabricksConfig):
             self._databricks_tls_settings = runtime_settings
             endpoint = _normalize_databricks_host(self.config.host)
@@ -258,6 +264,7 @@ class MLflowTraceClient:
                     verify=True if http_tracking else runtime_settings.get("verify", True),
                 ),
                 aws_sigv4=self._aws_sigv4,
+                request_auth_provider=self._request_auth_provider,
             )
 
     def _authenticate_databricks(self) -> None:
@@ -417,6 +424,7 @@ class MLflowTraceClient:
                 client.http.headers,
                 ssl_context=self.http.ssl_context,
                 aws_sigv4=self._aws_sigv4,
+                request_auth_provider=self._request_auth_provider,
             )
             client.http.deadline = self.http.deadline
             try:
@@ -722,6 +730,7 @@ class MLflowTraceClient:
             headers,
             ssl_context=ssl_context,
             aws_sigv4=self._aws_sigv4,
+            request_auth_provider=self._request_auth_provider,
         )
         client.deadline = self.http.deadline
         client.request("PUT", content=trace_json, headers={"Content-Type": "application/json"})

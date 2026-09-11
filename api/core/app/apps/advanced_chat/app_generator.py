@@ -244,6 +244,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
             else:
                 workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
+            if trace_recorder:
+                trace_recorder.attributes["triggered_from"] = workflow_triggered_from.value
             workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
                 tenant_id=app_model.tenant_id,
@@ -306,6 +308,15 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                         conversation_id=conversation.id,
                         external_trace_id=application_generate_entity.extras.get("external_trace_id"),
                         session_id=application_generate_entity.extras.get("trace_session_id"),
+                        attributes={
+                            "from_account_id": message.from_account_id,
+                            "from_end_user_id": message.from_end_user_id,
+                            "triggered_from": (
+                                WorkflowRunTriggeredFrom.DEBUGGING
+                                if application_generate_entity.invoke_from == InvokeFrom.DEBUGGER
+                                else WorkflowRunTriggeredFrom.APP_RUN
+                            ).value,
+                        },
                     )
                 }
             )

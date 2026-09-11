@@ -115,9 +115,15 @@ class LangfuseSpanIds(IdGenerator):
 class LangfuseTraceClient:
     def __init__(self, provider_config: dict[str, Any]):
         self.config = LangfuseConfig.model_validate(provider_config)
+        runtime_settings = (
+            provider_config["_runtime_settings"]
+            if "_runtime_settings" in provider_config
+            else LangfuseConfig.load_runtime_settings(provider_config)
+        )
         self.http = TraceProviderHttpClient(
             self.config.host,
             {"Authorization": basic_auth(self.config.public_key, self.config.secret_key)},
+            request_timeout=runtime_settings.get("request_timeout", 5),
         )
 
     def verify_credentials(self) -> bool:
@@ -332,6 +338,7 @@ class LangfuseTraceClient:
             self.config.host,
         )
         transport.http.deadline = self.http.deadline
+        transport.http.request_timeout = self.http.request_timeout
         transport.send_traces(request)
         receipt_tags: list[JsonValue] = list(trace_tags)
         return ExportedParentSpans(
