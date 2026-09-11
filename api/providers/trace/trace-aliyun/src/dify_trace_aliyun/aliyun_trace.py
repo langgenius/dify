@@ -204,13 +204,37 @@ class AliyunTraceClient(OtlpTraceClient):
                     f"skill_{field}"
                 )
         elif span.span_type == "retrieval":
-            documents = span.outputs.get("documents", []) if isinstance(span.outputs, dict) else span.outputs
+            workflow_results = isinstance(span.outputs, dict) and "result" in span.outputs
+            documents = (
+                span.outputs.get("result", span.outputs.get("documents", []))
+                if isinstance(span.outputs, dict)
+                else span.outputs
+            )
+            retrieval_documents: list[JsonValue] = []
+            for document in documents if isinstance(documents, list) else []:
+                if not isinstance(document, dict):
+                    continue
+                document_metadata = document.get("metadata")
+                document_metadata = dict(document_metadata) if isinstance(document_metadata, dict) else {}
+                retrieval_document: dict[str, JsonValue] = {
+                    "content": document.get("page_content", document.get("content")),
+                    "metadata": document_metadata,
+                    "score": document.get("score", document_metadata.get("score")),
+                    "id": document.get("id") or document_metadata.get("document_id"),
+                }
+                if workflow_results:
+                    if document.get("title"):
+                        document_metadata["title"] = document["title"]
+                    if source := document_metadata.get("source") or document_metadata.get("_source"):
+                        document_metadata["source"] = source
+                    if isinstance(extra_metadata := document_metadata.get("doc_metadata"), dict):
+                        document_metadata.update(extra_metadata)
+                retrieval_documents.append({"document": retrieval_document} if workflow_results else retrieval_document)
+            query = span.inputs.get("query", span.inputs) if isinstance(span.inputs, dict) else span.inputs
             attributes.update(
                 {
-                    "gen_ai.retrieval.query.text": span.inputs
-                    if isinstance(span.inputs, str)
-                    else json_text(span.inputs),
-                    "gen_ai.retrieval.documents": json_text(documents),
+                    "gen_ai.retrieval.query.text": query if isinstance(query, str) else json_text(query),
+                    "gen_ai.retrieval.documents": json_text(retrieval_documents),
                     "gen_ai.data_source.id": captured.get("dataset_id"),
                     "gen_ai.request.model": captured.get("embedding_model"),
                     "gen_ai.provider.name": captured.get("embedding_model_provider"),

@@ -244,6 +244,41 @@ def test_real_engine_retry_preserves_prompt_model_metadata_and_failure_finish(
         assert span.attributes["model_parameters"] == {"temperature": 0.2}
 
 
+@pytest.mark.parametrize("node_type", ["llm", "question-classifier", "parameter-extractor"])
+def test_model_nodes_preserve_generation_inputs_and_usage(
+    source: TraceSource, recorder: WorkflowTraceRecorder, submitted: list[CompletedTrace], node_type: str
+) -> None:
+    node = workflow_node(source, node_type=node_type)
+    start_node(recorder, node)
+    prompts = [{"role": "user", "text": "Extract the requested fields"}]
+    usage = LLMUsage.empty_usage().model_copy(update={"prompt_tokens": 5, "completion_tokens": 3, "total_tokens": 8})
+    recorder.record_workflow_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type=node_type,
+            start_at=datetime.now(UTC),
+            finished_at=datetime.now(UTC),
+            node_run_result=NodeRunResult(
+                inputs={"query": "user question"},
+                outputs={"answer": "result"},
+                process_data={"prompts": prompts, "model_name": "model", "model_mode": "chat"},
+                llm_usage=usage,
+            ),
+        )
+    )
+    recorder.record_workflow_event(GraphRunSucceededEvent())
+    recorder.finish_workflow_trace()
+
+    span = next(span for span in submitted[0].spans if span.node_execution_id == node.execution_id)
+    assert span.span_type == "llm"
+    assert span.inputs == prompts
+    assert span.attributes["original_inputs"] == {"query": "user question"}
+    assert span.attributes["node_type"] == node_type
+    assert span.attributes["model_name"] == "model"
+    assert span.usage["total_tokens"] == 8
+
+
 def test_llm_source_records_resolved_model_parameters(source: TraceSource) -> None:
     pool = VariablePool()
     pool.add(("start", "temperature"), 0.7)
