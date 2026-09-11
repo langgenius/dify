@@ -16,8 +16,11 @@ from core.rag.models.document import Document
 from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.variables.segments import ArrayObjectSegment
-from tests.unit_tests.core.ops.test_provider_export import make_completed_trace, provider_config
+from tests.unit_tests.core.ops.test_provider_export import make_completed_trace
 from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
+
+# Pytest importlib mode resolves these hyphenated provider packages.
+from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
 
 
 @pytest.mark.parametrize("output_shape", ["workflow", "workflow_segment", "message"])
@@ -35,7 +38,7 @@ def test_workflow_and_message_retrieval_documents(output_shape: str) -> None:
     )
     attributes = {
         item.key: item.value
-        for item in create_trace_client(provider_config("aliyun")).build_span(trace, retrieval).attributes
+        for item in create_trace_client(make_provider_config()).build_span(trace, retrieval).attributes
     }
     documents = json.loads(attributes["gen_ai.retrieval.documents"].string_value)
     assert len(documents) == 1
@@ -58,7 +61,7 @@ def test_retrieval_without_hits_has_no_documents(outputs: JsonValue) -> None:
     retrieval = trace.spans[1].model_copy(update={"span_type": "retrieval", "outputs": outputs})
     attributes = {
         item.key: item.value
-        for item in create_trace_client(provider_config("aliyun")).build_span(trace, retrieval).attributes
+        for item in create_trace_client(make_provider_config()).build_span(trace, retrieval).attributes
     }
     assert json.loads(attributes["gen_ai.retrieval.documents"].string_value) == []
 
@@ -87,8 +90,7 @@ def test_llm_messages_model_parameters_usage_and_finish_reason() -> None:
         }
     )
     attributes = {
-        item.key: item.value
-        for item in create_trace_client(provider_config("aliyun")).build_span(trace, model).attributes
+        item.key: item.value for item in create_trace_client(make_provider_config()).build_span(trace, model).attributes
     }
     messages = json.loads(attributes["gen_ai.input.messages"].string_value)
     assert messages == [
@@ -125,7 +127,7 @@ def test_existing_parts_are_not_mutated_when_projecting_tool_calls() -> None:
 
 def test_agent_round_tool_and_skill_fields_survive_generic_capture() -> None:
     trace = make_completed_trace()
-    client = create_trace_client(provider_config("aliyun"))
+    client = create_trace_client(make_provider_config())
     round_span = trace.spans[1].model_copy(
         update={"span_type": "agent", "span_name": "ROUND 2", "status": "error", "error": "failed"}
     )
@@ -214,7 +216,7 @@ def test_recorded_agent_thought_preserves_completion_aliases(
     thought = next(span for span in trace.spans if span.span_type == "llm")
     assert thought.outputs == data
 
-    client = create_trace_client(provider_config("aliyun"))
+    client = create_trace_client(make_provider_config())
     send_traces = Mock()
     monkeypatch.setattr(client, "send_traces", send_traces)
     client.export_trace(trace)

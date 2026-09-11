@@ -32,6 +32,34 @@ from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from dify_trace_mlflow.deployment_auth import sign_aws_request
 
 
+def _prepare_timed_spans(completed_trace: CompletedTrace) -> tuple[TraceSpan, ...]:
+    """Anchor untimed details to captured times; MLflow treats OTLP zero as the Unix epoch."""
+    spans: dict[str, TraceSpan] = {}
+    for span in completed_trace.spans:
+        if span.started_at is None or span.ended_at is None:
+            parent = spans.get(span.parent_span_id or "")
+            anchor = span.started_at or span.ended_at or (parent.started_at if parent else None)
+            if anchor is None:
+                raise TraceExportError("mlflow_span_time_missing")
+            span = span.model_copy(
+                update={
+                    "started_at": anchor,
+                    "ended_at": anchor,
+                    "attributes": {
+                        **span.attributes,
+                        "dify.timing.estimated": True,
+                        "dify.timing.source": "captured_endpoint",
+                    },
+                }
+            )
+        assert span.started_at is not None
+        assert span.ended_at is not None
+        if span.ended_at < span.started_at:
+            raise TraceExportError("mlflow_span_time_invalid")
+        spans[span.span_id] = span
+    return tuple(spans.values())
+
+
 class MLflowHttpClient(TraceProviderHttpClient):
     def __init__(
         self,
@@ -132,6 +160,7 @@ class MLflowTraceClient:
             if "_runtime_settings" in provider_config
             else self.config.load_runtime_settings(provider_config)
         )
+        self.sampling_ratio = float(runtime_settings.get("sampling_ratio", 1.0))
         self._aws_sigv4 = dict(runtime_settings["aws_sigv4"]) if runtime_settings.get("aws_sigv4") else None
         if isinstance(self.config, DatabricksConfig):
             self._databricks_tls_settings = runtime_settings
@@ -264,6 +293,24 @@ class MLflowTraceClient:
                 trace_id = _parse_trace_uuid(external_id)
             except ValueError:
                 pass
+        sampled = (
+            parent_span.get("sampled", True) is not False
+            if parent_span is not None
+            # Match the SDK's TraceIdRatioBased lower-64-bit comparison, including its rounding.
+            else (UUID(trace_id).int & ((1 << 64) - 1)) < round(self.sampling_ratio * (1 << 64))
+        )
+        if not sampled:
+            return ExportedParentSpans(
+                spans={
+                    span.span_id: {
+                        "trace_id": str(parent_span["trace_id"]) if parent_span else trace_id,
+                        "span_id": export_span_id(completed_trace, span.span_id),
+                        "sampled": False,
+                    }
+                    for span in completed_trace.spans
+                }
+            )
+        completed_trace = completed_trace.model_copy(update={"spans": _prepare_timed_spans(completed_trace)})
         own_trace_id = trace_id
         native_trace_id: str | None = None
         artifact_trace = self.provider_name == "databricks" or bool(parent_span and parent_span.get("artifact_trace"))
@@ -332,6 +379,7 @@ class MLflowTraceClient:
                 span.span_id: {
                     "trace_id": trace_id,
                     "span_id": export_span_id(completed_trace, span.span_id),
+                    "sampled": True,
                     **({"artifact_trace": True} if artifact_trace else {}),
                     **({"native_trace_id": native_trace_id} if native_trace_id is not None else {}),
                 }

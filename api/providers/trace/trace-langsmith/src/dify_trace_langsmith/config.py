@@ -1,4 +1,5 @@
 import json
+import math
 import os
 from pathlib import Path
 from typing import Any, override
@@ -28,6 +29,18 @@ class LangSmithConfig(BaseTracingConfig):
     @override
     def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
         cls.model_validate(provider_config)
+        sampling_rate = float(
+            next(
+                (
+                    value
+                    for prefix in ("LANGSMITH", "LANGCHAIN")
+                    if (value := os.environ.get(f"{prefix}_TRACING_SAMPLING_RATE")) and value.strip()
+                ),
+                "1",
+            )
+        )
+        if sampling_rate < 0 or sampling_rate > 1:
+            raise ValueError("LangSmith tracing sampling rate must be between 0 and 1")
         workspace_id = next(
             (
                 value
@@ -49,6 +62,8 @@ class LangSmithConfig(BaseTracingConfig):
                     workspace_id = profile["workspace_id"]
         certificate = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("CURL_CA_BUNDLE")
         return {
+            # The SDK accepts NaN, whose sampling comparisons always drop. Keep the snapshot JSON-safe.
+            "sampling_rate": 0.0 if math.isnan(sampling_rate) else sampling_rate,
             **{
                 name.lower(): next(
                     (

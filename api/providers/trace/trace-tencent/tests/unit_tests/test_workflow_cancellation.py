@@ -11,8 +11,10 @@ from opentelemetry.proto.trace.v1.trace_pb2 import Status
 from core.ops.trace_data import CompletedTrace, TraceSource
 from core.ops.workflow_trace import WorkflowTraceRecorder
 from graphon.engine_events import GraphRunAbortedEvent, GraphRunStartedEvent
-from tests.unit_tests.core.ops.test_provider_export import provider_config
 from tests.unit_tests.core.ops.test_workflow_trace_limits import start_node, workflow_node
+
+# Pytest importlib mode resolves these hyphenated provider packages.
+from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
 
 
 @pytest.mark.parametrize("reason", ["Workflow execution stopped", ""])
@@ -35,7 +37,7 @@ def test_stopped_workflow_preserves_native_status_without_reclassifying_nodes(
     trace = CompletedTrace.model_validate_json(submitted[0].model_dump_json())
     assert all(span.status == "cancelled" for span in trace.spans)
 
-    client = create_trace_client(provider_config("tencent"))
+    client = create_trace_client(make_provider_config())
     send_traces = Mock()
     monkeypatch.setattr(client, "send_traces", send_traces)
     monkeypatch.setattr(client, "send_metrics", Mock())

@@ -7,6 +7,7 @@ from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta, timezone
 from tempfile import TemporaryDirectory
 from threading import Barrier
+from typing import Literal
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -16,7 +17,7 @@ from flask import Flask
 from sqlalchemy import event
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection, Engine, ExecutionContext
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from core.ops.provider_export import TraceExportError
@@ -30,7 +31,11 @@ from core.ops.trace_data import (
     TraceSpan,
 )
 from core.ops.trace_queue import TraceQueue
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.dataset import Pipeline
+from models.model import App
 from models.ops_trace import OpsTraceDelivery, OpsTraceMetricSeries
+from models.workflow import Workflow, WorkflowRun
 from repositories.ops_trace_delivery_repository import OpsTraceDeliveryRepository
 
 
@@ -62,6 +67,70 @@ def make_repository(engine: Engine | None = None) -> OpsTraceDeliveryRepository:
     delivery_table.create(engine)
     metric_table.create(engine)
     return OpsTraceDeliveryRepository(sessionmaker(engine, expire_on_commit=False))
+
+
+def make_workflow_queued_trace(
+    session_factory: sessionmaker[Session], source_type: Literal["app", "pipeline"] = "app"
+) -> QueuedTrace:
+    tenant = Tenant(name="Trace owner")
+    creator = Account(name="Workflow creator", email=f"{tenant.id}@example.com")
+    owner = (
+        App(id=str(uuid4()), tenant_id=tenant.id, name="Trace app", mode="workflow", enable_site=True, enable_api=True)
+        if source_type == "app"
+        else Pipeline(tenant_id=tenant.id, name="Trace pipeline")
+    )
+    workflow = Workflow(
+        id=str(uuid4()),
+        tenant_id=tenant.id,
+        app_id=owner.id,
+        type="workflow",
+        version="draft",
+        created_by=creator.id,
+        graph="{}",
+        _features="{}",
+    )
+    with session_factory() as session:
+        session.add_all(
+            [
+                tenant,
+                creator,
+                owner,
+                workflow,
+                TenantAccountJoin(tenant_id=tenant.id, account_id=creator.id, role=TenantAccountRole.OWNER),
+            ]
+        )
+        session.commit()
+    run_id = str(uuid4())
+    source = TraceSource(
+        tenant_id=tenant.id,
+        operation_id=run_id,
+        workflow_run_id=run_id,
+        app_id=owner.id if source_type == "app" else None,
+        pipeline_id=owner.id if source_type == "pipeline" else None,
+    )
+    root_span_id = str(uuid4())
+    completed_trace = CompletedTrace(
+        source=source,
+        trace_id=str(uuid4()),
+        root_span_id=root_span_id,
+        spans=(
+            TraceSpan(
+                span_id=root_span_id,
+                span_name="Workflow",
+                span_type="workflow",
+                source_app_id=source.app_id,
+                source_pipeline_id=source.pipeline_id,
+                source_workflow_id=workflow.id,
+                source_workflow_version=workflow.version,
+            ),
+        ),
+    )
+    return QueuedTrace.from_trace(
+        completed_trace,
+        TraceProviderSettings(
+            tenant_id=tenant.id, app_id=source.app_id, destination_type="enterprise", provider_name="enterprise"
+        ),
+    )
 
 
 @pytest.mark.parametrize("database_timezone", [None, UTC, timezone(timedelta(hours=8))])
@@ -322,6 +391,142 @@ def test_worker_rejects_wrong_digest_before_credentials(monkeypatch: pytest.Monk
     assert failed is not None
     assert failed.status == "failed"
     assert failed.error_code == "invalid_trace_digest"
+
+
+@pytest.mark.parametrize("source_type", ["app", "pipeline"])
+@pytest.mark.parametrize("mismatched_field", [None, "tenant_id", "app_id", "id", "missing"])
+def test_worker_validates_logstore_only_workflow_run_ownership(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    source_type: Literal["app", "pipeline"],
+    mismatched_field: str | None,
+) -> None:
+    from core.ops import provider_export, trace_source
+    from extensions.logstore.repositories import logstore_api_workflow_run_repository
+    from tasks.ops_trace_task import export_trace_delivery
+
+    repository = OpsTraceDeliveryRepository(sqlite_session_factory)
+    queued = make_workflow_queued_trace(sqlite_session_factory, source_type)
+    delivery, _ = repository.reserve_delivery(queued)
+    assert repository.accept_upload(delivery)
+    with sqlite_session_factory() as session:
+        assert session.scalar(sa.select(WorkflowRun.id)) is None
+    run = {
+        "id": delivery.workflow_run_id,
+        "tenant_id": delivery.tenant_id,
+        "app_id": delivery.app_id or delivery.pipeline_id,
+    }
+    if mismatched_field and mismatched_field != "missing":
+        run[mismatched_field] = str(uuid4())
+    active_transactions: set[Connection] = set()
+    event.listen(sqlite_engine, "begin", active_transactions.add)
+    event.listen(sqlite_engine, "commit", active_transactions.discard)
+    event.listen(sqlite_engine, "rollback", active_transactions.discard)
+
+    def read_run(**_kwargs: object) -> list[dict[str, str | None]]:
+        assert not active_transactions
+        return [] if mismatched_field == "missing" else [run]
+
+    logstore = Mock(supports_pg_protocol=False)
+    logstore.get_logs.side_effect = read_run
+
+    def create_logstore() -> Mock:
+        assert not active_transactions
+        return logstore
+
+    monkeypatch.setattr(
+        logstore_api_workflow_run_repository,
+        "AliyunLogStore",
+        Mock(side_effect=create_logstore, workflow_execution_logstore="workflow_runs"),
+    )
+    monkeypatch.setenv("LOGSTORE_DUAL_READ_ENABLED", "false")
+    config_overrides(
+        API_WORKFLOW_RUN_REPOSITORY=(
+            "extensions.logstore.repositories.logstore_api_workflow_run_repository.LogstoreAPIWorkflowRunRepository"
+        )
+    )
+    load_config = Mock(return_value={})
+    export = Mock(return_value=ExportedParentSpans())
+    monkeypatch.setattr(trace_source, "load_trace_provider_config", load_config)
+    monkeypatch.setattr(provider_export, "export_trace", export)
+    app = Flask(__name__)
+    app.extensions["ops_trace_delivery_repository"] = repository
+    app.extensions["ops_trace_storage"] = Mock(load_stream=Mock(return_value=iter((queued.trace_json,))))
+
+    with app.app_context():
+        export_trace_delivery(delivery.tenant_id, delivery.id)
+
+    logstore.get_logs.assert_called_once()
+    assert logstore.get_logs.call_args.kwargs["query"] == (
+        f'id:"{delivery.workflow_run_id}" and tenant_id:"{delivery.tenant_id}" '
+        f'and app_id:"{delivery.app_id or delivery.pipeline_id}"'
+    )
+    result = repository.get_delivery(delivery.tenant_id, delivery.id)
+    assert result is not None
+    assert result.attempt_count == 1
+    if mismatched_field:
+        assert result.status == "failed"
+        assert result.error_code == "workflow_run_owner_mismatch"
+        load_config.assert_not_called()
+        export.assert_not_called()
+    else:
+        assert result.status == "succeeded"
+        load_config.assert_called_once()
+        export.assert_called_once()
+
+
+def test_concurrent_workflow_owner_checks_use_separate_repositories(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from extensions.logstore.repositories import logstore_api_workflow_run_repository
+
+    repository = OpsTraceDeliveryRepository(sqlite_session_factory)
+    queued_traces = [make_workflow_queued_trace(sqlite_session_factory) for _ in range(2)]
+    deliveries = [repository.reserve_delivery(queued)[0] for queued in queued_traces]
+    barrier = Barrier(2)
+    clients: list[Mock] = []
+
+    def read_run(*, query: str, **_kwargs: object) -> list[dict[str, str | None]]:
+        barrier.wait(timeout=5)
+        delivery = next(delivery for delivery in deliveries if f'id:"{delivery.workflow_run_id}" ' in query)
+        assert query == (
+            f'id:"{delivery.workflow_run_id}" and tenant_id:"{delivery.tenant_id}" and app_id:"{delivery.app_id}"'
+        )
+        return [{"id": delivery.workflow_run_id, "tenant_id": delivery.tenant_id, "app_id": delivery.app_id}]
+
+    def create_logstore() -> Mock:
+        client = Mock(supports_pg_protocol=False)
+        client.get_logs.side_effect = read_run
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(
+        logstore_api_workflow_run_repository,
+        "AliyunLogStore",
+        Mock(side_effect=create_logstore, workflow_execution_logstore="workflow_runs"),
+    )
+    config_overrides(
+        API_WORKFLOW_RUN_REPOSITORY=(
+            "extensions.logstore.repositories.logstore_api_workflow_run_repository.LogstoreAPIWorkflowRunRepository"
+        )
+    )
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        checks = [
+            executor.submit(
+                repository.validate_trace_owner, delivery, CompletedTrace.model_validate_json(queued.trace_json)
+            )
+            for delivery, queued in zip(deliveries, queued_traces, strict=True)
+        ]
+        for check in checks:
+            check.result(timeout=10)
+
+    assert len(clients) == 2
+    for client in clients:
+        client.get_logs.assert_called_once()
 
 
 @pytest.mark.parametrize(

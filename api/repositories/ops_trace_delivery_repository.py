@@ -1,7 +1,7 @@
 """Short SQL transactions own staging uploads and export leases."""
 
 import base64
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import cast
@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 import sqlalchemy as sa
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session, aliased, sessionmaker
 
 from configs import dify_config
 from core.ops.provider_export import TraceExportError
@@ -22,10 +22,11 @@ from models.dataset import Pipeline
 from models.model import App, Conversation, Message
 from models.ops_trace import OpsTraceDelivery, OpsTraceMetricSeries
 from models.workflow import Workflow, WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
 
 
 class OpsTraceDeliveryRepository:
-    def __init__(self, session_factory: Callable[[], Session]):
+    def __init__(self, session_factory: sessionmaker[Session]):
         self.session_factory = session_factory
 
     @staticmethod
@@ -330,18 +331,6 @@ class OpsTraceDeliveryRepository:
                 if workflow is None or (version is not None and workflow.version != version):
                     raise ValueError("workflow_owner_mismatch")
             if (
-                delivery.workflow_run_id
-                and session.scalar(
-                    sa.select(WorkflowRun.id).where(
-                        WorkflowRun.id == delivery.workflow_run_id,
-                        WorkflowRun.tenant_id == delivery.tenant_id,
-                        WorkflowRun.app_id == (delivery.app_id or delivery.pipeline_id),
-                    )
-                )
-                is None
-            ):
-                raise ValueError("workflow_run_owner_mismatch")
-            if (
                 delivery.conversation_id
                 and session.scalar(
                     sa.select(Conversation.id).where(
@@ -360,6 +349,21 @@ class OpsTraceDeliveryRepository:
                     delivery.conversation_id and message.conversation_id != delivery.conversation_id
                 ):
                     raise ValueError("message_owner_mismatch")
+
+        if delivery.workflow_run_id:
+            app_or_pipeline_id = delivery.app_id or delivery.pipeline_id
+            if app_or_pipeline_id is None:
+                raise ValueError("workflow_run_owner_mismatch")
+            workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self.session_factory)
+            workflow_run = workflow_run_repository.get_workflow_run_by_id(
+                tenant_id=delivery.tenant_id, app_id=app_or_pipeline_id, run_id=delivery.workflow_run_id
+            )
+            if workflow_run is None or (
+                workflow_run.id != delivery.workflow_run_id
+                or workflow_run.tenant_id != delivery.tenant_id
+                or workflow_run.app_id != app_or_pipeline_id
+            ):
+                raise ValueError("workflow_run_owner_mismatch")
 
     @staticmethod
     def provider_settings(delivery: OpsTraceDelivery) -> TraceProviderSettings:

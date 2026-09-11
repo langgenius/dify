@@ -12,7 +12,10 @@ from core.ops.provider_config import decrypt_provider_config, mask_provider_conf
 from core.ops.trace_data import copy_trace_value
 from core.rag.models.document import Document
 from graphon.variables.segments import ArrayObjectSegment
-from tests.unit_tests.core.ops.test_provider_export import make_completed_trace, provider_config
+from tests.unit_tests.core.ops.test_provider_export import make_completed_trace
+
+# Pytest importlib mode resolves these hyphenated provider packages.
+from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
 
 
 @pytest.mark.parametrize("provider", ["arize", "phoenix"])
@@ -29,7 +32,9 @@ def test_workflow_and_message_retrieval_documents(provider: str, output_shape: s
     retrieval = trace.spans[1].model_copy(update={"span_type": "retrieval", "outputs": outputs})
     attributes = {
         item.key: item.value
-        for item in create_trace_client(provider, provider_config(provider)).build_span(trace, retrieval).attributes
+        for item in create_trace_client(provider, make_provider_config(provider))
+        .build_span(trace, retrieval)
+        .attributes
     }
     assert attributes["openinference.span.kind"].string_value == "RETRIEVER"
     assert attributes["retrieval.documents.0.document.id"].string_value == "document-1"
@@ -45,7 +50,7 @@ def test_workflow_and_message_retrieval_documents(provider: str, output_shape: s
 def test_retrieval_without_hits_has_no_documents(provider: str, outputs: JsonValue) -> None:
     trace = make_completed_trace()
     retrieval = trace.spans[1].model_copy(update={"span_type": "retrieval", "outputs": outputs})
-    attributes = create_trace_client(provider, provider_config(provider)).build_span(trace, retrieval).attributes
+    attributes = create_trace_client(provider, make_provider_config(provider)).build_span(trace, retrieval).attributes
     assert not any(item.key.startswith("retrieval.documents.") for item in attributes)
 
 
@@ -54,7 +59,7 @@ def test_existing_encrypted_space_id_is_decrypted_for_export_and_masked_for_sett
 ) -> None:
     decrypt = Mock(return_value=["plain-api-key", "plain-space-id"])
     monkeypatch.setattr("core.helper.encrypter.batch_decrypt_token", decrypt)
-    saved_config = {**provider_config("arize"), "api_key": "encrypted-api-key", "space_id": "encrypted-space-id"}
+    saved_config = {**make_provider_config("arize"), "api_key": "encrypted-api-key", "space_id": "encrypted-space-id"}
 
     settings = decrypt_provider_config("tenant-a", "arize", saved_config)
     client = create_trace_client("arize", settings)
@@ -73,7 +78,7 @@ def test_existing_encrypted_space_id_is_decrypted_for_export_and_masked_for_sett
 )
 def test_project_link_redirects_by_project_name(provider: str, expected_location: str) -> None:
     project = "Support / production & 研发"
-    client = create_trace_client(provider, {**provider_config(provider), "project": project})
+    client = create_trace_client(provider, {**make_provider_config(provider), "project": project})
     url = urlsplit(client.get_project_url())
     assert f"{url.scheme}://{url.netloc}{url.path}" == expected_location
     assert parse_qs(url.query) == {"redirect_project_name": [project]}
@@ -105,7 +110,7 @@ def test_messages_tool_calls_parameters_metadata_and_text_mime_types(provider: s
     )
     attributes = {
         item.key: item.value
-        for item in create_trace_client(provider, provider_config(provider)).build_span(trace, model).attributes
+        for item in create_trace_client(provider, make_provider_config(provider)).build_span(trace, model).attributes
     }
     assert attributes["openinference.span.kind"].string_value == "LLM"
     assert attributes["llm.input_messages.0.message.role"].string_value == "system"
