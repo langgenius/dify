@@ -15,7 +15,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
@@ -27,9 +26,10 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { use, useCallback, useId, useMemo, useRef, useState } from 'react'
+import { browser } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
@@ -59,6 +59,7 @@ type WebAppListRow =
       key: string
       kind: 'app'
       app: InstalledAppResponse
+      position: number
     }
   | {
       key: string
@@ -69,6 +70,10 @@ const WebAppsSectionContent = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const sectionToggleRef = useRef<HTMLButtonElement>(null)
+  const searchFocusRequestedRef = useRef(false)
+  const sectionLabelId = useId()
+  const [lastFocusedAppId, setLastFocusedAppId] = useState<string | null>(null)
   const [appsExpanded, setAppsExpanded] = useState(true)
   const [searchVisible, setSearchVisible] = useState(false)
   const [searchText, setSearchText] = useState('')
@@ -103,7 +108,7 @@ const WebAppsSectionContent = () => {
     const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
 
     return installedApps.flatMap((app, index) => {
-      const rows: WebAppListRow[] = [{ key: app.id, kind: 'app', app }]
+      const rows: WebAppListRow[] = [{ key: app.id, kind: 'app', app, position: index + 1 }]
 
       if (index === pinnedAppsCount - 1 && index !== installedApps.length - 1)
         rows.push({ key: `${app.id}-separator`, kind: 'separator' })
@@ -115,6 +120,24 @@ const WebAppsSectionContent = () => {
     (index: number) => webAppRows[index]?.key ?? index,
     [webAppRows],
   )
+  const focusedRowIndex = webAppRows.findIndex((row) => row.key === lastFocusedAppId)
+  const getVisibleRows = useCallback(
+    (range: Parameters<typeof defaultRangeExtractor>[0]) => {
+      const visibleRows = defaultRangeExtractor(range)
+      if (focusedRowIndex < 0) return visibleRows
+
+      // Retain the focused row and its neighbors so scrolling cannot remove the Tab target.
+      const previousAppIndex =
+        focusedRowIndex - (webAppRows[focusedRowIndex - 1]?.kind === 'separator' ? 2 : 1)
+      const nextAppIndex =
+        focusedRowIndex + (webAppRows[focusedRowIndex + 1]?.kind === 'separator' ? 2 : 1)
+      const focusRows = [previousAppIndex, focusedRowIndex, nextAppIndex].filter(
+        (index) => index >= 0 && index < range.count,
+      )
+      return [...new Set([...visibleRows, ...focusRows])].sort((a, b) => a - b)
+    },
+    [focusedRowIndex, webAppRows],
+  )
 
   const rowVirtualizer = useVirtualizer({
     count: webAppRows.length,
@@ -122,6 +145,7 @@ const WebAppsSectionContent = () => {
       webAppRows[index]?.kind === 'separator' ? appNavSeparatorHeight : appNavItemHeight,
     gap: appNavItemGap,
     getItemKey: getWebAppRowKey,
+    rangeExtractor: getVisibleRows,
     getScrollElement: () => scrollRef.current,
     overscan: 6,
     paddingEnd: installedAppsQuery.hasNextPage ? 0 : 8,
@@ -141,10 +165,16 @@ const WebAppsSectionContent = () => {
   }
 
   const handleSearchVisibleChange = (visible: boolean) => {
+    searchFocusRequestedRef.current = visible
     setAppsExpanded(true)
     if (!visible) handleSearchTextChange('')
     setSearchVisible(visible)
   }
+  const focusSearchOnAttach = useCallback((input: HTMLInputElement | null) => {
+    if (!input || !searchFocusRequestedRef.current) return
+    searchFocusRequestedRef.current = false
+    input.focus()
+  }, [])
 
   const handleDelete = () => {
     if (!uninstallDialogAppId) return
@@ -176,90 +206,69 @@ const WebAppsSectionContent = () => {
 
   if (installedAppsQuery.isPending) return null
 
-  if (!installedAppsQuery.isError && installedApps.length === 0 && !normalizedSearchText)
+  if (
+    !installedAppsQuery.isError &&
+    !installedAppsQuery.isPlaceholderData &&
+    installedApps.length === 0 &&
+    !normalizedSearchText &&
+    !searchVisible &&
+    uninstallDialogAppId === null &&
+    !uninstallAppMutation.isSuccess
+  )
     return null
 
-  const renderAppNavItem = (installedApp: (typeof installedApps)[number]) => (
-    <AppNavItem
-      app={installedApp}
-      ariaLabel={t(($) => $['mainNav.webApps.openApp'], {
-        ns: 'common',
-        name: installedApp.app.name,
-      })}
-      isSelected={isInstalledAppPath(pathname, installedApp.id)}
-      onTogglePin={handleUpdatePinStatus}
-      onDelete={setUninstallDialogAppId}
-    />
-  )
-  const renderRow = (row: WebAppListRow) => {
-    if (row.kind === 'separator') {
-      return (
-        <div className="flex h-3 items-center px-1">
-          <Divider className="m-0 h-px bg-divider-subtle" />
-        </div>
-      )
-    }
-
-    return renderAppNavItem(row.app)
-  }
   return (
     <Collapsible
-      open={appsExpanded && searchVisible}
-      onOpenChange={handleSearchVisibleChange}
-      className="flex min-h-0 flex-1 flex-col"
+      open={appsExpanded}
+      onOpenChange={setAppsExpanded}
+      className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto_minmax(0,1fr)]"
     >
-      <div className="flex items-center justify-between py-1 pr-2 pl-2">
-        <button
-          type="button"
-          aria-expanded={appsExpanded}
-          className="flex min-w-0 items-center rounded-md px-2 py-1 text-left system-xs-medium-uppercase text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          onClick={() => setAppsExpanded((value) => !value)}
-        >
-          <span>{t(($) => $['sidebar.webApps'], { ns: 'explore' })}</span>
-          <span
-            aria-hidden
-            className={cn(
-              'i-ri-arrow-down-s-fill h-4 w-4 shrink-0 transition-transform',
-              !appsExpanded && '-rotate-90',
-            )}
-          />
-        </button>
-        <div className="flex items-center gap-0.5">
-          <CollapsibleTrigger
-            className="size-6 min-h-0 w-6 justify-center gap-0 rounded-md p-0.5 hover:not-data-disabled:bg-state-base-hover hover:not-data-disabled:text-text-secondary data-panel-open:bg-state-base-hover data-panel-open:text-text-secondary"
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.search'], { ns: 'common' })}
-                className="rounded-md"
-              >
-                <span className="flex size-5 shrink-0 items-center justify-center">
-                  <span aria-hidden className="i-ri-search-line size-3.5" />
-                </span>
-              </IconButton>
-            }
-          />
-        </div>
-      </div>
-      <CollapsiblePanel className="shrink-0">
-        <div className="px-2 pb-2">
-          <SearchInput
-            value={searchText}
-            onValueChange={handleSearchTextChange}
-            placeholder={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'common' })}
-            // oxlint-disable-next-line jsx-a11y/no-autofocus -- The field is mounted after an explicit search action.
-            autoFocus
-          />
-        </div>
-      </CollapsiblePanel>
-      {appsExpanded && (
+      <CollapsibleTrigger
+        ref={sectionToggleRef}
+        className="group/collapsible col-start-1 row-start-1 my-1 ml-2 flex min-h-6 w-fit min-w-0 touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-left system-sm-medium text-text-tertiary outline-hidden select-none hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      >
+        <span id={sectionLabelId} className="system-xs-medium-uppercase">
+          {t(($) => $['sidebar.webApps'], { ns: 'explore' })}
+        </span>
+        <span
+          aria-hidden
+          className="i-ri-arrow-down-s-fill h-4 w-4 shrink-0 -rotate-90 transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none"
+        />
+      </CollapsibleTrigger>
+      <Collapsible
+        open={appsExpanded && searchVisible}
+        onOpenChange={handleSearchVisibleChange}
+        className="contents"
+      >
+        <CollapsibleTrigger
+          className="col-start-2 row-start-1 my-1 mr-2 self-center text-text-secondary data-panel-open:bg-state-base-hover"
+          render={
+            <IconButton aria-label={t(($) => $['operation.search'], { ns: 'common' })}>
+              <span aria-hidden className="i-ri-search-line size-3.5" />
+            </IconButton>
+          }
+        />
+        <CollapsiblePanel className="col-span-2 row-start-2">
+          <div className="px-2 pb-2">
+            <SearchInput
+              ref={focusSearchOnAttach}
+              value={searchText}
+              onValueChange={handleSearchTextChange}
+              placeholder={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'common' })}
+              aria-label={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'common' })}
+            />
+          </div>
+        </CollapsiblePanel>
+      </Collapsible>
+      <CollapsiblePanel className="col-span-2 row-start-3 flex h-full min-h-0 flex-col transition-none data-ending-style:h-full data-starting-style:h-full">
         <ScrollArea className="min-h-0 flex-1 overflow-hidden">
           <ScrollAreaViewport
             ref={scrollRef}
             aria-busy={installedAppsQuery.isFetching}
-            aria-label={t(($) => $['sidebar.webApps'], { ns: 'explore' })}
+            aria-labelledby={sectionLabelId}
             style={{ overflowX: 'hidden' }}
-            className="overscroll-contain"
-            role="region"
+            className="overscroll-contain focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+            role="navigation"
           >
             <ScrollAreaContent style={{ minWidth: 0 }} className="w-full max-w-full px-2">
               <div className="sr-only" role="status">
@@ -286,7 +295,7 @@ const WebAppsSectionContent = () => {
                 <div className="px-2 py-1 system-xs-regular">{noResultsMessage}</div>
               )}
               {webAppRows.length > 0 && (
-                <div
+                <ul
                   className="relative w-full"
                   style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
                 >
@@ -294,19 +303,45 @@ const WebAppsSectionContent = () => {
                     const row = webAppRows[virtualRow.index]!
 
                     return (
-                      <div
+                      <li
                         key={virtualRow.key}
+                        aria-hidden={row.kind === 'separator' ? true : undefined}
+                        aria-posinset={row.kind === 'app' ? row.position : undefined}
+                        aria-setsize={
+                          row.kind === 'app'
+                            ? installedAppsQuery.hasNextPage
+                              ? -1
+                              : installedApps.length
+                            : undefined
+                        }
+                        onFocusCapture={
+                          row.kind === 'app' ? () => setLastFocusedAppId(row.app.id) : undefined
+                        }
                         className="absolute top-0 left-0 w-full"
                         style={{
                           height: `${virtualRow.size}px`,
                           transform: `translateY(${virtualRow.start}px)`,
                         }}
                       >
-                        {renderRow(row)}
-                      </div>
+                        {row.kind === 'separator' ? (
+                          <div className="flex h-3 items-center px-1">
+                            <Divider className="m-0 h-px bg-divider-subtle" />
+                          </div>
+                        ) : (
+                          <AppNavItem
+                            app={row.app}
+                            isSelected={isInstalledAppPath(pathname, row.app.id)}
+                            onTogglePin={handleUpdatePinStatus}
+                            onDelete={(id) => {
+                              uninstallAppMutation.reset()
+                              setUninstallDialogAppId(id)
+                            }}
+                          />
+                        )}
+                      </li>
                     )
                   })}
-                </div>
+                </ul>
               )}
               {installedAppsQuery.hasNextPage && (
                 <div className="relative">
@@ -347,14 +382,20 @@ const WebAppsSectionContent = () => {
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
         </ScrollArea>
-      )}
+      </CollapsiblePanel>
       <AlertDialog
         open={uninstallDialogAppId !== null}
-        onOpenChange={(open) => {
+        onOpenChange={(open, details) => {
+          if (uninstallAppMutation.isPending) {
+            details.cancel()
+            return
+          }
           if (!open) setUninstallDialogAppId(null)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          finalFocus={() => (uninstallAppMutation.isSuccess ? sectionToggleRef.current : true)}
+        >
           <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
             <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
               {t(($) => $['sidebar.delete.title'], { ns: 'explore' })}
@@ -381,6 +422,8 @@ const WebAppsSectionContent = () => {
 }
 
 const WebAppsSection = () => {
+  use(browser('The installed apps navigation renders in the browser.'))
+
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canAccessAppLibrary = hasPermission(workspacePermissionKeys, 'app_library.access')
 

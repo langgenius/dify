@@ -408,14 +408,16 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      // Click on the start time header to toggle sort
-      const startTimeHeader = screen.getByText('appLog.table.header.startTime')
-      await user.click(startTimeHeader)
-
-      // Arrow should rotate (indicated by class change)
-      // The sort icon should have rotate-180 class for ascending
-      const sortIcon = startTimeHeader.closest('div')?.querySelector('svg')
-      expect(sortIcon)!.toBeInTheDocument()
+      const startTimeHeader = screen.getByRole('columnheader', {
+        name: 'appLog.table.header.startTime',
+      })
+      const sortButton = screen.getByRole('button', { name: 'appLog.table.header.startTime' })
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'descending')
+      sortButton.focus()
+      await user.keyboard('{Enter}')
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'ascending')
+      await user.keyboard(' ')
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'descending')
     })
 
     it('should render sort arrow icon', () => {
@@ -456,6 +458,44 @@ describe('WorkflowAppLogList', () => {
       expect(dialog)!.toBeInTheDocument()
       expect(screen.getByText('appLog.runDetail.workflowTitle'))!.toBeInTheDocument()
     })
+
+    it.each(['keyboard', 'row'])(
+      'restores focus to the selected log after %s opening and refresh',
+      async (opening) => {
+        const user = userEvent.setup()
+        const appDetail = createMockApp()
+        const onRefresh = vi.fn()
+        useAppStore.setState({ appDetail })
+        const logs = createMockLogsResponse([
+          createMockWorkflowLog({ id: 'log-1', created_at: 100 }),
+          createMockWorkflowLog({ id: 'log-2', created_at: 200 }),
+        ])
+        const { rerender } = render(
+          <WorkflowAppLogList logs={logs} appDetail={appDetail} onRefresh={onRefresh} />,
+        )
+        const trigger = screen.getByRole('button', { name: 'formatted-100' })
+        if (opening === 'keyboard') {
+          trigger.focus()
+          await user.keyboard('{Enter}')
+        } else {
+          await user.click(screen.getAllByRole('row')[2]!)
+        }
+        await screen.findByRole('dialog')
+        rerender(
+          <WorkflowAppLogList
+            logs={createMockLogsResponse(logs.data.map((log) => ({ ...log, read_at: 300 })))}
+            appDetail={appDetail}
+            onRefresh={onRefresh}
+          />,
+        )
+        await user.keyboard('{Escape}')
+        await waitFor(() => {
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+          expect(trigger).toHaveFocus()
+        })
+        expect(onRefresh).toHaveBeenCalledTimes(1)
+      },
+    )
 
     it('should close drawer and call onRefresh when closing', async () => {
       const user = userEvent.setup()

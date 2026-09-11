@@ -843,6 +843,35 @@ describe('HomeTrending', () => {
     )
   })
 
+  it('opens embedded recommend plugin cards from /plugins links when item_id is not org/name', async () => {
+    const user = userEvent.setup()
+    const banner: PluginBanner = {
+      id: 'recommend-plugin-href',
+      style_type: 'recommend',
+      title: 'Trending',
+      sort: 0,
+      language: 'en',
+      content: {
+        theme_type: 'hottest',
+        cards: [
+          {
+            item_type: 'plugin',
+            item_id: 'baserow',
+            display_name: 'Baserow',
+            link: '/plugins/langgenius/baserow',
+            card_position: 0,
+          },
+        ],
+      },
+    }
+
+    render(<HomeTrending banners={[banner]} isMarketplacePlatform={false} page="plugins" />)
+
+    expect(screen.queryByRole('link', { name: 'Baserow' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Baserow' }))
+    expect(screen.getByRole('dialog', { name: 'plugin-detail' })).toHaveTextContent('baserow')
+  })
+
   it('links recommend template cards by ID with the served author or template fallback', () => {
     const banner: PluginBanner = {
       id: 'recommend-templates',
