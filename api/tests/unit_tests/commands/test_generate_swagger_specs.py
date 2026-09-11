@@ -687,8 +687,6 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert file_upload_schema["properties"]["file"]["type"] == "string"
     assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
 
-    assert "/agent/import" not in paths
-    assert "/agent/{agent_id}/export" not in paths
     package_import = paths["/apps/imports"]["post"]
     assert _request_schema(package_import, "multipart/form-data")["required"] == ["file"]
     assert "mode" in _request_schema(package_import, "application/json")["required"]

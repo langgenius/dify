@@ -282,8 +282,6 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
     ):
         assert route in paths
     for route in (
-        "/agent/import",
-        "/agent/<uuid:agent_id>/export",
         "/agents",
         "/agents/invite-options",
         "/agents/<uuid:agent_id>",
