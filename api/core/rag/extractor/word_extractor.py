@@ -3,7 +3,6 @@
 Supports local file paths and remote URLs downloaded through the unified remote-file fetcher.
 """
 
-import inspect
 import logging
 import mimetypes
 import os
@@ -66,13 +65,15 @@ class WordExtractor(BaseExtractor):
 
             self.web_path = self.file_path
             # TODO: use a better way to handle the file
-            self.temp_file = tempfile.NamedTemporaryFile()  # noqa SIM115
+            temp_file = tempfile.NamedTemporaryFile(delete=False)  # noqa SIM115
             try:
-                self.temp_file.write(response.content)
-                self.temp_file.flush()
+                temp_file.write(response.content)
+                temp_file.flush()
             finally:
+                temp_file.close()
                 response.close()
-            self.file_path = self.temp_file.name
+            self.temp_file_path = temp_file.name
+            self.file_path = self.temp_file_path
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
@@ -82,16 +83,14 @@ class WordExtractor(BaseExtractor):
             return
 
         self._closed = True
-        temp_file = getattr(self, "temp_file", None)
-        if temp_file is None:
+        temp_file_path = getattr(self, "temp_file_path", None)
+        if temp_file_path is None:
             return
 
         try:
-            close_result = temp_file.close()
-            if inspect.isawaitable(close_result):
-                close_awaitable = getattr(close_result, "close", None)
-                if callable(close_awaitable):
-                    close_awaitable()
+            os.unlink(temp_file_path)
+        except FileNotFoundError:
+            pass
         except Exception:
             logger.debug("Failed to cleanup downloaded word temp file", exc_info=True)
 

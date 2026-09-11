@@ -5,7 +5,6 @@ import logging
 import os
 import tempfile
 from collections import UserDict
-from collections.abc import Generator
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Protocol, cast, override
@@ -112,7 +111,7 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
         assert extractor.file_path != extractor.web_path
         assert Path(extractor.file_path).read_bytes() == docx_bytes
     finally:
-        extractor.temp_file.close()
+        extractor.close()
 
 
 @pytest.mark.parametrize("inject_session", [False, True])
@@ -383,49 +382,37 @@ def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path: Pa
         WordExtractor("not-a-file", "tenant", "user")
 
 
-def test_close_closes_temp_file():
+def test_close_removes_temp_file(tmp_path: Path):
     extractor = object.__new__(WordExtractor)
     extractor._closed = False
-    extractor.temp_file = MagicMock()
+    path = tmp_path / "downloaded.docx"
+    path.write_bytes(b"content")
+    extractor.temp_file_path = str(path)
 
     extractor.close()
 
-    extractor.temp_file.close.assert_called_once()
+    assert not path.exists()
 
 
-def test_close_is_idempotent():
+def test_close_is_idempotent(monkeypatch: pytest.MonkeyPatch):
     extractor = object.__new__(WordExtractor)
     extractor._closed = False
-    extractor.temp_file = MagicMock()
+    extractor.temp_file_path = "tmp.docx"
+    unlink = MagicMock()
+    monkeypatch.setattr(we.os, "unlink", unlink)
 
     extractor.close()
     extractor.close()
 
-    extractor.temp_file.close.assert_called_once()
+    unlink.assert_called_once_with("tmp.docx")
 
 
-def test_close_closes_awaitable_close_result():
-    class FakeAwaitable:
-        closed: bool = False
-
-        def __await__(self) -> Generator[None, None, None]:
-            if False:
-                yield None
-            return None
-
-        def close(self) -> None:
-            self.closed = True
-
+def test_close_tolerates_missing_temp_file():
     extractor = object.__new__(WordExtractor)
     extractor._closed = False
-    extractor.temp_file = MagicMock()
-    close_result = FakeAwaitable()
-    extractor.temp_file.close = MagicMock(return_value=close_result)
+    extractor.temp_file_path = "missing.docx"
 
     extractor.close()
-
-    assert close_result.closed is True
-    extractor.temp_file.close.assert_called_once()
 
 
 def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
