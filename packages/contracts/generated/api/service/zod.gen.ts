@@ -1530,9 +1530,11 @@ export const zKnowledgeFsDocumentListResponse = z.object({
  */
 export const zKnowledgeFsDocumentReindexItemResponse = z.object({
   asset: zKnowledgeFsDocumentResponse.nullish(),
+  code: z.string().nullish(),
   compilation_job: z.record(z.string(), z.unknown()).nullish(),
   document_id: z.string().nullish(),
-  status: z.enum(['disabled', 'not_found', 'queued']),
+  error: z.string().nullish(),
+  status: z.enum(['disabled', 'failed', 'not_found', 'queued']),
   status_url: z.string().nullish(),
 })
 

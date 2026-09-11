@@ -334,7 +334,8 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
       const item = result.items[0]
       if (!item || item.status === 'not_found')
         toast.error(t(($) => $.documentsReindexPartial, { missing: 1, queued: 0 }))
-      else if (item.status === 'disabled') toast.error(t(($) => $.documentsReindexFailed))
+      else if (item.status === 'disabled' || item.status === 'failed')
+        toast.error(t(($) => $.documentsReindexFailed))
       else toast.success(t(($) => $.documentsReindexStarted))
       invalidateDocumentsAndTasks()
       return true

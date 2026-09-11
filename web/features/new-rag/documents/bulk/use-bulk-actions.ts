@@ -101,21 +101,21 @@ export function useBulkReindexAction() {
       const missingIds = result.items
         .filter((item) => item.status === 'not_found')
         .flatMap((item) => (item.document_id ? [item.document_id] : []))
-      const disabledIds = result.items
-        .filter((item) => item.status === 'disabled')
+      const failedIds = result.items
+        .filter((item) => item.status === 'disabled' || item.status === 'failed')
         .flatMap((item) => (item.document_id ? [item.document_id] : []))
       const queuedCount = result.items.filter((item) => item.status === 'queued').length
-      replaceSelection(queuedCount ? [...missingIds, ...disabledIds] : disabledIds)
+      replaceSelection(queuedCount ? [...missingIds, ...failedIds] : failedIds)
       if (!queuedCount)
         toast.error(
-          disabledIds.length
+          failedIds.length
             ? t(($) => $.documentsReindexFailed)
             : t(($) => $.documentsReindexPartial, {
                 missing: missingIds.length,
                 queued: 0,
               }),
         )
-      else if (disabledIds.length) toast.warning(t(($) => $.documentsReindexFailed))
+      else if (failedIds.length) toast.warning(t(($) => $.documentsReindexFailed))
       else if (missingIds.length)
         toast.warning(
           t(($) => $.documentsReindexPartial, {
