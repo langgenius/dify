@@ -5,10 +5,11 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
 import { consoleQuery } from '@/service/console'
 import { useIncrementSnippetUseCountMutation } from '@/service/use-snippets'
+import { collaborationManager } from '../../collaboration/core/collaboration-manager'
 import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks/use-workflow-history'
 import { getNodeUsedVars, updateNodeVars } from '../../nodes/_base/components/variable/utils'
@@ -350,7 +351,7 @@ const createBoundaryEdges = ({
 export const useInsertSnippet = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
   const { mutate: incrementSnippetUseCount } = useIncrementSnippetUseCountMutation()
@@ -368,9 +369,9 @@ export const useInsertSnippet = () => {
         const { nodes: snippetNodes, edges: snippetEdges } = getSnippetGraph(workflow.graph)
 
         if (!snippetNodes.length) return
+        if (!collaborationManager.canApplyLocalGraphMutation()) return false
 
-        const { getNodes, setNodes, edges, setEdges } = store.getState()
-        const currentNodes = getNodes()
+        const { nodes: currentNodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
         const remappedGraph = remapSnippetGraph(
           currentNodes,
           snippetNodes,
@@ -524,7 +525,14 @@ export const useInsertSnippet = () => {
         return false
       }
     },
-    [handleSyncWorkflowDraft, incrementSnippetUseCount, queryClient, saveStateToHistory, store, t],
+    [
+      collaborativeWorkflow,
+      handleSyncWorkflowDraft,
+      incrementSnippetUseCount,
+      queryClient,
+      saveStateToHistory,
+      t,
+    ],
   )
 
   return {
