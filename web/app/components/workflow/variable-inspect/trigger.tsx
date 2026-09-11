@@ -65,7 +65,8 @@ const VariableInspectTrigger: FC = () => {
   return (
     <div className={cn('flex shrink-0 flex-nowrap items-center gap-1 whitespace-nowrap')}>
       {!isRunning && !currentVars.length && (
-        <div
+        <button
+          type="button"
           className={cn(
             'flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-2xs-semibold-uppercase text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-background-default-hover',
             nodesReadOnly &&
@@ -77,11 +78,12 @@ const VariableInspectTrigger: FC = () => {
           }}
         >
           {t(($) => $['debug.variableInspect.trigger.normal'], { ns: 'workflow' })}
-        </div>
+        </button>
       )}
       {!isRunning && currentVars.length > 0 && (
         <>
-          <div
+          <button
+            type="button"
             className={cn(
               'flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent',
               nodesReadOnly &&
@@ -93,8 +95,9 @@ const VariableInspectTrigger: FC = () => {
             }}
           >
             {t(($) => $['debug.variableInspect.trigger.cached'], { ns: 'workflow' })}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
             className={cn(
               'flex h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 system-xs-medium text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent hover:text-text-accent',
               nodesReadOnly &&
@@ -106,12 +109,13 @@ const VariableInspectTrigger: FC = () => {
             }}
           >
             {t(($) => $['debug.variableInspect.trigger.clear'], { ns: 'workflow' })}
-          </div>
+          </button>
         </>
       )}
       {isRunning && (
         <>
-          <div
+          <button
+            type="button"
             className="flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
             onClick={() => setShowVariableInspectPanel(true)}
           >
@@ -119,17 +123,19 @@ const VariableInspectTrigger: FC = () => {
             <span className="text-text-accent">
               {t(($) => $['debug.variableInspect.trigger.running'], { ns: 'workflow' })}
             </span>
-          </div>
+          </button>
           {isPreviewRunning && (
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <div
+                  <button
+                    type="button"
+                    aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
                     className="flex h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
                     onClick={handleStop}
                   >
                     <RiStopCircleFill className="size-4 shrink-0 text-text-accent" />
-                  </div>
+                  </button>
                 }
               />
               <TooltipContent>
