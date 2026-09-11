@@ -1,5 +1,6 @@
 """Create LangSmith runs synchronously, with explicit IDs and ancestor order."""
 
+from random import Random
 from typing import Any
 from urllib.parse import quote, urlsplit
 from uuid import UUID
@@ -163,6 +164,7 @@ class LangSmithTraceClient:
         self.hide_inputs = bool(runtime_settings.get("hide_inputs", False))
         self.hide_outputs = bool(runtime_settings.get("hide_outputs", False))
         self.hide_metadata = bool(runtime_settings.get("hide_metadata", False))
+        self.sampling_rate = float(runtime_settings.get("sampling_rate", 1.0))
         api_key = self.config.api_key.strip().strip('"').strip("'")
         headers = {"x-api-key": api_key} if api_key else {}
         if workspace_id := runtime_settings.get("workspace_id"):
@@ -197,8 +199,7 @@ class LangSmithTraceClient:
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
-        spans = _prepare_timed_spans(completed_trace)
-        span_ids = {span.span_id: export_span_id(completed_trace, span.span_id) for span in spans}
+        span_ids = {span.span_id: export_span_id(completed_trace, span.span_id) for span in completed_trace.spans}
         if parent_span is None and (external_id := completed_trace.source.external_trace_id):
             try:
                 external_uuid = UUID(external_id)
@@ -206,8 +207,22 @@ class LangSmithTraceClient:
                     span_ids[completed_trace.root_span_id] = str(external_uuid)
             except ValueError:
                 pass
-        receipts: dict[str, dict[str, JsonValue]] = {}
         trace_id = str(parent_span["trace_id"]) if parent_span else span_ids[completed_trace.root_span_id]
+        # One Bernoulli decision per trace, seeded by its identity so another worker's retry agrees.
+        sampled = (
+            parent_span.get("sampled", True) is not False
+            if parent_span is not None
+            else Random(trace_id).random() < self.sampling_rate  # noqa: S311 -- trace sampling is not a security decision
+        )
+        if not sampled:
+            return ExportedParentSpans(
+                spans={
+                    span_id: {"trace_id": trace_id, "span_id": exported_id, "sampled": False}
+                    for span_id, exported_id in span_ids.items()
+                }
+            )
+        spans = _prepare_timed_spans(completed_trace)
+        receipts: dict[str, dict[str, JsonValue]] = {}
         runs = []
         for span in spans:
             parent = receipts.get(span.parent_span_id or "") or parent_span
@@ -270,7 +285,12 @@ class LangSmithTraceClient:
                 "tags": tags,
             }
             runs.append(run)
-            receipts[span.span_id] = {"trace_id": trace_id, "span_id": span_id, "dotted_order": dotted_order}
+            receipts[span.span_id] = {
+                "trace_id": trace_id,
+                "span_id": span_id,
+                "dotted_order": dotted_order,
+                "sampled": True,
+            }
         # Build and validate every run before posting; retries retain IDs and ancestor order.
         for run in runs:
             self.http.request("POST", "runs/batch", json={"post": [run]})

@@ -13,6 +13,12 @@ from core.ops.utils import validate_integer_id, validate_url_with_path
 from dify_trace_mlflow.deployment_auth import resolve_aws_credentials, resolve_deployment_auth
 
 
+def _load_sampling_ratio() -> float:
+    ratio = float(os.environ.get("MLFLOW_TRACE_SAMPLING_RATIO", "1"))
+    # The pinned SDK ignores out-of-range and NaN ratios, restoring default sampling.
+    return ratio if 0 <= ratio <= 1 else 1.0
+
+
 class MLflowConfig(BaseTracingConfig):
     """
     Model class for MLflow tracing config.
@@ -41,7 +47,7 @@ class MLflowConfig(BaseTracingConfig):
             if credentials.has_section("mlflow"):
                 username = username or credentials.get("mlflow", "mlflow_tracking_username", fallback=None)
                 password = password or credentials.get("mlflow", "mlflow_tracking_password", fallback=None)
-        settings: dict[str, Any] = {}
+        settings: dict[str, Any] = {"sampling_ratio": _load_sampling_ratio()}
         if username and password:
             authorization = "Basic " + base64.b64encode(f"{username}:{password}".encode()).decode()
             settings["headers"] = {"Authorization": authorization}
@@ -116,6 +122,7 @@ class DatabricksConfig(BaseTracingConfig):
     @classmethod
     @override
     def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
+        sampling_ratio = _load_sampling_ratio()
         # The Databricks SDK uses Requests for both API calls and signed uploads.
         try:
             tls = read_tls_files(
@@ -126,8 +133,8 @@ class DatabricksConfig(BaseTracingConfig):
             if urlsplit(cls.model_validate(provider_config).host).scheme != "http":
                 raise
             # HTTP verification ignores CA files; preserve the failure for HTTPS uploads.
-            return {"tls_read_failed": True}
-        return {"tls": tls}
+            return {"sampling_ratio": sampling_ratio, "tls_read_failed": True}
+        return {"sampling_ratio": sampling_ratio, "tls": tls}
 
     @field_validator("experiment_id")
     @classmethod

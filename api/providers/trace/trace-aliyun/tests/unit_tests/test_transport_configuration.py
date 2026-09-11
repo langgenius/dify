@@ -12,7 +12,9 @@ from dify_trace_aliyun.config import AliyunConfig
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
 from configs import dify_config
-from tests.unit_tests.core.ops.test_provider_export import provider_config
+
+# Pytest importlib mode resolves these hyphenated provider packages.
+from .test_export_contract import make_provider_config  # pyrefly: ignore[missing-import]
 
 
 @pytest.fixture(autouse=True)
@@ -26,7 +28,7 @@ def test_headers_keep_sdk_precedence_and_do_not_log_malformed_secrets(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_HEADERS", "x-token=base-token")
-    config = provider_config("aliyun")
+    config = make_provider_config()
     assert AliyunConfig.load_runtime_settings(config)["headers"] == {"x-token": "base-token"}
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "x-token=trace%20token,invalid-secret-value")
     assert AliyunConfig.load_runtime_settings(config)["headers"] == {"x-token": "trace token"}
@@ -48,7 +50,7 @@ def test_tls_snapshot_matches_the_sdk_and_survives_file_and_environment_changes(
     trace_ca.write_text("trace certificate")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE", str(trace_ca))
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "x-token=original")
-    config = provider_config("aliyun")
+    config = make_provider_config()
     runtime = AliyunConfig.load_runtime_settings(config)
     old_exporter = OTLPSpanExporter(endpoint=config["endpoint"])
     try:
@@ -77,7 +79,7 @@ def test_tls_snapshot_matches_the_sdk_and_survives_file_and_environment_changes(
 @pytest.mark.parametrize("prefix", ["OTEL_EXPORTER_OTLP_", "OTEL_EXPORTER_OTLP_TRACES_"])
 def test_explicit_empty_ca_keeps_existing_verification_setting(monkeypatch: pytest.MonkeyPatch, prefix: str) -> None:
     monkeypatch.setenv(prefix + "CERTIFICATE", "")
-    client = aliyun_trace.create_trace_client(provider_config("aliyun"))
+    client = aliyun_trace.create_trace_client(make_provider_config())
     assert client.http.ssl_context is not None
     assert client.http.ssl_context.verify_mode == ssl.CERT_NONE
     assert client.http.ssl_context.check_hostname is False
@@ -86,7 +88,7 @@ def test_explicit_empty_ca_keeps_existing_verification_setting(monkeypatch: pyte
 def test_unreadable_tls_file_fails_without_disclosing_its_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE", "/unavailable/private-certificate.pem")
     with pytest.raises(ValueError, match="^Cannot read TLS configuration$"):
-        AliyunConfig.load_runtime_settings(provider_config("aliyun"))
+        AliyunConfig.load_runtime_settings(make_provider_config())
 
 
 @pytest.mark.parametrize("ca_source", ["CURL_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "OTEL_EXPORTER_OTLP_CERTIFICATE"])
@@ -100,13 +102,13 @@ def test_requests_ca_fallback_and_unused_client_key_match_old_http_transport(
         if name == ca_source:
             break
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_CLIENT_KEY", "/unused/missing-key.pem")
-    runtime = AliyunConfig.load_runtime_settings(provider_config("aliyun"))
+    runtime = AliyunConfig.load_runtime_settings(make_provider_config())
     assert runtime["tls"] == {"certificate": base64.b64encode(ca_source.encode()).decode()}
 
 
 def test_resource_dimensions_and_console_link_are_preserved(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(aliyun_trace.socket, "gethostname", lambda: "aliyun-worker")
-    client = aliyun_trace.create_trace_client(provider_config("aliyun"))
+    client = aliyun_trace.create_trace_client(make_provider_config())
     assert {attribute.key: attribute.value.string_value for attribute in client.resource.attributes} == {
         "service.name": "project",
         "service.version": f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
@@ -120,7 +122,7 @@ def test_resource_dimensions_and_console_link_are_preserved(monkeypatch: pytest.
 def test_empty_requests_ca_bundles_keep_certificate_verification(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REQUESTS_CA_BUNDLE", "")
     monkeypatch.setenv("CURL_CA_BUNDLE", "")
-    runtime = AliyunConfig.load_runtime_settings(provider_config("aliyun"))
+    runtime = AliyunConfig.load_runtime_settings(make_provider_config())
     assert runtime["verify"] is True
     assert runtime["tls"] == {}
 
@@ -135,7 +137,7 @@ def test_http_ca_directory_is_captured_and_detects_certificate_rotation(
     certificate = tmp_path / "12345678.0"
     certificate.write_bytes(b"original certificate")
     monkeypatch.setenv(ca_source, str(tmp_path))
-    config = provider_config("aliyun")
+    config = make_provider_config()
 
     captured = AliyunConfig.load_runtime_settings(config)
 
