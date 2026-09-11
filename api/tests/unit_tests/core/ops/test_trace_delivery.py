@@ -13,13 +13,16 @@ from uuid import uuid4
 import pytest
 import sqlalchemy as sa
 from flask import Flask
-from sqlalchemy.engine import Engine
+from sqlalchemy import event
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.engine import Connection, Engine, ExecutionContext
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import (
     CompletedTrace,
+    ExportedParentSpans,
     ParentSpanReference,
     QueuedTrace,
     TraceProviderSettings,
@@ -71,6 +74,81 @@ def test_database_time_can_compare_with_persisted_delivery_timestamp(database_ti
     now = OpsTraceDeliveryRepository.database_time(session)
 
     assert now - created_at == timedelta(hours=2)
+
+
+def test_delivery_lifecycle_uses_utc_with_non_utc_database_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    engine = sa.create_engine("sqlite://")
+    repository = make_repository(engine)
+    database_now = datetime(2030, 9, 11, 20, tzinfo=timezone(timedelta(hours=8)))
+    utc_now = datetime(2030, 9, 11, 12)
+    clock_session = Mock()
+    clock_session.execute.return_value.scalar_one.side_effect = lambda: database_now
+    monkeypatch.setattr(
+        repository, "database_time", lambda _session: OpsTraceDeliveryRepository.database_time(clock_session)
+    )
+
+    @event.listens_for(engine, "before_cursor_execute")
+    def assert_bound_utc_time(
+        _connection: Connection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        execution_context: ExecutionContext,
+        _executemany: bool,
+    ) -> None:
+        # SQLite cannot reproduce PostgreSQL's timestamp/timestamptz comparison, so inspect its SQL too.
+        assert "CURRENT_TIMESTAMP" not in statement
+        compiled = execution_context.compiled
+        if compiled is not None and compiled.statement is not None:
+            postgres_sql = str(compiled.statement.compile(dialect=postgresql.dialect()))
+            assert "CURRENT_TIMESTAMP" not in postgres_sql
+
+    reserved, _ = repository.reserve_delivery(make_queued_trace())
+    assert reserved.created_at == reserved.updated_at == utc_now
+    assert reserved.lease_expires_at == utc_now + timedelta(minutes=5)
+    repository.cancel_expired_uploads()
+    assert repository.accept_upload(reserved)
+    assert repository.due_deliveries() == [(reserved.tenant_id, reserved.id)]
+    attempt = repository.claim_delivery(reserved.tenant_id, reserved.id)
+    assert attempt is not None
+    database_now += timedelta(minutes=1)
+    assert repository.extend_attempt_lease(attempt)
+    renewed = repository.get_delivery(attempt.tenant_id, attempt.id)
+    assert renewed is not None
+    assert renewed.lease_expires_at == utc_now + timedelta(minutes=6)
+    assert renewed.updated_at == utc_now + timedelta(minutes=1)
+    assert repository.finish_attempt(attempt, "succeeded")
+    assert not repository.expired_traces(success_retention_seconds=1)
+    database_now += timedelta(seconds=1)
+    assert [delivery.id for delivery in repository.expired_traces(success_retention_seconds=1)] == [reserved.id]
+    repository.record_trace_deleted(attempt)
+    deleted = repository.get_delivery(attempt.tenant_id, attempt.id)
+    assert deleted is not None
+    assert deleted.trace_deleted_at == deleted.updated_at == utc_now + timedelta(minutes=1, seconds=1)
+
+    expired_upload, _ = repository.reserve_delivery(make_queued_trace())
+    database_now += timedelta(minutes=5)
+    assert not repository.accept_upload(expired_upload)
+    repository.cancel_expired_uploads()
+    cancelled = repository.get_delivery(expired_upload.tenant_id, expired_upload.id)
+    assert cancelled is not None
+    assert cancelled.status == "cancelled"
+    assert cancelled.finished_at == cancelled.updated_at == utc_now + timedelta(minutes=6, seconds=1)
+
+    child, _ = repository.reserve_delivery(
+        make_queued_trace(parent=ParentSpanReference(export_id=str(uuid4()), span_id=str(uuid4())))
+    )
+    assert repository.accept_upload(child)
+    assert repository.read_parent_reference(child) == (False, None)
+    waiting = repository.get_delivery(child.tenant_id, child.id)
+    assert waiting is not None
+    assert waiting.attempt_count == 0
+    assert waiting.next_attempt_at == child.created_at + timedelta(seconds=5)
+    database_now += timedelta(hours=1, seconds=1)
+    assert repository.read_parent_reference(waiting) == (True, None)
+    expired_parent = repository.get_delivery(child.tenant_id, child.id)
+    assert expired_parent is not None
+    assert expired_parent.error_code == "parent_wait_expired"
 
 
 def test_claim_is_tenant_scoped_and_stale_attempt_cannot_complete() -> None:
@@ -279,6 +357,80 @@ def test_worker_uses_typed_provider_retry_policy(
     assert result.status == status
     assert result.attempt_count == 1
     assert result.next_attempt_at - result.updated_at == timedelta(seconds=delay)
+
+
+@pytest.mark.parametrize("last_attempt_crashes", [False, True])
+def test_worker_honors_attempt_limit_after_crashes(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    last_attempt_crashes: bool,
+) -> None:
+    from core.ops import provider_export, trace_source
+    from tasks.ops_trace_task import export_trace_delivery
+
+    repository = make_repository()
+    queued = make_queued_trace()
+    delivery, _ = repository.reserve_delivery(queued)
+    assert repository.accept_upload(delivery)
+    config_overrides(OPS_TRACE_MAX_ATTEMPTS=2, OPS_TRACE_FAILURE_RETENTION_SECONDS=0)
+    monkeypatch.setattr(repository, "validate_trace_owner", Mock())
+    load_config = Mock(return_value={})
+    monkeypatch.setattr(trace_source, "load_trace_provider_config", load_config)
+    export = Mock(
+        side_effect=[
+            KeyboardInterrupt(),
+            KeyboardInterrupt() if last_attempt_crashes else ExportedParentSpans(),
+            ExportedParentSpans(),
+        ]
+    )
+    monkeypatch.setattr(provider_export, "export_trace", export)
+    storage = Mock(load_stream=Mock(side_effect=lambda _key: iter((queued.trace_json,))))
+    app = Flask(__name__)
+    app.extensions["ops_trace_delivery_repository"] = repository
+    app.extensions["ops_trace_storage"] = storage
+
+    with app.app_context():
+        for attempt_count in (1, 2):
+            with pytest.raises(KeyboardInterrupt) if attempt_count == 1 or last_attempt_crashes else nullcontext():
+                export_trace_delivery(delivery.tenant_id, delivery.id)
+            attempt = repository.get_delivery(delivery.tenant_id, delivery.id)
+            assert attempt is not None
+            assert attempt.attempt_count == attempt_count
+            if attempt.status == "succeeded":
+                break
+            # Another message cannot terminalize or steal the still-active last attempt.
+            export_trace_delivery(delivery.tenant_id, delivery.id)
+            active_attempt = repository.get_delivery(delivery.tenant_id, delivery.id)
+            assert active_attempt is not None
+            assert active_attempt.status == "sending"
+            with repository.session_factory() as session:
+                session.execute(
+                    sa.update(OpsTraceDelivery)
+                    .where(OpsTraceDelivery.tenant_id == delivery.tenant_id, OpsTraceDelivery.id == delivery.id)
+                    .values(lease_expires_at=repository.database_time(session) - timedelta(seconds=1))
+                )
+                session.commit()
+        export_trace_delivery(str(uuid4()), delivery.id)
+        unchanged = repository.get_delivery(delivery.tenant_id, delivery.id)
+        assert unchanged is not None
+        assert unchanged.status == ("sending" if last_attempt_crashes else "succeeded")
+        export_trace_delivery(delivery.tenant_id, delivery.id)
+        export_trace_delivery(delivery.tenant_id, delivery.id)
+
+    assert export.call_count == load_config.call_count == storage.load_stream.call_count == 2
+    result = repository.get_delivery(delivery.tenant_id, delivery.id)
+    assert result is not None
+    assert result.attempt_count == 2
+    assert result.status == ("failed" if last_attempt_crashes else "succeeded")
+    assert result.attempt_token is None
+    assert result.lease_expires_at is None
+    assert result.finished_at is not None
+    if last_attempt_crashes:
+        assert result.error_code == "attempts_exhausted"
+        assert not repository.extend_attempt_lease(attempt)
+        assert not repository.finish_attempt(attempt, "succeeded")
+        assert [expired.id for expired in repository.expired_traces()] == [delivery.id]
+        storage.delete.assert_not_called()
 
 
 def test_expired_parent_exports_a_linked_root(monkeypatch: pytest.MonkeyPatch) -> None:

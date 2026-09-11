@@ -3,13 +3,63 @@
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+import pytest
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
+from opentelemetry.proto.metrics.v1.metrics_pb2 import Metric
 
-from core.ops.trace_data import CompletedTrace, TraceSource, TraceSpan
+from core.moderation.base import ModerationAction, ModerationInputsResult
+from core.ops.message_trace import MessageTraceRecorder
+from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource, TraceSpan
 from enterprise.telemetry.enterprise_trace import EnterpriseTraceClient
+from tests.unit_tests.core.ops.test_message_trace import RecordingQueue
 
 
-def test_sampling_does_not_sample_metrics_or_include_hidden_content(monkeypatch, caplog):
+@pytest.mark.parametrize("include_content", [False, True])
+@pytest.mark.parametrize("flagged", [False, True])
+def test_moderation_decisions_survive_capture_and_content_policy(include_content: bool, flagged: bool) -> None:
+    source = TraceSource(
+        tenant_id=str(uuid4()), operation_id=str(uuid4()), app_id=str(uuid4()), message_id=str(uuid4())
+    )
+    queue = RecordingQueue()
+    settings = TraceProviderSettings(
+        tenant_id=source.tenant_id, destination_type="enterprise", provider_name="enterprise"
+    )
+    recorder = MessageTraceRecorder(source, queue, (settings,))
+    recorder.record_operation(
+        "moderation",
+        span_type="tool",
+        inputs={"inputs": {"topic": "private topic"}, "query": "original question"},
+        outputs=ModerationInputsResult(
+            flagged=flagged,
+            action=ModerationAction.DIRECT_OUTPUT,
+            query="moderated question",
+            preset_response="blocked",
+        ),
+        attributes={"operation_type": "moderation", "moderation_type": "keywords"},
+        independent=True,
+    )
+    trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+    captured = trace.spans[0]
+    client = EnterpriseTraceClient({"endpoint": "https://collector.example", "include_content": include_content})
+
+    attributes = client._attributes(trace, captured, client._operation_type(captured))
+    recorder.close()
+
+    assert attributes["dify.moderation.flagged"] is flagged
+    assert attributes["dify.moderation.action"] == "direct_output"
+    assert attributes["dify.moderation.type"] == "keywords"
+    reference = f"ref:message_id={source.message_id}"
+    assert attributes["dify.moderation.query"] == ("moderated question" if include_content else reference)
+    assert attributes["dify.moderation.preset_response"] == ("blocked" if include_content else reference)
+    if not include_content:
+        assert "original question" not in str(attributes)
+        assert "moderated question" not in str(attributes)
+        assert "private topic" not in str(attributes)
+
+
+def test_sampling_does_not_sample_metrics_or_include_hidden_content(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     from logging import INFO
 
     source = TraceSource(tenant_id=str(uuid4()), operation_id=str(uuid4()), app_id=str(uuid4()))
@@ -34,10 +84,10 @@ def test_sampling_does_not_sample_metrics_or_include_hidden_content(monkeypatch,
             "sampling_rate": 0,
         }
     )
-    sent_metrics = []
+    sent_metrics: list[Metric] = []
     monkeypatch.setattr(client.otlp, "send_metrics", sent_metrics.extend)
 
-    def unexpected_trace(_trace_request):
+    def unexpected_trace(_trace_request: ExportTraceServiceRequest) -> None:
         raise AssertionError("Message operations and sampled-out workflows do not export spans")
 
     monkeypatch.setattr(client.otlp, "send_traces", unexpected_trace)
@@ -48,14 +98,14 @@ def test_sampling_does_not_sample_metrics_or_include_hidden_content(monkeypatch,
         "dify.requests.total",
         "dify.message.duration",
     }
-    log_attributes = caplog.records[-1].attributes
+    log_attributes = caplog.records[-1].__dict__["attributes"]
     assert "private prompt" not in str(log_attributes)
     assert "private completion" not in str(log_attributes)
     assert log_attributes["dify.event.name"] == "dify.message.run"
     assert log_attributes["dify.tenant_id"] == source.tenant_id
 
 
-def test_nested_workflow_spans_preserve_immediate_parents_and_explicit_tenant(monkeypatch):
+def test_nested_workflow_spans_preserve_immediate_parents_and_explicit_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
     source = TraceSource(tenant_id=str(uuid4()), operation_id=str(uuid4()), app_id=str(uuid4()))
     root_id, child_id, leaf_id = (str(uuid4()) for _ in range(3))
     started_at = datetime(2026, 9, 9, tzinfo=UTC)

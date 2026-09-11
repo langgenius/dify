@@ -140,6 +140,18 @@ class MLflowTraceClient:
     def _attributes(self, completed_trace: CompletedTrace, span: TraceSpan, trace_id: str) -> dict[str, str]:
         attributes = span_attributes(completed_trace, span)
         inputs, outputs = _format_llm_io(span) if span.span_type == "llm" else (span.inputs, span.outputs)
+        if span.span_type == "retrieval" and isinstance(outputs, dict):
+            documents = outputs.get("result", outputs.get("documents"))
+            if isinstance(documents, list):
+                outputs = [
+                    {
+                        "page_content": document.get("page_content", document.get("content", "")),
+                        "metadata": document.get("metadata", {}),
+                    }
+                    if isinstance(document, dict)
+                    else document
+                    for document in documents
+                ]
         attributes.update(
             {
                 "mlflow.traceRequestId": trace_id,
