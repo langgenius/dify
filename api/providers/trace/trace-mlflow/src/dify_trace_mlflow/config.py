@@ -36,6 +36,20 @@ class MLflowConfig(BaseTracingConfig):
 
     @classmethod
     @override
+    def runtime_settings_for_identity(cls, runtime_settings: dict[str, Any]) -> dict[str, Any]:
+        settings = dict(runtime_settings)
+        credential_identity = settings.pop("credential_identity", {})
+        if "aws_sigv4" in credential_identity:
+            settings["aws_sigv4"] = credential_identity["aws_sigv4"]
+        if "Authorization" in credential_identity:
+            settings["headers"] = {
+                **settings.get("headers", {}),
+                "Authorization": credential_identity["Authorization"],
+            }
+        return settings
+
+    @classmethod
+    @override
     def load_runtime_settings(cls, provider_config: dict[str, Any]) -> dict[str, Any]:
         config = cls.model_validate(provider_config)
         # Saved passwords may still be encrypted here; merge their decrypted values in the client.
@@ -53,11 +67,18 @@ class MLflowConfig(BaseTracingConfig):
             settings["headers"] = {"Authorization": authorization}
         elif token := os.environ.get("MLFLOW_TRACKING_TOKEN"):
             settings["headers"] = {"Authorization": f"Bearer {token}"}
-        aws_credentials = resolve_aws_credentials()
+        credential_identity: dict[str, Any] = {}
+        aws_credentials = resolve_aws_credentials(credential_identity=credential_identity)
         if aws_credentials is not None:
             settings["aws_sigv4"] = aws_credentials
-        if headers := resolve_deployment_auth(settings.get("headers", {}), aws_sigv4=aws_credentials is not None):
+        if headers := resolve_deployment_auth(
+            settings.get("headers", {}),
+            aws_sigv4=aws_credentials is not None,
+            credential_identity=credential_identity,
+        ):
             settings["headers"] = headers
+        if credential_identity:
+            settings["credential_identity"] = credential_identity
         insecure_tls = os.environ.get("MLFLOW_TRACKING_INSECURE_TLS", "false").lower()
         if insecure_tls not in {"true", "false", "1", "0"}:
             raise ValueError("Invalid MLflow TLS verification setting")
@@ -76,15 +97,15 @@ class MLflowConfig(BaseTracingConfig):
                 {
                     "certificate": certificate,
                     # Requests accepts a PEM containing both the certificate and key.
-                    "client_certificate": None if http_tracking else os.environ.get("MLFLOW_TRACKING_CLIENT_CERT_PATH"),
+                    "client_certificate": os.environ.get("MLFLOW_TRACKING_CLIENT_CERT_PATH"),
                 },
                 allow_ca_directory=True,
             )
         except ValueError:
             if not http_tracking:
                 raise
-            # An HTTP tracker may return HTTPS artifacts. Capture their CA now,
-            # but an unreadable CA must not prevent requests that remain HTTP.
+            # An HTTP tracker may return HTTPS artifacts. Capture their TLS files now,
+            # but unreadable files must not prevent requests that remain HTTP.
             settings["artifact_tls_read_failed"] = True
         return settings
 
