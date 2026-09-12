@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { render, renderHook, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { createPlugin } from '../../__tests__/factories'
 import useStickyScroll, { ScrollPosition } from '../../use-sticky-scroll'
@@ -61,12 +62,59 @@ vi.mock('@/utils/var', async (importOriginal) => ({
 }))
 
 describe('Marketplace plugin selector components', () => {
+  let i18n: ReturnType<typeof useTranslation>['i18n']
+
   beforeEach(() => {
     vi.clearAllMocks()
+    i18n = renderHook(() => useTranslation()).result.current.i18n
+    i18n.language = 'en-US'
     vi.mocked(useStickyScroll).mockReturnValue({
       handleScroll: vi.fn(),
       scrollPosition: ScrollPosition.belowTheWrap,
     })
+  })
+
+  it.each([
+    { locale: 'zh-Hans', language: 'zh_Hans', label: '搜索插件', brief: '搜索文档' },
+    { locale: 'ja-JP', language: 'ja_JP', label: '検索プラグイン', brief: 'ドキュメントを検索' },
+    {
+      locale: 'pt-BR',
+      language: 'pt_BR',
+      label: 'Plugin de pesquisa',
+      brief: 'Pesquisa documentos',
+    },
+  ])('should display marketplace metadata in $locale', ({ locale, language, label, brief }) => {
+    i18n.language = locale
+
+    render(
+      <Item
+        payload={createPlugin({
+          label: { en_US: 'Search Plugin', zh_Hans: '搜索插件', [language]: label },
+          brief: { en_US: 'Searches documents', zh_Hans: '搜索文档', [language]: brief },
+        })}
+      />,
+    )
+
+    expect(screen.getByText(label)).toBeInTheDocument()
+    expect(screen.getByText(brief)).toBeInTheDocument()
+    expect(screen.queryByText('Search Plugin')).not.toBeInTheDocument()
+    expect(screen.queryByText('Searches documents')).not.toBeInTheDocument()
+  })
+
+  it('should fall back to English when marketplace metadata has no current-language translation', () => {
+    i18n.language = 'ja-JP'
+
+    render(
+      <Item
+        payload={createPlugin({
+          label: { en_US: 'Search Plugin', zh_Hans: '搜索插件' },
+          brief: { en_US: 'Searches documents', zh_Hans: '搜索文档' },
+        })}
+      />,
+    )
+
+    expect(screen.getByText('Search Plugin')).toBeInTheDocument()
+    expect(screen.getByText('Searches documents')).toBeInTheDocument()
   })
 
   it('should render marketplace plugin metadata and open install modal', async () => {

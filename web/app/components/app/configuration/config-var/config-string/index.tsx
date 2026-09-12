@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import * as React from 'react'
 import { useEffect } from 'react'
-import Input from '@/app/components/base/input'
 
-export type IConfigStringProps = {
+type IConfigStringProps = {
   id?: string
   value: number | undefined
   maxLength: number
@@ -18,22 +18,19 @@ const ConfigString: FC<IConfigStringProps> = ({ id, value, onChange, maxLength }
   }, [value, maxLength, onChange])
 
   return (
-    <div>
-      <Input
-        id={id}
-        type="number"
-        max={maxLength}
-        min={1}
-        value={value || ''}
-        onChange={(e) => {
-          let value = Number.parseInt(e.target.value, 10)
-          if (value > maxLength) value = maxLength
-          else if (value < 1) value = 1
-
-          onChange(value)
-        }}
-      />
-    </div>
+    <NumberField
+      id={id}
+      min={1}
+      max={maxLength}
+      step={1}
+      format={{ maximumFractionDigits: 0, useGrouping: false }}
+      value={value ?? null}
+      onValueChange={(value) => onChange(value ?? undefined)}
+    >
+      <NumberFieldGroup>
+        <NumberFieldInput />
+      </NumberFieldGroup>
+    </NumberField>
   )
 }
 

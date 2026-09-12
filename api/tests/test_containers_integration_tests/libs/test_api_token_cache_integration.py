@@ -177,6 +177,7 @@ class TestEndToEndCacheFlow:
         scope = "app"
         token = _api_token(token_value, token_id="test-e2e-id", tenant_id="test-e2e-tenant")
         cache_key = f"api_token:{scope}:{token_value}"
+        assert token.tenant_id is not None
         index_key = ApiTokenCache._make_tenant_index_key(token.tenant_id)
 
         try:
@@ -200,6 +201,7 @@ class TestEndToEndCacheFlow:
         token_value = "test-concurrent-token"
         scope = "app"
         token = _api_token(token_value, token_id="concurrent-id")
+        assert token.tenant_id is not None
         index_key = ApiTokenCache._make_tenant_index_key(token.tenant_id)
         ApiTokenCache.set(token_value, scope, token)
 
