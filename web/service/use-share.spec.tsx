@@ -265,6 +265,23 @@ describe('useShareChatList', () => {
     expect(mockFetchChatList).toHaveBeenCalledTimes(1)
   })
 
+  it('should not retry when chat list returns 404', async () => {
+    const queryClient = new QueryClient()
+    const wrapper = createWrapper(queryClient)
+    const params = {
+      conversationId: 'stale-conversation',
+      appSourceType: AppSourceType.webApp,
+    }
+    mockFetchChatList.mockRejectedValue(new Response(null, { status: 404 }))
+
+    const { result } = renderHook(() => useShareChatList(params), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+  })
+
   it('should always consider data stale to ensure fresh data on conversation switch (GitHub #30378)', async () => {
     // This test verifies that chat list data is always considered stale (staleTime: 0)
     // which ensures fresh data is fetched when switching back to a conversation.

@@ -2433,4 +2433,19 @@ describe('useChatWithHistory', () => {
       })
     })
   })
+
+  // Scenario: a stale conversation_id that 404s is cleared from storage
+  // so the chatbot falls back to a new conversation (issue #39484).
+  describe('Stale conversation recovery', () => {
+    it('clears conversationIdInfo from storage when chat list returns 404', async () => {
+      setConversationIdInfo('app-1', 'stale-conversation-id')
+      mockFetchChatList.mockRejectedValue(new Response(null, { status: 404 }))
+
+      await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(localStorage.getItem(CONVERSATION_ID_INFO)).not.toContain('app-1')
+      })
+    })
+  })
 })
