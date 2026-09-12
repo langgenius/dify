@@ -14,7 +14,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.ops.message_trace import MessageTraceRecorder
-from core.ops.trace_data import copy_trace_fields
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolInvokeMessage,
@@ -80,114 +79,140 @@ class ToolEngine:
                 if not isinstance(tool_parameters, dict):
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
-        started_at = datetime.now(UTC)
-        trace_attributes: dict[str, Any] = {
-            "tool_name": tool.entity.identity.name,
-            "tool_provider": tool.entity.identity.provider,
-            "tool_provider_type": tool.tool_provider_type().value,
-        }
-        trace_inputs = tool_parameters
-        if trace_recorder:
-            try:
-                trace_inputs = copy_trace_fields(tool_parameters)
-                trace_attributes["original_inputs"] = trace_inputs
-            except Exception:
-                trace_recorder.mark_incomplete("tool_parameters_capture_failed")
-
-        def capture_tool_parameters(parameters: Mapping[str, Any]) -> None:
-            nonlocal trace_inputs
-            try:
-                trace_inputs = copy_trace_fields(parameters)
-                trace_attributes["tool_parameters"] = trace_inputs
-            except Exception:
-                if trace_recorder:
+        with contextlib.ExitStack() as trace_snapshots:
+            started_at = datetime.now(UTC)
+            trace_attributes: dict[str, Any] = {
+                "tool_name": tool.entity.identity.name,
+                "tool_provider": tool.entity.identity.provider,
+                "tool_provider_type": tool.tool_provider_type().value,
+            }
+            trace_inputs = tool_parameters
+            capture_truncated: list[bool] = []
+            if trace_recorder:
+                try:
+                    trace_inputs = trace_snapshots.enter_context(
+                        trace_recorder.copy_fields(tool_parameters, on_truncate=lambda: capture_truncated.append(True))
+                    )
+                    trace_attributes["original_inputs"] = trace_inputs
+                except Exception:
                     trace_recorder.mark_incomplete("tool_parameters_capture_failed")
 
-        try:
-            # hit the callback handler
-            agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
+            def capture_tool_parameters(parameters: Mapping[str, Any]) -> None:
+                nonlocal trace_inputs
+                try:
+                    if trace_recorder is None:
+                        return
+                    trace_inputs = trace_snapshots.enter_context(
+                        trace_recorder.copy_fields(parameters, on_truncate=lambda: capture_truncated.append(True))
+                    )
+                    trace_attributes["tool_parameters"] = trace_inputs
+                except Exception:
+                    if trace_recorder:
+                        trace_recorder.mark_incomplete("tool_parameters_capture_failed")
 
-            messages = ToolEngine._invoke(
-                session,
-                tool,
-                tool_parameters,
-                user_id,
-                conversation_id,
-                app_id,
-                message_id,
-                on_parameters=capture_tool_parameters if trace_recorder else None,
-            )
-            invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
+            try:
+                # hit the callback handler
+                agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
-            def message_callback(
-                invocation_meta_dict: dict[str, ToolInvokeMeta],
-                messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None],
-            ):
-                for message in messages:
-                    if isinstance(message, ToolInvokeMeta):
-                        invocation_meta_dict["meta"] = message
-                    else:
-                        yield message
+                messages = ToolEngine._invoke(
+                    session,
+                    tool,
+                    tool_parameters,
+                    user_id,
+                    conversation_id,
+                    app_id,
+                    message_id,
+                    on_parameters=capture_tool_parameters if trace_recorder else None,
+                )
+                invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
-            messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
-                messages=message_callback(invocation_meta_dict, messages),
-                user_id=user_id,
-                tenant_id=tenant_id,
-                conversation_id=message.conversation_id,
-            )
+                def message_callback(
+                    invocation_meta_dict: dict[str, ToolInvokeMeta],
+                    messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None],
+                ):
+                    for message in messages:
+                        if isinstance(message, ToolInvokeMeta):
+                            invocation_meta_dict["meta"] = message
+                        else:
+                            yield message
 
-            message_list = list(messages)
+                messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
+                    messages=message_callback(invocation_meta_dict, messages),
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    conversation_id=message.conversation_id,
+                )
 
-            # extract binary data from tool invoke message
-            binary_files = list(ToolEngine._extract_tool_response_binary_and_text(message_list))
-            # create message file
-            message_files = ToolEngine._create_message_files(
-                tool_messages=binary_files, agent_message=message, invoke_from=invoke_from, user_id=user_id
-            )
+                message_list = list(messages)
 
-            plain_text = ToolEngine.tool_response_to_str(message_list)
+                # extract binary data from tool invoke message
+                binary_files = list(ToolEngine._extract_tool_response_binary_and_text(message_list))
+                # create message file
+                message_files = ToolEngine._create_message_files(
+                    tool_messages=binary_files, agent_message=message, invoke_from=invoke_from, user_id=user_id
+                )
 
-            meta = invocation_meta_dict["meta"]
+                plain_text = ToolEngine.tool_response_to_str(message_list)
 
-            # hit the callback handler
-            agent_tool_callback.on_tool_end(
-                tool_name=tool.entity.identity.name,
-                tool_inputs=trace_inputs,
-                tool_outputs=plain_text,
-                message_id=message.id,
-                trace_recorder=trace_recorder,
-                timer={"start": started_at, "end": datetime.now(UTC)},
-                trace_attributes={
-                    **trace_attributes,
-                    "tool_config": meta.tool_config,
-                    "files": binary_files,
-                    "message_file_ids": message_files,
-                },
-            )
+                meta = invocation_meta_dict["meta"]
 
-            # transform tool invoke message to get LLM friendly message
-            return plain_text, message_files, meta
-        except ToolProviderCredentialValidationError as e:
-            logger.error(e, exc_info=True)
-            error_response = "Please check your tool provider credentials"
-            agent_tool_callback.on_tool_error(e)
-        except (ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError) as e:
-            error_response = f"there is not a tool named {tool.entity.identity.name}"
-            logger.error(e, exc_info=True)
-            agent_tool_callback.on_tool_error(e)
-        except ToolParameterValidationError as e:
-            error_response = f"tool parameters validation error: {e}, please check your tool parameters"
-            agent_tool_callback.on_tool_error(e)
-            logger.error(e, exc_info=True)
-        except ToolInvokeError as e:
-            error_response = f"tool invoke error: {e}"
-            agent_tool_callback.on_tool_error(e)
-            logger.error(e, exc_info=True)
-        except ToolEngineInvokeError as e:
-            meta = e.meta
-            error_response = f"tool invoke error: {meta.error}"
-            agent_tool_callback.on_tool_error(e)
-            logger.error(e, exc_info=True)
+                # hit the callback handler
+                agent_tool_callback.on_tool_end(
+                    tool_name=tool.entity.identity.name,
+                    tool_inputs=trace_inputs,
+                    tool_outputs=plain_text,
+                    message_id=message.id,
+                    trace_recorder=trace_recorder,
+                    capture_truncated=bool(capture_truncated),
+                    timer={"start": started_at, "end": datetime.now(UTC)},
+                    trace_attributes={
+                        **trace_attributes,
+                        "tool_config": meta.tool_config,
+                        "files": binary_files,
+                        "message_file_ids": message_files,
+                    },
+                )
+
+                # transform tool invoke message to get LLM friendly message
+                return plain_text, message_files, meta
+            except ToolProviderCredentialValidationError as e:
+                logger.error(e, exc_info=True)
+                error_response = "Please check your tool provider credentials"
+                agent_tool_callback.on_tool_error(e)
+            except (ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError) as e:
+                error_response = f"there is not a tool named {tool.entity.identity.name}"
+                logger.error(e, exc_info=True)
+                agent_tool_callback.on_tool_error(e)
+            except ToolParameterValidationError as e:
+                error_response = f"tool parameters validation error: {e}, please check your tool parameters"
+                agent_tool_callback.on_tool_error(e)
+                logger.error(e, exc_info=True)
+            except ToolInvokeError as e:
+                error_response = f"tool invoke error: {e}"
+                agent_tool_callback.on_tool_error(e)
+                logger.error(e, exc_info=True)
+            except ToolEngineInvokeError as e:
+                meta = e.meta
+                error_response = f"tool invoke error: {meta.error}"
+                agent_tool_callback.on_tool_error(e)
+                logger.error(e, exc_info=True)
+                if trace_recorder:
+                    trace_recorder.record_operation(
+                        tool.entity.identity.name,
+                        span_type="tool",
+                        inputs=trace_inputs,
+                        outputs=error_response,
+                        error=error_response,
+                        attributes={**trace_attributes, "tool_config": meta.tool_config},
+                        timer={"start": started_at, "end": datetime.now(UTC)},
+                        capture_truncated=bool(capture_truncated),
+                    )
+                return error_response, [], meta
+            except Exception as e:
+                error_response = f"unknown error: {e}"
+                agent_tool_callback.on_tool_error(e)
+                logger.error(e, exc_info=True)
+
             if trace_recorder:
                 trace_recorder.record_operation(
                     tool.entity.identity.name,
@@ -195,26 +220,11 @@ class ToolEngine:
                     inputs=trace_inputs,
                     outputs=error_response,
                     error=error_response,
-                    attributes={**trace_attributes, "tool_config": meta.tool_config},
+                    attributes=trace_attributes,
                     timer={"start": started_at, "end": datetime.now(UTC)},
+                    capture_truncated=bool(capture_truncated),
                 )
-            return error_response, [], meta
-        except Exception as e:
-            error_response = f"unknown error: {e}"
-            agent_tool_callback.on_tool_error(e)
-            logger.error(e, exc_info=True)
-
-        if trace_recorder:
-            trace_recorder.record_operation(
-                tool.entity.identity.name,
-                span_type="tool",
-                inputs=trace_inputs,
-                outputs=error_response,
-                error=error_response,
-                attributes=trace_attributes,
-                timer={"start": started_at, "end": datetime.now(UTC)},
-            )
-        return error_response, [], ToolInvokeMeta.error_instance(error_response)
+            return error_response, [], ToolInvokeMeta.error_instance(error_response)
 
     @staticmethod
     def generic_invoke(

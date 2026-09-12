@@ -538,7 +538,7 @@ def test_agent_without_structured_steps_and_handled_node_error(
     assert submitted[0].complete
 
 
-@pytest.mark.parametrize("inputs", [{"value": "x" * 70_000}, {"value": ["x"] * 300}])
+@pytest.mark.parametrize("inputs", [{"value": "x" * (8 * 1024 * 1024)}, {"value": ["x"] * 300}])
 def test_large_values_are_bounded_and_mark_the_trace_incomplete(
     source: TraceSource, inputs: Mapping[str, object]
 ) -> None:
@@ -552,8 +552,30 @@ def test_large_values_are_bounded_and_mark_the_trace_incomplete(
     )
     recorder.on_event(GraphRunSucceededEvent())
     recorder.finish_workflow_trace()
-    assert len(submitted[0].model_dump_json().encode()) < 70_000
-    assert submitted[0].truncation["reasons"] == ["value_size_limit"]
+    assert len(submitted[0].model_dump_json().encode()) <= 8 * 1024 * 1024
+    assert not submitted[0].complete
+    reasons = submitted[0].truncation["reasons"]
+    assert isinstance(reasons, list)
+    assert "value_size_limit" in reasons
+
+
+def test_workflow_preserves_supported_values_and_literal_truncation_text(source: TraceSource) -> None:
+    submitted: list[CompletedTrace] = []
+    inputs = {"query": "Explain [trace example] syntax and [truncated] text", "_trace_truncated": True}
+    answer = "你" * 100_000 + "FINAL_SENTINEL"
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs=inputs,
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    recorder.on_event(GraphRunSucceededEvent(outputs={"answer": answer}))
+    recorder.finish_workflow_trace()
+    assert submitted[0].complete
+    assert submitted[0].truncation["reasons"] == []
+    assert submitted[0].spans[0].inputs == inputs
+    assert submitted[0].spans[0].outputs == {"answer": answer}
 
 
 def test_recording_backpressure_replaces_values_and_releases_only_reserved_bytes(source: TraceSource) -> None:
@@ -633,7 +655,7 @@ def test_large_retry_history_stays_within_the_delivery_byte_limit(source: TraceS
     reasons = trace.truncation["reasons"]
     assert isinstance(reasons, list)
     assert "trace_size_limit" in reasons
-    assert "recording_byte_limit" in reasons
+    assert "value_size_limit" in reasons
     assert not trace.complete
     assert len(trace.model_dump_json().encode()) <= 8 * 1024 * 1024
 
@@ -656,3 +678,80 @@ def test_pipeline_nodes_keep_pipeline_ownership(source: TraceSource) -> None:
     assert node_span.source_app_id is None
     assert node_span.source_pipeline_id == pipeline_source.pipeline_id
     assert node_span.span_type == "retrieval"
+
+
+@pytest.mark.parametrize("terminal_event", [False, True])
+def test_repeated_workflow_errors_stay_within_the_delivery_budget(source: TraceSource, terminal_event: bool) -> None:
+    submitted: list[CompletedTrace] = []
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    for _ in range(90):
+        start_node(recorder, workflow_node(source))
+    error = "e" * 100_000 + "END_OF_ERROR"
+    if terminal_event:
+        recorder.on_event(GraphRunFailedEvent(error=error))
+        recorder.finish_workflow_trace()
+    else:
+        recorder.finish_workflow_trace(error=error)
+    trace = submitted[0]
+    assert len(trace.spans) == 91
+    assert trace.spans[0].error == error
+    assert not trace.complete
+    reasons = trace.truncation["reasons"]
+    assert isinstance(reasons, list)
+    assert "value_size_limit" in reasons
+    assert len(trace.model_dump_json().encode()) <= 8 * 1024 * 1024
+
+
+def test_retry_wrapper_does_not_duplicate_unreserved_large_details(source: TraceSource) -> None:
+    submitted: list[CompletedTrace] = []
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    node = workflow_node(source)
+    start_node(recorder, node)
+    recorder.on_event(
+        NodeRunRetryEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type="code",
+            node_title=node.title,
+            start_at=datetime.now(UTC),
+            retry_index=1,
+            error="retry",
+            node_run_result=NodeRunResult(),
+        )
+    )
+    details = "d" * 4_500_000 + "DETAIL_END"
+    recorder.on_event(
+        NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type="code",
+            start_at=datetime.now(UTC),
+            finished_at=datetime.now(UTC),
+            node_run_result=NodeRunResult(process_data={"detail": details}),
+        )
+    )
+    recorder.on_event(GraphRunSucceededEvent())
+    recorder.finish_workflow_trace()
+    trace = submitted[0]
+    assert len(trace.spans) == 4
+    attempt_id = make_span_id(source.tenant_id, source.operation_id, f"{node.execution_id}:attempt:1")
+    attempt = next(span for span in trace.spans if span.span_id == attempt_id)
+    assert attempt.attributes["process_data"] == {"detail": details}
+    assert attempt.error is None
+    assert not trace.complete
+    reasons = trace.truncation["reasons"]
+    assert isinstance(reasons, list)
+    assert "value_size_limit" in reasons
+    assert len(trace.model_dump_json().encode()) <= 8 * 1024 * 1024
