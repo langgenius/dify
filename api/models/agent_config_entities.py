@@ -762,7 +762,30 @@ class AgentSoulSandboxConfig(BaseModel):
     config: AgentSandboxProviderConfig = Field(default_factory=AgentSandboxProviderConfig)
 
 
+class AgentExternalMemoryConfig(BaseModel):
+    """Stored references for provider-neutral external memory; contains no secrets."""
+
+    model_config = ConfigDict(extra="forbid")
+    prepare: AgentSoulDifyToolConfig
+    observe: AgentSoulDifyToolConfig
+    subject_kind: Literal["user", "business"] = "user"
+    subject_id: str | None = Field(default=None, min_length=1, max_length=256)
+    max_bytes: int = Field(default=8000, ge=512, le=32768)
+    capture_max_bytes: int = Field(default=8192, ge=512, le=32768)
+    capture: bool = True
+
+    @model_validator(mode="after")
+    def validate_memory_tools(self) -> Self:
+        if self.subject_kind == "business" and not self.subject_id:
+            raise ValueError("Business memory requires subject_id")
+        for tool in (self.prepare, self.observe):
+            if not tool.enabled or not tool.tool_name or tool.provider_type != ToolProviderType.PLUGIN:
+                raise ValueError("External memory requires two explicitly selected plugin tools")
+        return self
+
+
 class AgentSoulMemoryConfig(BaseModel):
+    external: AgentExternalMemoryConfig | None = None
     scope: str | None = None
     budget: str | None = None
     artifacts: list[AgentMemoryArtifactConfig] = Field(default_factory=list)

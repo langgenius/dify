@@ -288,7 +288,7 @@ const toProviderToolFormState = (
   }
 }
 
-const toDifyToolConfigs = (
+export const toDifyToolConfigs = (
   tools: AgentTool[],
   toolSettings: Record<string, Record<string, unknown>>,
 ) =>
@@ -602,6 +602,7 @@ export const formStateToAgentSoulConfig = ({
       cli_tools: toCliToolConfigs(formState.tools),
     },
     app_features: formState.appFeatures ?? baseConfig?.app_features,
+    memory: formState.memory ?? baseConfig?.memory,
     knowledge: toKnowledgeConfig(formState.knowledgeRetrievals),
     env: toEnvConfig(formState.envVariables),
     config_skills: toConfigSkillConfigs(formState.skills, baseConfig),
@@ -622,6 +623,7 @@ export const agentSoulConfigToFormState = (
     prompt: config?.prompt?.system_prompt ?? '',
     model: toDraftModel(config),
     appFeatures: config?.app_features,
+    memory: config?.memory,
     skills: toSkillFormState(config),
     files: toFileFormState(config),
     tools: [...providerToolState.tools, ...toCliToolFormState(config)],

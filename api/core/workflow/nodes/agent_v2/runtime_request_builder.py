@@ -50,6 +50,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm.model_access import resolve_model_context_window
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
+from core.workflow.nodes.agent_v2.memory_builder import build_memory_layer_config, model_tools_config
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
@@ -188,7 +189,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 tenant_id=context.dify_context.tenant_id,
                 app_id=context.dify_context.app_id,
                 user_id=context.dify_context.user_id,
-                tools=agent_soul.tools,
+                tools=model_tools_config(agent_soul),
                 invoke_from=context.dify_context.invoke_from,
             )
         except WorkflowAgentDifyToolsBuildError as error:
@@ -267,6 +268,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
                 knowledge=knowledge_config,
+                memory=build_memory_layer_config(agent_soul, context.dify_context, self._dify_tools_builder),
                 config_layer_config=config_layer_config,
                 ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,

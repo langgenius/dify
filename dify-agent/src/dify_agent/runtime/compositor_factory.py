@@ -52,6 +52,7 @@ from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
+from dify_agent.layers.memory.layer import DifyMemoryLayer
 from dify_agent.layers.runtime.configs import DifyRuntimeLayerConfig
 from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
@@ -79,6 +80,7 @@ def create_default_layer_providers(
         LayerProvider.from_layer_type(DifyUserPromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
+        LayerProvider.from_layer_type(DifyMemoryLayer),
         LayerProvider.from_layer_type(DifyAskHumanLayer),
         LayerProvider.from_layer_type(DifyConfigLayer),
         LayerProvider.from_factory(

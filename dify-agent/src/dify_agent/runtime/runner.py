@@ -67,6 +67,9 @@ from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
 from dify_agent.runtime.compaction import build_compaction_capability
+from dify_agent.layers.memory import DIFY_MEMORY_LAYER_ID, DifyMemoryLayer
+from dify_agent.layers.memory.capability import ExternalMemory
+from dify_agent.layers.memory.layer import validate_memory_layer_composition
 from dify_agent.runtime_backend import BindingLostError
 from dify_agent.runtime.event_coalescer import (
     DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
@@ -305,6 +308,7 @@ class AgentRunRunner:
             validate_output_layer_composition(self.request.composition)
             validate_history_layer_composition(self.request.composition)
             validate_ask_human_layer_composition(self.request.composition)
+            validate_memory_layer_composition(self.request.composition)
             graph_config, layer_configs = normalize_composition(self.request.composition)
             compositor = build_pydantic_ai_compositor(graph_config, providers=self.layer_providers)
             validate_layer_exit_signals(compositor, self.request.on_exit)
@@ -388,6 +392,22 @@ class AgentRunRunner:
                     tools=tools,
                     output_type=_resolve_agent_output_type(output_contract.output_type, ask_human_layer is not None),
                 )
+                try:
+                    memory_layer = run.get_layer(DIFY_MEMORY_LAYER_ID, DifyMemoryLayer)
+                except KeyError:
+                    memory_layer = None
+                memory = (
+                    ExternalMemory(
+                        memory_layer,
+                        self.plugin_daemon_http_client,
+                        self.run_id,
+                        input_budget=compaction.target_tokens if compaction else None,
+                    )
+                    if memory_layer
+                    else None
+                )
+                capabilities = [item for item in (memory, compaction) if item is not None]
+                memory_status = "failed"
                 run_timeout = asyncio.timeout(self.run_timeout_seconds)
                 try:
                     with capture_run_messages() as captured_messages:
@@ -399,12 +419,22 @@ class AgentRunRunner:
                                     deferred_tool_results=deferred_tool_results,
                                     event_stream_handler=handle_events,
                                     instructions=run.prompts or None,
-                                    capabilities=[compaction] if compaction is not None else None,
+                                    capabilities=capabilities or None,
                                     usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
                                 )
+                                memory_status = (
+                                    "paused" if isinstance(result.output, DeferredToolRequests) else "succeeded"
+                                )
+                        except asyncio.CancelledError:
+                            memory_status = "cancelled"
+                            raise
                         finally:
-                            if captured_messages:
-                                replace_run_history(history_layer, captured_messages)
+                            try:
+                                if memory is not None:
+                                    await memory.observe("run_end", {"status": memory_status})
+                            finally:
+                                if captured_messages:
+                                    replace_run_history(history_layer, captured_messages)
                 except TimeoutError as exc:
                     if not run_timeout.expired():
                         raise

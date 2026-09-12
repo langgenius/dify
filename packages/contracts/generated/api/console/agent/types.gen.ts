@@ -1065,6 +1065,7 @@ export type AgentSoulKnowledgeConfig = {
 export type AgentSoulMemoryConfig = {
   artifacts?: Array<AgentMemoryArtifactConfig>
   budget?: string | null
+  external?: AgentExternalMemoryConfig | null
   scope?: string | null
 }
 
@@ -1400,6 +1401,16 @@ export type AgentMemoryArtifactConfig = {
   type?: string | null
   url?: string | null
   [key: string]: unknown
+}
+
+export type AgentExternalMemoryConfig = {
+  capture?: boolean
+  capture_max_bytes?: number
+  max_bytes?: number
+  observe: AgentSoulDifyToolConfig
+  prepare: AgentSoulDifyToolConfig
+  subject_id?: string | null
+  subject_kind?: 'business' | 'user'
 }
 
 export type AgentSoulModelCredentialRef = {
