@@ -61,6 +61,7 @@ class DifyAgentCallbackHandler(BaseModel):
         timer: Any | None = None,
         trace_recorder: MessageTraceRecorder | None = None,
         trace_attributes: Mapping[str, Any] | None = None,
+        capture_truncated: bool = False,
     ):
         """If not the final action, print out observation."""
         if dify_config.DEBUG:
@@ -79,6 +80,7 @@ class DifyAgentCallbackHandler(BaseModel):
                 outputs=tool_outputs,
                 timer=timer,
                 attributes=trace_attributes,
+                capture_truncated=capture_truncated,
             )
 
     def on_tool_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any):

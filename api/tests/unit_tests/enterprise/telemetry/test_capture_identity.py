@@ -1,6 +1,8 @@
 """Enterprise identities survive owned app capture and queued delivery."""
 
+import gc
 import json
+import weakref
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
@@ -203,6 +205,7 @@ def test_owned_message_and_late_retrieval_keep_enterprise_user_ids(
         messages.append((recorder, message.id))
         expected_users[tenant.id] = user.id
         expected_actors[tenant.id] = actor_id
+        del recorder, entity
 
     other_tenant, other_app, _ = owners[1]
     with pytest.raises(ValueError, match="Trace message not found"):
@@ -235,8 +238,15 @@ def test_owned_message_and_late_retrieval_keep_enterprise_user_ids(
             timer={"start": now, "end": now},
         )
 
+    retained_attribute_bytes = capture_queue.reserved
+    assert retained_attribute_bytes > 0
     with ThreadPoolExecutor(max_workers=2) as workers:
         list(workers.map(complete_message, messages))
+    assert capture_queue.reserved == retained_attribute_bytes
+    recorder_references = [weakref.ref(item[0]) for item in messages]
+    del messages
+    gc.collect()
+    assert all(reference() is None for reference in recorder_references)
     assert capture_queue.reserved == 0
     assert len(capture_queue.items) == 4
 

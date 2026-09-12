@@ -1,5 +1,6 @@
 import base64
 import configparser
+import math
 import os
 from pathlib import Path
 from typing import Any, override
@@ -208,21 +209,36 @@ class DatabricksConfig(BaseTracingConfig):
         sdk_enabled = os.environ.get("MLFLOW_ENABLE_DB_SDK", "true").lower()
         if sdk_enabled not in {"true", "false", "1", "0"}:
             raise ValueError("Invalid Databricks SDK setting")
+        profiles = configparser.ConfigParser()
+        profile_settings: dict[str, str] = {}
+        if profile := os.environ.get("DATABRICKS_CONFIG_PROFILE"):
+            profile_path = os.environ.get("DATABRICKS_CONFIG_FILE", str(Path.home() / ".databrickscfg"))
+            # Only the SDK expands tilde paths and replaces an empty path with its default.
+            if sdk_enabled in {"true", "1"}:
+                profile_path = str(Path(profile_path or Path.home() / ".databrickscfg").expanduser())
+            profiles.read(profile_path)
+            # Native named profiles do not inherit DEFAULT options.
+            sections = profiles._sections  # type: ignore[attr-defined]  # pyrefly: ignore[missing-attribute]
+            profile_settings = dict(profiles.defaults() if profile == "DEFAULT" else sections.get(profile, {}))
+        # Dify supplies host/auth, so the SDK skips unselected profiles. Its timeout
+        # has no environment variable and a configured zero restores the 60s default.
+        request_timeout = 60.0
         verify = True
         if sdk_enabled in {"false", "0"}:
+            request_timeout = int(os.environ.get("MLFLOW_HTTP_REQUEST_TIMEOUT", "120"))
             insecure = os.environ.get("DATABRICKS_INSECURE")
-            if profile := os.environ.get("DATABRICKS_CONFIG_PROFILE"):
-                profiles = configparser.ConfigParser()
-                profiles.read(os.environ.get("DATABRICKS_CONFIG_FILE", str(Path.home() / ".databrickscfg")))
-                # Native named profiles do not inherit DEFAULT options or environment values.
-                sections = profiles._sections  # type: ignore[attr-defined]  # pyrefly: ignore[missing-attribute]
-                insecure = sections.get(profile, {}).get("insecure")
+            if profile:
+                # Legacy selected profiles also take precedence over environment values.
+                insecure = profile_settings.get("insecure")
                 if insecure is not None:
                     insecure = profiles.get(profile, "insecure")
-                if profile == "DEFAULT":
-                    insecure = profiles.get("DEFAULT", "insecure", fallback=None)
             # The legacy SDK uses string truthiness, including nonempty "false" and "0".
             verify = not bool(insecure)
+        else:
+            request_timeout = float(profile_settings.get("http_timeout_seconds", "60")) or 60
+        if not math.isfinite(request_timeout) or request_timeout <= 0:
+            raise ValueError("Databricks HTTP request timeout must be positive and finite")
+        settings["request_timeout"] = request_timeout
         settings["verify"] = verify
         if workspace := os.environ.get("MLFLOW_WORKSPACE", "").strip():
             settings["headers"] = {"X-MLFLOW-WORKSPACE": workspace}

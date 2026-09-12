@@ -148,6 +148,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             user_id=user.id if isinstance(user, Account) else user.session_id,
+            record_message_result=lambda recorder, fields: recorder.finish_message_trace(fields, include_llm=True),
         )
         application_generate_entity = AgentAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -275,6 +276,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             user_id=user.id if isinstance(user, Account) else user.session_id,
+            record_message_result=lambda recorder, fields: recorder.finish_message_trace(fields, include_llm=True),
         )
 
         # ENG-638: the agent backend requires the resume composition's layer

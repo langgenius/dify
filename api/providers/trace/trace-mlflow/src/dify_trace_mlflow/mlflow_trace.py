@@ -330,7 +330,7 @@ class MLflowTraceClient:
                 aws_sigv4=None,
                 request_headers=self._request_headers,
                 use_implicit_auth=False,
-                request_timeout=30,
+                request_timeout=runtime_settings.get("request_timeout", 60),
             )
         else:
             self._artifact_tls = dict(runtime_settings.get("tls", {}))
@@ -921,7 +921,9 @@ class MLflowTraceClient:
             if self._databricks_tls_settings.get("tls_read_failed"):
                 raise ValueError("Cannot read TLS configuration")
             ssl_context = create_ssl_context(self._databricks_tls_settings.get("tls", {}))
-        client = TraceProviderHttpClient(signed_url, headers, ssl_context=ssl_context)
+        # Native signed uploads have no per-request timeout; the export deadline
+        # still bounds every storage request, independently of workspace settings.
+        client = TraceProviderHttpClient(signed_url, headers, ssl_context=ssl_context, request_timeout=float("inf"))
         client.deadline = self.http.deadline
         if upload.get("type") in {"AZURE_ADLS_GEN2_SAS_URI", 4}:
             parsed = urlsplit(signed_url)

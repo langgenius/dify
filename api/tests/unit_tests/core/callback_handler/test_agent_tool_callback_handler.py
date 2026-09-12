@@ -126,9 +126,10 @@ class TestDifyAgentCallbackHandler:
 
         mock_print_text.assert_not_called()
 
+    @pytest.mark.parametrize("capture_truncated", [False, True])
     def test_on_tool_end_debug_enabled_and_trace(
-        self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture
-    ):
+        self, handler: DifyAgentCallbackHandler, enable_debug: None, mocker: MockerFixture, capture_truncated: bool
+    ) -> None:
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
         mock_trace_recorder = MagicMock()
 
@@ -139,10 +140,12 @@ class TestDifyAgentCallbackHandler:
             message_id="msg1",
             timer=123,
             trace_recorder=mock_trace_recorder,
+            capture_truncated=capture_truncated,
         )
 
         assert mock_print_text.call_count >= 1
         mock_trace_recorder.record_operation.assert_called_once()
+        assert mock_trace_recorder.record_operation.call_args.kwargs["capture_truncated"] is capture_truncated
 
     def test_on_tool_end_without_trace_recorder(
         self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture

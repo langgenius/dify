@@ -7,7 +7,7 @@ cross a thread boundary; frozen Pydantic models alone do not freeze dictionaries
 import json
 import math
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
@@ -198,9 +198,12 @@ def make_span_id(tenant_id: str, operation_id: str, execution_id: str) -> str:
     return str(uuid5(NAMESPACE_URL, f"dify:span:{tenant_id}:{operation_id}:{execution_id}"))
 
 
-def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
-    """Copy bounded JSON and remove credential fields without retaining input objects."""
+def copy_trace_value(
+    value: object, max_bytes: int = 65536, *, on_truncate: Callable[[], None] | None = None
+) -> JsonValue:
+    """Copy bounded JSON, scrub credentials, and report actual capture limits separately from content."""
     remaining = max_bytes
+    truncated = False
 
     def redact_url(match: re.Match[str], clipped: bool) -> str:
         text = match.group()
@@ -227,8 +230,9 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
         return text
 
     def copy_value(item: object, depth: int) -> JsonValue:
-        nonlocal remaining
+        nonlocal remaining, truncated
         if remaining <= 32 or depth > 12:
+            truncated = True
             remaining -= 24
             return "[trace value truncated]"
         remaining -= 8
@@ -236,10 +240,12 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
             return copy_value(item.to_object(), depth + 1)
         if item is None or isinstance(item, bool | int):
             if isinstance(item, int) and item.bit_length() > 1024:
+                truncated = True
                 remaining -= 27
                 return "[trace integer truncated]"
             size = len(json.dumps(item))
             if size > remaining:
+                truncated = True
                 remaining -= 24
                 return "[trace value truncated]"
             remaining -= size
@@ -275,6 +281,7 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
                 end = low
                 prefix = item[:end]
             result = prefix if end == len(item) and not clipped else prefix + "[truncated]"
+            truncated |= end != len(item) or clipped
             remaining -= len(json.dumps(result, ensure_ascii=False).encode())
             return result
         if isinstance(item, BaseModel):
@@ -286,6 +293,7 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
             copied: dict[str, JsonValue] = {}
             for key, child in item.items():
                 if remaining <= 32 or len(copied) >= 256:
+                    truncated = True
                     copied["_trace_truncated"] = True
                     break
                 if not isinstance(key, str):
@@ -307,9 +315,11 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
                     continue
                 key_size = len(json.dumps(key[:256], ensure_ascii=False).encode()) + 4
                 if remaining - key_size <= 32:
+                    truncated = True
                     copied["_trace_truncated"] = True
                     break
                 remaining -= key_size
+                truncated |= len(key) > 256
                 copied[key[:256]] = copy_value(child, depth + 1)
             return copied
         if isinstance(item, Sequence) and not isinstance(item, bytes | bytearray):
@@ -317,15 +327,21 @@ def copy_trace_value(value: object, max_bytes: int = 65536) -> JsonValue:
             copied_items: list[JsonValue] = []
             for child in item:
                 if remaining <= 32 or len(copied_items) >= 256:
+                    truncated = True
                     copied_items.append("[trace items truncated]")
                     break
                 copied_items.append(copy_value(child, depth + 1))
             return copied_items
         return copy_value(f"[unsupported {type(item).__name__}]", depth)
 
-    return copy_value(value, 0)
+    copied = copy_value(value, 0)
+    if truncated and on_truncate is not None:
+        on_truncate()
+    return copied
 
 
-def copy_trace_fields(fields: Mapping[str, object]) -> dict[str, JsonValue]:
-    copied = copy_trace_value(fields)
+def copy_trace_fields(
+    fields: Mapping[str, object], max_bytes: int = 65536, *, on_truncate: Callable[[], None] | None = None
+) -> dict[str, JsonValue]:
+    copied = copy_trace_value(fields, max_bytes, on_truncate=on_truncate)
     return copied if isinstance(copied, dict) else {"_trace_truncated": True}

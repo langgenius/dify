@@ -1,4 +1,6 @@
+import gc
 import json
+import weakref
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
@@ -552,3 +554,176 @@ def test_legacy_agent_missing_or_excessive_thoughts_are_explicit(
     assert trace.truncation["reasons"] == ["agent_thoughts_unavailable" if unavailable else "agent_thought_limit"]
     assert record.call_count == (0 if unavailable else 10000)
     assert trace.spans[0].span_name == "Legacy Agent"
+
+
+@pytest.mark.parametrize("include_llm", [False, True])
+def test_saved_messages_preserve_large_prompt_answer_and_model_attributes(include_llm: bool) -> None:
+    initial, queue = make_recorder()
+    prompt = "你" * 100_000 + "PROMPT_END"
+    answer = "a" * 100_000 + "FINAL_SENTINEL"
+    fields = {**message_fields(initial), "inputs": [{"role": "user", "text": prompt}], "outputs": answer}
+    recorder = MessageTraceRecorder(
+        initial.source,
+        queue,
+        initial.provider_settings,
+        load_message_fields=Mock(return_value=fields),
+        record_message_result=record_basic_chat_result if include_llm else None,
+    )
+    parameters = {"instructions": ["m" * 100_000 + "MODEL_END"], "api_key": "private"}
+    recorder.update_attributes({"model_parameters": parameters})
+    parameters["instructions"].append("changed after capture")
+    assert recorder.source.message_id is not None
+    recorder.record_saved_message(recorder.source.message_id)
+    trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+    assert trace.complete
+    assert trace.truncation == {}
+    assert len(trace.spans) == (2 if include_llm else 1)
+    for span in trace.spans:
+        assert span.inputs == [{"role": "user", "text": prompt}]
+        assert span.outputs == answer
+        assert span.attributes["model_parameters"] == {"instructions": ["m" * 100_000 + "MODEL_END"]}
+    assert b"private" not in queue.items[0].trace_json
+    assert 100_000 < queue.reserved < 110_000  # Retained metadata is still needed by late operations.
+    del recorder
+    gc.collect()
+    assert queue.reserved == 0
+
+
+@pytest.mark.parametrize("lifecycle", ["attached", "independent", "late", "closed", "unbound"])
+@pytest.mark.parametrize(
+    ("output", "truncated"),
+    [
+        ("a" * 100_000 + "FINAL_SENTINEL", False),
+        ("Explain [trace example] syntax and [truncated] text", False),
+        (["value"] * 300, True),
+    ],
+)
+def test_operation_content_and_truncation_survive_each_lifecycle(
+    lifecycle: str, output: object, truncated: bool
+) -> None:
+    initial, queue = make_recorder()
+    recorder = (
+        MessageTraceRecorder(
+            initial.source.model_copy(update={"message_id": None, "conversation_id": None}),
+            queue,
+            initial.provider_settings,
+        )
+        if lifecycle == "unbound"
+        else initial
+    )
+    if lifecycle == "late":
+        recorder.finish_message_trace(message_fields(recorder))
+    recorder.record_operation("captured tool", outputs=output, independent=lifecycle == "independent")
+    if lifecycle == "attached":
+        recorder.finish_message_trace(message_fields(recorder))
+    elif lifecycle == "closed":
+        recorder.close(submit_pending_operations=True)
+    trace = CompletedTrace.model_validate_json(queue.items[-1].trace_json)
+    span = next(span for span in trace.spans if span.span_name == "captured tool")
+    assert trace.complete is not truncated
+    if truncated:
+        assert trace.truncation["reasons"] == ["value_size_limit"]
+        assert span.outputs != output
+    else:
+        assert trace.truncation == {}
+        assert span.outputs == output
+    assert queue.reserved == 0
+
+
+@pytest.mark.parametrize("include_llm", [False, True])
+def test_message_content_accounts_for_children_and_duplicate_llm_json(include_llm: bool) -> None:
+    recorder, queue = make_recorder()
+    child_answer = "c" * (2 * 1024 * 1024) + "CHILD_END"
+    for index in range(2):
+        recorder.record_operation(f"child {index}", outputs=child_answer)
+    recorder.finish_message_trace(
+        {**message_fields(recorder), "outputs": "a" * (5 * 1024 * 1024)}, include_llm=include_llm
+    )
+    trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+    assert not trace.complete
+    reasons = trace.truncation["reasons"]
+    assert isinstance(reasons, list)
+    assert "value_size_limit" in reasons
+    assert trace.truncation["omitted_spans"] == 0
+    assert [span.outputs for span in trace.spans if span.span_name.startswith("child ")] == [child_answer] * 2
+    assert len(queue.items[0].trace_json) <= 8 * 1024 * 1024
+    assert queue.reserved == 0
+
+
+@pytest.mark.parametrize("independent", [False, True])
+def test_recording_quota_applies_to_message_roots_and_independent_operations(independent: bool) -> None:
+    recorder, queue = make_recorder(RecordingQueue(limit=1))
+    if independent:
+        recorder.record_operation("standalone", outputs="a" * 100_000, independent=True)
+    else:
+        recorder.finish_message_trace({**message_fields(recorder), "outputs": "a" * 100_000})
+    trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+    assert not trace.complete
+    assert trace.truncation["reasons"] == ["recording_byte_limit"]
+    assert trace.spans[0].outputs == "[recording byte limit]"
+    assert queue.reserved == 0
+
+
+@pytest.mark.parametrize("finish", [False, True])
+def test_attribute_and_snapshot_reservations_outlive_sealing_and_keep_late_metadata(finish: bool) -> None:
+    recorder, queue = make_recorder()
+    recorder.update_attributes({"model_parameters": {"instructions": "m" * 100_000 + "MODEL_END"}})
+    attribute_bytes = queue.reserved
+    raw_inputs = {"query": ["q" * 100_000 + "INPUT_END"]}
+    with recorder.copy_fields(raw_inputs) as copied:
+        reserved = queue.reserved
+        raw_inputs["query"].append("changed after capture")
+        if finish:
+            recorder.finish_message_trace(message_fields(recorder))
+        else:
+            recorder.close()
+        recorder.close()
+        assert queue.reserved == reserved
+        recorder.record_operation("late tool", inputs=copied, outputs="done")
+        late = CompletedTrace.model_validate_json(queue.items[-1].trace_json)
+        assert late.complete
+        assert late.spans[0].inputs == {"query": ["q" * 100_000 + "INPUT_END"]}
+        assert late.spans[0].attributes["model_parameters"] == {"instructions": "m" * 100_000 + "MODEL_END"}
+        assert queue.reserved == reserved
+    assert queue.reserved == attribute_bytes
+    reference = weakref.ref(recorder)
+    del recorder
+    gc.collect()
+    assert reference() is None
+    assert queue.reserved == 0
+
+
+def test_attribute_replacement_and_failed_snapshots_share_the_recording_quota() -> None:
+    first, queue = make_recorder(RecordingQueue(limit=250_000))
+    second, _ = make_recorder(queue)
+    first.update_attributes({"model_parameters": {"instructions": "a" * 100_000}})
+    second.update_attributes({"model_parameters": {"instructions": "b" * 100_000}})
+    reserved = queue.reserved
+    second.update_attributes({"model_parameters": {"instructions": "b" * 200_000}})
+    assert queue.reserved == reserved
+    assert second.attributes["model_parameters"] == {"instructions": "b" * 100_000}
+    losses: list[bool] = []
+    with first.copy_fields({"query": "q" * 100_000}, on_truncate=lambda: losses.append(True)) as copied:
+        assert copied == {"_trace_truncated": True}
+        assert queue.reserved == reserved
+    assert losses == [True]
+    first.update_attributes({"model_parameters": {"instructions": "small"}})
+    assert 100_000 < queue.reserved < 110_000
+    first.close()
+    second.close()
+    first.record_operation("first", outputs="done")
+    second.record_operation("second", outputs="done")
+    traces = [CompletedTrace.model_validate_json(item.trace_json) for item in queue.items]
+    assert [trace.source.tenant_id for trace in traces] == [first.source.tenant_id, second.source.tenant_id]
+    assert traces[0].complete
+    assert not traces[1].complete
+    del first, second
+    gc.collect()
+    assert queue.reserved == 0
+
+
+def test_snapshot_reservation_is_released_when_the_producer_fails() -> None:
+    recorder, queue = make_recorder()
+    with pytest.raises(RuntimeError, match="producer failed"), recorder.copy_fields({"query": "q" * 100_000}):
+        raise RuntimeError("producer failed")
+    assert queue.reserved == 0

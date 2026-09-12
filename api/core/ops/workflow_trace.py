@@ -102,6 +102,7 @@ class WorkflowTraceRecorder(Layer):
         max_spans: int = 10_000,
         reserve_recording_bytes: Callable[[str, int], bool] | None = None,
         release_recording_bytes: Callable[[str, int], None] | None = None,
+        capture_truncated: bool = False,
     ) -> None:
         super().__init__()
         self.source = source.model_copy(deep=True)
@@ -123,7 +124,7 @@ class WorkflowTraceRecorder(Layer):
         self._reserved_bytes = 0
         self._omitted_spans = 0
         self._captured_bytes = 0
-        self._incomplete_reasons: list[str] = []
+        self._incomplete_reasons = ["value_size_limit"] if capture_truncated else []
         self._execution_span_ids: dict[str, str] = {}
         self._attempts: dict[str, int] = {}
         self._failed_attempt_times: dict[tuple[str, datetime], datetime] = {}
@@ -408,7 +409,7 @@ class WorkflowTraceRecorder(Layer):
                     self._spans[span_id] = span.model_copy(
                         update={
                             "status": "error",
-                            "error": captured_error,
+                            "error": self._copy_value(captured_error),
                             "ended_at": ended_at,
                             "attributes": {**span.attributes, "node_status": "failed"},
                         }
@@ -550,8 +551,9 @@ class WorkflowTraceRecorder(Layer):
                         "inputs": None,
                         "outputs": None,
                         "usage": {},
+                        "error": self._copy_value(self._spans[span_id].error),
                         "attributes": {
-                            **self._spans[span_id].attributes,
+                            **self._copy_attributes(self._spans[span_id].attributes),
                             "node_type": str(event.node_type),
                             "attempt_count": self._attempts[event.id] + 1,
                             "aggregate_usage": self._usage(event.node_run_result.llm_usage),
@@ -582,7 +584,7 @@ class WorkflowTraceRecorder(Layer):
                 root = root.model_copy(
                     update={
                         "status": "error" if error else "incomplete",
-                        "error": copy_trace_value(error),
+                        "error": self._copy_value(error),
                         "ended_at": datetime.now(UTC),
                     }
                 )
@@ -600,7 +602,7 @@ class WorkflowTraceRecorder(Layer):
                     self._spans[span_id] = span.model_copy(
                         update={
                             "status": "cancelled" if root.status == "cancelled" else "incomplete",
-                            "error": root.error,
+                            "error": self._copy_value(root.error),
                         }
                     )
             for child in self._child_workflows.values():
@@ -884,18 +886,21 @@ class WorkflowTraceRecorder(Layer):
         return copied if isinstance(copied, dict) else {"capture_note": copied}
 
     def _copy_value(self, value: Any) -> Any:
-        if self._captured_bytes >= 7 * 1024 * 1024:
+        if value is None:
+            return None
+        remaining = 7 * 1024 * 1024 - self._reserved_bytes
+        if remaining <= 32:
             self._mark_incomplete("trace_size_limit")
             return "[trace size limit]"
-        copied = copy_trace_value(value)
+        copied = copy_trace_value(
+            value, max_bytes=remaining, on_truncate=lambda: self._mark_incomplete("value_size_limit")
+        )
         serialized = json.dumps(copied, ensure_ascii=False)
         copied_bytes = len(serialized.encode())
         if not self._reserve_recording_budget(copied_bytes):
             self._mark_incomplete("recording_byte_limit")
             return "[recording byte limit]"
         self._captured_bytes += copied_bytes
-        if "[truncated]" in serialized or "[trace " in serialized or '"_trace_truncated": true' in serialized:
-            self._mark_incomplete("value_size_limit")
         return copied
 
     def _reserve_recording_budget(self, byte_count: int) -> bool:

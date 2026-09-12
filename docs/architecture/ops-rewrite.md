@@ -136,9 +136,9 @@ A pause never resumed or terminated produces no completed trace and follows work
 
 ## 5. Messages and other operations
 
-Basic Chat and Completion supply their small result callbacks; legacy Agent reads thought records through message → app → tenant ownership and contributes its rounds. Message loading validates message, conversation, app and tenant before copying prompt/output, attachments, model/provider, token/cost and timing metadata. The message ID is bound before moderation/retrieval/tool callbacks start.
+Basic Chat and Completion supply their small result callbacks; legacy Agent reads thought records through message → app → tenant ownership and contributes its rounds. Newer Agent's generator supplies common `finish_message_trace(include_llm=True)` for initial and resumed invocations, preserving the saved model generation. Message loading validates message, conversation, app and tenant before copying prompt/output, attachments, model/provider, token/cost and timing metadata. The message ID is bound before moderation/retrieval/tool callbacks start.
 
-Moderation, retrieval and tool callbacks record their operation while the message recorder is open. Common message completion runs after the message transaction commits, seals once and releases its budget even if capture fails. Advanced-chat messages contribute message metadata and operations outside the graph; they do not synthesize an additional LLM call from workflow aggregate tokens.
+Moderation, retrieval and tool callbacks record their operation while the message recorder is open. Common message completion runs after the message transaction commits, seals once and releases its span and root reservations even if capture fails. Tool parameter snapshots retain their reservations until the tool invocation ends, including when it outlives message sealing. Attributes retained for late operations keep their reservation until the recorder is released. Advanced-chat messages contribute message metadata and operations outside the graph; they do not synthesize an additional LLM call from workflow aggregate tokens.
 
 Suggested questions, conversation naming and callbacks arriving after sealing become separate operations. They retain the original parent reference and destination snapshot if they began with that recorder. New user-requested followups resolve the current authorized destination, attaching only when its exact owner/configuration revision matches the original delivery.
 
@@ -154,12 +154,15 @@ Standalone node and RAG pipeline draft producers continue through the explicit e
 
 | Limit | Current behavior |
 | --- | --- |
-| One captured value: 64 KiB | Bound traversal, string bytes, nesting (12) and collection entries (256); scrub credential keys and signed URL query data; mark truncation |
+| Captured content: remaining recorder allowance | Share the byte allowance across message/operation fields; account for existing children and an optional duplicate LLM span. Workflow values use the remaining content/structure reservation. |
+| Bounded copying | Bound JSON bytes, nesting (12) and collection entries (256); scrub credential keys and signed URL query data. Other direct helper callers retain the 64 KiB default. |
 | Recorder: 10,000 spans | Retain existing structure, count omitted spans and mark incomplete |
 | Recorder content/structure reservation: 7 MiB | Leave room for root and serialization overhead under the queue limit |
 | One queued trace: 8 MiB | Reject oversize admission |
 | Active recording budget: 128 MiB per app-owned queue | Refuse further reservation; one tenant may use at most half |
 | Queued work: 64 items / 128 MiB | Immediate rejection at total or per-tenant half-budget limits |
+
+The copying function reports actual truncation separately from copied content. Normal text containing a truncation marker and deliberate credential redaction do not make a trace incomplete. Earlier producer snapshots explicitly forward capture loss through attached, independent and late operations.
 
 Set `OPS_TRACE_QUEUE_MAX_ITEMS`, `OPS_TRACE_QUEUE_MAX_BYTES` and `OPS_TRACE_RECORDING_MAX_BYTES` to tune the process budgets. Admission rejections emit the `dify.ops.trace.dropped` counter by reason and rate-limited warnings with cumulative counts. These are conservative byte-accounting bounds, not exact Python heap measurements. Root and span overhead are reserved; a representative load measurement is still required to tune deployment capacity. Independent app instances have independent, additive allocations. Per-tenant limits prevent consuming the entire queue but do not promise strict latency fairness.
 
