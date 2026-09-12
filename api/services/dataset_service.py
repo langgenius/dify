@@ -103,7 +103,6 @@ from tasks.disable_segments_from_index_task import disable_segments_from_index_t
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
-from tasks.regenerate_summary_index_task import regenerate_summary_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
@@ -836,13 +835,6 @@ class DatasetService:
         # Trigger vector index task if indexing technique changed
         if action:
             deal_dataset_vector_index_task.delay(dataset.id, action)
-            # If embedding_model changed, also regenerate summary vectors
-            if action == "update":
-                regenerate_summary_index_task.delay(
-                    dataset.id,
-                    regenerate_reason="embedding_model_changed",
-                    regenerate_vectors_only=True,
-                )
 
         # Note: summary_index_setting changes do not trigger automatic regeneration of existing summaries.
         # The new setting will only apply to:
