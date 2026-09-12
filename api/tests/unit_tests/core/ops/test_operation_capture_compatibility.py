@@ -2,6 +2,7 @@
 
 from collections.abc import Generator
 from copy import deepcopy
+from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import override
@@ -13,7 +14,9 @@ from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity, InvokeFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, EasyUIBasedAppGenerateEntity, InvokeFrom
+from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_manager import ModelInstance, ModelManager
@@ -35,7 +38,7 @@ from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset
-from models.model import AppMode, Message, MessageFile
+from models.model import AppMode, Conversation, Message, MessageFile
 from tests.unit_tests.core.ops.test_message_trace import RecordingQueue
 
 
@@ -47,6 +50,50 @@ def capture() -> tuple[MessageTraceRecorder, RecordingQueue]:
         tenant_id=source.tenant_id, app_id=source.app_id, provider_name="recording", config_id=str(uuid4())
     )
     return MessageTraceRecorder(source, queue, (settings,)), queue
+
+
+@pytest.mark.parametrize(
+    "instructions", ["m" * 100_000 + "MODEL_END", ["item"] * 300], ids=["supported", "collection-limit"]
+)
+def test_message_pipeline_owns_model_parameters_before_runtime_mutation(
+    capture: tuple[MessageTraceRecorder, RecordingQueue], instructions: str | list[str]
+) -> None:
+    recorder, queue = capture
+    message_id, conversation_id = str(uuid4()), str(uuid4())
+    recorder.bind_message(message_id, conversation_id)
+    entity = Mock(spec=ChatAppGenerateEntity)
+    entity.trace_recorder = recorder
+    entity.app_config = SimpleNamespace(sensitive_word_avoidance=None)
+    entity.model_conf = SimpleNamespace(model="chat-model", parameters={"instructions": instructions})
+    entity.invoke_from = InvokeFrom.SERVICE_API
+    EasyUIBasedGenerateTaskPipeline(
+        application_generate_entity=entity,
+        queue_manager=Mock(spec=AppQueueManager),
+        conversation=Conversation(id=conversation_id, mode=AppMode.CHAT),
+        message=Message(id=message_id, created_at=datetime.now(UTC)),
+        stream=True,
+    )
+    entity.model_conf.parameters["instructions"] = "changed after capture"
+    recorder.finish_message_trace(
+        {
+            "message_id": message_id,
+            "conversation_id": conversation_id,
+            "model_name": "chat-model",
+            "outputs": "done",
+        },
+        include_llm=True,
+    )
+    trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+    assert trace.complete == isinstance(instructions, str)
+    assert len(trace.spans) == 2
+    for span in trace.spans:
+        parameters = span.attributes["model_parameters"]
+        assert isinstance(parameters, dict)
+        if trace.complete:
+            assert parameters["instructions"] == instructions
+        else:
+            assert parameters["instructions"] != instructions
+        assert parameters["instructions"] != "changed after capture"
 
 
 @pytest.mark.parametrize("fails", [False, True])
@@ -138,6 +185,7 @@ class DocumentTool(Tool):
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         self.received_parameters = deepcopy(tool_parameters)
+        tool_parameters["query"] = "changed after capture"
         if self.failure:
             raise RuntimeError("tool unavailable")
         yield ToolInvokeMessage(
@@ -149,12 +197,14 @@ class DocumentTool(Tool):
 
 @pytest.mark.parametrize("sqlite_session", [(MessageFile,)], indirect=True)
 @pytest.mark.parametrize("fails", [False, True])
+@pytest.mark.parametrize("query", ["documents", "q" * 100_000 + "INPUT_END"])
 def test_tool_captures_effective_arguments_and_file_urls(
     capture: tuple[MessageTraceRecorder, RecordingQueue],
     sqlite_session: Session,
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
     fails: bool,
+    query: str,
 ) -> None:
     recorder, queue = capture
     assert recorder.source.actor_id is not None
@@ -188,7 +238,7 @@ def test_tool_captures_effective_arguments_and_file_urls(
     output, file_ids, _ = ToolEngine.agent_invoke(
         sqlite_session,
         tool,
-        {"limit": "2", "query": "documents"},
+        {"limit": "2", "query": query},
         recorder.source.actor_id,
         recorder.source.tenant_id,
         message,
@@ -208,9 +258,11 @@ def test_tool_captures_effective_arguments_and_file_urls(
     assert len(queue.items) == 1
     trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
     span = next(span for span in trace.spans if span.span_type == "tool")
-    assert span.inputs == {"limit": 7, "query": "documents"}
+    assert span.inputs == {"limit": 7, "query": query}
     assert span.attributes["tool_parameters"] == span.inputs
-    assert span.attributes["original_inputs"] == {"limit": "2", "query": "documents"}
+    assert span.attributes["original_inputs"] == {"limit": "2", "query": query}
+    assert trace.complete
+    assert queue.reserved == 0
     assert "runtime-secret" not in queue.items[0].trace_json.decode()
     assert "signature=private" not in queue.items[0].trace_json.decode()
     assert span.status == ("error" if fails else "ok")

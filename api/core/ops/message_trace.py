@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
-from collections.abc import Callable, Mapping, Sequence
+import weakref
+from collections.abc import Callable, Generator, Mapping, Sequence
+from contextlib import contextmanager
 from threading import Lock
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -16,7 +19,6 @@ from core.ops.trace_data import (
     TraceSource,
     TraceSpan,
     copy_trace_fields,
-    copy_trace_value,
     make_span_id,
     make_trace_id,
 )
@@ -41,19 +43,83 @@ class MessageTraceRecorder:
         self.trace_queue = trace_queue
         self.provider_settings = tuple(provider_settings)
         self.load_provider_settings = load_provider_settings
-        self.attributes = copy_trace_fields(attributes or {})
+        self.attributes: dict[str, Any] = {}
         self._load_message_fields = load_message_fields
         self._record_message_result = record_message_result
         self._lock = Lock()
         self._spans: list[TraceSpan] = []
+        self._truncated_span_ids: set[str] = set()
+        self._attributes_truncated = False
         self._closed = False
         self._reserved_bytes = 0
+        self._attribute_bytes = 0
+        self._attribute_finalizer: weakref.finalize | None = None
+        self._snapshot_bytes = 0
         self._omitted_spans = 0
         self._incomplete_reasons: list[str] = []
+        self.update_attributes(attributes or {})
 
     @property
     def user_id(self) -> str | None:
         return self.source.actor_id
+
+    @contextmanager
+    def copy_fields(
+        self, fields: Mapping[str, Any], *, on_truncate: Callable[[], None] | None = None
+    ) -> Generator[dict[str, Any], None, None]:
+        """Own a producer's snapshot until its invocation ends, even if the message closes first."""
+        with self._lock:
+            remaining = 7 * 1024 * 1024 - self._reserved_bytes - self._attribute_bytes - self._snapshot_bytes
+            copied = copy_trace_fields(
+                fields,
+                max_bytes=max(32, remaining),
+                on_truncate=on_truncate,
+            )
+            reserved = len(json.dumps(copied, ensure_ascii=False).encode())
+            if reserved > remaining or not self.trace_queue.reserve_recording_bytes(self.source.tenant_id, reserved):
+                reserved = 0
+                copied = {"_trace_truncated": True}
+                if on_truncate is not None:
+                    on_truncate()
+            self._snapshot_bytes += reserved
+        try:
+            yield copied
+        finally:
+            with self._lock:
+                self._snapshot_bytes -= reserved
+                if reserved:
+                    self.trace_queue.release_recording_bytes(self.source.tenant_id, reserved)
+
+    def update_attributes(self, attributes: Mapping[str, Any]) -> None:
+        truncated: list[bool] = []
+        with self._lock:
+            if self._closed:
+                return
+            remaining = 7 * 1024 * 1024 - self._reserved_bytes - self._snapshot_bytes
+            copied = copy_trace_fields(
+                {**self.attributes, **attributes},
+                max_bytes=max(32, remaining),
+                on_truncate=lambda: truncated.append(True),
+            )
+            copied_bytes = len(json.dumps(copied, ensure_ascii=False).encode()) if copied else 0
+            difference = copied_bytes - self._attribute_bytes
+            if copied_bytes > remaining or (
+                difference > 0 and not self.trace_queue.reserve_recording_bytes(self.source.tenant_id, difference)
+            ):
+                self._attributes_truncated = True
+                return
+            if difference < 0:
+                self.trace_queue.release_recording_bytes(self.source.tenant_id, -difference)
+            if self._attribute_finalizer is not None:
+                self._attribute_finalizer.detach()
+            self._attribute_bytes = copied_bytes
+            self._attribute_finalizer = (
+                weakref.finalize(self, self.trace_queue.release_recording_bytes, self.source.tenant_id, copied_bytes)
+                if copied_bytes
+                else None
+            )
+            self.attributes = copied
+            self._attributes_truncated |= bool(truncated)
 
     def bind_message(
         self,
@@ -134,6 +200,7 @@ class MessageTraceRecorder:
             load_provider_settings=self.load_provider_settings,
             reserve_recording_bytes=self.trace_queue.reserve_recording_bytes,
             release_recording_bytes=self.trace_queue.release_recording_bytes,
+            capture_truncated=self._attributes_truncated,
         )
 
     def record_operation(
@@ -152,6 +219,7 @@ class MessageTraceRecorder:
         node_id: str | None = None,
         message_id: str | None = None,
         independent: bool = False,
+        capture_truncated: bool = False,
     ) -> None:
         try:
             self._record_operation(
@@ -168,6 +236,7 @@ class MessageTraceRecorder:
                 node_id=node_id,
                 message_id=message_id,
                 independent=independent,
+                capture_truncated=capture_truncated,
             )
         except Exception:
             self.mark_incomplete("operation_capture_failed")
@@ -191,37 +260,60 @@ class MessageTraceRecorder:
         node_id: str | None = None,
         message_id: str | None = None,
         independent: bool = False,
+        capture_truncated: bool = False,
     ) -> None:
         """Record one actual operation without deferring model/ORM reads to a worker."""
         timer = timer or {}
-        span = TraceSpan(
-            span_id=make_span_id(self.source.tenant_id, self.source.operation_id, str(uuid4())),
-            parent_span_id=make_span_id(self.source.tenant_id, self.source.operation_id, "message"),
-            span_name=span_name,
-            span_type=span_type,
-            source_app_id=self.source.app_id,
-            source_pipeline_id=self.source.pipeline_id,
-            source_workflow_id=workflow_id,
-            node_execution_id=node_execution_id,
-            node_id=node_id,
-            started_at=timer.get("start"),
-            ended_at=timer.get("end"),
-            inputs=copy_trace_value(inputs),
-            outputs=copy_trace_value(outputs),
-            status="error" if error else "ok",
-            error=error,
-            attributes=copy_trace_fields(
-                {
-                    **self.attributes,
-                    "operation_type": "tool" if span_type == "tool" else span_name,
-                    **(attributes or {}),
-                }
-            ),
-            usage=copy_trace_fields(usage or {}),
-        )
-        span_bytes = len(span.model_dump_json().encode())
+        truncated: list[bool] = []
         with self._lock:
             separate = self._closed or independent or not self.source.message_id
+            remaining = (
+                7 * 1024 * 1024
+                - self._attribute_bytes
+                - self._snapshot_bytes
+                - (0 if separate else self._reserved_bytes)
+            )
+            if not separate and (len(self._spans) >= 10000 or remaining <= 1024):
+                self._omitted_spans += 1
+                return
+            content = copy_trace_fields(
+                {
+                    "inputs": inputs,
+                    "outputs": outputs,
+                    "error": error,
+                    "attributes": {
+                        **self.attributes,
+                        "operation_type": "tool" if span_type == "tool" else span_name,
+                        **(attributes or {}),
+                    },
+                    "usage": usage or {},
+                },
+                max_bytes=max(32, remaining - 1024),
+                on_truncate=lambda: truncated.append(True),
+            )
+            capture_truncated |= bool(truncated) or self._attributes_truncated
+            span = TraceSpan(
+                span_id=make_span_id(self.source.tenant_id, self.source.operation_id, str(uuid4())),
+                parent_span_id=make_span_id(self.source.tenant_id, self.source.operation_id, "message"),
+                span_name=span_name,
+                span_type=span_type,
+                source_app_id=self.source.app_id,
+                source_pipeline_id=self.source.pipeline_id,
+                source_workflow_id=workflow_id,
+                node_execution_id=node_execution_id,
+                node_id=node_id,
+                started_at=timer.get("start"),
+                ended_at=timer.get("end"),
+                inputs=content.get("inputs"),
+                outputs=content.get("outputs"),
+                status="error" if error else "ok",
+                error=str(content["error"]) if content.get("error") else None,
+                attributes=captured_attributes
+                if isinstance(captured_attributes := content.get("attributes"), dict)
+                else {},
+                usage=captured_usage if isinstance(captured_usage := content.get("usage"), dict) else {},
+            )
+            span_bytes = len(span.model_dump_json().encode())
             if not separate:
                 if (
                     len(self._spans) >= 10000
@@ -232,7 +324,19 @@ class MessageTraceRecorder:
                     return
                 self._reserved_bytes += span_bytes
                 self._spans.append(span)
+                if capture_truncated:
+                    self._truncated_span_ids.add(span.span_id)
                 return
+        self._submit_operation(span, message_id=message_id, capture_truncated=capture_truncated)
+
+    def _submit_operation(
+        self,
+        span: TraceSpan,
+        *,
+        message_id: str | None = None,
+        capture_truncated: bool = False,
+        already_reserved: bool = False,
+    ) -> None:
         source = TraceSource.model_validate(
             {
                 **self.source.model_dump(),
@@ -241,13 +345,33 @@ class MessageTraceRecorder:
             }
         )
         root = span.model_copy(update={"parent_span_id": None})
-        trace = CompletedTrace(
-            source=source,
-            trace_id=make_trace_id(source.tenant_id, source.operation_id),
-            root_span_id=root.span_id,
-            spans=(root,),
-        )
-        self._submit_trace_with_message_parent(trace)
+        reasons = ["value_size_limit"] if capture_truncated else []
+        reserved = 0 if already_reserved else len(root.model_dump_json().encode())
+        if reserved and not self.trace_queue.reserve_recording_bytes(source.tenant_id, reserved):
+            reserved = 0
+            reasons.append("recording_byte_limit")
+            root = root.model_copy(
+                update={
+                    "inputs": "[recording byte limit]",
+                    "outputs": "[recording byte limit]",
+                    "error": None,
+                    "attributes": {},
+                    "usage": {},
+                }
+            )
+        try:
+            trace = CompletedTrace(
+                source=source,
+                trace_id=make_trace_id(source.tenant_id, source.operation_id),
+                root_span_id=root.span_id,
+                spans=(root,),
+                complete=not reasons,
+                truncation={"reasons": list(reasons)} if reasons else {},
+            )
+            self._submit_trace_with_message_parent(trace)
+        finally:
+            if reserved:
+                self.trace_queue.release_recording_bytes(source.tenant_id, reserved)
 
     def _submit_trace_with_message_parent(
         self, completed_trace: CompletedTrace, provider_settings: Sequence[TraceProviderSettings] | None = None
@@ -299,7 +423,10 @@ class MessageTraceRecorder:
             children, self._spans = self._spans, []
             reserved, self._reserved_bytes = self._reserved_bytes, 0
             omitted = self._omitted_spans
-            incomplete_reasons = tuple(self._incomplete_reasons)
+            incomplete_reasons = list(self._incomplete_reasons)
+            if self._attributes_truncated or self._truncated_span_ids:
+                incomplete_reasons.append("value_size_limit")
+            self._truncated_span_ids.clear()
         try:
             source = TraceSource.model_validate(
                 {
@@ -325,20 +452,14 @@ class MessageTraceRecorder:
             usage["total_tokens"] = (message_fields.get("prompt_tokens") or 0) + (
                 message_fields.get("completion_tokens") or 0
             )
-            root = TraceSpan(
-                span_id=root_id,
-                span_name=span_name,
-                span_type="operation",
-                source_app_id=source.app_id,
-                inputs=copy_trace_value(message_fields.get("inputs")),
-                outputs=copy_trace_value(message_fields.get("outputs")),
-                started_at=message_fields.get("started_at"),
-                ended_at=message_fields.get("ended_at"),
-                status="error" if message_fields.get("error") else "ok",
-                error=str(copy_trace_value(message_fields["error"], 8192)) if message_fields.get("error") else None,
-                usage=copy_trace_fields(usage),
-                attributes=copy_trace_fields(
-                    {
+            root_copies = 2 if include_llm and message_fields.get("model_name") else 1
+            content = copy_trace_fields(
+                {
+                    "inputs": message_fields.get("inputs"),
+                    "outputs": message_fields.get("outputs"),
+                    "error": message_fields.get("error"),
+                    "usage": usage,
+                    "attributes": {
                         **self.attributes,
                         **metadata,
                         "operation_type": "message",
@@ -350,11 +471,47 @@ class MessageTraceRecorder:
                         "model_provider": message_fields.get("model_provider"),
                         "model_name": message_fields.get("model_name"),
                         "files": message_fields.get("files", []),
-                    }
+                    },
+                },
+                # The message root and optional LLM span serialize the same content.
+                max_bytes=max(
+                    32,
+                    (7 * 1024 * 1024 - reserved - self._attribute_bytes - self._snapshot_bytes) // root_copies - 1024,
                 ),
+                on_truncate=lambda: incomplete_reasons.append("value_size_limit"),
             )
+            root = TraceSpan(
+                span_id=root_id,
+                span_name=span_name,
+                span_type="operation",
+                source_app_id=source.app_id,
+                inputs=content.get("inputs"),
+                outputs=content.get("outputs"),
+                started_at=message_fields.get("started_at"),
+                ended_at=message_fields.get("ended_at"),
+                status="error" if message_fields.get("error") else "ok",
+                error=str(content["error"]) if content.get("error") else None,
+                usage=captured_usage if isinstance(captured_usage := content.get("usage"), dict) else {},
+                attributes=captured_attributes
+                if isinstance(captured_attributes := content.get("attributes"), dict)
+                else {},
+            )
+            root_bytes = len(root.model_dump_json().encode()) * root_copies + 1024
+            if self.trace_queue.reserve_recording_bytes(source.tenant_id, root_bytes):
+                reserved += root_bytes
+            else:
+                incomplete_reasons.append("recording_byte_limit")
+                root = root.model_copy(
+                    update={
+                        "inputs": "[recording byte limit]",
+                        "outputs": "[recording byte limit]",
+                        "error": None,
+                        "attributes": {},
+                        "usage": {},
+                    }
+                )
             spans = [root, *children]
-            if include_llm and message_fields.get("model_name"):
+            if root_copies == 2:
                 spans.insert(
                     1,
                     root.model_copy(
@@ -374,7 +531,7 @@ class MessageTraceRecorder:
                     root_span_id=root_id,
                     spans=tuple(spans),
                     complete=not (omitted or incomplete_reasons),
-                    truncation={"omitted_spans": omitted, "reasons": list(incomplete_reasons)}
+                    truncation={"omitted_spans": omitted, "reasons": list(dict.fromkeys(incomplete_reasons))}
                     if omitted or incomplete_reasons
                     else {},
                 )
@@ -393,22 +550,19 @@ class MessageTraceRecorder:
             self._closed = True
             pending_operations, self._spans = self._spans, []
             reserved, self._reserved_bytes = self._reserved_bytes, 0
+            truncated_span_ids, self._truncated_span_ids = self._truncated_span_ids, set()
         try:
             if submit_pending_operations:
                 for span in pending_operations:
-                    self.record_operation(
-                        span.span_name,
-                        span_type=span.span_type,
-                        inputs=span.inputs,
-                        outputs=span.outputs,
-                        timer={"start": span.started_at, "end": span.ended_at},
-                        error=span.error,
-                        attributes=span.attributes,
-                        usage=span.usage,
-                        workflow_id=span.source_workflow_id,
-                        node_execution_id=span.node_execution_id,
-                        node_id=span.node_id,
-                        independent=True,
-                    )
+                    try:
+                        self._submit_operation(
+                            span,
+                            capture_truncated=span.span_id in truncated_span_ids,
+                            already_reserved=True,
+                        )
+                    except Exception:
+                        logging.getLogger(__name__).warning(
+                            "Cannot submit operation tenant_id=%s span_id=%s", self.source.tenant_id, span.span_id
+                        )
         finally:
             self.trace_queue.release_recording_bytes(self.source.tenant_id, reserved)
