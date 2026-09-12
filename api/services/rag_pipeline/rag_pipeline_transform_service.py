@@ -249,26 +249,26 @@ class RagPipelineTransformService:
         draft_workflow = Workflow(
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
-            features="{}",
+            _features="{}",
             type=WorkflowType.RAG_PIPELINE,
             version="draft",
             graph=json.dumps(graph),
             created_by=account_id,
-            environment_variables=environment_variables,
-            conversation_variables=conversation_variables,
-            rag_pipeline_variables=rag_pipeline_variables_list,
+            _environment_variables=environment_variables,
+            _conversation_variables=conversation_variables,
+            _rag_pipeline_variables=rag_pipeline_variables_list,
         )
         published_workflow = Workflow(
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
-            features="{}",
+            _features="{}",
             type=WorkflowType.RAG_PIPELINE,
             version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=json.dumps(graph),
             created_by=account_id,
-            environment_variables=environment_variables,
-            conversation_variables=conversation_variables,
-            rag_pipeline_variables=rag_pipeline_variables_list,
+            _environment_variables=environment_variables,
+            _conversation_variables=conversation_variables,
+            _rag_pipeline_variables=rag_pipeline_variables_list,
         )
         session.add(draft_workflow)
         session.add(published_workflow)

@@ -56,7 +56,7 @@ def _make_workflow(
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features=json.dumps(features or {}),
+        _features=json.dumps(features or {}),
         created_by="user",
     )
 

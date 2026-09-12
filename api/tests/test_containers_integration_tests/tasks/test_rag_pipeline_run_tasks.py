@@ -100,13 +100,13 @@ class TestRagPipelineRunTasks:
             type="workflow",
             version="draft",
             graph="{}",
-            features="{}",
+            _features="{}",
             marked_name=fake.company(),
             marked_comment=fake.text(max_nb_chars=100),
             created_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         db_session_with_containers.add(workflow)
         db_session_with_containers.commit()

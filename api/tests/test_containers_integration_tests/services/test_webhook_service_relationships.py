@@ -113,11 +113,11 @@ class WebhookServiceRelationshipFactory:
             app_id=app.id,
             type="workflow",
             graph=json.dumps(graph),
-            features=json.dumps({}),
+            _features=json.dumps({}),
             created_by=account.id,
             updated_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
             version=version,
         )
         db_session_with_containers.add(workflow)

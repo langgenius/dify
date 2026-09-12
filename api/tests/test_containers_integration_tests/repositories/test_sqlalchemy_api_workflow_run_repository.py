@@ -79,8 +79,8 @@ def _create_workflow_run(
         status=status,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=scope.user_id,
-        created_at=created_at or naive_utc_now(),
     )
+    workflow_run.created_at = created_at or naive_utc_now()
     session.add(workflow_run)
     session.commit()
     return workflow_run

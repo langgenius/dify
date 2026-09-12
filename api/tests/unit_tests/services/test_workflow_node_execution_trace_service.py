@@ -43,7 +43,7 @@ def _retry_attempt(retry_index: int, **overrides: object) -> dict[str, object]:
 
 
 def _execution(process_data: dict[str, object]) -> WorkflowNodeExecutionModel:
-    return WorkflowNodeExecutionModel(
+    execution = WorkflowNodeExecutionModel(
         id="exec-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -64,11 +64,12 @@ def _execution(process_data: dict[str, object]) -> WorkflowNodeExecutionModel:
         error=None,
         elapsed_time=3.5,
         execution_metadata=json.dumps({"iteration_id": "iteration-1"}),
-        created_at=datetime(2023, 11, 14, tzinfo=UTC),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
         finished_at=datetime(2023, 11, 14, 0, 0, 4, tzinfo=UTC),
     )
+    execution.created_at = datetime(2023, 11, 14, tzinfo=UTC)
+    return execution
 
 
 def _repository(full_process_data: dict[str, object] | None) -> DifyAPIWorkflowNodeExecutionRepository:

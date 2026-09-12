@@ -134,8 +134,8 @@ def _create_workflow_pause_state(
         status=WorkflowExecutionStatus.PAUSED,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=account_id,
-        created_at=datetime.now(UTC),
     )
+    workflow_run.created_at = datetime.now(UTC)
     db_session_with_containers.add(workflow_run)
 
     runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)

@@ -99,7 +99,7 @@ def _make_execution(
     index: int = 1,
 ) -> WorkflowNodeExecutionModel:
     """Build a ``WorkflowNodeExecutionModel`` row with all required fields."""
-    return WorkflowNodeExecutionModel(
+    execution = WorkflowNodeExecutionModel(
         id=str(uuid.uuid4()),
         tenant_id=tenant_id,
         app_id=app_id,
@@ -115,9 +115,10 @@ def _make_execution(
         execution_metadata=json.dumps(execution_metadata) if execution_metadata is not None else None,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=str(uuid.uuid4()),
-        created_at=datetime.now(UTC),
         finished_at=datetime.now(UTC),
     )
+    execution.created_at = datetime.now(UTC)
+    return execution
 
 
 @pytest.fixture

@@ -236,9 +236,9 @@ class TestWorkflowAppLogQueryService:
             total_steps=3,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
             finished_at=datetime.now(UTC),
         )
+        workflow_run.created_at = datetime.now(UTC)
         db_session_with_containers.add(workflow_run)
         db_session_with_containers.commit()
 
@@ -372,8 +372,8 @@ class TestWorkflowAppLogQueryService:
             outputs=json.dumps({"result": "50% discount applied", "status": "success"}),
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        workflow_run_1.created_at = datetime.now(UTC)
         db_session_with_containers.add(workflow_run_1)
         db_session_with_containers.flush()
 
@@ -414,8 +414,8 @@ class TestWorkflowAppLogQueryService:
             outputs=json.dumps({"result": "test_data_value found", "status": "success"}),
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        workflow_run_2.created_at = datetime.now(UTC)
         db_session_with_containers.add(workflow_run_2)
         db_session_with_containers.flush()
 
@@ -456,8 +456,8 @@ class TestWorkflowAppLogQueryService:
             outputs=json.dumps({"result": "100% different result", "status": "success"}),
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        workflow_run_4.created_at = datetime.now(UTC)
         db_session_with_containers.add(workflow_run_4)
         db_session_with_containers.flush()
 
@@ -535,9 +535,9 @@ class TestWorkflowAppLogQueryService:
                 total_steps=3,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1) if status != "running" else None,
             )
+            workflow_run.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db_session_with_containers.add(workflow_run)
             db_session_with_containers.commit()
 
@@ -641,9 +641,9 @@ class TestWorkflowAppLogQueryService:
                 total_steps=3,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=timestamp,
                 finished_at=timestamp + timedelta(minutes=1),
             )
+            workflow_run.created_at = timestamp
             db_session_with_containers.add(workflow_run)
             db_session_with_containers.commit()
 
@@ -746,9 +746,9 @@ class TestWorkflowAppLogQueryService:
                 total_steps=3,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1),
             )
+            workflow_run.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db_session_with_containers.add(workflow_run)
             db_session_with_containers.commit()
 
@@ -874,9 +874,9 @@ class TestWorkflowAppLogQueryService:
                 total_steps=3,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1),
             )
+            workflow_run.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db_session_with_containers.add(workflow_run)
             db_session_with_containers.commit()
 
@@ -916,9 +916,9 @@ class TestWorkflowAppLogQueryService:
                 total_steps=3,
                 created_by_role=CreatorUserRole.END_USER,
                 created_by=end_user.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i + 10),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 11),
             )
+            workflow_run.created_at = datetime.now(UTC) + timedelta(minutes=i + 10)
             db_session_with_containers.add(workflow_run)
             db_session_with_containers.commit()
 
@@ -1050,9 +1050,9 @@ class TestWorkflowAppLogQueryService:
             total_steps=3,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
             finished_at=datetime.now(UTC) + timedelta(minutes=1),
         )
+        workflow_run.created_at = datetime.now(UTC)
         db_session_with_containers.add(workflow_run)
         db_session_with_containers.commit()
 
@@ -1138,9 +1138,9 @@ class TestWorkflowAppLogQueryService:
             total_steps=0,  # Edge case: 0 steps
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
             finished_at=datetime.now(UTC),
         )
+        workflow_run.created_at = datetime.now(UTC)
         db_session_with_containers.add(workflow_run)
         db_session_with_containers.commit()
 
@@ -1293,9 +1293,9 @@ class TestWorkflowAppLogQueryService:
                 total_steps=3,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1) if status == "succeeded" else None,
             )
+            workflow_run.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db_session_with_containers.add(workflow_run)
             db_session_with_containers.flush()
 
@@ -1393,9 +1393,9 @@ class TestWorkflowAppLogQueryService:
                 total_steps=3,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1) if status != "running" else None,
             )
+            workflow_run.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db_session_with_containers.add(workflow_run)
             db_session_with_containers.flush()
 
@@ -1499,9 +1499,9 @@ class TestWorkflowAppLogQueryService:
                     total_steps=3,
                     created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=account.id,
-                    created_at=datetime.now(UTC) + timedelta(minutes=i * 10 + j),
                     finished_at=datetime.now(UTC) + timedelta(minutes=i * 10 + j + 1),
                 )
+                workflow_run.created_at = datetime.now(UTC) + timedelta(minutes=i * 10 + j)
                 db_session_with_containers.add(workflow_run)
                 db_session_with_containers.flush()
                 run_ids_by_app[app.id].add(workflow_run.id)

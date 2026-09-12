@@ -119,7 +119,9 @@ class WorkflowRunRestoreTestDataFactory:
             "exceptions_count": 0,
         }
         attrs.update(kwargs)
+        run_created_at = attrs.pop("created_at")
         run = WorkflowRun(**attrs)
+        run.created_at = run_created_at
         return run
 
     @staticmethod

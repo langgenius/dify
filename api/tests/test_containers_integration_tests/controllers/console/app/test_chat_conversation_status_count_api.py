@@ -98,8 +98,8 @@ def _create_workflow_run(db_session: Session, app_id: str, tenant_id: str, accou
         total_steps=0,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=account_id,
-        created_at=naive_utc_now(),
     )
+    workflow_run.created_at = naive_utc_now()
     db_session.add(workflow_run)
     db_session.commit()
     return workflow_run

@@ -21,11 +21,11 @@ def _workflow(graph: dict) -> Workflow:
         kind=WorkflowKind.SNIPPET,
         version=Workflow.VERSION_DRAFT,
         graph=json.dumps(graph),
-        features="{}",
+        _features="{}",
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 

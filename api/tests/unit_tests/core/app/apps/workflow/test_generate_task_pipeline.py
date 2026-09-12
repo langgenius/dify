@@ -56,7 +56,7 @@ def _build_pipeline(run_id: str, unbound_session_factory: sessionmaker[Session])
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features=json.dumps({}),
+        _features=json.dumps({}),
         created_by="user-id",
     )
     user = Account(name="user", email="user@example.com")

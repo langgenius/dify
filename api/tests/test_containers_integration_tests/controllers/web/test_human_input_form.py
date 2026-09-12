@@ -139,8 +139,8 @@ def test_get_human_input_form_resolves_runtime_select_options(
         total_steps=0,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=account.id,
-        created_at=datetime.now(UTC).replace(tzinfo=None),
     )
+    workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
     db_session_with_containers.add(workflow_run)
     db_session_with_containers.flush()
 
