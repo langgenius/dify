@@ -4,6 +4,7 @@ from contextlib import ExitStack
 from types import TracebackType
 from unittest.mock import MagicMock, Mock, patch
 
+import httpx
 import pytest
 from sqlalchemy.orm import Session
 
@@ -210,6 +211,56 @@ class TestMCPClient:
 
         # Verify session was created with MCP
         assert client._session == mock_session
+
+    @patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect")
+    @patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_from_sse_transport_error_to_mcp(
+        self, mock_client_session, mock_streamable_client, mock_http_client, mock_sse_connect
+    ):
+        """A transport failure on the SSE probe must still fall back to streamable HTTP.
+
+        Uses the real sse_client so the exception translation between the two
+        layers is exercised: an httpx error leaking out of sse_client skips the
+        fallback entirely and reaches the console API as an opaque 500.
+        """
+        mock_sse_connect.side_effect = httpx.ConnectError("[Errno 111] Connection refused")
+
+        mock_read_stream = Mock()
+        mock_write_stream = Mock()
+        mock_client_context = Mock()
+        mock_streamable_client.return_value.__enter__.return_value = (
+            mock_read_stream,
+            mock_write_stream,
+            mock_client_context,
+        )
+
+        mock_session = Mock()
+        mock_client_session.return_value.__enter__.return_value = mock_session
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        mock_streamable_client.assert_called_once()
+        assert client._session == mock_session
+
+    @patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect")
+    @patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client")
+    def test_initialize_sse_transport_error_raises_mcp_error(self, mock_http_client, mock_sse_connect):
+        """When both transports fail the caller gets an MCPError, never a raw httpx error.
+
+        The console MCP endpoints only translate MCPError/ValueError into a 4xx;
+        anything else becomes `{"code": "unknown", "status": 500}`.
+        """
+        mock_sse_connect.side_effect = httpx.ConnectError("[Errno 111] Connection refused")
+
+        client = MCPClient(server_url="http://test.example.com/sse")
+
+        with pytest.raises(MCPConnectionError) as exc_info:
+            client._initialize()
+
+        assert "Connection refused" in str(exc_info.value)
 
     @patch("core.mcp.mcp_client.streamablehttp_client")
     @patch("core.mcp.mcp_client.ClientSession")
