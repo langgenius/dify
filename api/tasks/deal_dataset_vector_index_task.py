@@ -12,6 +12,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from tasks.regenerate_summary_index_task import regenerate_summary_index_task
 
 logger = logging.getLogger(__name__)
 
@@ -212,3 +213,12 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
             )
         except Exception:
             logger.exception("Deal dataset vector index failed")
+            return
+
+    if action == "update":
+        # Rebuild summaries after all index cleanup and document state commits.
+        regenerate_summary_index_task.delay(
+            dataset_id,
+            regenerate_reason="embedding_model_changed",
+            regenerate_vectors_only=True,
+        )

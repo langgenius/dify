@@ -634,31 +634,48 @@ class TestDatasetServiceCreationAndUpdate:
                 sqlite_session,
             )
 
-    def test_update_internal_dataset_executes_real_update_without_committing(self, sqlite_session: Session) -> None:
-        dataset = _dataset(name="Before")
+    @pytest.mark.parametrize("embedding_model", ["embedding-model", "new-model"])
+    def test_update_internal_dataset_executes_real_update_without_committing(
+        self, sqlite_session: Session, embedding_model: str
+    ) -> None:
+        dataset = _dataset(name="Before", indexing_technique=IndexTechniqueType.HIGH_QUALITY)
+        dataset.summary_index_setting = {"enable": True}
         sqlite_session.add(dataset)
         sqlite_session.commit()
         transaction_events: list[str] = []
         event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
 
         with (
-            patch.object(DatasetService, "_handle_indexing_technique_change", return_value="update"),
-            patch.object(DatasetService, "_update_pipeline_knowledge_base_node_data"),
+            patch("services.dataset_service.current_user", _account()),
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.deal_dataset_vector_index_task.delay") as vector_task,
-            patch("services.dataset_service.regenerate_summary_index_task.delay") as summary_task,
+            patch("tasks.regenerate_summary_index_task.regenerate_summary_index_task.delay") as summary_task,
         ):
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = SimpleNamespace(
+                provider="provider", model_name=embedding_model
+            )
             updated = DatasetService._update_internal_dataset(
                 dataset,
-                {"name": "After", "description": "Changed"},
+                {
+                    "name": "After",
+                    "description": "Changed",
+                    "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+                    "embedding_model_provider": "provider",
+                    "embedding_model": embedding_model,
+                },
                 _account(),
                 sqlite_session,
             )
 
         assert updated.name == "After"
         assert updated.description == "Changed"
+        assert updated.embedding_model == embedding_model
         assert transaction_events == []
-        vector_task.assert_called_once_with(dataset.id, "update")
-        summary_task.assert_called_once()
+        if embedding_model == "new-model":
+            vector_task.assert_called_once_with(dataset.id, "update")
+        else:
+            vector_task.assert_not_called()
+        summary_task.assert_not_called()
 
     def test_update_pipeline_node_data_returns_for_non_pipeline_or_missing_pipeline(
         self, sqlite_session: Session
