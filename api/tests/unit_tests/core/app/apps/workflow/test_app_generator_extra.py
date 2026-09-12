@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import contextlib
 import json
-from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import inspect
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -30,27 +29,22 @@ CREATOR_ID = "00000000-0000-0000-0000-000000000006"
 
 
 @pytest.fixture
-def sqlite_generator_scoped_session(
+def sqlite_generator_session(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine,
     sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> Iterator[scoped_session[Session]]:
-    """Adapt the shared SQLite session factory to Flask-SQLAlchemy's scoped session API."""
-    engine = sqlite_session.get_bind()
-    request_sessions = scoped_session(sqlite_session_factory)
+) -> Session:
+    """Expose the shared SQLite engine and real Session through the Flask extension boundary."""
     monkeypatch.setattr(
         app_generator_module,
         "db",
-        SimpleNamespace(engine=engine, session=request_sessions),
+        SimpleNamespace(engine=sqlite_engine, session=sqlite_session),
     )
-    try:
-        yield request_sessions
-    finally:
-        request_sessions.remove()
+    return sqlite_session
 
 
-def _persist_app(session: Session) -> App:
-    app = App(
+def _app() -> App:
+    return App(
         id=APP_ID,
         tenant_id=TENANT_ID,
         name="Workflow app",
@@ -66,13 +60,16 @@ def _persist_app(session: Session) -> App:
         max_active_requests=None,
         created_by=CREATOR_ID,
     )
+
+
+def _persist_app(session: Session) -> App:
+    app = _app()
     session.add(app)
     session.commit()
     return app
 
 
-def _persist_workflow(
-    session: Session,
+def _workflow(
     *,
     workflow_id: str = WORKFLOW_ID,
     app_id: str = APP_ID,
@@ -93,13 +90,30 @@ def _persist_workflow(
         kind=kind.value,
     )
     workflow.id = workflow_id
+    return workflow
+
+
+def _persist_workflow(
+    session: Session,
+    *,
+    workflow_id: str = WORKFLOW_ID,
+    app_id: str = APP_ID,
+    tenant_id: str = TENANT_ID,
+    kind: WorkflowKind = WorkflowKind.STANDARD,
+) -> Workflow:
+    workflow = _workflow(
+        workflow_id=workflow_id,
+        app_id=app_id,
+        tenant_id=tenant_id,
+        kind=kind,
+    )
     session.add(workflow)
     session.commit()
     return workflow
 
 
-def _persist_end_user(session: Session) -> EndUser:
-    end_user = EndUser(
+def _end_user() -> EndUser:
+    return EndUser(
         id=END_USER_ID,
         tenant_id=TENANT_ID,
         app_id=APP_ID,
@@ -107,6 +121,10 @@ def _persist_end_user(session: Session) -> EndUser:
         name="End user",
         session_id="session-id",
     )
+
+
+def _persist_end_user(session: Session) -> EndUser:
+    end_user = _end_user()
     session.add(end_user)
     session.commit()
     return end_user
@@ -131,9 +149,14 @@ def _persist_snippet(
 
 
 class TestWorkflowAppGeneratorValidation:
-    @pytest.mark.usefixtures("sqlite_generator_scoped_session")
-    def test_generate_stream_joins_worker_after_response_exhaustion(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.usefixtures("sqlite_generator_session")
+    def test_generate_stream_joins_worker_after_response_exhaustion(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
         generator = WorkflowAppGenerator()
+        app = _persist_app(sqlite_session)
+        workflow = _persist_workflow(sqlite_session)
+        user = _persist_end_user(sqlite_session)
         worker_thread = Mock()
         worker_thread.is_alive.return_value = False
         app_config = WorkflowUIBasedAppConfig(
@@ -177,9 +200,9 @@ class TestWorkflowAppGeneratorValidation:
         )
 
         managed_stream = generator._generate(
-            app_model=SimpleNamespace(mode=AppMode.WORKFLOW, tenant_id="tenant"),
-            workflow=SimpleNamespace(id="workflow-id"),
-            user=SimpleNamespace(id="user"),
+            app_model=app,
+            workflow=workflow,
+            user=user,
             application_generate_entity=application_generate_entity,
             invoke_from=InvokeFrom.WEB_APP,
             workflow_execution_repository=SimpleNamespace(),
@@ -196,7 +219,7 @@ class TestWorkflowAppGeneratorValidation:
         self,
         unbound_session: Session,
     ):
-        workflow = SimpleNamespace(kind_or_standard="workflow")
+        workflow = _workflow()
 
         result = WorkflowAppGenerator._ensure_snippet_start_node_in_worker(
             session=unbound_session,
@@ -226,7 +249,7 @@ class TestWorkflowAppGeneratorValidation:
     ):
         workflow = _persist_workflow(sqlite_session, kind=WorkflowKind.SNIPPET)
         snippet = _persist_snippet(sqlite_session, snippet_id=APP_ID)
-        injected_workflow = SimpleNamespace(id="workflow-injected")
+        injected_workflow = _workflow(workflow_id="workflow-injected")
         ensure_start_node = Mock(return_value=injected_workflow)
         monkeypatch.setattr(
             "services.snippet_generate_service.SnippetGenerateService.ensure_start_node_for_worker",
@@ -252,10 +275,10 @@ class TestWorkflowAppGeneratorValidation:
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_iteration_generate(
-                app_model=SimpleNamespace(),
-                workflow=SimpleNamespace(),
+                app_model=_app(),
+                workflow=_workflow(),
                 node_id="",
-                user=SimpleNamespace(),
+                user=_end_user(),
                 args={"inputs": {}},
                 streaming=False,
                 session=sqlite_session,
@@ -263,10 +286,10 @@ class TestWorkflowAppGeneratorValidation:
 
         with pytest.raises(ValueError, match="inputs is required"):
             generator.single_iteration_generate(
-                app_model=SimpleNamespace(),
-                workflow=SimpleNamespace(),
+                app_model=_app(),
+                workflow=_workflow(),
                 node_id="node",
-                user=SimpleNamespace(),
+                user=_end_user(),
                 args={},
                 streaming=False,
                 session=sqlite_session,
@@ -277,16 +300,16 @@ class TestWorkflowAppGeneratorValidation:
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_loop_generate(
-                app_model=SimpleNamespace(),
-                workflow=SimpleNamespace(),
+                app_model=_app(),
+                workflow=_workflow(),
                 node_id="",
-                user=SimpleNamespace(),
+                user=_end_user(),
                 args=SimpleNamespace(inputs={}),
                 streaming=False,
                 session=sqlite_session,
             )
 
-    @pytest.mark.usefixtures("sqlite_generator_scoped_session")
+    @pytest.mark.usefixtures("sqlite_generator_session")
     def test_single_iteration_generate_includes_trace_session_id_in_extras(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -346,7 +369,7 @@ class TestWorkflowAppGeneratorValidation:
         assert len(draft_sessions) == 1
         assert draft_sessions[0] is sqlite_session
 
-    @pytest.mark.usefixtures("sqlite_generator_scoped_session")
+    @pytest.mark.usefixtures("sqlite_generator_session")
     def test_single_loop_generate_includes_trace_session_id_in_extras(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -408,10 +431,10 @@ class TestWorkflowAppGeneratorValidation:
 
         with pytest.raises(ValueError, match="inputs is required"):
             generator.single_loop_generate(
-                app_model=SimpleNamespace(),
-                workflow=SimpleNamespace(),
+                app_model=_app(),
+                workflow=_workflow(),
                 node_id="node",
-                user=SimpleNamespace(),
+                user=_end_user(),
                 args=SimpleNamespace(inputs=None),
                 streaming=False,
                 session=sqlite_session,
@@ -459,16 +482,16 @@ class TestWorkflowAppGeneratorHandleResponse:
         with pytest.raises(GenerateTaskStoppedError):
             generator._handle_response(
                 application_generate_entity=application_generate_entity,
-                workflow=SimpleNamespace(),
+                workflow=_workflow(),
                 queue_manager=SimpleNamespace(),
-                user=SimpleNamespace(),
+                user=_end_user(),
                 draft_var_saver_factory=lambda **kwargs: None,
                 stream=False,
             )
 
 
 class TestWorkflowAppGeneratorGenerate:
-    @pytest.mark.usefixtures("sqlite_generator_scoped_session")
+    @pytest.mark.usefixtures("sqlite_generator_session")
     def test_generate_skips_prepare_inputs_when_flag_set(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -590,9 +613,9 @@ class TestWorkflowAppGeneratorResume:
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
         result = generator.resume(
-            app_model=SimpleNamespace(id="app-id"),
-            workflow=SimpleNamespace(),
-            user=SimpleNamespace(id="end-user-id", session_id="session-id"),
+            app_model=_app(),
+            workflow=_workflow(),
+            user=_end_user(),
             application_generate_entity=application_generate_entity,
             graph_runtime_state=SimpleNamespace(),
             workflow_execution_repository=SimpleNamespace(),
@@ -603,7 +626,7 @@ class TestWorkflowAppGeneratorResume:
         assert captured_entity is not None
         trace_manager = captured_entity.trace_manager
         assert isinstance(trace_manager, DummyTraceQueueManager)
-        assert trace_manager.app_id == "app-id"
+        assert trace_manager.app_id == APP_ID
         assert trace_manager.user_id == "session-id"
 
     def test_resume_preserves_existing_trace_manager(self, monkeypatch: pytest.MonkeyPatch):
@@ -640,9 +663,9 @@ class TestWorkflowAppGeneratorResume:
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
         result = generator.resume(
-            app_model=SimpleNamespace(id="app-id"),
-            workflow=SimpleNamespace(),
-            user=SimpleNamespace(id="end-user-id", session_id="session-id"),
+            app_model=_app(),
+            workflow=_workflow(),
+            user=_end_user(),
             application_generate_entity=application_generate_entity,
             graph_runtime_state=SimpleNamespace(),
             workflow_execution_repository=SimpleNamespace(),
@@ -659,7 +682,6 @@ class TestWorkflowAppGeneratorWorker:
         self,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
-        sqlite_session_factory: sessionmaker[Session],
     ):
         generator = WorkflowAppGenerator()
         _persist_app(sqlite_session)
@@ -678,10 +700,6 @@ class TestWorkflowAppGeneratorWorker:
         monkeypatch.setattr(
             "core.app.apps.workflow.app_generator.preserve_flask_contexts",
             lambda flask_app, context_vars: contextlib.nullcontext(),
-        )
-        monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.session_factory.create_session",
-            sqlite_session_factory,
         )
         monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppRunner", _Runner)
         restore_workflow_run_graph = Mock()

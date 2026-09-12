@@ -1,22 +1,66 @@
 import uuid
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.agent_chat.app_config_manager import (
     AgentChatAppConfigManager,
 )
 from core.entities.agent_entities import PlanningStrategy
+from models.enums import ConversationFromSource
+from models.model import App, AppMode, AppModelConfig, Conversation
+
+
+def _app() -> App:
+    return App(
+        id="app1",
+        tenant_id="tenant",
+        name="Agent chat app",
+        description="",
+        mode=AppMode.AGENT_CHAT,
+        enable_site=False,
+        enable_api=False,
+    )
+
+
+def _config() -> AppModelConfig:
+    return AppModelConfig(app_id="app1")
+
+
+def _conversation() -> Conversation:
+    return Conversation(
+        id="conv",
+        app_id="app1",
+        mode=AppMode.AGENT_CHAT,
+        name="Conversation",
+        inputs={},
+        from_source=ConversationFromSource.CONSOLE,
+    )
+
+
+_CURRENT_SESSION: Session | None = None
+
+
+@pytest.fixture(autouse=True)
+def _bind_unbound_session(unbound_session: Session):
+    global _CURRENT_SESSION
+    _CURRENT_SESSION = unbound_session
+    yield
+    _CURRENT_SESSION = None
+
+
+def _session() -> Session:
+    assert _CURRENT_SESSION is not None
+    return _CURRENT_SESSION
 
 
 class TestAgentChatAppConfigManagerGetAppConfig:
     def test_get_app_config_override_config(self, mocker: MockerFixture):
-        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent-chat")
-        app_model_config = mocker.MagicMock(id="cfg1")
-        app_model_config.to_dict.return_value = {"ignored": True}
+        app_model = _app()
+        app_model_config = _config()
 
         override_config = {"model": {"provider": "p"}}
 
@@ -49,11 +93,15 @@ class TestAgentChatAppConfigManagerGetAppConfig:
         assert result.external_data_variables == "external"
 
     def test_get_app_config_conversation_specific(self, mocker: MockerFixture):
-        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent-chat")
-        app_model_config = mocker.MagicMock(id="cfg1")
-        app_model_config.to_dict.return_value = {"model": {"provider": "p"}}
+        app_model = _app()
+        app_model_config = _config()
         annotation_reply = {"enabled": False}
-        conversation = mocker.MagicMock()
+        conversation = _conversation()
+        to_dict = mocker.patch.object(
+            AppModelConfig,
+            "to_dict",
+            return_value={"model": {"provider": "p"}},
+        )
 
         mocker.patch("core.app.apps.agent_chat.app_config_manager.ModelConfigManager.convert")
         mocker.patch("core.app.apps.agent_chat.app_config_manager.PromptTemplateConfigManager.convert")
@@ -78,15 +126,19 @@ class TestAgentChatAppConfigManagerGetAppConfig:
             annotation_reply=annotation_reply,
         )
 
-        assert result.app_model_config_dict == app_model_config.to_dict.return_value
+        assert result.app_model_config_dict == {"model": {"provider": "p"}}
         assert result.app_model_config_from.value == "conversation-specific-config"
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
     def test_get_app_config_latest_config(self, mocker: MockerFixture):
-        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent-chat")
-        app_model_config = mocker.MagicMock(id="cfg1")
-        app_model_config.to_dict.return_value = {"model": {"provider": "p"}}
+        app_model = _app()
+        app_model_config = _config()
         annotation_reply = {"enabled": False}
+        to_dict = mocker.patch.object(
+            AppModelConfig,
+            "to_dict",
+            return_value={"model": {"provider": "p"}},
+        )
 
         mocker.patch("core.app.apps.agent_chat.app_config_manager.ModelConfigManager.convert")
         mocker.patch("core.app.apps.agent_chat.app_config_manager.PromptTemplateConfigManager.convert")
@@ -112,7 +164,7 @@ class TestAgentChatAppConfigManagerGetAppConfig:
         )
 
         assert result.app_model_config_from.value == "app-latest-config"
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
 
 class TestAgentChatAppConfigManagerConfigValidate:
@@ -186,7 +238,7 @@ class TestAgentChatAppConfigManagerConfigValidate:
             side_effect=lambda tenant_id, cfg: return_with_key("moderation"),
         )
 
-        filtered = AgentChatAppConfigManager.config_validate("tenant", config, mocker.MagicMock())
+        filtered = AgentChatAppConfigManager.config_validate("tenant", config, _session())
         assert set(filtered.keys()) == {
             "model",
             "user_input_form",
@@ -207,7 +259,7 @@ class TestAgentChatAppConfigManagerConfigValidate:
 class TestValidateAgentModeAndSetDefaults:
     def test_defaults_when_missing(self):
         config = {}
-        updated, keys = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, MagicMock())
+        updated, keys = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, _session())
         assert "agent_mode" in updated
         assert updated["agent_mode"]["enabled"] is False
         assert updated["agent_mode"]["tools"] == []
@@ -220,37 +272,37 @@ class TestValidateAgentModeAndSetDefaults:
     def test_agent_mode_type_validation(self, agent_mode):
         with pytest.raises(ValueError):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
-                "tenant", {"agent_mode": agent_mode}, MagicMock()
+                "tenant", {"agent_mode": agent_mode}, _session()
             )
 
     def test_agent_mode_empty_list_defaults(self):
         config = {"agent_mode": []}
-        updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, MagicMock())
+        updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, _session())
         assert updated["agent_mode"]["enabled"] is False
         assert updated["agent_mode"]["tools"] == []
 
     def test_enabled_must_be_bool(self):
         with pytest.raises(ValueError):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
-                "tenant", {"agent_mode": {"enabled": "yes"}}, MagicMock()
+                "tenant", {"agent_mode": {"enabled": "yes"}}, _session()
             )
 
     def test_strategy_must_be_valid(self):
         with pytest.raises(ValueError):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
-                "tenant", {"agent_mode": {"enabled": True, "strategy": "invalid"}}, MagicMock()
+                "tenant", {"agent_mode": {"enabled": True, "strategy": "invalid"}}, _session()
             )
 
     def test_tools_must_be_list(self):
         with pytest.raises(ValueError):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
-                "tenant", {"agent_mode": {"enabled": True, "tools": "not-list"}}, MagicMock()
+                "tenant", {"agent_mode": {"enabled": True, "tools": "not-list"}}, _session()
             )
 
     def test_old_tool_dataset_requires_id(self):
         with pytest.raises(ValueError):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
-                "tenant", {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True}}]}}, MagicMock()
+                "tenant", {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True}}]}}, _session()
             )
 
     def test_old_tool_dataset_id_must_be_uuid(self):
@@ -258,7 +310,7 @@ class TestValidateAgentModeAndSetDefaults:
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
                 {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True, "id": "bad"}}]}},
-                MagicMock(),
+                _session(),
             )
 
     def test_old_tool_dataset_id_not_exists(self, mocker: MockerFixture):
@@ -271,7 +323,7 @@ class TestValidateAgentModeAndSetDefaults:
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
                 {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True, "id": dataset_id}}]}},
-                MagicMock(),
+                _session(),
             )
 
     def test_old_tool_enabled_must_be_bool(self):
@@ -279,7 +331,7 @@ class TestValidateAgentModeAndSetDefaults:
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
                 {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": "yes", "id": str(uuid.uuid4())}}]}},
-                MagicMock(),
+                _session(),
             )
 
     @pytest.mark.parametrize("missing_key", ["provider_type", "provider_id", "tool_name", "tool_parameters"])
@@ -288,7 +340,7 @@ class TestValidateAgentModeAndSetDefaults:
         tool.pop(missing_key, None)
         with pytest.raises(ValueError):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
-                "tenant", {"agent_mode": {"enabled": True, "tools": [tool]}}, MagicMock()
+                "tenant", {"agent_mode": {"enabled": True, "tools": [tool]}}, _session()
             )
 
     def test_valid_old_and_new_style_tools(self, mocker: MockerFixture):
@@ -313,6 +365,6 @@ class TestValidateAgentModeAndSetDefaults:
             }
         }
 
-        updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, MagicMock())
+        updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, _session())
         assert updated["agent_mode"]["tools"][0]["dataset"]["enabled"] is False
         assert updated["agent_mode"]["tools"][1]["enabled"] is False
