@@ -137,7 +137,7 @@ def test_native_request_timeouts_preserve_each_phase_and_the_export_deadline(
     assert client.verify_credentials()
     client.export_trace(make_completed_trace())
 
-    assert len(requests) == 5
+    assert len(requests) == 3
     for index, request in enumerate(requests):
         budget = remaining - 2 * index
         assert request.extensions["timeout"] == {

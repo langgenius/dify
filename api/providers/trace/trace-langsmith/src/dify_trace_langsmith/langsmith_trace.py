@@ -1,5 +1,6 @@
 """Create LangSmith runs synchronously, with explicit IDs and ancestor order."""
 
+import json
 from random import Random
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, urlsplit
@@ -221,6 +222,32 @@ class LangSmithTraceClient:
             return "https://smith.langchain.com/"
         return "https://smith.langchain.com/"
 
+    def _send_runs(self, runs: list[dict[str, Any]]) -> None:
+        """Use native batch defaults, counting the exact JSON envelope and UTF-8 bytes."""
+        batch: list[dict[str, Any]] = []
+        batch_bytes = len(b'{"post":[]}')
+        for run in runs:
+            run_bytes = len(json.dumps(run, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode())
+            if batch and (len(batch) == 100 or batch_bytes + 1 + run_bytes > 20 * 1024 * 1024):
+                self._send_run_batch(batch)
+                batch = []
+                batch_bytes = len(b'{"post":[]}')
+            batch_bytes += run_bytes + int(bool(batch))
+            batch.append(run)
+        if batch:
+            self._send_run_batch(batch)
+
+    def _send_run_batch(self, runs: list[dict[str, Any]]) -> None:
+        try:
+            self.http.request("POST", "runs/batch", json={"post": runs})
+        except TraceExportError as error:
+            if str(error) != "provider_http_413" or len(runs) == 1:
+                raise
+            # Self-hosted receivers can impose a smaller body limit than the SDK default.
+            middle = len(runs) // 2
+            self._send_run_batch(runs[:middle])
+            self._send_run_batch(runs[middle:])
+
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
@@ -327,8 +354,7 @@ class LangSmithTraceClient:
         # Build both representations before sending, and keep hybrid progress on the owned delivery.
         state = self.export_state if self.mode == "hybrid" else None
         if self.mode != "otel" and not (state and state.has_completed_signal("langsmith_native")):
-            for run in runs:
-                self.http.request("POST", "runs/batch", json={"post": [run]})
+            self._send_runs(runs)
             if state:
                 state.complete_signal("langsmith_native")
         if (

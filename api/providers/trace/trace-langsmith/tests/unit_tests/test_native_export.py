@@ -109,7 +109,7 @@ def test_langsmith_native_llm_prompt_usage_cost_and_model(monkeypatch: pytest.Mo
     original = trace.model_dump_json()
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(trace)
-    run = request.call_args.kwargs["json"]["post"][0]
+    run = request.call_args.kwargs["json"]["post"][-1]
     assert run["inputs"] == {"messages": [{"role": "user", "content": "Rendered prompt"}]}
     assert run["outputs"]["choices"][0] == {
         "index": 0,
@@ -165,18 +165,18 @@ def test_privacy_switches_hide_content_and_captured_copies_without_mutating_trac
     client.export_trace(trace)
 
     for call in request.call_args_list:
-        run = call.kwargs["json"]["post"][0]
-        assert bool(run["inputs"]) is not hide_inputs
-        assert bool(run["outputs"]) is not hide_outputs
-        metadata = run["extra"]["metadata"]
-        assert bool(metadata) is not hide_metadata
-        if hide_inputs:
-            assert not {"dify.inputs", "original_inputs", "query"}.intersection(metadata)
-        if hide_outputs:
-            assert "dify.outputs" not in metadata
-        if hide_inputs or hide_outputs:
-            assert not {"files", "process_data", "dify.events"}.intersection(metadata)
-    assert request.call_args.kwargs["json"]["post"][0]["extra"]["invocation_params"] == {"temperature": 0.2}
+        for run in call.kwargs["json"]["post"]:
+            assert bool(run["inputs"]) is not hide_inputs
+            assert bool(run["outputs"]) is not hide_outputs
+            metadata = run["extra"]["metadata"]
+            assert bool(metadata) is not hide_metadata
+            if hide_inputs:
+                assert not {"dify.inputs", "original_inputs", "query"}.intersection(metadata)
+            if hide_outputs:
+                assert "dify.outputs" not in metadata
+            if hide_inputs or hide_outputs:
+                assert not {"files", "process_data", "dify.events"}.intersection(metadata)
+    assert request.call_args.kwargs["json"]["post"][-1]["extra"]["invocation_params"] == {"temperature": 0.2}
     assert trace.model_dump_json() == original
 
 
@@ -187,7 +187,7 @@ def test_langsmith_external_root_matches_trace_id_and_parent_receipts(monkeypatc
     client, request = make_client_with_transport(monkeypatch)
     receipt = client.export_trace(trace).spans[trace.root_span_id]
     root = request.call_args_list[0].kwargs["json"]["post"][0]
-    child = request.call_args.kwargs["json"]["post"][0]
+    child = request.call_args.kwargs["json"]["post"][-1]
     assert root["id"] == root["trace_id"] == receipt["span_id"] == external_id
     assert child["trace_id"] == child["parent_run_id"] == external_id
     parent_order = receipt["dotted_order"]
@@ -206,7 +206,7 @@ def test_langsmith_untimed_children_are_marked_instants(missing: dict, monkeypat
     trace = trace.model_copy(update={"spans": (trace.spans[0], child)})
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(trace)
-    run = request.call_args.kwargs["json"]["post"][0]
+    run = request.call_args.kwargs["json"]["post"][-1]
     anchor = child.started_at or trace.spans[0].started_at
     assert anchor is not None
     assert run["start_time"] == run["end_time"] == anchor.isoformat()
@@ -240,7 +240,7 @@ def test_langsmith_keeps_multimodal_blocks_and_tool_calls(monkeypatch: pytest.Mo
     trace = trace.model_copy(update={"spans": (trace.spans[0], child)})
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(trace)
-    run = request.call_args.kwargs["json"]["post"][0]
+    run = request.call_args.kwargs["json"]["post"][-1]
     assert run["inputs"]["messages"][0]["content"] == content
     assert run["outputs"]["choices"][0]["message"]["tool_calls"] == tool_calls
     assert run["outputs"]["choices"][0]["finish_reason"] == "tool_calls"
@@ -306,7 +306,7 @@ def test_langsmith_preserves_operation_tags_and_native_run_types(
 
     client.export_trace(trace)
 
-    run = request.call_args.kwargs["json"]["post"][0]
+    run = request.call_args.kwargs["json"]["post"][-1]
     assert run["run_type"] == expected_run_type
     assert run["tags"] == ["dify", *expected_tags]
     if span_type == "llm":
@@ -339,7 +339,7 @@ def test_langsmith_preserves_cancelled_workflow_reason_without_inventing_errors(
 
     client.export_trace(trace)
 
-    run = request.call_args.kwargs["json"]["post"][0]
+    run = request.call_args.kwargs["json"]["post"][-1]
     assert run["error"] == expected_error
 
 
@@ -369,9 +369,10 @@ def test_langsmith_captured_auxiliary_operations_keep_tool_category(monkeypatch:
     captured = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(captured)
-    assert len(request.call_args_list) == 4
-    for call in request.call_args_list[1:]:
-        run = call.kwargs["json"]["post"][0]
+    request.assert_called_once()
+    runs = request.call_args.kwargs["json"]["post"]
+    assert len(runs) == 4
+    for run in runs[1:]:
         assert run["run_type"] == "tool"
         assert run["extra"]["metadata"]["dify.usage"]["total_tokens"] == 8
 
@@ -410,6 +411,6 @@ def test_langsmith_captured_workflow_model_categories(
     assert trace.spans[-1].inputs == prompts
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(trace)
-    run = request.call_args.kwargs["json"]["post"][0]
+    run = request.call_args.kwargs["json"]["post"][-1]
     assert run["run_type"] == ("llm" if model_mode == "chat" else "tool")
     assert run["inputs"] == ({"messages": prompts} if node_type == "llm" else original_inputs)
