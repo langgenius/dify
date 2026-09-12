@@ -125,3 +125,22 @@ def test_trace_copy_serializes_workflow_variable_values_with_redaction_and_limit
 )
 def test_trace_copy_removes_url_credentials_without_dropping_public_query(url: str, expected: JsonValue) -> None:
     assert copy_trace_value(url) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "truncated"),
+    [
+        ("Explain [trace example] syntax and [truncated] text", False),
+        ({"_trace_truncated": True, "password": "private"}, False),
+        ({"url": "https://user:password@files.example/a?token=private"}, False),
+        ("x" * 100_000, True),
+        (["x"] * 257, True),
+        ({str(index): index for index in range(257)}, True),
+        ({"x" * 257: "value"}, True),
+        (2**1025, True),
+    ],
+)
+def test_copy_reports_actual_limits_without_interpreting_user_text(value: object, truncated: bool) -> None:
+    signals: list[bool] = []
+    copy_trace_value(value, on_truncate=lambda: signals.append(True))
+    assert signals == ([True] if truncated else [])
