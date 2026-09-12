@@ -44,10 +44,15 @@ type FeedbackTooltipProps = {
 }
 
 const feedbackTooltipClassName = 'max-w-[260px]'
-const answerActiveFlexClassName = 'group-hover:flex group-has-[[data-popup-open]]:flex'
-const answerActiveBlockClassName = 'group-hover:block group-has-[[data-popup-open]]:block'
+// On touch-only devices there is no hover, so the action bar must be visible
+// without a hover state. On hover-capable devices we keep the desktop pattern
+// (hidden until the parent message is hovered or a popup is open inside it).
+const answerActiveFlexClassName =
+  'flex [@media(hover:hover)]:hidden [@media(hover:hover)]:group-hover:flex [@media(hover:hover)]:group-has-[[data-popup-open]]:flex'
+const answerActiveBlockClassName =
+  'block [@media(hover:hover)]:hidden [@media(hover:hover)]:group-hover:block [@media(hover:hover)]:group-has-[[data-popup-open]]:block'
 const feedbackActionsClassName =
-  'flex pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100'
+  'flex pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100'
 const accentPressedClassName =
   'data-pressed:bg-state-accent-active data-pressed:text-text-accent data-pressed:hover:bg-state-accent-active-alt'
 const destructivePressedClassName =
@@ -457,14 +462,14 @@ function Operation({
           </DialogContent>
         </Dialog>
         {showPromptLog && !isOpeningStatement && (
-          <div className={cn('hidden', answerActiveBlockClassName)}>
+          <div className={cn('block', answerActiveBlockClassName)}>
             <Log logItem={item} />
           </div>
         )}
         {!isOpeningStatement && (
           <div
             className={cn(
-              'ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+              'ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
               answerActiveFlexClassName,
             )}
             data-testid="operation-actions"
