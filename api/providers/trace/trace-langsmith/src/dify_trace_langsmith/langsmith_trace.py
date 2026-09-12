@@ -1,7 +1,7 @@
 """Create LangSmith runs synchronously, with explicit IDs and ancestor order."""
 
 from random import Random
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, urlsplit
 from uuid import UUID
 
@@ -12,6 +12,10 @@ from core.helper.ssl_context import create_ssl_context
 from core.ops.provider_export import TraceExportError, TraceProviderHttpClient, export_span_id, span_attributes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_langsmith.config import LangSmithConfig
+from dify_trace_langsmith.otel_trace import LangSmithOtlpTraceClient
+
+if TYPE_CHECKING:
+    from core.ops.trace_export_state import TraceExportState
 
 
 def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
@@ -174,6 +178,9 @@ class LangSmithTraceClient:
         self.hide_outputs = bool(runtime_settings.get("hide_outputs", False))
         self.hide_metadata = bool(runtime_settings.get("hide_metadata", False))
         self.sampling_rate = float(runtime_settings.get("sampling_rate", 1.0))
+        self.mode = runtime_settings.get("mode", "langsmith")
+        self.otel = LangSmithOtlpTraceClient(runtime_settings["otel"]) if self.mode != "langsmith" else None
+        self.export_state: TraceExportState | None = None
         api_key = self.config.api_key.strip().strip('"').strip("'")
         headers = {"x-api-key": api_key} if api_key else {}
         if authorization := runtime_settings.get("authorization"):
@@ -188,6 +195,8 @@ class LangSmithTraceClient:
             connect_timeout=10,
             ssl_context=create_ssl_context(runtime_settings.get("tls", {})),
         )
+        if self.otel is not None:
+            self.otel.http.deadline = self.http.deadline
 
     def verify_credentials(self) -> bool:
         self.http.request("GET", "sessions", params={"name": self.config.project, "limit": 1})
@@ -313,7 +322,25 @@ class LangSmithTraceClient:
                 "dotted_order": dotted_order,
                 "sampled": True,
             }
-        # Build and validate every run before posting; retries retain IDs and ancestor order.
-        for run in runs:
-            self.http.request("POST", "runs/batch", json={"post": [run]})
+        otel_sampled = self.otel is not None and self.otel.is_sampled(trace_id, parent_span)
+        otel_request = self.otel.build_request(runs) if self.otel is not None and otel_sampled else None
+        # Build both representations before sending, and keep hybrid progress on the owned delivery.
+        state = self.export_state if self.mode == "hybrid" else None
+        if self.mode != "otel" and not (state and state.has_completed_signal("langsmith_native")):
+            for run in runs:
+                self.http.request("POST", "runs/batch", json={"post": [run]})
+            if state:
+                state.complete_signal("langsmith_native")
+        if (
+            otel_request is not None
+            and self.otel is not None
+            and not (state and state.has_completed_signal("langsmith_otel"))
+        ):
+            self.otel.http.deadline = self.http.deadline
+            self.otel.send_traces(otel_request)
+            if state:
+                state.complete_signal("langsmith_otel")
+        if self.otel is not None:
+            for receipt in receipts.values():
+                receipt["otel_sampled"] = otel_sampled
         return ExportedParentSpans(spans=receipts)
