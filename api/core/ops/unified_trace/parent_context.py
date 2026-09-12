@@ -93,14 +93,19 @@ def parent_destination_from_config(
     unified: bool,
 ) -> ParentDestination:
     """Build destination compatibility from non-secret persisted fields."""
+    # Imported lazily, like the registry lookup in resolve_parent_destination, to keep this
+    # module importable from the registry's own provider entries.
+    from core.ops.unified_trace.registry import unified_scope_key_field
+
     endpoint = tracing_config.get("endpoint")
-    project = tracing_config.get("project")
+    scope_key_field = unified_scope_key_field(provider)
+    scope_key = tracing_config.get(scope_key_field) if scope_key_field else None
     return ParentDestination(
         provider=provider,
         scope=destination_scope(
             provider,
             endpoint if isinstance(endpoint, str) else "",
-            project if isinstance(project, str) else "",
+            scope_key if isinstance(scope_key, str) else "",
         ),
         unified=unified,
     )
@@ -132,16 +137,11 @@ def resolve_parent_destination(parent_workflow_run_id: str) -> ParentDestination
         if trace_config is None or not isinstance(trace_config.tracing_config, Mapping):
             return None
 
-        unified = False
-        if dify_config.OPS_TRACE_UNIFIED_ENABLED:
-            from core.ops.unified_trace.registry import unified_provider_config_map
+        from core.ops.unified_trace.registry import is_unified_provider
 
-            try:
-                unified_provider_config_map[provider]
-                unified = True
-            except KeyError:
-                pass
-        return parent_destination_from_config(provider, trace_config.tracing_config, unified=unified)
+        return parent_destination_from_config(
+            provider, trace_config.tracing_config, unified=is_unified_provider(provider)
+        )
 
 
 class ParentContextCoordinator:

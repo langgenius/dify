@@ -13,6 +13,14 @@ class TraceParentContextAccessError(RetryableTraceDispatchError):
     """Raised when unified parent context storage is temporarily unavailable."""
 
 
+class TraceDispatchRejectedError(RuntimeError):
+    """Raised when a provider rejected a trace with a terminal error that a retry cannot fix.
+
+    Typical causes are a wrong endpoint or invalid credentials. Celery treats this as a
+    terminal failure and does not retry the trace task.
+    """
+
+
 class InvalidTraceParentContextError(RuntimeError):
     """Raised when stored unified parent context cannot be safely restored."""
 

@@ -8,6 +8,7 @@ import type {
   LangSmithConfig,
   MLflowConfig,
   OpikConfig,
+  OTelConfig,
   PhoenixConfig,
   TencentConfig,
   WeaveConfig,
@@ -45,6 +46,7 @@ export type PopupProps = {
   mlflowConfig: MLflowConfig | null
   databricksConfig: DatabricksConfig | null
   tencentConfig: TencentConfig | null
+  otelConfig: OTelConfig | null
   onConfigUpdated: (
     provider: TracingProvider,
     payload:
@@ -57,7 +59,8 @@ export type PopupProps = {
       | AliyunConfig
       | TencentConfig
       | MLflowConfig
-      | DatabricksConfig,
+      | DatabricksConfig
+      | OTelConfig,
   ) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
@@ -79,6 +82,7 @@ const ConfigPopup: FC<PopupProps> = ({
   mlflowConfig,
   databricksConfig,
   tencentConfig,
+  otelConfig,
   onConfigUpdated,
   onConfigRemoved,
 }) => {
@@ -120,7 +124,8 @@ const ConfigPopup: FC<PopupProps> = ({
         | AliyunConfig
         | MLflowConfig
         | DatabricksConfig
-        | TencentConfig,
+        | TencentConfig
+        | OTelConfig,
     ) => {
       onConfigUpdated(currentProvider!, payload)
       hideConfigModal()
@@ -143,7 +148,8 @@ const ConfigPopup: FC<PopupProps> = ({
     aliyunConfig &&
     mlflowConfig &&
     databricksConfig &&
-    tencentConfig
+    tencentConfig &&
+    otelConfig
   const providerAllNotConfigured =
     !arizeConfig &&
     !phoenixConfig &&
@@ -154,7 +160,8 @@ const ConfigPopup: FC<PopupProps> = ({
     !aliyunConfig &&
     !mlflowConfig &&
     !databricksConfig &&
-    !tencentConfig
+    !tencentConfig &&
+    !otelConfig
 
   const switchContent = (
     <Switch
@@ -293,6 +300,19 @@ const ConfigPopup: FC<PopupProps> = ({
       key="tencent-provider-panel"
     />
   )
+
+  const otelPanel = (
+    <ProviderPanel
+      type={TracingProvider.otel}
+      readOnly={readOnly}
+      config={otelConfig}
+      hasConfigured={!!otelConfig}
+      onConfig={handleOnConfig(TracingProvider.otel)}
+      isChosen={chosenProvider === TracingProvider.otel}
+      onChoose={handleOnChoose(TracingProvider.otel)}
+      key="otel-provider-panel"
+    />
+  )
   const configuredProviderPanel = () => {
     const configuredPanels: JSX.Element[] = []
 
@@ -315,6 +335,8 @@ const ConfigPopup: FC<PopupProps> = ({
     if (databricksConfig) configuredPanels.push(databricksPanel)
 
     if (tencentConfig) configuredPanels.push(tencentPanel)
+
+    if (otelConfig) configuredPanels.push(otelPanel)
 
     return configuredPanels
   }
@@ -342,6 +364,8 @@ const ConfigPopup: FC<PopupProps> = ({
 
     if (!tencentConfig) notConfiguredPanels.push(tencentPanel)
 
+    if (!otelConfig) notConfiguredPanels.push(otelPanel)
+
     return notConfiguredPanels
   }
 
@@ -355,6 +379,7 @@ const ConfigPopup: FC<PopupProps> = ({
     if (currentProvider === TracingProvider.opik) return opikConfig
     if (currentProvider === TracingProvider.aliyun) return aliyunConfig
     if (currentProvider === TracingProvider.tencent) return tencentConfig
+    if (currentProvider === TracingProvider.otel) return otelConfig
     return weaveConfig
   }
 
@@ -421,6 +446,7 @@ const ConfigPopup: FC<PopupProps> = ({
               {phoenixPanel}
               {aliyunPanel}
               {tencentPanel}
+              {otelPanel}
             </div>
           </>
         ) : (

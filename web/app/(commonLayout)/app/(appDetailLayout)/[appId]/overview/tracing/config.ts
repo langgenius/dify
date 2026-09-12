@@ -12,4 +12,5 @@ export const docURL = {
   [TracingProvider.mlflow]: 'https://mlflow.org/docs/latest/genai/',
   [TracingProvider.databricks]: 'https://docs.databricks.com/aws/en/mlflow3/genai/tracing/',
   [TracingProvider.tencent]: 'https://cloud.tencent.com/document/product/248/116531',
+  [TracingProvider.otel]: 'https://opentelemetry.io/docs/collector/',
 }
