@@ -13,6 +13,7 @@ from core.helper.ssl_context import read_tls_files
 from core.ops.provider_config import BaseTracingConfig
 from core.ops.utils import validate_integer_id, validate_url_with_path
 from dify_trace_mlflow.deployment_auth import resolve_aws_credentials, resolve_deployment_auth
+from dify_trace_mlflow.otlp_export import capture_otlp_settings
 from dify_trace_mlflow.request_auth import capture_netrc_auth, capture_request_auth_provider
 from dify_trace_mlflow.request_headers import capture_request_headers
 
@@ -105,6 +106,7 @@ class MLflowConfig(BaseTracingConfig):
             "request_headers": capture_request_headers(),
             "span_attribute_limits": _load_span_attribute_limits(),
             "event_limits": _load_event_limits(),
+            "otlp": capture_otlp_settings(),
         }
         if os.environ.get("MLFLOW_TRACKING_AUTH") in {"kubernetes", "kubernetes-namespaced"}:
             # These built-in Requests auth objects suppress netrc and URL authentication.
@@ -205,6 +207,7 @@ class DatabricksConfig(BaseTracingConfig):
             "request_headers": capture_request_headers(),
             "span_attribute_limits": _load_span_attribute_limits(),
             "event_limits": _load_event_limits(),
+            "otlp": capture_otlp_settings(),
         }
         sdk_enabled = os.environ.get("MLFLOW_ENABLE_DB_SDK", "true").lower()
         if sdk_enabled not in {"true", "false", "1", "0"}:
