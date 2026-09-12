@@ -21,7 +21,13 @@ def parse_json_markdown(json_string: str):
         # than one JSON value in a row, and slicing to the last bracket hands
         # all of them to json.loads() at once, which fails with "Extra data".
         # Decode only the first complete value instead.
-        if "`" not in json_string:
+        #
+        # A lone backtick is not a reliable "this is fenced" signal: it can
+        # legitimately occur inside a JSON string value (e.g. "use `print`")
+        # or in surrounding prose. Only a real markdown code fence (```) means
+        # the block below - which anchors on the last bracket and therefore
+        # still fails on multiple fenced blocks - should run instead.
+        if "```" not in json_string:
             first_value, _ = json.JSONDecoder().raw_decode(json_string, start_index)
             return first_value
 
