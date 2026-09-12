@@ -49,6 +49,8 @@ from core.ops.provider_export import (
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 
 if TYPE_CHECKING:
+    import grpc  # pyrefly: ignore[untyped-import]
+
     from core.ops.trace_export_state import TraceExportState
 
 
@@ -304,11 +306,15 @@ class OtlpTraceClient:
         metrics_http: TraceProviderHttpClient | None = None,
         metrics_protocol: str | None = None,
         grpc_credentials: Mapping[str, Any] | None = None,
+        grpc_compression: grpc.Compression | None = None,
+        grpc_target: str | None = None,
     ):
         self.http = TraceProviderHttpClient(endpoint, headers, request_timeout=request_timeout, ssl_context=ssl_context)
         self.metrics_http = metrics_http
         self.metrics_protocol = metrics_protocol or protocol
         self.grpc_credentials = dict(grpc_credentials or {})
+        self.grpc_compression = grpc_compression
+        self.grpc_target = grpc_target
         self.resource = Resource(attributes=otlp_attributes(resource_attributes))
         self.project_url = project_url
         self.protocol = protocol
@@ -389,7 +395,7 @@ class OtlpTraceClient:
 
         http_client = http_client if http_client is not None else self.http
         endpoint = urlsplit(http_client.endpoint)
-        target = endpoint.netloc if endpoint.port else f"{endpoint.hostname}:4317"
+        target = self.grpc_target or (endpoint.netloc if endpoint.port else f"{endpoint.hostname}:4317")
         # An explicit Dify SSRF CONNECT proxy takes precedence. Otherwise let
         # gRPC discover process proxy settings and apply its native bypass rules.
         proxy = dify_config.SSRF_PROXY_ALL_URL or (
@@ -414,10 +420,13 @@ class OtlpTraceClient:
         credentials = self.grpc_credentials.get(signal)
         channel = (
             grpc.secure_channel(
-                target, credentials if credentials is not None else grpc.ssl_channel_credentials(), options=options
+                target,
+                credentials if credentials is not None else grpc.ssl_channel_credentials(),
+                options=options,
+                compression=self.grpc_compression,
             )
             if endpoint.scheme == "https"
-            else grpc.insecure_channel(target, options=options)
+            else grpc.insecure_channel(target, options=options, compression=self.grpc_compression)
         )
         service = "TraceService" if signal == "trace" else "MetricsService"
         try:

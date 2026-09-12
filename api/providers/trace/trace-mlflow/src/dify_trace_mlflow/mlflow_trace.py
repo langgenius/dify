@@ -5,7 +5,8 @@ import json
 from collections.abc import Mapping
 from functools import partial
 from ssl import SSLContext
-from typing import Any, override
+from time import monotonic
+from typing import TYPE_CHECKING, Any, override
 from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 from uuid import UUID
 
@@ -41,8 +42,12 @@ from core.ops.provider_export import (
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from dify_trace_mlflow.deployment_auth import sign_aws_request
+from dify_trace_mlflow.otlp_export import MLflowOtlpClient
 from dify_trace_mlflow.request_auth import load_request_auth_provider, send_authenticated_request
 from dify_trace_mlflow.request_headers import MLflowRequestHeaders
+
+if TYPE_CHECKING:
+    from core.ops.trace_export_state import TraceExportState
 
 
 def _prepare_timed_spans(completed_trace: CompletedTrace) -> tuple[TraceSpan, ...]:
@@ -315,6 +320,7 @@ class MLflowTraceClient:
         self._aws_sigv4 = dict(runtime_settings["aws_sigv4"]) if runtime_settings.get("aws_sigv4") else None
         self._request_auth_provider = load_request_auth_provider(runtime_settings.get("request_auth_provider"))
         self._request_headers = MLflowRequestHeaders(runtime_settings.get("request_headers", {}))
+        self.export_state: TraceExportState | None = None
         if isinstance(self.config, DatabricksConfig):
             self._databricks_tls_settings = runtime_settings
             endpoint = _normalize_databricks_host(self.config.host)
@@ -363,6 +369,9 @@ class MLflowTraceClient:
                 use_implicit_auth=runtime_settings.get("use_implicit_auth", True),
                 request_timeout=runtime_settings.get("request_timeout", 120),
             )
+        otlp_settings = runtime_settings.get("otlp", {})
+        self.otlp = MLflowOtlpClient(otlp_settings, self.get_project_url()) if otlp_settings else None
+        self.dual_export = bool(otlp_settings.get("dual_export"))
 
     def _authenticate_databricks(self) -> None:
         if not isinstance(self.config, DatabricksConfig):
@@ -535,6 +544,111 @@ class MLflowTraceClient:
                 }
             )
         completed_trace = completed_trace.model_copy(update={"spans": _prepare_timed_spans(completed_trace)})
+        if self.otlp is None:
+            return self._export_native_trace(completed_trace, trace_id, parent_span)
+        collector_parent = (
+            {**parent_span, "trace_id": parent_span.get("otlp_trace_id", parent_span["trace_id"])}
+            if parent_span
+            else None
+        )
+        otlp_trace_id = _parse_trace_uuid(str(collector_parent["trace_id"])) if collector_parent else trace_id
+        native_receipt = (
+            self.export_state.completed_signal_receipt("mlflow_native")
+            if self.dual_export and self.export_state
+            else None
+        )
+        failures: list[Exception] = []
+        if not (self.export_state and self.export_state.has_completed_signal("mlflow_otlp")):
+            try:
+                self._send_collector_trace(
+                    completed_trace,
+                    otlp_trace_id,
+                    collector_parent,
+                    reserve_native_time=self.dual_export and native_receipt is None,
+                )
+            except Exception as error:
+                failures.append(error)
+            else:
+                if self.export_state:
+                    self.export_state.complete_signal("mlflow_otlp")
+        receipts = ExportedParentSpans(
+            spans={
+                span.span_id: {
+                    "trace_id": otlp_trace_id,
+                    "span_id": export_span_id(completed_trace, span.span_id),
+                    "sampled": True,
+                }
+                for span in completed_trace.spans
+            }
+        )
+        if self.dual_export:
+            if native_receipt is not None:
+                receipts = ExportedParentSpans(
+                    spans={
+                        span.span_id: {**native_receipt, "span_id": export_span_id(completed_trace, span.span_id)}
+                        for span in completed_trace.spans
+                    }
+                )
+            else:
+                # Native processors are independent: a collector failure must not suppress native delivery.
+                try:
+                    receipts = self._export_native_trace(completed_trace, trace_id, parent_span)
+                except Exception as error:
+                    failures.append(error)
+                else:
+                    if self.export_state:
+                        self.export_state.complete_signal("mlflow_native", receipts.spans[completed_trace.root_span_id])
+            for receipt in receipts.spans.values():
+                receipt["otlp_trace_id"] = otlp_trace_id
+        if failures:
+            # Retry unfinished transient failures even when the other destination permanently rejected this trace.
+            raise next(
+                (failure for failure in failures if isinstance(failure, TraceExportError) and failure.retryable),
+                failures[0],
+            )
+        return receipts
+
+    def _send_collector_trace(
+        self,
+        completed_trace: CompletedTrace,
+        trace_id: str,
+        parent_span: dict[str, JsonValue] | None,
+        *,
+        reserve_native_time: bool,
+    ) -> None:
+        assert self.otlp is not None
+        spans = []
+        for span in completed_trace.spans:
+            exported_span = self._build_otlp_span(completed_trace, span, parent_span)
+            exported_span.trace_id = UUID(trace_id).bytes
+            # Collector export retains LiveSpan's JSON strings. Tracking-server span logging consumes decoded values.
+            exported_span.attributes.extend(
+                otlp_attributes(self._attributes(completed_trace, span, "tr-" + UUID(trace_id).hex))
+            )
+            if self.otlp.settings.get("genai_semconv"):
+                from dify_trace_mlflow.genai import translate_span_to_genai
+
+                exported_span = translate_span_to_genai(exported_span)
+            spans.append(exported_span)
+        self.otlp.http.deadline = self.http.deadline
+        if reserve_native_time:
+            # A stalled collector must leave time for the independent native branch.
+            # Once native work is checkpointed, collector retries receive the full attempt deadline.
+            self.otlp.http.deadline -= max(0, self.http.deadline - monotonic()) / 2
+        self.otlp.send_traces(
+            ExportTraceServiceRequest(
+                resource_spans=[
+                    ResourceSpans(
+                        resource=self.otlp.resource,
+                        scope_spans=[ScopeSpans(scope=InstrumentationScope(name="mlflow"), spans=spans)],
+                    )
+                ]
+            )
+        )
+
+    def _export_native_trace(
+        self, completed_trace: CompletedTrace, trace_id: str, parent_span: dict[str, JsonValue] | None
+    ) -> ExportedParentSpans:
         own_trace_id = trace_id
         native_trace_id: str | None = None
         artifact_trace = self.provider_name == "databricks" or bool(parent_span and parent_span.get("artifact_trace"))

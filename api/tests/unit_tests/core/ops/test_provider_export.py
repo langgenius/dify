@@ -515,8 +515,20 @@ def test_otlp_histogram_preserves_upper_inclusive_buckets(value: float, bucket_c
 
 
 @pytest.mark.parametrize("secure", [True, False])
+@pytest.mark.parametrize(
+    ("compression", "grpc_target"),
+    [
+        (None, None),
+        (grpc.Compression.Gzip, "dns:///provider.example:4318"),
+        (grpc.Compression.Deflate, "provider.example:4318"),
+    ],
+)
 def test_grpc_sends_through_explicit_proxy_and_closes_its_channel(
-    secure: bool, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    secure: bool,
+    compression: grpc.Compression | None,
+    grpc_target: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(SSRF_PROXY_ALL_URL="http://ssrf-proxy:3128")
     monkeypatch.setenv("grpc_proxy", "http://environment-proxy:3128")
@@ -528,12 +540,21 @@ def test_grpc_sends_through_explicit_proxy_and_closes_its_channel(
     monkeypatch.setattr(grpc, "secure_channel", secure_channel)
     monkeypatch.setattr(grpc, "insecure_channel", insecure_channel)
     endpoint = "https://provider.example" if secure else "http://provider.example:4318"
-    client = OtlpTraceClient(endpoint, {"authorization": "tenant-key"}, {}, "", protocol="grpc")
+    client = OtlpTraceClient(
+        endpoint,
+        {"authorization": "tenant-key"},
+        {},
+        "",
+        protocol="grpc",
+        grpc_compression=compression,
+        grpc_target=grpc_target,
+    )
     assert client._send("metrics", b"request") == b""
     chosen, unused = (secure_channel, insecure_channel) if secure else (insecure_channel, secure_channel)
     assert chosen.call_args is not None
-    assert chosen.call_args.args[0] == ("provider.example:4317" if secure else "provider.example:4318")
+    assert chosen.call_args.args[0] == (grpc_target or ("provider.example:4317" if secure else "provider.example:4318"))
     assert chosen.call_args.kwargs["options"] == [("grpc.http_proxy", "http://ssrf-proxy:3128")]
+    assert chosen.call_args.kwargs["compression"] is compression
     unused.assert_not_called()
     channel.unary_unary.assert_called_once_with("/opentelemetry.proto.collector.metrics.v1.MetricsService/Export")
     assert send.call_args is not None

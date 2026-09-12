@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, InstrumentationScope, KeyValue
 from opentelemetry.proto.metrics.v1.metrics_pb2 import AggregationTemporality, Metric, ResourceMetrics, ScopeMetrics
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
+from pydantic import JsonValue
 
 from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import CompletedTrace, TraceProviderSettings
@@ -125,8 +126,11 @@ class TraceExportState:
     def has_completed_signal(self, name: str) -> bool:
         return name in self.repository.completed_export_signals(self.delivery)
 
-    def complete_signal(self, name: str) -> None:
-        self.repository.complete_export_signal(self.delivery, name)
+    def completed_signal_receipt(self, name: str) -> dict[str, JsonValue] | None:
+        return self.repository.completed_export_signal_receipt(self.delivery, name)
+
+    def complete_signal(self, name: str, receipt: dict[str, JsonValue] | None = None) -> None:
+        self.repository.complete_export_signal(self.delivery, name, receipt)
 
     def prepare_metrics(self, metrics: list[Metric], resource: Resource, scope_name: str) -> list[Metric]:
         """Prepare one immutable snapshot and restore its resource on another worker's retry.

@@ -10,6 +10,7 @@ import sqlalchemy as sa
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
 from opentelemetry.proto.metrics.v1.metrics_pb2 import AggregationTemporality
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
+from pydantic import JsonValue
 
 from core.ops.otlp_trace import OtlpTraceClient, counter, histogram
 from core.ops.provider_export import TraceExportError
@@ -143,8 +144,10 @@ def test_stale_attempt_cannot_change_metrics_or_signal_progress(lost_lease: bool
         state.prepare_metrics([counter("requests", 1, span, {})], Resource(), "synthetic")
     assert failure.value.retryable
     with pytest.raises(TraceExportError, match="trace_attempt_expired") as failure:
-        state.complete_signal("business_logs")
+        state.complete_signal("business_logs", {"receipt_id": "accepted"})
     assert failure.value.retryable
+    with pytest.raises(TraceExportError, match="trace_attempt_expired"):
+        state.completed_signal_receipt("business_logs")
     with state.repository.session_factory() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(OpsTraceMetricSeries)) == 0
 
@@ -154,7 +157,7 @@ def test_reclaimed_attempt_restores_saved_snapshot_without_counting_again() -> N
     span = TraceSpan(span_id="measurement", span_name="measurement")
     increments = [counter("requests", 1, span, {})]
     snapshot = first.prepare_metrics(increments, Resource(), "synthetic")
-    first.complete_signal("business_logs")
+    first.complete_signal("business_logs", {"receipt_id": "accepted"})
     with first.repository.session_factory() as session:
         session.execute(sa.update(OpsTraceDelivery).values(lease_expires_at=datetime(2000, 1, 1)))
         session.commit()
@@ -167,9 +170,39 @@ def test_reclaimed_attempt_restores_saved_snapshot_without_counting_again() -> N
     assert attempt.attempt_token != first.delivery.attempt_token
     retry = TraceExportState(first.repository, attempt)
     assert retry.has_completed_signal("business_logs")
+    assert retry.completed_signal_receipt("business_logs") == {"receipt_id": "accepted"}
     assert retry.prepare_metrics(increments, Resource(), "synthetic") == snapshot
     second = next_state(retry)
     assert second.prepare_metrics(increments, Resource(), "synthetic")[0].sum.data_points[0].as_int == 2
+
+
+def test_signal_receipts_are_bounded_immutable_and_scoped_to_the_delivery() -> None:
+    state = make_state()
+    other_tenant = make_state(state.repository)
+    other_operation = next_state(state)
+    receipt: dict[str, JsonValue] = {"receipt_id": "accepted"}
+    state.complete_signal("traces", receipt)
+    receipt["receipt_id"] = "changed after saving"
+    state.complete_signal("traces", receipt)
+    saved = state.completed_signal_receipt("traces")
+    assert saved is not None
+    assert saved == {"receipt_id": "accepted"}
+    saved["receipt_id"] = "changed after reading"
+    assert state.completed_signal_receipt("traces") == {"receipt_id": "accepted"}
+    assert other_tenant.completed_signal_receipt("traces") is None
+    assert other_operation.completed_signal_receipt("traces") is None
+    foreign = OpsTraceDelivery(
+        id=state.delivery.id,
+        tenant_id=other_tenant.delivery.tenant_id,
+        attempt_token=state.delivery.attempt_token,
+    )
+    with pytest.raises(TraceExportError, match="trace_attempt_expired"):
+        TraceExportState(state.repository, foreign).completed_signal_receipt("traces")
+    with pytest.raises(ValueError, match="export_signal_receipts_too_large"):
+        state.complete_signal("oversized", {"receipt_id": "x" * 65536})
+    assert not state.has_completed_signal("oversized")
+    assert state.completed_signal_receipt("oversized") is None
+    assert state.completed_signal_receipt("traces") == {"receipt_id": "accepted"}
 
 
 def test_incompatible_histogram_does_not_commit_any_measurement() -> None:
