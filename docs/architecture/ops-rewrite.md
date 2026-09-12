@@ -182,7 +182,7 @@ The writer reserves a SQL staging row, writes immutable JSON to existing object 
 | Object validation | SHA-256, byte size and schema version |
 | Attempt | status, attempt count, next attempt time, random attempt token and lease expiry |
 | Parent | original export/span ID, resolved delivery ID and bounded root receipt |
-| Export progress | completed local signals and the immutable cumulative metric snapshot |
+| Export progress | completed local signals, their bounded receipts, and the immutable cumulative metric snapshot |
 | Retention / diagnosis | safe error code, created/updated/finished times and object deletion time |
 
 Uniqueness is `(tenant_id, export_id)` plus `(tenant_id, id)`. A composite tenant/parent-delivery foreign key prevents foreign parent assignment. Database constraints enforce source shape, app-provider requirements and the 8 MiB limit. Owner references otherwise use explicit lookup validation so deleting an application/configuration is not blocked by retained tracing rows.
@@ -212,6 +212,8 @@ Successful, failed and cancelled trace bodies are deleted immediately by default
 Tokens prevent stale local writes; they cannot retract an HTTP request already accepted remotely. Deterministic IDs reduce duplicate output, but timeout/crash after remote acceptance can still duplicate append-only provider output. Exactly-once remote delivery is not promised.
 
 OTLP counters and histograms accumulate in tenant- and destination-scoped metric series, using short database transactions guarded by the delivery's attempt token. Each delivery contributes once and stores its cumulative snapshot for retries. Collection timestamps describe when measurements entered the series; execution timestamps remain on spans and duration values. The snapshot retains the original resource and stable writer identity even when another worker handles the retry. Hourly maintenance removes up to 100 series that have been idle for 30 days; active series retain their start time and totals. Enterprise business logs record completed progress before OTLP transport, so a transport retry does not repeat them and a permanently failed transport does not suppress them. A crash between a log write and its progress update can still repeat that log.
+
+A completed signal can retain its result receipt in the delivery state, atomically with its completion marker. These receipts together are bounded to 64 KiB. A fresh attempt can reuse the receipt without repeating that export; reads and writes enforce the same tenant, destination and active-attempt ownership checks.
 
 ## 8. Tenant and configuration checks
 
