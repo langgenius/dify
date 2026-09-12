@@ -447,6 +447,8 @@ class BuiltinToolManageService:
         get builtin tool provider credential info
         """
         provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+        if not provider_controller:
+            raise ToolProviderNotFoundError(f"Provider {provider} not found")
         supported_credential_types = provider_controller.get_supported_credential_types()
         credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(
             tenant_id,
