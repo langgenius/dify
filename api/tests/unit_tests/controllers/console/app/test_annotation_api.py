@@ -171,6 +171,40 @@ def test_get_app_ref_raises_not_found_when_app_is_not_in_current_tenant(sqlite_s
 
 
 class TestConsoleAnnotationRefBoundaries:
+    @pytest.mark.parametrize(
+        ("requested_limit", "item_count", "total", "expected_limit", "expected_has_more"),
+        [(20, 20, 20, 20, False), (200, 100, 150, 100, True)],
+    )
+    def test_list_annotations_uses_effective_limit_for_pagination(
+        self,
+        app: Flask,
+        sqlite_session: Session,
+        requested_limit: int,
+        item_count: int,
+        total: int,
+        expected_limit: int,
+        expected_has_more: bool,
+    ):
+        api = annotation_module.AnnotationApi()
+        handler = unwrap(api.get)
+        annotation = _annotation_model()
+        annotation_list_mock = Mock(return_value=([annotation] * item_count, total))
+
+        with patch.object(
+            annotation_module.AppAnnotationService, "get_annotation_list_by_app_id", annotation_list_mock
+        ):
+            response, status = handler(
+                api,
+                annotation_module.AnnotationListQuery(page=1, limit=requested_limit),
+                sqlite_session,
+                "app-1",
+            )
+
+        assert status == 200
+        assert response["limit"] == expected_limit
+        assert response["has_more"] is expected_has_more
+        assert annotation_list_mock.call_args.args[2] == expected_limit
+
     def test_batch_delete_uses_app_ref(self, app: Flask, sqlite_session: Session):
         api = annotation_module.AnnotationApi()
         handler = unwrap(api.delete)
@@ -265,3 +299,38 @@ class TestConsoleAnnotationRefBoundaries:
         hit_history_mock.assert_called_once_with(
             AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1"), 2, 5, sqlite_session
         )
+
+    @pytest.mark.parametrize(
+        ("requested_limit", "item_count", "total", "expected_limit", "expected_has_more"),
+        [(20, 20, 20, 20, False), (200, 100, 150, 100, True)],
+    )
+    def test_hit_history_uses_effective_limit_for_pagination(
+        self,
+        app: Flask,
+        sqlite_session: Session,
+        requested_limit: int,
+        item_count: int,
+        total: int,
+        expected_limit: int,
+        expected_has_more: bool,
+    ):
+        api = annotation_module.AnnotationHitHistoryListApi()
+        handler = unwrap(api.get)
+        history = _annotation_hit_history()
+        hit_history_mock = Mock(return_value=([history] * item_count, total))
+        _persist_app(sqlite_session)
+
+        with (
+            app.test_request_context(f"/hit-histories?page=1&limit={requested_limit}", method="GET"),
+            patch.object(
+                annotation_module,
+                "current_account_with_tenant",
+                return_value=(_account(), "tenant-1"),
+            ),
+            patch.object(annotation_module.AppAnnotationService, "get_annotation_hit_histories", hit_history_mock),
+        ):
+            response = handler(api, sqlite_session, "app-1", "ann-1")
+
+        assert response["limit"] == expected_limit
+        assert response["has_more"] is expected_has_more
+        assert hit_history_mock.call_args.args[2] == expected_limit
