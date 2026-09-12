@@ -201,7 +201,7 @@ class Vector:
                 attachment_ids = [doc.metadata["doc_id"] for doc in batch]
                 stmt = select(UploadFile).where(UploadFile.id.in_(attachment_ids))
                 upload_files = self._session.scalars(stmt).all()
-                upload_file_map = {str(f.id): f for f in upload_files}
+                upload_file_map = {f.id: f for f in upload_files}
 
                 file_base64_list = []
                 real_batch = []

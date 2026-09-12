@@ -48,13 +48,13 @@ def prepare_file_dict(message_file: MessageFile, upload_files_map: dict[str, Upl
                     extension = "." + filename.rsplit(".", 1)[1]
         case FileTransferMethod.LOCAL_FILE:
             if upload_file:
-                url = file_helpers.get_signed_file_url(upload_file_id=str(upload_file.id))
+                url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
                 filename = upload_file.name
                 mime_type = upload_file.mime_type or "application/octet-stream"
                 size = upload_file.size or 0
                 extension = f".{upload_file.extension}" if upload_file.extension else ""
             elif message_file.upload_file_id:
-                url = file_helpers.get_signed_file_url(upload_file_id=str(message_file.upload_file_id))
+                url = file_helpers.get_signed_file_url(upload_file_id=message_file.upload_file_id)
         case FileTransferMethod.TOOL_FILE if message_file.url:
             if message_file.url.startswith(("http://", "https://")):
                 url = message_file.url

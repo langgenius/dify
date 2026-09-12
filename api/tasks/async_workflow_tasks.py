@@ -155,7 +155,7 @@ def _execute_workflow_common(
 
             # If workflow_id was specified, add it to args
             if trigger_data.workflow_id:
-                args["workflow_id"] = str(trigger_data.workflow_id)
+                args["workflow_id"] = trigger_data.workflow_id
 
             pause_config = PauseStateLayerConfig(
                 session_factory=session_factory.get_session_maker(),

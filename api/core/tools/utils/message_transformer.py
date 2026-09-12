@@ -94,7 +94,7 @@ class ToolFileMessageTransformer:
                     url = cls.get_tool_file_url(tool_file_id=tool_file.id, extension=extension)
                     meta = cls._with_tool_file_meta(
                         message.meta,
-                        tool_file_id=str(tool_file.id),
+                        tool_file_id=tool_file.id,
                     )
 
                     yield ToolInvokeMessage(
@@ -138,7 +138,7 @@ class ToolFileMessageTransformer:
 
                 extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
                 url = cls.get_tool_file_url(tool_file_id=tool_file.id, extension=extension)
-                meta = cls._with_tool_file_meta(meta, tool_file_id=str(tool_file.id))
+                meta = cls._with_tool_file_meta(meta, tool_file_id=tool_file.id)
 
                 # check if file is image
                 if "image" in mimetype:

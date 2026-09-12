@@ -259,7 +259,7 @@ class BaseAgentRunner(AppRunner):
 
         db.session.add(thought)
         db.session.commit()
-        agent_thought_id = str(thought.id)
+        agent_thought_id = thought.id
         self.agent_thought_count += 1
         db.session.close()
 

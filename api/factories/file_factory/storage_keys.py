@@ -93,7 +93,7 @@ class StorageKeyLoader:
                 if upload_file_row is None:
                     raise ValueError(f"Upload file not found for id: {model_id}")
                 file.reference = build_file_reference(
-                    record_id=str(upload_file_row.id),
+                    record_id=upload_file_row.id,
                 )
                 file.storage_key = upload_file_row.key
             elif file.transfer_method == FileTransferMethod.TOOL_FILE:
@@ -101,6 +101,6 @@ class StorageKeyLoader:
                 if tool_file_row is None:
                     raise ValueError(f"Tool file not found for id: {model_id}")
                 file.reference = build_file_reference(
-                    record_id=str(tool_file_row.id),
+                    record_id=tool_file_row.id,
                 )
                 file.storage_key = tool_file_row.file_key
