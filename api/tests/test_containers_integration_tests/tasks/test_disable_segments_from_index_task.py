@@ -135,7 +135,16 @@ class TestDisableSegmentsFromIndexTask:
             DatasetDocument: Created test document instance
         """
         fake = fake or Faker()
-        document = DatasetDocument()
+        document = DatasetDocument(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch=fake.uuid4(),
+            name=f"Test Document {fake.word()}.txt",
+            created_from=DocumentCreatedFrom.WEB,
+            created_by=account.id,
+        )
 
         document.id = fake.uuid4()
         document.tenant_id = dataset.tenant_id

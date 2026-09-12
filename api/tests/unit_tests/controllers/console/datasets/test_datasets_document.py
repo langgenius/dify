@@ -119,7 +119,14 @@ def make_document(**overrides):
         "need_summary": False,
     }
     attrs.update(overrides)
-    return DatasetDocument(**attrs)
+    created_at = attrs.pop("created_at", None)
+    updated_at = attrs.pop("updated_at", None)
+    document = DatasetDocument(**attrs)
+    if created_at is not None:
+        document.created_at = created_at
+    if updated_at is not None:
+        document.updated_at = updated_at
+    return document
 
 
 def make_account(role: TenantAccountRole = TenantAccountRole.EDITOR) -> Account:
@@ -685,7 +692,7 @@ class TestDocumentMetadataApi(_UsesSQLiteSession):
         method = unwrap(api.put)
         user, tenant_id = patch_tenant
         doc = make_document()
-        payload = {"doc_type": "invoice", "doc_metadata": {"amount": 10, "invalid": "x"}}
+        payload = {"doc_type": "book", "doc_metadata": {"amount": 10, "invalid": "x"}}
         schema = {"amount": int}
         session = self.session
         req_data = DocumentMetadataUpdatePayload.model_validate(payload)
@@ -694,7 +701,7 @@ class TestDocumentMetadataApi(_UsesSQLiteSession):
             patch.object(api, "get_document", return_value=doc),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
-                {"invoice": schema},
+                {"book": schema},
             ),
         ):
             method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
@@ -1612,7 +1619,7 @@ class TestDocumentListAdvancedCases(_UsesSQLiteSession):
         method = unwrap(api.put)
         user, tenant_id = patch_tenant
         doc = make_document()
-        payload = {"doc_type": "contract", "doc_metadata": {"amount": 5000, "currency": "USD", "invalid_field": "x"}}
+        payload = {"doc_type": "book", "doc_metadata": {"amount": 5000, "currency": "USD", "invalid_field": "x"}}
         schema = {"amount": int, "currency": str}
         session = self.session
         req_data = DocumentMetadataUpdatePayload.model_validate(payload)
@@ -1621,7 +1628,7 @@ class TestDocumentListAdvancedCases(_UsesSQLiteSession):
             patch.object(api, "get_document", return_value=doc),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
-                {"contract": schema},
+                {"book": schema},
             ),
         ):
             response, status = method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
