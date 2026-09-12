@@ -109,7 +109,6 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipel
     auth_data = AuthData.model_construct(
         token_type=TokenType.OAUTH_ACCOUNT,
         account_id=uuid.UUID(_TEST_ACCOUNT_ID),
-        token_hash="test",
         scopes=frozenset({Scope.FULL}),
         app=_make_app(),
         caller=_make_account(),
