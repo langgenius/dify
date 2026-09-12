@@ -110,6 +110,8 @@ export type ToolParameter = {
     label: LocalizedText
     value: string
   }[]
+  /** Reset this parameter when any listed sibling parameter changes. */
+  reset_on_change?: string[]
   min?: number
   max?: number
 }

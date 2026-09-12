@@ -69,6 +69,32 @@ class TestToolTransformService:
         assert original_param is not None
         assert original_param.label.en_US == "Base Param 2"  # Should be base version
 
+    def test_convert_tool_preserves_reset_on_change_from_declaration(self):
+        """Runtime parameter overrides must retain declaration-only reset dependencies."""
+        base_parameter = _parameter("dependent", "Base Dependent")
+        base_parameter.reset_on_change = ["source"]
+        runtime_parameter = _parameter("dependent", "Runtime Dependent")
+
+        mock_tool = Mock(spec=Tool)
+        mock_tool.entity = Mock()
+        mock_tool.entity.parameters = [base_parameter]
+        mock_tool.entity.identity = Mock()
+        mock_tool.entity.identity.author = "test_author"
+        mock_tool.entity.identity.name = "test_tool"
+        mock_tool.entity.identity.label = I18nObject(en_US="Test Tool")
+        mock_tool.entity.description = Mock()
+        mock_tool.entity.description.human = I18nObject(en_US="Test description")
+        mock_tool.entity.output_schema = {}
+        mock_tool.get_runtime_parameters.return_value = [runtime_parameter]
+        mock_tool.fork_tool_runtime.return_value = mock_tool
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(mock_tool, "test_tenant")
+
+        assert result.parameters is not None
+        assert result.parameters[0].label.en_US == "Runtime Dependent"
+        assert result.parameters[0].reset_on_change == ["source"]
+        assert runtime_parameter.reset_on_change == []
+
     def test_convert_tool_with_additional_runtime_parameters(self):
         """Test that additional runtime parameters are added to the final list"""
         base_param1 = _parameter("param1", "Base Param 1")

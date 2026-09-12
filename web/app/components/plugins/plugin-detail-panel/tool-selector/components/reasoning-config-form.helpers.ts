@@ -3,6 +3,7 @@ import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { resetToolSettingFieldValue } from '@/app/components/tools/utils/to-form-schema'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 
@@ -18,6 +19,17 @@ type ReasoningConfigInput = {
 }
 
 export type ReasoningConfigValue = Record<string, ReasoningConfigInput>
+
+export const resetReasoningConfigEntry = (
+  schema: ToolFormSchema,
+  previousEntry?: ReasoningConfigValue[string],
+): ReasoningConfigValue[string] => {
+  const auto = previousEntry?.auto ?? 0
+  return {
+    auto,
+    value: auto === 1 ? null : resetToolSettingFieldValue(schema),
+  }
+}
 
 export const getVarKindType = (type: string) => {
   if (type === FormTypeEnum.file || type === FormTypeEnum.files) return VarKindType.variable
