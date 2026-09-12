@@ -64,7 +64,7 @@ class TestOAuthHandler:
         handler = OAuthHandler()
         captured_data = {}
 
-        def fake_stream(*args, **kwargs):
+        def fake_stream[**P](*args: P.args, **kwargs: P.kwargs):
             captured_data.update(kwargs["data"])
             return iter([SimpleNamespace(credentials={"token": "abc"}, metadata={}, expires_at=1)])
 

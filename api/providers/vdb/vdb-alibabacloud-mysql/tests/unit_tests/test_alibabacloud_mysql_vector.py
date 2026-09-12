@@ -348,7 +348,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
 
         # Simulate table doesn't exist error on delete
 
-        def execute_side_effect(*args, **kwargs):
+        def execute_side_effect[**P](*args: P.args, **kwargs: P.kwargs):
             if "DELETE" in args[0]:
                 raise MySQLError(errno=1146, msg="Table doesn't exist")
 

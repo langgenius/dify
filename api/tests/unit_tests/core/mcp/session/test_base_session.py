@@ -62,7 +62,7 @@ class ReceiveNotification(RootModel[Union[CancelledNotification, MockNotificatio
 
 
 class MockSession(BaseSession[MockRequest, MockNotification, MockResult, ReceiveRequest, ReceiveNotification]):
-    def __init__(self, *args, **kwargs):
+    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         super().__init__(*args, **kwargs)
         self.received_requests = []
         self.received_notifications = []

@@ -933,7 +933,7 @@ class TestHandlePostRequestNew:
 
     def _stream_ctx(self, mock_response):
         @contextmanager
-        def _stream(*args, **kwargs):
+        def _stream[**P](*args: P.args, **kwargs: P.kwargs):
             yield mock_response
 
         return _stream
@@ -1388,7 +1388,7 @@ class TestPostWriterNew:
 
         original_get = c2s.get
 
-        def patched_get(*args, **kwargs):
+        def patched_get[**P](*args: P.args, **kwargs: P.kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 raise queue.Empty
