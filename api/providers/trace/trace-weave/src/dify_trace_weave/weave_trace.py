@@ -1,5 +1,8 @@
 """Use Weave's Service API without wandb.login, weave.init or environment changes."""
 
+from collections import deque
+from collections.abc import Iterable, Iterator
+from itertools import chain
 from typing import Any
 from urllib.parse import quote
 
@@ -11,10 +14,50 @@ from core.ops.provider_export import (
     TraceProviderHttpClient,
     basic_auth,
     export_span_id,
+    json_text,
     span_attributes,
 )
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_weave.config import WeaveConfig
+
+# Weave 0.52.36 keeps 1 MiB below the server's 32 MiB request limit.
+MAX_BATCH_BYTES = 31 * 1024 * 1024
+MAX_COMPLETE_CALLS = 1000
+MAX_LEGACY_EVENTS = 100
+
+
+def _iter_call_batches(calls: Iterable[dict[str, JsonValue]], max_count: int) -> Iterator[list[dict[str, JsonValue]]]:
+    batch: list[dict[str, JsonValue]] = []
+    batch_bytes = len(b'{"batch":[]}')
+    for call in calls:
+        call_bytes = len(json_text(call).encode())
+        if batch and (len(batch) >= max_count or batch_bytes + call_bytes + 1 > MAX_BATCH_BYTES):
+            yield batch
+            batch, batch_bytes = [], len(b'{"batch":[]}')
+        batch_bytes += call_bytes + bool(batch)
+        batch.append(call)
+    if batch:
+        yield batch
+
+
+def _iter_legacy_call_events(calls: Iterable[dict[str, JsonValue]]) -> Iterator[dict[str, JsonValue]]:
+    for call in calls:
+        yield {
+            "mode": "start",
+            "req": {
+                "start": {
+                    key: value
+                    for key, value in call.items()
+                    if key not in {"ended_at", "exception", "output", "summary"}
+                }
+            },
+        }
+        yield {
+            "mode": "end",
+            "req": {
+                "end": {key: call[key] for key in ("project_id", "id", "ended_at", "exception", "output", "summary")}
+            },
+        }
 
 
 def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
@@ -219,6 +262,27 @@ class WeaveTraceClient:
             # Project discovery must not prevent reading saved settings.
             return f"{host}/"
 
+    def _send_calls(self, project_id: str, calls: list[dict[str, JsonValue]]) -> None:
+        path = f"v2/{quote(project_id, safe='/')}/calls/complete"
+        batches = deque(_iter_call_batches(calls, MAX_COMPLETE_CALLS))
+        while batches:
+            batch = batches.popleft()
+            try:
+                self.http.request("POST", path, json={"batch": batch})
+            except TraceExportError as error:
+                if str(error) == "provider_http_413" and len(batch) > 1:
+                    middle = len(batch) // 2
+                    batches.appendleft(batch[middle:])
+                    batches.appendleft(batch[:middle])
+                elif str(error) == "provider_http_404" and path != "call/upsert_batch":
+                    # Older servers support the native start/end batch endpoint.
+                    # Only convert pending calls; accepted batches must not be replayed.
+                    path = "call/upsert_batch"
+                    pending_calls = chain(batch, chain.from_iterable(batches))
+                    batches = deque(_iter_call_batches(_iter_legacy_call_events(pending_calls), MAX_LEGACY_EVENTS))
+                else:
+                    raise
+
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
@@ -241,8 +305,7 @@ class WeaveTraceClient:
         spans = _prepare_timed_spans(completed_trace)
         # Timing is checked before project discovery, which can itself send a request.
         project_id = self._ensure_project_id()
-        complete_calls_endpoint = f"v2/{quote(project_id, safe='/')}/calls/complete"
-        use_complete_calls = True
+        calls: list[dict[str, JsonValue]] = []
         for span in spans:
             assert span.started_at is not None
             assert span.ended_at is not None
@@ -286,18 +349,8 @@ class WeaveTraceClient:
                 "output": _normalize_io(span.outputs, span, output=True),
                 "summary": summary,
             }
-            if use_complete_calls:
-                try:
-                    # Weave v2 accepts completed calls for both old and migrated projects.
-                    self.http.request("POST", complete_calls_endpoint, json={"batch": [{**start, **end}]})
-                except TraceExportError as error:
-                    if str(error) != "provider_http_404":
-                        raise
-                    # Older self-hosted servers do not expose the v2 endpoint.
-                    use_complete_calls = False
-            if not use_complete_calls:
-                self.http.request("POST", "call/start", json={"start": start})
-                self.http.request("POST", "call/end", json={"end": end})
+            calls.append({**start, **end})
+        self._send_calls(project_id, calls)
         return ExportedParentSpans(
             spans={
                 span.span_id: {"trace_id": trace_id, "span_id": export_span_id(completed_trace, span.span_id)}
