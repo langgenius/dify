@@ -27,7 +27,7 @@ from extensions.ext_application_services import _build_file_grant_service
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, EndUserType
-from models.model import App, EndUser, UploadFile
+from models.model import App, AppMode, EndUser, UploadFile
 from models.tools import ToolFile
 from services import end_user_service
 from services.end_user_service import EndUserService
@@ -64,7 +64,7 @@ def seeded_app(sqlite_session: Session) -> App:
         id=APP_ID,
         tenant_id=TENANT_ID,
         name="deployed app",
-        mode="workflow",
+        mode=AppMode.WORKFLOW,
         enable_site=True,
         enable_api=True,
     )
@@ -449,7 +449,7 @@ def test_end_user_service_never_retypes_an_app_deploy_row(
         tenant_id=TENANT_ID,
         app_id=APP_ID,
         type=EndUserType.APP_DEPLOY,
-        is_anonymous=True,
+        _is_anonymous=True,
         session_id=session_id,
         external_user_id=session_id,
     )

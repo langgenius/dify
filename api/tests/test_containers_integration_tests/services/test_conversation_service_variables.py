@@ -80,7 +80,7 @@ class ConversationServiceVariableIntegrationFactory:
             type=EndUserType.SERVICE_API,
             external_user_id=f"external-{uuid4()}",
             name=f"End User {uuid4()}",
-            is_anonymous=False,
+            _is_anonymous=False,
             session_id=f"session-{uuid4()}",
         )
         db_session_with_containers.add(end_user)
@@ -107,7 +107,7 @@ class ConversationServiceVariableIntegrationFactory:
             mode=app.mode,
             name=name or f"Conversation {uuid4()}",
             summary="",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,

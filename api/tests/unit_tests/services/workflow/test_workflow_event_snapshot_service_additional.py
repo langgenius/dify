@@ -96,7 +96,7 @@ def _persist_message(session_maker: sessionmaker[Session]) -> Message:
         model_id="model",
         override_model_configs=None,
         conversation_id="conv-1",
-        inputs={},
+        _inputs={},
         query="hello",
         message="",
         message_tokens=0,
