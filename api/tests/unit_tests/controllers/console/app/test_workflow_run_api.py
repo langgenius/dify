@@ -153,13 +153,13 @@ def test_workflow_run_list_returns_frontend_history_contract(
     _account(sqlite_session)
     workflow_run = _workflow_run_summary(sqlite_session)
     workflow_runs = Mock()
-    workflow_runs.get_paginate_workflow_runs.return_value = {
-        "limit": 10,
-        "has_more": False,
-        "data": [workflow_run],
-    }
+    workflow_runs.get_paginate_workflow_runs.return_value = SimpleNamespace(
+        limit=10,
+        has_more=False,
+        data=[workflow_run],
+    )
     _mock_application_services(monkeypatch, workflow_runs)
-    monkeypatch.setattr(db, "session", sqlite_session)
+    monkeypatch.setattr(db, "session", lambda: sqlite_session)
     request_context = _request_context()
 
     api = workflow_run_module.WorkflowRunListApi()
@@ -208,13 +208,13 @@ def test_advanced_chat_workflow_run_list_keeps_message_fields(
         message_id="message-1",
     )
     workflow_runs = Mock()
-    workflow_runs.get_paginate_advanced_chat_workflow_runs.return_value = {
-        "limit": 1,
-        "has_more": True,
-        "data": [workflow_run],
-    }
+    workflow_runs.get_paginate_advanced_chat_workflow_runs.return_value = SimpleNamespace(
+        limit=1,
+        has_more=True,
+        data=[workflow_run],
+    )
     _mock_application_services(monkeypatch, workflow_runs)
-    monkeypatch.setattr(db, "session", sqlite_session)
+    monkeypatch.setattr(db, "session", lambda: sqlite_session)
     request_context = _request_context()
 
     api = workflow_run_module.AdvancedChatAppWorkflowRunListApi()
@@ -288,7 +288,7 @@ def test_workflow_run_detail_returns_frontend_detail_contract(
     workflow_runs = Mock()
     workflow_runs.get_workflow_run.return_value = workflow_run
     _mock_application_services(monkeypatch, workflow_runs)
-    monkeypatch.setattr(db, "session", sqlite_session)
+    monkeypatch.setattr(db, "session", lambda: sqlite_session)
     request_context = _request_context()
 
     api = workflow_run_module.WorkflowRunDetailApi()
@@ -353,7 +353,7 @@ def test_workflow_run_node_executions_return_frontend_trace_contract(
         node_execution_response_source(execution, session=sqlite_session)
     ]
     _mock_application_services(monkeypatch, workflow_runs)
-    monkeypatch.setattr(db, "session", sqlite_session)
+    monkeypatch.setattr(db, "session", lambda: sqlite_session)
     request_context = _request_context()
 
     api = workflow_run_module.WorkflowRunNodeExecutionListApi()

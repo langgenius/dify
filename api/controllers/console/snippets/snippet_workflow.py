@@ -52,6 +52,8 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
     node_execution_response_source,
+    workflow_run_pagination_response_source,
+    workflow_run_response_source,
 )
 from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
@@ -528,7 +530,9 @@ class SnippetWorkflowRunsApi(Resource):
         snippet_service = _snippet_service()
         result = snippet_service.get_snippet_workflow_runs(snippet=snippet, args=args)
 
-        return WorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunPaginationResponse.model_validate(
+            workflow_run_pagination_response_source(result, session=db.session()), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs/<uuid:run_id>")
@@ -554,7 +558,9 @@ class SnippetWorkflowRunDetailApi(Resource):
         if not workflow_run:
             raise NotFound("Workflow run not found")
 
-        return WorkflowRunDetailResponse.model_validate(workflow_run, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunDetailResponse.model_validate(
+            workflow_run_response_source(workflow_run, session=db.session()), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs/<uuid:run_id>/node-executions")
