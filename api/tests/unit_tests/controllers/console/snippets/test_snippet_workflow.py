@@ -3,18 +3,17 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.snippets import snippet_workflow as snippet_workflow_module
 from models.account import Account, TenantAccountRole
 from models.snippet import CustomizedSnippet
+from models.workflow import Workflow
 
 
 def _account(account_id: str = "account-1") -> Account:
@@ -37,44 +36,25 @@ def _snippet(**overrides) -> CustomizedSnippet:
     return CustomizedSnippet(**data)
 
 
-def _workflow(**overrides) -> SimpleNamespace:
-    data = {
-        "id": "workflow-1",
-        "graph_dict": {"nodes": [], "edges": []},
-        "features_dict": {},
-        "unique_hash": "hash-1",
-        "version": "2024-01-01 00:00:00",
-        "marked_name": "v1",
-        "marked_comment": "first version",
-        "created_by_account": None,
-        "created_at": datetime(2024, 1, 1),
-        "updated_by_account": None,
-        "updated_at": datetime(2024, 1, 1),
-        "tool_published": False,
-        "environment_variables": [],
-        "conversation_variables": [],
-        "rag_pipeline_variables": [],
-    }
-    data.update(overrides)
-    workflow = SimpleNamespace(**data)
-    workflow.get_created_by_account = Mock(return_value=workflow.created_by_account)
-    workflow.get_updated_by_account = Mock(return_value=workflow.updated_by_account)
-    workflow.get_tool_published = Mock(return_value=workflow.tool_published)
+def _workflow(**overrides) -> Workflow:
+    workflow = Workflow.new(
+        tenant_id="tenant-1",
+        app_id="snippet-1",
+        type="workflow",
+        version="2024-01-01 00:00:00",
+        graph=json.dumps({"nodes": [], "edges": []}),
+        features="{}",
+        created_by="account-1",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    workflow.id = "workflow-1"
+    workflow.created_at = datetime(2024, 1, 1)
+    workflow.updated_at = datetime(2024, 1, 1)
+    for name, value in overrides.items():
+        setattr(workflow, name, value)
     return workflow
-
-
-@pytest.fixture(autouse=True)
-def _patch_snippet_service_factory(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
-    snippet_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-
-    def factory():
-        try:
-            return snippet_workflow_module.SnippetService(snippet_workflow_module._snippet_session_maker())
-        except TypeError:
-            return snippet_workflow_module.SnippetService()
-
-    monkeypatch.setattr(snippet_workflow_module, "_snippet_service", factory)
-    monkeypatch.setattr(snippet_workflow_module, "_snippet_session_maker", lambda: snippet_session_maker)
 
 
 def test_get_snippet_requires_snippet_id(app):
@@ -124,32 +104,28 @@ def test_get_snippet_raises_not_found_when_snippet_missing(app: Flask, monkeypat
             view(snippet_id="snippet-1")
 
 
-def test_draft_workflow_get_raises_when_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_draft_workflow_get_raises_when_missing(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
     snippet = _snippet()
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
-    )
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_draft_workflow", Mock(return_value=None))
 
     api = snippet_workflow_module.SnippetDraftWorkflowApi()
     handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/draft"):
         with pytest.raises(snippet_workflow_module.DraftWorkflowNotExist):
-            handler(api, snippet=snippet)
+            handler(api, unbound_session, snippet=snippet)
 
 
-def test_draft_workflow_get_uses_session_aware_response_source(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow = _workflow()
+def test_draft_workflow_get_uses_session_aware_response_source(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    workflow = _workflow(updated_by="account-2")
+    sqlite_session.add_all([_account(), _account("account-2")])
+    sqlite_session.commit()
     snippet = _snippet()
-    session = Mock(spec=Session)
-    monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(session=Mock(return_value=session)))
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "_snippet_service",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
-    )
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_draft_workflow", Mock(return_value=workflow))
     monkeypatch.setattr(
         snippet_workflow_module.WorkflowAgentPublishService,
         "project_draft_bindings_to_graph",
@@ -160,23 +136,19 @@ def test_draft_workflow_get_uses_session_aware_response_source(app: Flask, monke
     handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/draft"):
-        response = handler(api, snippet=snippet)
+        response = handler(api, sqlite_session, snippet=snippet)
 
     assert response["id"] == "workflow-1"
-    workflow.get_created_by_account.assert_called_once_with(session=session)
-    workflow.get_updated_by_account.assert_called_once_with(session=session)
-    workflow.get_tool_published.assert_called_once_with(session=session)
+    assert response["created_by"]["id"] == "account-1"
+    assert response["updated_by"]["id"] == "account-2"
+    assert response["tool_published"] is False
 
 
 def test_draft_workflow_post_returns_400_for_invalid_graph(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     user = _account("account-1")
     snippet = _snippet()
     sync_draft_workflow = Mock(side_effect=ValueError("invalid graph"))
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(sync_draft_workflow=sync_draft_workflow),
-    )
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "sync_draft_workflow", sync_draft_workflow)
 
     api = snippet_workflow_module.SnippetDraftWorkflowApi()
     handler = unwrap(api.post)
@@ -204,45 +176,41 @@ def test_draft_config_returns_parallel_depth_limit(app) -> None:
     handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/draft/config"):
-        assert handler(api, snippet=SimpleNamespace(id="snippet-1")) == {"parallel_depth_limit": 3}
+        assert handler(api, snippet=_snippet()) == {"parallel_depth_limit": 3}
 
 
-def test_published_workflow_get_returns_none_when_not_published(app) -> None:
+def test_published_workflow_get_returns_none_when_not_published(app, unbound_session: Session) -> None:
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
     handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/publish"):
-        assert handler(api, snippet=SimpleNamespace(id="snippet-1", is_published=False)) is None
+        assert handler(api, unbound_session, snippet=_snippet(is_published=False)) is None
 
 
-def test_published_workflow_get_uses_session_aware_response_source(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow = _workflow()
-    session = Mock(spec=Session)
-    snippet = SimpleNamespace(id="snippet-1", is_published=True, input_fields_list=[])
-    monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(session=Mock(return_value=session)))
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "_snippet_service",
-        lambda: SimpleNamespace(get_published_workflow=Mock(return_value=workflow)),
-    )
+def test_published_workflow_get_uses_session_aware_response_source(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    workflow = _workflow(updated_by="account-2")
+    sqlite_session.add_all([_account(), _account("account-2")])
+    sqlite_session.commit()
+    snippet = _snippet(is_published=True)
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_published_workflow", Mock(return_value=workflow))
 
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
     handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/publish"):
-        response = handler(api, snippet=snippet)
+        response = handler(api, sqlite_session, snippet=snippet)
 
     assert response["id"] == "workflow-1"
-    workflow.get_created_by_account.assert_called_once_with(session=session)
-    workflow.get_updated_by_account.assert_called_once_with(session=session)
-    workflow.get_tool_published.assert_called_once_with(session=session)
+    assert response["created_by"]["id"] == "account-1"
+    assert response["updated_by"]["id"] == "account-2"
+    assert response["tool_published"] is False
 
 
-@pytest.mark.parametrize("sqlite_session", [(CustomizedSnippet,)], indirect=True)
 def test_published_workflow_post_returns_400_when_publish_fails(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
     sqlite_session: Session,
 ) -> None:
     user = _account("account-1")
@@ -255,18 +223,13 @@ def test_published_workflow_post_returns_400_when_publish_fails(
         session.add(snippet)
         raise ValueError("No valid workflow found.")
 
-    monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(publish_workflow=Mock(side_effect=fail_publish)),
-    )
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "publish_workflow", Mock(side_effect=fail_publish))
 
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
     handler = unwrap(api.post)
 
     with app.test_request_context("/snippets/snippet-1/workflows/publish", method="POST", json={}):
-        response, status_code = handler(api, user, snippet)
+        response, status_code = handler(api, sqlite_session, user, snippet)
 
     assert status_code == 400
     assert response == {"message": "No valid workflow found."}
@@ -274,46 +237,35 @@ def test_published_workflow_post_returns_400_when_publish_fails(
     assert snippet.name == "Snippet"
 
 
-@pytest.mark.parametrize("sqlite_session", [(CustomizedSnippet,)], indirect=True)
 def test_published_workflow_post_returns_success(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
     sqlite_session: Session,
 ) -> None:
     user = _account("account-1")
     snippet = _snippet()
     sqlite_session.add(snippet)
     sqlite_session.commit()
-    workflow = SimpleNamespace(created_at=datetime(2026, 8, 17, 12, 0, 0))
-    monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "_snippet_service",
-        lambda: SimpleNamespace(publish_workflow=Mock(return_value=workflow)),
-    )
+    workflow = _workflow(created_at=datetime(2026, 8, 17, 12, 0, 0))
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "publish_workflow", Mock(return_value=workflow))
 
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
     handler = unwrap(api.post)
     with app.test_request_context("/snippets/snippet-1/workflows/publish", method="POST", json={}):
-        response = handler(api, user, snippet)
+        response = handler(api, sqlite_session, user, snippet)
 
     assert response["result"] == "success"
 
 
 def test_default_block_configs_delegates_to_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     get_default_block_configs = Mock(return_value=[{"type": "llm"}])
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(get_default_block_configs=get_default_block_configs),
-    )
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_default_block_configs", get_default_block_configs)
 
     api = snippet_workflow_module.SnippetDefaultBlockConfigsApi()
     handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/default-workflow-block-configs"):
-        result = handler(api, snippet=SimpleNamespace(id="snippet-1"))
+        result = handler(api, snippet=_snippet())
 
     assert result == [{"type": "llm"}]
     get_default_block_configs.assert_called_once()
@@ -322,17 +274,14 @@ def test_default_block_configs_delegates_to_service(app: Flask, monkeypatch: pyt
 def test_list_published_snippet_workflows_includes_input_fields(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
+    sqlite_session: Session,
 ) -> None:
-    workflow = _workflow(marked_name="", marked_comment="")
+    workflow = _workflow()
     input_fields = [{"variable": "query", "type": "text"}]
     snippet = _snippet(input_fields=json.dumps(input_fields))
 
-    monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
     monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(get_all_published_workflows=Mock(return_value=([workflow], False))),
+        snippet_workflow_module.SnippetService, "get_all_published_workflows", Mock(return_value=([workflow], False))
     )
 
     api = snippet_workflow_module.SnippetPublishedAllWorkflowApi()
@@ -342,6 +291,7 @@ def test_list_published_snippet_workflows_includes_input_fields(
         response = handler(
             api,
             snippet_workflow_module.SnippetWorkflowListQuery.model_validate({"page": 1, "limit": 20}),
+            sqlite_session,
             snippet=snippet,
         )
 
@@ -349,18 +299,12 @@ def test_list_published_snippet_workflows_includes_input_fields(
 
 
 def test_restore_published_snippet_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow = SimpleNamespace(
-        unique_hash="restored-hash",
-        updated_at=None,
-        created_at=datetime(2024, 1, 1),
-    )
+    workflow = _workflow(updated_at=None)
     user = _account("account-1")
     snippet = _snippet()
 
     monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(restore_published_workflow_to_draft=lambda **_kwargs: workflow),
+        snippet_workflow_module.SnippetService, "restore_published_workflow_to_draft", Mock(return_value=workflow)
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
@@ -373,7 +317,7 @@ def test_restore_published_snippet_workflow_to_draft_success(app: Flask, monkeyp
         response = handler(api, user, snippet, workflow_id="published-workflow")
 
     assert response["result"] == "success"
-    assert response["hash"] == "restored-hash"
+    assert response["hash"] == workflow.unique_hash
 
 
 def test_restore_published_snippet_workflow_to_draft_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -381,13 +325,9 @@ def test_restore_published_snippet_workflow_to_draft_not_found(app: Flask, monke
     snippet = _snippet()
 
     monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(
-            restore_published_workflow_to_draft=lambda **_kwargs: (_ for _ in ()).throw(
-                snippet_workflow_module.WorkflowNotFoundError("Workflow not found")
-            )
-        ),
+        snippet_workflow_module.SnippetService,
+        "restore_published_workflow_to_draft",
+        Mock(side_effect=snippet_workflow_module.WorkflowNotFoundError("Workflow not found")),
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
@@ -408,13 +348,9 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_draft_sourc
     snippet = _snippet()
 
     monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(
-            restore_published_workflow_to_draft=lambda **_kwargs: (_ for _ in ()).throw(
-                snippet_workflow_module.IsDraftWorkflowError("source workflow must be published")
-            )
-        ),
+        snippet_workflow_module.SnippetService,
+        "restore_published_workflow_to_draft",
+        Mock(side_effect=snippet_workflow_module.IsDraftWorkflowError("source workflow must be published")),
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
@@ -438,13 +374,9 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_invalid_gra
     snippet = _snippet()
 
     monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(
-            restore_published_workflow_to_draft=lambda **_kwargs: (_ for _ in ()).throw(
-                ValueError("invalid snippet workflow graph")
-            )
-        ),
+        snippet_workflow_module.SnippetService,
+        "restore_published_workflow_to_draft",
+        Mock(side_effect=ValueError("invalid snippet workflow graph")),
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
@@ -461,13 +393,12 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_invalid_gra
     assert exc.value.description == "invalid snippet workflow graph"
 
 
-@pytest.mark.parametrize("sqlite_session", [(CustomizedSnippet,)], indirect=True)
 def test_update_published_snippet_workflow_returns_updated_workflow(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
-    workflow = _workflow()
+    workflow = _workflow(marked_name="v1", marked_comment="first version")
     user = _account("account-1")
     input_fields = [{"variable": "query", "type": "text"}]
     snippet = _snippet(input_fields=json.dumps(input_fields))
@@ -480,11 +411,7 @@ def test_update_published_snippet_workflow_returns_updated_workflow(
         return workflow
 
     update_workflow = Mock(side_effect=update_persisted_snippet)
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(update_workflow=update_workflow),
-    )
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "update_workflow", update_workflow)
 
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
     handler = unwrap(api.patch)
@@ -499,6 +426,7 @@ def test_update_published_snippet_workflow_returns_updated_workflow(
             snippet_workflow_module.WorkflowUpdatePayload.model_validate(
                 {"marked_name": "v1", "marked_comment": "first version"}
             ),
+            sqlite_session,
             user,
             snippet,
             workflow_id="workflow-1",
@@ -518,7 +446,7 @@ def test_update_published_snippet_workflow_returns_updated_workflow(
     assert snippet.description == "Updated in transaction"
 
 
-def test_update_published_snippet_workflow_returns_400_when_no_fields(app: Flask) -> None:
+def test_update_published_snippet_workflow_returns_400_when_no_fields(app: Flask, unbound_session: Session) -> None:
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
     handler = unwrap(api.patch)
 
@@ -526,6 +454,7 @@ def test_update_published_snippet_workflow_returns_400_when_no_fields(app: Flask
         response, status_code = handler(
             api,
             snippet_workflow_module.WorkflowUpdatePayload(),
+            unbound_session,
             _account("account-1"),
             _snippet(),
             workflow_id="workflow-1",
@@ -535,7 +464,6 @@ def test_update_published_snippet_workflow_returns_400_when_no_fields(app: Flask
     assert response == {"message": "No valid fields to update"}
 
 
-@pytest.mark.parametrize("sqlite_session", [(CustomizedSnippet,)], indirect=True)
 def test_update_published_snippet_workflow_raises_not_found(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
@@ -551,9 +479,7 @@ def test_update_published_snippet_workflow_raises_not_found(
         merged_snippet.name = "Rolled back name"
 
     monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(update_workflow=Mock(side_effect=update_missing_workflow)),
+        snippet_workflow_module.SnippetService, "update_workflow", Mock(side_effect=update_missing_workflow)
     )
 
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
@@ -568,11 +494,13 @@ def test_update_published_snippet_workflow_raises_not_found(
             handler(
                 api,
                 snippet_workflow_module.WorkflowUpdatePayload.model_validate({"marked_name": "v1"}),
+                sqlite_session,
                 user,
                 snippet,
                 workflow_id="missing-workflow",
             )
 
+    sqlite_session.rollback()
     sqlite_session.refresh(snippet)
     assert snippet.name == "Snippet"
 
@@ -580,11 +508,7 @@ def test_update_published_snippet_workflow_raises_not_found(
 def test_delete_published_snippet_workflow_succeeds(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     snippet = _snippet()
     delete_workflow = Mock(return_value=True)
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(delete_workflow=delete_workflow),
-    )
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "delete_workflow", delete_workflow)
 
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
     handler = unwrap(api.delete)
@@ -606,9 +530,7 @@ def test_delete_published_snippet_workflow_raises_not_found(app: Flask, monkeypa
         raise ValueError("Workflow with ID missing-workflow not found")
 
     monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(delete_workflow=Mock(side_effect=delete_missing_workflow)),
+        snippet_workflow_module.SnippetService, "delete_workflow", Mock(side_effect=delete_missing_workflow)
     )
 
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
@@ -626,9 +548,7 @@ def test_delete_published_snippet_workflow_raises_bad_request_when_in_use(
         raise snippet_workflow_module.WorkflowInUseError("Cannot delete workflow that is currently in use")
 
     monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(delete_workflow=Mock(side_effect=delete_active_workflow)),
+        snippet_workflow_module.SnippetService, "delete_workflow", Mock(side_effect=delete_active_workflow)
     )
 
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
@@ -643,11 +563,7 @@ def test_delete_published_snippet_workflow_raises_bad_request_when_in_use(
 
 def test_workflow_run_detail_raises_not_found_when_run_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     snippet = _snippet()
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(get_snippet_workflow_run=Mock(return_value=None)),
-    )
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_snippet_workflow_run", Mock(return_value=None))
 
     api = snippet_workflow_module.SnippetWorkflowRunDetailApi()
     handler = unwrap(api.get)
@@ -661,15 +577,9 @@ def test_draft_node_last_run_raises_not_found_when_execution_missing(
     app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     snippet = _snippet()
-    draft_workflow = SimpleNamespace(id="workflow-1")
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "SnippetService",
-        lambda: SimpleNamespace(
-            get_draft_workflow=Mock(return_value=draft_workflow),
-            get_snippet_node_last_run=Mock(return_value=None),
-        ),
-    )
+    draft_workflow = _workflow(version=Workflow.VERSION_DRAFT)
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_draft_workflow", Mock(return_value=draft_workflow))
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_snippet_node_last_run", Mock(return_value=None))
 
     api = snippet_workflow_module.SnippetDraftNodeLastRunApi()
     handler = unwrap(api.get)
@@ -690,14 +600,14 @@ def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkey
     monkeypatch.setattr(
         snippet_workflow_module,
         "GraphEngineManager",
-        Mock(return_value=SimpleNamespace(send_stop_command=send_stop_command)),
+        Mock(return_value=Mock(send_stop_command=send_stop_command)),
     )
 
     api = snippet_workflow_module.SnippetWorkflowTaskStopApi()
     handler = unwrap(api.post)
 
     with app.test_request_context("/snippets/snippet-1/workflow-runs/tasks/task-1/stop", method="POST"):
-        result = handler(api, snippet=SimpleNamespace(id="snippet-1"), task_id="task-1")
+        result = handler(api, snippet=_snippet(), task_id="task-1")
 
     assert result == {"result": "success"}
     set_stop_flag.assert_called_once_with("task-1")
