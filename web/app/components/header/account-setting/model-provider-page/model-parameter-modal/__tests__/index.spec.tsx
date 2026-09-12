@@ -79,9 +79,18 @@ vi.mock('../parameter-item', () => ({
       data-has-available-nodes={!!availableNodes}
     >
       {parameterRule.label.en_US}
-      <button onClick={() => onChange(0.9)}>Change</button>
-      <button onClick={() => onSwitch(false, undefined)}>Remove</button>
-      <button onClick={() => onSwitch(true, 'assigned')}>Add</button>
+      <button data-testid={`change-${parameterRule.name}`} onClick={() => onChange(0.9)}>
+        Change
+      </button>
+      <button
+        data-testid={`remove-${parameterRule.name}`}
+        onClick={() => onSwitch(false, undefined)}
+      >
+        Remove
+      </button>
+      <button data-testid={`add-${parameterRule.name}`} onClick={() => onSwitch(true, 'assigned')}>
+        Add
+      </button>
     </div>
   ),
 }))
@@ -413,6 +422,93 @@ describe('ModelParameterModal', () => {
 
     expect(screen.getByTestId('param-stop')).toBeInTheDocument()
     expect(screen.getByText(/debugAsSingleModel/i)).toBeInTheDocument()
+  })
+
+  it('should append the first token timeout parameter when the node has an invocation policy', () => {
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        isAdvancedMode
+        isInWorkflow
+        invocation={{ first_token_timeout_ms: 2000 }}
+        onInvocationChange={vi.fn()}
+      />,
+    )
+
+    openSettings()
+
+    expect(screen.getByTestId('param-first_token_timeout_ms')).toBeInTheDocument()
+  })
+
+  it('should not append the first token timeout parameter for a node without an invocation policy', () => {
+    // Workflow context alone must not render it. A node whose data has no
+    // invocation block has nowhere to store the value.
+    render(<ModelParameterModal {...defaultProps} isAdvancedMode isInWorkflow />)
+
+    openSettings()
+
+    expect(screen.getByTestId('param-stop')).toBeInTheDocument()
+    expect(screen.queryByTestId('param-first_token_timeout_ms')).not.toBeInTheDocument()
+  })
+
+  it('should not append the first token timeout parameter for a polling model', () => {
+    // A polling model hands back a job to poll instead of streaming, so there is
+    // no first token to wait for.
+    currentModel = { ...currentModel!, features: ['polling'] }
+
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        isAdvancedMode
+        isInWorkflow
+        onInvocationChange={vi.fn()}
+      />,
+    )
+
+    openSettings()
+
+    expect(screen.getByTestId('param-stop')).toBeInTheDocument()
+    expect(screen.queryByTestId('param-first_token_timeout_ms')).not.toBeInTheDocument()
+  })
+
+  it('should route first token timeout edits to the invocation policy, not the completion params', () => {
+    const onInvocationChange = vi.fn()
+    const onCompletionParamsChange = vi.fn()
+
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        isAdvancedMode
+        isInWorkflow
+        onCompletionParamsChange={onCompletionParamsChange}
+        onInvocationChange={onInvocationChange}
+      />,
+    )
+
+    openSettings()
+    fireEvent.click(screen.getByTestId('change-first_token_timeout_ms'))
+
+    expect(onInvocationChange).toHaveBeenCalledWith({ first_token_timeout_ms: 0.9 })
+    expect(onCompletionParamsChange).not.toHaveBeenCalled()
+  })
+
+  it('should clear the first token timeout from the invocation policy when switched off', () => {
+    const onInvocationChange = vi.fn()
+
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        isAdvancedMode
+        isInWorkflow
+        invocation={{ first_token_timeout_ms: 2000 }}
+        onInvocationChange={onInvocationChange}
+      />,
+    )
+
+    openSettings()
+    fireEvent.click(screen.getByTestId('remove-first_token_timeout_ms'))
+
+    expect(onInvocationChange).toHaveBeenCalledWith({ first_token_timeout_ms: undefined })
   })
 
   it('should render the empty loading fallback when rules resolve to an empty list', () => {

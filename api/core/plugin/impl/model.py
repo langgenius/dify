@@ -181,10 +181,27 @@ class PluginModelClient(BasePluginClient):
         stop: list[str] | None = None,
         stream: bool = True,
         app_id: str | None = None,
+        first_token_timeout: float | None = None,
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Invoke llm
         """
+        data: dict[str, Any] = {
+            "provider": provider,
+            "model_type": "llm",
+            "model": model,
+            "credentials": credentials,
+            "prompt_messages": prompt_messages,
+            "model_parameters": model_parameters,
+            "tools": tools,
+            "stop": stop,
+            "stream": stream,
+        }
+        # Omitted rather than sent as null, so a daemon that predates the field is
+        # byte-for-byte unaffected.
+        if first_token_timeout and first_token_timeout > 0:
+            data["first_token_timeout"] = first_token_timeout
+
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/llm/invoke",
@@ -192,17 +209,7 @@ class PluginModelClient(BasePluginClient):
             data=jsonable_encoder(
                 self._dispatch_payload(
                     user_id=user_id,
-                    data={
-                        "provider": provider,
-                        "model_type": "llm",
-                        "model": model,
-                        "credentials": credentials,
-                        "prompt_messages": prompt_messages,
-                        "model_parameters": model_parameters,
-                        "tools": tools,
-                        "stop": stop,
-                        "stream": stream,
-                    },
+                    data=data,
                     app_id=app_id,
                 )
             ),
@@ -210,6 +217,7 @@ class PluginModelClient(BasePluginClient):
                 "X-Plugin-ID": plugin_id,
                 "Content-Type": "application/json",
             },
+            first_token_timeout=first_token_timeout,
         )
 
         try:

@@ -56,6 +56,25 @@ describe('Meta', () => {
     expect(mockFormatTime).toHaveBeenCalledWith(1700000000000, expect.any(String))
   })
 
+  it('renders the time to first token when the node measured one', () => {
+    render(<Meta status="succeeded" timeToFirstToken={0.2504} />)
+
+    expect(screen.getByText('runLog.meta.timeToFirstToken')).toBeInTheDocument()
+    expect(screen.getByText('0.250s')).toBeInTheDocument()
+  })
+
+  it('omits the time to first token row when the node measured none', () => {
+    render(<Meta status="succeeded" />)
+
+    expect(screen.queryByText('runLog.meta.timeToFirstToken')).not.toBeInTheDocument()
+  })
+
+  it('renders a time to first token of zero rather than treating it as missing', () => {
+    render(<Meta status="succeeded" timeToFirstToken={0} />)
+
+    expect(screen.getByText('0.000s')).toBeInTheDocument()
+  })
+
   it('falls back to default values when metadata is missing', () => {
     render(<Meta status="failed" />)
 

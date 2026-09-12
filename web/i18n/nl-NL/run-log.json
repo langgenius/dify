@@ -7,6 +7,7 @@
   "meta.status": "Status",
   "meta.steps": "Run Steps",
   "meta.time": "Elapsed Time",
+  "meta.timeToFirstToken": "Time to First Token",
   "meta.title": "METADATA",
   "meta.tokens": "Total Tokens",
   "result": "RESULT",

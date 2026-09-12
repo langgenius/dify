@@ -7,6 +7,7 @@
   "meta.status": "Статус",
   "meta.steps": "Кроки виконання",
   "meta.time": "Час виконання",
+  "meta.timeToFirstToken": "Час до першого токена",
   "meta.title": "МЕТАДАНІ",
   "meta.tokens": "Загальна кількість токенів",
   "result": "РЕЗУЛЬТАТ",

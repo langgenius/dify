@@ -7,6 +7,7 @@
   "meta.status": "Stare",
   "meta.steps": "Pași de rulare",
   "meta.time": "Timp scurs",
+  "meta.timeToFirstToken": "Timp până la primul token",
   "meta.title": "METADATE",
   "meta.tokens": "Total tokeni",
   "result": "REZULTAT",

@@ -1,6 +1,10 @@
 import type { LLMDefaultConfig } from './hooks/use-llm-input-manager'
 import type { LLMNodeType } from './types'
-import type { EnvironmentVariable, ValueSelector } from '@/app/components/workflow/types'
+import type {
+  EnvironmentVariable,
+  InvocationConfig,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useState } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -185,6 +189,16 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     [inputRef, setInputs],
   )
 
+  const handleInvocationChange = useCallback(
+    (invocation: InvocationConfig) => {
+      const newInputs = produce(inputRef.current, (draft) => {
+        draft.invocation = invocation
+      })
+      setInputs(newInputs)
+    },
+    [inputRef, setInputs],
+  )
+
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
     if (!modelChanged) return
@@ -228,6 +242,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleModelSourceChange,
     handleModelSelectorChange,
     handleCompletionParamsChange,
+    handleInvocationChange,
     isShowVars: promptConfig.isShowVars,
     handleVarListChange: promptConfig.handleVarListChange,
     handleVarNameChange: promptConfig.handleVarNameChange,

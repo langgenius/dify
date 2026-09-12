@@ -1,5 +1,6 @@
 import type {
   CommonNodeType,
+  InvocationConfig,
   Memory,
   ModelConfig,
   ValueSelector,
@@ -15,6 +16,7 @@ export type Topic = {
 export type QuestionClassifierNodeType = CommonNodeType & {
   query_variable_selector: ValueSelector
   model: ModelConfig
+  invocation?: InvocationConfig
   classes: Topic[]
   instruction: string
   memory?: Memory

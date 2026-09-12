@@ -1,5 +1,6 @@
 import type {
   CommonNodeType,
+  InvocationConfig,
   Memory,
   ModelConfig,
   PromptItem,
@@ -10,6 +11,7 @@ import type {
 
 export type LLMNodeType = CommonNodeType & {
   model: ModelConfig
+  invocation?: InvocationConfig
   model_selector?: ValueSelector
   prompt_template: PromptItem[] | PromptItem
   prompt_config?: {

@@ -7,7 +7,7 @@ import type {
   ModelSelectorValue,
 } from '../model-selector/types'
 import type { ParameterValue } from './parameter-item'
-import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import type { InvocationConfig, Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -15,9 +15,13 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
-import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
+import {
+  FIRST_TOKEN_TIMEOUT_PARAMETER_RULE,
+  PROVIDER_WITH_PRESET_TONE,
+  STOP_PARAMETER_RULE,
+} from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
-import { ModelStatusEnum } from '../declarations'
+import { ModelFeatureEnum, ModelStatusEnum } from '../declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
 import { ModelSelector, SplitModelSelector } from '../model-selector'
 import { ModelSettingsTrigger } from './model-settings-trigger'
@@ -48,6 +52,12 @@ export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & 
   readonly?: boolean
   modelSelectorReadonly?: boolean
   isInWorkflow?: boolean
+  // The node's invocation policy, if its node data declares one. Passing the pair
+  // is what makes the first-token timeout renderable: a node without the block has
+  // nowhere to store the value, so the control is structurally absent rather than
+  // hidden behind a flag each panel has to remember not to set.
+  invocation?: InvocationConfig
+  onInvocationChange?: (invocation: InvocationConfig) => void
   scope?: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -75,6 +85,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   readonly,
   modelSelectorReadonly,
   isInWorkflow,
+  invocation,
+  onInvocationChange,
   nodesOutputVars,
   availableNodes,
   modelList,
@@ -129,6 +141,20 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         [key]: assignValue,
       })
     }
+  }
+
+  // A polling model answers by handing back a job to poll rather than by streaming,
+  // so there is no first token to wait for and the setting would be dead config.
+  // The model schema is the backend's own declaration, so the panels do not have to
+  // know which models these are.
+  const supportsFirstTokenTimeout =
+    !!onInvocationChange && !currentModel?.features?.includes(ModelFeatureEnum.polling)
+
+  const handleFirstTokenTimeoutChange = (value: ParameterValue) => {
+    onInvocationChange?.({
+      ...invocation,
+      first_token_timeout_ms: typeof value === 'number' ? value : undefined,
+    })
   }
 
   const handleSelectPresetParameter = (toneId: number) => {
@@ -238,22 +264,38 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   <Loading />
                 </div>
               ) : (
-                [...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map(
-                  (parameter) => (
+                <>
+                  {[...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map(
+                    (parameter) => (
+                      <ParameterItem
+                        key={`${modelId}-${parameter.name}`}
+                        parameterRule={parameter}
+                        value={completionParams?.[parameter.name]}
+                        onChange={(v) => handleParamChange(parameter.name, v)}
+                        onSwitch={(checked, assignValue) =>
+                          handleSwitch(parameter.name, checked, assignValue)
+                        }
+                        isInWorkflow={isInWorkflow}
+                        nodesOutputVars={nodesOutputVars}
+                        availableNodes={availableNodes}
+                      />
+                    ),
+                  )}
+                  {isAdvancedMode && supportsFirstTokenTimeout && (
                     <ParameterItem
-                      key={`${modelId}-${parameter.name}`}
-                      parameterRule={parameter}
-                      value={completionParams?.[parameter.name]}
-                      onChange={(v) => handleParamChange(parameter.name, v)}
+                      key={`${modelId}-${FIRST_TOKEN_TIMEOUT_PARAMETER_RULE.name}`}
+                      parameterRule={FIRST_TOKEN_TIMEOUT_PARAMETER_RULE}
+                      value={invocation?.first_token_timeout_ms}
+                      onChange={handleFirstTokenTimeoutChange}
                       onSwitch={(checked, assignValue) =>
-                        handleSwitch(parameter.name, checked, assignValue)
+                        handleFirstTokenTimeoutChange(checked ? assignValue : undefined)
                       }
                       isInWorkflow={isInWorkflow}
                       nodesOutputVars={nodesOutputVars}
                       availableNodes={availableNodes}
                     />
-                  ),
-                )
+                  )}
+                </>
               )}
             </div>
           )}

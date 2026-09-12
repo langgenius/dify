@@ -7,6 +7,7 @@
   "meta.status": "상태",
   "meta.steps": "실행 단계",
   "meta.time": "소요 시간",
+  "meta.timeToFirstToken": "첫 토큰까지 소요 시간",
   "meta.title": "메타데이터",
   "meta.tokens": "토큰 총합",
   "result": "결과",

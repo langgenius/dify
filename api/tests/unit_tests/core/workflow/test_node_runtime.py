@@ -1121,3 +1121,69 @@ def test_build_dify_llm_file_saver_wires_runtime_adapters(monkeypatch: pytest.Mo
     assert isinstance(tool_file_manager, DifyToolFileManager)
     assert isinstance(file_reference_factory, DifyFileReferenceFactory)
     assert file_saver_cls.call_args.kwargs["http_client"] is http_client
+
+
+class TestFirstTokenBudgetMetadata:
+    def test_a_streaming_invocation_carries_the_budget(self):
+        merged = node_runtime._with_first_token_budget({"app_id": "app-1"}, 2.0, stream=True)
+
+        assert merged == {"app_id": "app-1", "first_token_timeout": 2.0}
+
+    def test_metadata_is_left_alone_without_a_budget(self):
+        metadata = {"app_id": "app-1"}
+
+        assert node_runtime._with_first_token_budget(metadata, None, stream=True) is metadata
+        assert node_runtime._with_first_token_budget(metadata, 0, stream=True) is metadata
+        assert node_runtime._with_first_token_budget(None, None, stream=True) is None
+
+    def test_a_non_streaming_invocation_never_carries_the_budget(self):
+        """The single result arrives when generation is done, so the budget would stop
+        being about the first token."""
+        metadata = {"app_id": "app-1"}
+
+        assert node_runtime._with_first_token_budget(metadata, 2.0, stream=False) is metadata
+
+    def test_prepared_llm_puts_the_budget_on_the_request(self):
+        model_instance = MagicMock()
+        prepared = DifyPreparedLLM(model_instance, {"app_id": "app-1"}, first_token_timeout=2.0)
+
+        prepared.invoke_llm(
+            prompt_messages=[],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            stream=True,
+        )
+
+        assert model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {
+            "app_id": "app-1",
+            "first_token_timeout": 2.0,
+        }
+
+    def test_prepared_llm_carries_no_budget_when_the_node_configured_none(self):
+        model_instance = MagicMock()
+        prepared = DifyPreparedLLM(model_instance, {"app_id": "app-1"})
+
+        prepared.invoke_llm(
+            prompt_messages=[],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            stream=True,
+        )
+
+        assert model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app-1"}
+
+    def test_prepared_llm_leaves_a_non_streaming_request_alone(self):
+        model_instance = MagicMock()
+        prepared = DifyPreparedLLM(model_instance, {"app_id": "app-1"}, first_token_timeout=2.0)
+
+        prepared.invoke_llm(
+            prompt_messages=[],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            stream=False,
+        )
+
+        assert model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app-1"}

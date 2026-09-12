@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
+from pydantic import BaseModel
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -25,6 +26,7 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
@@ -82,6 +84,12 @@ def _build_llm_model_schema(*, features: list[ModelFeature] | None = None) -> AI
         model_properties={},
         features=features,
     )
+
+
+class _InvocationConfigStub(BaseModel):
+    """Stands in for the graphon release that declares `invocation` as a field."""
+
+    first_token_timeout_ms: int | None = None
 
 
 class _ModelTypeInstanceStub(LargeLanguageModel):
@@ -886,12 +894,98 @@ class TestDifyNodeFactoryCreateNode:
         )
 
         wrapped = node_factory.DifyNodeFactory._wrap_model_instance_for_node(
-            node_data=SimpleNamespace(type=node_type),
+            node_data=SimpleNamespace(type=node_type, get=lambda _key: None),
             model_instance=model_instance,
         )
 
         assert type(wrapped) is DifyPreparedLLM
         assert not isinstance(wrapped, LLMPollingCapableProtocol)
+
+    def test_wrap_model_instance_passes_the_node_first_token_timeout_to_the_adapter(self):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "invocation": {"first_token_timeout_ms": 2500},
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        model_instance = _ModelInstanceStub(
+            model_runtime=object(),
+            model_schema=_build_llm_model_schema(),
+        )
+
+        wrapped = node_factory.DifyNodeFactory._wrap_model_instance_for_node(
+            node_data=node_data,
+            model_instance=model_instance,
+        )
+
+        assert wrapped._first_token_timeout == pytest.approx(2.5)
+
+    @pytest.mark.parametrize(
+        "invocation",
+        [
+            {"first_token_timeout_ms": 2500},
+            _InvocationConfigStub(first_token_timeout_ms=2500),
+        ],
+        ids=["undeclared-extra", "declared-field"],
+    )
+    def test_node_first_token_timeout_reads_either_shape_of_the_invocation_policy(self, invocation):
+        """graphon carries the block as an extra until the release that declares it."""
+        node_data = SimpleNamespace(type=BuiltinNodeTypes.LLM, get=lambda _key: invocation)
+
+        assert node_factory.DifyNodeFactory._node_first_token_timeout(node_data) == pytest.approx(2.5)
+
+    def test_node_first_token_timeout_converts_a_classifier_policy_to_seconds(self):
+        node_data = QuestionClassifierNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.QUESTION_CLASSIFIER,
+                "title": "Classifier",
+                "query_variable_selector": ["start", "sys.query"],
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "invocation": {"first_token_timeout_ms": 2500},
+                "classes": [{"id": "billing", "name": "Invoices"}],
+            }
+        )
+
+        assert node_factory.DifyNodeFactory._node_first_token_timeout(node_data) == pytest.approx(2.5)
+
+    def test_node_first_token_timeout_is_none_without_an_invocation_policy(self):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+
+        assert node_factory.DifyNodeFactory._node_first_token_timeout(node_data) is None
+
+    @pytest.mark.parametrize(
+        "timeout_ms", [0, -1, "2500", True, None], ids=["zero", "negative", "string", "bool", "null"]
+    )
+    def test_node_first_token_timeout_rejects_a_value_an_undeclared_extra_never_validated(self, timeout_ms):
+        node_data = SimpleNamespace(
+            type=BuiltinNodeTypes.LLM,
+            get=lambda _key: {"first_token_timeout_ms": timeout_ms},
+        )
+
+        assert node_factory.DifyNodeFactory._node_first_token_timeout(node_data) is None
+
+    def test_node_first_token_timeout_is_none_for_the_parameter_extractor(self):
+        """That node invokes with stream=False, where the timeout would bound total generation."""
+        node_data = SimpleNamespace(
+            type=BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+            get=lambda _key: {"first_token_timeout_ms": 2500},
+        )
+
+        assert node_factory.DifyNodeFactory._node_first_token_timeout(node_data) is None
 
     def test_create_node_passes_alias_preserving_llm_data_to_constructor(self, monkeypatch, factory):
         created_node = object()

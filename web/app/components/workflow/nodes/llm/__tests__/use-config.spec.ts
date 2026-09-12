@@ -291,6 +291,21 @@ describe('llm/use-config', () => {
     expect(appendDefaultPromptConfig).not.toHaveBeenCalled()
   })
 
+  it('writes the invocation policy outside the completion params', () => {
+    const { result } = renderHook(() => useConfig('llm-node', inputRef.current))
+
+    act(() => {
+      result.current.handleInvocationChange({ first_token_timeout_ms: 2500 })
+    })
+
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invocation: { first_token_timeout_ms: 2500 },
+        model: expect.objectContaining({ completion_params: { temperature: 0.7 } }),
+      }),
+    )
+  })
+
   it('hydrates the model from the current provider, appends mode-specific defaults, and triggers the vision follow-up effect', async () => {
     inputRef.current = createPayload({
       model: {

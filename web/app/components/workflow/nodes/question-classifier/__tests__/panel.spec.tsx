@@ -110,6 +110,7 @@ const panelProps = {} as PanelProps
 describe('question-classifier/panel', () => {
   const handleModelChanged = vi.fn()
   const handleCompletionParamsChange = vi.fn()
+  const handleInvocationChange = vi.fn()
   const handleQueryVarChange = vi.fn()
   const handleVisionResolutionEnabledChange = vi.fn()
   const handleVisionResolutionChange = vi.fn()
@@ -123,6 +124,7 @@ describe('question-classifier/panel', () => {
       isChatMode: true,
       isChatModel: true,
       handleCompletionParamsChange,
+      handleInvocationChange,
       handleQueryVarChange,
       handleTopicsChange: vi.fn(),
       hasSetBlockStatus: { context: false, history: false, query: false },
