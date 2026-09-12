@@ -30,7 +30,7 @@ def test_draft_sync_preserves_webhook_id_when_deleted_node_is_restored(
         tenant_id=app.tenant_id,
         node_id="webhook-node",
         webhook_id="stable-webhook-id",
-        created_by=app.created_by,
+        created_by="user-1",
     )
     with session_maker.begin() as session:
         session.add(webhook_trigger)
@@ -74,7 +74,7 @@ def test_published_sync_removes_stale_webhook_relationships(
         tenant_id=app.tenant_id,
         node_id="deleted-webhook-node",
         webhook_id="deleted-webhook-id",
-        created_by=app.created_by,
+        created_by="user-1",
     )
     with session_maker.begin() as session:
         session.add(webhook_trigger)

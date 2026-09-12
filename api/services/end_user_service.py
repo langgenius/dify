@@ -156,6 +156,8 @@ class EndUserService:
                 if eu.app_id is None:
                     continue
                 # If duplicates exist due to weak DB constraints, prefer the first
+                if eu.app_id is None:
+                    continue
                 if eu.app_id not in result:
                     result[eu.app_id] = eu
                 found_app_ids.add(eu.app_id)

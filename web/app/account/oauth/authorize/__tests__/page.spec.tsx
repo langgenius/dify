@@ -165,6 +165,26 @@ describe('OAuthAuthorize', () => {
     expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument()
   })
 
+  it('still returns to marketplace after a new-user registration with utm_source', async () => {
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'marketplace-client',
+      redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
+      response_type: 'code',
+      state: 'marketplace-state',
+      oauth_new_user: 'true',
+      utm_source: 'dify_marketplace',
+    })
+    mockProviderResponses({ autoAuthorize: true })
+
+    renderPage()
+
+    await waitFor(() =>
+      expect(globalThis.location.href).toBe(
+        'https://api.marketplace.example.com/api/v1/auth/callback/dify?code=oauth-code&state=marketplace-state',
+      ),
+    )
+  })
+
   it('keeps the consent flow when the app is not flagged with auto_authorize', async () => {
     renderPage()
 
@@ -193,6 +213,28 @@ describe('OAuthAuthorize', () => {
     )
     expect(findRequest('/oauth/provider')).toBeDefined()
     expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
+  })
+
+  it('keeps marketplace utm_source on the signin return URL', async () => {
+    mocks.profileLoggedIn = false
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'marketplace-client',
+      redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
+      response_type: 'code',
+      state: 'marketplace-state',
+      utm_source: 'dify_marketplace',
+    })
+    mockProviderResponses({ autoAuthorize: true })
+
+    renderPage()
+
+    await waitFor(() =>
+      expect(mocks.replace).toHaveBeenCalledWith(
+        `/signin?redirect_url=${encodeURIComponent(
+          'https://dify.test/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.example.com%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&response_type=code&state=marketplace-state&utm_source=dify_marketplace',
+        )}`,
+      ),
+    )
   })
 
   it('does not auto-authorize with incomplete OAuth parameters', async () => {

@@ -27,7 +27,7 @@ from extensions.ext_application_services import _build_file_grant_service
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, EndUserType
-from models.model import App, EndUser, UploadFile
+from models.model import App, AppMode, EndUser, UploadFile
 from models.tools import ToolFile
 from services import end_user_service
 from services.end_user_service import EndUserService
@@ -64,7 +64,7 @@ def seeded_app(sqlite_session: Session) -> App:
         id=APP_ID,
         tenant_id=TENANT_ID,
         name="deployed app",
-        mode="workflow",
+        mode=AppMode.WORKFLOW,
         enable_site=True,
         enable_api=True,
     )
@@ -326,7 +326,9 @@ def test_mint_folds_an_oversized_subject_into_one_identity(app: Flask, sqlite_se
 
     end_users = sqlite_session.scalars(select(EndUser).order_by(EndUser.created_at)).all()
     assert len(end_users) == 2
-    assert all(len(end_user.external_user_id) == 255 for end_user in end_users)
+    assert all(
+        end_user.external_user_id is not None and len(end_user.external_user_id) == 255 for end_user in end_users
+    )
     assert _subject_of(first) == _subject_of(again) != _subject_of(other)
 
 
@@ -447,7 +449,7 @@ def test_end_user_service_never_retypes_an_app_deploy_row(
         tenant_id=TENANT_ID,
         app_id=APP_ID,
         type=EndUserType.APP_DEPLOY,
-        is_anonymous=True,
+        _is_anonymous=True,
         session_id=session_id,
         external_user_id=session_id,
     )

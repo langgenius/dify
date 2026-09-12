@@ -8,6 +8,7 @@ from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -46,7 +47,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.storage.storage_type import StorageType
 from models.account import Account, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery, Document, DocumentSegment
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import ApiToken, App, AppMode, IconType, UploadFile
 from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DatasetPermissionService, DatasetService
@@ -171,16 +172,25 @@ def make_document_status(**overrides) -> Document:
     return Document(**base)
 
 
-def make_document_segment(*, position: int, completed: bool) -> DocumentSegment:
+def make_document_segment(
+    *,
+    position: int,
+    completed: bool,
+    document_id: str = "doc-1",
+    tenant_id: str = "tenant-1",
+    dataset_id: str = "dataset-1",
+    status: SegmentStatus = SegmentStatus.WAITING,
+) -> DocumentSegment:
     return DocumentSegment(
-        tenant_id="tenant-1",
-        dataset_id="dataset-1",
-        document_id="doc-1",
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document_id,
         position=position,
         content=f"segment {position}",
         word_count=2,
         tokens=2,
         created_by="account-1",
+        status=status,
         completed_at=datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC) if completed else None,
     )
 
@@ -1395,6 +1405,65 @@ class TestDatasetIndexingStatusApi(_UsesSQLiteSession):
         item = response["data"][0]
         assert item["completed_segments"] == 2
         assert item["total_segments"] == 5
+
+    def test_get_batch_segment_counts_uses_one_aggregate_query(self, app: Flask, sqlite_engine):
+        api = DatasetIndexingStatusApi()
+        method = unwrap(api.get)
+        dataset = make_dataset(id="dataset-1")
+        documents = [make_document_status(id=f"doc-{index}", position=index) for index in range(1, 6)]
+        session = self.session
+        session.add_all(documents)
+        session.add_all(
+            [
+                make_document_segment(
+                    position=position,
+                    completed=position <= 2,
+                    document_id=document.id,
+                )
+                for document in documents
+                for position in range(1, 4)
+            ]
+        )
+        session.add_all(
+            [
+                make_document_segment(
+                    position=4,
+                    completed=True,
+                    document_id=documents[0].id,
+                    status=SegmentStatus.RE_SEGMENT,
+                ),
+                make_document_segment(
+                    position=5,
+                    completed=True,
+                    document_id=documents[0].id,
+                    tenant_id="other-tenant",
+                ),
+            ]
+        )
+        session.flush()
+
+        select_statements: list[str] = []
+
+        def record_select(_connection, _cursor, statement, _parameters, _context, _executemany):
+            if statement.lstrip().upper().startswith("SELECT"):
+                select_statements.append(statement)
+
+        event.listen(sqlite_engine, "before_cursor_execute", record_select)
+        try:
+            with (
+                app.test_request_context("/"),
+                patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+                patch.object(DatasetService, "check_dataset_permission"),
+            ):
+                response, status = method(api, session, "tenant-1", make_account(), "dataset-1")
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", record_select)
+
+        assert status == 200
+        assert len(response["data"]) == 5
+        assert all(item["completed_segments"] == 2 for item in response["data"])
+        assert all(item["total_segments"] == 3 for item in response["data"])
+        assert len(select_statements) == 2
 
 
 class TestDatasetApiKeyApi(_UsesSQLiteSession):

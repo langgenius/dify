@@ -84,23 +84,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-vi.mock('../field', () => ({
-  default: ({ children, title }: { children: ReactNode; title: string }) => (
-    <div>
-      <span>{title}</span>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('../type-select', () => ({
-  default: ({ onSelect }: { onSelect: (item: { value: InputVarType }) => void }) => (
-    <button type="button" onClick={() => onSelect({ value: InputVarType.select })}>
-      type-selector
-    </button>
-  ),
-}))
-
 vi.mock('../../config-select', () => ({
   default: ({ onChange }: { onChange: (value: string[]) => void }) => (
     <button type="button" onClick={() => onChange(['alpha', 'beta'])}>
@@ -147,7 +130,11 @@ const createBaseProps = () => {
     onVarKeyBlur: vi.fn(),
     onVarNameChange: vi.fn(),
     options: undefined as string[] | undefined,
-    selectOptions: [],
+    selectOptions: [
+      { value: InputVarType.textInput, name: 'Text' },
+      { value: InputVarType.select, name: 'Select' },
+      { value: InputVarType.checkbox, name: 'Checkbox' },
+    ],
     tempPayload: {
       type: InputVarType.textInput,
       label: 'Question',
@@ -161,7 +148,47 @@ const createBaseProps = () => {
 }
 
 describe('ConfigModalFormFields', () => {
-  it('should update paragraph, number, checkbox, and select defaults', async () => {
+  it.each([
+    {
+      type: InputVarType.textInput,
+      label: 'variableConfig.fieldType',
+      option: 'Select',
+      value: InputVarType.select,
+    },
+    {
+      type: InputVarType.checkbox,
+      label: 'variableConfig.defaultValue',
+      option: 'variableConfig.startChecked',
+      value: true,
+    },
+    {
+      type: InputVarType.select,
+      label: 'variableConfig.defaultValue',
+      option: 'beta',
+      value: 'beta',
+    },
+  ])(
+    'should focus the $type selector from its label and select an option',
+    async ({ type, label, option, value }) => {
+      const user = userEvent.setup()
+      const props = createBaseProps()
+      props.tempPayload.type = type
+      props.options = ['alpha', 'beta']
+      render(<ConfigModalFormFields {...props} />)
+
+      await user.click(screen.getByText(label))
+      const trigger = screen.getByRole('combobox', { name: label })
+      expect(trigger).toHaveFocus()
+      await user.keyboard('{ArrowDown}')
+      await user.click(await screen.findByRole('option', { name: new RegExp(`^${option}`) }))
+
+      if (type === InputVarType.textInput)
+        expect(props.onTypeChange).toHaveBeenCalledWith({ value, name: option })
+      else expect(props.payloadChangeHandlers.default).toHaveBeenCalledWith(value)
+    },
+  )
+
+  it('should update paragraph, checkbox, and select defaults', async () => {
     const user = userEvent.setup()
     const paragraphProps = createBaseProps()
     paragraphProps.tempPayload = {
@@ -173,16 +200,6 @@ describe('ConfigModalFormFields', () => {
     fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated paragraph' } })
     expect(paragraphProps.payloadChangeHandlers.default).toHaveBeenCalledWith('updated paragraph')
 
-    const numberProps = createBaseProps()
-    numberProps.tempPayload = {
-      ...numberProps.tempPayload,
-      type: InputVarType.number,
-      default: '1',
-    }
-    render(<ConfigModalFormFields {...numberProps} />)
-    fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
-    expect(numberProps.payloadChangeHandlers.default).toHaveBeenCalledWith('2')
-
     const checkboxProps = createBaseProps()
     checkboxProps.tempPayload = {
       ...checkboxProps.tempPayload,
@@ -191,7 +208,7 @@ describe('ConfigModalFormFields', () => {
     }
     checkboxProps.checkboxDefaultSelectValue = 'true'
     const checkboxView = render(<ConfigModalFormFields {...checkboxProps} />)
-    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('combobox', { name: 'variableConfig.defaultValue' }))
     const checkboxOptions = await screen.findAllByRole('option')
     await user.click(checkboxOptions[1]!)
     expect(checkboxProps.payloadChangeHandlers.default).toHaveBeenCalledWith(false)
@@ -206,7 +223,7 @@ describe('ConfigModalFormFields', () => {
     selectProps.options = ['alpha', 'beta']
     render(<ConfigModalFormFields {...selectProps} />)
     fireEvent.click(screen.getByText('config-select'))
-    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('combobox', { name: 'variableConfig.defaultValue' }))
     const selectOptions = await screen.findAllByRole('option')
     await user.click(selectOptions[2]!)
     expect(selectProps.payloadChangeHandlers.options).toHaveBeenCalledWith(['alpha', 'beta'])
@@ -299,14 +316,12 @@ describe('ConfigModalFormFields', () => {
 
     const variableInput = screen.getByDisplayValue('question')
 
-    fireEvent.click(screen.getByText('type-selector'))
     fireEvent.change(variableInput, { target: { value: 'prompt' } })
     fireEvent.blur(variableInput)
     fireEvent.change(screen.getByDisplayValue('Question'), { target: { value: 'Prompt Label' } })
     fireEvent.click(screen.getByText('config-string'))
     fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: '' } })
 
-    expect(textProps.onTypeChange).toHaveBeenCalledWith({ value: InputVarType.select })
     expect(textProps.onVarNameChange).toHaveBeenCalled()
     expect(textProps.onVarKeyBlur).toHaveBeenCalled()
     expect(textProps.payloadChangeHandlers.label).toHaveBeenCalledWith('Prompt Label')
@@ -325,7 +340,7 @@ describe('ConfigModalFormFields', () => {
     selectProps.options = ['alpha', ' ', 'beta']
     const selectView = render(<ConfigModalFormFields {...selectProps} />)
 
-    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('combobox', { name: 'variableConfig.defaultValue' }))
     const selectOptions = await screen.findAllByRole('option')
     await user.click(selectOptions[0]!)
     expect(selectProps.payloadChangeHandlers.default).toHaveBeenCalledWith(undefined)
@@ -365,18 +380,7 @@ describe('ConfigModalFormFields', () => {
     expect(multiFallbackProps.payloadChangeHandlers.default).toHaveBeenCalledWith(undefined)
   })
 
-  it('should clear number defaults and skip rendering the default selector when options are missing', () => {
-    const numberProps = createBaseProps()
-    numberProps.tempPayload = {
-      ...numberProps.tempPayload,
-      type: InputVarType.number,
-      default: '9',
-    }
-    render(<ConfigModalFormFields {...numberProps} />)
-
-    fireEvent.change(screen.getByDisplayValue('9'), { target: { value: '' } })
-    expect(numberProps.payloadChangeHandlers.default).toHaveBeenCalledWith(undefined)
-
+  it('should skip rendering the default selector when options are missing', () => {
     const selectWithoutOptionsProps = createBaseProps()
     selectWithoutOptionsProps.tempPayload = {
       ...selectWithoutOptionsProps.tempPayload,
@@ -386,7 +390,9 @@ describe('ConfigModalFormFields', () => {
     render(<ConfigModalFormFields {...selectWithoutOptionsProps} />)
 
     expect(screen.getAllByText('config-select')).toHaveLength(1)
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('combobox', { name: 'variableConfig.defaultValue' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should preserve existing file defaults when present', () => {
@@ -459,7 +465,7 @@ describe('ConfigModalFormFields', () => {
     }
     render(<ConfigModalFormFields {...numberProps} />)
 
-    expect(screen.getByRole('spinbutton')).toHaveValue(null)
+    expect(screen.getByRole('textbox', { name: 'variableConfig.defaultValue' })).toHaveValue('')
   })
 
   it('should disable hide checkbox when required is true and disable required when hide is true', () => {

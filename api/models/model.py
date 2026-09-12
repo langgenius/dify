@@ -2182,7 +2182,7 @@ class EndUser(UserMixin, TypeBase):
     )
     app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     external_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
-    name: Mapped[str | None] = mapped_column(String(255), default=None)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     _is_anonymous: Mapped[bool] = mapped_column(
         "is_anonymous", sa.Boolean, nullable=False, server_default=sa.true(), default=True
     )
