@@ -25,7 +25,7 @@ from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine
+from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -1291,6 +1291,7 @@ class TestDocumentIndexingStatusApi(SQLiteControllerTest):
         )
 
         mock_doc_svc.get_batch_documents.return_value = [document]
+        mock_doc_svc.get_document_segment_counts.return_value = {document.id: (5, 5)}
 
         self._persist_dataset(mock_dataset)
         self.session.add_all(
@@ -1391,6 +1392,68 @@ class TestDocumentIndexingStatusApi(SQLiteControllerTest):
                     dataset_id=mock_dataset.id,
                     batch=batch_id,
                 )
+
+    def test_get_indexing_status_uses_one_aggregate_query(self, app: Flask, mock_tenant, mock_dataset, sqlite_engine):
+        batch_id = "batch_123"
+        documents = [
+            make_serializable_document(
+                id=str(uuid.uuid4()),
+                tenant_id=mock_tenant,
+                dataset_id=mock_dataset.id,
+            )
+            for _ in range(5)
+        ]
+        self._persist_dataset(mock_dataset)
+        self.session.add_all(
+            [
+                DocumentSegment(
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
+                    document_id=document.id,
+                    position=position,
+                    content=f"Segment {position}",
+                    word_count=2,
+                    tokens=2,
+                    created_by="user-1",
+                    status=SegmentStatus.COMPLETED,
+                    completed_at=datetime(2021, 1, 1, tzinfo=UTC) if position <= 2 else None,
+                )
+                for document in documents
+                for position in range(1, 4)
+            ]
+        )
+        self.session.commit()
+
+        select_statements: list[str] = []
+
+        def record_select(_connection, _cursor, statement, _parameters, _context, _executemany):
+            if statement.lstrip().upper().startswith("SELECT"):
+                select_statements.append(statement)
+
+        event.listen(sqlite_engine, "before_cursor_execute", record_select)
+        try:
+            with (
+                app.test_request_context(
+                    f"/datasets/{mock_dataset.id}/documents/{batch_id}/indexing-status",
+                    method="GET",
+                ),
+                patch.object(DocumentService, "get_batch_documents", return_value=documents),
+            ):
+                api = DocumentIndexingStatusApi()
+                response = inspect.unwrap(type(api).get)(
+                    api,
+                    self.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
+                    batch=batch_id,
+                )
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", record_select)
+
+        assert len(response["data"]) == 5
+        assert all(item["completed_segments"] == 2 for item in response["data"])
+        assert all(item["total_segments"] == 3 for item in response["data"])
+        assert len(select_statements) == 2
 
 
 class TestDocumentAddByTextApi(SQLiteControllerTest):

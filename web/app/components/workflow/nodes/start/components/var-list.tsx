@@ -2,13 +2,14 @@
 import type { FC } from 'react'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiDraggable } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { ChangeType } from '@/app/components/workflow/types'
 import { hasDuplicateStr } from '@/utils/var'
 import VarItem from './var-item'
@@ -74,15 +75,20 @@ const VarList: FC<Props> = ({ readonly, list, onChange }) => {
     [list, onChange],
   )
 
+  const keyboardSort = useKeyboardSortable({
+    items: list,
+    onChange,
+    disabled: readonly,
+    getItemLabel: (item) => item.variable,
+  })
+
   const listWithIds = useMemo(
     () =>
-      list.map((item) => {
-        return {
-          id: item.variable,
-          variable: { ...item },
-        }
-      }),
-    [list],
+      keyboardSort.items.map((item) => ({
+        id: item.variable,
+        variable: { ...item },
+      })),
+    [keyboardSort.items],
   )
 
   const varCount = list.length
@@ -98,38 +104,47 @@ const VarList: FC<Props> = ({ readonly, list, onChange }) => {
   const canDrag = !readonly && varCount > 1
 
   return (
-    <ReactSortable
-      className="space-y-1"
-      list={listWithIds}
-      setList={(list) => {
-        onChange(list.map((item) => item.variable))
-      }}
-      handle=".handle"
-      ghostClass="opacity-50"
-      animation={150}
-    >
-      {listWithIds.map((itemWithId, index) => (
-        <div key={itemWithId.id} className="group relative">
-          <VarItem
-            className={cn(canDrag && 'handle')}
-            readonly={readonly}
-            payload={itemWithId.variable}
-            onChange={handleVarChange(index)}
-            onRemove={handleVarRemove(index)}
-            varKeys={list.map((item) => item.variable)}
-            canDrag={canDrag}
-          />
-          {canDrag && (
-            <RiDraggable
-              className={cn(
-                'handle absolute top-2.5 left-3 hidden size-3 cursor-pointer text-text-tertiary',
-                'group-hover:block',
-              )}
+    <>
+      {keyboardSort.announcement}
+      <ReactSortable
+        className="space-y-1"
+        list={listWithIds}
+        disabled={readonly || keyboardSort.isSorting}
+        setList={(list) => {
+          if (
+            keyboardSort.isSorting ||
+            list.every((item, index) => item.id === listWithIds[index]?.id)
+          )
+            return
+          onChange(list.map((item) => item.variable))
+        }}
+        handle=".handle"
+        ghostClass="opacity-50"
+        animation={150}
+      >
+        {listWithIds.map((itemWithId, index) => (
+          <div key={itemWithId.id} className="group relative">
+            {canDrag && (
+              <IconButton
+                {...keyboardSort.getHandleProps(index)}
+                className="handle pointer-events-none absolute top-1 left-1.5 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+              >
+                <span aria-hidden="true" className="i-ri-draggable size-3" />
+              </IconButton>
+            )}
+            <VarItem
+              className={cn(canDrag && 'handle')}
+              readonly={readonly}
+              payload={itemWithId.variable}
+              onChange={handleVarChange(keyboardSort.getItemKey(index))}
+              onRemove={handleVarRemove(keyboardSort.getItemKey(index))}
+              varKeys={list.map((item) => item.variable)}
+              canDrag={canDrag}
             />
-          )}
-        </div>
-      ))}
-    </ReactSortable>
+          </div>
+        ))}
+      </ReactSortable>
+    </>
   )
 }
 export default React.memo(VarList)

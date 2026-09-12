@@ -338,7 +338,7 @@ Send a request to the chat application.
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
 | 404 | `not_found` : Conversation does not exist. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
 ### [POST] /chat-messages/{task_id}/stop
@@ -485,7 +485,7 @@ Send a request to the chat application.
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
 | 404 | `not_found` : Conversation does not exist. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
 ### [POST] /chat-messages/{task_id}/stop
@@ -2207,7 +2207,7 @@ Execute a workflow. Cannot be executed without a published workflow.
 | 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit or the Dify Cloud workflow execution quota was exceeded. |  |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
 ### [GET] /workflows/run/{workflow_run_id}
@@ -2283,7 +2283,7 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 | 401 | Unauthorized - invalid API token |  |
 | 403 | - `forbidden` : Token scope, app, or workspace access denied. - `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. - `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
 | 404 | `not_found` : Workflow not found. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit or the Dify Cloud workflow execution quota was exceeded. |  |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
 ---

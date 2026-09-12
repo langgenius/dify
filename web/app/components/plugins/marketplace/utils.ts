@@ -16,10 +16,6 @@ type MarketplaceFetchOptions = {
   signal?: AbortSignal
 }
 
-// Matches backend warmup homepageCollectionPluginsRequests Limit: 20 so the
-// public POST hits the Redis bucket the scheduler already writes.
-export const COLLECTION_PREVIEW_PLUGIN_LIMIT = 20
-
 type MarketplacePluginListExtras = {
   agent_strategy?: unknown
   data_sources?: unknown
@@ -111,31 +107,25 @@ export const getPluginDetailLinkInMarketplace = (
 }
 
 export const getTemplateDetailLinkInMarketplace = (
-  template: Pick<
-    MarketplaceTemplate,
-    'id' | 'publisher_handle' | 'publisher_unique_handle' | 'template_name'
-  >,
+  template: Pick<MarketplaceTemplate, 'id' | 'publisher_handle' | 'publisher_unique_handle'>,
 ) => {
-  const publisher = template.publisher_handle || template.publisher_unique_handle || 'template'
-  const search = new URLSearchParams({ templateId: template.id })
+  const publisher = template.publisher_unique_handle || template.publisher_handle || 'template'
 
-  return `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.template_name)}?${search.toString()}`
+  return `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.id)}`
 }
 
 export const getTemplateLinkInMarketplace = (
-  template: Pick<
-    MarketplaceTemplate,
-    'id' | 'publisher_handle' | 'publisher_unique_handle' | 'template_name'
-  >,
+  template: Pick<MarketplaceTemplate, 'id' | 'publisher_handle' | 'publisher_unique_handle'>,
   params?: Record<string, string | undefined>,
 ) => {
-  const publisher = template.publisher_handle || template.publisher_unique_handle || 'template'
-  const path = `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.template_name)}`
+  const {
+    tid: _tid,
+    templateId: _templateId,
+    creationType: _creationType,
+    ...detailParams
+  } = params ?? {}
 
-  return getMarketplaceUrl(path, {
-    ...params,
-    templateId: template.id,
-  })
+  return getMarketplaceUrl(getTemplateDetailLinkInMarketplace(template), detailParams)
 }
 
 export const getMarketplaceCategoryUrl = (
@@ -160,7 +150,7 @@ export const getMarketplacePluginsByCollectionId = async (
       params: {
         collectionId,
       },
-      body: { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT, ...query },
+      body: query ?? {},
     },
     {
       signal: options?.signal,
@@ -301,12 +291,11 @@ export function getCollectionsParams(
   category: ActivePluginType,
 ): CollectionsAndPluginsSearchParams {
   if (category === PLUGIN_TYPE_SEARCH_MAP.all) {
-    return { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT }
+    return {}
   }
   return {
     category,
     condition: getMarketplaceListCondition(category),
     type: getMarketplaceListFilterType(category),
-    limit: COLLECTION_PREVIEW_PLUGIN_LIMIT,
   }
 }

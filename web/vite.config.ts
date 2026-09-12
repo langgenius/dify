@@ -104,7 +104,14 @@ export default defineConfig(({ command, mode, isPreview }) => {
             return [tailwindcss()]
           }),
           optimizeDeps: {
-            include: ['vite-plus/test/browser'],
+            include: [
+              '@base-ui/react/fieldset',
+              '@base-ui/react/number-field',
+              '@base-ui/react/slider',
+              'vite-plus/test/browser',
+              'dayjs/plugin/relativeTime',
+              'react-textarea-autosize',
+            ],
           },
           test: {
             name: 'browser',

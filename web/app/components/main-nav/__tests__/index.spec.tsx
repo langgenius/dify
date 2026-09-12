@@ -11,7 +11,6 @@ import type {
 import type { ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import type { ModalContextState } from '@/context/modal-context'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -19,6 +18,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
@@ -28,14 +28,18 @@ import {
   stepByStepTourSkipRecoveryVisibleAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
-import { useModalContext } from '@/context/modal-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithoutPricing,
+} from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AppModeEnum } from '@/types/app'
 import { MainNav } from '../index'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 type StepByStepTourTestUiState = StepByStepTourSessionState & { minimized: boolean }
 
@@ -380,14 +384,6 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
-vi.mock('@/next/dynamic', async () => {
-  const { default: WebAppsSection } = await import('../components/web-apps-section')
-
-  return {
-    default: () => WebAppsSection,
-  }
-})
-
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
@@ -398,11 +394,15 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 const mockPush = vi.fn()
-const mockSetShowPricingModal = vi.fn()
+
 const mockSetSettingsDestination = vi.fn()
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+  return {
+    ...actual,
+    useQueryState: (...args: Parameters<typeof actual.useQueryState>) =>
+      args[0] === 'pricing' ? actual.useQueryState(...args) : [null, mockSetSettingsDestination],
+  }
 })
 let mockPathname = '/apps'
 let mockInstalledApps: InstalledAppResponse[] = []
@@ -523,7 +523,7 @@ const consoleState: MainNavConsoleState = {
 const workspaceMenuAccessibleName = /Solar Studio.*common\.mainNav\.workspace\.openMenu/
 
 type MainNavSystemFeatures = Exclude<
-  NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['systemFeatures'],
+  NonNullable<Parameters<typeof renderWithoutPricing>[1]>['systemFeatures'],
   null | undefined
 >
 
@@ -539,7 +539,7 @@ const renderMainNav = (
   options: {
     store?: ReturnType<typeof createStore>
     extra?: ReactNode
-    educationStatus?: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['educationStatus']
+    educationStatus?: NonNullable<Parameters<typeof renderWithoutPricing>[1]>['educationStatus']
     skipRecoveryVisible?: boolean
   } = {},
 ) => {
@@ -585,7 +585,7 @@ const renderMainNav = (
       ...systemFeatures.branding,
     },
   }
-  return renderWithConsoleQuery(
+  return render(
     <JotaiProvider store={store}>
       <MainNav />
       {options.extra}
@@ -602,6 +602,11 @@ const renderMainNav = (
       queryClient,
     },
   )
+}
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
 }
 
 describe('MainNav', () => {
@@ -646,9 +651,7 @@ describe('MainNav', () => {
     mockConsoleState.current = consoleState
     skillEnabled = true
     educationEnabled = false
-    ;(useModalContext as Mock).mockReturnValue({
-      setShowPricingModal: mockSetShowPricingModal,
-    } as unknown as ModalContextState)
+
     mockInstalledAppsRequest.mockImplementation(
       async ({ query }: { query: { cursor?: string; name?: string } }) => {
         if (mockInstalledAppsPending) return new Promise(() => {})
@@ -736,7 +739,7 @@ describe('MainNav', () => {
     )
   })
 
-  it('hides the roster entry when the user lacks agent.acl.preview', () => {
+  it('shows the roster entry when the user lacks agent.acl.preview', () => {
     mockConsoleState.current = {
       ...consoleState,
       workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(
@@ -744,12 +747,6 @@ describe('MainNav', () => {
       ),
     }
 
-    renderMainNav()
-
-    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
-  })
-
-  it('shows the roster entry when the user has agent.acl.preview', () => {
     renderMainNav()
 
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
@@ -831,7 +828,7 @@ describe('MainNav', () => {
     expect(screen.getAllByText('team')).toHaveLength(1)
   })
 
-  it('keeps unrestricted main routes visible for dataset operators while hiding roster', () => {
+  it('keeps unrestricted main routes and roster visible for dataset operators', () => {
     mockConsoleState.current = {
       ...consoleState,
       currentWorkspace: {
@@ -848,7 +845,7 @@ describe('MainNav', () => {
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
-    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('href', '/agents')
     expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
       'href',
@@ -877,7 +874,7 @@ describe('MainNav', () => {
       isCurrentWorkspaceDatasetOperator: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
-      workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.acl.preview'],
+      workspacePermissionKeys: ['app_library.access', 'tool.manage'],
     }
 
     renderMainNav({ branding: { enabled: false } })
@@ -1269,7 +1266,9 @@ describe('MainNav', () => {
     await waitFor(() => {
       expect(screen.queryByText('common.userProfile.discord')).not.toBeInTheDocument()
     })
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 
   it('hides the help menu when branding is enabled', () => {
@@ -1292,7 +1291,9 @@ describe('MainNav', () => {
     expect(mockSetSettingsDestination).not.toHaveBeenCalledWith('provider')
 
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
     fireEvent.click(await screen.findByText('common.mainNav.workspace.settings'))
@@ -1324,7 +1325,7 @@ describe('MainNav', () => {
     expect(screen.queryByText('billing.upgradeBtn.plain')).not.toBeInTheDocument()
   })
 
-  it('shows the view plan shortcut for paid workspaces', () => {
+  it('shows the view plan shortcut for paid workspaces', async () => {
     mockConsoleState.current = {
       ...consoleState,
       currentWorkspace: {
@@ -1337,7 +1338,9 @@ describe('MainNav', () => {
 
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
     expect(mockSetSettingsDestination).not.toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
   })
 
@@ -1399,7 +1402,7 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    const scrollViewport = await screen.findByRole('region', {
+    const scrollViewport = await screen.findByRole('navigation', {
       name: 'explore.sidebar.webApps',
     })
     scrollViewport.scrollTop = 240
@@ -1413,7 +1416,15 @@ describe('MainNav', () => {
     await user.click(searchButton)
     expect(searchButton).toHaveAttribute('aria-expanded', 'true')
 
-    const searchInput = screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'common.mainNav.webApps.searchPlaceholder',
+    })
+    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
+    const listPanel = document.getElementById(webAppsButton.getAttribute('aria-controls')!)
+    const searchPanel = document.getElementById(searchButton.getAttribute('aria-controls')!)
+    expect(listPanel).toContainElement(scrollViewport)
+    expect(searchPanel).toContainElement(searchInput)
+    expect(listPanel).not.toContainElement(searchInput)
     await user.type(searchInput, 'beta')
 
     await waitFor(() => {
@@ -1422,11 +1433,11 @@ describe('MainNav', () => {
       expect(screen.getByText('Beta Tool')).toBeInTheDocument()
     })
     expect(searchInput).toHaveFocus()
-    expect(
-      screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' }),
-    ).toHaveAttribute('href', '/installed/installed-2')
+    expect(screen.getByRole('link', { name: 'Beta Tool' })).toHaveAttribute(
+      'href',
+      '/installed/installed-2',
+    )
 
-    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
     await user.click(webAppsButton)
     expect(searchButton).toHaveAttribute('aria-expanded', 'false')
     expect(
@@ -1438,6 +1449,10 @@ describe('MainNav', () => {
     expect(screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')).toHaveValue(
       'beta',
     )
+    expect(webAppsButton).toHaveFocus()
+    await user.click(searchButton)
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(searchButton).toHaveFocus()
   })
 
   it('announces no installed web app results only after the search settles', async () => {
@@ -1466,7 +1481,7 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    const webAppsRegion = await screen.findByRole('region', {
+    const webAppsRegion = await screen.findByRole('navigation', {
       name: 'explore.sidebar.webApps',
     })
     await user.click(screen.getByRole('button', { name: 'common.operation.search' }))
@@ -1497,7 +1512,7 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(
-      screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
+      screen.queryByRole('navigation', { name: 'explore.sidebar.webApps' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
@@ -1517,7 +1532,7 @@ describe('MainNav', () => {
         screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
       ).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
+        screen.queryByRole('navigation', { name: 'explore.sidebar.webApps' }),
       ).not.toBeInTheDocument()
     })
     expect(
@@ -1544,6 +1559,13 @@ describe('MainNav', () => {
     expect(await screen.findByText('Pinned App')).toBeInTheDocument()
     expect(screen.getByText('Unpinned App')).toBeInTheDocument()
     expect(screen.getByTestId('divider')).toBeInTheDocument()
+    const rows = within(
+      screen.getByRole('navigation', { name: 'explore.sidebar.webApps' }),
+    ).getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveAttribute('aria-posinset', '1')
+    expect(rows[1]).toHaveAttribute('aria-posinset', '2')
+    for (const row of rows) expect(row).toHaveAttribute('aria-setsize', '2')
   })
 
   it('keeps long installed web app names truncated in the main nav item', async () => {
@@ -1612,7 +1634,7 @@ describe('MainNav', () => {
     )
     renderMainNav()
     const firstAppLink = await screen.findByRole('link', {
-      name: 'common.mainNav.webApps.openApp:{"name":"Alpha App"}',
+      name: 'Alpha App',
     })
 
     await triggerIntersection()
@@ -1623,7 +1645,7 @@ describe('MainNav', () => {
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
 
     const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
-    const webAppsRegion = screen.getByRole('region', { name: 'explore.sidebar.webApps' })
+    const webAppsRegion = screen.getByRole('navigation', { name: 'explore.sidebar.webApps' })
     retryButton.focus()
     expect(retryButton).toHaveFocus()
 

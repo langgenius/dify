@@ -53,9 +53,9 @@ from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
-from models import Account, ApiToken, App, Dataset, Document, DocumentSegment
+from models import Account, ApiToken, App, Dataset, Document
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
-from models.enums import ApiTokenType, SegmentStatus
+from models.enums import ApiTokenType
 from models.provider_ids import ModelProviderID
 from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache
@@ -1056,31 +1056,13 @@ class DatasetIndexingStatusApi(Resource):
         documents = session.scalars(
             select(Document).where(Document.dataset_id == dataset.id, Document.tenant_id == dataset.tenant_id)
         ).all()
+        segment_counts = DocumentService.get_document_segment_counts(
+            documents,
+            session=session,
+        )
         documents_status = []
         for document in documents:
-            completed_segments = (
-                session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.completed_at.isnot(None),
-                        DocumentSegment.tenant_id == dataset.tenant_id,
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
-            total_segments = (
-                session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.tenant_id == dataset.tenant_id,
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
+            completed_segments, total_segments = segment_counts.get(str(document.id), (0, 0))
             # Create a dictionary with document attributes and additional fields
             document_dict = {
                 "id": document.id,

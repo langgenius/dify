@@ -3,9 +3,11 @@ import type { DataSourceAuth } from '@/app/components/header/account-setting/dat
 import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { DataSourceType } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import StepOne from '../index'
 
 let mockPlan: {
@@ -37,10 +39,17 @@ const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
     limit: mockPlan.total.vectorSpace,
     usage_unknown: vectorSpaceUsageUnknown,
   })
-  return renderWithConsoleQuery(ui, {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: deploymentEdition },
     queryClient,
     features: { billing: { subscription: { plan: mockPlan.type } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
   })
 }
 

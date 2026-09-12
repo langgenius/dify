@@ -54,6 +54,7 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
+    node_execution_response_source,
 )
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
@@ -521,7 +522,7 @@ class RagPipelineDraftNodeRunApi(Resource):
             raise ValueError("Workflow node execution not found")
 
         return WorkflowRunNodeExecutionResponse.model_validate(
-            workflow_node_execution, from_attributes=True
+            node_execution_response_source(workflow_node_execution, session=db.session()), from_attributes=True
         ).model_dump(mode="json")
 
 
@@ -1038,7 +1039,9 @@ class RagPipelineWorkflowLastRunApi(Resource):
         )
         if node_exec is None:
             raise NotFound("last run not found")
-        return WorkflowRunNodeExecutionResponse.model_validate(node_exec, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunNodeExecutionResponse.model_validate(
+            node_execution_response_source(node_exec, session=db.session()), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/transform/datasets/<uuid:dataset_id>")
@@ -1100,7 +1103,7 @@ class RagPipelineDatasourceVariableApi(Resource):
             current_user=current_user,
         )
         return WorkflowRunNodeExecutionResponse.model_validate(
-            workflow_node_execution, from_attributes=True
+            node_execution_response_source(workflow_node_execution, session=db.session()), from_attributes=True
         ).model_dump(mode="json")
 
 

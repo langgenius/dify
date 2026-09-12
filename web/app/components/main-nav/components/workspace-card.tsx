@@ -18,12 +18,15 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import LicenseBadge from '@/app/components/header/license-badge'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { useModalContext } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -271,7 +274,7 @@ export function WorkspaceCard() {
   const currentWorkspace = currentWorkspaceQuery.data
   const workspaces = workspacesQuery.data?.workspaces
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const prefetchWorkspaces = () => {
@@ -325,7 +328,7 @@ export function WorkspaceCard() {
           planActionLabel={planActionLabel}
           creditsHref={buildIntegrationPath('provider')}
           onPrefetchWorkspaces={prefetchWorkspaces}
-          onPlanClick={setShowPricingModal}
+          onPlanClick={() => setPricing('open')}
         />
         <PopoverContent
           placement="bottom-start"

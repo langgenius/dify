@@ -22,7 +22,6 @@ import Annotation from '../index'
 import { AnnotationEnableStatus, JobStatus } from '../type'
 
 let annotationQuota = { size: 0, limit: 10 }
-/* oxlint-disable typescript/no-explicit-any */
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,

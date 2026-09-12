@@ -5,7 +5,7 @@ import type {
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
-import type { InfiniteData } from '@tanstack/react-query'
+import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 
@@ -13,10 +13,110 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
     path: ['console'],
     experimental_defaults: {
+      workspaces: {
+        current: {
+          rbac: {
+            accessPolicies: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+              byPolicyId: {
+                put: {
+                  mutationOptions: {
+                    onSettled: (_data, error, _variables, _result, context) => {
+                      if (error) return
+                      return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                    },
+                  },
+                },
+                delete: {
+                  mutationOptions: {
+                    onSettled: (_data, error, _variables, _result, context) => {
+                      if (error) return
+                      return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                    },
+                  },
+                },
+                copy: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, _variables, _result, context) => {
+                        if (error) return
+                        return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            agents: {
+              byAgentId: {
+                whitelist: {
+                  put: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) => {
+                        if (error) return
+                        return invalidateAgentAccessQueries(
+                          consoleQuery,
+                          context.client,
+                          variables.params.agent_id,
+                        )
+                      },
+                    },
+                  },
+                },
+                users: {
+                  byTargetAccountId: {
+                    accessPolicies: {
+                      put: {
+                        mutationOptions: {
+                          onSettled: (_data, error, variables, _result, context) => {
+                            if (error) return
+                            return invalidateAgentAccessQueries(
+                              consoleQuery,
+                              context.client,
+                              variables.params.agent_id,
+                            )
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                accessPolicies: {
+                  byPolicyId: {
+                    memberBindings: {
+                      delete: {
+                        mutationOptions: {
+                          onSettled: (_data, error, variables, _result, context) => {
+                            if (error) return
+                            return invalidateAgentAccessQueries(
+                              consoleQuery,
+                              context.client,
+                              variables.params.agent_id,
+                            )
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       account: {
         education: {
           get: {
             queryOptions: {
+              // Passive probe: every callsite degrades to "not a student", so no toast.
+              context: { silent: true },
               retry: false,
             },
           },
@@ -1136,4 +1236,34 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
   })
 
   return consoleQuery
+}
+
+function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
+  return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
+}
+
+function invalidateAccessPolicyQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.rbac.key(),
+    query.agent.get.key(),
+    query.agent.byAgentId.get.key(),
+    query.apps.byAppId.get.key(),
+    query.datasets.byDatasetId.get.key(),
+  ])
+}
+
+function invalidateAgentAccessQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  agentId: string,
+) {
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.rbac.agents.byAgentId.key({
+      input: { params: { agent_id: agentId } },
+    }),
+    query.workspaces.current.rbac.myPermissions.get.key(),
+    query.agent.get.key(),
+    query.agent.inviteOptions.get.key(),
+    query.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+  ])
 }

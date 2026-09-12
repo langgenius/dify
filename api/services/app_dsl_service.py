@@ -52,6 +52,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
+from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise.rbac_service import RBACService
 from services.entities.dsl_entities import (
     CheckDependenciesResult,
@@ -62,7 +63,13 @@ from services.entities.dsl_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.icon_configuration import (
+    DEFAULT_ICON,
+    DEFAULT_ICON_TYPE,
+    is_valid_image_icon,
+)
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.system_feature_service import SystemFeatureService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -108,6 +115,55 @@ class AppDslService:
     def __init__(self, session: Session):
         self._session = session
         self._warnings = []
+
+    def copy_app(
+        self,
+        *,
+        app_model: App,
+        account: Account,
+        tenant_id: str,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+    ) -> tuple[Import, App | None]:
+        """Copy an app, finalizing the import before inheriting external access settings.
+
+        Failed and pending imports roll back the current transaction. Completed
+        imports commit before external I/O, then load the copy in the caller's tenant.
+        """
+        if app_model.tenant_id != tenant_id or account.current_tenant_id != tenant_id:
+            raise NoPermissionError("App does not belong to the current workspace")
+
+        original_app_id = app_model.id
+        yaml_content = self.export_dsl(app_model=app_model, session=self._session, include_secret=True)
+        result = self.import_app(
+            account=account,
+            import_mode=ImportMode.YAML_CONTENT,
+            yaml_content=yaml_content,
+            name=name,
+            description=description,
+            icon_type=icon_type,
+            icon=icon,
+            icon_background=icon_background,
+        )
+        if result.status in {ImportStatus.FAILED, ImportStatus.PENDING}:
+            self._session.rollback()
+            return result, None
+        self._session.commit()
+
+        if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
+            try:
+                original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(original_app_id)
+                access_mode = original_settings.access_mode
+            except Exception:
+                # Old apps without settings default to public, matching the access fallback.
+                access_mode = "public"
+            EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
+
+        app = self._session.scalar(select(App).where(App.id == result.app_id, App.tenant_id == tenant_id))
+        return result, app
 
     def import_app(
         self,
@@ -505,6 +561,10 @@ class AppDslService:
         if app_mode == AppMode.AGENT:
             self._ensure_agent_import_permission(account, app=app)
 
+        target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
+        if target_tenant_id is None:
+            raise ValueError("Current tenant is not set")
+
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
         resolved_icon_type: IconType
@@ -513,6 +573,14 @@ class AppDslService:
         else:
             resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
+        if not is_valid_image_icon(
+            session=self._session,
+            tenant_id=target_tenant_id,
+            icon_type=resolved_icon_type,
+            icon=icon,
+        ):
+            resolved_icon_type = DEFAULT_ICON_TYPE
+            icon = DEFAULT_ICON
 
         if app:
             # Update existing app
@@ -524,13 +592,10 @@ class AppDslService:
             app.updated_by = account.id
             app.updated_at = naive_utc_now()
         else:
-            if account.current_tenant_id is None:
-                raise ValueError("Current tenant is not set")
-
             # Create new app
             app = App()
             app.id = import_app_id or str(uuid4())
-            app.tenant_id = account.current_tenant_id
+            app.tenant_id = target_tenant_id
             app.mode = app_mode
             app.name = name or app_data.get("name", "")
             app.description = description or app_data.get("description", "")
@@ -580,6 +645,11 @@ class AppDslService:
                 else:
                     unique_hash = None
                 graph = workflow_data.get("graph", {})
+                if not isinstance(graph, dict):
+                    raise ValueError("Workflow graph must be a mapping")
+                # The source canvas position should not determine the imported app's initial view.
+                graph = graph.copy()
+                graph.pop("viewport", None)
                 for node in graph.get("nodes", []):
                     if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         dataset_ids = node["data"].get("dataset_ids", [])

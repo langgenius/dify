@@ -22,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import BlockIcon from '../block-icon'
@@ -58,7 +57,6 @@ export function AgentSelectorContent({
     staleTime: 0,
   })
   const agents = agentsQuery.data?.data ?? []
-  const canManageAgents = useCanManageAgents()
   const handleInputValueChange = (nextSearchText: string, details: ComboboxChangeEventDetails) => {
     if (details.reason !== 'item-press') setSearchText(nextSearchText)
   }
@@ -84,8 +82,6 @@ export function AgentSelectorContent({
           ? t(($) => $['roster.emptySearch'], { ns: 'agentV2' })
           : t(($) => $['roster.empty'], { ns: 'agentV2' })
         : null
-  const hasActions = !!onStartFromScratch || canManageAgents
-
   return (
     <div className="w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
       <Combobox<AgentInviteOptionResponse>
@@ -125,43 +121,39 @@ export function AgentSelectorContent({
               agents.map((agent) => <AgentSelectorItem key={agent.id} agent={agent} />)}
           </ComboboxList>
         )}
-        {hasActions && (
-          <div className="border-t border-divider-subtle p-1">
-            {onStartFromScratch && (
-              <Button
-                variant="ghost"
-                size="medium"
-                className="h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary"
-                onClick={onStartFromScratch}
-              >
-                <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
-                <span className="min-w-0 flex-1 truncate">
-                  {t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentV2' })}
-                </span>
-              </Button>
+        <div className="border-t border-divider-subtle p-1">
+          {onStartFromScratch && (
+            <Button
+              variant="ghost"
+              size="medium"
+              className="h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary"
+              onClick={onStartFromScratch}
+            >
+              <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
+              <span className="min-w-0 flex-1 truncate">
+                {t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentV2' })}
+              </span>
+            </Button>
+          )}
+          <Link
+            href="/agents"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'medium' }),
+              'h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary',
             )}
-            {canManageAgents && (
-              <Link
-                href="/agents"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  buttonVariants({ variant: 'ghost', size: 'medium' }),
-                  'h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary',
-                )}
-                onClick={() => onOpenChange(false)}
-              >
-                <span
-                  aria-hidden
-                  className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
-                />
-                <span className="min-w-0 flex-1 truncate">
-                  {t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentV2' })}
-                </span>
-              </Link>
-            )}
-          </div>
-        )}
+            onClick={() => onOpenChange(false)}
+          >
+            <span
+              aria-hidden
+              className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
+            />
+            <span className="min-w-0 flex-1 truncate">
+              {t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentV2' })}
+            </span>
+          </Link>
+        </div>
       </Combobox>
     </div>
   )

@@ -932,6 +932,7 @@ class RetrievalService:
     def get_segment_attachment_info(
         cls, dataset_id: str, tenant_id: str, attachment_id: str, session: Session
     ) -> SegmentAttachmentResult | None:
+        """Resolve an attachment only through its tenant and dataset ownership chain."""
         upload_file = session.scalar(
             select(UploadFile).where(UploadFile.id == attachment_id, UploadFile.tenant_id == tenant_id).limit(1)
         )

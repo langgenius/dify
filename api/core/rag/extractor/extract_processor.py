@@ -149,9 +149,11 @@ class ExtractProcessor:
                             upload_file.id,
                         )
                     elif file_extension == ".pdf":
-                        assert upload_file is not None
                         extractor = PdfExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                            file_path,
+                            upload_file.tenant_id if upload_file else None,
+                            upload_file.created_by if upload_file else None,
+                            session=session,
                         )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
@@ -197,9 +199,11 @@ class ExtractProcessor:
                             upload_file.id,
                         )
                     elif file_extension == ".pdf":
-                        assert upload_file is not None
                         extractor = PdfExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                            file_path,
+                            upload_file.tenant_id if upload_file else None,
+                            upload_file.created_by if upload_file else None,
+                            session=session,
                         )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)

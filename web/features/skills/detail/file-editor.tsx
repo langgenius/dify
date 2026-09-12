@@ -1,7 +1,5 @@
 'use client'
 
-/* oxlint-disable eslint-react/set-state-in-effect -- Extracted editor owners intentionally mirror authoritative snapshots into local draft state. */
-
 import type {
   SkillDetailResponse,
   SkillFileResponse,

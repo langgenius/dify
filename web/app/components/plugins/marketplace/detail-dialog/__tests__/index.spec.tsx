@@ -2,7 +2,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import MarketplaceDetailDialog from '../index'
@@ -81,6 +81,19 @@ describe('MarketplaceDetailDialog', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('delegates clipboard-write permission to the marketplace detail iframe', () => {
+    render(
+      <ThemeProvider forcedTheme="dark">
+        <MarketplaceDetailDialog open isInstalled plugin={plugin} onOpenChange={vi.fn()} />
+      </ThemeProvider>,
+    )
+
+    expect(screen.getByTitle('Plugin A · plugin.detailPanel.operation.detail')).toHaveAttribute(
+      'allow',
+      'clipboard-write',
+    )
   })
 
   it('installs from the embedded detail frame without opening a confirmation dialog', async () => {

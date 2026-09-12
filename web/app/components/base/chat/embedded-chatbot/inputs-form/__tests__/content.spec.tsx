@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'

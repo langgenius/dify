@@ -5,7 +5,6 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
@@ -162,8 +161,8 @@ def test_segment_attachment_lookup_rejects_another_tenants_upload(sqlite_session
 @pytest.mark.parametrize("sqlite_session", [(Dataset, DatasetDocument, DocumentSegment)], indirect=True)
 def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
     sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     tenant_id = str(uuid4())
     dataset_id = str(uuid4())
@@ -211,8 +210,7 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
         lambda **kwargs: [RagDocument(page_content="segment content", provider="dify")],
     )
     monkeypatch.setattr(RetrievalService, "format_retrieval_documents", lambda _session, documents: [record])
-    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(dataset_retrieval_module.session_factory, "create_session", factory)
+    monkeypatch.setattr(dataset_retrieval_module.session_factory, "create_session", sqlite_session_factory)
     scope = FileAccessScope(
         tenant_id=tenant_id,
         user_id=str(uuid4()),

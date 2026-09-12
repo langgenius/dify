@@ -1,8 +1,9 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import { PublisherActionsSection } from '../built-in-publisher/actions-section'
 import { PublisherSummarySection } from '../built-in-publisher/summary-section'
@@ -629,3 +630,14 @@ describe('app-publisher sections', () => {
     ).toBeVisible()
   })
 })
+
+function render(ui: React.ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}

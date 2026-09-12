@@ -1,4 +1,3 @@
-/* oxlint-disable react/only-export-components */
 'use client'
 import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
