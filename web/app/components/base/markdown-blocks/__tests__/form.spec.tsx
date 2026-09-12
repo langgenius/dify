@@ -818,6 +818,36 @@ describe('MarkdownForm', () => {
 
       expect(screen.getByRole('button', { name: 'Go' }))!.toBeInTheDocument()
     })
+
+    it('should apply a whitelisted tone to the submit button', () => {
+      const node = createRootNode([
+        createElementNode(
+          'button',
+          { dataVariant: 'ghost', dataSize: 'small', dataTone: 'destructive' },
+          [createTextNode('Delete')],
+        ),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass(
+        'text-components-button-destructive-ghost-text',
+      )
+    })
+
+    it('should ignore an invalid tone value', () => {
+      const node = createRootNode([
+        createElementNode('button', { dataVariant: 'primary', dataTone: 'warning' }, [
+          createTextNode('Go'),
+        ]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const button = screen.getByRole('button', { name: 'Go' })
+      expect(button).not.toHaveClass('bg-components-button-destructive-primary-bg')
+      expect(button).toHaveClass('bg-components-button-primary-bg')
+    })
   })
 
   // Standard input types (password, email, number) use the generic Input branch.
