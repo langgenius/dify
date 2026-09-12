@@ -154,6 +154,8 @@ class EndUserService:
             found_app_ids: set[str] = set()
             for eu in existing_end_users:
                 # If duplicates exist due to weak DB constraints, prefer the first
+                if eu.app_id is None:
+                    continue
                 if eu.app_id not in result:
                     result[eu.app_id] = eu
                 found_app_ids.add(eu.app_id)
@@ -179,6 +181,8 @@ class EndUserService:
                 session.add_all(new_end_users)
 
                 for eu in new_end_users:
+                    if eu.app_id is None:
+                        continue
                     result[eu.app_id] = eu
 
         return result
