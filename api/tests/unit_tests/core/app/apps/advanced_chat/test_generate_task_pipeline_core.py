@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import nullcontext
 from types import SimpleNamespace
 
 import pytest
@@ -493,7 +493,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._base_task_pipeline.queue_manager.publish = lambda *args, **kwargs: None
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
-        pipeline._get_message = lambda **kwargs: SimpleNamespace(id="message-id")
+        pipeline._get_message = lambda **kwargs: Message(id="message-id")
 
         succeeded_responses = list(pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent(outputs={})))
         assert len(succeeded_responses) == 2
@@ -587,7 +587,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert result is False
         assert seen == ["token"]
 
-    def test_handle_retriever_and_annotation_events(self, monkeypatch: pytest.MonkeyPatch):
+    def test_handle_retriever_and_annotation_events(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         pipeline = _make_pipeline()
         calls = {"retriever": 0, "annotation": 0}
 
@@ -603,11 +603,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         retriever_event = QueueRetrieverResourcesEvent(retriever_resources=[])
         annotation_event = QueueAnnotationReplyEvent(message_annotation_id="ann")
 
-        @contextmanager
-        def _fake_session():
-            yield SimpleNamespace()
-
-        monkeypatch.setattr(pipeline, "_database_session", _fake_session)
+        monkeypatch.setattr(pipeline, "_database_session", lambda: nullcontext(unbound_session))
 
         assert list(pipeline._handle_retriever_resources_event(retriever_event)) == []
         assert list(pipeline._handle_annotation_reply_event(annotation_event)) == []
