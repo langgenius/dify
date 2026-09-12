@@ -410,6 +410,19 @@ class EndpointConfig(BaseSettings):
 
     TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
 
+    NETWORK_ACCESS_API_URL: str = Field(
+        description="Optional internal SaaS API base URL for network access policy requests; "
+        "falls back to BILLING_API_URL",
+        default="",
+    )
+
+    NETWORK_ACCESS_TRUSTED_PROXY_CIDRS: str = Field(
+        description="Comma-separated trusted proxy CIDRs for network-access current-IP previews. "
+        "Only verified socket peers may supply X-Forwarded-For; empty disables Cloud IP previews. "
+        "Match the Gateway trust boundary and sanitize or append the client IP at the edge.",
+        default="",
+    )
+
 
 class FileAccessConfig(BaseSettings):
     """

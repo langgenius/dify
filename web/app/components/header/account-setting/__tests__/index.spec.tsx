@@ -5,7 +5,8 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { seedNetworkAccessGroups } from '@/test/console/network-access'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
@@ -189,11 +190,15 @@ describe('AccountSetting', () => {
       )
     }
 
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, { entitled: false, groups: [] })
+
     return renderWithConsoleQuery(
       <NuqsTestingAdapter>
         <StatefulAccountSetting />
       </NuqsTestingAdapter>,
       {
+        queryClient,
         features: {
           billing: { subscription: { plan: 'sandbox' } },
           can_replace_logo: canReplaceLogo,
@@ -557,6 +562,29 @@ describe('AccountSetting', () => {
   })
 
   describe('Tab Navigation', () => {
+    it('should open the IP Policies settings page', () => {
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IP_POLICIES })
+
+      expect(screen.getByRole('button', { name: 'common.settings.ipPolicies' })).toBeInTheDocument()
+      expect(
+        screen.getByText('deployments.studio.accessControl.emptyPoliciesTitle'),
+      ).toBeInTheDocument()
+    })
+
+    it('should hide IP Policies for workspace members', () => {
+      mockConsoleState.current = {
+        ...baseConsoleState,
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+      }
+
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IP_POLICIES })
+
+      expect(
+        screen.queryByRole('button', { name: 'common.settings.ipPolicies' }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should change active tab when clicking on menu item', () => {
       // Arrange
       renderAccountSetting({ onTabChange: mockOnTabChange })
