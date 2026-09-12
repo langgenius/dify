@@ -36,6 +36,22 @@ def _load_span_attribute_limits() -> dict[str, int | None]:
     }
 
 
+def _load_event_limits() -> dict[str, int | None]:
+    count_configured = "OTEL_SPAN_EVENT_COUNT_LIMIT" in os.environ
+    attributes_configured = (
+        "OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT" in os.environ or "OTEL_ATTRIBUTE_COUNT_LIMIT" in os.environ
+    )
+    length_configured = "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ
+    if not count_configured and not attributes_configured and not length_configured:
+        return {}
+    limits = SpanLimits()
+    return {
+        "max_events": limits.max_events if count_configured else None,
+        "max_attributes": limits.max_event_attributes if attributes_configured else None,
+        "max_value_length": limits.max_attribute_length if length_configured else None,
+    }
+
+
 class MLflowConfig(BaseTracingConfig):
     """
     Model class for MLflow tracing config.
@@ -87,6 +103,7 @@ class MLflowConfig(BaseTracingConfig):
             "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
             "request_headers": capture_request_headers(),
             "span_attribute_limits": _load_span_attribute_limits(),
+            "event_limits": _load_event_limits(),
         }
         if os.environ.get("MLFLOW_TRACKING_AUTH") in {"kubernetes", "kubernetes-namespaced"}:
             # These built-in Requests auth objects suppress netrc and URL authentication.
@@ -186,6 +203,7 @@ class DatabricksConfig(BaseTracingConfig):
             "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
             "request_headers": capture_request_headers(),
             "span_attribute_limits": _load_span_attribute_limits(),
+            "event_limits": _load_event_limits(),
         }
         sdk_enabled = os.environ.get("MLFLOW_ENABLE_DB_SDK", "true").lower()
         if sdk_enabled not in {"true", "false", "1", "0"}:

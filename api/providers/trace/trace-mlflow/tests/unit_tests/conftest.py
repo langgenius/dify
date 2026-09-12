@@ -25,5 +25,7 @@ def isolate_deployment_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
             "OTEL_ATTRIBUTE_COUNT_LIMIT",
             "OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT",
             "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT",
+            "OTEL_SPAN_EVENT_COUNT_LIMIT",
+            "OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT",
         }:
             monkeypatch.delenv(name)

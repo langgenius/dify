@@ -62,6 +62,23 @@ def load_span_limits() -> dict[str, int | None]:
     }
 
 
+def load_event_limits() -> dict[str, int | None]:
+    """Capture event limits separately from span-only attribute limits."""
+    count_configured = any(
+        name in os.environ for name in ("OTEL_ATTRIBUTE_COUNT_LIMIT", "OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT")
+    )
+    length_configured = "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT" in os.environ
+    events_configured = "OTEL_SPAN_EVENT_COUNT_LIMIT" in os.environ
+    if not any((count_configured, length_configured, events_configured)):
+        return {}
+    limits = SpanLimits()
+    return {
+        "max_events": limits.max_events if events_configured else None,
+        "max_attributes": limits.max_event_attributes if count_configured else None,
+        "max_value_length": limits.max_attribute_length if length_configured else None,
+    }
+
+
 class ArizeConfig(BaseTracingConfig):
     """
     Model class for Arize tracing config.
@@ -111,6 +128,7 @@ class ArizeConfig(BaseTracingConfig):
             "disabled": os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true",
             "sampling": load_sampling_settings(),
             "span_limits": load_span_limits(),
+            "event_limits": load_event_limits(),
         }
 
     @field_validator("project")
@@ -144,8 +162,16 @@ class PhoenixConfig(BaseTracingConfig):
         disabled = os.environ.get("OTEL_SDK_DISABLED", "").lower().strip() == "true"
         sampling = load_sampling_settings()
         span_limits = load_span_limits()
+        event_limits = load_event_limits()
         if urlsplit(cls.model_validate(provider_config).endpoint).scheme != "https":
-            return {"tls": {}, "verify": True, "disabled": disabled, "sampling": sampling, "span_limits": span_limits}
+            return {
+                "tls": {},
+                "verify": True,
+                "disabled": disabled,
+                "sampling": sampling,
+                "span_limits": span_limits,
+                "event_limits": event_limits,
+            }
         filenames = {
             field: os.environ.get(
                 f"OTEL_EXPORTER_OTLP_TRACES_{field.upper()}", os.environ.get(f"OTEL_EXPORTER_OTLP_{field.upper()}")
@@ -162,6 +188,7 @@ class PhoenixConfig(BaseTracingConfig):
             "disabled": disabled,
             "sampling": sampling,
             "span_limits": span_limits,
+            "event_limits": event_limits,
         }
 
     @field_validator("project")

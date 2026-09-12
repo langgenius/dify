@@ -74,10 +74,10 @@ def otlp_attributes(attributes: dict[str, Any]) -> list[KeyValue]:
     return [KeyValue(key=key, value=otlp_value(value)) for key, value in attributes.items() if value is not None]
 
 
-def limit_span_attributes(
-    span: Span, *, max_attributes: int | None = None, max_value_length: int | None = None
-) -> Span:
-    """Bound one owned OTLP span while preserving structured attribute values."""
+def limit_span_attributes[T: Span | Span.Event](
+    span: T, *, max_attributes: int | None = None, max_value_length: int | None = None
+) -> T:
+    """Bound one owned OTLP span or event without discarding structured values."""
     if any(limit is not None and limit < 0 for limit in (max_attributes, max_value_length)):
         raise ValueError("OTLP attribute limits must be non-negative")
     if max_attributes is not None and len(span.attributes) > max_attributes:
@@ -97,6 +97,25 @@ def limit_span_attributes(
                     values.extend(attribute.value for attribute in value.kvlist_value.values)
                 case _:
                     pass
+    return span
+
+
+def limit_span_events(
+    span: Span,
+    *,
+    max_events: int | None = None,
+    max_attributes: int | None = None,
+    max_value_length: int | None = None,
+) -> Span:
+    """Keep the latest events and account for explicitly limited protocol data."""
+    if any(limit is not None and limit < 0 for limit in (max_events, max_attributes, max_value_length)):
+        raise ValueError("OTLP event limits must be non-negative")
+    if max_events is not None and len(span.events) > max_events:
+        dropped = len(span.events) - max_events
+        del span.events[:dropped]
+        span.dropped_events_count += dropped
+    for event in span.events:
+        limit_span_attributes(event, max_attributes=max_attributes, max_value_length=max_value_length)
     return span
 
 

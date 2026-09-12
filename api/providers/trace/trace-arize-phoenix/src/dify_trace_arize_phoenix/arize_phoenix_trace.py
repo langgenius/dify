@@ -12,7 +12,14 @@ from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, set_s
 from pydantic import JsonValue
 
 from core.helper.ssl_context import create_grpc_credentials, create_ssl_context
-from core.ops.otlp_trace import OtlpTraceClient, limit_span_attributes, otlp_span, otlp_trace_id
+from core.ops.otlp_trace import (
+    OtlpTraceClient,
+    limit_span_attributes,
+    limit_span_events,
+    otlp_attributes,
+    otlp_span,
+    otlp_trace_id,
+)
 from core.ops.provider_export import export_span_id, json_text, span_attributes, span_id_bytes
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig, create_sampler
@@ -60,12 +67,14 @@ class OpenInferenceTraceClient(OtlpTraceClient):
         sampler: Sampler,
         disabled: bool = False,
         span_limits: dict[str, int | None] | None = None,
+        event_limits: dict[str, int | None] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.disabled = disabled
         self.sampler = sampler
         self.span_limits = dict(span_limits or {})
+        self.event_limits = dict(event_limits or {})
 
     def _sample_trace(self, trace_id: int, name: str, parent_span: dict[str, JsonValue] | None = None) -> bool:
         parent_context = Context()
@@ -217,6 +226,20 @@ class OpenInferenceTraceClient(OtlpTraceClient):
         # Existing provider status filters include stopped workflows with a reason.
         if span.span_type == "workflow" and span.status == "cancelled" and span.error:
             exported_span.status.code = Status.STATUS_CODE_ERROR
+        if exported_span.status.code == Status.STATUS_CODE_ERROR and span.error:
+            exported_span.events.add(
+                name="exception",
+                time_unix_nano=exported_span.end_time_unix_nano,
+                attributes=otlp_attributes(
+                    {
+                        "exception.type": "str",
+                        "exception.message": span.error,
+                        "exception.escaped": False,
+                        "exception.stacktrace": span.error,
+                    }
+                ),
+            )
+        limit_span_events(exported_span, **self.event_limits)
         return limit_span_attributes(
             exported_span,
             max_attributes=self.span_limits.get("max_attributes"),
@@ -257,6 +280,7 @@ def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> 
             protocol="grpc",
             sampler=sampler,
             span_limits=runtime_settings.get("span_limits"),
+            event_limits=runtime_settings.get("event_limits"),
             disabled=bool(runtime_settings.get("disabled", False)),
             grpc_credentials={"trace": create_grpc_credentials(runtime_settings.get("tls", {}))},
         )
@@ -270,6 +294,7 @@ def create_trace_client(provider_name: str, provider_config: dict[str, Any]) -> 
         project_url,
         sampler=sampler,
         span_limits=runtime_settings.get("span_limits"),
+        event_limits=runtime_settings.get("event_limits"),
         disabled=bool(runtime_settings.get("disabled", False)),
         ssl_context=create_ssl_context(runtime_settings.get("tls", {}), verify=runtime_settings.get("verify", True)),
     )
