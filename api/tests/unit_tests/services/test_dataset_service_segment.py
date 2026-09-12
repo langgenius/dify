@@ -779,6 +779,73 @@ class TestSegmentServiceMutations:
         vector_update.assert_not_called()
         multimodel_update.assert_not_called()
 
+    def test_update_segment_qa_content_only_preserves_existing_answer(self, sqlite_session: Session) -> None:
+        dataset = _dataset()
+        document = _document(doc_form=IndexStructureType.QA_INDEX, word_count=40)
+        segment = _segment(content="old question")
+        segment.answer = "old answer"
+        segment.word_count = len("old question") + len("old answer")
+        sqlite_session.add_all([dataset, document, segment])
+        sqlite_session.commit()
+        embedding_model = MagicMock()
+        embedding_model.get_text_embedding_num_tokens.return_value = [21]
+
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            patch("services.dataset_service.redis_client.get", return_value=None),
+            patch("services.dataset_service.ModelManager") as manager_cls,
+            patch("services.dataset_service.VectorService.update_segment_vector") as vector_update,
+            patch("services.dataset_service.VectorService.update_multimodel_vector") as multimodel_update,
+        ):
+            manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
+            updated = SegmentService.update_segment(
+                SegmentUpdateArgs(content="new question"),
+                segment,
+                document,
+                dataset,
+                sqlite_session,
+            )
+
+        # A content-only QA update must not wipe the existing answer.
+        assert updated.answer == "old answer"
+        assert updated.content == "new question"
+        embedding_model.get_text_embedding_num_tokens.assert_called_once_with(texts=["new questionold answer"])
+        assert updated.word_count == len("new question") + len("old answer")
+        assert document.word_count == 40 + updated.word_count - len("old question") - len("old answer")
+        vector_update.assert_called_once_with(None, segment, dataset, session=sqlite_session)
+        multimodel_update.assert_not_called()
+
+    def test_update_segment_qa_keywords_only_preserves_existing_answer(self, sqlite_session: Session) -> None:
+        dataset = _dataset()
+        document = _document(doc_form=IndexStructureType.QA_INDEX, word_count=20)
+        segment = _segment(content="question")
+        segment.answer = "answer"
+        segment.word_count = len("question") + len("answer")
+        sqlite_session.add_all([dataset, document, segment])
+        sqlite_session.commit()
+
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            patch("services.dataset_service.redis_client.get", return_value=None),
+            patch("services.dataset_service.VectorService.update_segment_vector") as vector_update,
+            patch("services.dataset_service.VectorService.update_multimodel_vector") as multimodel_update,
+        ):
+            updated = SegmentService.update_segment(
+                SegmentUpdateArgs(keywords=["new-keyword"]),
+                segment,
+                document,
+                dataset,
+                sqlite_session,
+            )
+
+        # A keywords-only QA update must not wipe the existing answer or drift the word counts.
+        assert updated.answer == "answer"
+        assert updated.keywords == ["new-keyword"]
+        assert updated.word_count == len("question") + len("answer")
+        assert document.word_count == 20
+        vector_update.assert_called_once_with(["new-keyword"], segment, dataset, session=sqlite_session)
+        multimodel_update.assert_not_called()
+
     def test_update_segment_changed_qa_content_tokenizes_question_and_answer(self, sqlite_session: Session) -> None:
         dataset = _dataset()
         document = _document(doc_form=IndexStructureType.QA_INDEX, word_count=10)
