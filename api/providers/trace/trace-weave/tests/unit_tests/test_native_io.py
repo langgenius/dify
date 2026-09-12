@@ -33,11 +33,14 @@ def export_calls(trace: CompletedTrace, legacy_server: bool, monkeypatch: pytest
             if legacy_server:
                 return httpx.Response(404)
             calls.extend(body["batch"])
-        elif request.url.path == "/call/start":
-            starts[body["start"]["id"]] = body["start"]
-        elif request.url.path == "/call/end":
-            end = body["end"]
-            calls.append({**starts[end["id"]], **end})
+        elif request.url.path == "/call/upsert_batch":
+            for event in body["batch"]:
+                if event["mode"] == "start":
+                    start = event["req"]["start"]
+                    starts[start["id"]] = start
+                else:
+                    end = event["req"]["end"]
+                    calls.append({**starts[end["id"]], **end})
         else:
             pytest.fail(f"Unexpected Weave endpoint: {request.url.path}")
         return httpx.Response(200, json={})

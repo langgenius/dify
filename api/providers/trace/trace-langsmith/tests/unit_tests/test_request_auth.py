@@ -84,7 +84,7 @@ def test_requests_authentication_reaches_every_native_request_without_url_creden
     assert client.get_project_url() == "https://langsmith.example:8443/prefix/o/workspace-id/projects/p/project-id"
     trace = make_completed_trace()
     assert len(client.export_trace(trace).spans) == len(trace.spans)
-    assert len(requests) == 2 + len(trace.spans)
+    assert len(requests) == 3
 
 
 @pytest.mark.parametrize("filename", [".netrc", "_netrc"])

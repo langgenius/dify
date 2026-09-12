@@ -93,5 +93,5 @@ def test_enabled_snapshot_exports_after_worker_switch_is_disabled(monkeypatch: p
     assert [request.url.path for request in requests] == [
         "/graphql",
         "/calls/query_stats",
-        *["/v2/team/project/calls/complete"] * len(trace.spans),
+        "/v2/team/project/calls/complete",
     ]

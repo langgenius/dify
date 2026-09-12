@@ -83,8 +83,6 @@ def test_authorized_destination_is_used_for_discovery_and_export(monkeypatch: py
         "second-account.example",
         "second-account.example",
         "second-ingest.example",
-        "second-ingest.example",
-        "second-ingest.example",
     ]
     assert first_client.config.host == "https://first-account.example"
 

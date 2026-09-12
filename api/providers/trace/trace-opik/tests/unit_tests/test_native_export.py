@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 from urllib.parse import parse_qs, urlsplit
@@ -110,8 +111,7 @@ def test_opik_sends_workspace_for_verification_and_export(
     assert [(request.method, request.url.path) for request in requests] == [
         ("GET", "/opik/api/v1/private/projects"),
         ("POST", "/opik/api/v1/private/traces"),
-        ("POST", "/opik/api/v1/private/spans"),
-        ("POST", "/opik/api/v1/private/spans"),
+        ("POST", "/opik/api/v1/private/spans/batch"),
     ]
     assert all(request.headers["Authorization"] == "secret" for request in requests)
     assert client.config.workspace == (
@@ -178,7 +178,8 @@ def test_opik_uses_repeatable_uuid7_ids_and_native_cost(monkeypatch: pytest.Monk
     request.reset_mock()
     assert client.export_trace(trace) == first
     assert [call.kwargs["json"] for call in request.call_args_list] == first_bodies
-    root, root_span, generation = first_bodies
+    root = first_bodies[0]
+    root_span, generation = first_bodies[1]["spans"]
     assert UUID(root["id"]).version == 7
     assert UUID(root_span["id"]).version == UUID(generation["id"]).version == 7
     assert generation["parent_span_id"] == root_span["id"]
@@ -212,8 +213,8 @@ def test_opik_external_uuid_and_late_parent_remain_coherent(external_id: str, mo
     request.reset_mock()
     child = make_trace()
     child_receipts = client.export_trace(child, receipt)
-    assert all(call.args[1] == "v1/private/spans" for call in request.call_args_list)
-    assert request.call_args_list[0].kwargs["json"]["parent_span_id"] == receipt["span_id"]
+    assert all(call.args[1] == "v1/private/spans/batch" for call in request.call_args_list)
+    assert request.call_args_list[0].kwargs["json"]["spans"][0]["parent_span_id"] == receipt["span_id"]
     assert child_receipts.spans[child.root_span_id]["trace_id"] == receipt["trace_id"]
 
 
@@ -223,7 +224,7 @@ def test_opik_preserves_untimed_details_without_export_clock(monkeypatch: pytest
     trace = trace.model_copy(update={"spans": (trace.spans[0], child)})
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(trace)
-    exported = request.call_args.kwargs["json"]
+    exported = request.call_args.kwargs["json"]["spans"][-1]
     assert trace.spans[0].started_at is not None
     assert exported["start_time"] == exported["end_time"] == trace.spans[0].started_at.isoformat()
     assert exported["metadata"]["dify.timing.estimated"] is True
@@ -281,8 +282,7 @@ def test_opik_preserves_tags_on_captured_message_operations(mode: str, monkeypat
 
     expected_tags["message"] = ["dify", "operation", "message", "workflow" if mode == "advanced-chat" else mode]
     expected_tags["gpt-4o"] = ["dify", "llm", mode]
-    for call in request.call_args_list:
-        exported = call.kwargs["json"]
+    for exported in [request.call_args_list[0].kwargs["json"], *request.call_args.kwargs["json"]["spans"]]:
         assert exported["tags"] == expected_tags[exported["name"]]
         assert exported["metadata"]["created_from"] == "dify"
         assert exported["metadata"]["dify.tenant_id"] == source.tenant_id
@@ -315,7 +315,8 @@ def test_opik_preserves_workflow_trace_and_node_tags(
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(trace)
 
-    root, root_span, node_span = [call.kwargs["json"] for call in request.call_args_list]
+    root = request.call_args_list[0].kwargs["json"]
+    root_span, node_span = request.call_args.kwargs["json"]["spans"]
     assert root["tags"] == (["dify", "message", "workflow"] if message_id else ["dify", "workflow"])
     assert root_span["tags"] == ["dify", "workflow"]
     assert node_span["tags"] == ["dify", node_type, "node_execution"]
@@ -371,8 +372,8 @@ def test_opik_captured_workflow_node_categories(
     trace = CompletedTrace.model_validate_json(submitted.call_args.args[0].model_dump_json())
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(trace)
-    assert request.call_args.kwargs["json"]["type"] == expected_type
-    assert request.call_args.kwargs["json"]["input"] == (
+    assert request.call_args.kwargs["json"]["spans"][-1]["type"] == expected_type
+    assert request.call_args.kwargs["json"]["spans"][-1]["input"] == (
         {"messages": prompts} if node_type == "llm" else original_inputs
     )
 
@@ -429,7 +430,7 @@ def test_opik_agent_usage_fallback_counts_tokens_once(details: str, monkeypatch:
     original = trace.model_dump_json()
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(trace)
-    spans = [call.kwargs["json"] for call in request.call_args_list if call.args[1].endswith("/spans")]
+    spans = request.call_args.kwargs["json"]["spans"]
     assert sum(span["usage"].get("total_tokens", 0) for span in spans) == (16 if details == "sibling" else 8)
     assert spans[1]["usage"] == (
         {} if details == "unaggregated" else {"prompt_tokens": 3, "completion_tokens": 5, "total_tokens": 8}
@@ -438,3 +439,89 @@ def test_opik_agent_usage_fallback_counts_tokens_once(details: str, monkeypatch:
         assert spans[2]["usage"] == {}
         assert spans[2]["metadata"]["dify.usage"]["total_tokens"] == (3 if details == "partial" else 8)
     assert trace.model_dump_json() == original
+
+
+@pytest.mark.parametrize(
+    ("span_count", "input_length", "batch_sizes"),
+    [(401, 0, [401]), (1001, 0, [1000, 1]), (3, 800_000, [2, 1]), (2, 1_400_000, [1, 1])],
+)
+def test_opik_batches_large_traces_within_the_export_deadline(
+    span_count: int, input_length: int, batch_sizes: list[int], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    trace = make_trace()
+    trace = trace.model_copy(
+        update={
+            "spans": (
+                trace.spans[0],
+                *(
+                    trace.spans[-1].model_copy(
+                        update={
+                            "span_id": make_span_id(trace.source.tenant_id, trace.source.operation_id, f"node-{index}"),
+                            "inputs": {"query": "λ" * input_length},
+                        }
+                    )
+                    for index in range(span_count - 1)
+                ),
+            )
+        }
+    )
+    original = trace.model_dump_json()
+    now = 0.0
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        nonlocal now
+        requests.append(request)
+        now += 0.25
+        return httpx.Response(204)
+
+    monkeypatch.setattr("core.ops.provider_export.monotonic", lambda: now)
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda *, ssl_context: httpx.Client(
+            verify=ssl_context, transport=httpx.MockTransport(respond), trust_env=False
+        ),
+    )
+    config = {"api_key": "tenant-secret", "workspace": "workspace", "project": "project"}
+    first = OpikTraceClient(config).export_trace(trace)
+    first_requests = list(requests)
+    requests.clear()
+    assert OpikTraceClient(config).export_trace(trace) == first
+    assert [request.content for request in requests] == [request.content for request in first_requests]
+    assert now == 2 * (len(batch_sizes) + 1) * 0.25
+    assert requests[0].url.path.endswith("/traces")
+    batches = [json.loads(request.content)["spans"] for request in requests[1:]]
+    assert [len(batch) for batch in batches] == batch_sizes
+    assert all(request.url.path.endswith("/spans/batch") for request in requests[1:])
+    assert all(
+        len(request.content) <= 5 * 1024 * 1024 or len(batch) == 1
+        for request, batch in zip(requests[1:], batches, strict=True)
+    )
+    exported_spans = [span for batch in batches for span in batch]
+    assert len({span["id"] for span in exported_spans}) == span_count
+    assert all(span["parent_span_id"] == exported_spans[0]["id"] for span in exported_spans[1:])
+    assert all(span["trace_id"] == first.spans[trace.root_span_id]["trace_id"] for span in exported_spans)
+    assert all(request.headers["Authorization"] == "tenant-secret" for request in requests)
+    assert trace.model_dump_json() == original
+
+
+def test_opik_batch_failure_remains_retryable_without_receipts(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(503 if request.url.path.endswith("/batch") else 204)
+
+    monkeypatch.setattr(
+        "core.ops.provider_export.ssrf_proxy.create_http_client",
+        lambda *, ssl_context: httpx.Client(
+            verify=ssl_context, transport=httpx.MockTransport(respond), trust_env=False
+        ),
+    )
+    trace = make_trace()
+    for _ in range(2):
+        with pytest.raises(TraceExportError, match="provider_http_503") as error:
+            OpikTraceClient({"api_key": "tenant-secret"}).export_trace(trace)
+        assert error.value.retryable
+    assert len(requests) == 4
+    assert requests[1].content == requests[3].content

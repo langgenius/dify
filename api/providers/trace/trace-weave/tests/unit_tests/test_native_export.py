@@ -134,7 +134,7 @@ def test_weave_verification_and_export_use_saved_destination(
         *discovery,
         f"{(host or 'https://api.wandb.ai').rstrip('/')}/graphql",
         f"{trace_endpoint}/calls/query_stats",
-        *[f"{trace_endpoint}/v2/entity/project/calls/complete" for _span in trace.spans],
+        f"{trace_endpoint}/v2/entity/project/calls/complete",
     ]
     assert all(request.headers["Authorization"] == basic_auth("api", "saved-key") for request in requests)
     assert dict(os.environ) == environment
@@ -164,7 +164,7 @@ def test_weave_native_usage_counts_generations_without_container_aggregates(monk
     trace = trace.model_copy(update={"spans": (root, wrapper, generation)})
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(trace)
-    calls = [call.kwargs["json"]["batch"][0] for call in request.call_args_list]
+    calls = [item for call in request.call_args_list for item in call.kwargs["json"]["batch"]]
     assert "usage" not in calls[0]["summary"]
     assert "usage" not in calls[1]["summary"]
     assert calls[0]["attributes"]["dify.usage"]["total_tokens"] == 8
@@ -215,7 +215,7 @@ def test_weave_preserves_untimed_children_and_status_counts(missing: dict, monke
     trace = trace.model_copy(update={"spans": (trace.spans[0], child)})
     client, request = make_client_with_transport(monkeypatch)
     receipt = client.export_trace(trace)
-    call = request.call_args.kwargs["json"]["batch"][0]
+    call = request.call_args.kwargs["json"]["batch"][-1]
     anchor = child.started_at or trace.spans[0].started_at
     assert anchor is not None
     assert call["started_at"] == call["ended_at"] == anchor.isoformat()
@@ -328,14 +328,14 @@ def test_weave_exports_complete_calls_and_falls_back_for_legacy_servers(
     requests = requests[1:]
     paths = [request.url.path for request in requests]
     if legacy_server:
-        assert paths == ["/traces/v2/team/project/calls/complete"] + [
-            f"/traces/call/{event}" for _span in trace.spans for event in ("start", "end")
+        assert paths == ["/traces/v2/team/project/calls/complete", "/traces/call/upsert_batch"]
+        events = json.loads(requests[-1].content)["batch"]
+        calls = [
+            {**events[index]["req"]["start"], **events[index + 1]["req"]["end"]} for index in range(0, len(events), 2)
         ]
-        payloads = [json.loads(request.content) for request in requests[1:]]
-        calls = [{**payloads[index]["start"], **payloads[index + 1]["end"]} for index in range(0, len(payloads), 2)]
     else:
-        assert paths == ["/traces/v2/team/project/calls/complete"] * len(trace.spans)
-        calls = [json.loads(request.content)["batch"][0] for request in requests]
+        assert paths == ["/traces/v2/team/project/calls/complete"]
+        calls = json.loads(requests[0].content)["batch"]
     assert all(request.headers["Authorization"] == basic_auth("api", "saved-key") for request in requests)
     assert calls[1]["parent_id"] == calls[0]["id"]
     for span, call in zip(trace.spans, calls, strict=True):
@@ -380,9 +380,10 @@ def test_weave_complete_call_failure_does_not_fall_back(monkeypatch: pytest.Monk
     )
     monkeypatch.setattr("core.ops.provider_export.ssrf_proxy.make_request", request)
 
-    with pytest.raises(TraceExportError, match=f"provider_http_{status}"):
+    with pytest.raises(TraceExportError, match=f"provider_http_{status}") as error:
         client.export_trace(make_trace())
 
+    assert error.value.retryable == (status in {429, 503})
     request.assert_called_once()
 
 
@@ -426,8 +427,7 @@ def test_weave_preserves_tags_on_captured_message_operations(mode: str, monkeypa
 
     expected_tags["message"] = ["message", "workflow" if mode == "advanced-chat" else mode]
     expected_tags["gpt-4o"] = ["message", mode]
-    for call in request.call_args_list:
-        exported = call.kwargs["json"]["batch"][0]
+    for exported in request.call_args.kwargs["json"]["batch"]:
         assert exported["attributes"]["tags"] == expected_tags[exported["op_name"]]
         assert exported["attributes"]["dify.tenant_id"] == source.tenant_id
     assert captured.model_dump_json() == original
@@ -447,7 +447,7 @@ def test_weave_preserves_workflow_node_and_captured_tags(node_type: str, monkeyp
     client, request = make_client_with_transport(monkeypatch)
     client.export_trace(trace)
 
-    workflow, node_call = [call.kwargs["json"]["batch"][0] for call in request.call_args_list]
+    workflow, node_call = request.call_args.kwargs["json"]["batch"]
     assert workflow["attributes"]["tags"] == ["dify_workflow"]
     assert node_call["attributes"]["tags"] == ["node_execution", "custom"]
     assert node_call["attributes"]["custom_field"] == "preserved"
@@ -498,12 +498,14 @@ def test_recorded_model_nodes_preserve_native_inputs(
     original_trace = trace.model_dump_json()
     client, request = make_client_with_transport(monkeypatch)
     if legacy_server:
-        request.side_effect = [TraceExportError("provider_http_404"), *[httpx.Response(200)] * 4]
+        request.side_effect = [TraceExportError("provider_http_404"), httpx.Response(200)]
     client.export_trace(trace)
     if legacy_server:
-        calls = [call.kwargs["json"]["start"] for call in request.call_args_list if call.args[1] == "call/start"]
+        calls = [
+            event["req"]["start"] for event in request.call_args.kwargs["json"]["batch"] if event["mode"] == "start"
+        ]
     else:
-        calls = [call.kwargs["json"]["batch"][0] for call in request.call_args_list]
+        calls = request.call_args.kwargs["json"]["batch"]
     metadata = {"usage_metadata": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}, "file_list": []}
     assert calls[1]["inputs"] == (
         {"messages": [{"role": "user", "content": "Rendered prompt", **metadata}]}

@@ -127,7 +127,7 @@ def test_selected_routes_export_prepared_runs_and_late_parents(
     receipt = client.export_trace(trace)
     native = [request for request in requests if request.url.host == "langsmith.example"]
     otel = [request for request in requests if request.url.host == "collector.example"]
-    assert len(native) == (0 if mode == "otel" else 2)
+    assert len(native) == (0 if mode == "otel" else 1)
     assert len(otel) == (0 if mode == "langsmith" else 1)
     for request in native:
         assert request.headers["x-api-key"] == "native-secret"
@@ -290,10 +290,10 @@ def test_otel_disabled_and_sampling_do_not_disable_hybrid_native_export(
     monkeypatch.setattr(client.otel.http, "request", Mock(side_effect=AssertionError("unsampled OTel request")))
     trace = make_trace()
     receipt = client.export_trace(trace)
-    assert native.call_count == 2
+    assert native.call_count == 1
     assert all(span["otel_sampled"] is False for span in receipt.spans.values())
     client.export_trace(trace, receipt.spans[trace.root_span_id])
-    assert native.call_count == 4
+    assert native.call_count == 2
 
 
 @pytest.mark.parametrize("elapsed", [90, 101])
@@ -307,7 +307,7 @@ def test_hybrid_routes_share_one_export_deadline(elapsed: int, monkeypatch: pyte
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        if len(requests) == 2:
+        if len(requests) == 1:
             clock[0] += elapsed
         return httpx.Response(200, content=b"")
 
@@ -319,7 +319,7 @@ def test_hybrid_routes_share_one_export_deadline(elapsed: int, monkeypatch: pyte
     if elapsed > 100:
         with pytest.raises(TraceExportError, match="export_deadline_exceeded"):
             client.export_trace(make_trace())
-        assert len(requests) == 2
+        assert len(requests) == 1
     else:
         client.export_trace(make_trace())
         assert requests[-1].url.host == "collector.example"
@@ -399,7 +399,6 @@ def test_hybrid_retry_skips_accepted_native_route(partial_success: bool, monkeyp
     retry.export_state = TraceExportState(state.repository, state.delivery)
     assert retry.export_trace(trace).spans
     assert [request.url.host for request in requests] == [
-        "langsmith.example",
         "langsmith.example",
         "collector.example",
         "collector.example",
