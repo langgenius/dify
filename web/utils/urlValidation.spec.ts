@@ -1,4 +1,4 @@
-import { validateRedirectUrl } from './urlValidation'
+import { isPrivateOrLocalAddress, validateRedirectUrl } from './urlValidation'
 
 describe('URL Validation', () => {
   describe('validateRedirectUrl', () => {
@@ -54,6 +54,44 @@ describe('URL Validation', () => {
 
     it('should reject protocol-relative URLs', () => {
       expect(() => validateRedirectUrl('//example.com')).toThrow('Invalid URL')
+    })
+  })
+
+  describe('isPrivateOrLocalAddress', () => {
+    it('should identify localhost and loopback IPv4', () => {
+      expect(isPrivateOrLocalAddress('http://localhost')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://localhost:3000')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://127.0.0.1')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://127.0.0.1:8080/api')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://app.localhost')).toBe(true)
+    })
+
+    it('should identify IPv6 loopback and private ranges with and without brackets', () => {
+      expect(isPrivateOrLocalAddress('http://[::1]')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://[::1]:8080/api')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://[0:0:0:0:0:0:0:1]:3000')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://[fe80::1ff:fe23:4567:890a]')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://[fc00::1]')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://[fd12:3456:789a:1::1]')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://[::ffff:127.0.0.1]')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://[::ffff:192.168.1.100]')).toBe(true)
+    })
+
+    it('should identify private IPv4 ranges', () => {
+      expect(isPrivateOrLocalAddress('http://10.0.0.1')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://172.16.0.1')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://172.31.255.255')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://192.168.1.1')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://169.254.169.254')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://service.local')).toBe(true)
+    })
+
+    it('should return false for public addresses', () => {
+      expect(isPrivateOrLocalAddress('https://google.com')).toBe(false)
+      expect(isPrivateOrLocalAddress('https://api.github.com/events')).toBe(false)
+      expect(isPrivateOrLocalAddress('http://8.8.8.8')).toBe(false)
+      expect(isPrivateOrLocalAddress('http://1.1.1.1:53')).toBe(false)
+      expect(isPrivateOrLocalAddress('http://[2001:4860:4860::8888]')).toBe(false)
     })
   })
 })

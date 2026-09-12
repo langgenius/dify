@@ -27,10 +27,36 @@ export function validateRedirectUrl(url: string): void {
 export function isPrivateOrLocalAddress(url: string): boolean {
   try {
     const urlObj = new URL(url)
-    const hostname = urlObj.hostname.toLowerCase()
+    let hostname = urlObj.hostname.toLowerCase()
 
-    // Check for localhost
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true
+    // Strip IPv6 square brackets from hostname if present (e.g. "[::1]" -> "::1")
+    if (hostname.startsWith('[') && hostname.endsWith(']'))
+      hostname = hostname.slice(1, -1)
+
+    // Check for localhost and loopback addresses
+    if (
+      hostname === 'localhost'
+      || hostname === '127.0.0.1'
+      || hostname === '::1'
+      || hostname === '0:0:0:0:0:0:0:1'
+      || hostname === '0:0:0:0:0:0:0:0'
+      || hostname === '::'
+    )
+      return true
+
+    // Check for IPv6 link-local (fe80::/10), unique local (fc00::/7, fd00::/8)
+    if (
+      hostname.startsWith('fe80:')
+      || hostname.startsWith('fc')
+      || hostname.startsWith('fd')
+    )
+      return true
+
+    // Check for IPv4-mapped IPv6 addresses (e.g., ::ffff:127.0.0.1)
+    if (hostname.startsWith('::ffff:')) {
+      const mappedIpv4 = hostname.slice(7)
+      return isPrivateOrLocalAddress(`http://${mappedIpv4}`)
+    }
 
     // Check for private IP ranges
     const ipv4Regex = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/
@@ -39,6 +65,10 @@ export function isPrivateOrLocalAddress(url: string): boolean {
       const [, a, b] = ipv4Match.map(Number)
       // 10.0.0.0/8
       if (a === 10) return true
+      // 127.0.0.0/8 (loopback)
+      if (a === 127) return true
+      // 0.0.0.0/8
+      if (a === 0) return true
       // 172.16.0.0/12
       if (a === 172 && b! >= 16 && b! <= 31) return true
       // 192.168.0.0/16
@@ -47,8 +77,8 @@ export function isPrivateOrLocalAddress(url: string): boolean {
       if (a === 169 && b === 254) return true
     }
 
-    // Check for .local domains
-    return hostname.endsWith('.local')
+    // Check for .local domains and localhost subdomains
+    return hostname.endsWith('.local') || hostname.endsWith('.localhost')
   } catch {
     return false
   }
