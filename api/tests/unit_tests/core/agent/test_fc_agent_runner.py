@@ -128,7 +128,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
 
     application_generate_entity = MagicMock()
     application_generate_entity.model_conf = MagicMock(parameters={}, stop=None)
-    application_generate_entity.trace_manager = MagicMock()
+    application_generate_entity.trace_recorder = MagicMock()
     application_generate_entity.invoke_from = "test"
     application_generate_entity.app_config = MagicMock(app_id="app")
     application_generate_entity.file_upload_config = None

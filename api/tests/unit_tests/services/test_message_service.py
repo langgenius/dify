@@ -2,7 +2,8 @@ import json
 from collections.abc import Iterator
 from datetime import datetime
 from decimal import Decimal
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -739,7 +740,7 @@ class TestMessageServiceSuggestedQuestions:
         llm_generator = MagicMock()
         llm_generator.generate_suggested_questions_after_answer.return_value = ["Q1?"]
         monkeypatch.setattr(service_module, "LLMGenerator", llm_generator)
-        monkeypatch.setattr(service_module, "TraceQueueManager", MagicMock())
+        monkeypatch.setattr(service_module, "create_message_trace", MagicMock())
         return model_manager, memory, llm_generator
 
     def test_user_none(self, factory: MessageServiceTestDataFactory, sqlite_session: Session) -> None:
@@ -760,6 +761,11 @@ class TestMessageServiceSuggestedQuestions:
     ) -> None:
         conversation = factory.create_conversation()
         _, _, llm_generator = self._chat_boundaries(monkeypatch, conversation)
+        message = factory.create_message(message_id="msg-123", conversation_id=conversation.id)
+        message.workflow_run_id = str(uuid4())
+        monkeypatch.setattr(service_module.MessageService, "get_message", MagicMock(return_value=message))
+        create_trace = MagicMock()
+        monkeypatch.setattr(service_module, "create_message_trace", create_trace)
         workflow = factory.create_workflow(features={"suggested_questions_after_answer": {"enabled": True}})
         workflow_service = MagicMock()
         workflow_service.return_value.get_published_workflow.return_value = workflow
@@ -778,6 +784,7 @@ class TestMessageServiceSuggestedQuestions:
 
         assert result == ["Q1?"]
         llm_generator.generate_suggested_questions_after_answer.assert_called_once()
+        assert create_trace.call_args.kwargs["workflow_run_id"] == message.workflow_run_id
 
     @pytest.mark.parametrize("draft_type", [AgentConfigDraftType.DRAFT, AgentConfigDraftType.DEBUG_BUILD])
     def test_agent_debug_uses_matching_draft(
@@ -844,6 +851,7 @@ class TestMessageServiceSuggestedQuestions:
         assert result == ["Q1?"]
         roster_service.assert_not_called()
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt=f"{draft_type.value} prompt",
@@ -909,6 +917,7 @@ class TestMessageServiceSuggestedQuestions:
         assert result == ["Q1?"]
         roster_service.assert_not_called()
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt="bound snapshot prompt",
@@ -944,6 +953,7 @@ class TestMessageServiceSuggestedQuestions:
             app_id="app-123",
         )
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt="published prompt",
@@ -1007,6 +1017,7 @@ class TestMessageServiceSuggestedQuestions:
 
         assert result == ["Q1?"]
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt="legacy prompt",
@@ -1098,6 +1109,7 @@ class TestMessageServiceSuggestedQuestions:
             model_instance=model_manager.get_default_model_instance.return_value,
         )
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt=expected_prompt,
@@ -1127,6 +1139,7 @@ class TestMessageServiceSuggestedQuestions:
 
         assert result == ["Q1?"]
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            trace_recorder=ANY,
             tenant_id="tenant-123",
             histories="histories",
             instruction_prompt="legacy prompt",

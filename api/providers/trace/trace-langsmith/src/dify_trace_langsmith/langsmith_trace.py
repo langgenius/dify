@@ -1,543 +1,372 @@
-import logging
-import os
-import uuid
-from datetime import datetime, timedelta
-from graphlib import TopologicalSorter
-from typing import cast, override
+"""Create LangSmith runs synchronously, with explicit IDs and ancestor order."""
 
-from langsmith import Client
-from langsmith.schemas import RunBase
-from sqlalchemy.orm import sessionmaker
+import json
+from random import Random
+from typing import TYPE_CHECKING, Any
+from urllib.parse import quote, urlsplit
+from uuid import UUID
 
-from core.ops.base_trace_instance import BaseTraceInstance
-from core.ops.entities.trace_entity import (
-    BaseTraceInfo,
-    DatasetRetrievalTraceInfo,
-    GenerateNameTraceInfo,
-    MessageTraceInfo,
-    ModerationTraceInfo,
-    SuggestedQuestionTraceInfo,
-    ToolTraceInfo,
-    TraceTaskName,
-    WorkflowTraceInfo,
-)
-from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
-from core.ops.utils import filter_none_values, generate_dotted_order
-from core.repositories import DifyCoreRepositoryFactory
+from pydantic import JsonValue
+from requests.utils import urldefragauth
+
+from core.helper.ssl_context import create_ssl_context
+from core.ops.provider_export import TraceExportError, TraceProviderHttpClient, export_span_id, span_attributes
+from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_langsmith.config import LangSmithConfig
-from dify_trace_langsmith.entities.langsmith_trace_entity import (
-    LangSmithRunModel,
-    LangSmithRunType,
-    LangSmithRunUpdateModel,
-)
-from extensions.ext_database import db
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
-from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
+from dify_trace_langsmith.otel_trace import LangSmithOtlpTraceClient
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from core.ops.trace_export_state import TraceExportState
 
 
-class LangSmithDataTrace(BaseTraceInstance):
-    def __init__(
-        self,
-        langsmith_config: LangSmithConfig,
-    ):
-        super().__init__(langsmith_config)
-        self.langsmith_key = langsmith_config.api_key
-        self.project_name = langsmith_config.project
-        self.project_id = None
-        self.langsmith_client = Client(api_key=langsmith_config.api_key, api_url=langsmith_config.endpoint)
-        self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
-
-    @override
-    def trace(self, trace_info: BaseTraceInfo):
-        match trace_info:
-            case WorkflowTraceInfo():
-                self.workflow_trace(trace_info)
-            case MessageTraceInfo():
-                self.message_trace(trace_info)
-            case ModerationTraceInfo():
-                self.moderation_trace(trace_info)
-            case SuggestedQuestionTraceInfo():
-                self.suggested_question_trace(trace_info)
-            case DatasetRetrievalTraceInfo():
-                self.dataset_retrieval_trace(trace_info)
-            case ToolTraceInfo():
-                self.tool_trace(trace_info)
-            case GenerateNameTraceInfo():
-                self.generate_name_trace(trace_info)
-            case _:
-                pass
-
-    def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        # trace_id must equal the root run's run_id (LangSmith protocol); external trace_id
-        # cannot be used here as it would cause HTTP 400.
-        trace_id = trace_info.message_id or trace_info.workflow_run_id
-        if trace_info.start_time is None:
-            trace_info.start_time = datetime.now()
-        message_dotted_order = (
-            generate_dotted_order(trace_info.message_id, trace_info.start_time) if trace_info.message_id else None
-        )
-        workflow_dotted_order = generate_dotted_order(
-            trace_info.workflow_run_id,
-            trace_info.workflow_data.created_at,
-            message_dotted_order,
-        )
-        metadata = trace_info.metadata
-        metadata["workflow_app_log_id"] = trace_info.workflow_app_log_id
-        if trace_info.trace_id:
-            metadata["external_trace_id"] = trace_info.trace_id
-
-        if trace_info.message_id:
-            message_run = LangSmithRunModel(
-                id=trace_info.message_id,
-                name=TraceTaskName.MESSAGE_TRACE,
-                inputs=dict(trace_info.workflow_run_inputs),
-                outputs=dict(trace_info.workflow_run_outputs),
-                run_type=LangSmithRunType.chain,
-                start_time=trace_info.start_time,
-                end_time=trace_info.end_time,
-                extra={
-                    "metadata": metadata,
-                },
-                tags=["message", "workflow"],
-                error=trace_info.error,
-                trace_id=trace_id,
-                dotted_order=message_dotted_order,
-                file_list=[],
-                serialized=None,
-                parent_run_id=None,
-                events=[],
-                session_id=None,
-                session_name=None,
-                reference_example_id=None,
-                input_attachments={},
-                output_attachments={},
-            )
-            self.add_run(message_run)
-
-        langsmith_run = LangSmithRunModel(
-            file_list=trace_info.file_list,
-            total_tokens=trace_info.total_tokens,
-            id=trace_info.workflow_run_id,
-            name=TraceTaskName.WORKFLOW_TRACE,
-            inputs=dict(trace_info.workflow_run_inputs),
-            run_type=LangSmithRunType.tool,
-            start_time=trace_info.workflow_data.created_at,
-            end_time=trace_info.workflow_data.finished_at,
-            outputs=dict(trace_info.workflow_run_outputs),
-            extra={
-                "metadata": metadata,
-            },
-            error=trace_info.error,
-            tags=["workflow"],
-            parent_run_id=trace_info.message_id or None,
-            trace_id=trace_id,
-            dotted_order=workflow_dotted_order,
-            serialized=None,
-            events=[],
-            session_id=None,
-            session_name=None,
-            reference_example_id=None,
-            input_attachments={},
-            output_attachments={},
-        )
-
-        self.add_run(langsmith_run)
-
-        # through workflow_run_id get all_nodes_execution using repository
-        session_factory = sessionmaker(bind=db.engine)
-        # Find the app's creator account
-        app_id = trace_info.metadata.get("app_id")
-        if not app_id:
-            raise ValueError("No app_id found in trace_info metadata")
-
-        service_account = self.get_service_account_with_tenant(app_id)
-
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-            session_factory=session_factory,
-            tenant_id=trace_info.tenant_id,
-            user=service_account,
-            app_id=app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        )
-
-        # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
-            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
-        )
-        tool_parents = workflow_tool_parent_ids(workflow_node_executions)
-        node_dotted_orders: dict[str, str] = {}
-        nodes_by_id = {item.id: item for item in workflow_node_executions}
-        dependencies = {node_id: [tool_parents[node_id]] if node_id in tool_parents else [] for node_id in nodes_by_id}
-
-        for execution_id in TopologicalSorter(dependencies).static_order():
-            node_execution = nodes_by_id[execution_id]
-            node_execution_id = node_execution.id
-            tenant_id = trace_info.tenant_id  # Use from trace_info instead
-            app_id = trace_info.metadata.get("app_id")  # Use from trace_info instead
-            node_name = node_execution.title
-            node_type = node_execution.node_type
-            status = node_execution.status
-            if node_type == BuiltinNodeTypes.LLM:
-                inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
-            else:
-                inputs = node_execution.inputs or {}
-            outputs = node_execution.outputs or {}
-            created_at = node_execution.created_at or datetime.now()
-            elapsed_time = node_execution.elapsed_time
-            finished_at = created_at + timedelta(seconds=elapsed_time)
-
-            execution_metadata = node_execution.metadata or {}
-            node_total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
-            metadata = {str(key): value for key, value in execution_metadata.items()}
-            metadata.update(
-                {
-                    "workflow_run_id": trace_info.workflow_run_id,
-                    "node_execution_id": node_execution_id,
-                    "tenant_id": tenant_id,
-                    "app_id": app_id,
-                    "app_name": node_name,
-                    "node_type": node_type,
-                    "status": status,
+def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
+    """Keep untimed details as marked instants at a captured endpoint, never export time."""
+    spans: dict[str, TraceSpan] = {}
+    for span in completed_trace.spans:
+        if span.started_at is None or span.ended_at is None:
+            parent = spans.get(span.parent_span_id or "")
+            anchor = span.started_at or span.ended_at or (parent.started_at if parent else None)
+            if anchor is None:
+                raise TraceExportError("langsmith_span_time_missing")
+            span = span.model_copy(
+                update={
+                    "started_at": anchor,
+                    "ended_at": anchor,
+                    "attributes": {
+                        **span.attributes,
+                        "dify.timing.estimated": True,
+                        "dify.timing.source": "captured_endpoint",
+                    },
                 }
             )
+        assert span.started_at is not None
+        assert span.ended_at is not None
+        if span.ended_at < span.started_at:
+            raise TraceExportError("langsmith_span_time_invalid")
+        spans[span.span_id] = span
+    return list(spans.values())
 
-            process_data = node_execution.process_data or {}
 
-            if process_data and process_data.get("model_mode") == "chat":
-                run_type = LangSmithRunType.llm
+def _normalize_messages(value: JsonValue) -> JsonValue:
+    if isinstance(value, list):
+        return [_normalize_messages(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    message = dict(value)
+    if "role" in message:
+        if message["role"] == "human":
+            message["role"] = "user"
+        elif message["role"] == "ai":
+            message["role"] = "assistant"
+        if "text" in message and "content" not in message:
+            message["content"] = message.pop("text")
+    if "messages" in message:
+        message["messages"] = _normalize_messages(message["messages"])
+    return message
+
+
+def _format_llm_inputs(value: JsonValue) -> dict[str, JsonValue]:
+    value = _normalize_messages(value)
+    if isinstance(value, dict) and "messages" in value:
+        return value
+    if isinstance(value, list):
+        return {"messages": value}
+    if isinstance(value, dict) and "role" in value:
+        return {"messages": [value]}
+    if isinstance(value, str):
+        return {"messages": [{"role": "user", "content": value}]}
+    return value if isinstance(value, dict) else {"input": value}
+
+
+def _format_llm_outputs(value: JsonValue) -> dict[str, JsonValue]:
+    value = _normalize_messages(value)
+    if isinstance(value, dict) and "choices" in value:
+        return dict(value)
+    message: dict[str, JsonValue]
+    if isinstance(value, dict) and "role" in value:
+        message = dict(value)
+    elif isinstance(value, dict) and isinstance(value.get("text"), str):
+        message = {"role": "assistant", "content": value["text"]}
+    elif isinstance(value, (str, list)):
+        message = {"role": "assistant", "content": value}
+    else:
+        return dict(value) if isinstance(value, dict) else {"output": value}
+    choice: dict[str, JsonValue] = {"index": 0, "message": message}
+    if isinstance(value, dict):
+        if "finish_reason" in value:
+            choice["finish_reason"] = value["finish_reason"]
+        if "tool_calls" in value:
+            message["tool_calls"] = value["tool_calls"]
+    return {"choices": [choice]}
+
+
+def _map_usage_metadata(span: TraceSpan) -> dict[str, JsonValue]:
+    usage = {
+        target: span.usage[source]
+        for source, target in (
+            ("prompt_tokens", "input_tokens"),
+            ("completion_tokens", "output_tokens"),
+            ("total_tokens", "total_tokens"),
+        )
+        if isinstance(span.usage.get(source), int)
+    }
+    for source, target in (
+        ("prompt_price", "input_cost"),
+        ("completion_price", "output_cost"),
+        ("total_price", "total_cost"),
+    ):
+        if (cost := span.usage.get(source, span.usage.get(target))) is not None:
+            usage[target] = float(str(cost))
+    return usage
+
+
+def _map_run_type_and_tags(span: TraceSpan) -> tuple[str, list[str]]:
+    operation_type = span.attributes.get("operation_type", span.span_type)
+    if not isinstance(operation_type, str):
+        operation_type = span.span_type
+    is_node_execution = bool(
+        span.node_execution_id
+        or span.attributes.get("node_execution_id")
+        or span.span_type == "node"
+        or operation_type == "draft_node_execution"
+    )
+    if operation_type in {"suggested_question", "generate_name"}:
+        run_type = "tool"
+    elif span.node_execution_id and isinstance(node_type := span.attributes.get("node_type"), str):
+        process_data = span.attributes.get("process_data")
+        model_mode = span.attributes.get(
+            "model_mode", process_data.get("model_mode") if isinstance(process_data, dict) else None
+        )
+        run_type = "llm" if model_mode == "chat" else "retriever" if node_type == "knowledge-retrieval" else "tool"
+    elif span.span_type == "llm":
+        run_type = "llm"
+    elif span.span_type in {"retrieval", "knowledge-retrieval"} or operation_type == "dataset_retrieval":
+        run_type = "retriever"
+    elif operation_type == "message":
+        run_type = "chain"
+    elif (
+        span.span_type in {"workflow", "tool"}
+        or is_node_execution
+        or operation_type in {"moderation", "suggested_question", "generate_name", "tool"}
+    ):
+        run_type = "tool"
+    else:
+        run_type = "chain"
+
+    tags = ["dify", span.span_type]
+    if operation_type:
+        tags.append(operation_type)
+    if is_node_execution:
+        tags.append("node_execution")
+    if operation_type == "message" or span.span_type == "llm":
+        if isinstance(mode := span.attributes.get("conversation_mode", span.attributes.get("app_mode")), str) and mode:
+            tags.append(mode)
+    if span.span_type == "tool" or operation_type == "tool":
+        if isinstance(tool_name := span.attributes.get("tool_name"), str) and tool_name:
+            tags.append(tool_name)
+    return run_type, list(dict.fromkeys(tags))
+
+
+class LangSmithTraceClient:
+    def __init__(self, provider_config: dict[str, Any]):
+        self.config = LangSmithConfig.model_validate(provider_config)
+        runtime_settings = (
+            provider_config["_runtime_settings"]
+            if "_runtime_settings" in provider_config
+            else LangSmithConfig.load_runtime_settings(provider_config)
+        )
+        self.hide_inputs = bool(runtime_settings.get("hide_inputs", False))
+        self.hide_outputs = bool(runtime_settings.get("hide_outputs", False))
+        self.hide_metadata = bool(runtime_settings.get("hide_metadata", False))
+        self.sampling_rate = float(runtime_settings.get("sampling_rate", 1.0))
+        self.mode = runtime_settings.get("mode", "langsmith")
+        self.otel = LangSmithOtlpTraceClient(runtime_settings["otel"]) if self.mode != "langsmith" else None
+        self.export_state: TraceExportState | None = None
+        api_key = self.config.api_key.strip().strip('"').strip("'")
+        headers = {"x-api-key": api_key} if api_key else {}
+        if authorization := runtime_settings.get("authorization"):
+            headers["Authorization"] = authorization
+        if workspace_id := runtime_settings.get("workspace_id"):
+            headers["X-Tenant-Id"] = workspace_id
+        self.config = self.config.model_copy(update={"endpoint": urldefragauth(self.config.endpoint)})
+        self.http = TraceProviderHttpClient(
+            self.config.endpoint,
+            headers,
+            request_timeout=60,
+            connect_timeout=10,
+            ssl_context=create_ssl_context(runtime_settings.get("tls", {})),
+        )
+        if self.otel is not None:
+            self.otel.http.deadline = self.http.deadline
+
+    def verify_credentials(self) -> bool:
+        self.http.request("GET", "sessions", params={"name": self.config.project, "limit": 1})
+        return True
+
+    def get_project_url(self) -> str:
+        try:
+            sessions = self.http.request("GET", "sessions", params={"name": self.config.project, "limit": 1}).json()
+            if sessions and isinstance(sessions, list) and sessions[0].get("id"):
+                tenant_id = quote(str(sessions[0].get("tenant_id", "")), safe="")
+                project_id = quote(str(sessions[0]["id"]), safe="")
+                endpoint = urlsplit(self.http.endpoint)
+                web_url = "https://smith.langchain.com"
+                # Match the SDK's self-hosted API suffix and cloud region mappings.
+                if endpoint.path.endswith(("/api", "/api/v1")):
+                    web_url = endpoint._replace(path=endpoint.path.rsplit("/api", 1)[0]).geturl()
+                elif (region := endpoint.netloc.split(".", 1)[0]) in {"eu", "aws", "apac", "dev", "beta"}:
+                    web_url = f"https://{region}.smith.langchain.com"
+                return f"{web_url}/o/{tenant_id}/projects/p/{project_id}"
+        except Exception:
+            # Project discovery must not prevent reading saved settings.
+            return "https://smith.langchain.com/"
+        return "https://smith.langchain.com/"
+
+    def _send_runs(self, runs: list[dict[str, Any]]) -> None:
+        """Use native batch defaults, counting the exact JSON envelope and UTF-8 bytes."""
+        batch: list[dict[str, Any]] = []
+        batch_bytes = len(b'{"post":[]}')
+        for run in runs:
+            run_bytes = len(json.dumps(run, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode())
+            if batch and (len(batch) == 100 or batch_bytes + 1 + run_bytes > 20 * 1024 * 1024):
+                self._send_run_batch(batch)
+                batch = []
+                batch_bytes = len(b'{"post":[]}')
+            batch_bytes += run_bytes + int(bool(batch))
+            batch.append(run)
+        if batch:
+            self._send_run_batch(batch)
+
+    def _send_run_batch(self, runs: list[dict[str, Any]]) -> None:
+        try:
+            self.http.request("POST", "runs/batch", json={"post": runs})
+        except TraceExportError as error:
+            if str(error) != "provider_http_413" or len(runs) == 1:
+                raise
+            # Self-hosted receivers can impose a smaller body limit than the SDK default.
+            middle = len(runs) // 2
+            self._send_run_batch(runs[:middle])
+            self._send_run_batch(runs[middle:])
+
+    def export_trace(
+        self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
+    ) -> ExportedParentSpans:
+        span_ids = {span.span_id: export_span_id(completed_trace, span.span_id) for span in completed_trace.spans}
+        if parent_span is None and (external_id := completed_trace.source.external_trace_id):
+            try:
+                external_uuid = UUID(external_id)
+                if external_uuid.int:
+                    span_ids[completed_trace.root_span_id] = str(external_uuid)
+            except ValueError:
+                pass
+        trace_id = str(parent_span["trace_id"]) if parent_span else span_ids[completed_trace.root_span_id]
+        # One Bernoulli decision per trace, seeded by its identity so another worker's retry agrees.
+        sampled = (
+            parent_span.get("sampled", True) is not False
+            if parent_span is not None
+            else Random(trace_id).random() < self.sampling_rate  # noqa: S311 -- trace sampling is not a security decision
+        )
+        if not sampled:
+            return ExportedParentSpans(
+                spans={
+                    span_id: {"trace_id": trace_id, "span_id": exported_id, "sampled": False}
+                    for span_id, exported_id in span_ids.items()
+                }
+            )
+        spans = _prepare_timed_spans(completed_trace)
+        receipts: dict[str, dict[str, JsonValue]] = {}
+        runs = []
+        for span in spans:
+            parent = receipts.get(span.parent_span_id or "") or parent_span
+            assert span.started_at is not None
+            assert span.ended_at is not None
+            span_id = span_ids[span.span_id]
+            own_order = span.started_at.strftime("%Y%m%dT%H%M%S%fZ") + span_id
+            if parent is not None and not parent.get("dotted_order"):
+                raise TraceExportError("langsmith_parent_order_missing")
+            dotted_order = f"{parent['dotted_order']}.{own_order}" if parent else own_order
+            inputs = span.inputs if isinstance(span.inputs, dict) else {"input": span.inputs}
+            outputs = span.outputs if isinstance(span.outputs, dict) else {"output": span.outputs}
+            metadata = span_attributes(completed_trace, span)
+            if session_id := completed_trace.source.session_id or completed_trace.source.conversation_id:
+                metadata["session_id"] = session_id
+            if span.span_type == "llm":
+                inputs, outputs = _format_llm_inputs(span.inputs), _format_llm_outputs(span.outputs)
+                outputs["usage_metadata"] = _map_usage_metadata(span)
                 metadata.update(
                     {
-                        "ls_provider": process_data.get("model_provider", ""),
-                        "ls_model_name": process_data.get("model_name", ""),
+                        key: value
+                        for key, value in {
+                            "ls_model_name": span.attributes.get("model_name"),
+                            "ls_provider": span.attributes.get("model_provider"),
+                            "ls_model_type": "chat",
+                        }.items()
+                        if value is not None
                     }
                 )
-            elif node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
-                run_type = LangSmithRunType.retriever
-            else:
-                run_type = LangSmithRunType.tool
-
-            prompt_tokens = 0
-            completion_tokens = 0
-            try:
-                usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
-                prompt_tokens = usage_data.get("prompt_tokens", 0)
-                completion_tokens = usage_data.get("completion_tokens", 0)
-            except Exception:
-                logger.error("Failed to extract usage", exc_info=True)
-
-            parent_id = tool_parents.get(node_execution_id, trace_info.workflow_run_id)
-            node_dotted_order = generate_dotted_order(
-                node_execution_id, created_at, node_dotted_orders.get(parent_id, workflow_dotted_order)
-            )
-            node_dotted_orders[node_execution_id] = node_dotted_order
-            langsmith_run = LangSmithRunModel(
-                total_tokens=node_total_tokens,
-                input_tokens=prompt_tokens,
-                output_tokens=completion_tokens,
-                name=node_type,
-                inputs=inputs,
-                run_type=run_type,
-                start_time=created_at,
-                end_time=finished_at,
-                outputs=outputs,
-                file_list=trace_info.file_list,
-                extra={
-                    "metadata": metadata,
+            if span.node_execution_id and span.attributes.get("node_type") in (
+                "question-classifier",
+                "parameter-extractor",
+            ):
+                original_inputs = span.attributes.get("original_inputs", span.inputs)
+                inputs = original_inputs if isinstance(original_inputs, dict) else {"input": original_inputs}
+            run_type, tags = _map_run_type_and_tags(span)
+            # Captured metadata contains copies of content hidden by the SDK switches.
+            if self.hide_inputs:
+                for key in ("dify.inputs", "original_inputs", "query"):
+                    metadata.pop(key, None)
+            if self.hide_outputs:
+                metadata.pop("dify.outputs", None)
+            if self.hide_inputs or self.hide_outputs:
+                metadata.pop("files", None)
+                metadata.pop("process_data", None)
+                metadata.pop("dify.events", None)
+            run = {
+                "id": span_id,
+                "trace_id": trace_id,
+                "name": span.span_name,
+                "run_type": run_type,
+                "start_time": span.started_at.isoformat(),
+                "end_time": span.ended_at.isoformat() if span.ended_at else None,
+                "inputs": {} if self.hide_inputs else inputs,
+                "outputs": {} if self.hide_outputs else outputs,
+                "error": span.error
+                if span.status == "error" or (span.status == "cancelled" and span.span_type == "workflow")
+                else None,
+                "parent_run_id": parent["span_id"] if parent else None,
+                "dotted_order": dotted_order,
+                "session_name": self.config.project,
+                "extra": {
+                    "metadata": {} if self.hide_metadata else metadata,
+                    "invocation_params": span.attributes.get("model_parameters", {}),
                 },
-                parent_run_id=parent_id,
-                tags=["node_execution"],
-                id=node_execution_id,
-                trace_id=trace_id,
-                dotted_order=node_dotted_order,
-                error="",
-                serialized=None,
-                events=[],
-                session_id=None,
-                session_name=None,
-                reference_example_id=None,
-                input_attachments={},
-                output_attachments={},
-            )
-
-            self.add_run(langsmith_run)
-
-    def message_trace(self, trace_info: MessageTraceInfo):
-        # get message file data
-        file_list = cast(list[str], trace_info.file_list) or []
-        message_file_data: MessageFile | None = trace_info.message_file_data
-        file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
-        file_list.append(file_url)
-        metadata = trace_info.metadata
-        message_data = trace_info.message_data
-        if message_data is None:
-            return
-        message_id = message_data.id
-
-        user_id = message_data.from_account_id
-        metadata["user_id"] = user_id
-
-        if message_data.from_end_user_id:
-            end_user_data: EndUser | None = db.session.get(EndUser, message_data.from_end_user_id)
-            if end_user_data is not None:
-                end_user_id = end_user_data.session_id
-                metadata["end_user_id"] = end_user_id
-
-        message_run = LangSmithRunModel(
-            input_tokens=trace_info.message_tokens,
-            output_tokens=trace_info.answer_tokens,
-            total_tokens=trace_info.total_tokens,
-            id=message_id,
-            name=TraceTaskName.MESSAGE_TRACE,
-            inputs=trace_info.inputs,
-            run_type=LangSmithRunType.chain,
-            start_time=trace_info.start_time,
-            end_time=trace_info.end_time,
-            outputs=message_data.answer,
-            extra={"metadata": metadata},
-            tags=["message", str(trace_info.conversation_mode)],
-            error=trace_info.error,
-            file_list=file_list,
-            serialized=None,
-            events=[],
-            session_id=None,
-            session_name=None,
-            reference_example_id=None,
-            input_attachments={},
-            output_attachments={},
-            trace_id=trace_info.trace_id,
-            dotted_order=None,
-            parent_run_id=None,
-        )
-        self.add_run(message_run)
-
-        # create llm run parented to message run
-        llm_run = LangSmithRunModel(
-            input_tokens=trace_info.message_tokens,
-            output_tokens=trace_info.answer_tokens,
-            total_tokens=trace_info.total_tokens,
-            name="llm",
-            inputs=trace_info.inputs,
-            run_type=LangSmithRunType.llm,
-            start_time=trace_info.start_time,
-            end_time=trace_info.end_time,
-            outputs=message_data.answer,
-            extra={"metadata": metadata},
-            parent_run_id=message_id,
-            tags=["llm", str(trace_info.conversation_mode)],
-            error=trace_info.error,
-            file_list=file_list,
-            serialized=None,
-            events=[],
-            session_id=None,
-            session_name=None,
-            reference_example_id=None,
-            input_attachments={},
-            output_attachments={},
-            trace_id=trace_info.trace_id,
-            dotted_order=None,
-            id=str(uuid.uuid4()),
-        )
-        self.add_run(llm_run)
-
-    def moderation_trace(self, trace_info: ModerationTraceInfo):
-        if trace_info.message_data is None:
-            return
-        langsmith_run = LangSmithRunModel(
-            name=TraceTaskName.MODERATION_TRACE,
-            inputs=trace_info.inputs,
-            outputs={
-                "action": trace_info.action,
-                "flagged": trace_info.flagged,
-                "preset_response": trace_info.preset_response,
-                "inputs": trace_info.inputs,
-            },
-            run_type=LangSmithRunType.tool,
-            extra={"metadata": trace_info.metadata},
-            tags=["moderation"],
-            parent_run_id=trace_info.message_id,
-            start_time=trace_info.start_time or trace_info.message_data.created_at,
-            end_time=trace_info.end_time or trace_info.message_data.updated_at,
-            id=str(uuid.uuid4()),
-            serialized=None,
-            events=[],
-            session_id=None,
-            session_name=None,
-            reference_example_id=None,
-            input_attachments={},
-            output_attachments={},
-            trace_id=trace_info.trace_id,
-            dotted_order=None,
-            error="",
-            file_list=[],
-        )
-
-        self.add_run(langsmith_run)
-
-    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
-        message_data = trace_info.message_data
-        if message_data is None:
-            return
-        suggested_question_run = LangSmithRunModel(
-            name=TraceTaskName.SUGGESTED_QUESTION_TRACE,
-            inputs=trace_info.inputs,
-            outputs=trace_info.suggested_question,
-            run_type=LangSmithRunType.tool,
-            extra={"metadata": trace_info.metadata},
-            tags=["suggested_question"],
-            parent_run_id=trace_info.message_id,
-            start_time=trace_info.start_time or message_data.created_at,
-            end_time=trace_info.end_time or message_data.updated_at,
-            id=str(uuid.uuid4()),
-            serialized=None,
-            events=[],
-            session_id=None,
-            session_name=None,
-            reference_example_id=None,
-            input_attachments={},
-            output_attachments={},
-            trace_id=trace_info.trace_id,
-            dotted_order=None,
-            error="",
-            file_list=[],
-        )
-
-        self.add_run(suggested_question_run)
-
-    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
-        if trace_info.message_data is None:
-            return
-        dataset_retrieval_run = LangSmithRunModel(
-            name=TraceTaskName.DATASET_RETRIEVAL_TRACE,
-            inputs=trace_info.inputs,
-            outputs={"documents": trace_info.documents},
-            run_type=LangSmithRunType.retriever,
-            extra={"metadata": trace_info.metadata},
-            tags=["dataset_retrieval"],
-            parent_run_id=trace_info.message_id,
-            start_time=trace_info.start_time or trace_info.message_data.created_at,
-            end_time=trace_info.end_time or trace_info.message_data.updated_at,
-            id=str(uuid.uuid4()),
-            serialized=None,
-            events=[],
-            session_id=None,
-            session_name=None,
-            reference_example_id=None,
-            input_attachments={},
-            output_attachments={},
-            trace_id=trace_info.trace_id,
-            dotted_order=None,
-            error="",
-            file_list=[],
-        )
-
-        self.add_run(dataset_retrieval_run)
-
-    def tool_trace(self, trace_info: ToolTraceInfo):
-        tool_run = LangSmithRunModel(
-            name=trace_info.tool_name,
-            inputs=trace_info.tool_inputs,
-            outputs=trace_info.tool_outputs,
-            run_type=LangSmithRunType.tool,
-            extra={
-                "metadata": trace_info.metadata,
-            },
-            tags=["tool", trace_info.tool_name],
-            parent_run_id=trace_info.message_id,
-            start_time=trace_info.start_time,
-            end_time=trace_info.end_time,
-            file_list=[cast(str, trace_info.file_url)],
-            id=str(uuid.uuid4()),
-            serialized=None,
-            events=[],
-            session_id=None,
-            session_name=None,
-            reference_example_id=None,
-            input_attachments={},
-            output_attachments={},
-            trace_id=trace_info.trace_id,
-            dotted_order=None,
-            error=trace_info.error or "",
-        )
-
-        self.add_run(tool_run)
-
-    def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
-        name_run = LangSmithRunModel(
-            name=TraceTaskName.GENERATE_NAME_TRACE,
-            inputs=trace_info.inputs,
-            outputs=trace_info.outputs,
-            run_type=LangSmithRunType.tool,
-            extra={"metadata": trace_info.metadata},
-            tags=["generate_name"],
-            start_time=trace_info.start_time or datetime.now(),
-            end_time=trace_info.end_time or datetime.now(),
-            id=str(uuid.uuid4()),
-            serialized=None,
-            events=[],
-            session_id=None,
-            session_name=None,
-            reference_example_id=None,
-            input_attachments={},
-            output_attachments={},
-            trace_id=trace_info.trace_id,
-            dotted_order=None,
-            error="",
-            file_list=[],
-            parent_run_id=None,
-        )
-
-        self.add_run(name_run)
-
-    def add_run(self, run_data: LangSmithRunModel):
-        data = run_data.model_dump()
-        if self.project_id:
-            data["session_id"] = self.project_id
-        elif self.project_name:
-            data["session_name"] = self.project_name
-
-        data = filter_none_values(data)
-        try:
-            self.langsmith_client.create_run(**data)
-            logger.debug("LangSmith Run created successfully.")
-        except Exception as e:
-            raise ValueError(f"LangSmith Failed to create run: {str(e)}")
-
-    def update_run(self, update_run_data: LangSmithRunUpdateModel):
-        data = update_run_data.model_dump()
-        data = filter_none_values(data)
-        try:
-            self.langsmith_client.update_run(**data)
-            logger.debug("LangSmith Run updated successfully.")
-        except Exception as e:
-            raise ValueError(f"LangSmith Failed to update run: {str(e)}")
-
-    def api_check(self):
-        try:
-            random_project_name = f"test_project_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-            self.langsmith_client.create_project(project_name=random_project_name)
-            self.langsmith_client.delete_project(project_name=random_project_name)
-            return True
-        except Exception as e:
-            logger.debug("LangSmith API check failed", exc_info=True)
-            raise ValueError(f"LangSmith API check failed: {str(e)}")
-
-    def get_project_url(self):
-        try:
-            run_data = RunBase(
-                id=uuid.uuid4(),
-                name="tool",
-                inputs={"input": "test"},
-                outputs={"output": "test"},
-                run_type=LangSmithRunType.tool,
-                start_time=datetime.now(),
-            )
-
-            project_url = self.langsmith_client.get_run_url(
-                run=run_data, project_id=self.project_id, project_name=self.project_name
-            )
-            return project_url.split("/r/")[0]
-        except Exception as e:
-            logger.debug("LangSmith get run url failed", exc_info=True)
-            raise ValueError(f"LangSmith get run url failed: {str(e)}")
+                "tags": tags,
+            }
+            runs.append(run)
+            receipts[span.span_id] = {
+                "trace_id": trace_id,
+                "span_id": span_id,
+                "dotted_order": dotted_order,
+                "sampled": True,
+            }
+        otel_sampled = self.otel is not None and self.otel.is_sampled(trace_id, parent_span)
+        otel_request = self.otel.build_request(runs) if self.otel is not None and otel_sampled else None
+        # Build both representations before sending, and keep hybrid progress on the owned delivery.
+        state = self.export_state if self.mode == "hybrid" else None
+        if self.mode != "otel" and not (state and state.has_completed_signal("langsmith_native")):
+            self._send_runs(runs)
+            if state:
+                state.complete_signal("langsmith_native")
+        if (
+            otel_request is not None
+            and self.otel is not None
+            and not (state and state.has_completed_signal("langsmith_otel"))
+        ):
+            self.otel.http.deadline = self.http.deadline
+            self.otel.send_traces(otel_request)
+            if state:
+                state.complete_signal("langsmith_otel")
+        if self.otel is not None:
+            for receipt in receipts.values():
+                receipt["otel_sampled"] = otel_sampled
+        return ExportedParentSpans(spans=receipts)

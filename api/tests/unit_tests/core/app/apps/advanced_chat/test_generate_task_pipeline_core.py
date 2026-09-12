@@ -83,7 +83,7 @@ def _make_pipeline():
         stream=False,
         invoke_from=InvokeFrom.WEB_APP,
         extras={},
-        trace_manager=None,
+        trace_recorder=None,
         workflow_run_id="run-id",
     )
 

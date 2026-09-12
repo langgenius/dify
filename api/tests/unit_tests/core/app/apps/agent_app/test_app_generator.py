@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import inspect
+from collections.abc import Callable, Mapping
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -28,13 +29,45 @@ from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
+from core.ops.message_trace import MessageTraceRecorder
+from core.ops.trace_data import CompletedTrace
 from models import Account, AppModelConfig
 from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation
+from tests.unit_tests.core.ops.test_message_trace import make_recorder, message_fields
 
 MODULE = "core.app.apps.agent_app.app_generator"
+
+
+def _assert_saved_agent_generation(
+    record_result: Callable[[MessageTraceRecorder, Mapping[str, object]], None],
+) -> None:
+    initial, queue = make_recorder()
+    fields = {**message_fields(initial), "total_price": "0.03", "metadata": {"conversation_mode": "agent"}}
+    recorder = MessageTraceRecorder(
+        initial.source,
+        queue,
+        initial.provider_settings,
+        load_message_fields=lambda _: fields,
+        record_message_result=record_result,
+    )
+    assert recorder.source.message_id is not None
+    recorder.record_saved_message(recorder.source.message_id)
+    trace = CompletedTrace.model_validate_json(queue.items[0].trace_json)
+    root, generation = trace.spans
+    assert trace.source == recorder.source
+    assert generation.parent_span_id == root.span_id
+    assert generation.span_type == "llm"
+    assert generation.span_name == fields["model_name"]
+    assert generation.inputs == fields["inputs"]
+    assert generation.outputs == fields["outputs"]
+    assert generation.usage == root.usage
+    assert generation.usage["total_tokens"] == 5
+    assert generation.usage["total_price"] == "0.03"
+    assert generation.attributes["conversation_mode"] == "agent"
+    assert queue.reserved == 0
 
 
 def _account(user_id: str = "user") -> Account:
@@ -211,7 +244,7 @@ class TestGenerateSuccess:
         mocker.patch(f"{MODULE}.FileUploadConfigManager.convert", return_value=file_upload_config)
         parsed_file = mocker.MagicMock()
         build_files = mocker.patch(f"{MODULE}.file_factory.build_from_mappings", return_value=[parsed_file])
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        create_trace = mocker.patch(f"{MODULE}.create_message_trace", return_value=mocker.MagicMock())
         generate_entity = mocker.patch(
             f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
         )
@@ -255,6 +288,7 @@ class TestGenerateSuccess:
         assert generate_entity.call_args.kwargs["files"] == [parsed_file]
         assert generate_entity.call_args.kwargs["file_upload_config"] is file_upload_config
         assert "agent_runtime_exit_intent" not in generate_entity.call_args.kwargs
+        _assert_saved_agent_generation(create_trace.call_args.kwargs["record_message_result"])
 
     def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
         app_model = _app()
@@ -268,7 +302,7 @@ class TestGenerateSuccess:
         mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
         mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.create_message_trace", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
@@ -310,7 +344,7 @@ class TestGenerateSuccess:
             return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
         )
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.create_message_trace", return_value=mocker.MagicMock())
         generate_entity = mocker.patch(
             f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
         )
@@ -539,7 +573,7 @@ class TestResumeAfterFormSubmission:
         mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
         mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        create_trace = mocker.patch(f"{MODULE}.create_message_trace", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
         generator._resolve_resume_draft = mocker.MagicMock(return_value=(None, None))
@@ -548,10 +582,11 @@ class TestResumeAfterFormSubmission:
                 f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
             ),
             get_conversation,
+            create_trace,
         )
 
     def test_resume_resends_paused_turn_query(self, generator, mocker: MockerFixture):
-        entity, get_conversation = self._wire(generator, mocker)
+        entity, get_conversation, create_trace = self._wire(generator, mocker)
         session = _session()
         config = AppModelConfig(app_id="app1")
         config.id = "config-1"
@@ -581,9 +616,10 @@ class TestResumeAfterFormSubmission:
         assert generator._init_generate_records.call_args.kwargs["session"] is session
         assert session.get(AppModelConfig, "config-1") is config
         assert generator._resolve_agent.call_args.kwargs["session"] is session
+        _assert_saved_agent_generation(create_trace.call_args.kwargs["record_message_result"])
 
     def test_resume_falls_back_to_placeholder_when_no_paused_message(self, generator, mocker: MockerFixture):
-        entity, _ = self._wire(generator, mocker)
+        entity, _, _ = self._wire(generator, mocker)
         session = _session()
 
         generator.resume_after_form_submission(

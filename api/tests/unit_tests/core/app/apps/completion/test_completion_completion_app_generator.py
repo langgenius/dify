@@ -35,7 +35,7 @@ def generator(mocker: MockerFixture):
     mocker.patch.object(module.threading, "Thread", return_value=thread)
 
     mocker.patch.object(module, "MessageBasedAppQueueManager", return_value=MagicMock())
-    mocker.patch.object(module, "TraceQueueManager", return_value=MagicMock())
+    mocker.patch.object(module, "create_message_trace", return_value=MagicMock())
     generate_entity = mocker.patch.object(
         module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs)
     )

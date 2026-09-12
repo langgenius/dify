@@ -114,7 +114,9 @@ def _build_app_generate_entity() -> SimpleNamespace:
         app_config=app_config,
         invoke_from=InvokeFrom.WEB_APP,
         user_id="user",
-        trace_manager=MagicMock(),
+        trace_recorder=MagicMock(),
+        workflow_trace_state=None,
+        extras={},
         inputs={"input1": "v1"},
         files=[],
         workflow_execution_id="run",
@@ -464,3 +466,80 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
     assert events[-1] == "workflow_run"
     assert "session_checkin" in events[:-1]
     runner._init_rag_pipeline_graph.assert_called_once()
+
+
+def test_run_recreates_pipeline_trace_after_task_serialization(mocker: MockerFixture, sqlite_session: Session):
+    from uuid import uuid4
+
+    from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
+    from core.app.entities.app_invoke_entities import RagPipelineGenerateEntity
+    from core.ops.message_trace import MessageTraceRecorder
+    from core.ops.trace_data import TraceSource
+    from models.model import AppMode
+
+    tenant_id, pipeline_id, dataset_id, run_id = (str(uuid4()) for _ in range(4))
+    pipeline, _, workflow = _persist_scope(
+        sqlite_session,
+        pipeline=_pipeline(tenant_id=tenant_id, pipeline_id=pipeline_id),
+        dataset=_dataset(tenant_id=tenant_id, dataset_id=dataset_id, pipeline_id=pipeline_id),
+    )
+    config = PipelineConfig(
+        tenant_id=tenant_id,
+        app_id=pipeline.id,
+        app_mode=AppMode.RAG_PIPELINE,
+        workflow_id=workflow.id,
+    )
+    source = TraceSource(tenant_id=tenant_id, pipeline_id=pipeline_id, operation_id=run_id)
+    original = RagPipelineGenerateEntity(
+        task_id=str(uuid4()),
+        app_config=config,
+        pipeline_config=config,
+        inputs={},
+        files=[],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+        workflow_execution_id=run_id,
+        datasource_type="local_file",
+        datasource_info={},
+        dataset_id=dataset_id,
+        batch="batch",
+        start_node_id="start",
+        extras={"external_trace_id": "external-run", "trace_session_id": "external-session"},
+        trace_recorder=MessageTraceRecorder(source, MagicMock(), ()),
+    )
+    restored = RagPipelineGenerateEntity.model_validate_json(original.model_dump_json())
+    assert restored.trace_recorder is None
+    recorder = MessageTraceRecorder(source, MagicMock(), ())
+    create_trace = mocker.patch.object(module, "create_message_trace", return_value=recorder)
+    runner = PipelineRunner(
+        application_generate_entity=restored,
+        queue_manager=MagicMock(),
+        variable_loader=MagicMock(),
+        workflow=workflow,
+        system_user_id="user",
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
+    )
+    mocker.patch.object(runner, "_init_rag_pipeline_graph", return_value=MagicMock())
+    mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
+    workflow_entry = MagicMock()
+    workflow_entry.run.return_value = []
+    entry_constructor = mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
+
+    runner.run()
+
+    create_trace.assert_called_once_with(
+        tenant_id=tenant_id,
+        pipeline_id=pipeline_id,
+        user_id="user",
+        operation_id=run_id,
+        external_trace_id="external-run",
+        session_id="external-session",
+    )
+    workflow_trace = entry_constructor.call_args.kwargs["workflow_trace"]
+    assert workflow_trace.source.pipeline_id == pipeline_id
+    assert workflow_trace.source.app_id is None
+    assert workflow_trace.source.workflow_run_id == run_id
+    workflow_trace.finish_workflow_trace()

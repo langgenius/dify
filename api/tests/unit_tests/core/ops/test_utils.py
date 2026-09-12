@@ -1,58 +1,14 @@
-import re
 from datetime import datetime
-from decimal import Decimal
 
 import pytest
-from sqlalchemy.orm import Session
 
-import core.ops.utils as utils_module
 from core.ops.utils import (
-    filter_none_values,
-    generate_dotted_order,
-    get_message_data,
     measure_time,
-    replace_text_with_content,
     validate_integer_id,
     validate_project_name,
     validate_url,
     validate_url_with_path,
 )
-from models.enums import ConversationFromSource
-from models.model import Message
-
-
-class _DatabaseBinding:
-    """Expose the real SQLite session used by the message lookup helper."""
-
-    session: Session
-
-    def __init__(self, session: Session) -> None:
-        self.session = session
-
-
-@pytest.fixture
-def message_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Bind the message lookup helper to the shared SQLite test session."""
-
-    monkeypatch.setattr(utils_module, "db", _DatabaseBinding(sqlite_session))
-    return sqlite_session
-
-
-def _message(message_id: str) -> Message:
-    message = Message(
-        id=message_id,
-        app_id="app-id",
-        conversation_id="conversation-id",
-        query="question",
-        message={"role": "user", "content": "question"},
-        answer="answer",
-        message_unit_price=Decimal("0.0001"),
-        answer_unit_price=Decimal("0.0001"),
-        currency="USD",
-        from_source=ConversationFromSource.API,
-    )
-    message._inputs = {}
-    return message
 
 
 class TestValidateUrl:
@@ -214,90 +170,6 @@ class TestValidateProjectName:
         assert result == "Custom Default"
 
 
-class TestGenerateDottedOrder:
-    """Test cases for generate_dotted_order function"""
-
-    def test_dotted_order_has_6_digit_microseconds(self):
-        """Test that timestamp includes full 6-digit microseconds for LangSmith API compatibility.
-
-        LangSmith API expects timestamps in format: YYYYMMDDTHHMMSSffffffZ (6-digit microseconds).
-        Previously, the code truncated to 3 digits which caused API errors:
-        'cannot parse .111 as .000000'
-        """
-        start_time = datetime(2025, 12, 23, 4, 19, 55, 111000)
-        run_id = "test-run-id"
-        result = generate_dotted_order(run_id, start_time)
-
-        # Extract timestamp portion (before the run_id)
-        timestamp_match = re.match(r"^(\d{8}T\d{6})(\d+)Z", result)
-        assert timestamp_match is not None, "Timestamp format should match YYYYMMDDTHHMMSSffffffZ"
-
-        microseconds = timestamp_match.group(2)
-        assert len(microseconds) == 6, f"Microseconds should be 6 digits, got {len(microseconds)}: {microseconds}"
-
-    def test_dotted_order_format_matches_langsmith_expected(self):
-        """Test that dotted_order format matches LangSmith API expected format."""
-        start_time = datetime(2025, 1, 15, 10, 30, 45, 123456)
-        run_id = "abc123"
-        result = generate_dotted_order(run_id, start_time)
-
-        # LangSmith expects: YYYYMMDDTHHMMSSffffffZ followed by run_id
-        assert result == "20250115T103045123456Zabc123"
-
-    def test_dotted_order_with_parent(self):
-        """Test dotted_order generation with parent order uses dot separator."""
-        start_time = datetime(2025, 12, 23, 4, 19, 55, 111000)
-        run_id = "child-run-id"
-        parent_order = "20251223T041955000000Zparent-run-id"
-        result = generate_dotted_order(run_id, start_time, parent_order)
-
-        assert result == "20251223T041955000000Zparent-run-id.20251223T041955111000Zchild-run-id"
-
-    def test_dotted_order_without_parent_has_no_dot(self):
-        """Test dotted_order generation without parent has no dot separator."""
-        start_time = datetime(2025, 12, 23, 4, 19, 55, 111000)
-        run_id = "test-run-id"
-        result = generate_dotted_order(run_id, start_time, None)
-
-        assert "." not in result
-
-    def test_dotted_order_with_string_start_time(self):
-        """Test dotted_order generation with string start_time."""
-        start_time = "2025-12-23T04:19:55.111000"
-        run_id = "test-run-id"
-        result = generate_dotted_order(run_id, start_time)
-
-        assert result == "20251223T041955111000Ztest-run-id"
-
-
-class TestFilterNoneValues:
-    """Test cases for filter_none_values function"""
-
-    def test_filter_none_values(self):
-        data = {"a": 1, "b": None, "c": "test", "d": datetime(2025, 1, 1, 12, 0, 0)}
-        result = filter_none_values(data)
-        assert result == {"a": 1, "c": "test", "d": "2025-01-01T12:00:00"}
-
-    def test_filter_none_values_empty(self):
-        assert filter_none_values({}) == {}
-
-
-@pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
-class TestGetMessageData:
-    """Test cases for get_message_data function"""
-
-    def test_get_message_data(self, message_session: Session):
-        target = _message("message-id")
-        unrelated = _message("other-message-id")
-        message_session.add_all((target, unrelated))
-        message_session.commit()
-
-        result = get_message_data("message-id")
-
-        assert result is target
-        assert result.id == "message-id"
-
-
 class TestMeasureTime:
     """Test cases for measure_time function"""
 
@@ -310,27 +182,6 @@ class TestMeasureTime:
         assert timing_info["end"] is not None
         assert isinstance(timing_info["end"], datetime)
         assert timing_info["end"] >= timing_info["start"]
-
-
-class TestReplaceTextWithContent:
-    """Test cases for replace_text_with_content function"""
-
-    def test_replace_text_with_content_dict(self):
-        data = {"text": "hello", "other": "world"}
-        assert replace_text_with_content(data) == {"content": "hello", "other": "world"}
-
-    def test_replace_text_with_content_nested(self):
-        data = {"text": "v1", "nested": {"text": "v2", "list": [{"text": "v3"}]}}
-        expected = {"content": "v1", "nested": {"content": "v2", "list": [{"content": "v3"}]}}
-        assert replace_text_with_content(data) == expected
-
-    def test_replace_text_with_content_list(self):
-        data = [{"text": "v1"}, "v2"]
-        assert replace_text_with_content(data) == [{"content": "v1"}, "v2"]
-
-    def test_replace_text_with_content_primitive(self):
-        assert replace_text_with_content(123) == 123
-        assert replace_text_with_content("text") == "text"
 
 
 class TestValidateIntegerId:

@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
-from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
@@ -88,9 +87,9 @@ def _make_layer(
     *,
     extras: dict | None = None,
     graph_data: dict | None = None,
-    trace_manager: object | None = None,
     workflow_execution_repo=None,
     workflow_node_execution_repo=None,
+    record_node_execution_index=None,
 ):
     system_variables = system_variables or build_system_variables(
         workflow_execution_id="run-id",
@@ -111,7 +110,6 @@ def _make_layer(
         user_id="user",
         stream=False,
         invoke_from=None,
-        trace_manager=None,
         workflow_execution_id="run-id",
         extras=extras or {},
         call_depth=0,
@@ -134,7 +132,7 @@ def _make_layer(
         workflow_info=workflow_info,
         workflow_execution_repository=workflow_execution_repo,
         workflow_node_execution_repository=workflow_node_execution_repo,
-        trace_manager=trace_manager,
+        record_node_execution_index=record_node_execution_index,
     )
     layer.initialize(read_only_state, command_channel=None)
 
@@ -525,7 +523,8 @@ class TestWorkflowPersistenceLayer:
         assert exec_repo.saved
 
     def test_resumption_restores_container_execution_before_terminal_event(self):
-        layer, _, node_repo, _ = _make_layer()
+        record_index = MagicMock()
+        layer, _, node_repo, _ = _make_layer(record_node_execution_index=record_index)
         started_at = _naive_utc_now()
         execution = WorkflowNodeExecution(
             id="loop-exec",
@@ -554,7 +553,12 @@ class TestWorkflowPersistenceLayer:
 
         assert execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert execution.elapsed_time == 2.0
-        assert layer._next_node_sequence() == 5
+        layer.on_event(
+            NodeRunStartedEvent(
+                id="next-exec", node_id="next", node_type=BuiltinNodeTypes.END, node_title="End", start_at=started_at
+            )
+        )
+        record_index.assert_called_once_with("next-exec", 5)
 
     def test_handle_graph_run_succeeded_updates_execution(self):
         layer, exec_repo, _, runtime_state = _make_layer()
@@ -592,10 +596,8 @@ class TestWorkflowPersistenceLayer:
         assert saved.exceptions_count == 2
         assert saved.total_tokens == 5
 
-    def test_handle_graph_run_failed_marks_nodes_and_enqueues_trace(self):
-        trace_tasks: list[object] = []
-        trace_manager = SimpleNamespace(user_id="user", add_trace_task=lambda task: trace_tasks.append(task))
-        layer, exec_repo, node_repo, _ = _make_layer(extras={"external_trace_id": "trace"}, trace_manager=trace_manager)
+    def test_handle_graph_run_failed_marks_nodes(self):
+        layer, exec_repo, node_repo, _ = _make_layer()
         layer._handle_graph_run_started()
 
         running = WorkflowNodeExecution(
@@ -614,64 +616,6 @@ class TestWorkflowPersistenceLayer:
 
         assert node_repo.saved
         assert exec_repo.saved[-1].status == WorkflowExecutionStatus.FAILED
-        assert trace_tasks
-
-    def test_handle_graph_run_succeeded_enqueues_parent_trace_context(self, monkeypatch: pytest.MonkeyPatch):
-        trace_tasks: list[TraceTask] = []
-        trace_manager = SimpleNamespace(user_id="user", add_trace_task=lambda task: trace_tasks.append(task))
-        layer, _, _, _ = _make_layer(
-            extras={
-                "external_trace_id": "trace",
-                "trace_session_id": "session-1",
-                "parent_trace_context": {
-                    "parent_workflow_run_id": "outer-workflow-run-1",
-                    "parent_node_execution_id": "outer-node-execution-1",
-                },
-            },
-            trace_manager=trace_manager,
-        )
-        layer._handle_graph_run_started()
-
-        captured: dict[str, object] = {}
-
-        def fake_workflow_trace(
-            self: TraceTask,
-            *,
-            workflow_run_id: str | None,
-            conversation_id: str | None,
-            user_id: str | None,
-            total_tokens_override: int | None = None,
-        ):
-            captured["trace_type"] = self.trace_type
-            captured["external_trace_id"] = self.kwargs.get("external_trace_id")
-            captured["trace_session_id"] = self.kwargs.get("trace_session_id")
-            captured["parent_trace_context"] = self.kwargs.get("parent_trace_context")
-            captured["workflow_run_id"] = workflow_run_id
-            return {"ok": True}
-
-        monkeypatch.setattr(TraceTask, "workflow_trace", fake_workflow_trace)
-
-        layer._handle_graph_run_succeeded(GraphRunSucceededEvent(outputs={"ok": True}))
-
-        assert trace_tasks
-        trace_task = trace_tasks[0]
-        assert trace_task.trace_type == TraceTaskName.WORKFLOW_TRACE
-        assert trace_task.kwargs["external_trace_id"] == "trace"
-        assert trace_task.kwargs["trace_session_id"] == "session-1"
-        assert trace_task.kwargs["parent_trace_context"] == {
-            "parent_workflow_run_id": "outer-workflow-run-1",
-            "parent_node_execution_id": "outer-node-execution-1",
-        }
-
-        trace_task.execute()
-
-        assert captured["trace_type"] == TraceTaskName.WORKFLOW_TRACE
-        assert captured["external_trace_id"] == "trace"
-        assert captured["trace_session_id"] == "session-1"
-        assert captured["parent_trace_context"] == {
-            "parent_workflow_run_id": "outer-workflow-run-1",
-            "parent_node_execution_id": "outer-node-execution-1",
-        }
 
     def test_handle_graph_run_aborted_sets_status(self):
         layer, exec_repo, _, _ = _make_layer()
@@ -699,8 +643,17 @@ class TestWorkflowPersistenceLayer:
         assert saved.outputs == {"pause": True}
         assert saved.finished_at is None
 
-    def test_handle_node_started_and_retry(self):
-        layer, _, node_repo, _ = _make_layer()
+    @pytest.mark.parametrize("callback_fails", [False, True])
+    def test_handle_node_started_and_retry(self, callback_fails):
+        callback_observations = []
+
+        def record_index(execution_id, index):
+            callback_observations.append((layer._node_execution_cache[execution_id].index, len(node_repo.saved)))
+            if callback_fails:
+                raise RuntimeError("Trace callback failed")
+
+        callback = MagicMock(side_effect=record_index)
+        layer, _, node_repo, _ = _make_layer(record_node_execution_index=callback)
         layer._handle_graph_run_started()
 
         start_event = NodeRunStartedEvent(
@@ -728,6 +681,8 @@ class TestWorkflowPersistenceLayer:
         )
         layer._handle_node_retry(retry_event)
         assert node_repo.saved_exec_data
+        callback.assert_called_once_with("exec", 1)
+        assert callback_observations == [(1, 0)]
 
     def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(self):
         layer, _, node_repo, _ = _make_layer()

@@ -1259,7 +1259,14 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         with self._session_maker() as session, session.begin():
             # Get the workflow run with pause
-            stmt = select(WorkflowRun).options(selectinload(WorkflowRun.pause)).where(WorkflowRun.id == workflow_run_id)
+            # Resume and global timeout both lock the owning run before changing
+            # pause state, so only one execution can consume its checkpoint.
+            stmt = (
+                select(WorkflowRun)
+                .options(selectinload(WorkflowRun.pause))
+                .where(WorkflowRun.id == workflow_run_id)
+                .with_for_update()
+            )
             workflow_run = session.scalar(stmt)
 
             if workflow_run is None:

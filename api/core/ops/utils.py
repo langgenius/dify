@@ -1,71 +1,15 @@
 from contextlib import contextmanager
-from datetime import datetime
-from typing import Any, Union
+from datetime import UTC, datetime
 from urllib.parse import urlparse
-
-from pydantic import TypeAdapter
-from sqlalchemy import select
-
-from models.engine import db
-from models.model import Message
-
-JSON_DICT_ADAPTER: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
-
-
-def filter_none_values(data: dict[str, Any]) -> dict[str, Any]:
-    new_data = {}
-    for key, value in data.items():
-        if value is None:
-            continue
-        if isinstance(value, datetime):
-            new_data[key] = value.isoformat()
-        else:
-            new_data[key] = value
-    return new_data
-
-
-def get_message_data(message_id: str):
-    return db.session.scalar(select(Message).where(Message.id == message_id))
 
 
 @contextmanager
 def measure_time():
-    timing_info = {"start": datetime.now(), "end": None}
+    timing_info: dict[str, datetime | None] = {"start": datetime.now(UTC), "end": None}
     try:
         yield timing_info
     finally:
-        # pyrefly: ignore [bad-assignment]
-        timing_info["end"] = datetime.now()
-
-
-def replace_text_with_content(data):
-    match data:
-        case dict():
-            new_data = {}
-            for key, value in data.items():
-                if key == "text":
-                    new_data["content"] = value
-                else:
-                    new_data[key] = replace_text_with_content(value)
-            return new_data
-        case list():
-            return [replace_text_with_content(item) for item in data]
-        case _:
-            return data
-
-
-def generate_dotted_order(run_id: str, start_time: Union[str, datetime], parent_dotted_order: str | None = None) -> str:
-    """
-    generate dotted_order for langsmith
-    """
-    start_time = datetime.fromisoformat(start_time) if isinstance(start_time, str) else start_time
-    timestamp = start_time.strftime("%Y%m%dT%H%M%S%f") + "Z"
-    current_segment = f"{timestamp}{run_id}"
-
-    if parent_dotted_order is None:
-        return current_segment
-
-    return f"{parent_dotted_order}.{current_segment}"
+        timing_info["end"] = datetime.now(UTC)
 
 
 def validate_url(url: str, default_url: str, allowed_schemes: tuple = ("https", "http")) -> str:

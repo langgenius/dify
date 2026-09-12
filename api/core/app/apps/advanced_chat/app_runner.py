@@ -33,6 +33,7 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.db.session_factory import create_session, session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
+from core.ops.workflow_trace import build_workflow_trace_inputs
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSourceRepository
 from core.workflow.node_factory import get_default_root_node_id
@@ -40,6 +41,7 @@ from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workfl
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     build_system_variables,
+    get_all_system_variables,
     system_variables_to_mapping,
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
@@ -251,6 +253,29 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
         )
 
+        trace_recorder = self.application_generate_entity.trace_recorder
+        workflow_trace = (
+            trace_recorder.create_workflow_trace(
+                workflow_id=self._workflow.id,
+                workflow_version=self._workflow.version,
+                workflow_run_id=self.application_generate_entity.workflow_run_id,
+                inputs=build_workflow_trace_inputs(
+                    self.application_generate_entity.inputs, get_all_system_variables(variable_pool)
+                ),
+                attributes={
+                    "app_name": self._app.name,
+                    "workflow_name": self._workflow.marked_name,
+                    "workflow_type": str(self._workflow.type),
+                    "workflow_version": self._workflow.version,
+                    "invoke_from": self.application_generate_entity.invoke_from.value,
+                    "from_source": self.application_generate_entity.invoke_from.to_source(),
+                },
+                workflow_trace_state=self.application_generate_entity.workflow_trace_state,
+                resumed_without_state=self.application_generate_entity.extras.get("ops_resumed_without_state", False),
+            )
+            if trace_recorder is not None and self.application_generate_entity.workflow_run_id is not None
+            else None
+        )
         persistence_layer = WorkflowPersistenceLayer(
             application_generate_entity=self.application_generate_entity,
             workflow_info=PersistenceWorkflowInfo(
@@ -261,9 +286,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             ),
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,
-            trace_manager=self.application_generate_entity.trace_manager,
+            record_node_execution_index=workflow_trace.record_node_execution_index if workflow_trace else None,
         )
-
         workflow_entry = WorkflowEntry(
             tenant_id=self._workflow.tenant_id,
             app_id=self._workflow.app_id,
@@ -277,6 +301,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
             workflow_tool_source_repository=self._workflow_tool_source_repository,
+            workflow_trace=workflow_trace,
             workflow_tool_event_listener_factory=persistence_layer.create_workflow_tool_event_listener,
             command_channel=command_channel,
             response_stream_filter=self._response_stream_filter,
@@ -413,7 +438,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             inputs=dict(inputs),
             query=query or "",
             message_id=message_id,
-            trace_manager=app_generate_entity.trace_manager,
+            trace_recorder=app_generate_entity.trace_recorder,
         )
 
     def _initialize_conversation_variables(self) -> list[Variable]:

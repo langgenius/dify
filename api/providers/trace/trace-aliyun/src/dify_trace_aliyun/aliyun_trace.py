@@ -1,847 +1,350 @@
-import logging
-from collections.abc import Mapping, Sequence
-from dataclasses import replace
+"""Send captured spans to Aliyun with explicitly captured HTTP and TLS settings."""
+
+import json
+import re
+import socket
 from typing import Any, override
+from urllib.parse import quote, urljoin, urlsplit
 
-from opentelemetry.trace import SpanKind
-from sqlalchemy.orm import sessionmaker
+from opentelemetry.proto.trace.v1.trace_pb2 import Span, Status
+from pydantic import JsonValue
 
-from core.ops.base_trace_instance import BaseTraceInstance
-from core.ops.entities.trace_entity import (
-    BaseTraceInfo,
-    DatasetRetrievalTraceInfo,
-    GenerateNameTraceInfo,
-    MessageTraceInfo,
-    ModerationTraceInfo,
-    SuggestedQuestionTraceInfo,
-    ToolTraceInfo,
-    WorkflowTraceInfo,
-)
-from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
-from core.repositories import DifyCoreRepositoryFactory
+from configs import dify_config
+from core.helper.ssl_context import create_ssl_context
+from core.ops.otlp_trace import OtlpTraceClient, otlp_span
+from core.ops.provider_export import json_text, span_attributes
+from core.ops.trace_data import CompletedTrace, TraceSpan
 from dify_trace_aliyun.config import AliyunConfig
-from dify_trace_aliyun.data_exporter.traceclient import (
-    TraceClient,
-    build_endpoint,
-    convert_datetime_to_nanoseconds,
-    convert_to_span_id,
-    convert_to_trace_id,
-    generate_span_id,
-)
-from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData, TraceMetadata
-from dify_trace_aliyun.entities.semconv import (
-    DIFY_APP_ID,
-    GEN_AI_AGENT_NAME,
-    GEN_AI_COMPLETION,
-    GEN_AI_INPUT_MESSAGE,
-    GEN_AI_OPERATION_NAME,
-    GEN_AI_OUTPUT_MESSAGE,
-    GEN_AI_PROMPT,
-    GEN_AI_PROVIDER_NAME,
-    GEN_AI_REACT_FINISH_REASON,
-    GEN_AI_REACT_ROUND,
-    GEN_AI_REQUEST_MODEL,
-    GEN_AI_RESPONSE_FINISH_REASON,
-    GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN,
-    GEN_AI_USAGE_INPUT_TOKENS,
-    GEN_AI_USAGE_OUTPUT_TOKENS,
-    GEN_AI_USAGE_TOTAL_TOKENS,
-    OPERATION_NAME_CHAT,
-    OPERATION_NAME_INVOKE_AGENT,
-    OPERATION_NAME_REACT,
-    RETRIEVAL_DOCUMENT,
-    RETRIEVAL_QUERY,
-    GenAISpanKind,
-)
-from dify_trace_aliyun.utils import (
-    AgentLogEntry,
-    convert_seconds_to_nanoseconds,
-    create_common_span_attributes,
-    create_gen_ai_tool_attributes,
-    create_links_from_trace_id,
-    create_status_from_agent_log_entry,
-    create_status_from_error,
-    extract_model_name_from_thought_label,
-    extract_react_round_number,
-    extract_retrieval_documents,
-    extract_tool_description,
-    extract_tool_name_from_call_label,
-    format_input_messages,
-    format_output_messages,
-    format_retrieval_documents,
-    get_user_id_from_message_data,
-    get_workflow_node_status,
-    is_llm_thought_entry,
-    is_tool_call_entry,
-    map_gen_ai_tool_type,
-    parse_agent_log_entries,
-    serialize_json_data,
-)
-from extensions.ext_database import db
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
-from models import WorkflowNodeExecutionTriggeredFrom
-
-logger = logging.getLogger(__name__)
 
 
-class AliyunDataTrace(BaseTraceInstance):
-    def __init__(
-        self,
-        aliyun_config: AliyunConfig,
-    ):
-        super().__init__(aliyun_config)
-        endpoint = build_endpoint(aliyun_config.endpoint, aliyun_config.license_key)
-        self.trace_client = TraceClient(service_name=aliyun_config.app_name, endpoint=endpoint)
-
-    @override
-    def trace(self, trace_info: BaseTraceInfo):
-        match trace_info:
-            case WorkflowTraceInfo():
-                self.workflow_trace(trace_info)
-            case MessageTraceInfo():
-                self.message_trace(trace_info)
-            case ModerationTraceInfo():
-                pass
-            case SuggestedQuestionTraceInfo():
-                self.suggested_question_trace(trace_info)
-            case DatasetRetrievalTraceInfo():
-                self.dataset_retrieval_trace(trace_info)
-            case ToolTraceInfo():
-                self.tool_trace(trace_info)
-            case GenerateNameTraceInfo():
-                pass
-            case _:
-                pass
-
-    def api_check(self):
-        return self.trace_client.api_check()
-
-    def get_project_url(self):
-        try:
-            return self.trace_client.get_project_url()
-        except Exception as e:
-            logger.info("Aliyun get project url failed: %s", str(e), exc_info=True)
-            raise ValueError(f"Aliyun get project url failed: {str(e)}")
-
-    def _extract_app_id(self, trace_info: BaseTraceInfo) -> str:
-        """Extract app_id from trace_info, trying metadata first then message_data."""
-        app_id = trace_info.metadata.get("app_id")
-        if app_id:
-            return str(app_id)
-        message_data = getattr(trace_info, "message_data", None)
-        if message_data is not None:
-            return str(getattr(message_data, "app_id", ""))
-        return ""
-
-    def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_metadata = TraceMetadata(
-            trace_id=convert_to_trace_id(trace_info.workflow_run_id),
-            workflow_span_id=convert_to_span_id(trace_info.workflow_run_id, "workflow"),
-            session_id=trace_info.metadata.get("conversation_id") or "",
-            user_id=str(trace_info.metadata.get("user_id") or ""),
-            links=create_links_from_trace_id(trace_info.trace_id),
-        )
-
-        self.add_workflow_span(trace_info, trace_metadata)
-
-        workflow_node_executions = self.get_workflow_node_executions(trace_info)
-        tool_parents = workflow_tool_parent_ids(workflow_node_executions)
-        for node_execution in workflow_node_executions:
-            parent_id = tool_parents.get(node_execution.id)
-            node_trace_metadata = (
-                replace(trace_metadata, workflow_span_id=convert_to_span_id(parent_id, "node"))
-                if parent_id
-                else trace_metadata
-            )
-            node_span = self.build_workflow_node_span(node_execution, trace_info, node_trace_metadata)
-            self.trace_client.add_span(node_span)
-            if node_span is not None and node_execution.node_type == BuiltinNodeTypes.AGENT:
-                for react_span in self.build_agent_react_spans(node_execution, trace_metadata):
-                    self.trace_client.add_span(react_span)
-
-    def message_trace(self, trace_info: MessageTraceInfo):
-        message_data = trace_info.message_data
-        if message_data is None:
-            return
-
-        message_id = trace_info.message_id
-        user_id = get_user_id_from_message_data(message_data)
-        status = create_status_from_error(trace_info.error)
-
-        trace_metadata = TraceMetadata(
-            trace_id=convert_to_trace_id(message_id),
-            workflow_span_id=0,
-            session_id=trace_info.metadata.get("conversation_id") or "",
-            user_id=user_id,
-            links=create_links_from_trace_id(trace_info.trace_id),
-        )
-
-        inputs_json = serialize_json_data(trace_info.inputs)
-        outputs_str = str(trace_info.outputs)
-
-        message_span_id = convert_to_span_id(message_id, "message")
-        message_span = SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=None,
-            span_id=message_span_id,
-            name="message",
-            start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-            attributes={
-                **create_common_span_attributes(
-                    session_id=trace_metadata.session_id,
-                    user_id=trace_metadata.user_id,
-                    span_kind=GenAISpanKind.CHAIN,
-                    inputs=inputs_json,
-                    outputs=outputs_str,
-                ),
-                DIFY_APP_ID: self._extract_app_id(trace_info),
-            },
-            status=status,
-            links=trace_metadata.links,
-            span_kind=SpanKind.SERVER,
-        )
-        self.trace_client.add_span(message_span)
-
-        llm_attributes: dict[str, Any] = {
-            **create_common_span_attributes(
-                session_id=trace_metadata.session_id,
-                user_id=trace_metadata.user_id,
-                span_kind=GenAISpanKind.LLM,
-                inputs=inputs_json,
-                outputs=outputs_str,
-            ),
-            GEN_AI_OPERATION_NAME: OPERATION_NAME_CHAT,
-            GEN_AI_REQUEST_MODEL: trace_info.metadata.get("ls_model_name") or "",
-            GEN_AI_PROVIDER_NAME: trace_info.metadata.get("ls_provider") or "",
-            GEN_AI_USAGE_INPUT_TOKENS: str(trace_info.message_tokens),
-            GEN_AI_USAGE_OUTPUT_TOKENS: str(trace_info.answer_tokens),
-            GEN_AI_USAGE_TOTAL_TOKENS: str(trace_info.total_tokens),
-            GEN_AI_PROMPT: inputs_json,
-            GEN_AI_COMPLETION: outputs_str,
-        }
-        if trace_info.gen_ai_server_time_to_first_token is not None:
-            llm_attributes[GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN] = convert_seconds_to_nanoseconds(
-                trace_info.gen_ai_server_time_to_first_token
-            )
-
-        llm_span = SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=message_span_id,
-            span_id=convert_to_span_id(message_id, "llm"),
-            name="llm",
-            start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-            attributes=llm_attributes,
-            status=status,
-            links=trace_metadata.links,
-        )
-        self.trace_client.add_span(llm_span)
-
-    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
-        if trace_info.message_data is None:
-            return
-
-        message_id = trace_info.message_id
-
-        trace_metadata = TraceMetadata(
-            trace_id=convert_to_trace_id(message_id),
-            workflow_span_id=0,
-            session_id=trace_info.metadata.get("conversation_id") or "",
-            user_id=str(trace_info.metadata.get("user_id") or ""),
-            links=create_links_from_trace_id(trace_info.trace_id),
-        )
-
-        documents_data = extract_retrieval_documents(trace_info.documents)
-        documents_json = serialize_json_data(documents_data)
-        inputs_str = str(trace_info.inputs)
-
-        dataset_retrieval_span = SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=convert_to_span_id(message_id, "message"),
-            span_id=generate_span_id(),
-            name="dataset_retrieval",
-            start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-            attributes={
-                **create_common_span_attributes(
-                    session_id=trace_metadata.session_id,
-                    user_id=trace_metadata.user_id,
-                    span_kind=GenAISpanKind.RETRIEVER,
-                    inputs=inputs_str,
-                    outputs=documents_json,
-                ),
-                RETRIEVAL_QUERY: inputs_str,
-                RETRIEVAL_DOCUMENT: documents_json,
-            },
-            links=trace_metadata.links,
-        )
-        self.trace_client.add_span(dataset_retrieval_span)
-
-    def tool_trace(self, trace_info: ToolTraceInfo):
-        if trace_info.message_data is None:
-            return
-
-        message_id = trace_info.message_id
-        status = create_status_from_error(trace_info.error)
-
-        trace_metadata = TraceMetadata(
-            trace_id=convert_to_trace_id(message_id),
-            workflow_span_id=0,
-            session_id=trace_info.metadata.get("conversation_id") or "",
-            user_id=str(trace_info.metadata.get("user_id") or ""),
-            links=create_links_from_trace_id(trace_info.trace_id),
-        )
-
-        tool_config = trace_info.tool_config if isinstance(trace_info.tool_config, Mapping) else {}
-        tool_inputs_json = serialize_json_data(trace_info.tool_inputs)
-        tool_result = str(trace_info.tool_outputs)
-        inputs_json = serialize_json_data(trace_info.inputs)
-        provider_type = tool_config.get("tool_provider_type") or tool_config.get("provider_type")
-
-        tool_span = SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=convert_to_span_id(message_id, "message"),
-            span_id=generate_span_id(),
-            name=trace_info.tool_name,
-            start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-            attributes={
-                **create_common_span_attributes(
-                    session_id=trace_metadata.session_id,
-                    user_id=trace_metadata.user_id,
-                    span_kind=GenAISpanKind.TOOL,
-                    inputs=inputs_json,
-                    outputs=tool_result,
-                ),
-                **create_gen_ai_tool_attributes(
-                    tool_name=trace_info.tool_name,
-                    tool_type=map_gen_ai_tool_type(str(provider_type) if provider_type else None),
-                    tool_description=extract_tool_description(tool_config),
-                    tool_call_id=str(trace_info.metadata.get("node_execution_id") or ""),
-                    tool_call_arguments=tool_inputs_json,
-                    tool_call_result=tool_result,
-                ),
-            },
-            status=status,
-            links=trace_metadata.links,
-        )
-        self.trace_client.add_span(tool_span)
-
-    def get_workflow_node_executions(self, trace_info: WorkflowTraceInfo) -> Sequence[WorkflowNodeExecution]:
-        app_id = trace_info.metadata.get("app_id")
-        if not app_id:
-            raise ValueError("No app_id found in trace_info metadata")
-
-        service_account = self.get_service_account_with_tenant(app_id)
-
-        session_factory = sessionmaker(bind=db.engine)
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-            session_factory=session_factory,
-            tenant_id=trace_info.tenant_id,
-            user=service_account,
-            app_id=app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        )
-
-        return workflow_node_execution_repository.get_by_workflow_execution(
-            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
-        )
-
-    def build_workflow_node_span(
-        self, node_execution: WorkflowNodeExecution, trace_info: WorkflowTraceInfo, trace_metadata: TraceMetadata
-    ):
-        try:
-            if node_execution.node_type == BuiltinNodeTypes.LLM:
-                node_span = self.build_workflow_llm_span(trace_info, node_execution, trace_metadata)
-            elif node_execution.node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
-                node_span = self.build_workflow_retrieval_span(trace_info, node_execution, trace_metadata)
-            elif node_execution.node_type == BuiltinNodeTypes.TOOL:
-                node_span = self.build_workflow_tool_span(trace_info, node_execution, trace_metadata)
-            elif node_execution.node_type == BuiltinNodeTypes.AGENT:
-                node_span = self.build_workflow_agent_span(trace_info, node_execution, trace_metadata)
-            else:
-                node_span = self.build_workflow_task_span(trace_info, node_execution, trace_metadata)
-            return node_span
-        except Exception as e:
-            logger.warning("Error occurred in build_workflow_node_span: %s", e, exc_info=True)
-            return None
-
-    def build_workflow_task_span(
-        self, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
-    ) -> SpanData:
-        inputs_json = serialize_json_data(node_execution.inputs)
-        outputs_json = serialize_json_data(node_execution.outputs)
-        return SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=trace_metadata.workflow_span_id,
-            span_id=convert_to_span_id(node_execution.id, "node"),
-            name=node_execution.title,
-            start_time=convert_datetime_to_nanoseconds(node_execution.created_at),
-            end_time=convert_datetime_to_nanoseconds(node_execution.finished_at),
-            attributes=create_common_span_attributes(
-                session_id=trace_metadata.session_id,
-                user_id=trace_metadata.user_id,
-                span_kind=GenAISpanKind.TASK,
-                inputs=inputs_json,
-                outputs=outputs_json,
-            ),
-            status=get_workflow_node_status(node_execution),
-            links=trace_metadata.links,
-        )
-
-    def build_workflow_tool_span(
-        self, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
-    ) -> SpanData:
-        tool_info: Mapping[str, Any] = {}
-        if isinstance(node_execution.metadata, Mapping):
-            raw_tool_info = node_execution.metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO, {})
-            if isinstance(raw_tool_info, Mapping):
-                tool_info = raw_tool_info
-
-        inputs_json = serialize_json_data(node_execution.inputs or {})
-        outputs_json = serialize_json_data(node_execution.outputs)
-        provider_type = tool_info.get("provider_type")
-
-        return SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=trace_metadata.workflow_span_id,
-            span_id=convert_to_span_id(node_execution.id, "node"),
-            name=node_execution.title,
-            start_time=convert_datetime_to_nanoseconds(node_execution.created_at),
-            end_time=convert_datetime_to_nanoseconds(node_execution.finished_at),
-            attributes={
-                **create_common_span_attributes(
-                    session_id=trace_metadata.session_id,
-                    user_id=trace_metadata.user_id,
-                    span_kind=GenAISpanKind.TOOL,
-                    inputs=inputs_json,
-                    outputs=outputs_json,
-                ),
-                **create_gen_ai_tool_attributes(
-                    tool_name=node_execution.title,
-                    tool_type=map_gen_ai_tool_type(str(provider_type) if provider_type else None),
-                    tool_description=extract_tool_description(tool_info),
-                    tool_call_id=str(node_execution.id or ""),
-                    tool_call_arguments=inputs_json,
-                    tool_call_result=outputs_json,
-                ),
-            },
-            status=get_workflow_node_status(node_execution),
-            links=trace_metadata.links,
-        )
-
-    def build_workflow_retrieval_span(
-        self, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
-    ) -> SpanData:
-        input_value = str(node_execution.inputs.get("query", "")) if node_execution.inputs else ""
-        output_value = serialize_json_data(node_execution.outputs.get("result", [])) if node_execution.outputs else ""
-
-        retrieval_documents = node_execution.outputs.get("result", []) if node_execution.outputs else []
-        semantic_retrieval_documents = format_retrieval_documents(retrieval_documents)
-        semantic_retrieval_documents_json = serialize_json_data(semantic_retrieval_documents)
-
-        return SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=trace_metadata.workflow_span_id,
-            span_id=convert_to_span_id(node_execution.id, "node"),
-            name=node_execution.title,
-            start_time=convert_datetime_to_nanoseconds(node_execution.created_at),
-            end_time=convert_datetime_to_nanoseconds(node_execution.finished_at),
-            attributes={
-                **create_common_span_attributes(
-                    session_id=trace_metadata.session_id,
-                    user_id=trace_metadata.user_id,
-                    span_kind=GenAISpanKind.RETRIEVER,
-                    inputs=input_value,
-                    outputs=output_value,
-                ),
-                RETRIEVAL_QUERY: input_value,
-                RETRIEVAL_DOCUMENT: semantic_retrieval_documents_json,
-            },
-            status=get_workflow_node_status(node_execution),
-            links=trace_metadata.links,
-        )
-
-    def build_workflow_llm_span(
-        self, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
-    ) -> SpanData:
-        process_data = node_execution.process_data if isinstance(node_execution.process_data, Mapping) else {}
-        inputs = node_execution.inputs if isinstance(node_execution.inputs, Mapping) else {}
-        outputs = node_execution.outputs if isinstance(node_execution.outputs, Mapping) else {}
-        usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
-        if not isinstance(usage_data, Mapping):
-            usage_data = {}
-
-        # On invoke failure graphon leaves process_data empty, but prep already wrote
-        # model identity (and template variables / context) into node inputs.
-        prompts = process_data.get("prompts") or []
-        if prompts:
-            prompts_json = serialize_json_data(prompts)
-        elif inputs:
-            prompts_json = serialize_json_data(inputs)
-        else:
-            prompts_json = serialize_json_data([])
-
-        text_output = str(outputs.get("text") or "")
-        if not text_output:
-            text_output = str(outputs.get("error_message") or node_execution.error or "")
-
-        finish_reason = outputs.get("finish_reason") or outputs.get("error_type") or ""
-        model_name = process_data.get("model_name") or inputs.get("model_name") or ""
-        model_provider = process_data.get("model_provider") or inputs.get("model_provider") or ""
-
-        gen_ai_input_message = format_input_messages(process_data)
-        gen_ai_output_message = format_output_messages(outputs)
-
-        attributes: dict[str, Any] = {
-            **create_common_span_attributes(
-                session_id=trace_metadata.session_id,
-                user_id=trace_metadata.user_id,
-                span_kind=GenAISpanKind.LLM,
-                inputs=prompts_json,
-                outputs=text_output,
-            ),
-            GEN_AI_OPERATION_NAME: OPERATION_NAME_CHAT,
-            GEN_AI_REQUEST_MODEL: str(model_name),
-            GEN_AI_PROVIDER_NAME: str(model_provider),
-            GEN_AI_USAGE_INPUT_TOKENS: str(usage_data.get("prompt_tokens", 0)),
-            GEN_AI_USAGE_OUTPUT_TOKENS: str(usage_data.get("completion_tokens", 0)),
-            GEN_AI_USAGE_TOTAL_TOKENS: str(usage_data.get("total_tokens", 0)),
-            GEN_AI_PROMPT: prompts_json,
-            GEN_AI_COMPLETION: text_output,
-            GEN_AI_RESPONSE_FINISH_REASON: str(finish_reason),
-            GEN_AI_INPUT_MESSAGE: gen_ai_input_message,
-            GEN_AI_OUTPUT_MESSAGE: gen_ai_output_message,
-        }
-        time_to_first_token = usage_data.get("time_to_first_token")
-        if isinstance(time_to_first_token, (int, float)):
-            attributes[GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN] = convert_seconds_to_nanoseconds(float(time_to_first_token))
-
-        return SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=trace_metadata.workflow_span_id,
-            span_id=convert_to_span_id(node_execution.id, "node"),
-            name=node_execution.title,
-            start_time=convert_datetime_to_nanoseconds(node_execution.created_at),
-            end_time=convert_datetime_to_nanoseconds(node_execution.finished_at),
-            attributes=attributes,
-            status=get_workflow_node_status(node_execution),
-            links=trace_metadata.links,
-        )
-
-    def build_workflow_agent_span(
-        self, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
-    ) -> SpanData:
-        """Build an AGENT-kind span for an agent-strategy node (instead of a generic TASK span)."""
-        inputs_json = serialize_json_data(node_execution.inputs)
-        outputs = node_execution.outputs if isinstance(node_execution.outputs, Mapping) else {}
-        usage_data = outputs.get("usage", {})
-        if not isinstance(usage_data, Mapping):
-            usage_data = {}
-        text_output = str(outputs.get("text", ""))
-
-        attributes: dict[str, Any] = {
-            **create_common_span_attributes(
-                session_id=trace_metadata.session_id,
-                user_id=trace_metadata.user_id,
-                span_kind=GenAISpanKind.AGENT,
-                inputs=inputs_json,
-                outputs=text_output,
-            ),
-            GEN_AI_OPERATION_NAME: OPERATION_NAME_INVOKE_AGENT,
-            GEN_AI_AGENT_NAME: node_execution.title,
-            GEN_AI_USAGE_INPUT_TOKENS: str(usage_data.get("prompt_tokens", 0)),
-            GEN_AI_USAGE_OUTPUT_TOKENS: str(usage_data.get("completion_tokens", 0)),
-            GEN_AI_USAGE_TOTAL_TOKENS: str(usage_data.get("total_tokens", 0)),
-        }
-        time_to_first_token = usage_data.get("time_to_first_token")
-        if isinstance(time_to_first_token, (int, float)):
-            attributes[GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN] = convert_seconds_to_nanoseconds(float(time_to_first_token))
-
-        return SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=trace_metadata.workflow_span_id,
-            span_id=convert_to_span_id(node_execution.id, "node"),
-            name=node_execution.title,
-            start_time=convert_datetime_to_nanoseconds(node_execution.created_at),
-            end_time=convert_datetime_to_nanoseconds(node_execution.finished_at),
-            attributes=attributes,
-            status=get_workflow_node_status(node_execution),
-            links=trace_metadata.links,
-        )
-
-    def build_agent_react_spans(
-        self, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
-    ) -> list[SpanData]:
-        """Build ReAct STEP spans and child LLM / TOOL spans from the agent execution log.
-
-        The agent log lives in ``outputs["json"]``; ``started_at``/``finished_at`` there are
-        monotonic-clock seconds, so they are mapped onto wall-clock time by anchoring the
-        earliest ``started_at`` to the node's start time. Entries without timing fall back
-        to the node's start/end times. Returns an empty list when no log is available.
-        """
-        try:
-            outputs = node_execution.outputs or {}
-            round_entries = parse_agent_log_entries(outputs)
-            if not round_entries:
-                return []
-
-            agent_span_id = convert_to_span_id(node_execution.id, "node")
-            node_start_ns = convert_datetime_to_nanoseconds(node_execution.created_at)
-            node_end_ns = convert_datetime_to_nanoseconds(node_execution.finished_at)
-
-            monotonic_starts = [
-                entry.metadata["started_at"]
-                for round_entry in round_entries
-                for entry in [round_entry, *round_entry.children]
-                if isinstance(entry.metadata.get("started_at"), (int, float))
-            ]
-            base_monotonic = min(monotonic_starts) if monotonic_starts else None
-
-            def to_wall_clock_ns(monotonic_seconds: Any, fallback: int | None) -> int | None:
-                if (
-                    isinstance(monotonic_seconds, (int, float))
-                    and base_monotonic is not None
-                    and node_start_ns is not None
-                ):
-                    return node_start_ns + convert_seconds_to_nanoseconds(float(monotonic_seconds) - base_monotonic)
-                return fallback
-
-            spans: list[SpanData] = []
-            for index, round_entry in enumerate(round_entries, start=1):
-                round_number = extract_react_round_number(round_entry.label, index)
-                step_span_id = generate_span_id()
-                step_attributes: dict[str, Any] = {
-                    **create_common_span_attributes(
-                        session_id=trace_metadata.session_id,
-                        user_id=trace_metadata.user_id,
-                        span_kind=GenAISpanKind.STEP,
-                        inputs="",
-                        outputs=serialize_json_data(round_entry.data),
-                    ),
-                    GEN_AI_OPERATION_NAME: OPERATION_NAME_REACT,
-                    GEN_AI_REACT_ROUND: round_number,
+def message_parts(content: JsonValue) -> list[JsonValue]:
+    if isinstance(content, str):
+        return [{"type": "text", "content": content}] if content else []
+    if not isinstance(content, list):
+        return [{"type": "text", "content": json_text(content)}] if content is not None else []
+    parts: list[JsonValue] = []
+    for item in content:
+        if not isinstance(item, dict):
+            parts.extend(message_parts(item))
+        elif item.get("type") in {"text", "reasoning"}:
+            parts.append({"type": item["type"], "content": item.get("content", item.get("text", item.get("data", "")))})
+        elif item.get("type") in {"image", "image_url", "audio", "video", "file"}:
+            image_url = item.get("image_url")
+            uri = image_url.get("url") if isinstance(image_url, dict) else image_url
+            parts.append(
+                {
+                    "type": "uri",
+                    "uri": uri or item.get("url") or item.get("data"),
+                    "modality": str(item["type"]).removesuffix("_url"),
                 }
-                if round_entry.error:
-                    step_attributes[GEN_AI_REACT_FINISH_REASON] = "error"
-                spans.append(
-                    SpanData(
-                        trace_id=trace_metadata.trace_id,
-                        parent_span_id=agent_span_id,
-                        span_id=step_span_id,
-                        name=round_entry.label or f"react step {round_number}",
-                        start_time=to_wall_clock_ns(round_entry.metadata.get("started_at"), node_start_ns),
-                        end_time=to_wall_clock_ns(round_entry.metadata.get("finished_at"), node_end_ns),
-                        attributes=step_attributes,
-                        status=create_status_from_agent_log_entry(round_entry),
-                        links=trace_metadata.links,
-                    )
-                )
-
-                for child in round_entry.children:
-                    child_start = to_wall_clock_ns(child.metadata.get("started_at"), node_start_ns)
-                    child_end = to_wall_clock_ns(child.metadata.get("finished_at"), node_end_ns)
-                    if is_tool_call_entry(child):
-                        spans.append(
-                            self._build_agent_tool_call_span(
-                                entry=child,
-                                step_span_id=step_span_id,
-                                trace_metadata=trace_metadata,
-                                start_time=child_start,
-                                end_time=child_end,
-                            )
-                        )
-                    elif is_llm_thought_entry(child):
-                        spans.append(
-                            self._build_agent_llm_call_span(
-                                entry=child,
-                                step_span_id=step_span_id,
-                                trace_metadata=trace_metadata,
-                                start_time=child_start,
-                                end_time=child_end,
-                            )
-                        )
-            return spans
-        except Exception as e:
-            logger.warning("Error occurred in build_agent_react_spans: %s", e, exc_info=True)
-            return []
-
-    def _build_agent_llm_call_span(
-        self,
-        entry: AgentLogEntry,
-        step_span_id: int,
-        trace_metadata: TraceMetadata,
-        start_time: int | None,
-        end_time: int | None,
-    ) -> SpanData:
-        completion = str(entry.data.get("thought") or entry.data.get("action") or "")
-        return SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=step_span_id,
-            span_id=generate_span_id(),
-            name=entry.label or "llm",
-            start_time=start_time,
-            end_time=end_time,
-            attributes={
-                **create_common_span_attributes(
-                    session_id=trace_metadata.session_id,
-                    user_id=trace_metadata.user_id,
-                    span_kind=GenAISpanKind.LLM,
-                    inputs="",
-                    outputs=serialize_json_data(entry.data),
-                ),
-                GEN_AI_OPERATION_NAME: OPERATION_NAME_CHAT,
-                GEN_AI_REQUEST_MODEL: extract_model_name_from_thought_label(entry.label),
-                GEN_AI_PROVIDER_NAME: str(entry.metadata.get("provider") or ""),
-                GEN_AI_USAGE_TOTAL_TOKENS: str(entry.metadata.get("total_tokens", 0)),
-                GEN_AI_COMPLETION: completion,
-            },
-            status=create_status_from_agent_log_entry(entry),
-            links=trace_metadata.links,
-        )
-
-    def _build_agent_tool_call_span(
-        self,
-        entry: AgentLogEntry,
-        step_span_id: int,
-        trace_metadata: TraceMetadata,
-        start_time: int | None,
-        end_time: int | None,
-    ) -> SpanData:
-        tool_name = str(entry.data.get("tool_name") or extract_tool_name_from_call_label(entry.label) or "tool")
-        tool_parameters = entry.data.get("tool_call_args")
-        if tool_parameters is None:
-            tool_parameters = entry.data.get("tool_call_input")
-        if tool_parameters is None:
-            tool_parameters = entry.data
-        tool_arguments_json = serialize_json_data(tool_parameters)
-        tool_result = entry.data.get("output", entry.data)
-        tool_result_json = tool_result if isinstance(tool_result, str) else serialize_json_data(tool_result)
-        provider_type = entry.metadata.get("provider_type") or entry.data.get("provider_type")
-        return SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=step_span_id,
-            span_id=generate_span_id(),
-            name=entry.label or f"CALL {tool_name}",
-            start_time=start_time,
-            end_time=end_time,
-            attributes={
-                **create_common_span_attributes(
-                    session_id=trace_metadata.session_id,
-                    user_id=trace_metadata.user_id,
-                    span_kind=GenAISpanKind.TOOL,
-                    inputs=tool_arguments_json,
-                    outputs=tool_result_json,
-                ),
-                **create_gen_ai_tool_attributes(
-                    tool_name=tool_name,
-                    tool_type=map_gen_ai_tool_type(str(provider_type) if provider_type else None),
-                    tool_description=extract_tool_description(entry.data) or extract_tool_description(entry.metadata),
-                    tool_call_id=entry.id,
-                    tool_call_arguments=tool_arguments_json,
-                    tool_call_result=tool_result_json,
-                ),
-            },
-            status=create_status_from_agent_log_entry(entry),
-            links=trace_metadata.links,
-        )
-
-    def add_workflow_span(self, trace_info: WorkflowTraceInfo, trace_metadata: TraceMetadata):
-        message_span_id = None
-        if trace_info.message_id:
-            message_span_id = convert_to_span_id(trace_info.message_id, "message")
-        status = create_status_from_error(trace_info.error)
-
-        inputs_json = serialize_json_data(trace_info.workflow_run_inputs)
-        outputs_json = serialize_json_data(trace_info.workflow_run_outputs)
-
-        app_id = self._extract_app_id(trace_info)
-
-        if message_span_id:
-            message_span = SpanData(
-                trace_id=trace_metadata.trace_id,
-                parent_span_id=None,
-                span_id=message_span_id,
-                name="message",
-                start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
-                end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-                attributes={
-                    **create_common_span_attributes(
-                        session_id=trace_metadata.session_id,
-                        user_id=trace_metadata.user_id,
-                        span_kind=GenAISpanKind.CHAIN,
-                        inputs=trace_info.workflow_run_inputs.get("sys.query") or "",
-                        outputs=outputs_json,
-                    ),
-                    DIFY_APP_ID: app_id,
-                },
-                status=status,
-                links=trace_metadata.links,
-                span_kind=SpanKind.SERVER,
             )
-            self.trace_client.add_span(message_span)
+        else:
+            parts.append(item)
+    return parts
 
-        workflow_span = SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=message_span_id,
-            span_id=trace_metadata.workflow_span_id,
-            name="workflow",
-            start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-            attributes={
-                **create_common_span_attributes(
-                    session_id=trace_metadata.session_id,
-                    user_id=trace_metadata.user_id,
-                    span_kind=GenAISpanKind.CHAIN,
-                    inputs=inputs_json,
-                    outputs=outputs_json,
-                ),
-                **({DIFY_APP_ID: app_id} if message_span_id is None else {}),
-            },
-            status=status,
-            links=trace_metadata.links,
-            span_kind=SpanKind.SERVER if message_span_id is None else SpanKind.INTERNAL,
-        )
-        self.trace_client.add_span(workflow_span)
 
-    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
-        message_id = trace_info.message_id
-        status = create_status_from_error(trace_info.error)
+def gen_ai_messages(value: JsonValue, default_role: str) -> list[dict[str, JsonValue]]:
+    """Convert captured Dify/OpenAI messages into Aliyun's ordered role/parts schema."""
+    if isinstance(value, dict) and isinstance(value.get("messages"), list):
+        value = value["messages"]
+    values = value if isinstance(value, list) else [value]
+    messages: list[dict[str, JsonValue]] = []
+    for item in values:
+        if item is None:
+            continue
+        message = item if isinstance(item, dict) else {"content": item}
+        role = str(message.get("role") or default_role)
+        content = message.get("content", message.get("text", message.get("answer", message.get("thought"))))
+        existing_parts = message.get("parts")
+        parts: list[JsonValue] = list(existing_parts) if isinstance(existing_parts, list) else message_parts(content)
+        if role == "tool":
+            parts = [{"type": "tool_call_response", "id": message.get("tool_call_id"), "result": content}]
+        else:
+            tool_calls = message.get("tool_calls")
+            for tool_call in tool_calls if isinstance(tool_calls, list) else []:
+                if not isinstance(tool_call, dict):
+                    continue
+                function = tool_call.get("function")
+                if not isinstance(function, dict):
+                    function = tool_call
+                arguments = function.get("arguments")
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except ValueError:
+                        pass
+                parts.append(
+                    {
+                        "type": "tool_call",
+                        "id": tool_call.get("id"),
+                        "name": function.get("name"),
+                        "arguments": arguments,
+                    }
+                )
+        formatted: dict[str, JsonValue] = {"role": role, "parts": parts}
+        if message.get("finish_reason") is not None:
+            formatted["finish_reason"] = message["finish_reason"]
+        messages.append(formatted)
+    return messages
 
-        trace_metadata = TraceMetadata(
-            trace_id=convert_to_trace_id(message_id),
-            workflow_span_id=0,
-            session_id=trace_info.metadata.get("conversation_id") or "",
-            user_id=str(trace_info.metadata.get("user_id") or ""),
-            links=create_links_from_trace_id(trace_info.trace_id),
-        )
 
-        inputs_json = serialize_json_data(trace_info.inputs)
-        suggested_question_json = serialize_json_data(trace_info.suggested_question)
+class AliyunTraceClient(OtlpTraceClient):
+    @override
+    def build_span(
+        self, completed_trace: CompletedTrace, span: TraceSpan, parent_span: dict[str, JsonValue] | None = None
+    ) -> Span:
+        process_data = span.attributes.get("process_data")
+        captured = {**(process_data if isinstance(process_data, dict) else {}), **span.attributes}
+        native_type = span.span_type
+        if span.node_execution_id and isinstance(node_type := captured.get("node_type"), str):
+            native_type = {"llm": "llm", "tool": "tool", "knowledge-retrieval": "retrieval", "agent": "agent"}.get(
+                node_type, "node"
+            )
+        inputs = captured.get("original_inputs", span.inputs) if native_type == "node" else span.inputs
+        attributes: dict[str, Any] = {
+            **span_attributes(completed_trace, span),
+            "input.value": json_text(inputs),
+            "output.value": span.outputs if isinstance(span.outputs, str) else json_text(span.outputs),
+            "gen_ai.session.id": completed_trace.source.session_id or completed_trace.source.conversation_id,
+            "gen_ai.user.id": completed_trace.source.actor_id,
+            "gen_ai.conversation.id": completed_trace.source.conversation_id,
+            "gen_ai.framework": "dify",
+            "gen_ai.span.kind": {
+                "llm": "LLM",
+                "tool": "TOOL",
+                "retrieval": "RETRIEVER",
+                "agent": "AGENT",
+                "node": "TASK",
+            }.get(native_type, "CHAIN"),
+            "gen_ai.operation.name": {
+                "llm": "chat",
+                "tool": "execute_tool",
+                "retrieval": "retrieval",
+                "agent": "invoke_agent",
+            }.get(native_type, native_type),
+        }
+        attributes.pop("dify.inputs", None)
+        attributes.pop("dify.outputs", None)
+        usage = span.usage or captured.get("aggregate_usage")
+        if isinstance(usage, dict):
+            for field, key in (
+                ("prompt_tokens", "gen_ai.usage.input_tokens"),
+                ("completion_tokens", "gen_ai.usage.output_tokens"),
+                ("total_tokens", "gen_ai.usage.total_tokens"),
+            ):
+                attributes[key] = usage.get(field)
+            ttft = usage.get("time_to_first_token", captured.get("gen_ai_server_time_to_first_token"))
+            if isinstance(ttft, (int, float)) and not isinstance(ttft, bool):
+                attributes["gen_ai.response.time_to_first_token"] = int(ttft * 1_000_000_000)
+        if native_type == "llm":
+            # Plugin thought details have no node execution ID; concrete LLM titles
+            # can use the same suffix without changing their native projection.
+            is_agent_thought = not span.node_execution_id and span.span_name.endswith(" Thought")
+            original_inputs = captured.get("original_inputs", span.inputs)
+            original_inputs = original_inputs if isinstance(original_inputs, dict) else {}
+            model_name = (
+                captured.get("model_name")
+                or original_inputs.get("model_name")
+                or (span.span_name.removesuffix(" Thought") if is_agent_thought else None)
+            )
+            completion = span.outputs
+            if isinstance(completion, dict):
+                completion = (
+                    str(completion.get("thought") or completion.get("action") or completion.get("text") or "")
+                    if is_agent_thought
+                    else str(completion.get("text") or completion.get("error_message") or span.error or "")
+                )
+            elif span.node_execution_id and captured.get("node_type") == "llm":
+                completion = span.error or ""
+            attributes.update(
+                {
+                    "gen_ai.request.model": model_name,
+                    "gen_ai.response.model": model_name,
+                    "gen_ai.provider.name": captured.get("model_provider")
+                    or captured.get("provider")
+                    or original_inputs.get("model_provider"),
+                    "gen_ai.prompt": json_text(span.inputs),
+                    "gen_ai.completion": completion,
+                    "output.value": json_text(span.outputs) if is_agent_thought else completion,
+                    "gen_ai.input.messages": json_text(gen_ai_messages(span.inputs, "user")),
+                    "gen_ai.output.messages": json_text(gen_ai_messages(span.outputs, "assistant")),
+                }
+            )
+            if isinstance(span.outputs, dict) and (
+                finish_reason := span.outputs.get("finish_reason") or span.outputs.get("error_type")
+            ):
+                attributes["gen_ai.response.finish_reason"] = finish_reason
+                attributes["gen_ai.response.finish_reasons"] = [finish_reason]
+            parameters = captured.get("model_parameters")
+            if isinstance(parameters, dict):
+                for field in (
+                    "temperature",
+                    "top_p",
+                    "top_k",
+                    "max_tokens",
+                    "frequency_penalty",
+                    "presence_penalty",
+                    "seed",
+                ):
+                    attributes[f"gen_ai.request.{field}"] = parameters.get(field)
+                if parameters.get("tools"):
+                    attributes["gen_ai.tool.definitions"] = json_text(parameters["tools"])
+        elif native_type == "agent":
+            attributes["gen_ai.agent.name"] = captured.get("agent_name") or span.span_name
+            if captured.get("node_type") == "agent" and isinstance(span.outputs, dict):
+                attributes["output.value"] = str(span.outputs.get("text", ""))
+            round_match = re.fullmatch(r"ROUND\s+(\d+)", span.span_name, re.IGNORECASE)
+            round_number = captured.get("agent_round") or (int(round_match[1]) if round_match else None)
+            if round_number is not None:
+                attributes.update(
+                    {"gen_ai.span.kind": "STEP", "gen_ai.operation.name": "react", "gen_ai.react.round": round_number}
+                )
+                if span.error:
+                    attributes["gen_ai.react.finish_reason"] = "error"
+        elif native_type == "tool":
+            tool_output = span.outputs if isinstance(span.outputs, dict) else {}
+            tool_metadata = captured.get("metadata")
+            tool_info = tool_metadata.get("tool_info") if isinstance(tool_metadata, dict) else None
+            tool_info = tool_info if isinstance(tool_info, dict) else {}
+            tool_name = (
+                captured.get("tool_name") or tool_output.get("tool_name") or span.span_name.removeprefix("CALL ")
+            )
+            provider_type = (
+                captured.get("provider_type") or tool_output.get("provider_type") or tool_info.get("provider_type")
+            )
+            tool_type = (
+                "datastore"
+                if provider_type in {"dataset-retrieval", "datastore"}
+                else "extension"
+                if provider_type == "extension"
+                else "function"
+            )
+            tool_arguments = span.inputs
+            tool_result = span.outputs
+            if span.inputs is None and span.span_name.startswith("CALL "):
+                tool_arguments = tool_output.get("tool_call_args", tool_output.get("tool_call_input", tool_output))
+                tool_result = tool_output.get("output", tool_output)
+                attributes["input.value"] = json_text(tool_arguments)
+                attributes["output.value"] = tool_result if isinstance(tool_result, str) else json_text(tool_result)
+            elif captured.get("operation_type") == "tool" and not span.node_execution_id:
+                tool_result = str(span.outputs)
+                attributes["output.value"] = tool_result
+            tool_result_text = tool_result if isinstance(tool_result, str) else json_text(tool_result)
+            attributes.update(
+                {
+                    "gen_ai.tool.name": tool_name,
+                    "gen_ai.tool.type": tool_type,
+                    "gen_ai.tool.description": captured.get("tool_description")
+                    or captured.get("description")
+                    or tool_output.get("description")
+                    or tool_info.get("description")
+                    or tool_info.get("tool_description"),
+                    "gen_ai.tool.call.id": captured.get("tool_call_id") or span.span_id,
+                    "gen_ai.tool.call.arguments": json_text(tool_arguments),
+                    "gen_ai.tool.call.result": tool_result_text,
+                }
+            )
+            for field in ("id", "name", "description", "version"):
+                attributes[f"gen_ai.skill.{field}"] = captured.get(f"skill_{field}") or tool_output.get(
+                    f"skill_{field}"
+                )
+        elif native_type == "retrieval":
+            workflow_results = isinstance(span.outputs, dict) and "result" in span.outputs
+            documents = (
+                span.outputs.get("result", span.outputs.get("documents", []))
+                if isinstance(span.outputs, dict)
+                else span.outputs
+            )
+            retrieval_documents: list[JsonValue] = []
+            for document in documents if isinstance(documents, list) else []:
+                if not isinstance(document, dict):
+                    continue
+                document_metadata = document.get("metadata")
+                document_metadata = dict(document_metadata) if isinstance(document_metadata, dict) else {}
+                retrieval_document: dict[str, JsonValue] = {
+                    "content": document.get("page_content", document.get("content")),
+                    "metadata": document_metadata,
+                    "score": document.get("score", document_metadata.get("score")),
+                    "id": document.get("id") or document_metadata.get("document_id"),
+                }
+                if workflow_results:
+                    if document.get("title"):
+                        document_metadata["title"] = document["title"]
+                    if source := document_metadata.get("source") or document_metadata.get("_source"):
+                        document_metadata["source"] = source
+                    if isinstance(extra_metadata := document_metadata.get("doc_metadata"), dict):
+                        document_metadata.update(extra_metadata)
+                retrieval_documents.append({"document": retrieval_document} if workflow_results else retrieval_document)
+            query = span.inputs.get("query", span.inputs) if isinstance(span.inputs, dict) else span.inputs
+            query_text = query if isinstance(query, str) else json_text(query)
+            if isinstance(span.outputs, dict) and "documents" in span.outputs:
+                native_documents: list[JsonValue] = []
+                for document in documents if isinstance(documents, list) else []:
+                    if not isinstance(document, dict):
+                        continue
+                    metadata = document.get("metadata")
+                    metadata = metadata if isinstance(metadata, dict) else {}
+                    native_documents.append(
+                        {
+                            "content": document.get("page_content", document.get("content")),
+                            "metadata": {key: metadata.get(key) for key in ("dataset_id", "doc_id", "document_id")},
+                            "score": metadata.get("score"),
+                        }
+                    )
+            else:
+                native_documents = retrieval_documents
+            attributes.update(
+                {
+                    "input.value": query_text,
+                    "output.value": json_text(documents if workflow_results else native_documents),
+                    "retrieval.query": query_text,
+                    "retrieval.document": json_text(native_documents),
+                    "gen_ai.retrieval.query.text": query_text,
+                    "gen_ai.retrieval.documents": json_text(retrieval_documents),
+                    "gen_ai.data_source.id": captured.get("dataset_id"),
+                    "gen_ai.request.model": captured.get("embedding_model"),
+                    "gen_ai.provider.name": captured.get("embedding_model_provider"),
+                }
+            )
+        exported_span = otlp_span(completed_trace, span, parent_span, attributes=attributes)
+        if span.attributes.get("operation_type") == "message" or (
+            span.span_type == "workflow"
+            and span.span_id == completed_trace.root_span_id
+            and not completed_trace.source.message_id
+            and parent_span is None
+        ):
+            exported_span.kind = Span.SPAN_KIND_SERVER
+        # Existing provider status filters include stopped workflows with a reason.
+        if span.span_type == "workflow" and span.status == "cancelled" and span.error:
+            exported_span.status.code = Status.STATUS_CODE_ERROR
+        return exported_span
 
-        suggested_question_span = SpanData(
-            trace_id=trace_metadata.trace_id,
-            parent_span_id=convert_to_span_id(message_id, "message"),
-            span_id=convert_to_span_id(message_id, "suggested_question"),
-            name="suggested_question",
-            start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-            attributes={
-                **create_common_span_attributes(
-                    session_id=trace_metadata.session_id,
-                    user_id=trace_metadata.user_id,
-                    span_kind=GenAISpanKind.LLM,
-                    inputs=inputs_json,
-                    outputs=suggested_question_json,
-                ),
-                GEN_AI_REQUEST_MODEL: trace_info.metadata.get("ls_model_name") or "",
-                GEN_AI_PROVIDER_NAME: trace_info.metadata.get("ls_provider") or "",
-                GEN_AI_PROMPT: inputs_json,
-                GEN_AI_COMPLETION: suggested_question_json,
-            },
-            status=status,
-            links=trace_metadata.links,
-        )
-        self.trace_client.add_span(suggested_question_span)
+
+def create_trace_client(provider_config: dict[str, Any]) -> AliyunTraceClient:
+    config = AliyunConfig.model_validate(provider_config)
+    runtime_settings = (
+        provider_config["_runtime_settings"]
+        if "_runtime_settings" in provider_config
+        else AliyunConfig.load_runtime_settings(provider_config)
+    )
+    hostname = urlsplit(config.endpoint).hostname or ""
+    path = (
+        "api/v1/traces"
+        if hostname == "log.aliyuncs.com" or hostname.endswith(".log.aliyuncs.com")
+        else "api/otlp/traces"
+    )
+    endpoint = urljoin(config.endpoint, f"adapt_{quote(config.license_key, safe='')}/{path}")
+    return AliyunTraceClient(
+        endpoint,
+        runtime_settings["headers"],
+        {
+            "service.name": config.app_name,
+            "service.version": f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
+            "deployment.environment": f"{dify_config.DEPLOY_ENV}-{dify_config.DEPLOYMENT_EDITION.value}",
+            "host.name": socket.gethostname(),
+            "acs.arms.service.feature": "genai_app",
+        },
+        "https://arms.console.aliyun.com/#/llm",
+        request_timeout=float(runtime_settings.get("request_timeout", 10)),
+        ssl_context=create_ssl_context(runtime_settings["tls"], verify=runtime_settings["verify"]),
+    )

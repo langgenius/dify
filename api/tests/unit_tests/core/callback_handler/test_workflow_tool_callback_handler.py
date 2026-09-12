@@ -207,7 +207,7 @@ class TestDifyWorkflowCallbackHandler:
         # Ensure first two prints happened before failure
         assert mock_print_text.call_count >= 2
 
-    def test_on_tool_execution_none_message_id_and_trace_manager(
+    def test_on_tool_execution_none_message_id_and_trace_recorder(
         self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
     ):
         # Arrange
@@ -222,7 +222,7 @@ class TestDifyWorkflowCallbackHandler:
                 tool_outputs=[message],
                 message_id=None,
                 timer=None,
-                trace_manager=None,
+                trace_recorder=None,
             )
         )
 

@@ -6,7 +6,6 @@ lives in ``core.telemetry.gateway`` which is shared by both CE and EE.
 
 from __future__ import annotations
 
-from core.ops.entities.trace_entity import TraceTaskName
 from core.telemetry.events import (
     AppCreatedEvent,
     AppDeletedEvent,
@@ -30,6 +29,5 @@ __all__ = [
     "PromptGenerationPayload",
     "TelemetryContext",
     "TelemetryEvent",
-    "TraceTaskName",
     "emit",
 ]

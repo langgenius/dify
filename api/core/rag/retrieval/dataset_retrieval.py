@@ -36,8 +36,7 @@ from core.entities.model_entities import ModelStatus
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_context import with_credit_usage_created_by, with_credit_usage_metadata
 from core.model_manager import ModelInstance, ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.message_trace import MessageTraceRecorder
 from core.ops.utils import measure_time
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
@@ -764,14 +763,29 @@ class DatasetRetrieval:
                         )
                 self._on_query(query, None, [selected_dataset.id], app_id, user_from, user_id)
 
+                self._record_retrieval(
+                    message_id,
+                    results,
+                    timer,
+                    query=query,
+                    attributes={
+                        "embedding_model_provider": selected_dataset.embedding_model_provider,
+                        "embedding_model": selected_dataset.embedding_model,
+                        "dataset_models": {
+                            selected_dataset.id: {
+                                "dataset_name": selected_dataset.name,
+                                "embedding_model_provider": selected_dataset.embedding_model_provider,
+                                "embedding_model": selected_dataset.embedding_model,
+                            }
+                        },
+                    },
+                )
                 if results:
                     thread = threading.Thread(
                         target=propagate_context(self._on_retrieval_end),
                         kwargs={
                             "flask_app": current_app._get_current_object(),  # type: ignore
                             "documents": results,
-                            "message_id": message_id,
-                            "timer": timer,
                         },
                     )
                     thread.start()
@@ -905,6 +919,27 @@ class DatasetRetrieval:
                 raise thread_exceptions[0]
         self._on_query(query, attachment_ids, dataset_ids, app_id, user_from, user_id)
 
+        self._record_retrieval(
+            message_id,
+            all_documents,
+            timer,
+            query=query,
+            attributes={
+                "dataset_models": {
+                    dataset.id: {
+                        "dataset_name": dataset.name,
+                        "embedding_model_provider": dataset.embedding_model_provider,
+                        "embedding_model": dataset.embedding_model,
+                    }
+                    for dataset in available_datasets
+                },
+                "rerank_configuration": {
+                    "enabled": reranking_enable,
+                    "mode": reranking_mode,
+                    "model": reranking_model,
+                },
+            },
+        )
         if all_documents:
             # add thread to call _on_retrieval_end
             retrieval_end_thread = threading.Thread(
@@ -912,8 +947,6 @@ class DatasetRetrieval:
                 kwargs={
                     "flask_app": current_app._get_current_object(),  # type: ignore
                     "documents": all_documents,
-                    "message_id": message_id,
-                    "timer": timer,
                 },
             )
             retrieval_end_thread.start()
@@ -940,14 +973,11 @@ class DatasetRetrieval:
         self,
         flask_app: Flask,
         documents: list[Document],
-        message_id: str | None = None,
-        timer: dict[str, Any] | None = None,
     ):
         """Handle retrieval end."""
         with flask_app.app_context():
             dify_documents = [document for document in documents if document.provider == "dify"]
             if not dify_documents:
-                self._send_trace_task(message_id, documents, timer)
                 return
 
             with sessionmaker(bind=db.engine).begin() as session:
@@ -958,7 +988,6 @@ class DatasetRetrieval:
                     if doc.metadata and "document_id" in doc.metadata
                 }
                 if not document_ids:
-                    self._send_trace_task(message_id, documents, timer)
                     return
 
                 dataset_docs_stmt = select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
@@ -1052,18 +1081,28 @@ class DatasetRetrieval:
                         .execution_options(synchronize_session=False)
                     )
 
-            self._send_trace_task(message_id, documents, timer)
-
-    def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: dict[str, Any] | None):
-        """Send trace task if trace manager is available."""
-        trace_manager: TraceQueueManager | None = (
-            self.application_generate_entity.trace_manager if self.application_generate_entity else None
+    def _record_retrieval(
+        self,
+        message_id: str | None,
+        documents: list[Document],
+        timer: dict[str, Any] | None,
+        *,
+        query: str | None = None,
+        attributes: Mapping[str, Any] | None = None,
+    ):
+        """Copy retrieval results before they enter the audit thread."""
+        trace_recorder: MessageTraceRecorder | None = (
+            self.application_generate_entity.trace_recorder if self.application_generate_entity else None
         )
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.DATASET_RETRIEVAL_TRACE, message_id=message_id, documents=documents, timer=timer
-                )
+        if trace_recorder:
+            trace_recorder.record_operation(
+                "dataset_retrieval",
+                span_type="retrieval",
+                message_id=message_id,
+                inputs=query,
+                attributes=attributes,
+                outputs={"documents": documents},
+                timer=timer,
             )
 
     @staticmethod

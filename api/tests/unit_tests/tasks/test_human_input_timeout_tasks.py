@@ -3,16 +3,27 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.db.session_factory as session_factory_module
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.ops.trace_data import CompletedTrace, TraceProviderSettings, TraceSource, TraceSpan, make_span_id
+from core.ops.workflow_trace import ChildWorkflowTrace, WorkflowTraceState
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from graphon.enums import WorkflowExecutionStatus
+from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm
+from models.model import AppMode
+from models.workflow import WorkflowPause, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 from tasks import human_input_timeout_tasks as task_module
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -93,6 +104,119 @@ def test_is_global_timeout_uses_created_at():
     assert task_module._is_global_timeout(form, 60, now=now) is False
 
     assert task_module._is_global_timeout(form, 0, now=now) is False
+
+
+def test_global_timeout_restores_child_and_root_trace_destinations(
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    tenant_id, app_id, child_app_id, workflow_id, run_id, user_id = (str(uuid4()) for _ in range(6))
+    source = TraceSource(
+        tenant_id=tenant_id, app_id=app_id, operation_id=run_id, workflow_run_id=run_id, actor_id=user_id
+    )
+    root_settings, child_settings = (
+        TraceProviderSettings(
+            tenant_id=tenant_id, app_id=owner_app_id, provider_name="recording", config_id=str(uuid4())
+        )
+        for owner_app_id in (app_id, child_app_id)
+    )
+    root_span_id = make_span_id(tenant_id, run_id, "root")
+    child_span_id = make_span_id(tenant_id, run_id, "workflow-tool")
+    trace_state = WorkflowTraceState(
+        source=source,
+        provider_settings=[root_settings],
+        workflow_id=workflow_id,
+        workflow_version="1",
+        spans=[
+            TraceSpan(span_id=root_span_id, span_name="Workflow", source_app_id=app_id, status="incomplete"),
+            TraceSpan(
+                span_id=child_span_id,
+                parent_span_id=root_span_id,
+                span_name="Child workflow",
+                source_app_id=app_id,
+                status="incomplete",
+            ),
+        ],
+        open_span_ids=[root_span_id, child_span_id],
+        child_workflows={
+            "workflow-tool": ChildWorkflowTrace(
+                source=TraceSource(
+                    tenant_id=tenant_id, app_id=child_app_id, operation_id=str(uuid4()), actor_id=user_id
+                ),
+                workflow_id=str(uuid4()),
+                workflow_version="1",
+                root_span_id=child_span_id,
+                provider_settings=[child_settings],
+            )
+        },
+    )
+    checkpoint = WorkflowResumptionContext(
+        serialized_graph_runtime_state="{}",
+        generate_entity=_WorkflowGenerateEntityWrapper(
+            entity=WorkflowAppGenerateEntity(
+                task_id=str(uuid4()),
+                app_config=WorkflowUIBasedAppConfig(
+                    tenant_id=tenant_id, app_id=app_id, app_mode=AppMode.WORKFLOW, workflow_id=workflow_id
+                ),
+                inputs={},
+                files=[],
+                user_id=user_id,
+                stream=False,
+                invoke_from=InvokeFrom.DEBUGGER,
+                workflow_execution_id=run_id,
+            )
+        ),
+        ops_trace_state=trace_state.model_dump(mode="json"),
+    )
+    workflow_run = WorkflowRun(
+        id=run_id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_id=workflow_id,
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        status=WorkflowExecutionStatus.PAUSED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=user_id,
+    )
+    pause = WorkflowPause(workflow_id=workflow_id, workflow_run_id=run_id, state_object_key="paused-workflow")
+    sqlite_session.add_all([workflow_run, pause])
+    sqlite_session.commit()
+    storage = MagicMock()
+    storage.load_once.return_value = checkpoint.dumps().encode()
+    monkeypatch.setattr(task_module, "storage", storage)
+    trace_queue = MagicMock()
+    trace_queue.submit_trace.return_value = True
+    monkeypatch.setitem(app.extensions, "ops_trace_queue", trace_queue)
+
+    task_module._handle_global_timeout(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        form_id=str(uuid4()),
+        workflow_run_id=run_id,
+        node_id="human-input",
+        session_factory=sqlite_session_factory,
+    )
+
+    assert trace_queue.submit_trace.call_count == 2
+    child_queued, root_queued = (call.args[0] for call in trace_queue.submit_trace.call_args_list)
+    assert child_queued.provider_settings == child_settings
+    assert root_queued.provider_settings == root_settings
+    for queued, owner_app_id in ((child_queued, child_app_id), (root_queued, app_id)):
+        trace = CompletedTrace.model_validate_json(queued.trace_json)
+        assert trace.source.tenant_id == tenant_id
+        assert trace.source.app_id == owner_app_id
+        assert trace.source.actor_id == user_id
+        assert trace.complete is False
+        assert trace.spans[0].error == "Human input global timeout at node human-input"
+    sqlite_session.refresh(workflow_run)
+    sqlite_session.refresh(pause)
+    assert workflow_run.status == WorkflowExecutionStatus.STOPPED
+    assert pause.resumed_at is not None
+    storage.delete.assert_called_once_with("paused-workflow")
 
 
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)

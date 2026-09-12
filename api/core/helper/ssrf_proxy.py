@@ -12,6 +12,8 @@ client.
 
 import logging
 import time
+from collections.abc import Mapping
+from ssl import SSLContext
 from typing import Any
 
 import httpx
@@ -69,36 +71,68 @@ request_error = httpx.RequestError
 max_retries_exceeded_error = MaxRetriesExceededError
 
 
-def _create_proxy_mounts(verify: bool) -> dict[str, httpx.HTTPTransport]:
-    """Build per-scheme proxy transports with the same TLS policy as the SSRF client."""
-    return {
-        "http://": httpx.HTTPTransport(
-            proxy=dify_config.SSRF_PROXY_HTTP_URL,
-            verify=verify,
-        ),
-        "https://": httpx.HTTPTransport(
-            proxy=dify_config.SSRF_PROXY_HTTPS_URL,
-            verify=verify,
-        ),
-    }
-
-
-def _build_ssrf_client(verify: bool) -> httpx.Client:
+def get_proxy_urls() -> dict[str, str] | None:
+    """Return explicit Dify proxy routes, or None for the HTTP library's environment routes."""
     if dify_config.SSRF_PROXY_ALL_URL:
+        return {"all": dify_config.SSRF_PROXY_ALL_URL}
+    if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
+        return {"http": dify_config.SSRF_PROXY_HTTP_URL, "https": dify_config.SSRF_PROXY_HTTPS_URL}
+    return None
+
+
+def _create_proxy_mounts(proxies: Mapping[str, str], verify: bool | SSLContext) -> dict[str, httpx.HTTPTransport]:
+    """Build per-scheme proxy transports with the same TLS policy as the SSRF client."""
+    return {f"{scheme}://": httpx.HTTPTransport(proxy=proxy, verify=verify) for scheme, proxy in proxies.items()}
+
+
+def _build_ssrf_client(verify: bool | SSLContext) -> httpx.Client:
+    proxies = get_proxy_urls()
+    if proxies and "all" in proxies:
         return httpx.Client(
-            proxy=dify_config.SSRF_PROXY_ALL_URL,
+            proxy=proxies["all"],
             verify=verify,
             limits=_SSRF_CLIENT_LIMITS,
         )
 
-    if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
+    if proxies:
         return httpx.Client(
-            mounts=_create_proxy_mounts(verify=verify),
+            mounts=_create_proxy_mounts(proxies, verify=verify),
             verify=verify,
             limits=_SSRF_CLIENT_LIMITS,
         )
 
     return httpx.Client(verify=verify, limits=_SSRF_CLIENT_LIMITS)
+
+
+def raise_for_proxy_rejection(status_code: int, headers: Mapping[str, str], url: str) -> None:
+    """Report Squid's denied destination without exposing URL credentials."""
+    if status_code not in (401, 403):
+        return
+    if "squid" not in headers.get("server", "").lower() and "squid" not in headers.get("via", "").lower():
+        return
+    redacted_url = httpx.URL(url).copy_with(userinfo=b"", query=None, fragment=None)
+    # Squid does not identify the denied ACL; give the same allowlist remediation
+    # for private, loopback, link-local, and other non-public network addresses.
+    raise ToolSSRFError(
+        f"Access to '{redacted_url}' was blocked by SSRF protection "
+        f"(e.g. SSRF_PROXY_ALLOW_PRIVATE_IPS=172.21.0.0/16 to "
+        f"allow 172.21.0.0/16). The URL resolves to a private, "
+        f"loopback, link-local, or otherwise non-public network "
+        f"address. See https://github.com/langgenius/dify/issues/38443."
+    )
+
+
+def create_http_client(*, ssl_verify: bool = True, ssl_context: SSLContext | None = None) -> httpx.Client:
+    """Create an independently owned SSRF-protected client; the caller must close it.
+
+    Use this when response cookies or authentication must not survive an operation.
+    The ordinary request path keeps its existing connection-pool behavior.
+    """
+    if not isinstance(ssl_verify, bool):
+        raise ValueError("SSRF client verify flag must be a boolean")
+    if ssl_context is not None and not isinstance(ssl_context, SSLContext):
+        raise ValueError("SSRF client TLS context must be an SSLContext")
+    return _build_ssrf_client(ssl_context if ssl_context is not None else ssl_verify)
 
 
 def _get_ssrf_client(ssl_verify_enabled: bool) -> httpx.Client:
@@ -165,6 +199,7 @@ def make_request(
     url: str,
     max_retries: int = SSRF_DEFAULT_MAX_RETRIES,
     stream_response: bool = False,
+    http_client: httpx.Client | None = None,
     **kwargs: Any,
 ) -> httpx.Response:
     """Send one SSRF-protected request with optional streaming.
@@ -174,6 +209,7 @@ def make_request(
         url: Absolute request URL.
         max_retries: Number of retry attempts after the initial request.
         stream_response: Return an open streaming response that the caller must close.
+        http_client: Optional independently owned client from ``create_http_client``.
         **kwargs: Additional keyword arguments forwarded to ``httpx.Client``.
 
     Returns:
@@ -203,7 +239,7 @@ def make_request(
     verify_option = kwargs.pop("ssl_verify", dify_config.HTTP_REQUEST_NODE_SSL_VERIFY)
     if not isinstance(verify_option, bool):
         raise ValueError("ssl_verify must be a boolean")
-    client = _get_ssrf_client(verify_option)
+    client = http_client if http_client is not None else _get_ssrf_client(verify_option)
 
     # Inject traceparent header for distributed tracing (when OTEL is not enabled)
     try:
@@ -223,6 +259,7 @@ def make_request(
     if "follow_redirects" in kwargs:
         send_kwargs["follow_redirects"] = kwargs.pop("follow_redirects")
 
+    redacted_url = httpx.URL(url).copy_with(userinfo=b"", query=None, fragment=None)
     retries = 0
     while retries <= max_retries:
         try:
@@ -238,30 +275,11 @@ def make_request(
             else:
                 response = client.send(request, **send_kwargs)
 
-            # Check for SSRF protection by Squid proxy
-            if response.status_code in (401, 403):
-                # Check if this is a Squid SSRF rejection
-                server_header = response.headers.get("server", "").lower()
-                via_header = response.headers.get("via", "").lower()
-
-                # Squid typically identifies itself in Server or Via headers
-                if "squid" in server_header or "squid" in via_header:
-                    # The deny ACL is usually ``to_private_networks`` (RFC1918 +
-                    # loopback / link-local / CGN / IPv6 ULA, etc.). We don't know
-                    # which specific ACL tripped from Squid's response alone, but
-                    # the actionable remediation is the same in every case:
-                    # allowlist the destination in the SSRF proxy. Tell the user
-                    # exactly which env var to set so they don't have to grep the
-                    # squid config. Mention a concrete example CIDR (e.g. the
-                    # 172.21.0.0/16 from the bug report) so they can copy-paste it.
-                    response.close()
-                    raise ToolSSRFError(
-                        f"Access to '{url}' was blocked by SSRF protection "
-                        f"(e.g. SSRF_PROXY_ALLOW_PRIVATE_IPS=172.21.0.0/16 to "
-                        f"allow 172.21.0.0/16). The URL resolves to a private, "
-                        f"loopback, link-local, or otherwise non-public network "
-                        f"address. See https://github.com/langgenius/dify/issues/38443."
-                    )
+            try:
+                raise_for_proxy_rejection(response.status_code, response.headers, url)
+            except ToolSSRFError:
+                response.close()
+                raise
 
             if response.status_code not in STATUS_FORCELIST or max_retries == 0:
                 return response
@@ -269,19 +287,21 @@ def make_request(
                 logger.warning(
                     "Received status code %s for URL %s which is in the force list",
                     response.status_code,
-                    url,
+                    redacted_url,
                 )
                 response.close()
 
-        except httpx.RequestError as e:
-            logger.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
+        except httpx.RequestError as error:
+            logger.warning(
+                "Request to URL %s failed on attempt %s: %s", redacted_url, retries + 1, type(error).__name__
+            )
             if max_retries == 0:
                 raise
 
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
+    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {redacted_url}")
 
 
 def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> httpx.Response:

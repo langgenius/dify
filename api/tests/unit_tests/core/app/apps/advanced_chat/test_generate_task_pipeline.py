@@ -34,7 +34,7 @@ def _build_pipeline() -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
 def test_process_passes_message_id_to_conversation_name_generation() -> None:
     pipeline = _build_pipeline()
     pipeline._conversation_id = "conversation-1"
-    pipeline._application_generate_entity = SimpleNamespace(query="hello", trace_manager=None)
+    pipeline._application_generate_entity = SimpleNamespace(query="hello", trace_recorder=None)
     pipeline._message_cycle_manager = mock.Mock()
     pipeline._base_task_pipeline = SimpleNamespace(stream=True)
     pipeline._wrapper_process_stream_response = mock.Mock(return_value=iter(()))
@@ -101,7 +101,7 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
         invoke_from=InvokeFrom.WEB_APP,
         inputs={},
         task_id="task-1",
-        trace_manager=None,
+        trace_recorder=None,
         extras={},
     )
     queue_manager = SimpleNamespace(graph_runtime_state=None)
@@ -160,10 +160,9 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
 
 
 def test_emit_message_trace_enqueues_message_trace() -> None:
-    """When trace_manager is provided, _emit_message_trace must enqueue a MESSAGE_TRACE task."""
-    from core.ops.entities.trace_entity import TraceTaskName
+    """When trace_recorder is provided, _emit_message_trace must enqueue a MESSAGE_TRACE task."""
 
-    mock_trace_manager = mock.MagicMock()
+    mock_trace_recorder = mock.MagicMock()
     app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
     application_generate_entity = SimpleNamespace(
         app_config=app_config,
@@ -173,7 +172,7 @@ def test_emit_message_trace_enqueues_message_trace() -> None:
         invoke_from=InvokeFrom.WEB_APP,
         inputs={},
         task_id="task-1",
-        trace_manager=mock_trace_manager,
+        trace_recorder=mock_trace_recorder,
         extras={"trace_session_id": "session-trace-1"},
     )
     queue_manager = SimpleNamespace(graph_runtime_state=None)
@@ -226,12 +225,7 @@ def test_emit_message_trace_enqueues_message_trace() -> None:
 
     pipeline._emit_message_trace()
 
-    mock_trace_manager.add_trace_task.assert_called_once()
-    trace_task = mock_trace_manager.add_trace_task.call_args[0][0]
-    assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
-    assert trace_task.conversation_id == "conv-1"
-    assert trace_task.message_id == "msg-1"
-    assert trace_task.kwargs.get("trace_session_id") == "session-trace-1"
+    mock_trace_recorder.record_saved_message.assert_called_once_with("msg-1")
 
 
 def test_save_message_does_not_emit_trace() -> None:
@@ -240,7 +234,7 @@ def test_save_message_does_not_emit_trace() -> None:
     This keeps intermediate saves (e.g. on pause) from duplicating message, token, and TTFT metrics
     when the message is later resumed.
     """
-    mock_trace_manager = mock.MagicMock()
+    mock_trace_recorder = mock.MagicMock()
     app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
     application_generate_entity = SimpleNamespace(
         app_config=app_config,
@@ -250,7 +244,7 @@ def test_save_message_does_not_emit_trace() -> None:
         invoke_from=InvokeFrom.WEB_APP,
         inputs={},
         task_id="task-1",
-        trace_manager=mock_trace_manager,
+        trace_recorder=mock_trace_recorder,
         extras={"trace_session_id": "session-trace-1"},
     )
     queue_manager = SimpleNamespace(graph_runtime_state=None)
@@ -303,11 +297,11 @@ def test_save_message_does_not_emit_trace() -> None:
 
     pipeline._save_message(session=mock.Mock())
 
-    mock_trace_manager.add_trace_task.assert_not_called()
+    mock_trace_recorder.record_saved_message.assert_not_called()
 
 
-def test_emit_message_trace_skips_when_no_trace_manager() -> None:
-    """When trace_manager is None, _emit_message_trace and _save_message must not fail."""
+def test_emit_message_trace_skips_when_no_trace_recorder() -> None:
+    """When trace_recorder is None, _emit_message_trace and _save_message must not fail."""
     app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
     application_generate_entity = SimpleNamespace(
         app_config=app_config,
@@ -317,7 +311,7 @@ def test_emit_message_trace_skips_when_no_trace_manager() -> None:
         invoke_from=InvokeFrom.WEB_APP,
         inputs={},
         task_id="task-1",
-        trace_manager=None,
+        trace_recorder=None,
         extras={},
     )
     queue_manager = SimpleNamespace(graph_runtime_state=None)
@@ -438,7 +432,7 @@ def test_process_stream_response_breaks_after_workflow_succeeded() -> None:
     responses = list(pipeline._process_stream_response())
 
     assert [resp.event for resp in responses] == [StreamEvent.WORKFLOW_FINISHED]
-    pipeline._handle_workflow_succeeded_event.assert_called_once_with(succeeded_event, trace_manager=None)
+    pipeline._handle_workflow_succeeded_event.assert_called_once_with(succeeded_event, trace_recorder=None)
     pipeline._base_task_pipeline.ping_stream_response.assert_not_called()
 
 
@@ -463,5 +457,5 @@ def test_process_stream_response_breaks_after_workflow_partial_success() -> None
     responses = list(pipeline._process_stream_response())
 
     assert [resp.event for resp in responses] == [StreamEvent.WORKFLOW_FINISHED]
-    pipeline._handle_workflow_partial_success_event.assert_called_once_with(partial_event, trace_manager=None)
+    pipeline._handle_workflow_partial_success_event.assert_called_once_with(partial_event, trace_recorder=None)
     pipeline._base_task_pipeline.ping_stream_response.assert_not_called()

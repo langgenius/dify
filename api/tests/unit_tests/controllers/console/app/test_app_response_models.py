@@ -113,26 +113,6 @@ def app_module():
         sys.modules[name] = module
         stubbed_modules.append((name, original))
 
-    class _OpsTraceManager:
-        @staticmethod
-        def get_app_tracing_config(app_id: str) -> dict[str, object]:
-            return {}
-
-        @staticmethod
-        def update_app_tracing_config(app_id: str, **kwargs) -> None:
-            return None
-
-    _stub_module(
-        "core.ops.ops_trace_manager",
-        {
-            "OpsTraceManager": _OpsTraceManager,
-            "TraceQueueManager": object,
-            "TraceTask": object,
-            "TracingProviderConfigEntry": dict,
-            "provider_config_map": {},
-        },
-    )
-
     spec = util.spec_from_file_location(module_name, module_path)
     assert spec is not None
     module = util.module_from_spec(spec)

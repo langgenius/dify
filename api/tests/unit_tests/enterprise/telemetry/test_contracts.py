@@ -161,7 +161,6 @@ class TestEventRoutingMetadata:
         for cls in (DraftNodeExecutionTraceEvent, PromptGenerationEvent):
             assert cls.signal_type is SignalType.TRACE  # type: ignore[attr-defined]
             assert cls.ce_eligible is False  # type: ignore[attr-defined]
-            assert cls.trace_task_name is not None  # type: ignore[attr-defined]
 
     def test_metric_log_events(self) -> None:
         from core.telemetry.events import (
@@ -174,4 +173,3 @@ class TestEventRoutingMetadata:
         for cls in (AppCreatedEvent, AppUpdatedEvent, AppDeletedEvent, FeedbackCreatedEvent):
             assert cls.signal_type is SignalType.METRIC_LOG  # type: ignore[attr-defined]
             assert cls.ce_eligible is False  # type: ignore[attr-defined]
-            assert cls.trace_task_name is None  # type: ignore[attr-defined]

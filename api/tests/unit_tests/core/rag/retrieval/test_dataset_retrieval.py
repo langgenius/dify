@@ -3967,18 +3967,18 @@ class TestDatasetRetrievalAdditionalHelpers:
         assert "keywords" in ranked[0].metadata
         assert ranked[0].metadata["doc_id"] == "1"
 
-    def test_send_trace_task(self, retrieval: DatasetRetrieval) -> None:
-        trace_manager = Mock()
-        retrieval.application_generate_entity = SimpleNamespace(trace_manager=trace_manager)
+    def test_record_retrieval(self, retrieval: DatasetRetrieval) -> None:
+        trace_recorder = Mock()
+        retrieval.application_generate_entity = SimpleNamespace(trace_recorder=trace_recorder)
         docs = [Document(page_content="d", metadata={}, provider="dify")]
 
-        retrieval._send_trace_task("m1", docs, {"cost": 1})
-        trace_manager.add_trace_task.assert_called_once()
+        retrieval._record_retrieval("m1", docs, {"cost": 1})
+        trace_recorder.record_operation.assert_called_once()
 
         retrieval.application_generate_entity = None
-        trace_manager.reset_mock()
-        retrieval._send_trace_task("m1", docs, {"cost": 1})
-        trace_manager.add_trace_task.assert_not_called()
+        trace_recorder.reset_mock()
+        retrieval._record_retrieval("m1", docs, {"cost": 1})
+        trace_recorder.record_operation.assert_not_called()
 
     def test_on_query(self, retrieval: DatasetRetrieval, sqlite_engine: Engine, sqlite_session: Session) -> None:
         dataset_ids = [str(uuid4()), str(uuid4())]
@@ -5353,24 +5353,22 @@ class TestInternalHooksCoverage:
 
     def test_on_retrieval_end_without_dify_documents(self, retrieval: DatasetRetrieval) -> None:
         app = Flask(__name__)
-        with patch.object(retrieval, "_send_trace_task") as mock_trace:
+        with patch.object(retrieval, "_record_retrieval") as mock_trace:
             retrieval._on_retrieval_end(
                 flask_app=app,
                 documents=[_doc(provider="external")],
-                message_id="m1",
-                timer={"cost": 1},
             )
-        mock_trace.assert_called_once()
+        mock_trace.assert_not_called()
 
     def test_on_retrieval_end_dify_without_document_ids(self, retrieval: DatasetRetrieval) -> None:
         app = Flask(__name__)
         doc = Document(page_content="x", metadata={"doc_id": "n1"}, provider="dify")
         with (
             patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=self.orm_engine)),
-            patch.object(retrieval, "_send_trace_task") as mock_trace,
+            patch.object(retrieval, "_record_retrieval") as mock_trace,
         ):
-            retrieval._on_retrieval_end(flask_app=app, documents=[doc], message_id="m1", timer={"cost": 1})
-        mock_trace.assert_called_once()
+            retrieval._on_retrieval_end(flask_app=app, documents=[doc])
+        mock_trace.assert_not_called()
 
     def test_on_retrieval_end_updates_segments_for_text_and_image(self, retrieval: DatasetRetrieval) -> None:
         app = Flask(__name__)
@@ -5489,9 +5487,9 @@ class TestInternalHooksCoverage:
         try:
             with (
                 patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=self.orm_engine)),
-                patch.object(retrieval, "_send_trace_task") as mock_trace,
+                patch.object(retrieval, "_record_retrieval") as mock_trace,
             ):
-                retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer={"cost": 1})
+                retrieval._on_retrieval_end(flask_app=app, documents=docs)
         finally:
             event.remove(self.orm_engine, "before_execute", capture_statement)
 
@@ -5503,7 +5501,7 @@ class TestInternalHooksCoverage:
             if "ORDER BY document_segments.id FOR UPDATE" in str(statement.compile(dialect=postgresql.dialect()))  # type: ignore[union-attr]
         ]
         assert len(locking_statements) == 1
-        mock_trace.assert_called_once()
+        mock_trace.assert_not_called()
 
     def test_on_retrieval_end_retries_postgres_deadlock(self, retrieval: DatasetRetrieval) -> None:
         app = Flask(__name__)
@@ -5519,13 +5517,13 @@ class TestInternalHooksCoverage:
         with (
             patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=self.orm_engine)),
             patch("core.rag.retrieval.dataset_retrieval.sessionmaker") as mock_sessionmaker,
-            patch.object(retrieval, "_send_trace_task") as mock_trace,
+            patch.object(retrieval, "_record_retrieval") as mock_trace,
         ):
             mock_sessionmaker.return_value.begin.side_effect = [deadlock, nullcontext(retry_session)]
-            retrieval._on_retrieval_end(flask_app=app, documents=[doc], message_id="m1", timer={"cost": 1})
+            retrieval._on_retrieval_end(flask_app=app, documents=[doc])
 
         assert mock_sessionmaker.return_value.begin.call_count == 2
-        mock_trace.assert_called_once_with("m1", [doc], {"cost": 1})
+        mock_trace.assert_not_called()
 
     @pytest.mark.parametrize(
         ("error", "expected"),
@@ -5577,7 +5575,7 @@ class TestInternalHooksCoverage:
         with (
             patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=self.orm_engine)),
             patch("core.rag.retrieval.dataset_retrieval.sessionmaker") as mock_sessionmaker,
-            patch.object(retrieval, "_send_trace_task") as mock_trace,
+            patch.object(retrieval, "_record_retrieval") as mock_trace,
         ):
             mock_sessionmaker.return_value.begin.side_effect = error
             with pytest.raises(DBAPIError):
@@ -5599,7 +5597,7 @@ class TestInternalHooksCoverage:
         with (
             patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=self.orm_engine)),
             patch("core.rag.retrieval.dataset_retrieval.sessionmaker") as mock_sessionmaker,
-            patch.object(retrieval, "_send_trace_task") as mock_trace,
+            patch.object(retrieval, "_record_retrieval") as mock_trace,
         ):
             mock_sessionmaker.return_value.begin.side_effect = deadlock
             with pytest.raises(DBAPIError):
