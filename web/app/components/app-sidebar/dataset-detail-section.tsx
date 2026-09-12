@@ -11,6 +11,8 @@ import {
   RiFocus2Line,
   RiLock2Fill,
   RiLock2Line,
+  RiShareCircleFill,
+  RiShareCircleLine,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -109,6 +111,17 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
+      // The graph only exists for built-in knowledge bases, and only once the
+      // dataset has opted into graph indexing.
+      if (datasetRes?.graph_index_setting?.enabled) {
+        baseNavigation.unshift({
+          name: t(($) => $['datasetMenus.knowledgeGraph'], { ns: 'common' }),
+          href: `/datasets/${datasetId}/graph`,
+          icon: RiShareCircleLine,
+          selectedIcon: RiShareCircleFill,
+          disabled: isButtonDisabledWithPipeline,
+        })
+      }
       baseNavigation.unshift({
         name: t(($) => $['datasetMenus.pipeline'], { ns: 'common' }),
         href: `/datasets/${datasetId}/pipeline`,
@@ -126,7 +139,14 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities])
+  }, [
+    t,
+    datasetId,
+    isButtonDisabledWithPipeline,
+    datasetRes?.provider,
+    datasetRes?.graph_index_setting?.enabled,
+    datasetACLCapabilities,
+  ])
 
   if (!datasetRes) return null
 

@@ -144,6 +144,9 @@ class TestDatasetServiceDeleteDataset:
             dataset.collection_binding_id,
             dataset.get_doc_form(session=db_session_with_containers),
             dataset.pipeline_id,
+            # The row is gone by the time the task runs, so the graph configuration
+            # travels with it; without this the graph backend cannot be purged.
+            graph_index_setting=dataset.graph_index_setting,
         )
 
     def test_delete_empty_dataset_success(self, db_session_with_containers: Session):

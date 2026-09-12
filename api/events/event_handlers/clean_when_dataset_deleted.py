@@ -18,4 +18,8 @@ def handle(sender: Dataset, **kwargs):
         dataset.collection_binding_id,
         doc_form,
         dataset.pipeline_id,
+        # The dataset row is gone by the time the task runs, so the graph
+        # configuration has to travel with it or the graph cleanup cannot tell
+        # which backend to purge.
+        graph_index_setting=dataset.graph_index_setting,
     )

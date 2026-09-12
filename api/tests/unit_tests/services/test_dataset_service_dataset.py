@@ -884,6 +884,91 @@ class TestDatasetServiceEmbeddingSettings:
         assert DatasetService._check_summary_index_setting_model_changed(dataset, data) is expected
 
 
+class TestDatasetServiceGraphIndexSetting:
+    """`validate_graph_index_setting` is the only writer of `graph_index_setting`."""
+
+    @staticmethod
+    def _validate(dataset: Dataset, incoming: dict[str, object]) -> dict[str, object]:
+        with patch.object(DatasetService, "check_graph_extraction_model_setting"):
+            return DatasetService.validate_graph_index_setting(dataset, incoming)
+
+    def test_console_save_keeps_fields_the_form_never_sends(self) -> None:
+        dataset = _dataset()
+        dataset.graph_index_setting = {
+            "enabled": True,
+            "model_provider_name": "openai",
+            "model_name": "gpt-4",
+            "hop_decay": 0.9,
+            "extract_prompt": "custom",
+        }
+
+        # What the settings form round-trips: the five fields it knows about.
+        stored = self._validate(
+            dataset,
+            {
+                "enabled": True,
+                "model_provider_name": "openai",
+                "model_name": "gpt-4",
+                "entity_types": ["PERSON"],
+                "max_depth": 3,
+            },
+        )
+
+        assert stored["max_depth"] == 3
+        # Server-side tuning the console cannot see must survive its save.
+        assert stored["hop_decay"] == 0.9
+        assert stored["extract_prompt"] == "custom"
+
+    def test_null_from_the_response_contract_does_not_erase_a_field(self) -> None:
+        dataset = _dataset()
+        dataset.graph_index_setting = {"enabled": False, "hop_decay": 0.9}
+
+        # The detail response serializes untouched keys as null; that comes back
+        # on save and must read as "not sent", not as "clear it".
+        stored = self._validate(dataset, {"enabled": False, "hop_decay": None})
+
+        assert stored["hop_decay"] == 0.9
+
+    def test_enabling_without_an_extraction_model_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="extraction model"):
+            self._validate(_dataset(), {"enabled": True})
+
+    def test_out_of_range_values_are_rejected(self) -> None:
+        # max_depth is bounded at 4; storing 99 would only surface as a runaway
+        # traversal at query time.
+        with pytest.raises(ValueError, match="graph_index_setting"):
+            self._validate(_dataset(), {"enabled": False, "max_depth": 99})
+
+    def test_the_extraction_model_is_checked_against_the_tenant(self) -> None:
+        dataset = _dataset()
+
+        with patch.object(DatasetService, "check_graph_extraction_model_setting") as check:
+            DatasetService.validate_graph_index_setting(
+                dataset,
+                {"enabled": True, "model_provider_name": "openai", "model_name": "gpt-4"},
+            )
+
+        check.assert_called_once_with(dataset.tenant_id, "openai", "gpt-4")
+
+    def test_a_disabled_setting_needs_no_model(self) -> None:
+        with patch.object(DatasetService, "check_graph_extraction_model_setting") as check:
+            stored = DatasetService.validate_graph_index_setting(_dataset(), {"enabled": False})
+
+        assert stored["enabled"] is False
+        check.assert_not_called()
+
+    def test_external_datasets_reject_graph_indexing(self, unbound_session: Session) -> None:
+        dataset = _dataset(provider="external")
+
+        with pytest.raises(ValueError, match="external knowledge bases"):
+            DatasetService._update_external_dataset(
+                dataset,
+                {"graph_index_setting": {"enabled": True}},
+                _account(),
+                unbound_session,
+            )
+
+
 class TestDatasetServiceRagPipelineSettings:
     def test_requires_current_tenant(self, unbound_session: Session) -> None:
         account = _account()

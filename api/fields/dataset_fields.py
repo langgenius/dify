@@ -98,6 +98,26 @@ class DatasetSummaryIndexSettingResponse(ResponseModel):
     summary_prompt: str | None = None
 
 
+# Mirrors every field of GraphIndexSetting on purpose. The console settings form
+# round-trips this object back on save, and the update path merges rather than
+# replaces, but a field omitted here would still never reach the client -- an
+# operator who tuned hop_decay or extract_prompt could not see their own value.
+class DatasetGraphIndexSettingResponse(ResponseModel):
+    """Knowledge-graph configuration of a dataset."""
+
+    enabled: bool | None = None
+    model_name: str | None = None
+    model_provider_name: str | None = None
+    entity_types: list[str] | None = None
+    max_entities_per_chunk: int | None = None
+    extract_prompt: str | None = None
+    max_depth: int | None = None
+    max_seed_entities: int | None = None
+    max_neighbors_per_hop: int | None = None
+    hop_decay: float | None = None
+    llm_query_fallback: bool | None = None
+
+
 class DatasetTagResponse(ResponseModel):
     id: str
     name: str
@@ -156,6 +176,7 @@ class DatasetDetailResponse(ResponseModel):
         default_factory=DatasetSummaryIndexSettingResponse,
         description="Summary index configuration.",
     )
+    graph_index_setting: DatasetGraphIndexSettingResponse = Field(default_factory=DatasetGraphIndexSettingResponse)
     tags: list[DatasetTagResponse]
     doc_form: str | None
     external_knowledge_info: DatasetExternalKnowledgeInfoResponse = Field(
@@ -188,7 +209,9 @@ class DatasetDetailResponse(ResponseModel):
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
 
-    @field_validator("summary_index_setting", "external_knowledge_info", "icon_info", mode="before")
+    @field_validator(
+        "summary_index_setting", "graph_index_setting", "external_knowledge_info", "icon_info", mode="before"
+    )
     @classmethod
     def _expand_null_nested(cls, value: object) -> object:
         return {} if value is None else value

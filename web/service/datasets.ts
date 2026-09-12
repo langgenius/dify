@@ -64,6 +64,8 @@ export const updateDatasetSetting = ({
       | 'embedding_model_provider'
       | 'icon_info'
       | 'doc_form'
+      | 'summary_index_setting'
+      | 'graph_index_setting'
     >
   >
 }): Promise<DataSet> => {
