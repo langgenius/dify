@@ -30,8 +30,8 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from factories.file_factory import build_from_mapping, build_from_mappings
 from graphon.file import FileUploadConfig
-from graphon.runtime import GraphRuntimeState
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime import RuntimeState
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
@@ -186,11 +186,28 @@ class HumanInputService:
         return form
 
     def resolve_form_inputs(self, form: Form) -> Sequence[FormInputConfig]:
-        variable_pool = self._load_variable_pool_for_form(form)
-        return resolve_variable_select_input_options(
-            form.get_definition().inputs,
-            variable_pool=variable_pool,
-        )
+        definition = form.get_definition()
+        inputs = list(definition.inputs)
+        if any(
+            isinstance(form_input, SelectInputConfig) and form_input.option_source.type == ValueSourceType.VARIABLE
+            for form_input in inputs
+        ):
+            inputs = resolve_variable_select_input_options(
+                inputs,
+                variable_pool=self._load_variable_pool_for_form(form),
+            )
+        return [
+            form_input.model_copy(
+                update={
+                    "option_source": form_input.option_source.model_copy(
+                        update={"type": ValueSourceType.CONSTANT, "selector": ()}
+                    )
+                }
+            )
+            if isinstance(form_input, SelectInputConfig) and form_input.option_source.type == ValueSourceType.VARIABLE
+            else form_input
+            for form_input in inputs
+        ]
 
     def submit_form_by_token(
         self,
@@ -252,6 +269,7 @@ class HumanInputService:
         form_data: Mapping[str, Any],
     ) -> dict[str, JsonValue]:
         definition = form.get_definition()
+        definition = definition.model_copy(update={"inputs": self.resolve_form_inputs(form)})
         try:
             return self.validate_and_normalize_submission(
                 tenant_id=form.tenant_id,
@@ -317,7 +335,7 @@ class HumanInputService:
             return None
 
         resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
-        runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+        runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
 
         return runtime_state.variable_pool
 

@@ -1,12 +1,16 @@
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import FormDisposition, enrich_human_input_pause_reasons
-from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
+from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons, human_input_container_selector
+from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.entities.pause_reason import HitlRequired
+from graphon.runtime import RuntimeState, VariablePool
 
 _HUMAN_INPUT_REASON = {"TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED, "form_id": "f1"}
 
@@ -84,3 +88,68 @@ def test_enrich_graph_pause_reasons_raises_when_hitl_form_record_is_missing():
             form_repository=form_repository,
             variable_pool=None,
         )
+
+
+def test_enrich_graph_pause_reasons_keeps_constant_options_from_child_form():
+    form_repository = Mock(spec=HumanInputFormSubmissionRepository)
+    form_repository.get_by_form_id.return_value = SimpleNamespace(
+        form_id="form-123",
+        node_id="human-input",
+        rendered_content="Choose",
+        definition=SimpleNamespace(
+            inputs=[
+                SelectInputConfig(
+                    output_variable_name="decision",
+                    option_source=StringListSource(
+                        type=ValueSourceType.CONSTANT,
+                        value=[],
+                    ),
+                )
+            ],
+            user_actions=[],
+            node_title="Choose",
+            default_values={},
+        ),
+    )
+    parent_pool = VariablePool()
+    parent_pool.add(("start", "options"), ["wrong"])
+
+    [reason] = enrich_graph_pause_reasons(
+        reasons=[HitlRequired(session_id="form-123", node_id="human-input", node_title="Choose")],
+        form_repository=form_repository,
+        variable_pool=parent_pool,
+    )
+
+    assert isinstance(reason.inputs[0], SelectInputConfig)
+    assert reason.inputs[0].option_source.type == ValueSourceType.CONSTANT
+    assert reason.inputs[0].option_source.value == []
+
+
+def test_child_forms_keep_distinct_identity_when_projected_to_the_same_visible_tool():
+    form_repository = Mock(spec=HumanInputFormSubmissionRepository)
+    form_repository.get_by_form_id.side_effect = lambda form_id: SimpleNamespace(
+        form_id=form_id,
+        node_id="source-human",
+        rendered_content=form_id,
+        definition=SimpleNamespace(inputs=[], user_actions=[], node_title="Approval", default_values={}),
+    )
+    state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
+    reasons = [
+        HitlRequired(session_id=form_id, node_id="source-human", node_title="Approval")
+        for form_id in ("form-a", "form-b")
+    ]
+    for reason in reasons:
+        state.variable_pool.add(human_input_container_selector(reason.session_id), "visible-tool")
+    restored = RuntimeState.from_snapshot(state.dumps())
+
+    enriched = enrich_graph_pause_reasons(
+        reasons=reasons,
+        form_repository=form_repository,
+        variable_pool=restored.variable_pool,
+    )
+
+    assert [(reason.form_id, reason.node_id) for reason in enriched] == [
+        ("form-a", "visible-tool"),
+        ("form-b", "visible-tool"),
+    ]
+    assert all(reason.node_id == "source-human" for reason in reasons)

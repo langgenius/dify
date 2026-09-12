@@ -78,7 +78,7 @@ type SubmittedHumanInputExtraContent = {
   type: 'human_input'
   submitted: true
   form_definition?: HumanInputFormData
-  form_submission_data: HumanInputFilledFormData
+  form_submission_data: Omit<HumanInputFilledFormData, 'form_id'>
   workflow_run_id?: string
 }
 

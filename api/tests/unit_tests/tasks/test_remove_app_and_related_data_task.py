@@ -111,10 +111,14 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
     delete_workflows = MagicMock(side_effect=lambda *_args: events.append("workflows"))
     monkeypatch.setattr(remove_app_task_module, "_delete_workflow_agent_node_bindings", delete_bindings)
     monkeypatch.setattr(remove_app_task_module, "_delete_app_workflows", delete_workflows)
+    monkeypatch.setattr(
+        remove_app_task_module, "_delete_app_workflow_node_executions", lambda *_args: events.append("executions")
+    )
+    monkeypatch.setattr(remove_app_task_module, "_delete_app_workflow_runs", lambda *_args: events.append("runs"))
 
     remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
 
-    assert events == ["bindings", "workflows"]
+    assert events == ["bindings", "workflows", "executions", "runs"]
     delete_bindings.assert_called_once_with("tenant-1", "app-1")
     delete_workflows.assert_called_once_with("tenant-1", "app-1")
 

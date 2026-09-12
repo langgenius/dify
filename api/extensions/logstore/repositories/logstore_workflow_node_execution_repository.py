@@ -19,6 +19,7 @@ from configs import dify_config
 from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier
@@ -139,6 +140,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Extract user context
         self._triggered_from = triggered_from
         self._creator_user_id = user.id
+        self._user = user
+        self._session_factory = session_factory
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
@@ -155,6 +158,16 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Keep the migration switch on the typed application config so callers
         # and tests share the same validated source.
         self._enable_dual_write = dify_config.LOGSTORE_DUAL_WRITE_ENABLED
+
+    @override
+    def for_workflow_tool(self, app_id: str) -> "LogstoreWorkflowNodeExecutionRepository":
+        return LogstoreWorkflowNodeExecutionRepository(
+            session_factory=self._session_factory,
+            tenant_id=self._tenant_id,
+            user=self._user,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        )
 
     def _to_logstore_model(self, domain_model: WorkflowNodeExecution) -> Sequence[tuple[str, str]]:
         logger.debug(
@@ -323,11 +336,15 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
+        *,
+        include_workflow_tools: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all node executions for a workflow execution.
         Uses LogStore SQL query with window function to get the latest version of each node execution.
         This ensures we only get the most recent version of each node execution record.
+        With include_workflow_tools, also include source-app nodes carrying this
+        repository's root-app ownership marker; this requires app_id.
         Args:
             workflow_execution_id: The workflow execution identifier
             order_config: Optional configuration for ordering results
@@ -341,6 +358,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             This method uses ROW_NUMBER() window function partitioned by node_execution_id
             to get the latest version (highest log_version) of each node execution.
         """
+        if include_workflow_tools and not self._app_id:
+            raise ValueError("app_id is required to include Workflow Tool executions")
         logger.debug(
             "get_by_workflow_execution: workflow_execution_id=%s, order_config=%s",
             workflow_execution_id,
@@ -353,6 +372,13 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Escape parameters to prevent SQL injection
         escaped_workflow_execution_id = escape_identifier(workflow_execution_id)
         escaped_tenant_id = escape_identifier(self._tenant_id)
+        # Legacy root records may omit their origin; exclude only new hidden tool records.
+        tool_origin = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value
+        origin_filter = (
+            f"triggered_from='{tool_origin}'"
+            if self._triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+            else f"(triggered_from IS NULL OR triggered_from!='{tool_origin}')"
+        )
 
         # Build ORDER BY clause for outer query
         order_clause = ""
@@ -370,9 +396,16 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Build app_id filter for subquery
         app_id_filter = ""
+        escaped_app_id = escape_identifier(self._app_id or "")
         if self._app_id:
-            escaped_app_id = escape_identifier(self._app_id)
             app_id_filter = f" AND app_id='{escaped_app_id}'"
+
+        owner_filter = f"{origin_filter}{app_id_filter}"
+        if include_workflow_tools:
+            owner_filter = (
+                f"(({owner_filter}) OR (triggered_from='{tool_origin}' "
+                f"AND json_extract_scalar(process_data, '$.{WORKFLOW_TOOL_ROOT_APP_ID_KEY}')='{escaped_app_id}'))"
+            )
 
         # Use window function to get latest version of each node execution
         sql = f"""
@@ -381,7 +414,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 FROM {AliyunLogStore.workflow_node_execution_logstore}
                 WHERE workflow_run_id='{escaped_workflow_execution_id}'
                   AND tenant_id='{escaped_tenant_id}'
-                  {app_id_filter}
+                  AND {owner_filter}
             ) t
             WHERE rn = 1
         """

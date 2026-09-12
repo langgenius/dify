@@ -644,9 +644,10 @@ describe('useChat', () => {
         callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1', message_id: 'm-3' })
 
         // Human input required
-        callbacks.onHumanInputRequired({ data: { node_id: 'n-human' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-n-human', node_id: 'n-human' } })
         callbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-n-human',
             node_id: 'n-human',
             updated: true,
             form_content: '{{#$output.answer#}}',
@@ -655,11 +656,15 @@ describe('useChat', () => {
         }) // update existing
 
         // setTimeout for timeout form
-        callbacks.onHumanInputFormTimeout({ data: { node_id: 'n-human', expiration_time: 123456 } })
+        callbacks.onHumanInputFormTimeout({
+          data: { form_id: 'form-n-human', node_id: 'n-human', expiration_time: 123456 },
+        })
 
         // Form filled
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'n-human' } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'n-human2' } }) // new one
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-n-human', node_id: 'n-human' } })
+        callbacks.onHumanInputFormFilled({
+          data: { form_id: 'form-n-human2', node_id: 'n-human2' },
+        }) // new one
 
         // onWorkflowPaused
         callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } }) // should call sseGet
@@ -744,7 +749,7 @@ describe('useChat', () => {
         postCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         postCallbacks.onHumanInputRequired({
           workflow_run_id: 'wr-1',
-          data: { node_id: 'human-1' },
+          data: { form_id: 'form-human-1', node_id: 'human-1' },
         })
       })
       expect(sseGet).not.toHaveBeenCalled()
@@ -818,7 +823,7 @@ describe('useChat', () => {
         })
         postCallbacks.onHumanInputRequired({
           workflow_run_id: 'wr-1',
-          data: { node_id: 'human-1' },
+          data: { form_id: 'form-human-1', node_id: 'human-1' },
         })
         postCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
       })
@@ -856,7 +861,7 @@ describe('useChat', () => {
         postCallbacks.onNodeStarted({ data: { node_id: 'human-1', id: 'human-1' } })
         postCallbacks.onHumanInputRequired({
           workflow_run_id: 'wr-1',
-          data: { node_id: 'human-1' },
+          data: { form_id: 'form-human-1', node_id: 'human-1' },
         })
       })
 
@@ -1419,8 +1424,12 @@ describe('useChat', () => {
       act(() => {
         callbacks.onWorkflowStarted({ workflow_run_id: 'wr-rich', task_id: 't-rich' })
         callbacks.onNodeStarted({ data: { node_id: 'human-node', id: 'human-node' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'human-node' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'human-node-2' } })
+        callbacks.onHumanInputRequired({
+          data: { form_id: 'form-human-node', node_id: 'human-node' },
+        })
+        callbacks.onHumanInputRequired({
+          data: { form_id: 'form-human-node-2', node_id: 'human-node-2' },
+        })
         callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-rich' } })
         callbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
         callbacks.onThought({
@@ -1534,10 +1543,14 @@ describe('useChat', () => {
         callbacks.onNodeFinished({ data: { node_id: 'n-1', id: 'n-1', status: 'succeeded' } })
 
         // human input
-        callbacks.onHumanInputRequired({ data: { node_id: 'h-1' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'h-1', updated: true } })
-        callbacks.onHumanInputFormTimeout({ data: { node_id: 'h-1', expiration_time: 123 } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'h-1' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-h-1', node_id: 'h-1' } })
+        callbacks.onHumanInputRequired({
+          data: { form_id: 'form-h-1', node_id: 'h-1', updated: true },
+        })
+        callbacks.onHumanInputFormTimeout({
+          data: { form_id: 'form-h-1', node_id: 'h-1', expiration_time: 123 },
+        })
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-h-1', node_id: 'h-1' } })
 
         callbacks.onTTSChunk('m-1', 'audio1')
         callbacks.onTTSEnd('m-1', 'audio1')
@@ -1586,7 +1599,7 @@ describe('useChat', () => {
               content: '',
               isAnswer: true,
               workflow_run_id: 'wr-1',
-              humanInputFormDataList: [{ node_id: 'human-1' }],
+              humanInputFormDataList: [{ form_id: 'form-human-1', node_id: 'human-1' }],
               workflowProcess: { status: WorkflowRunningStatus.Paused, tracing: [] },
               siblingIndex: 0,
             },
@@ -1641,7 +1654,7 @@ describe('useChat', () => {
               content: '',
               isAnswer: true,
               workflow_run_id: 'wr-1',
-              humanInputFormDataList: [{ node_id: 'human-1' }],
+              humanInputFormDataList: [{ form_id: 'form-human-1', node_id: 'human-1' }],
               workflowProcess: { status: WorkflowRunningStatus.Paused, tracing: [] },
               siblingIndex: 0,
             },
@@ -1698,7 +1711,7 @@ describe('useChat', () => {
               content: '',
               isAnswer: true,
               workflow_run_id: 'wr-1',
-              humanInputFormDataList: [{ node_id: 'human-1' }],
+              humanInputFormDataList: [{ form_id: 'form-human-1', node_id: 'human-1' }],
               workflowProcess: { status: WorkflowRunningStatus.Paused, tracing: [] },
               siblingIndex: 0,
             },
@@ -2026,10 +2039,10 @@ describe('useChat', () => {
       act(() => {
         callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         callbacks.onNodeStarted({ data: { node_id: 'node-1', id: 'node-1' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'node-1' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'node-2' } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'node-1' } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'node-3' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-node-1', node_id: 'node-1' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-node-2', node_id: 'node-2' } })
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-node-1', node_id: 'node-1' } })
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-node-3', node_id: 'node-3' } })
       })
 
       const lastResponse = result.current.chatList[1]
@@ -2406,7 +2419,7 @@ describe('useChat', () => {
             content: 'answer 1',
             isAnswer: true,
             workflow_run_id: 'wr-1',
-            humanInputFormDataList: [{ node_id: 'n-1' }],
+            humanInputFormDataList: [{ form_id: 'form-n-1', node_id: 'n-1' }],
             siblingIndex: 0,
             annotation: { id: 'anno-old', authorName: 'user' },
           },
@@ -2951,7 +2964,7 @@ describe('useChat', () => {
         callbacks.onNodeFinished({ data: { id: 'n-none' } })
 
         // Missing tracing array fallback for human input
-        callbacks.onHumanInputRequired({ data: { node_id: 'h-1' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-h-1', node_id: 'h-1' } })
       })
 
       const lastResponse = result.current.chatList[1]
@@ -3262,7 +3275,9 @@ describe('useChat', () => {
       >)
 
       // onHumanInputFormTimeout missing length
-      resumeCallbacks.onHumanInputFormTimeout({ data: { node_id: 'timeout-id' } })
+      resumeCallbacks.onHumanInputFormTimeout({
+        data: { form_id: 'form-timeout-id', node_id: 'timeout-id' },
+      })
 
       // Empty file list
       // Empty file list
@@ -3367,10 +3382,9 @@ describe('useChat', () => {
       } as Record<string, unknown>)
 
       // Timeout missing form data
-      sendCallbacks.onHumanInputFormTimeout({ data: { node_id: 'timeout' } } as Record<
-        string,
-        unknown
-      >)
+      sendCallbacks.onHumanInputFormTimeout({
+        data: { form_id: 'form-timeout', node_id: 'timeout' },
+      } as Record<string, unknown>)
     })
 
     expect(result.current.chatList[1]!.message_files).toBeDefined()
@@ -3542,7 +3556,7 @@ describe('useChat', () => {
             content: 'initial',
             isAnswer: true,
             siblingIndex: 0,
-            humanInputFormDataList: [{ node_id: 'n-1', expiration_time: 100 }],
+            humanInputFormDataList: [{ form_id: 'form-n-1', node_id: 'n-1', expiration_time: 100 }],
           },
         ],
       },
@@ -3557,10 +3571,12 @@ describe('useChat', () => {
 
     act(() => {
       // Hit L535-537: onHumanInputFormTimeout (update)
-      resumeCallbacks.onHumanInputFormTimeout({ data: { node_id: 'n-1', expiration_time: 200 } })
+      resumeCallbacks.onHumanInputFormTimeout({
+        data: { form_id: 'form-n-1', node_id: 'n-1', expiration_time: 200 },
+      })
 
       // Hit L519-522: onHumanInputFormFilled (splice)
-      resumeCallbacks.onHumanInputFormFilled({ data: { node_id: 'n-1' } })
+      resumeCallbacks.onHumanInputFormFilled({ data: { form_id: 'form-n-1', node_id: 'n-1' } })
     })
 
     const lastResponse = result.current.chatList[1]

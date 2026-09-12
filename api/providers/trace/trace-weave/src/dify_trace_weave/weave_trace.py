@@ -28,6 +28,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_weave.config import WeaveConfig
 from dify_trace_weave.entities.weave_trace_entity import WeaveTraceModel
@@ -167,8 +168,9 @@ class WeaveDataTrace(BaseTraceInstance):
 
         # Get all executions for this workflow run
         workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
-            workflow_execution_id=trace_info.workflow_run_id
+            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
         )
+        tool_parents = workflow_tool_parent_ids(workflow_node_executions)
 
         # rearrange workflow_node_executions by starting time
         workflow_node_executions = sorted(workflow_node_executions, key=lambda x: x.created_at)
@@ -229,7 +231,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 exception=None,
             )
 
-            self.start_call(node_run, parent_run_id=trace_info.workflow_run_id)
+            self.start_call(node_run, parent_run_id=tool_parents.get(node_execution_id, trace_info.workflow_run_id))
             self.finish_call(node_run)
 
         self.finish_call(workflow_run)

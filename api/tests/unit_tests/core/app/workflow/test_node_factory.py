@@ -9,11 +9,11 @@ from graphon.enums import BuiltinNodeTypes
 
 
 class DummyNode:
-    def __init__(self, *, node_id, data, graph_init_params, graph_runtime_state, **kwargs):
+    def __init__(self, *, node_id, data, init_params, runtime_state, **kwargs):
         self.id = node_id
         self.data = data
-        self.graph_init_params = graph_init_params
-        self.graph_runtime_state = graph_runtime_state
+        self.init_params = init_params
+        self.runtime_state = runtime_state
         self.kwargs = kwargs
 
 
@@ -73,8 +73,8 @@ class TestDifyNodeFactory:
         )
 
         return DifyNodeFactory(
-            graph_init_params=SimpleNamespace(run_context=run_context),
-            graph_runtime_state=SimpleNamespace(),
+            init_params=SimpleNamespace(run_context=run_context),
+            runtime_state=SimpleNamespace(),
         )
 
     def test_create_node_unknown_type(self):

@@ -15,7 +15,7 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.entities import CodeNodeData
 from graphon.nodes.code.limits import CodeNodeLimits
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.code_executor",)
@@ -44,14 +44,16 @@ def _init_code_node(code_config: dict) -> CodeNode:
     )
     variable_pool.add(["code", "args1"], 1)
     variable_pool.add(["code", "args2"], 2)
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-    node_factory = DifyNodeFactory(graph_init_params=init_params, graph_runtime_state=graph_runtime_state)
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
+    node_factory = DifyNodeFactory(init_params=init_params, runtime_state=graph_runtime_state)
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
     return CodeNode(
         node_id=str(uuid.uuid4()),
         data=CodeNodeData.model_validate(code_config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         code_executor=node_factory._code_executor,
         code_limits=CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -90,8 +92,8 @@ def _code_config(code: str, output_type: str, *, variables: bool = True) -> dict
 def test_execute_code(setup_code_executor_mock) -> None:
     code = "def main(args1: int, args2: int):\n    return {'result': args1 + args2}"
     node = _init_code_node(_code_config(code, "number"))
-    node.graph_runtime_state.variable_pool.add(["1", "args1"], 1)
-    node.graph_runtime_state.variable_pool.add(["1", "args2"], 2)
+    node.runtime_state.variable_pool.add(["1", "args1"], 1)
+    node.runtime_state.variable_pool.add(["1", "args2"], 2)
 
     result = node._run()
 
@@ -106,8 +108,8 @@ def test_execute_code(setup_code_executor_mock) -> None:
 def test_execute_code_output_validator(setup_code_executor_mock) -> None:
     code = "def main(args1: int, args2: int):\n    return {'result': args1 + args2}"
     node = _init_code_node(_code_config(code, "string"))
-    node.graph_runtime_state.variable_pool.add(["1", "args1"], 1)
-    node.graph_runtime_state.variable_pool.add(["1", "args2"], 2)
+    node.runtime_state.variable_pool.add(["1", "args1"], 1)
+    node.runtime_state.variable_pool.add(["1", "args2"], 2)
 
     result = node._run()
 

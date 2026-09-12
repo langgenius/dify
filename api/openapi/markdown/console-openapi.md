@@ -3460,6 +3460,24 @@ Stop running workflow task
 | 200 | Node executions retrieved successfully | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
 | 404 | Workflow run not found |  |
 
+### [GET] /apps/{app_id}/workflow-runs/{run_id}/node-executions/{node_execution_id}/children
+Get the internal node executions of one workflow tool invocation
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Root application ID | Yes | string (uuid) |
+| node_execution_id | path | Tool execution ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Internal node executions retrieved successfully | **application/json**: [WorkflowToolNodeExecutionListResponse](#workflowtoolnodeexecutionlistresponse)<br> |
+| 404 | Workflow run not found |  |
+
 ### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files
 List a directory in a workflow Agent node sandbox
 
@@ -24994,6 +25012,43 @@ Query parameters for workflow runs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | workflow_tool_id | string |  | Yes |
+
+#### WorkflowToolNodeExecutionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowToolNodeExecutionResponse](#workflowtoolnodeexecutionresponse) ] |  | Yes |
+
+#### WorkflowToolNodeExecutionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| created_at | integer |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
+| created_by_role | string |  | No |
+| elapsed_time | number |  | No |
+| error | string |  | No |
+| execution_metadata |  |  | No |
+| extras |  |  | No |
+| finished_at | integer |  | No |
+| id | string |  | Yes |
+| index | integer |  | No |
+| inputs |  |  | No |
+| inputs_truncated | boolean |  | No |
+| node_execution_id | string |  | No |
+| node_id | string |  | No |
+| node_type | string |  | No |
+| outputs |  |  | No |
+| outputs_truncated | boolean |  | No |
+| predecessor_node_id | string |  | No |
+| process_data |  |  | No |
+| process_data_truncated | boolean |  | No |
+| retry_index | integer |  | No |
+| status | string |  | No |
+| title | string |  | No |
+| workflow_id | string |  | Yes |
 
 #### WorkflowToolParameterConfiguration
 

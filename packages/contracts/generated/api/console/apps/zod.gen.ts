@@ -1587,6 +1587,45 @@ export const zWorkflowRunNodeExecutionListResponse = z.object({
 })
 
 /**
+ * WorkflowToolNodeExecutionResponse
+ */
+export const zWorkflowToolNodeExecutionResponse = z.object({
+  app_id: z.string(),
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  elapsed_time: z.number().nullish(),
+  error: z.string().nullish(),
+  execution_metadata: z.unknown().optional(),
+  extras: z.unknown().optional(),
+  finished_at: z.int().nullish(),
+  id: z.string(),
+  index: z.int().nullish(),
+  inputs: z.unknown().optional(),
+  inputs_truncated: z.boolean().nullish(),
+  node_execution_id: z.string().nullish(),
+  node_id: z.string().nullish(),
+  node_type: z.string().nullish(),
+  outputs: z.unknown().optional(),
+  outputs_truncated: z.boolean().nullish(),
+  predecessor_node_id: z.string().nullish(),
+  process_data: z.unknown().optional(),
+  process_data_truncated: z.boolean().nullish(),
+  retry_index: z.int().nullish(),
+  status: z.string().nullish(),
+  title: z.string().nullish(),
+  workflow_id: z.string(),
+})
+
+/**
+ * WorkflowToolNodeExecutionListResponse
+ */
+export const zWorkflowToolNodeExecutionListResponse = z.object({
+  data: z.array(zWorkflowToolNodeExecutionResponse),
+})
+
+/**
  * SandboxFileEntryResponse
  */
 export const zSandboxFileEntryResponse = z.object({
@@ -5532,6 +5571,19 @@ export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsPath = z.object({
  */
 export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse =
   zWorkflowRunNodeExecutionListResponse
+
+export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenPath =
+  z.object({
+    app_id: z.uuid(),
+    node_execution_id: z.string(),
+    run_id: z.uuid(),
+  })
+
+/**
+ * Internal node executions retrieved successfully
+ */
+export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponse =
+  zWorkflowToolNodeExecutionListResponse
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesPath =
   z.object({

@@ -88,8 +88,10 @@ def test_build_human_input_required_reason_prefers_standalone_web_app_token() ->
 
 
 def test_build_human_input_required_reason_falls_back_to_console_token() -> None:
+    reason_model = _build_reason_model()
+    reason_model.node_id = "workflow-tool-node"
     reason = _build_human_input_required_reason(
-        _build_reason_model(),
+        reason_model,
         _build_form_model(),
         [
             _recipient(RecipientType.BACKSTAGE, "btok"),
@@ -97,7 +99,7 @@ def test_build_human_input_required_reason_falls_back_to_console_token() -> None
         ],
     )
 
-    assert reason.node_id == "node-1"
+    assert reason.node_id == "workflow-tool-node"
     assert reason.actions[0].id == "approve"
     assert not hasattr(reason, "form_token")
 

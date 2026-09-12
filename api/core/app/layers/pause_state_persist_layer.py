@@ -9,9 +9,9 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.filters import ResponseStreamFilter
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
+from graphon.engine.filter import ResponseStreamFilter
+from graphon.engine.layer import Layer
+from graphon.engine_events import EngineEvent, GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -74,7 +74,7 @@ class PauseStateLayerConfig:
     state_owner_user_id: str
 
 
-class PauseStatePersistenceLayer(GraphEngineLayer):
+class PauseStatePersistenceLayer(Layer):
     def __init__(
         self,
         session_factory: Engine | sessionmaker[Session],
@@ -99,35 +99,27 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         self._state_owner_user_id = state_owner_user_id
         self._generate_entity = generate_entity
         self._response_stream_filter = response_stream_filter
+        self._paused_event: GraphRunPausedEvent | None = None
 
     def _get_repo(self) -> APIWorkflowRunRepository:
         return DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_maker)
 
     @override
     def on_graph_start(self) -> None:
-        """
-        Called when graph execution starts.
-
-        This is called after the engine has been initialized but before any nodes
-        are executed. Layers can use this to set up resources or log start information.
-        """
-        pass
+        """Clear any pause captured by a prior run."""
+        self._paused_event = None
 
     @override
-    def on_event(self, event: GraphEngineEvent) -> None:
-        """
-        Called for every event emitted by the engine.
+    def on_event(self, event: EngineEvent) -> None:
+        """Capture the pause until execution is safe to snapshot."""
+        if isinstance(event, GraphRunPausedEvent):
+            self._paused_event = event
 
-        This method receives all events generated during graph execution, including:
-        - Graph lifecycle events (start, success, failure)
-        - Node execution events (start, success, failure, retry)
-        - Stream events for response nodes
-        - Container events (iteration, loop)
-
-        Args:
-            event: The event emitted by the engine
-        """
-        if not isinstance(event, GraphRunPausedEvent):
+    def persist_pending_pause(self) -> None:
+        """Persist paused state only after the engine and its threads stop."""
+        event = self._paused_event
+        self._paused_event = None
+        if event is None:
             return
 
         entity_wrapper: _GenerateEntityUnion
@@ -137,13 +129,13 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             entity_wrapper = _AdvancedChatAppGenerateEntityWrapper(entity=self._generate_entity)
 
         state = WorkflowResumptionContext(
-            serialized_graph_runtime_state=self.graph_runtime_state.dumps(),
+            serialized_graph_runtime_state=self.runtime_state.dumps(),
             generate_entity=entity_wrapper,
             serialized_response_stream_filter_state=self._response_stream_filter.dumps(),
         )
 
         workflow_run_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
         )
         assert workflow_run_id is not None
@@ -153,7 +145,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         pause_reasons = enrich_graph_pause_reasons(
             reasons=event.reasons,
             form_repository=HumanInputFormSubmissionRepository(),
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
         )
         repo = self._get_repo()
         repo.create_workflow_pause(
@@ -162,16 +154,3 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             state=state.dumps(),
             pause_reasons=pause_reasons,
         )
-
-    @override
-    def on_graph_end(self, error: Exception | None) -> None:
-        """
-        Called when graph execution ends.
-
-        This is called after all nodes have been executed or when execution is
-        aborted. Layers can use this to clean up resources or log final state.
-
-        Args:
-            error: The exception that caused execution to fail, or None if successful
-        """
-        pass

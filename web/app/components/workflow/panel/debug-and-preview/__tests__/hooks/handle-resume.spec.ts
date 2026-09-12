@@ -766,7 +766,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
@@ -779,13 +779,13 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-2' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-2' },
         })
       })
 
@@ -794,7 +794,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human-2', form_token: 'rt-3' },
+          data: { form_id: 'form-rn-human-2', node_id: 'rn-human-2', form_token: 'rt-3' },
         })
       })
 
@@ -820,7 +820,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
@@ -836,13 +836,13 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
       act(() => {
         capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'rn-human', submitted_data: { a: 1 } },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', submitted_data: { a: 1 } },
         })
       })
 
@@ -856,7 +856,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'rn-human', submitted_data: { b: 2 } },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', submitted_data: { b: 2 } },
         })
       })
 
@@ -871,13 +871,13 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
       act(() => {
         capturedResumeOptions.onHumanInputFormTimeout({
-          data: { node_id: 'rn-human', expiration_time: '2025-06-01' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', expiration_time: '2025-06-01' },
         })
       })
 
@@ -984,7 +984,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     act(() => {
       capturedResumeOptions.onHumanInputRequired({
-        data: { node_id: 'hn-bare', form_token: 'ft-bare' },
+        data: { form_id: 'form-hn-bare', node_id: 'hn-bare', form_token: 'ft-bare' },
       })
     })
 
@@ -997,7 +997,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     act(() => {
       capturedResumeOptions.onHumanInputFormFilled({
-        data: { node_id: 'hn-bare', submitted_data: { x: 1 } },
+        data: { form_id: 'form-hn-bare', node_id: 'hn-bare', submitted_data: { x: 1 } },
       })
     })
 
@@ -1144,7 +1144,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     act(() => {
       capturedResumeOptions.onHumanInputRequired({
-        data: { node_id: 'hn-with-trace', form_token: 'ft-tr' },
+        data: { form_id: 'form-hn-with-trace', node_id: 'hn-with-trace', form_token: 'ft-tr' },
       })
     })
 

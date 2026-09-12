@@ -37,6 +37,7 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveBrowseFilesRequest,
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
+from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.repositories.factory import (
@@ -52,6 +53,7 @@ from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFro
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
+from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.datasource_provider_service import DatasourceProviderService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
@@ -635,6 +637,9 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id=system_user_id,
                         workflow_execution_repository=workflow_execution_repository,
                         workflow_node_execution_repository=workflow_node_execution_repository,
+                        workflow_tool_source_repository=SQLAlchemyWorkflowToolSourceRepository(
+                            session_maker=session_factory.get_session_maker()
+                        ),
                     )
 
                     runner.run()

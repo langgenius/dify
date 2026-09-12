@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from typing import Any, override
 
 from opentelemetry.trace import SpanKind
@@ -16,6 +17,7 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
+from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_aliyun.config import AliyunConfig
 from dify_trace_aliyun.data_exporter.traceclient import (
@@ -144,8 +146,15 @@ class AliyunDataTrace(BaseTraceInstance):
         self.add_workflow_span(trace_info, trace_metadata)
 
         workflow_node_executions = self.get_workflow_node_executions(trace_info)
+        tool_parents = workflow_tool_parent_ids(workflow_node_executions)
         for node_execution in workflow_node_executions:
-            node_span = self.build_workflow_node_span(node_execution, trace_info, trace_metadata)
+            parent_id = tool_parents.get(node_execution.id)
+            node_trace_metadata = (
+                replace(trace_metadata, workflow_span_id=convert_to_span_id(parent_id, "node"))
+                if parent_id
+                else trace_metadata
+            )
+            node_span = self.build_workflow_node_span(node_execution, trace_info, node_trace_metadata)
             self.trace_client.add_span(node_span)
             if node_span is not None and node_execution.node_type == BuiltinNodeTypes.AGENT:
                 for react_span in self.build_agent_react_spans(node_execution, trace_metadata):
@@ -337,7 +346,7 @@ class AliyunDataTrace(BaseTraceInstance):
         )
 
         return workflow_node_execution_repository.get_by_workflow_execution(
-            workflow_execution_id=trace_info.workflow_run_id
+            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
         )
 
     def build_workflow_node_span(

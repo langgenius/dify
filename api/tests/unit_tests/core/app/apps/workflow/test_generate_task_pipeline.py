@@ -1,17 +1,21 @@
 import json
 import time
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.common import workflow_response_converter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowStartedEvent
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from models.account import Account
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowType
@@ -40,9 +44,9 @@ def _build_generate_entity(run_id: str) -> WorkflowAppGenerateEntity:
     )
 
 
-def _build_runtime_state(run_id: str) -> GraphRuntimeState:
+def _build_runtime_state(run_id: str) -> RuntimeState:
     variable_pool = build_test_variable_pool(variables=build_system_variables(workflow_execution_id=run_id))
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
 
 
 def _build_pipeline(run_id: str, unbound_session_factory: sessionmaker[Session]) -> WorkflowAppGenerateTaskPipeline:
@@ -86,7 +90,10 @@ def test_workflow_app_log_saved_only_on_initial_start(unbound_session_factory: s
     assert pipeline._workflow_execution_id == run_id
 
 
-def test_workflow_app_log_skipped_on_resumption_start(unbound_session_factory: sessionmaker[Session]) -> None:
+def test_workflow_app_log_skipped_on_resumption_start(
+    unbound_session_factory: sessionmaker[Session], sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_engine))
     run_id = "run-resume"
     pipeline = _build_pipeline(run_id, unbound_session_factory)
     pipeline._save_workflow_app_log = MagicMock()

@@ -40,12 +40,13 @@ dependencies = [
     "opentelemetry-instrumentation-redis==0.65b0",
     "opentelemetry-instrumentation-sqlalchemy==0.65b0",
     "opentelemetry-propagator-b3>=1.41.1,<2.0.0",
+    "pypandoc==1.17",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
     "zstandard==0.25.0",
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]==0.7.0",
-    "graphon==0.7.0",
+    "graphon==0.8.0",
     "httpx-sse==0.4.3",
     "json-repair==0.60.1",
 ]

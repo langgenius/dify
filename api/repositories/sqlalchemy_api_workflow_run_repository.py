@@ -142,7 +142,7 @@ def _build_human_input_required_reason(
     node_id = reason_model.node_id
     if form_model is not None:
         form_id = form_model.id
-        node_id = form_model.node_id or node_id
+        node_id = node_id or form_model.node_id
         try:
             definition_payload = json.loads(form_model.form_definition)
             if "expiration_time" not in definition_payload:

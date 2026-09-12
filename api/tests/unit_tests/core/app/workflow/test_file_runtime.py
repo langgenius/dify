@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -16,10 +17,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope
 from core.app.workflow import file_runtime
-from core.app.workflow.file_runtime import DifyWorkflowFileRuntime, bind_dify_workflow_file_runtime
+from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.workflow.file_reference import build_file_reference
+from dify_app import DifyApp
 from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
 from models import ToolFile, UploadFile
 from models.base import TypeBase
 from models.enums import CreatorUserRole
@@ -397,11 +400,65 @@ def test_runtime_helper_wrappers_delegate_to_config_and_io(
         mock_load.assert_called_once_with("path", stream=True)
 
 
-def test_bind_dify_workflow_file_runtime_registers_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
-    set_runtime = MagicMock()
-    monkeypatch.setattr(file_runtime, "set_workflow_file_runtime", set_runtime)
+def test_app_file_runtime_scopes_restore_across_nested_apps_and_workers(monkeypatch: pytest.MonkeyPatch) -> None:
+    first, second = DifyApp("first"), DifyApp("second")
+    runtimes = [_build_runtime(), _build_runtime()]
+    monkeypatch.setattr(file_runtime, "create_dify_workflow_file_runtime", MagicMock(side_effect=runtimes))
+    file_runtime.init_app(first)
+    file_runtime.init_app(second)
 
-    bind_dify_workflow_file_runtime()
+    def in_worker() -> None:
+        assert peek_workflow_file_runtime() is None
+        with first.app_context():
+            assert peek_workflow_file_runtime() is runtimes[0]
+        assert peek_workflow_file_runtime() is None
 
-    set_runtime.assert_called_once()
-    assert isinstance(set_runtime.call_args.args[0], DifyWorkflowFileRuntime)
+    def failed_rendering() -> None:
+        with second.app_context():
+            assert peek_workflow_file_runtime() is runtimes[1]
+            raise ValueError("failed rendering")
+
+    with use_workflow_file_runtime(None):
+        with first.app_context():
+            assert peek_workflow_file_runtime() is runtimes[0]
+            with pytest.raises(ValueError, match="failed rendering"):
+                failed_rendering()
+            assert peek_workflow_file_runtime() is runtimes[0]
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pool.submit(in_worker).result()
+            assert peek_workflow_file_runtime() is runtimes[0]
+        assert peek_workflow_file_runtime() is None
+
+        context = first.app_context()
+        context.push()
+        context.push()
+        context.pop()
+        assert peek_workflow_file_runtime() is runtimes[0]
+        context.pop()
+        assert peek_workflow_file_runtime() is None
+
+
+@pytest.mark.parametrize("explicit_none", [False, True])
+def test_app_file_runtime_restores_when_teardown_raises(monkeypatch: pytest.MonkeyPatch, explicit_none: bool) -> None:
+    app = DifyApp("failed-teardown")
+    runtime, previous_runtime = _build_runtime(), _build_runtime()
+    monkeypatch.setattr(file_runtime, "create_dify_workflow_file_runtime", lambda: runtime)
+    file_runtime.init_app(app)
+    request_error = RuntimeError("request failed")
+
+    @app.teardown_appcontext
+    def fail_teardown(error: BaseException | None) -> None:
+        assert peek_workflow_file_runtime() is runtime
+        assert error is (None if explicit_none else request_error)
+        raise ValueError("teardown failed")
+
+    with use_workflow_file_runtime(previous_runtime):
+        context = app.app_context()
+        context.push()
+        pop_args = (None,) if explicit_none else ()
+        try:
+            raise request_error
+        except RuntimeError:
+            with pytest.raises(ValueError, match="teardown failed"):
+                context.pop(*pop_args)
+        assert peek_workflow_file_runtime() is previous_runtime

@@ -7,6 +7,7 @@ import { useStore } from '../store'
 import { formatWorkflowRunIdentifier } from '../utils'
 
 const Record = () => {
+  const appId = useStore((s) => s.appId)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const getWorkflowRunAndTraceUrl = useHooksStore((s) => s.getWorkflowRunAndTraceUrl)
@@ -29,6 +30,7 @@ const Record = () => {
         {`Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
       </div>
       <Run
+        appId={appId}
         runDetailUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).runUrl}
         tracingListUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).traceUrl}
         getResultCallback={handleResultCallback}
