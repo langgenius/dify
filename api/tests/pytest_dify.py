@@ -15,6 +15,8 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 DEFAULT_LOG_FORMAT = "%(asctime)s,%(msecs)d %(levelname)-2s [%(filename)s:%(lineno)d] %(req_id)s %(message)s"
 DEFAULT_MIDDLEWARE_SERVICES = ("db_postgres", "redis", "sandbox", "ssrf_proxy")
 DEFAULT_VDB_SERVICES = ("db_postgres", "redis", "weaviate", "qdrant", "pgvector", "chroma")
@@ -40,7 +42,7 @@ def parse_services(value: str) -> list[str]:
 
 
 def ensure_backend_test_environment(repo_root: Path) -> None:
-    """Set deterministic defaults needed before test conftests import application config."""
+    """Load test configuration before package conftests import application config."""
     integration_tests_dir = repo_root / "api" / "tests" / "integration_tests"
     test_env_file = integration_tests_dir / ".env"
     test_env_example_file = integration_tests_dir / ".env.example"
@@ -51,6 +53,10 @@ def ensure_backend_test_environment(repo_root: Path) -> None:
 
     if "DIFY_VDB_TEST_ENV_FILE" not in os.environ and vdb_env_file.exists():
         os.environ["DIFY_VDB_TEST_ENV_FILE"] = str(vdb_env_file)
+
+    load_dotenv(os.environ["DIFY_TEST_ENV_FILE"], override=True)
+    if vdb_env_path := os.environ.get("DIFY_VDB_TEST_ENV_FILE"):
+        load_dotenv(vdb_env_path, override=True)
 
     os.environ["LOG_OUTPUT_FORMAT"] = "text"
     os.environ["LOG_FORMAT"] = DEFAULT_LOG_FORMAT

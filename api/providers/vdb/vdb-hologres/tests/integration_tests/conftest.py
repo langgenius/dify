@@ -1,175 +1,135 @@
 import json
 import os
+import re
 from typing import Any
 
-import holo_search_sdk as holo
+import psycopg
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from psycopg import sql as psql
-
-_mock_tables: dict[str, dict[str, dict[str, Any]]] = {}
 
 
-class MockSearchQuery:
-    def __init__(self, table_name: str, search_type: str):
-        self._table_name = table_name
-        self._search_type = search_type
-        self._limit_val = 10
-        self._filter_sql = None
+class InMemoryHologres:
+    """Store rows while the real Hologres SDK builds and executes SQL."""
 
-    def select(self, columns):
+    def __init__(self) -> None:
+        self.tables: dict[str, dict[str, dict[str, Any]]] = {}
+
+    def execute(self, query: Any, params: tuple[Any, ...] | None = None) -> list[tuple[Any, ...]]:
+        sql = query.as_string() if hasattr(query, "as_string") else str(query)
+        normalized = " ".join(sql.split())
+
+        if "FROM pg_tables" in normalized:
+            table_name = re.findall(r"'([^']*)'", normalized)[-1]
+            return [(table_name in self.tables,)]
+
+        if match := re.search(r'CREATE TABLE IF NOT EXISTS "([^"]+)"', normalized, re.IGNORECASE):
+            self.tables.setdefault(match.group(1), {})
+            return []
+
+        if match := re.search(r'DROP TABLE IF EXISTS "([^"]+)"', normalized, re.IGNORECASE):
+            self.tables.pop(match.group(1), None)
+            return []
+
+        if match := re.search(r'INSERT INTO "([^"]+)" \(([^)]+)\)', normalized, re.IGNORECASE):
+            table_name, raw_columns = match.groups()
+            columns = re.findall(r'"([^"]+)"', raw_columns)
+            values = params or ()
+            table = self.tables.setdefault(table_name, {})
+            for offset in range(0, len(values), len(columns)):
+                row = dict(zip(columns, values[offset : offset + len(columns)]))
+                table[row["id"]] = row
+            return []
+
+        if match := re.search(r'SELECT 1 FROM "([^"]+)" WHERE id = \'([^\']+)\'', normalized, re.IGNORECASE):
+            table_name, doc_id = match.groups()
+            return [(1,)] if doc_id in self.tables.get(table_name, {}) else []
+
+        if match := re.search(
+            r'SELECT id FROM "([^"]+)" WHERE meta->>\'([^\']+)\' = \'([^\']*)\'',
+            normalized,
+            re.IGNORECASE,
+        ):
+            table_name, key, value = match.groups()
+            return [
+                (doc_id,)
+                for doc_id, row in self.tables.get(table_name, {}).items()
+                if json.loads(row["meta"]).get(key) == value
+            ]
+
+        if match := re.search(r'DELETE FROM "([^"]+)" WHERE id IN \(([^)]+)\)', normalized, re.IGNORECASE):
+            table_name, raw_ids = match.groups()
+            for doc_id in re.findall(r"'([^']+)'", raw_ids):
+                self.tables.get(table_name, {}).pop(doc_id, None)
+            return []
+
+        if match := re.search(
+            r'DELETE FROM "([^"]+)" WHERE meta->>\'([^\']+)\' = \'([^\']*)\'',
+            normalized,
+            re.IGNORECASE,
+        ):
+            table_name, key, value = match.groups()
+            table = self.tables.get(table_name, {})
+            for doc_id in [doc_id for doc_id, row in table.items() if json.loads(row["meta"]).get(key) == value]:
+                table.pop(doc_id, None)
+            return []
+
+        if normalized.upper().startswith("SELECT") and " FROM " in normalized.upper():
+            table_match = re.search(r' FROM "([^"]+)"', normalized, re.IGNORECASE)
+            if table_match is None:
+                raise AssertionError(f"Could not identify Hologres table in SQL: {normalized}")
+            rows = list(self.tables.get(table_match.group(1), {}).values())
+            if filter_match := re.search(r"meta->>'document_id' IN \(([^)]+)\)", normalized):
+                document_ids = set(re.findall(r"'([^']+)'", filter_match.group(1)))
+                rows = [row for row in rows if json.loads(row["meta"]).get("document_id") in document_ids]
+            if limit_match := re.search(r" LIMIT (\d+)", normalized, re.IGNORECASE):
+                rows = rows[: int(limit_match.group(1))]
+            if "approx_" in normalized:
+                return [(0.1, row["id"], row["text"], row["meta"]) for row in rows]
+            if "text_to_" in normalized or "TEXT_SEARCH" in normalized.upper():
+                return [(row["id"], row["text"], row["meta"], row["embedding"], 0.9) for row in rows]
+
+        if normalized.upper().startswith(("CALL ", "CREATE INDEX ")):
+            return []
+
+        raise AssertionError(f"Unhandled Hologres SQL: {normalized} params={params}")
+
+
+class InMemoryCursor:
+    def __init__(self, database: InMemoryHologres) -> None:
+        self.database = database
+        self.description = None
+        self.results: list[tuple[Any, ...]] = []
+
+    def execute(self, query, params=None):
+        self.results = self.database.execute(query, params)
         return self
 
-    def limit(self, n):
-        self._limit_val = n
-        return self
-
-    def where(self, filter_sql):
-        self._filter_sql = filter_sql
-        return self
-
-    def _apply_filter(self, row: dict[str, Any]) -> bool:
-        if self._filter_sql is None:
-            return True
-
-        literals = [v for t, v in _extract_identifiers_and_literals(self._filter_sql) if t == "literal"]
-        if not literals:
-            return True
-
-        meta = row.get("meta", "{}")
-        if isinstance(meta, str):
-            meta = json.loads(meta)
-        doc_id = meta.get("document_id")
-
-        return doc_id in literals
+    def fetchone(self):
+        return self.results[0] if self.results else None
 
     def fetchall(self):
-        data = _mock_tables.get(self._table_name, {})
-        results = []
-        for row in list(data.values())[: self._limit_val]:
-            if not self._apply_filter(row):
-                continue
+        return list(self.results)
 
-            if self._search_type == "vector":
-                results.append((0.1, row["id"], row["text"], row["meta"]))
-            else:
-                results.append((row["id"], row["text"], row["meta"], row.get("embedding", []), 0.9))
-        return results
+    def fetchmany(self, size=0):
+        return self.results[:size] if size else list(self.results)
 
-
-class MockTable:
-    def __init__(self, table_name: str):
-        self._table_name = table_name
-
-    def upsert_multi(self, index_column, values, column_names, update=True, update_columns=None):
-        if self._table_name not in _mock_tables:
-            _mock_tables[self._table_name] = {}
-        id_idx = column_names.index("id")
-        for row in values:
-            doc_id = row[id_idx]
-            _mock_tables[self._table_name][doc_id] = dict(zip(column_names, row))
-
-    def search_vector(self, vector, column, distance_method, output_name):
-        return MockSearchQuery(self._table_name, "vector")
-
-    def search_text(self, column, expression, return_score=False, return_score_name="score", return_all_columns=False):
-        return MockSearchQuery(self._table_name, "text")
-
-    def set_vector_index(
-        self, column, distance_method, base_quantization_type, max_degree, ef_construction, use_reorder
-    ):
-        pass
-
-    def create_text_index(self, index_name, column, tokenizer):
+    def close(self) -> None:
         pass
 
 
-def _extract_sql_template(query) -> str:
-    if isinstance(query, psql.Composed):
-        for part in query:
-            if isinstance(part, psql.SQL):
-                return part._obj
-    if isinstance(query, psql.SQL):
-        return query._obj
-    return ""
+class InMemoryConnection:
+    def __init__(self, database: InMemoryHologres, autocommit: bool = False) -> None:
+        self.database = database
+        self.autocommit = autocommit
 
+    def cursor(self) -> InMemoryCursor:
+        return InMemoryCursor(self.database)
 
-def _extract_identifiers_and_literals(query) -> list[Any]:
-    values: list[Any] = []
-    if isinstance(query, psql.Composed):
-        for part in query:
-            match part:
-                case psql.Identifier():
-                    values.append(("ident", part._obj[0] if part._obj else ""))
-                case psql.Literal():
-                    values.append(("literal", part._obj))
-                case psql.Composed():
-                    for sub in part:
-                        if isinstance(sub, psql.Literal):
-                            values.append(("literal", sub._obj))
-    return values
-
-
-class MockHologresClient:
-    def connect(self):
+    def commit(self) -> None:
         pass
 
-    def check_table_exist(self, table_name):
-        return table_name in _mock_tables
-
-    def open_table(self, table_name):
-        return MockTable(table_name)
-
-    def execute(self, query, fetch_result=False):
-        template = _extract_sql_template(query)
-        params = _extract_identifiers_and_literals(query)
-
-        if "CREATE TABLE" in template.upper():
-            table_name = next((v for t, v in params if t == "ident"), "unknown")
-            if table_name not in _mock_tables:
-                _mock_tables[table_name] = {}
-            return None
-
-        if "SELECT 1" in template:
-            table_name = next((v for t, v in params if t == "ident"), "")
-            doc_id = next((v for t, v in params if t == "literal"), "")
-            data = _mock_tables.get(table_name, {})
-            return [(1,)] if doc_id in data else []
-
-        if "SELECT id" in template:
-            table_name = next((v for t, v in params if t == "ident"), "")
-            literals = [v for t, v in params if t == "literal"]
-            key = literals[0] if len(literals) > 0 else ""
-            value = literals[1] if len(literals) > 1 else ""
-            data = _mock_tables.get(table_name, {})
-            return [(doc_id,) for doc_id, row in data.items() if json.loads(row.get("meta", "{}")).get(key) == value]
-
-        if "DELETE" in template.upper():
-            table_name = next((v for t, v in params if t == "ident"), "")
-            if "id IN" in template:
-                ids_to_delete = [v for t, v in params if t == "literal"]
-                for did in ids_to_delete:
-                    _mock_tables.get(table_name, {}).pop(did, None)
-            elif "meta->>" in template:
-                literals = [v for t, v in params if t == "literal"]
-                key = literals[0] if len(literals) > 0 else ""
-                value = literals[1] if len(literals) > 1 else ""
-                data = _mock_tables.get(table_name, {})
-                to_remove = [
-                    doc_id for doc_id, row in data.items() if json.loads(row.get("meta", "{}")).get(key) == value
-                ]
-                for did in to_remove:
-                    data.pop(did, None)
-            return None
-
-        return [] if fetch_result else None
-
-    def drop_table(self, table_name):
-        _mock_tables.pop(table_name, None)
-
-
-def mock_connect(**kwargs):
-    return MockHologresClient()
+    def close(self) -> None:
+        pass
 
 
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
@@ -178,10 +138,9 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 @pytest.fixture
 def setup_hologres_mock(monkeypatch: MonkeyPatch):
     if MOCK:
-        monkeypatch.setattr(holo, "connect", mock_connect)
+        database = InMemoryHologres()
 
-    yield
+        def connect(**kwargs):
+            return InMemoryConnection(database, autocommit=kwargs.get("autocommit", False))
 
-    if MOCK:
-        _mock_tables.clear()
-        monkeypatch.undo()
+        monkeypatch.setattr(psycopg, "connect", connect)

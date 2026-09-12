@@ -31,5 +31,5 @@ class ChromaVectorTest(AbstractVectorTest):
         assert len(hits_by_full_text) == 0
 
 
-def test_chroma_vector(setup_mock_redis):
+def test_chroma_vector(setup_real_redis):
     ChromaVectorTest().run_all_tests()
