@@ -143,6 +143,7 @@ def test_runtime_tls_settings_preserve_sdk_precedence(
         "disabled": False,
         "sampling": {"name": "parentbased_always_on", "ratio": 1.0},
         "span_limits": {},
+        "event_limits": {},
     }
 
 
@@ -216,6 +217,7 @@ def test_phoenix_plain_http_does_not_read_an_unused_ca_file(monkeypatch: pytest.
         "disabled": False,
         "sampling": {"name": "parentbased_always_on", "ratio": 1.0},
         "span_limits": {},
+        "event_limits": {},
     }
 
 
