@@ -209,12 +209,15 @@ Home plus the shared Workspace.
 | Local | Supported | Supported, including default empty Homes and attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
 | E2B | Supported | Supported with template-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; checkpoints use E2B snapshots. |
 | Enterprise | Not implemented | Default-Home Binding creation, acquire, and coupled destroy are supported | Binding and Workspace refs map to one Gateway sandbox. Explicit Home Snapshot materialization fails fast. |
+| OpenShell | Supported via directory copies on an operator-provided shared volume | Supported with image-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same OpenShell sandbox, addressed by its stable name; snapshots live under `home-snapshots/<tenant-digest>/` on the shared volume. Production deployments must use one workspace and one dedicated volume per tenant. |
 
 Local creates a new Home for every Binding id. Destroying one Binding without
 the Workspace leaves sibling Homes and the shared Workspace intact. Current E2B
 rejects `existing_workspace_ref` with `shared_workspace_unsupported`, because
 its Binding and Workspace are one Sandbox. It also rejects binding-only destroy.
-Neither path creates a fallback Workspace or switches backends.
+OpenShell shares the E2B shape: one sandbox per Binding, no
+`existing_workspace_ref`, no binding-only destroy. Neither path creates a
+fallback Workspace or switches backends.
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
 resource to one hour. The limit covers the complete Agent run held by one
@@ -225,5 +228,5 @@ resource setting does not own the Agent run terminal state. It is not a retentio
 TTL and does not delete paused resources or immutable snapshots.
 
 See the [Shell layer](../../user-manual/shell-layer/index.md) for request
-composition and the [Operations Guide](../../guide/index.md) for Local and E2B
-validation.
+composition and the [Operations Guide](../../guide/index.md) for Local, E2B,
+and OpenShell validation.

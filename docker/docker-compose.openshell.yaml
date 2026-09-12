@@ -1,0 +1,59 @@
+x-api-build: &api-build
+  context: ..
+  dockerfile: api/Dockerfile
+
+services:
+  api:
+    image: dify-api:openshell-local
+    build: *api-build
+
+  api_websocket:
+    image: dify-api:openshell-local
+    build: *api-build
+
+  worker:
+    image: dify-api:openshell-local
+    build: *api-build
+
+  worker_beat:
+    image: dify-api:openshell-local
+    build: *api-build
+
+  agent_backend:
+    image: dify-agent-backend:openshell-local
+    build:
+      context: ..
+      dockerfile: dify-agent/Dockerfile
+    # Docker Desktop provides host.docker.internal implicitly; Linux Docker
+    # needs this explicit mapping (same idiom as docker-compose.middleware.yaml).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DIFY_AGENT_RUNTIME_BACKEND: openshell
+    ports:
+      - "${EXPOSE_AGENT_BACKEND_PORT:-15050}:5050"
+    volumes:
+      # Gateway mTLS bundle directory; point DIFY_AGENT_OPENSHELL_TLS_*_PATH
+      # at /etc/openshell-mtls/<file>. Unused with bearer-token auth.
+      - ${DIFY_AGENT_OPENSHELL_TLS_BUNDLE_DIR:-./volumes/openshell-mtls}:/etc/openshell-mtls:ro
+
+  plugin_daemon:
+    ports: !override []
+
+  # Keep the Local backend's sandbox and its egress proxy out of an OpenShell
+  # deployment without changing the default compose stack.
+  local_sandbox:
+    profiles:
+      - local-agent-sandbox
+  agent_ssrf_proxy:
+    profiles:
+      - local-agent-sandbox
+
+  # This overlay is intended for branch validation and deliberately starts
+  # from an isolated PostgreSQL data volume.
+  db_postgres:
+    volumes: !override
+      - dify_openshell_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  dify_openshell_postgres_data:
