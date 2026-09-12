@@ -22,11 +22,7 @@ def test_batch_import_preserves_literal_na(monkeypatch: pytest.MonkeyPatch) -> N
     session = MagicMock()
     session.scalar.return_value = SimpleNamespace(id="app-1")
     file = FileStorage(
-        stream=BytesIO(
-            b"question,answer\n"
-            b"NA,valid answer\n"
-            b"valid question,NA\n"
-        ),
+        stream=BytesIO(b"question,answer\nNA,valid answer\nvalid question,NA\n"),
         filename="annotations.csv",
         content_type="text/csv",
     )
