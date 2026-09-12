@@ -300,6 +300,49 @@ def test_get_plugin_provider_raises_when_provider_missing():
                     ToolManager.get_plugin_provider("provider-a", "tenant-1")
 
 
+def test_get_plugin_provider_translates_plugin_not_found_error():
+    """Regression for langgenius/dify#41805: when the plugin daemon raises
+    PluginNotFoundError, translate it to ToolProviderNotFoundError so the
+    console API generic exception handler returns a controlled 4xx response
+    instead of HTTP 500.
+    """
+    from core.plugin.impl.exc import PluginNotFoundError
+
+    provider_context = _SimpleContextVar()
+    lock_context = _SimpleContextVar()
+    lock_context.set(threading.Lock())
+
+    with patch("core.tools.tool_manager.contexts.plugin_tool_providers", provider_context):
+        with patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context):
+            with patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls:
+                mock_manager_cls.return_value.fetch_tool_provider.side_effect = PluginNotFoundError(
+                    "plugin not found: my-mcp-tools"
+                )
+                with pytest.raises(ToolProviderNotFoundError, match="plugin provider my-mcp-tools not found"):
+                    ToolManager.get_plugin_provider("my-mcp-tools", "tenant-1")
+
+
+def test_get_plugin_provider_does_not_translate_other_daemon_errors():
+    """Only PluginNotFoundError is translated; unrelated plugin-daemon
+    failures (transport, 5xx, auth) must propagate unchanged so the outer
+    handlers keep their existing 4xx/503 mapping.
+    """
+    from core.plugin.impl.exc import PluginDaemonInternalServerError
+
+    provider_context = _SimpleContextVar()
+    lock_context = _SimpleContextVar()
+    lock_context.set(threading.Lock())
+
+    with patch("core.tools.tool_manager.contexts.plugin_tool_providers", provider_context):
+        with patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context):
+            with patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls:
+                mock_manager_cls.return_value.fetch_tool_provider.side_effect = PluginDaemonInternalServerError(
+                    "daemon exploded"
+                )
+                with pytest.raises(PluginDaemonInternalServerError, match="daemon exploded"):
+                    ToolManager.get_plugin_provider("my-mcp-tools", "tenant-1")
+
+
 def test_get_tool_runtime_builtin_without_credentials():
     tool = Mock()
     tool.fork_tool_runtime.return_value = "runtime-tool"
