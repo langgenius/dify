@@ -5,6 +5,11 @@ from pydantic import ValidationError
 
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.local_rollout import (
+    RoutedLocalExecutionBindingBackend,
+    RoutedLocalHomeSnapshotBackend,
+    ShellctlHealthProbe,
+)
 from dify_agent.runtime_backend.profile import (
     DEFAULT_E2B_TEMPLATE,
     RuntimeBackendSettings,
@@ -79,3 +84,66 @@ def test_local_backend_rejects_relative_roots() -> None:
             local_sandbox_endpoint="http://shellctl.example",
             local_sandbox_workspace_root="relative/workspaces",
         )
+
+
+def test_local_backend_requires_rust_endpoint_for_nonzero_canary() -> None:
+    with pytest.raises(ValidationError, match="local_sandbox_rust_endpoint is required"):
+        _ = RuntimeBackendSettings(
+            runtime_backend="local",
+            local_sandbox_endpoint="http://shellctl-go.example",
+            local_sandbox_rust_canary_percent=1,
+        )
+
+
+def test_local_backend_rejects_same_go_and_rust_endpoint() -> None:
+    with pytest.raises(ValidationError, match="must differ"):
+        _ = RuntimeBackendSettings(
+            runtime_backend="local",
+            local_sandbox_endpoint="http://shellctl.example/",
+            local_sandbox_rust_endpoint="http://shellctl.example",
+        )
+
+
+def test_local_backend_builds_sticky_rollout_drivers_when_rust_is_configured() -> None:
+    settings = RuntimeBackendSettings(
+        runtime_backend="local",
+        local_sandbox_endpoint="http://shellctl-go.example",
+        local_sandbox_auth_token="go-token",
+        local_sandbox_rust_endpoint="http://shellctl-rust.example",
+        local_sandbox_rust_auth_token="rust-token",
+        local_sandbox_rust_canary_percent=25,
+        local_sandbox_preflight_timeout_seconds=2.5,
+    )
+
+    profile = create_runtime_backend_profile(settings)
+
+    assert isinstance(profile.execution_bindings, RoutedLocalExecutionBindingBackend)
+    assert isinstance(profile.home_snapshots, RoutedLocalHomeSnapshotBackend)
+    router = profile.execution_bindings.router
+    assert router.rust_canary_percent == 25
+    assert isinstance(router.rust_health_probe, ShellctlHealthProbe)
+    assert router.rust_health_probe.timeout_seconds == 2.5
+    assert router.go.implementation == "go"
+    assert router.rust.implementation == "rust"
+    assert isinstance(router.go.execution_bindings, LocalExecutionBindingBackend)
+    assert isinstance(router.rust.execution_bindings, LocalExecutionBindingBackend)
+    assert router.go.execution_bindings.endpoint == "http://shellctl-go.example"
+    assert router.go.execution_bindings.auth_token == "go-token"
+    assert router.rust.execution_bindings.endpoint == "http://shellctl-rust.example"
+    assert router.rust.execution_bindings.auth_token == "rust-token"
+
+
+def test_local_backend_rust_token_inherits_go_token_when_omitted() -> None:
+    profile = create_runtime_backend_profile(
+        RuntimeBackendSettings(
+            runtime_backend="local",
+            local_sandbox_endpoint="http://shellctl-go.example",
+            local_sandbox_auth_token="shared-token",
+            local_sandbox_rust_endpoint="http://shellctl-rust.example",
+        )
+    )
+
+    assert isinstance(profile.execution_bindings, RoutedLocalExecutionBindingBackend)
+    rust_bindings = profile.execution_bindings.router.rust.execution_bindings
+    assert isinstance(rust_bindings, LocalExecutionBindingBackend)
+    assert rust_bindings.auth_token == "shared-token"

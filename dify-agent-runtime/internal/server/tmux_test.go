@@ -114,6 +114,19 @@ func TestShellJoin(t *testing.T) {
 	}
 }
 
+func TestStartJobArgsBatchSessionAndPipe(t *testing.T) {
+	controller := &TmuxController{}
+	args := controller.startJobArgs("job-123", "runner command", "pipe command", 200, 50)
+	want := []string{
+		"-f", "/dev/null",
+		"new-session", "-d", "-s", "shellctl-job-123", "-x", "200", "-y", "50",
+		"runner command", ";", "pipe-pane", "-o", "-t", "shellctl-job-123:0.0", "pipe command",
+	}
+	if strings.Join(args, "\x00") != strings.Join(want, "\x00") {
+		t.Fatalf("startJobArgs = %#v, want %#v", args, want)
+	}
+}
+
 func TestIsTmuxTargetMissing(t *testing.T) {
 	missingMsgs := []string{
 		"can't find pane: shellctl-abc",

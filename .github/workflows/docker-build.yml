@@ -14,10 +14,13 @@ on:
       - dify-agent/src/**
       - web/Dockerfile
       - dify-agent-runtime/docker/Dockerfile
+      - dify-agent-runtime/docker/Dockerfile.rust
+      - dify-agent-runtime/.dockerignore
       - dify-agent-runtime/go.mod
       - dify-agent-runtime/go.sum
       - dify-agent-runtime/cmd/**
       - dify-agent-runtime/internal/**
+      - dify-agent-runtime/rust/**
 
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}
@@ -63,6 +66,16 @@ jobs:
             runs_on: depot-ubuntu-24.04-4
             context: '{{defaultContext}}:dify-agent-runtime'
             file: 'docker/Dockerfile'
+          - service_name: 'local-sandbox-rust-amd64'
+            platform: linux/amd64
+            runs_on: depot-ubuntu-24.04-4
+            context: '{{defaultContext}}:dify-agent-runtime'
+            file: 'docker/Dockerfile.rust'
+          - service_name: 'local-sandbox-rust-arm64'
+            platform: linux/arm64
+            runs_on: depot-ubuntu-24.04-4
+            context: '{{defaultContext}}:dify-agent-runtime'
+            file: 'docker/Dockerfile.rust'
     steps:
       - name: Set up Depot CLI
         uses: depot/setup-action@91bc8495a33ebfc504ffc89e5674379ccf23c29c # v1.7.2
@@ -94,6 +107,9 @@ jobs:
           - service_name: 'local-sandbox-amd64'
             context: '{{defaultContext}}:dify-agent-runtime'
             file: 'docker/Dockerfile'
+          - service_name: 'local-sandbox-rust-amd64'
+            context: '{{defaultContext}}:dify-agent-runtime'
+            file: 'docker/Dockerfile.rust'
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
