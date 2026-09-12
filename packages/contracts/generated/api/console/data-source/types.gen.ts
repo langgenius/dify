@@ -34,7 +34,7 @@ export type DataSourceIntegratePageResponse = {
   page_icon: DataSourceIntegrateIconResponse | null
   page_id: string
   page_name: string
-  parent_id: string | null
+  parent_id: string
   type: NotionPageType
 }
 

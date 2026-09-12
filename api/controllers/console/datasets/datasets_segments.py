@@ -7,6 +7,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -23,7 +24,6 @@ from controllers.console.datasets.error import (
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     cloud_edition_billing_knowledge_limit_check,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
@@ -200,8 +200,7 @@ class DatasetDocumentSegmentListApi(Resource):
     @console_ns.doc(params=query_params_from_model(SegmentListQuery))
     @console_ns.response(200, "Segments retrieved successfully", console_ns.models[ConsoleSegmentListResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_READONLY,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),),
     )
     def get(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID):
         args = query_params_from_request(SegmentListQuery, list_fields=("status",))
@@ -232,8 +231,7 @@ class DatasetDocumentSegmentListApi(Resource):
 
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_EDIT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
@@ -264,8 +262,7 @@ class DatasetDocumentSegmentApi(Resource):
     @console_ns.doc(params=query_params_from_model(SegmentIdListQuery))
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_EDIT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
@@ -298,8 +295,7 @@ class DatasetDocumentSegmentAddApi(Resource):
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_EDIT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
@@ -335,8 +331,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_SEGMENT)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_EDIT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
@@ -369,8 +364,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
 
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_EDIT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_SEGMENT)
@@ -398,8 +392,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
 class DatasetDocumentSegmentBatchImportApi(Resource):
     @console_ns.response(200, "Batch import started", console_ns.models[SegmentBatchImportStatusResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_EDIT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
@@ -444,8 +437,7 @@ class ChildChunkAddApi(Resource):
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_PARENT_SEGMENT)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_EDIT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
@@ -477,8 +469,7 @@ class ChildChunkAddApi(Resource):
     @console_ns.doc(params=query_params_from_model(ChildChunkListQuery))
     @console_ns.response(200, "Child chunks retrieved successfully", console_ns.models[ChildChunkListResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_READONLY,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),),
     )
     def get(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         args = query_params_from_request(ChildChunkListQuery, use_defaults_for_malformed_ints=True)
@@ -503,8 +494,7 @@ class ChildChunkAddApi(Resource):
 
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_EDIT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
@@ -543,8 +533,7 @@ class ChildChunkAddApi(Resource):
 class ChildChunkUpdateApi(Resource):
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_EDIT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_CHILD_CHUNK)
@@ -571,8 +560,7 @@ class ChildChunkUpdateApi(Resource):
 
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_EDIT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")

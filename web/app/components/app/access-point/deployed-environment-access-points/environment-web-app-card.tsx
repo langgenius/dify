@@ -23,7 +23,7 @@ import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import {

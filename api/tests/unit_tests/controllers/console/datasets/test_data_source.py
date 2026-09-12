@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from inspect import unwrap
 from typing import TYPE_CHECKING, cast
-from uuid import UUID
 
 import pytest
 from flask import Flask
@@ -21,7 +20,7 @@ from controllers.console.datasets import data_source as data_source_controller
 from controllers.console.datasets.error import IndexingEstimateError
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.extractor.entity.datasource_type import NotionPageType
-from core.rbac import RBACPermission, RBACResourceScope
+from core.rbac import RBACPermission
 from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
@@ -376,10 +375,11 @@ def test_integration_management_enforces_workspace_credential_permission(
     config_overrides(RBAC_ENABLED=True)
     calls: list[dict[str, object]] = []
 
-    def record_access(**requirement: object) -> None:
-        calls.append(requirement)
+    def record_access(tenant_id: str, account_id: str, **requirement: object) -> bool:
+        calls.append({"tenant_id": tenant_id, "account_id": account_id, **requirement})
+        return True
 
-    monkeypatch.setattr("controllers.console.flask_admission.enforce_rbac_access", record_access)
+    monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", record_access)
 
     list_response = collaborators.client.get("/console/api/data-source/integrates")
     mutation_response = collaborators.client.patch(f"/console/api/data-source/integrates/{BINDING_ID}/enable")
@@ -390,21 +390,16 @@ def test_integration_management_enforces_workspace_credential_permission(
         {
             "tenant_id": TENANT_ID,
             "account_id": ACCOUNT_ID,
-            "resource_type": RBACResourceScope.WORKSPACE,
             "scene": RBACPermission.CREDENTIAL_MANAGE,
-            "resource_required": False,
-            "path_args": {},
+            "resource_type": None,
+            "resource_id": None,
         },
         {
             "tenant_id": TENANT_ID,
             "account_id": ACCOUNT_ID,
-            "resource_type": RBACResourceScope.WORKSPACE,
             "scene": RBACPermission.CREDENTIAL_MANAGE,
-            "resource_required": False,
-            "path_args": {
-                "binding_id": UUID(BINDING_ID),
-                "action": "enable",
-            },
+            "resource_type": None,
+            "resource_id": None,
         },
     ]
 

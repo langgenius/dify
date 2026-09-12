@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_serializer
 from configs import dify_config
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultResponse, TextContentResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
@@ -21,7 +22,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.extractor.entity.datasource_type import NotionPageType
-from core.rbac import RBACPermission, RBACResourceScope
+from core.rbac import RBACPermission
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
@@ -164,9 +165,7 @@ class DataSourceIntegrationListApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[DataSourceIntegrateListResponse.__name__])
     @console_account_admission(
         allowed_roles=_ADMIN_OR_OWNER_ROLES,
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.CREDENTIAL_MANAGE,
-        rbac_resource_required=False,
+        rbac_checks=(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()),),
     )
     def get(self, request_context: RequestContext) -> tuple[dict[str, object], int]:
         bindings = application_services().data_sources.bindings.list_integrations(request_context)
@@ -191,9 +190,7 @@ class DataSourceIntegrationApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         allowed_roles=_ADMIN_OR_OWNER_ROLES,
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.CREDENTIAL_MANAGE,
-        rbac_resource_required=False,
+        rbac_checks=(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()),),
     )
     def patch(
         self,
@@ -317,8 +314,7 @@ class DataSourceNotionIndexingEstimateApi(Resource):
 class DataSourceNotionDatasetSyncApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),),
     )
     def get(self, request_context: RequestContext, dataset_id: UUID) -> tuple[dict[str, str], int]:
         try:
@@ -332,8 +328,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
 class DataSourceNotionDocumentSyncApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),),
     )
     def get(
         self,

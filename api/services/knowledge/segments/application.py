@@ -126,12 +126,22 @@ class SegmentIndexTarget:
     enabled: bool
 
 
+@dataclass(frozen=True, slots=True)
+class SegmentUpdateState:
+    """Persisted fields needed to decide a segment update, without presentation data."""
+
+    content: str
+    enabled: bool
+    keywords: tuple[str, ...] | None
+
+
 class SegmentStore(Protocol):
     """Owner-scoped persistence; each operation owns a short session."""
 
     def list_segments(self, document_ref: DocumentRef, query: SegmentListFilter) -> SegmentPage: ...
     def get_segments(self, document_ref: DocumentRef, segment_ids: Sequence[str]) -> tuple[SegmentIndexTarget, ...]: ...
     def get_segment(self, segment_ref: SegmentRef) -> SegmentDetail | None: ...
+    def get_segment_update_state(self, segment_ref: SegmentRef) -> SegmentUpdateState | None: ...
     def save_segment(self, segment_ref: SegmentRef, values: Mapping[str, object], *, create: bool = False) -> None: ...
     def delete_segments(self, document_ref: DocumentRef, segment_ids: Sequence[str]) -> None: ...
     def list_child_chunks(self, segment_ref: SegmentRef, query: ChildChunkListFilter) -> ChildChunkPage | None: ...
@@ -389,7 +399,8 @@ class DatasetSegmentApplicationService:
         scope = self._require_scope(context, dataset_id=dataset_id, document_id=document_id)
         self._check_embedding_model(scope.dataset)
         args = self._validate_values(values, scope.document.doc_form)
-        return self.mutations.create_segment(scope, actor_id=context.account_id, args=args)
+        segment_ref = self.mutations.create_segment(scope, actor_id=context.account_id, args=args)
+        return self._detail(segment_ref)
 
     def update_segment(
         self,
@@ -404,7 +415,14 @@ class DatasetSegmentApplicationService:
         self._check_dataset_model(scope.dataset)
         self._check_embedding_model(scope.dataset)
         args = self._validate_values(values, scope.document.doc_form)
-        return self.mutations.update_segment(scope, actor_id=context.account_id, segment_id=segment_id, args=args)
+        self.mutations.update_segment(scope, actor_id=context.account_id, segment_id=segment_id, args=args)
+        return self._detail(scope.document.ref.segment(segment_id))
+
+    def _detail(self, segment_ref: SegmentRef) -> SegmentDetail:
+        result = self._store.get_segment(segment_ref)
+        if result is None:
+            raise SegmentNotFoundError("Segment not found")
+        return result
 
     def delete_segment(
         self,
@@ -651,7 +669,7 @@ class SegmentMutationService:
         *,
         actor_id: str,
         args: SegmentUpdateArgs,
-    ) -> SegmentDetail:
+    ) -> SegmentRef:
         now = naive_utc_now()
         segment_ref = scope.document.ref.segment(str(uuid4()))
         saved = False
@@ -683,7 +701,7 @@ class SegmentMutationService:
             self._index.create(segment_ref, keywords=args.keywords, attachment_ids=args.attachment_ids or ())
         except Exception as error:
             self._mark_error(segment_ref, error)
-        return self._detail(segment_ref)
+        return segment_ref
 
     def update_segment(
         self,
@@ -692,9 +710,11 @@ class SegmentMutationService:
         actor_id: str,
         segment_id: str,
         args: SegmentUpdateArgs,
-    ) -> SegmentDetail:
+    ) -> None:
         segment_ref = scope.document.ref.segment(segment_id)
-        previous = self._detail(segment_ref).data
+        previous = self._store.get_segment_update_state(segment_ref)
+        if previous is None:
+            raise SegmentNotFoundError("Segment not found")
         if self._indexing_state.is_segment_indexing(segment_id):
             raise ValueError("Segment is indexing, please try again later")
         if args.enabled is False and previous.enabled:
@@ -703,7 +723,7 @@ class SegmentMutationService:
             )
             self._indexing_state.mark_segment_indexing(segment_id)
             self._index.change_status(scope.document.ref, [segment_id], "disable")
-            return self._detail(segment_ref)
+            return
         if not previous.enabled and args.enabled is not True:
             raise ValueError("Can't update disabled segment")
         content = args.content or previous.content
@@ -750,17 +770,19 @@ class SegmentMutationService:
                 self._index.update_attachments(segment_ref, args.attachment_ids)
         except Exception as error:
             self._mark_error(segment_ref, error)
-        return self._detail(segment_ref)
 
     def delete_segment(self, segment_ref: SegmentRef) -> None:
-        segment = self._detail(segment_ref).data
+        segments = self._store.get_segments(segment_ref.document, (segment_ref.segment_id,))
+        if not segments:
+            raise SegmentNotFoundError("Segment not found")
+        segment = segments[0]
         if self._indexing_state.is_segment_indexing(segment_ref.segment_id, deleting=True):
             raise ValueError("Segment is deleting.")
         if segment.enabled:
             self._indexing_state.mark_segment_indexing(segment_ref.segment_id, deleting=True)
             self._index.delete(
                 segment_ref.document,
-                (SegmentIndexTarget(segment.id, segment.index_node_id, segment.enabled),),
+                (segment,),
                 self._children(segment_ref),
             )
         self._store.delete_segments(segment_ref.document, (segment_ref.segment_id,))
@@ -805,12 +827,6 @@ class SegmentMutationService:
         child = self._updated_child(self._child(segment_ref, child_chunk_id), content, actor_id)
         self._write_children(segment_ref, updated=(child,))
         return child.data
-
-    def _detail(self, segment_ref: SegmentRef) -> SegmentDetail:
-        result = self._store.get_segment(segment_ref)
-        if result is None:
-            raise SegmentNotFoundError("Segment not found")
-        return result
 
     def _mark_error(self, segment_ref: SegmentRef, error: Exception) -> None:
         logger.exception("Segment indexing failed: %s", segment_ref.segment_id)

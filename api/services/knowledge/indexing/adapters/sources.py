@@ -1,6 +1,5 @@
 """Datasource-specific extraction input resolvers."""
 
-import logging
 from collections.abc import Mapping, Sequence
 from typing import Protocol
 
@@ -12,10 +11,12 @@ from core.rag.entities.extraction import (
     WebsiteInfo,
 )
 from core.rag.extractor.entity.datasource_type import DatasourceType, NotionPageType
+from core.rag.extractor.notion_credentials import (
+    NotionCredentialUnavailableError,
+    resolve_stored_notion_access_token,
+)
 from services.data_source.credential_gateway import (
     ActorDatasourceCredentialResolver,
-    DatasourceCredentialError,
-    DatasourceCredentialNotFoundError,
     StoredDatasourceCredentialResolver,
 )
 from services.knowledge.indexing.errors import (
@@ -27,7 +28,6 @@ from services.knowledge.indexing.estimate import StoredSource
 
 _NOTION_PROVIDER = "notion_datasource"
 _NOTION_PLUGIN = "langgenius/notion_datasource"
-logger = logging.getLogger(__name__)
 
 
 class StoredSourceAdapter(Protocol):
@@ -120,7 +120,7 @@ class WebsiteSourceAdapter:
 
 
 class NotionSourceResolver:
-    """Own actor-selected and trusted-stored Notion credential policy."""
+    """Resolve actor-selected and trusted-stored Notion extraction inputs."""
 
     def __init__(
         self,
@@ -149,38 +149,27 @@ class NotionSourceResolver:
         )
 
     def _stored_token(self, source: StoredSource, credential_id: str | None) -> str:
-        """Resolve the stored credential, tenant default, then environment fallback."""
-
         document_ref = source.document_ref
-        credential_ids = (credential_id, None) if credential_id is not None else (None,)
-        credential_error: DatasourceCredentialError | None = None
-        for candidate_id in credential_ids:
-            try:
-                credentials = self._stored_credentials.resolve_for_document(
-                    workspace_id=document_ref.dataset.tenant_id,
-                    dataset_id=document_ref.dataset.dataset_id,
-                    document_id=document_ref.document_id,
-                    credential_id=candidate_id,
-                    provider=_NOTION_PROVIDER,
-                    plugin_id=_NOTION_PLUGIN,
-                )
-            except DatasourceCredentialNotFoundError as error:
-                credential_error = error
-                continue
-            except DatasourceCredentialError:
-                # An existing OAuth credential that cannot be refreshed must not
-                # silently switch the document to another integration identity.
-                raise
-            token = credentials.get("integration_secret")
-            if isinstance(token, str) and token:
-                return token
 
-        token = self._fallback_token(credential_error)
-        logger.warning(
-            "Stored Notion credential unavailable for document %s; using NOTION_INTEGRATION_TOKEN",
-            document_ref.document_id,
-        )
-        return token
+        def load_token(saved_id: str) -> str:
+            credentials = self._stored_credentials.resolve_for_document(
+                workspace_id=document_ref.dataset.tenant_id,
+                dataset_id=document_ref.dataset.dataset_id,
+                document_id=document_ref.document_id,
+                credential_id=saved_id,
+                provider=_NOTION_PROVIDER,
+                plugin_id=_NOTION_PLUGIN,
+            )
+            return self._required_token(credentials)
+
+        try:
+            return resolve_stored_notion_access_token(
+                credential_id=credential_id,
+                load_token=load_token,
+                integration_token=self._integration_token or dify_config.NOTION_INTEGRATION_TOKEN,
+            )
+        except NotionCredentialUnavailableError as error:
+            raise SourceCredentialUnavailableError("Notion credential is unavailable") from error
 
     def resolve_selection(
         self,
@@ -240,14 +229,6 @@ class NotionSourceResolver:
         if isinstance(token, str) and token:
             return token
         raise SourceCredentialUnavailableError("Notion credential is unavailable")
-
-    def _fallback_token(self, error: DatasourceCredentialError | None) -> str:
-        """Use the environment token only after trusted stored-document resolution fails."""
-
-        integration_token = self._integration_token or dify_config.NOTION_INTEGRATION_TOKEN
-        if integration_token:
-            return integration_token
-        raise SourceCredentialUnavailableError("Notion credential is unavailable") from error
 
 
 class CompositeStoredSourceResolver:

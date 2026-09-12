@@ -1,10 +1,12 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from unittest.mock import Mock
 
 import pytest
 
 from core.rag.entities.extraction import UploadFileExtractionInput
 from core.rag.extractor.entity.datasource_type import DatasourceType, NotionPageType
+from core.rag.extractor.notion_extractor import NotionExtractor
 from services.data_source.credential_gateway import (
     DatasourceCredentialNotFoundError,
     DatasourceCredentialRefreshError,
@@ -15,9 +17,14 @@ from services.knowledge.indexing.adapters.sources import (
     NotionSourceResolver,
     WebsiteSourceAdapter,
 )
-from services.knowledge.indexing.errors import IndexingInputSourceError, UnsupportedStoredSourceError
+from services.knowledge.indexing.errors import (
+    IndexingInputSourceError,
+    SourceCredentialUnavailableError,
+    UnsupportedStoredSourceError,
+)
 from services.knowledge.indexing.estimate import StoredSource
 from services.knowledge.resource_scope import DatasetRef
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _source(
@@ -68,17 +75,6 @@ class RecordingStoredCredentials:
         if self.error is not None:
             raise self.error
         return self.credentials or {}
-
-
-@dataclass
-class MissingSelectedStoredCredentials:
-    calls: list[dict[str, object]] = field(default_factory=list)
-
-    def resolve_for_document(self, **kwargs: object) -> dict[str, object]:
-        self.calls.append(kwargs)
-        if kwargs["credential_id"] is not None:
-            raise DatasourceCredentialNotFoundError()
-        return {"integration_secret": "default-secret"}
 
 
 def _notion_resolver(
@@ -180,66 +176,69 @@ def test_stored_notion_resolution_uses_trusted_document_owner_chain() -> None:
     assert extraction.notion_info.notion_page_type == NotionPageType.DATABASE.value
 
 
-def test_legacy_notion_document_requests_tenant_default_credential() -> None:
-    stored = RecordingStoredCredentials({"integration_secret": "default-secret"})
+@pytest.mark.parametrize(
+    ("credential_id", "credentials", "error", "expected_token"),
+    [
+        (None, {"integration_secret": "default-secret"}, None, "environment-secret"),
+        ("credential-1", {"integration_secret": "saved-secret"}, None, "saved-secret"),
+        ("deleted-credential", {}, DatasourceCredentialNotFoundError(), "environment-secret"),
+        ("credential-1", {}, DatasourceCredentialRefreshError("credential-1"), "environment-secret"),
+        ("credential-1", {}, None, "environment-secret"),
+        ("credential-1", {"integration_secret": ""}, None, "environment-secret"),
+        ("credential-1", {"integration_secret": 42}, None, "environment-secret"),
+    ],
+    ids=["legacy", "saved", "deleted", "refresh-failed", "missing-token", "empty-token", "invalid-token"],
+)
+@pytest.mark.parametrize("integration_token", ["environment-secret", None, ""])
+def test_stored_notion_preview_and_indexing_use_same_integration(
+    monkeypatch: pytest.MonkeyPatch,
+    credential_id: str | None,
+    credentials: dict[str, object],
+    error: Exception | None,
+    expected_token: str,
+    integration_token: str | None,
+) -> None:
+    apply_config_overrides(monkeypatch, NOTION_INTEGRATION_TOKEN=integration_token)
+    stored = RecordingStoredCredentials(credentials, error=error)
     resolver = _notion_resolver(stored=stored)
-
-    resolver.resolve(
-        _source(
-            "notion_import",
-            {
-                "notion_workspace_id": "notion-workspace-1",
-                "notion_page_id": "notion-page-1",
-                "type": "page",
-            },
-        ),
+    indexing_credentials = Mock(return_value=credentials, side_effect=error)
+    monkeypatch.setattr(
+        "core.rag.extractor.notion_extractor.DatasourceProviderService.get_datasource_credentials",
+        indexing_credentials,
+    )
+    source = _source(
+        "notion_import",
+        {
+            "credential_id": credential_id,
+            "notion_workspace_id": "notion-workspace-1",
+            "notion_page_id": "notion-page-1",
+            "type": "page",
+        },
     )
 
-    assert stored.calls[0]["credential_id"] is None
-
-
-def test_missing_stored_notion_credential_falls_back_to_tenant_default() -> None:
-    stored = MissingSelectedStoredCredentials()
-    resolver = NotionSourceResolver(
-        actor_credentials=RecordingActorCredentials(),
-        stored_credentials=stored,
-    )
-
-    extraction = resolver.resolve(
-        _source(
-            "notion_import",
-            {
-                "credential_id": "deleted-credential",
-                "notion_workspace_id": "notion-workspace-1",
-                "notion_page_id": "notion-page-1",
-                "type": "page",
-            },
-        ),
-    )
-
-    assert [call["credential_id"] for call in stored.calls] == ["deleted-credential", None]
-    assert extraction.notion_info is not None
-    assert extraction.notion_info.notion_access_token == "default-secret"
-
-
-def test_stored_notion_refresh_failure_does_not_switch_integration_identity() -> None:
-    stored = RecordingStoredCredentials(error=DatasourceCredentialRefreshError("credential-1"))
-    resolver = _notion_resolver(stored=stored, integration_token="environment-secret")
-
-    with pytest.raises(DatasourceCredentialRefreshError):
-        resolver.resolve(
-            _source(
-                "notion_import",
-                {
-                    "credential_id": "credential-1",
-                    "notion_workspace_id": "notion-workspace-1",
-                    "notion_page_id": "notion-page-1",
-                    "type": "page",
-                },
-            ),
+    def indexing_extractor() -> NotionExtractor:
+        return NotionExtractor(
+            notion_workspace_id="notion-workspace-1",
+            notion_obj_id="notion-page-1",
+            notion_page_type="page",
+            tenant_id="workspace-1",
+            credential_id=credential_id,
         )
 
-    assert [call["credential_id"] for call in stored.calls] == ["credential-1"]
+    if expected_token == "environment-secret" and not integration_token:
+        with pytest.raises(SourceCredentialUnavailableError):
+            resolver.resolve(source)
+        with pytest.raises(ValueError, match="Must specify `integration_token`"):
+            indexing_extractor()
+    else:
+        preview = resolver.resolve(source)
+        extractor = indexing_extractor()
+        assert preview.notion_info is not None
+        assert preview.notion_info.notion_access_token == extractor._notion_access_token == expected_token
+
+    expected_ids: list[str] = [credential_id] if credential_id else []
+    assert [call["credential_id"] for call in stored.calls] == expected_ids
+    assert [call.kwargs["credential_id"] for call in indexing_credentials.call_args_list] == expected_ids
 
 
 def test_notion_resolution_falls_back_to_configured_integration_token() -> None:

@@ -20,6 +20,7 @@ from configs import dify_config
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
+from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
@@ -40,7 +41,6 @@ from controllers.console.datasets.error import (
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     check_knowledge_rate_limit,
     cloud_edition_billing_rate_limit_check,
@@ -433,7 +433,7 @@ class DatasetDocumentListApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -562,7 +562,7 @@ class DatasetDocumentListApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def post(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -613,7 +613,7 @@ class DatasetDocumentListApi(Resource):
     @console_ns.response(204, "Documents deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def delete(
         self,
@@ -743,8 +743,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
     @console_ns.response(404, "Document not found")
     @console_ns.response(400, "Document already finished")
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),),
     )
     def get(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID):
         try:
@@ -781,8 +780,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         console_ns.models[IndexingEstimateResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.DATASET,
-        rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()),),
     )
     def get(self, request_context: RequestContext, dataset_id: UUID, batch: str):
         try:
@@ -820,7 +818,7 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID, batch: str):
         dataset_id_str = str(dataset_id)
@@ -880,7 +878,7 @@ class DocumentIndexingStatusApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -946,7 +944,7 @@ class DocumentApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1020,7 +1018,7 @@ class DocumentApi(DocumentResource):
     @console_ns.response(204, "Document deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def delete(
         self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID
@@ -1056,7 +1054,7 @@ class DocumentDownloadApi(DocumentResource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_DOCUMENT_DOWNLOAD)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, DatasetId()))
     @with_session(write=False)
     def get(
         self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID
@@ -1080,7 +1078,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
     @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session(write=False)
     def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         """Stream a ZIP archive containing the requested uploaded documents."""
@@ -1132,7 +1130,7 @@ class DocumentProcessingApi(DocumentResource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def patch(
         self,
@@ -1189,7 +1187,7 @@ class DocumentMetadataApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(DocumentMetadataUpdatePayload)
     def put(
@@ -1248,7 +1246,7 @@ class DocumentStatusApi(DocumentResource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def patch(
         self,
@@ -1294,7 +1292,7 @@ class DocumentPauseApi(DocumentResource):
     @console_ns.response(204, "Document paused successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def patch(
         self,
@@ -1334,7 +1332,7 @@ class DocumentRecoverApi(DocumentResource):
     @console_ns.response(204, "Document resumed successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def patch(
         self,
@@ -1374,7 +1372,7 @@ class DocumentRetryApi(DocumentResource):
     @console_ns.response(204, "Documents retry started successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(DocumentRetryPayload)
     def post(
@@ -1439,7 +1437,7 @@ class DocumentRenameApi(DocumentResource):
     @console_ns.response(200, "Document renamed successfully", console_ns.models[DocumentResponse.__name__])
     @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(DocumentRenamePayload)
     def post(
@@ -1474,7 +1472,7 @@ class WebsiteDocumentSyncApi(DocumentResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def get(
         self,
@@ -1516,7 +1514,7 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
     @with_session(write=False)
     def get(
         self,
@@ -1568,7 +1566,7 @@ class DocumentGenerateSummaryApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(GenerateSummaryPayload)
     def post(self, req_data: GenerateSummaryPayload, session: Session, current_user: Account, dataset_id: UUID):
@@ -1669,7 +1667,7 @@ class DocumentSummaryStatusApi(DocumentResource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID, document_id: UUID):
         """

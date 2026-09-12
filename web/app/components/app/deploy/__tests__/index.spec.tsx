@@ -22,7 +22,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,

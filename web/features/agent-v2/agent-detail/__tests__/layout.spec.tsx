@@ -37,7 +37,7 @@ vi.mock('@/hooks/use-document-title', () => ({
 
 const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {

@@ -40,6 +40,7 @@ from services.knowledge.segments.application import (
     SegmentIndexTarget,
     SegmentListFilter,
     SegmentPage,
+    SegmentUpdateState,
 )
 
 
@@ -158,6 +159,22 @@ class SQLAlchemySegmentRepository:
                 return None
             _, document = _require_scope_models(session, segment_ref.document)
             return _detail(session, segment, document)
+
+    def get_segment_update_state(self, segment_ref: SegmentRef) -> SegmentUpdateState | None:
+        with self._session_factory() as session:
+            segment = _get_segment(session, segment_ref)
+            if segment is None:
+                return None
+            # Legacy rows may contain scalar or malformed JSON keywords. Treat
+            # those as absent so a write can repair them without building a DTO.
+            keywords = segment.keywords
+            return SegmentUpdateState(
+                content=segment.content,
+                enabled=segment.enabled,
+                keywords=tuple(keywords)
+                if isinstance(keywords, list) and all(isinstance(keyword, str) for keyword in keywords)
+                else None,
+            )
 
     def get_segments(self, document_ref: DocumentRef, segment_ids: Sequence[str]) -> tuple[SegmentIndexTarget, ...]:
         if not segment_ids:

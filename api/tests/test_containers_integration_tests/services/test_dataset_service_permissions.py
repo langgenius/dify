@@ -10,6 +10,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from enums import DeploymentEdition
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -24,6 +25,7 @@ from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
 from services.errors.account import NoPermissionError
 from services.knowledge.resource_scope import DatasetRef
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class DatasetPermissionIntegrationFactory:
@@ -407,13 +409,10 @@ class TestDatasetServicePermissionsAndLifecycle:
         assert dataset.updated_by == owner.id
         assert dataset.updated_at == now
 
-    def test_get_dataset_auto_disable_logs_returns_empty_when_billing_is_disabled(
-        self, db_session_with_containers: Session
-    ):
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    def test_get_dataset_auto_disable_logs_returns_empty_outside_cloud(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
-        features = SimpleNamespace(
-            billing=SimpleNamespace(enabled=False, subscription=SimpleNamespace(plan="professional"))
-        )
+        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="professional")))
         dataset_ref = DatasetRef(tenant_id=tenant.id, dataset_id=str(uuid4()))
 
         with patch("services.dataset_service.FeatureService.get_features", return_value=features):
@@ -421,6 +420,7 @@ class TestDatasetServicePermissionsAndLifecycle:
 
         assert result == {"document_ids": [], "count": 0}
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_get_dataset_auto_disable_logs_returns_recent_document_ids(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetPermissionIntegrationFactory.create_dataset(
@@ -440,9 +440,7 @@ class TestDatasetServicePermissionsAndLifecycle:
             dataset_id=dataset.id,
             document_id=str(uuid4()),
         )
-        features = SimpleNamespace(
-            billing=SimpleNamespace(enabled=True, subscription=SimpleNamespace(plan="professional"))
-        )
+        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="professional")))
         dataset_ref = DatasetRefService.create_dataset_ref(dataset)
 
         with patch("services.dataset_service.FeatureService.get_features", return_value=features):

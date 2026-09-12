@@ -44,6 +44,7 @@ from services.knowledge.segments.application import (
     SegmentScopeReader,
     SegmentStatusUpdateError,
     SegmentStore,
+    SegmentUpdateState,
     SegmentUploadCatalog,
     SegmentUploadFileNotFoundError,
 )
@@ -278,7 +279,8 @@ def test_status_change_translates_operation_failure() -> None:
 
 def test_update_and_delete_segment_map_missing_segment() -> None:
     service, _, store, scopes, _, _, _ = _service()
-    store.get_segment.return_value = None
+    store.get_segment_update_state.return_value = None
+    store.get_segments.return_value = ()
 
     with pytest.raises(SegmentNotFoundError):
         service.update_segment(
@@ -456,7 +458,7 @@ def test_create_segment_returns_store_detail() -> None:
 )
 def test_shared_update_rejects_disabled_or_indexing_segments(enabled: bool, indexing: bool, message: str) -> None:
     service, _, store, _, _, state, _ = _service()
-    store.get_segment.return_value = _segment_detail(enabled=enabled)
+    store.get_segment_update_state.return_value = SegmentUpdateState("content", enabled, None)
     state.is_segment_indexing.return_value = indexing
     with pytest.raises(ValueError, match=message):
         service.mutations.update_segment(
@@ -470,7 +472,7 @@ def test_shared_update_rejects_disabled_or_indexing_segments(enabled: bool, inde
 
 def test_shared_disable_patch_does_not_replace_content() -> None:
     service, _, store, _, _, state, _ = _service()
-    store.get_segment.return_value = _segment_detail()
+    store.get_segment_update_state.return_value = SegmentUpdateState("content", True, None)
     service.mutations.update_segment(
         SegmentMutationScope(_dataset(), _document()),
         actor_id="editor",
@@ -482,3 +484,23 @@ def test_shared_disable_patch_does_not_replace_content() -> None:
     assert changes["disabled_by"] == "editor"
     assert "content" not in changes
     state.mark_segment_indexing.assert_called_once_with("segment-1")
+    store.get_segment.assert_not_called()
+
+
+def test_shared_writes_do_not_build_segment_detail() -> None:
+    service, _, store, _, _, _, _ = _service()
+    store.get_segment.side_effect = RuntimeError("attachment URL signing unavailable")
+    store.get_segment_update_state.return_value = SegmentUpdateState("content", True, None)
+    scope = SegmentMutationScope(_dataset(), _document())
+
+    created = service.mutations.create_segment(scope, actor_id="author", args=SegmentUpdateArgs(content="content"))
+    service.mutations.update_segment(
+        scope,
+        actor_id="editor",
+        segment_id=created.segment_id,
+        args=SegmentUpdateArgs(content="updated"),
+    )
+
+    assert store.save_segment.call_count == 2
+    assert store.save_segment.call_args.args[1]["content"] == "updated"
+    store.get_segment.assert_not_called()

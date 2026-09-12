@@ -27,7 +27,6 @@ def test_get_effective_credit_pool_prefers_available_paid_pool(
         quota_used=quota_used,
     )
     billing_info = {
-        "enabled": True,
         "subscription": {"plan": CloudPlan.TEAM},
         "next_credit_reset_date": 1775001600,
     }
@@ -59,7 +58,6 @@ def test_get_effective_credit_pool_exposes_exhausted_trial_pool(unbound_session:
         exhausted_at=1772323200,
     )
     billing_info = {
-        "enabled": True,
         "subscription": {"plan": CloudPlan.SANDBOX},
     }
     config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)

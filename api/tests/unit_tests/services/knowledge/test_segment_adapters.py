@@ -203,6 +203,20 @@ def test_segment_lookup_rejects_segment_from_another_owner_chain(
     assert store.get_segment(DatasetRef("workspace-1", "dataset-1").document("document-1").segment("segment-2")) is None
 
 
+@pytest.mark.parametrize("owner_field", ["tenant_id", "dataset_id", "document_id"])
+def test_segment_update_state_enforces_complete_owner_chain(
+    sqlite_session_factory: sessionmaker[Session], owner_field: str
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        setattr(segment, owner_field, "foreign-owner")
+        session.add(segment)
+    store = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1").segment("segment-1")
+
+    assert store.get_segment_update_state(ref) is None
+
+
 def test_empty_segment_list_returns_materialized_page(sqlite_session_factory: sessionmaker[Session]) -> None:
     with sqlite_session_factory.begin() as session:
         session.add(_dataset("dataset-1", "workspace-1"))
@@ -584,6 +598,82 @@ def segment_update(
         return detail
 
     return update
+
+
+@pytest.mark.parametrize("entry", ["console", "service_api"])
+@pytest.mark.parametrize("enabled", [True, False])
+def test_delete_segment_with_legacy_scalar_keywords(
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    entry: str,
+    enabled: bool,
+) -> None:
+    app, _, probe = indexing_probe
+    with sqlite_session_factory.begin() as session:
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.keywords = "legacy-scalar"
+        segment.enabled = enabled
+        segment.index_node_id = "index-1"
+        session.add(segment)
+        document = session.get(Document, "document-1")
+        assert document is not None
+        document.word_count = segment.word_count
+
+    if entry == "console":
+        app.delete_segment(
+            RequestContext("request", None, "author", "workspace-1"),
+            dataset_id="dataset-1",
+            document_id="document-1",
+            segment_id="segment-1",
+        )
+    else:
+        with sqlite_session_factory() as session:
+            dataset = session.get(Dataset, "dataset-1")
+            document = session.get(Document, "document-1")
+            segment = session.get(DocumentSegment, "segment-1")
+            assert dataset is not None
+            assert document is not None
+            assert segment is not None
+            SegmentService.delete_segment(segment, document, dataset, session, mutations=app.mutations)
+
+    with sqlite_session_factory() as session:
+        assert session.get(DocumentSegment, "segment-1") is None
+        document = session.get(Document, "document-1")
+        assert document is not None
+        assert document.word_count == 0
+    if enabled:
+        assert probe.tasks == [("delete", (["index-1"], "dataset-1", "document-1", ["segment-1"], []))]
+    else:
+        assert probe.tasks == []
+
+
+@pytest.mark.parametrize("keywords", ["legacy-scalar", 42, {"invalid": "object"}, [{"invalid": "item"}]])
+def test_update_repairs_legacy_keywords_without_validating_presentation_first(
+    segment_update: SegmentUpdateEntry,
+    sqlite_session_factory: sessionmaker[Session],
+    keywords: object,
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.keywords = keywords
+        segment.index_node_id = "index-1"
+        segment.index_node_hash = generate_text_hash(segment.content)
+        session.add(segment)
+
+    result = segment_update(
+        RequestContext("request", None, "editor", "workspace-1"),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="segment-1",
+        values={"content": "content", "keywords": ["replacement"]},
+    )
+
+    assert result.data.status == "completed"
+    assert result.data.keywords == ("replacement",)
+    with sqlite_session_factory() as session:
+        segment = session.get(DocumentSegment, "segment-1")
+        assert segment is not None
+        assert segment.keywords == ["replacement"]
 
 
 @pytest.mark.parametrize("content", ["original", "changed text"])

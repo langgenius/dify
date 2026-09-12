@@ -30,7 +30,7 @@ export const zDataSourceIntegratePageResponse = z.object({
   page_icon: zDataSourceIntegrateIconResponse.nullable(),
   page_id: z.string(),
   page_name: z.string(),
-  parent_id: z.string().nullable(),
+  parent_id: z.string(),
   type: zNotionPageType,
 })
 

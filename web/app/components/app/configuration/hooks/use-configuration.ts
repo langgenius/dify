@@ -22,7 +22,6 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
 import { useFileUploadConfig } from '@/service/use-common'
@@ -128,7 +127,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
-  const { isAPIKeySet } = useProviderContext()
   const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
     provider: modelConfig.provider,
     model: modelConfig.model_id,
@@ -367,7 +365,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
       isAdvancedMode,
       isAgent,
       isAllowVideoUpload,
-      isAPIKeySet,
       isFunctionCall,
       isOpenAI: modelConfig.provider === 'langgenius/openai/openai',
       isShowAudioConfig,

@@ -21,7 +21,7 @@ const mockCollectionPlugins = vi.fn()
 const mockCollections = vi.fn()
 const mockSearchAdvanced = vi.fn()
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/marketplace', () => ({
   marketplaceClient: {
     collections: (...args: unknown[]) => mockCollections(...args),
     collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),

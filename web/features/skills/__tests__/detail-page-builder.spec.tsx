@@ -93,7 +93,7 @@ describe('SkillDetailPage builder', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('moves the collapsed Skill Builder entry into the file tab header', async () => {
+  it('reopens Skill Builder from the collapsed entry', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
@@ -106,12 +106,14 @@ describe('SkillDetailPage builder', () => {
     const openBuilderButton = screen.getByRole('button', {
       name: 'skill.skillManagement.detail.builder.open',
     })
-    expect(openBuilderButton.closest('main')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'skill.skillManagement.detail.builder.title' }),
+    ).not.toBeInTheDocument()
 
     await user.click(openBuilderButton)
     expect(
-      await screen.findByRole('button', {
-        name: 'skill.skillManagement.detail.builder.close',
+      await screen.findByRole('region', {
+        name: 'skill.skillManagement.detail.builder.title',
       }),
     ).toBeInTheDocument()
   })

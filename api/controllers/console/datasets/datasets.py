@@ -14,6 +14,7 @@ import services
 from configs import dify_config
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
@@ -29,7 +30,6 @@ from controllers.console.datasets.indexing_estimate_payloads import NotionEstima
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     enterprise_license_required,
@@ -649,9 +649,7 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace()))
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
@@ -722,7 +720,7 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -791,7 +789,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(DatasetUpdatePayload)
     def patch(
@@ -858,7 +856,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Dataset deleted successfully")
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def delete(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -891,7 +889,7 @@ class DatasetUseCheckApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -913,7 +911,7 @@ class DatasetQueryApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1011,7 +1009,7 @@ class DatasetRelatedAppListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1050,7 +1048,7 @@ class DatasetIndexingStatusApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -1114,7 +1112,7 @@ class DatasetApiKeyApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session(write=False)
@@ -1132,7 +1130,7 @@ class DatasetApiKeyApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session
@@ -1193,7 +1191,7 @@ class DatasetApiDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session
@@ -1230,7 +1228,7 @@ class DatasetEnableApiApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, status: str):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -1305,7 +1303,7 @@ class DatasetErrorDocs(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -1332,7 +1330,7 @@ class DatasetPermissionUserListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1365,7 +1363,7 @@ class DatasetAutoDisableLogApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
