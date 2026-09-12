@@ -3,6 +3,7 @@
 import logging
 import re
 import uuid
+from collections.abc import Callable
 from typing import Any, TypedDict, cast, override
 
 from sqlalchemy import select
@@ -21,7 +22,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.entities import Rule
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.entities.extraction import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -113,7 +114,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         document_node.metadata["doc_id"] = doc_id
                         document_node.metadata["doc_hash"] = hash
                     multimodal_documents = (
-                        self._get_content_files(document_node, current_user, session=session)
+                        self._get_content_files(
+                            document_node,
+                            current_user,
+                            tenant_id=kwargs["tenant_id"],
+                            session=session,
+                        )
                         if document_node.metadata
                         else None
                     )
@@ -204,7 +210,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     "doc_hash": helper.generate_text_hash(content),
                 }
                 doc = Document(page_content=content, metadata=metadata)
-                attachments = self._get_content_files(doc, session=session)
+                attachments = self._get_content_files(doc, tenant_id=dataset.tenant_id, session=session)
                 if attachments:
                     doc.attachments = attachments
                     all_multimodal_documents.extend(attachments)
@@ -240,7 +246,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         account = AccountService.load_user(document.created_by, account_session)
                     if not account:
                         raise ValueError("Invalid account")
-                    doc.attachments = self._get_content_files(doc, current_user=account, session=session)
+                    doc.attachments = self._get_content_files(
+                        doc,
+                        current_user=account,
+                        tenant_id=dataset.tenant_id,
+                        session=session,
+                    )
                     if doc.attachments:
                         all_multimodal_documents.extend(doc.attachments)
                 documents.append(doc)
@@ -378,7 +389,6 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return preview_texts
 
     @staticmethod
-    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def generate_summary(
         tenant_id: str,
         text: str,
@@ -404,6 +414,30 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         Returns:
             Tuple of (summary_content, llm_usage) where llm_usage is LLMUsage object
         """
+
+        def load_images() -> list[File]:
+            images = (
+                ParagraphIndexProcessor._extract_images_from_segment_attachments(tenant_id, segment_id, session)
+                if segment_id
+                else []
+            )
+            return images or ParagraphIndexProcessor._extract_images_from_text(tenant_id, text, session)
+
+        return ParagraphIndexProcessor.generate_summary_from_inputs(
+            tenant_id, text, summary_index_setting, document_language=document_language, image_loader=load_images
+        )
+
+    @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
+    def generate_summary_from_inputs(
+        tenant_id: str,
+        text: str,
+        summary_index_setting: SummaryIndexSettingDict | None,
+        *,
+        document_language: str | None,
+        image_loader: Callable[[], list[File]],
+    ) -> tuple[str, LLMUsage]:
+        """Generate a summary after an explicit loader materializes any required images."""
         if not summary_index_setting or not summary_index_setting.get("enable"):
             raise ValueError("summary_index_setting is required and must be enabled to generate summary.")
 
@@ -447,15 +481,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         # Extract images if model supports vision
         image_files = []
         if supports_vision:
-            # First, try to get images from SegmentAttachmentBinding (preferred method)
-            if segment_id:
-                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(
-                    tenant_id, segment_id, session
-                )
-
-            # If no images from attachments, fall back to extracting from text
-            if not image_files:
-                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text, session)
+            image_files = image_loader()
 
         # Build prompt messages
         prompt_messages = []
@@ -603,6 +629,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             .where(
                 SegmentAttachmentBinding.segment_id == segment_id,
                 SegmentAttachmentBinding.tenant_id == tenant_id,
+                UploadFile.tenant_id == tenant_id,
             )
         ).all()
 

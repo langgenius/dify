@@ -93,6 +93,7 @@ class TriggerProviderService:
             if user is not None:
                 query = CredentialPermissionService.apply_visibility_filter(
                     query,
+                    tenant_id=tenant_id,
                     model_id_column=TriggerSubscription.id,
                     model_user_id_column=TriggerSubscription.user_id,
                     model_visibility_column=TriggerSubscription.visibility,

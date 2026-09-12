@@ -63,7 +63,7 @@ def console_account_admission[T, **P, R](
     def decorator(
         view: Callable[Concatenate[T, RequestContext, P], R],
     ) -> Callable[Concatenate[T, P], R | Response]:
-        @wraps(view, updated=())
+        @wraps(view)
         def inject_request_context(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
             account_with_tenant = current_account_with_tenant()
             account = account_with_tenant.account

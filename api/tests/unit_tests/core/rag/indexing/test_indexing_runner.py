@@ -65,6 +65,7 @@ from core.indexing_runner import (
     DocumentIsPausedError,
     IndexingRunner,
 )
+from core.rag.entities.extraction import UploadFileExtractionInput
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
 from enums import DeploymentEdition
@@ -328,20 +329,11 @@ class TestIndexingRunnerExtract:
             },
         }
 
-    def test_extract_upload_file_success(self, mock_dependencies, sample_dataset_document, sample_process_rule):
-        """Test successful extraction from uploaded file.
-
-        This test verifies that the IndexingRunner can successfully extract content
-        from an uploaded file and properly update document metadata. It ensures:
-        - The processor's extract method is called with correct parameters
-        - Document and dataset IDs are properly added to metadata
-        - The document status is updated during extraction
-
-        Expected behavior:
-        - Extract should return documents with updated metadata
-        - Each document should have document_id and dataset_id in metadata
-        - The processor's extract method should be called exactly once
-        """
+    @pytest.mark.parametrize("same_tenant", [True, False])
+    def test_extract_upload_file_is_scoped_to_document_tenant(
+        self, mock_dependencies, sample_dataset_document, sample_process_rule, same_tenant
+    ):
+        """Only tenant-owned uploads reach extraction, as prepared values in the caller's session."""
         # Arrange: Set up the test environment with mocked dependencies
         runner = IndexingRunner()
         mock_processor = MagicMock()
@@ -361,7 +353,7 @@ class TestIndexingRunnerExtract:
         mock_processor.extract.return_value = extracted_docs
         file_id = json.loads(sample_dataset_document.data_source_info)["upload_file_id"]
         upload_file = UploadFile(
-            tenant_id=sample_dataset_document.tenant_id,
+            tenant_id=sample_dataset_document.tenant_id if same_tenant else str(uuid.uuid4()),
             storage_type=StorageType.LOCAL,
             key="uploads/test.pdf",
             name="test.pdf",
@@ -377,10 +369,15 @@ class TestIndexingRunnerExtract:
         mock_dependencies["session"].add(upload_file)
         mock_dependencies["session"].commit()
 
-        with patch.object(runner, "_update_document_index_status"), patch("core.indexing_runner.ExtractSetting"):
+        with patch.object(runner, "_update_document_index_status"):
             result = runner._extract(
                 mock_processor, sample_dataset_document, sample_process_rule, mock_dependencies["session"]
             )
+
+        if not same_tenant:
+            assert result == []
+            mock_processor.extract.assert_not_called()
+            return
 
         # Assert: Verify the extraction results
         assert len(result) == 2, "Should extract 2 documents from the PDF"
@@ -392,6 +389,12 @@ class TestIndexingRunnerExtract:
         # Verify the processor was called exactly once (not multiple times)
         mock_processor.extract.assert_called_once()
         assert mock_processor.extract.call_args.kwargs["session"] is mock_dependencies["session"]
+        extraction_input = mock_processor.extract.call_args.args[0].upload_file
+        assert isinstance(extraction_input, UploadFileExtractionInput)
+        assert extraction_input.id == file_id
+        assert extraction_input.tenant_id == sample_dataset_document.tenant_id
+        assert extraction_input.key == "uploads/test.pdf"
+        assert extraction_input.created_by == "user-id"
 
     def test_extract_notion_import_success(self, mock_dependencies, sample_dataset_document, sample_process_rule):
         """Test successful extraction from Notion import."""
@@ -1833,12 +1836,26 @@ class TestIndexingRunnerEstimate:
             used=True,
         )
         image_file.id = "image-1"
-        session.add(image_file)
+        foreign_image_file = UploadFile(
+            tenant_id=str(uuid.uuid4()),
+            storage_type=StorageType.LOCAL,
+            key="image_files/tenant-2/foreign.png",
+            name="foreign.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="user-id",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        foreign_image_file.id = "image-2"
+        session.add_all([image_file, foreign_image_file])
         session.commit()
         phase_events.clear()
 
         with (
-            patch("core.indexing_runner.get_image_upload_file_ids", return_value=["image-1"]),
+            patch("core.indexing_runner.get_image_upload_file_ids", return_value=["image-1", "image-2"]),
             patch("core.indexing_runner.storage") as mock_storage,
         ):
             result = runner.indexing_estimate(
@@ -1856,6 +1873,7 @@ class TestIndexingRunnerEstimate:
         assert result.total_segments == 1
         mock_storage.delete.assert_called_once_with(image_file.key)
         assert session.get(UploadFile, image_file.id) is None
+        assert session.get(UploadFile, foreign_image_file.id) is not None
         assert phase_events == ["commit", "summary"]
 
 

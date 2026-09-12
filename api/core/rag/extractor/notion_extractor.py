@@ -7,7 +7,9 @@ import httpx
 from sqlalchemy import update
 
 from configs import dify_config
+from core.rag.entities.extraction import StoredDocumentExtractionInput
 from core.rag.extractor.extractor_base import BaseExtractor
+from core.rag.extractor.notion_credentials import resolve_stored_notion_access_token
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
@@ -41,7 +43,7 @@ class NotionExtractor(BaseExtractor):
         notion_obj_id: str,
         notion_page_type: str,
         tenant_id: str,
-        document_model: DocumentModel | None = None,
+        document_model: StoredDocumentExtractionInput | None = None,
         notion_access_token: str | None = None,
         credential_id: str | None = None,
     ):
@@ -54,23 +56,11 @@ class NotionExtractor(BaseExtractor):
         if notion_access_token:
             self._notion_access_token = notion_access_token
         else:
-            try:
-                self._notion_access_token = self._get_access_token(tenant_id, self._credential_id)
-            except Exception as e:
-                logger.warning(
-                    (
-                        "Failed to get Notion access token from datasource credentials: %s, "
-                        "falling back to environment variable NOTION_INTEGRATION_TOKEN"
-                    ),
-                    e,
-                )
-                integration_token = dify_config.NOTION_INTEGRATION_TOKEN
-                if integration_token is None:
-                    raise ValueError(
-                        "Must specify `integration_token` or set environment variable `NOTION_INTEGRATION_TOKEN`."
-                    ) from e
-
-                self._notion_access_token = integration_token
+            self._notion_access_token = resolve_stored_notion_access_token(
+                credential_id=credential_id,
+                load_token=lambda saved_id: self._get_access_token(tenant_id, saved_id),
+                integration_token=dify_config.NOTION_INTEGRATION_TOKEN,
+            )
 
     @override
     def extract(self) -> list[Document]:
@@ -346,7 +336,7 @@ class NotionExtractor(BaseExtractor):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
-    def update_last_edited_time(self, document_model: DocumentModel | None):
+    def update_last_edited_time(self, document_model: StoredDocumentExtractionInput | None):
         if not document_model:
             return
 
@@ -357,7 +347,11 @@ class NotionExtractor(BaseExtractor):
 
         db.session.execute(
             update(DocumentModel)
-            .where(DocumentModel.id == document_model.id)
+            .where(
+                DocumentModel.id == document_model.id,
+                DocumentModel.tenant_id == document_model.tenant_id,
+                DocumentModel.dataset_id == document_model.dataset_id,
+            )
             .values(data_source_info=json.dumps(data_source_info))
         )
         db.session.commit()

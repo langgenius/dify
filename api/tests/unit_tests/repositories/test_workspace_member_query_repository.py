@@ -124,3 +124,34 @@ def test_list_for_workspace_returns_empty_tuple_without_membership(
     result = WorkspaceMemberQueryRepository(sqlite_session_factory).list_for_workspace("workspace-1")
 
     assert result == ()
+
+
+def test_get_legacy_role_is_scoped_to_workspace_and_account(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    created_at = datetime(2026, 1, 1)
+    account = make_account("member", status=AccountStatus.ACTIVE, created_at=created_at)
+    workspace = make_tenant("workspace-1")
+    other_workspace = make_tenant("workspace-2")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                account,
+                workspace,
+                other_workspace,
+                TenantAccountJoin(
+                    tenant_id=workspace.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.DATASET_OPERATOR,
+                ),
+            ]
+        )
+
+    repository = WorkspaceMemberQueryRepository(sqlite_session_factory)
+
+    assert (
+        repository.get_legacy_role(workspace_id=workspace.id, account_id=account.id)
+        == TenantAccountRole.DATASET_OPERATOR.value
+    )
+    assert repository.get_legacy_role(workspace_id=other_workspace.id, account_id=account.id) is None
+    assert repository.get_legacy_role(workspace_id=workspace.id, account_id="other-account") is None

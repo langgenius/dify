@@ -145,6 +145,7 @@ describe('NotionPageSelector Base', () => {
 
     expect(screen.getByTestId('notion-page-selector-base')).toBeInTheDocument()
     expect(screen.getByText('Root 1')).toBeInTheDocument()
+    expect(screen.getByText('External 1')).toBeInTheDocument()
     const checkbox = screen.getByRole('checkbox', { name: 'Root 1' })
     await user.click(checkbox)
 

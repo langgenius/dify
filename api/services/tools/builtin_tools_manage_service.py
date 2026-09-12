@@ -377,6 +377,7 @@ class BuiltinToolManageService:
             if user is not None:
                 visible_query = CredentialPermissionService.apply_visibility_filter(
                     visible_query,
+                    tenant_id=tenant_id,
                     model_id_column=BuiltinToolProvider.id,
                     model_user_id_column=BuiltinToolProvider.user_id,
                     model_visibility_column=BuiltinToolProvider.visibility,

@@ -4,6 +4,7 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, Pipeline
@@ -12,6 +13,11 @@ from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from services.dataset_ref_service import DatasetRefService
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
+
+
+@pytest.fixture
+def pipeline_generator(mocker: MockerFixture):
+    return mocker.create_autospec(PipelineGenerator, instance=True, spec_set=True)
 
 
 def _make_pipeline(*, tenant_id: str = "tenant-1") -> Pipeline:
@@ -128,7 +134,7 @@ def test_get_workflow(mocker: MockerFixture, invoke_from, workflow, expected_err
 
 
 def test_generate_updates_document_status_and_returns_event_stream(
-    mocker: MockerFixture, sqlite_session: Session
+    mocker: MockerFixture, sqlite_session: Session, pipeline_generator
 ) -> None:
     dataset = _make_dataset()
     pipeline = _make_pipeline()
@@ -141,7 +147,7 @@ def test_generate_updates_document_status_and_returns_event_stream(
     update_status_mock = mocker.patch.object(PipelineGenerateService, "update_document_status")
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
-    generator_instance = generator_cls.return_value
+    generator_instance = pipeline_generator
     generator_instance.generate.return_value = "raw-events"
     generator_cls.convert_to_event_stream.return_value = "stream-events"
 
@@ -152,6 +158,7 @@ def test_generate_updates_document_status_and_returns_event_stream(
         invoke_from=InvokeFrom.WEB_APP,
         streaming=True,
         session=sqlite_session,
+        generator=pipeline_generator,
     )
 
     assert result == "stream-events"
@@ -163,7 +170,9 @@ def test_generate_updates_document_status_and_returns_event_stream(
     assert generator_instance.generate.call_args.kwargs["session"] is sqlite_session
 
 
-def test_generate_rejects_pipeline_dataset_from_another_tenant(mocker: MockerFixture, sqlite_session: Session) -> None:
+def test_generate_rejects_pipeline_dataset_from_another_tenant(
+    mocker: MockerFixture, sqlite_session: Session, pipeline_generator
+) -> None:
     dataset = _make_dataset(tenant_id="tenant-2")
     pipeline = _make_pipeline()
     sqlite_session.add_all([dataset, pipeline])
@@ -178,6 +187,7 @@ def test_generate_rejects_pipeline_dataset_from_another_tenant(mocker: MockerFix
             args={"original_document_id": "doc-1"},
             invoke_from=InvokeFrom.WEB_APP,
             session=sqlite_session,
+            generator=pipeline_generator,
         )
 
     update_status_mock.assert_not_called()
@@ -186,6 +196,7 @@ def test_generate_rejects_pipeline_dataset_from_another_tenant(mocker: MockerFix
 def test_generate_rejects_original_document_outside_pipeline_dataset_before_dispatch(
     mocker: MockerFixture,
     sqlite_session: Session,
+    pipeline_generator,
 ) -> None:
     dataset = _make_dataset()
     pipeline = _make_pipeline()
@@ -202,11 +213,12 @@ def test_generate_rejects_original_document_outside_pipeline_dataset_before_disp
             args={"original_document_id": "foreign-doc"},
             invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
             session=sqlite_session,
+            generator=pipeline_generator,
         )
 
     sqlite_session.refresh(outside_document)
     assert outside_document.indexing_status == IndexingStatus.COMPLETED
-    generator_cls.assert_not_called()
+    pipeline_generator.generate.assert_not_called()
 
 
 def test_update_document_status_updates_existing_document(sqlite_session: Session) -> None:
@@ -251,11 +263,13 @@ def test_update_document_status_rejects_document_outside_owner(
 # --- generate_single_iteration ---
 
 
-def test_generate_single_iteration_delegates(mocker: MockerFixture, sqlite_session: Session) -> None:
+def test_generate_single_iteration_delegates(
+    mocker: MockerFixture, sqlite_session: Session, pipeline_generator
+) -> None:
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=_make_workflow())
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
-    generator_instance = generator_cls.return_value
+    generator_instance = pipeline_generator
     generator_instance.single_iteration_generate.return_value = "raw-iter"
     generator_cls.convert_to_event_stream.return_value = "stream-iter"
 
@@ -264,7 +278,9 @@ def test_generate_single_iteration_delegates(mocker: MockerFixture, sqlite_sessi
     user = _make_account(account_id="u1")
     session = sqlite_session
 
-    result = PipelineGenerateService.generate_single_iteration(pipeline, user, "node-1", {"key": "val"}, session)
+    result = PipelineGenerateService.generate_single_iteration(
+        pipeline, user, "node-1", {"key": "val"}, session, generator=pipeline_generator
+    )
 
     assert result == "stream-iter"
     generator_instance.single_iteration_generate.assert_called_once()
@@ -274,11 +290,11 @@ def test_generate_single_iteration_delegates(mocker: MockerFixture, sqlite_sessi
 # --- generate_single_loop ---
 
 
-def test_generate_single_loop_delegates(mocker: MockerFixture, sqlite_session: Session) -> None:
+def test_generate_single_loop_delegates(mocker: MockerFixture, sqlite_session: Session, pipeline_generator) -> None:
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=_make_workflow())
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
-    generator_instance = generator_cls.return_value
+    generator_instance = pipeline_generator
     generator_instance.single_loop_generate.return_value = "raw-loop"
     generator_cls.convert_to_event_stream.return_value = "stream-loop"
 
@@ -287,7 +303,9 @@ def test_generate_single_loop_delegates(mocker: MockerFixture, sqlite_session: S
     user = _make_account(account_id="u1")
     session = sqlite_session
 
-    result = PipelineGenerateService.generate_single_loop(pipeline, user, "node-1", {"key": "val"}, session)
+    result = PipelineGenerateService.generate_single_loop(
+        pipeline, user, "node-1", {"key": "val"}, session, generator=pipeline_generator
+    )
 
     assert result == "stream-loop"
     generator_instance.single_loop_generate.assert_called_once()

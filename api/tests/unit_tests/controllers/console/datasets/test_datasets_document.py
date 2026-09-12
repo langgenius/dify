@@ -1,7 +1,9 @@
 import datetime
 import json
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 from flask import Flask
@@ -10,7 +12,9 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.console import console_ns
+from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.datasets_document import (
     DatasetDocumentListApi,
     DatasetInitApi,
@@ -40,15 +44,15 @@ from controllers.console.datasets.datasets_document import (
     WebsiteDocumentSyncApi,
 )
 from controllers.console.datasets.error import (
+    DatasetAccessDeniedRequestError,
     DocumentAlreadyFinishedError,
     DocumentIndexingError,
     IndexingEstimateError,
     InvalidActionError,
     InvalidMetadataError,
 )
-from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from extensions.storage.storage_type import StorageType
+from machinery.context import RequestContext
 from models.account import Account, TenantAccountRole
 from models.dataset import (
     Dataset,
@@ -58,9 +62,18 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.dataset import Document as DatasetDocument
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
-from models.model import UploadFile
-from services.dataset_ref_service import DatasetRef, DocumentRef
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.indexing.estimate import (
+    EstimateDocumentAlreadyFinishedError,
+    EstimateDocumentNotFoundError,
+    EstimateSourceNotFoundError,
+    IndexingEstimateCredentialUnavailableError,
+    IndexingEstimateExecutionError,
+    IndexingEstimateProviderUnavailableError,
+    UnsupportedEstimateSourceError,
+)
+from services.knowledge.resource_scope import DatasetRef
 from services.vector_space_admission_service import (
     VECTOR_SPACE_ADMISSION_ERROR_CODE,
     format_vector_space_admission_error,
@@ -141,24 +154,6 @@ def make_segment(*, position: int, completed: bool = True, document_id: str = "d
         created_by="u1",
         completed_at=datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC) if completed else None,
     )
-
-
-def make_upload_file() -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
-        key="document.txt",
-        name="document.txt",
-        size=10,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="u1",
-        created_at=datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
-        used=False,
-    )
-    upload_file.id = "file-1"
-    return upload_file
 
 
 @pytest.fixture
@@ -516,18 +511,15 @@ class TestDocumentResource(_UsesSQLiteSession):
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission"
             ) as check_permission,
             patch(
-                "controllers.console.datasets.datasets_document.DatasetRefService.get_document_by_ref",
-                return_value=document,
+                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
+                return_value=[document],
             ) as get_document,
         ):
             assert api.get_document(session, "ds-1", "doc-1", user, "tenant-1") is document
 
         get_dataset.assert_called_once_with("ds-1", "tenant-1", session=session)
         check_permission.assert_called_once_with(dataset, user, session)
-        get_document.assert_called_once_with(
-            DocumentRef(dataset=DatasetRef(tenant_id="tenant-1", dataset_id="ds-1"), document_id="doc-1"),
-            session=session,
-        )
+        get_document.assert_called_once_with(DatasetRef(tenant_id="tenant-1", dataset_id="ds-1"), ["doc-1"], session)
 
     def test_get_document_relies_on_rbac_in_rbac_mode(self, dataset):
         api = DocumentResource()
@@ -542,8 +534,8 @@ class TestDocumentResource(_UsesSQLiteSession):
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission"
             ) as check_permission,
             patch(
-                "controllers.console.datasets.datasets_document.DatasetRefService.get_document_by_ref",
-                return_value=make_document(),
+                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
+                return_value=[make_document()],
             ),
         ):
             api.get_document(session, "ds-1", "doc-1", make_account(), "tenant-1")
@@ -1102,53 +1094,6 @@ class TestDocumentSummaryStatusApi(_UsesSQLiteSession):
         assert response["summaries"][0]["status"] == "timeout"
 
 
-class TestDocumentIndexingEstimateApi(_UsesSQLiteSession):
-    def test_indexing_estimate_file_not_found(self, app: Flask, patch_tenant):
-        api = DocumentIndexingEstimateApi()
-        method = unwrap(api.get)
-        user, tenant_id = patch_tenant
-        document = make_document(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_info=json.dumps({"upload_file_id": "file-1"}),
-        )
-        session = self.session
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
-            with pytest.raises(NotFound):
-                method(api, session, tenant_id, user, "ds-1", "doc-1")
-
-    def test_indexing_estimate_generic_exception(self, app: Flask, patch_tenant):
-        api = DocumentIndexingEstimateApi()
-        method = unwrap(api.get)
-        user, tenant_id = patch_tenant
-        document = make_document(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_info=json.dumps({"upload_file_id": "file-1"}),
-        )
-        upload_file = make_upload_file()
-        mock_indexing_runner = MagicMock()
-        mock_indexing_runner.indexing_estimate.side_effect = RuntimeError("Some indexing error")
-        session = self.session
-        session.add(upload_file)
-        session.flush()
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_document", return_value=document),
-            patch("controllers.console.datasets.datasets_document.ExtractSetting", return_value=MagicMock()),
-            patch("controllers.console.datasets.datasets_document.IndexingRunner", return_value=mock_indexing_runner),
-        ):
-            with pytest.raises(IndexingEstimateError):
-                method(api, session, tenant_id, user, "ds-1", "doc-1")
-
-    def test_get_finished(self, app: Flask, patch_tenant):
-        api = DocumentIndexingEstimateApi()
-        method = unwrap(api.get)
-        user, tenant_id = patch_tenant
-        document = make_document(indexing_status=IndexingStatus.COMPLETED)
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
-            with pytest.raises(DocumentAlreadyFinishedError):
-                method(api, self.session, tenant_id, user, "ds-1", "doc-1")
-
-
 class TestDocumentBatchDownloadZipApi(_UsesSQLiteSession):
     def test_post_no_documents(self, app: Flask, patch_tenant):
         api = DocumentBatchDownloadZipApi()
@@ -1211,83 +1156,74 @@ class TestDatasetDocumentListApiDelete(_UsesSQLiteSession):
         delete_documents.assert_not_called()
 
 
-class TestDocumentBatchIndexingEstimateApi(_UsesSQLiteSession):
-    def test_batch_indexing_estimate_website(self, app: Flask, patch_tenant):
-        api = DocumentBatchIndexingEstimateApi()
+class TestIndexingEstimateExceptionMapping:
+    @staticmethod
+    def _registry(method_name: str, error: Exception) -> SimpleNamespace:
+        estimates = MagicMock()
+        getattr(estimates, method_name).side_effect = error
+        return SimpleNamespace(knowledge=SimpleNamespace(indexing_estimates=estimates))
+
+    @pytest.mark.parametrize(
+        ("error", "expected_http_error"),
+        [
+            (DatasetNotFoundError(), NotFoundError),
+            (EstimateDocumentNotFoundError(), NotFoundError),
+            (EstimateSourceNotFoundError("source-1"), NotFoundError),
+            (IndexingEstimateCredentialUnavailableError(), NotFoundError),
+            (DatasetAccessDeniedError(), DatasetAccessDeniedRequestError),
+            (EstimateDocumentAlreadyFinishedError(), DocumentAlreadyFinishedError),
+            (UnsupportedEstimateSourceError("unsupported"), InvalidArgumentError),
+            (IndexingEstimateProviderUnavailableError(), ProviderNotInitializeError),
+            (IndexingEstimateExecutionError(), IndexingEstimateError),
+        ],
+    )
+    def test_document_estimate_maps_application_errors(
+        self,
+        error: Exception,
+        expected_http_error: type[Exception],
+    ) -> None:
+        api = DocumentIndexingEstimateApi()
         method = unwrap(api.get)
-        user, tenant_id = patch_tenant
-        doc = make_document(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_type=DataSourceType.WEBSITE_CRAWL,
-            data_source_info=json.dumps(
-                {
-                    "provider": "firecrawl",
-                    "job_id": "j1",
-                    "url": "https://x.com",
-                    "mode": "single",
-                    "only_main_content": True,
-                }
-            ),
-        )
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_batch_documents", return_value=[doc]),
-            patch(
-                "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=IndexingEstimate(total_segments=2, preview=[]),
-            ),
+        context = RequestContext("request-1", None, "account-1", "workspace-1")
+        registry = self._registry("estimate_document", error)
+
+        with patch(
+            "controllers.console.datasets.datasets_document.application_services",
+            return_value=registry,
         ):
-            resp, status = method(api, self.session, tenant_id, user, "ds-1", "batch-1")
-        assert status == 200
+            with pytest.raises(expected_http_error):
+                method(api, context, UUID(int=1), UUID(int=2))
 
-    def test_batch_indexing_estimate_notion(self, app: Flask, patch_tenant):
+    @pytest.mark.parametrize(
+        ("error", "expected_http_error"),
+        [
+            (DatasetNotFoundError(), NotFoundError),
+            (EstimateDocumentNotFoundError(), NotFoundError),
+            (EstimateSourceNotFoundError("source-1"), NotFoundError),
+            (IndexingEstimateCredentialUnavailableError(), NotFoundError),
+            (DatasetAccessDeniedError(), DatasetAccessDeniedRequestError),
+            (EstimateDocumentAlreadyFinishedError(), DocumentAlreadyFinishedError),
+            (UnsupportedEstimateSourceError("unsupported"), InvalidArgumentError),
+            (IndexingEstimateProviderUnavailableError(), ProviderNotInitializeError),
+            (IndexingEstimateExecutionError(), IndexingEstimateError),
+        ],
+    )
+    def test_batch_estimate_maps_application_errors(
+        self,
+        error: Exception,
+        expected_http_error: type[Exception],
+    ) -> None:
         api = DocumentBatchIndexingEstimateApi()
         method = unwrap(api.get)
-        user, tenant_id = patch_tenant
-        doc = make_document(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_type=DataSourceType.NOTION_IMPORT,
-            data_source_info=json.dumps(
-                {
-                    "credential_id": "c1",
-                    "notion_workspace_id": "w1",
-                    "notion_page_id": "p1",
-                    "type": "page",
-                }
-            ),
-        )
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_batch_documents", return_value=[doc]),
-            patch(
-                "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=IndexingEstimate(total_segments=1, preview=[]),
-            ),
+        context = RequestContext("request-1", None, "account-1", "workspace-1")
+        registry = self._registry("estimate_batch", error)
+
+        with patch(
+            "controllers.console.datasets.datasets_document.application_services",
+            return_value=registry,
         ):
-            resp, status = method(api, self.session, tenant_id, user, "ds-1", "batch-1")
-        assert status == 200
-
-    def test_batch_estimate_unsupported_datasource(self, app: Flask, patch_tenant):
-        api = DocumentBatchIndexingEstimateApi()
-        method = unwrap(api.get)
-        user, tenant_id = patch_tenant
-        document = make_document(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_type="unknown",
-            data_source_info="{}",
-        )
-        with app.test_request_context("/"), patch.object(api, "get_batch_documents", return_value=[document]):
-            with pytest.raises(ValueError):
-                method(api, self.session, tenant_id, user, "ds-1", "batch-1")
-
-    def test_get_batch_estimate_invalid_batch(self, app: Flask, patch_tenant):
-        """Test batch estimation with invalid batch"""
-        api = DocumentBatchIndexingEstimateApi()
-        method = unwrap(api.get)
-        user, tenant_id = patch_tenant
-        with app.test_request_context("/"), patch.object(api, "get_batch_documents", side_effect=NotFound()):
-            with pytest.raises(NotFound):
-                method(api, self.session, tenant_id, user, "ds-1", "invalid-batch")
+            with pytest.raises(expected_http_error):
+                method(api, context, UUID(int=1), "unknown-batch")
 
 
 class TestDocumentBatchIndexingStatusApi(_UsesSQLiteSession):
@@ -1495,44 +1431,6 @@ class TestDocumentProcessingApiResume(_UsesSQLiteSession):
 
 
 class TestDocumentPermissionCases(_UsesSQLiteSession):
-    def test_document_batch_get_permission_denied(self, app: Flask, patch_tenant):
-        api = DocumentBatchIndexingEstimateApi()
-        method = unwrap(api.get)
-        user, tenant_id = patch_tenant
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=make_dataset(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("No permission"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, self.session, tenant_id, user, "ds-1", "batch-1")
-
-    def test_document_batch_get_documents_not_found(self, app: Flask, patch_tenant):
-        api = DocumentBatchIndexingEstimateApi()
-        method = unwrap(api.get)
-        user, tenant_id = patch_tenant
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=make_dataset(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch.object(api, "get_batch_documents", return_value=None),
-        ):
-            response, status = method(api, self.session, tenant_id, user, "ds-1", "batch-1")
-        assert status == 200
-        assert response == {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}
-
     def test_process_rule_get_by_document_success(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
         method = unwrap(api.get)
@@ -1627,29 +1525,3 @@ class TestDocumentListAdvancedCases(_UsesSQLiteSession):
             response, status = method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
             assert status == 200
             assert doc.doc_metadata == {"amount": 5000, "currency": "USD"}
-
-
-class TestDocumentIndexingEdgeCases(_UsesSQLiteSession):
-    def test_document_indexing_with_extraction_setting(self, app: Flask, patch_tenant):
-        api = DocumentIndexingEstimateApi()
-        method = unwrap(api.get)
-        user, tenant_id = patch_tenant
-        document = make_document(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_info=json.dumps({"upload_file_id": "file-1"}),
-        )
-        upload_file = make_upload_file()
-        session = self.session
-        session.add(upload_file)
-        session.flush()
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_document", return_value=document),
-            patch("controllers.console.datasets.datasets_document.ExtractSetting", return_value=MagicMock()),
-            patch(
-                "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=IndexingEstimate(total_segments=5, preview=[]),
-            ),
-        ):
-            response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")
-        assert status == 200

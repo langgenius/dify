@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthBindingRepository
-from services.entities.data_source_api_key_auth_entities import (
+from services.entities.data_source.api_key_auth import (
     DataSourceApiKeyAuthBindingRecord,
     DataSourceApiKeyAuthCredentials,
 )
