@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal, TypedDict, cast
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import ColumnElement, delete, exists, func, select, update
+from sqlalchemy import ColumnElement, case, delete, exists, func, select, tuple_, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -1971,6 +1971,41 @@ class DocumentService:
         ).all()
 
         return documents
+
+    @staticmethod
+    def get_document_segment_counts(
+        documents: Sequence[Document],
+        session: Session,
+    ) -> dict[str, tuple[int, int]]:
+        """Get completed and total segment counts for multiple documents in one query."""
+        if not documents:
+            return {}
+
+        document_owner_keys = {
+            (str(document.tenant_id), str(document.dataset_id), str(document.id)) for document in documents
+        }
+
+        rows = session.execute(
+            select(
+                DocumentSegment.document_id,
+                func.count(DocumentSegment.id).label("total_segments"),
+                func.coalesce(func.sum(case((DocumentSegment.completed_at.isnot(None), 1), else_=0)), 0).label(
+                    "completed_segments"
+                ),
+            )
+            .where(
+                tuple_(DocumentSegment.tenant_id, DocumentSegment.dataset_id, DocumentSegment.document_id).in_(
+                    document_owner_keys
+                ),
+                DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+            )
+            .group_by(DocumentSegment.document_id)
+        )
+
+        return {
+            str(document_id): (int(completed_segments or 0), int(total_segments or 0))
+            for document_id, total_segments, completed_segments in rows
+        }
 
     @staticmethod
     def get_document_file_detail(file_id: str, session: Session):
