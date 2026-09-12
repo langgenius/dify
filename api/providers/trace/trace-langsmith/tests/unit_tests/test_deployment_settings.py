@@ -120,8 +120,9 @@ def test_requests_ca_precedence_and_directory_capture(
     assert base64.b64decode(LangSmithConfig.load_runtime_settings(config)["tls"]["certificate"]) == b"captured CA"
 
 
+@pytest.mark.parametrize("mode", ["langsmith", "otel", "hybrid"])
 def test_captured_private_ca_is_used_by_the_real_https_transport(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str
 ) -> None:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "localhost")])
@@ -152,6 +153,10 @@ def test_captured_private_ca_is_used_by_the_real_https_transport(
             self.end_headers()
             self.wfile.write(b"[]")
 
+        def do_POST(self):
+            self.send_response(200)
+            self.end_headers()
+
         @override
         def log_message(self, format: str, *args: Any) -> None:
             pass
@@ -164,6 +169,8 @@ def test_captured_private_ca_is_used_by_the_real_https_transport(
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
+        monkeypatch.setenv("LANGSMITH_TRACING_MODE", mode)
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", f"https://localhost:{server.server_port}/traces")
         monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(ca_file))
         settings = resolve_provider_config(
             "langsmith", {"api_key": "key", "project": "project", "endpoint": f"https://localhost:{server.server_port}"}
@@ -174,7 +181,9 @@ def test_captured_private_ca_is_used_by_the_real_https_transport(
             "core.ops.provider_export.ssrf_proxy.create_http_client",
             lambda *, ssl_context: httpx.Client(verify=ssl_context, trust_env=False),
         )
-        assert LangSmithTraceClient(settings).verify_credentials()
+        client = LangSmithTraceClient(settings)
+        assert client.verify_credentials()
+        assert client.export_trace(make_completed_trace()).spans
     finally:
         server.shutdown()
         server.server_close()

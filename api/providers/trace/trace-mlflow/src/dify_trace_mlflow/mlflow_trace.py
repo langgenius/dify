@@ -19,7 +19,14 @@ from requests.structures import CaseInsensitiveDict
 from requests.utils import get_auth_from_url
 
 from core.helper.ssl_context import create_ssl_context
-from core.ops.otlp_trace import OtlpTraceClient, limit_span_attributes, otlp_attributes, otlp_span, otlp_value
+from core.ops.otlp_trace import (
+    OtlpTraceClient,
+    limit_span_attributes,
+    limit_span_events,
+    otlp_attributes,
+    otlp_span,
+    otlp_value,
+)
 from core.ops.provider_export import (
     TraceExportError,
     TraceProviderHttpClient,
@@ -274,6 +281,22 @@ def _read_span_attribute(value: str | None) -> Any:
         return value
 
 
+def _read_event_attribute(value: AnyValue) -> JsonValue:
+    match value.WhichOneof("value"):
+        case "array_value":
+            return [_read_event_attribute(item) for item in value.array_value.values]
+        case "kvlist_value":
+            return {item.key: _read_event_attribute(item.value) for item in value.kvlist_value.values}
+        case "int_value":
+            return value.int_value
+        case "double_value":
+            return value.double_value
+        case "bool_value":
+            return value.bool_value
+        case _:
+            return value.string_value
+
+
 class MLflowTraceClient:
     def __init__(self, provider_name: str, provider_config: dict[str, Any]):
         self.provider_name = provider_name
@@ -288,6 +311,7 @@ class MLflowTraceClient:
         self.sampling_ratio = float(runtime_settings.get("sampling_ratio", 1.0))
         self.disabled = bool(runtime_settings.get("disabled", False))
         self.span_attribute_limits = dict(runtime_settings.get("span_attribute_limits", {}))
+        self.event_limits = dict(runtime_settings.get("event_limits", {}))
         self._aws_sigv4 = dict(runtime_settings["aws_sigv4"]) if runtime_settings.get("aws_sigv4") else None
         self._request_auth_provider = load_request_auth_provider(runtime_settings.get("request_auth_provider"))
         self._request_headers = MLflowRequestHeaders(runtime_settings.get("request_headers", {}))
@@ -441,6 +465,47 @@ class MLflowTraceClient:
         bounded = limit_span_attributes(Span(attributes=otlp_attributes(serialized)), **self.span_attribute_limits)
         return {attribute.key: attribute.value.string_value for attribute in bounded.attributes}
 
+    def _build_otlp_span(
+        self, completed_trace: CompletedTrace, span: TraceSpan, parent_span: dict[str, JsonValue] | None = None
+    ) -> Span:
+        exported_span = otlp_span(completed_trace, span, parent_span, attributes={})
+        if _span_failed(span):
+            exported_span.status.code = Status.STATUS_CODE_ERROR
+            error = span.error
+            event_name = "error"
+            if span.node_execution_id:
+                node_status = span.attributes.get("node_status") or (
+                    "exception" if span.status == "handled_error" else "failed"
+                )
+                error = f"Node failed with status: {node_status}"
+                event_name = "exception"
+            elif span.span_type == "workflow":
+                event_name = "exception"
+            elif span.attributes.get("operation_type") not in {"message", "tool", "suggested_question"} and (
+                span.span_type != "tool"
+            ):
+                error = None
+            if error:
+                exported_span.events.append(
+                    Span.Event(
+                        name=event_name,
+                        time_unix_nano=timestamp_ns(span.ended_at),
+                        attributes=otlp_attributes(
+                            {
+                                "exception.message": error,
+                                "exception.type": "Error",
+                                "exception.stacktrace": error,
+                            }
+                        ),
+                    )
+                )
+        limit_span_events(exported_span, **self.event_limits)
+        # Native MLflow omits OpenTelemetry's dropped counters in both serializations.
+        exported_span.dropped_events_count = 0
+        for event in exported_span.events:
+            event.dropped_attributes_count = 0
+        return exported_span
+
     def export_trace(
         self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
     ) -> ExportedParentSpans:
@@ -481,19 +546,12 @@ class MLflowTraceClient:
             trace_id = _parse_trace_uuid(str(parent_span["trace_id"])) if parent_span else trace_id
             spans = []
             for span in completed_trace.spans:
-                exported_span = otlp_span(
-                    completed_trace,
-                    span,
-                    parent_span,
-                    attributes={},
-                )
+                exported_span = self._build_otlp_span(completed_trace, span, parent_span)
                 exported_span.attributes.extend(
                     KeyValue(key=key, value=otlp_value(_read_span_attribute(value)) if value else AnyValue())
                     for key, value in self._attributes(completed_trace, span, "tr-" + UUID(trace_id).hex).items()
                 )
                 exported_span.trace_id = UUID(trace_id).bytes
-                if _span_failed(span):
-                    exported_span.status.code = Status.STATUS_CODE_ERROR
                 spans.append(exported_span)
             client = OtlpTraceClient(
                 self.http.endpoint + "/v1/traces",
@@ -690,9 +748,9 @@ class MLflowTraceClient:
                     {
                         "name": event.name,
                         "time_unix_nano": event.time_unix_nano,
-                        "attributes": {entry.key: entry.value.string_value for entry in event.attributes},
+                        "attributes": {entry.key: _read_event_attribute(entry.value) for entry in event.attributes},
                     }
-                    for event in otlp_span(completed_trace, span).events
+                    for event in self._build_otlp_span(completed_trace, span).events
                 ],
                 "status": {
                     "code": "STATUS_CODE_ERROR" if _span_failed(span) else "STATUS_CODE_OK",

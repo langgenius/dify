@@ -18,7 +18,7 @@ from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span
 
-from core.ops.otlp_trace import OtlpTraceClient, limit_span_attributes, otlp_attributes
+from core.ops.otlp_trace import OtlpTraceClient, limit_span_attributes, limit_span_events, otlp_attributes
 from core.ops.provider_export import TraceExportError, TraceProviderHttpClient
 from core.ops.trace_data import CompletedTrace, TraceSource
 from core.ops.workflow_trace import WorkflowTraceRecorder
@@ -59,6 +59,34 @@ def test_omitted_attribute_limits_preserve_the_complete_protocol_message() -> No
     limit_span_attributes(span)
 
     assert span.SerializeToString() == before
+
+
+def test_event_limits_preserve_latest_events_and_account_for_drops() -> None:
+    span = Span(
+        events=[
+            Span.Event(name="first"),
+            Span.Event(name="second", attributes=otlp_attributes({"old": 1, "nested": ["abcdef", {"text": "αβγδ"}]})),
+        ],
+        dropped_events_count=2,
+    )
+    original = span.SerializeToString()
+    assert limit_span_events(span) is span
+    assert span.SerializeToString() == original
+    with pytest.raises(ValueError):
+        limit_span_events(span, max_events=-1)
+    assert span.SerializeToString() == original
+
+    limit_span_events(span, max_events=1, max_attributes=1, max_value_length=3)
+
+    assert span.dropped_events_count == 3
+    assert len(span.events) == 1
+    event = span.events[0]
+    assert event.name == "second"
+    assert event.dropped_attributes_count == 1
+    assert event.attributes == otlp_attributes({"nested": ["abc", {"text": "αβγ"}]})
+    limit_span_events(span, max_events=0)
+    assert not span.events
+    assert span.dropped_events_count == 4
 
 
 @pytest.mark.parametrize("limits", [{"max_attributes": -1}, {"max_value_length": -1}])
