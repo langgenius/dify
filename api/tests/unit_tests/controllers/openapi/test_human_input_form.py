@@ -1,4 +1,12 @@
-"""Tests for openapi human input form endpoints."""
+"""Tests for openapi human input form endpoints.
+
+Auth is not exercised here: `@endpoint` resolves the `Context` before the handler
+runs, and the allow/deny answers live in `test_auth_matrix.py`. The recipient-surface
+refusal is `CheckFormSurface`'s — a `Requirement` this feature owns rather than the
+auth layer, so it is pinned here too. Body tests call `__handler__` — the one seam —
+with a `Context` double. The submit route's 422 goes over the wire instead,
+in the shared table in `test_workspaces_members.py`.
+"""
 
 from __future__ import annotations
 
@@ -7,40 +15,66 @@ import sys
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import UnprocessableEntity
 
+from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
-from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import Scope, TokenType
+from controllers.openapi._models import FormSubmitResponse
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.requirements import Rank
+from controllers.openapi.auth.subjects import Subject
+from controllers.openapi.human_input_form import (
+    CheckFormSurface,
+    OpenApiWorkflowHumanInputFormApi,
+    OpenApiWorkflowHumanInputFormSubmitApi,
+)
 from models.account import Account
-from models.enums import EndUserType
+from models.enums import CreatorUserRole, EndUserType
 from models.human_input import RecipientType
 from models.model import App, AppMode, EndUser
 
+_MODULE = "controllers.openapi.human_input_form"
 
-def _make_auth_data(app_model, caller, caller_kind):
-    return AuthData.model_construct(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.uuid4(),
-        scopes=frozenset({Scope.FULL}),
-        app=app_model,
-        caller=caller,
-        caller_kind=caller_kind,
+
+def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> Context:
+    """A store already filled the way the route's requirements would have filled it."""
+    ctx = Context(
+        cast(Subject, SimpleNamespace(caller_role=caller_role)),
+        Mock(),
+        {"app_id": "app-1", "form_token": "tok-1"},
     )
-
-
-def _make_app() -> App:
-    return App(
+    ctx._app = App(
         id="app-1",
         tenant_id="tenant-1",
         name="Human input app",
         mode=AppMode.WORKFLOW,
         enable_site=True,
         enable_api=True,
+    )
+    ctx._caller = caller
+    return ctx
+
+
+def _mock_service(monkeypatch: pytest.MonkeyPatch, form) -> Mock:
+    """Bind a mocked `HumanInputService` (and the engine it is built from) into the module."""
+    service_mock = Mock()
+    service_mock.get_form_by_token.return_value = form
+    module = sys.modules[_MODULE]
+    monkeypatch.setattr(module, "HumanInputService", lambda _engine: service_mock)
+    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+    return service_mock
+
+
+def _make_form(app_id: str = "app-1", recipient_type=RecipientType.STANDALONE_WEB_APP) -> SimpleNamespace:
+    return SimpleNamespace(
+        app_id=app_id,
+        tenant_id="tenant-1",
+        recipient_type=recipient_type,
+        expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
     )
 
 
@@ -61,9 +95,7 @@ def _make_end_user(end_user_id: str = "eu-1") -> EndUser:
 
 
 class TestOpenApiHumanInputFormGet:
-    def test_get_success(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
-        from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
-
+    def test_get_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         definition = SimpleNamespace(
             model_dump=lambda: {
                 "rendered_content": "Fill out the form",
@@ -72,31 +104,17 @@ class TestOpenApiHumanInputFormGet:
                 "user_actions": [{"id": "submit", "title": "Submit"}],
             }
         )
-        form = SimpleNamespace(
-            app_id="app-1",
-            tenant_id="tenant-1",
-            recipient_type=RecipientType.STANDALONE_WEB_APP,
-            expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
-            get_definition=lambda: definition,
-        )
-        service_mock = Mock()
-        service_mock.get_form_by_token.return_value = form
-        service_mock.ensure_form_active = Mock()
-
-        module = sys.modules["controllers.openapi.human_input_form"]
-        monkeypatch.setattr(module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+        form = _make_form()
+        form.get_definition = lambda: definition
+        service_mock = _mock_service(monkeypatch, form)
 
         api = OpenApiWorkflowHumanInputFormApi()
-        app_model = _make_app()
-        caller = _make_account()
-
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
-            resp = api.get.__wrapped__(
+            resp = api.get.__handler__(
                 api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 form_token="tok-1",
-                auth_data=_make_auth_data(app_model, caller, "account"),
             )
 
         payload = json.loads(resp.get_data(as_text=True))
@@ -105,119 +123,49 @@ class TestOpenApiHumanInputFormGet:
         assert payload["user_actions"] == [{"id": "submit", "title": "Submit"}]
         service_mock.ensure_form_active.assert_called_once_with(form)
 
-    def test_get_form_not_found(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
-        from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
-
-        service_mock = Mock()
-        service_mock.get_form_by_token.return_value = None
-        module = sys.modules["controllers.openapi.human_input_form"]
-        monkeypatch.setattr(module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+    def test_get_form_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        _mock_service(monkeypatch, None)
 
         api = OpenApiWorkflowHumanInputFormApi()
-        app_model = _make_app()
-        caller = _make_account()
-
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/bad"):
             with pytest.raises(HumanInputFormNotFound):
-                api.get.__wrapped__(
+                api.get.__handler__(
                     api,
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     form_token="bad",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
-    def test_get_form_wrong_app(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
-        from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
-
-        form = SimpleNamespace(
-            app_id="other-app",
-            tenant_id="tenant-1",
-            recipient_type=RecipientType.STANDALONE_WEB_APP,
-            expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
-        )
-        service_mock = Mock()
-        service_mock.get_form_by_token.return_value = form
-        module = sys.modules["controllers.openapi.human_input_form"]
-        monkeypatch.setattr(module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+    def test_get_form_wrong_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        _mock_service(monkeypatch, _make_form(app_id="other-app"))
 
         api = OpenApiWorkflowHumanInputFormApi()
-        app_model = _make_app()
-        caller = _make_account()
-
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
             with pytest.raises(HumanInputFormNotFound):
-                api.get.__wrapped__(
+                api.get.__handler__(
                     api,
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     form_token="tok-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
-                )
-
-    def test_get_form_wrong_surface(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
-        from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
-
-        form = SimpleNamespace(
-            app_id="app-1",
-            tenant_id="tenant-1",
-            recipient_type=RecipientType.CONSOLE,
-            expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
-        )
-        service_mock = Mock()
-        service_mock.get_form_by_token.return_value = form
-        module = sys.modules["controllers.openapi.human_input_form"]
-        monkeypatch.setattr(module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
-
-        api = OpenApiWorkflowHumanInputFormApi()
-        app_model = _make_app()
-        caller = _make_account()
-
-        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
-            with pytest.raises(RecipientSurfaceMismatch):
-                api.get.__wrapped__(
-                    api,
-                    app_id="app-1",
-                    form_token="tok-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
 
 class TestOpenApiHumanInputFormPost:
-    def _make_form(self, app_id="app-1", recipient_type=RecipientType.STANDALONE_WEB_APP):
-        return SimpleNamespace(
-            app_id=app_id,
-            tenant_id="tenant-1",
-            recipient_type=recipient_type,
-            expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
-        )
-
-    def test_post_account_caller_uses_user_id(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
-        from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
-
-        form = self._make_form()
-        service_mock = Mock()
-        service_mock.get_form_by_token.return_value = form
-
-        module = sys.modules["controllers.openapi.human_input_form"]
-        monkeypatch.setattr(module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+    def test_post_account_caller_uses_user_id(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        service_mock = _mock_service(monkeypatch, _make_form())
 
         api = OpenApiWorkflowHumanInputFormSubmitApi()
-        app_model = _make_app()
-        caller = _make_account("acct-42")
-
         with app.test_request_context(
             "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
             method="POST",
             json={"action": "approve", "inputs": {"field1": "val"}},
         ):
-            result = api.post.__wrapped__(
+            result = api.post.__handler__(
                 api,
+                _context(_make_account("acct-42"), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 form_token="tok-1",
-                auth_data=_make_auth_data(app_model, caller, "account"),
+                body=HumanInputFormSubmitPayload(action="approve", inputs={"field1": "val"}),
             )
 
         service_mock.submit_form_by_token.assert_called_once_with(
@@ -228,33 +176,23 @@ class TestOpenApiHumanInputFormPost:
             submission_user_id="acct-42",
             submission_end_user_id=None,
         )
-        assert result == ({}, 200)
+        assert result == FormSubmitResponse()
 
-    def test_post_end_user_caller_uses_end_user_id(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
-        from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
-
-        form = self._make_form()
-        service_mock = Mock()
-        service_mock.get_form_by_token.return_value = form
-
-        module = sys.modules["controllers.openapi.human_input_form"]
-        monkeypatch.setattr(module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+    def test_post_end_user_caller_uses_end_user_id(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        service_mock = _mock_service(monkeypatch, _make_form())
 
         api = OpenApiWorkflowHumanInputFormSubmitApi()
-        app_model = _make_app()
-        caller = _make_end_user("eu-7")
-
         with app.test_request_context(
             "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
             method="POST",
             json={"action": "approve", "inputs": {}},
         ):
-            result = api.post.__wrapped__(
+            result = api.post.__handler__(
                 api,
+                _context(_make_end_user("eu-7"), CreatorUserRole.END_USER),
                 app_id="app-1",
                 form_token="tok-1",
-                auth_data=_make_auth_data(app_model, caller, "end_user"),
+                body=HumanInputFormSubmitPayload(action="approve", inputs={}),
             )
 
         service_mock.submit_form_by_token.assert_called_once_with(
@@ -265,57 +203,48 @@ class TestOpenApiHumanInputFormPost:
             submission_user_id=None,
             submission_end_user_id="eu-7",
         )
-        assert result == ({}, 200)
+        assert result == FormSubmitResponse()
 
-    def test_post_standalone_web_app_recipient_submits(
-        self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+
+@pytest.mark.parametrize(
+    "view",
+    [OpenApiWorkflowHumanInputFormApi.get, OpenApiWorkflowHumanInputFormSubmitApi.post],
+    ids=["get", "submit"],
+)
+def test_both_routes_declare_the_surface_check_last_at_the_default_rank(view):
+    """The wiring, not the requirement's own logic: `CheckFormSurface` only runs
+    on a route that declares it, and the allow/deny matrix has no console-recipient
+    case, so removing either declaration changes no row there. It carries no rank
+    of its own, so declaration order is what keeps it last.
+    """
+    assert isinstance(view.__spec__.requirements[-1], CheckFormSurface)
+    assert CheckFormSurface.rank is Rank.NORMAL
+
+
+class TestCheckFormSurface:
+    """The refusal itself. Declared last at both routes, so it answers before
+    the handler body runs.
+    """
+
+    def _run(self, monkeypatch: pytest.MonkeyPatch, form) -> None:
+        _mock_service(monkeypatch, form)
+        ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
+        CheckFormSurface().run(ctx.subject, ctx, Mock())
+
+    def test_admits_a_web_app_recipient(self, monkeypatch: pytest.MonkeyPatch):
+        self._run(monkeypatch, _make_form(recipient_type=RecipientType.STANDALONE_WEB_APP))
+
+    @pytest.mark.parametrize("recipient_type", [RecipientType.CONSOLE, RecipientType.BACKSTAGE, None])
+    def test_refuses_a_recipient_this_surface_may_not_act_on(self, monkeypatch: pytest.MonkeyPatch, recipient_type):
+        with pytest.raises(RecipientSurfaceMismatch):
+            self._run(monkeypatch, _make_form(recipient_type=recipient_type))
+
+    @pytest.mark.parametrize("form", [None, "foreign"])
+    def test_leaves_a_form_the_caller_could_not_have_found_to_the_handlers_404(
+        self, monkeypatch: pytest.MonkeyPatch, form
     ):
-        from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
-
-        form = self._make_form(recipient_type=RecipientType.STANDALONE_WEB_APP)
-        service_mock = Mock()
-        service_mock.get_form_by_token.return_value = form
-
-        module = sys.modules["controllers.openapi.human_input_form"]
-        monkeypatch.setattr(module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
-
-        api = OpenApiWorkflowHumanInputFormSubmitApi()
-        app_model = _make_app()
-        caller = _make_end_user("anyone")
-
-        with app.test_request_context(
-            "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
-            method="POST",
-            json={"action": "approve", "inputs": {}},
-        ):
-            result = api.post.__wrapped__(
-                api,
-                app_id="app-1",
-                form_token="tok-1",
-                auth_data=_make_auth_data(app_model, caller, "end_user"),
-            )
-
-        service_mock.submit_form_by_token.assert_called_once()
-        assert result == ({}, 200)
-
-    def test_post_rejects_invalid_body_with_422(self, app: Flask, bypass_pipeline):
-        """Malformed body → 422 via @accepts (was an unmapped pydantic error → 500)."""
-        from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
-
-        api = OpenApiWorkflowHumanInputFormSubmitApi()
-        app_model = _make_app()
-        caller = _make_account("acct-42")
-
-        with app.test_request_context(
-            "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
-            method="POST",
-            json={"inputs": {"field1": "val"}},  # missing required "action"
-        ):
-            with pytest.raises(UnprocessableEntity):
-                api.post.__wrapped__(
-                    api,
-                    app_id="app-1",
-                    form_token="tok-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
-                )
+        """Answering 403 on a console-bound form in another app would confirm the
+        token exists; the handler's own 404 owns both cases.
+        """
+        foreign = _make_form(app_id=str(uuid.uuid4()), recipient_type=RecipientType.CONSOLE)
+        self._run(monkeypatch, foreign if form == "foreign" else None)

@@ -1,0 +1,228 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from unittest.mock import patch
+
+import pytest
+from flask import Flask
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden, NotFound
+
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
+from controllers.openapi.auth.requirements import (
+    CheckAppAccess,
+    CheckAppApiEnabled,
+    CheckRBACPermission,
+    CheckSubject,
+    CheckWorkspaceRole,
+    assert_license_valid,
+)
+from controllers.openapi.auth.subjects import AccountSubject
+from enums import DeploymentEdition
+from models.account import AccountStatus, TenantAccountRole
+from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
+from services.entities.feature_entities import (
+    LicenseStatus,
+)
+
+from ._world import (
+    APP_ID,
+    CLIENT_ID,
+    TOKEN_ID,
+    account_subject,
+    make_account,
+    make_app,
+    make_ctx,
+    make_membership,
+    make_tenant,
+    never_reached,
+    persist,
+    sso_subject,
+    system_features,
+    webapp_settings,
+)
+
+FEATURES = "controllers.openapi.auth.requirements.SystemFeatureService.get_public_system_features"
+WEBAPP_AUTH = "controllers.openapi.auth.requirements.EnterpriseService.WebAppAuth"
+ACCESS_MODE = f"{WEBAPP_AUTH}.get_app_access_mode_by_id"
+ENFORCE_RBAC = "controllers.openapi.auth.requirements.enforce_rbac_checks"
+APP_FETCH = "controllers.openapi.auth.loaders.AppService.get_app_by_id"
+
+
+def test_subject_check_emits_the_wrong_surface_audit(app: Flask, sqlite_session: Session) -> None:
+    subject = sso_subject()
+
+    with app.test_request_context("/openapi/v1/account"):
+        with patch("controllers.openapi.auth.requirements.emit_wrong_surface") as emit:
+            requirement = CheckSubject(allowed=[AccountSubject])
+            with pytest.raises(Forbidden, match="unsupported_token_type"):
+                requirement.run(subject, make_ctx(sqlite_session, subject=subject), sqlite_session)
+
+    emit.assert_called_once_with(
+        subject_type="external_sso",
+        attempted_path="/openapi/v1/account",
+        client_id=CLIENT_ID,
+        token_id=TOKEN_ID,
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "denied"),
+    [
+        (LicenseStatus.INACTIVE, True),
+        (LicenseStatus.LOST, True),
+        (LicenseStatus.NONE, False),
+    ],
+)
+def test_assert_license_valid_denies_only_dead_licences(status: LicenseStatus, denied: bool) -> None:
+    with patch(FEATURES, return_value=system_features(license_status=status)):
+        if denied:
+            with pytest.raises(Forbidden, match="license_invalid"):
+                assert_license_valid()
+        else:
+            assert_license_valid()
+
+
+def test_an_app_requirement_off_an_app_route_is_a_wiring_bug(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """App requirements are declared per endpoint, so a route with no `app_id`
+    can only carry one by mistake. It raises rather than passing quietly:
+    skipping would turn a misdeclaration into a check that silently never runs.
+    """
+    monkeypatch.setattr(APP_FETCH, never_reached)
+    subject = account_subject()
+
+    with pytest.raises(LookupError, match="app_id is not a path parameter"):
+        CheckAppApiEnabled().run(subject, make_ctx(sqlite_session, subject=subject), sqlite_session)
+
+
+class TestCheckRBACPermission:
+    @staticmethod
+    def _requirement() -> CheckRBACPermission:
+        return CheckRBACPermission(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+
+    def test_skips_a_non_account_caller(self, sqlite_session: Session, config_overrides: Callable[..., None]) -> None:
+        """No matrix row reaches this: on the routes an SSO token can address,
+        RBAC permission either does not apply or no permission is declared, so an SSO caller falling
+        into account-scoped RBAC is invisible there.
+        """
+        config_overrides(RBAC_ENABLED=True)
+        subject = sso_subject()
+
+        with patch(ENFORCE_RBAC) as enforce:
+            self._requirement().run(subject, make_ctx(sqlite_session, subject=subject, app_id=APP_ID), sqlite_session)
+
+        enforce.assert_not_called()
+
+    def test_is_inert_wherever_rbac_is_off(
+        self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        """No matrix row reaches this: every row runs against a stubbed RBAC
+        backend, so a permission that enforced where RBAC is switched off would still
+        be admitted there. Standing down is what leaves the `CheckWorkspaceRole`
+        beside it as the only arm there.
+        """
+        config_overrides(RBAC_ENABLED=False)
+        persist(sqlite_session, make_app(), make_tenant(), make_account())
+        subject = account_subject()
+        ctx = make_ctx(sqlite_session, subject=subject, app_id=APP_ID)
+
+        with app.test_request_context(f"/openapi/v1/apps/{APP_ID}"):
+            with patch(ENFORCE_RBAC) as enforce:
+                self._requirement().run(subject, ctx, sqlite_session)
+
+        enforce.assert_not_called()
+
+
+class TestCheckWorkspaceRole:
+    admin_only = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
+
+    def test_skips_a_non_account_caller(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        """No matrix row reaches this either — and the workspace role check must not even fetch
+        the app to decide it.
+        """
+        monkeypatch.setattr(APP_FETCH, never_reached)
+        subject = sso_subject()
+
+        CheckWorkspaceRole(self.admin_only).run(
+            subject, make_ctx(sqlite_session, subject=subject, app_id=APP_ID), sqlite_session
+        )
+
+    def test_the_workspace_role_reads_the_role_through_the_loader(
+        self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        """The answer is `load_workspace_role`'s, not a direct role read's: an
+        account that is not `ACTIVE` is a non-member, and hears 404 rather than
+        the workspace role check's own 403.
+
+        No matrix row reaches this. An `EARLY` membership check pre-empts the
+        `NORMAL` workspace role check on every shipped route, and the matrix mints only `ACTIVE`
+        accounts — so this is the only thing standing between the workspace role check and a
+        refactor that calls `get_account_role_in_tenant` itself, which would
+        re-admit a banned admin and answer 403 where the surface answers 404.
+        """
+        config_overrides(RBAC_ENABLED=False)
+        persist(
+            sqlite_session,
+            make_app(),
+            make_tenant(),
+            make_account(status=AccountStatus.BANNED),
+            make_membership(TenantAccountRole.ADMIN),
+        )
+        subject = account_subject()
+        ctx = make_ctx(sqlite_session, subject=subject, app_id=APP_ID)
+
+        with app.test_request_context(f"/openapi/v1/apps/{APP_ID}"):
+            with pytest.raises(NotFound, match="workspace not found"):
+                CheckWorkspaceRole(self.admin_only).run(subject, ctx, sqlite_session)
+
+
+class TestCheckAppAccess:
+    @pytest.fixture(autouse=True)
+    def _enterprise(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+
+    def test_no_ops_outside_enterprise(
+        self, sqlite_session: Session, config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The named guard for the CE contract: the access-mode service is never
+        reached at all. Dropping the early return is otherwise only caught
+        incidentally, by an unrelated test that happens not to stub it.
+        """
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        monkeypatch.setattr(ACCESS_MODE, never_reached)
+        persist(sqlite_session, make_app())
+        subject = account_subject()
+
+        CheckAppAccess().run(subject, make_ctx(sqlite_session, subject=subject, app_id=APP_ID), sqlite_session)
+
+    @pytest.mark.parametrize(
+        ("settings", "failure"),
+        [
+            (webapp_settings("a-mode-this-build-has-never-heard-of"), None),
+            (None, ValueError("enterprise said no")),
+        ],
+        ids=["unknown mode", "service error"],
+    )
+    def test_rejects_an_access_mode_it_could_not_load(
+        self, sqlite_session: Session, settings: WebAppSettings | None, failure: Exception | None
+    ) -> None:
+        persist(sqlite_session, make_app())
+        subject = account_subject()
+        ctx = make_ctx(sqlite_session, subject=subject, app_id=APP_ID)
+
+        with patch(FEATURES, return_value=system_features(webapp_auth=True)):
+            with patch(ACCESS_MODE, return_value=settings, side_effect=failure):
+                with pytest.raises(Forbidden, match="app or access mode not loaded"):
+                    CheckAppAccess().run(subject, ctx, sqlite_session)
+
+    def test_refuses_a_private_app_when_the_user_cannot_be_resolved(self, sqlite_session: Session) -> None:
+        persist(sqlite_session, make_app())
+        subject = account_subject(account_id=None)
+        ctx = make_ctx(sqlite_session, subject=subject, app_id=APP_ID)
+
+        with patch(FEATURES, return_value=system_features(webapp_auth=True)):
+            with patch(ACCESS_MODE, return_value=webapp_settings(WebAppAccessMode.PRIVATE.value)):
+                with pytest.raises(Forbidden, match="cannot resolve user for private app check"):
+                    CheckAppAccess().run(subject, ctx, sqlite_session)

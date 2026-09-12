@@ -1,5 +1,6 @@
-from inspect import unwrap
+from collections.abc import Callable
 from types import SimpleNamespace
+from typing import Protocol, cast
 from unittest.mock import Mock
 
 import pytest
@@ -10,7 +11,16 @@ from werkzeug.exceptions import Forbidden
 from controllers.openapi import app_dsl as app_dsl_module
 from controllers.openapi._models import AppDslImportPayload
 from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi
+from controllers.openapi.auth.spec import EndpointSpec
+from models import Account
 from services.errors.account import NoPermissionError
+
+
+class _EndpointView(Protocol):
+    """Structural stand-in for a `view` carrying the attributes `@endpoint` attaches."""
+
+    __spec__: EndpointSpec
+    __handler__: Callable[..., object]
 
 
 @pytest.mark.parametrize(
@@ -44,6 +54,6 @@ def test_permission_denial_maps_to_forbidden(
 
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
         with pytest.raises(Forbidden, match="denied") as exc_info:
-            unwrap(api.post)(api, auth_data=SimpleNamespace(caller=Mock()), **kwargs)
+            cast(_EndpointView, api.post).__handler__(api, SimpleNamespace(account=Mock(spec=Account)), **kwargs)
 
     assert isinstance(exc_info.value.__cause__, NoPermissionError)
