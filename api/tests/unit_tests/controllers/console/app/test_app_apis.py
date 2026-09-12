@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import uuid
 from collections.abc import Iterator
 from inspect import unwrap
@@ -13,7 +14,7 @@ from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console import console_ns
 from controllers.console.app import (
@@ -85,6 +86,7 @@ from services.app_tracing_config_service import (
     AppTracingConfigNotFoundError,
     AppTracingConfigVerificationFailedError,
 )
+from services.errors.account import NoPermissionError
 from tests.unit_tests.config_override import apply_config_overrides
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
@@ -259,6 +261,69 @@ class TestCompletionEndpoints:
 
 
 class TestAppEndpoints:
+    @pytest.mark.parametrize("include_workflow_tools", [False, True])
+    def test_export_returns_requested_format_and_forwards_options(
+        self,
+        database_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        include_workflow_tools: bool,
+    ) -> None:
+        api = app_module.AppExportApi()
+        app_model = _make_app()
+        account = _make_account()
+        bundle = b"PK\x03\x04bundle"
+        export_bundle = MagicMock(return_value=bundle)
+        export_dsl = MagicMock(return_value="app: demo")
+        monkeypatch.setattr(app_module, "current_account_with_tenant", lambda: (account, TENANT_ID))
+        monkeypatch.setattr(app_module.AppDslBundleService, "export_bundle", export_bundle)
+        monkeypatch.setattr(app_module.AppDslService, "export_dsl", export_dsl)
+
+        with database_app.test_request_context():
+            response = unwrap(api.get)(
+                api,
+                app_module.AppExportQuery(
+                    include_workflow_tools=include_workflow_tools,
+                    include_secret=True,
+                    workflow_id="published-workflow",
+                ),
+                app_model,
+            )
+
+            assert response == {
+                "data": base64.b64encode(bundle).decode("ascii") if include_workflow_tools else "app: demo",
+                "format": "zip" if include_workflow_tools else "yaml",
+            }
+            if include_workflow_tools:
+                export_bundle.assert_called_once_with(
+                    app_model=app_model, account=account, include_secret=True, workflow_id="published-workflow"
+                )
+                export_dsl.assert_not_called()
+            else:
+                export_dsl.assert_called_once_with(
+                    app_model=app_model, session=db.session(), include_secret=True, workflow_id="published-workflow"
+                )
+                export_bundle.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("error", "response_error"),
+        [(NoPermissionError("export denied"), Forbidden), (ValueError("invalid bundle"), BadRequest)],
+    )
+    def test_bundle_export_maps_service_errors(
+        self,
+        database_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        error: Exception,
+        response_error: type[Exception],
+    ) -> None:
+        api = app_module.AppExportApi()
+        monkeypatch.setattr(app_module, "current_account_with_tenant", lambda: (_make_account(), TENANT_ID))
+        monkeypatch.setattr(app_module.AppDslBundleService, "export_bundle", MagicMock(side_effect=error))
+
+        with database_app.test_request_context(), pytest.raises(response_error, match=str(error)) as exc_info:
+            unwrap(api.get)(api, app_module.AppExportQuery(include_workflow_tools=True), _make_app())
+
+        assert exc_info.value.__cause__ is error
+
     def test_publish_to_creators_platform_issues_oauth_code_through_application_service(
         self,
         database_app: Flask,

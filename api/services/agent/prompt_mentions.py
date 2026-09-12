@@ -29,6 +29,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 from models.agent_config_entities import (
     AgentHumanContactConfig,
@@ -141,6 +142,45 @@ def parse_prompt_mentions(prompt: str) -> list[PromptMention]:
             )
         )
     return mentions
+
+
+def rewrite_workflow_tool_mentions(document: dict[str, Any], mapping: dict[str, tuple[str, str]]) -> None:
+    """Remap bundled Soul tool mentions before their tool configuration is rewritten."""
+    for package in document.get("agent_packages", {}).values():
+        soul = package.get("soul", {})
+        prompt_config = soul.get("prompt", {})
+        prompt = prompt_config.get("system_prompt")
+        if not isinstance(prompt, str):
+            continue
+        replacements: dict[str, str] = {}
+        for tool in soul.get("tools", {}).get("dify_tools", []):
+            provider_id = tool.get("provider_id") or tool.get("provider_name")
+            if tool.get("provider_type") != "workflow" or provider_id not in mapping:
+                continue
+            new_provider_id, new_name = mapping[provider_id]
+            old_name = tool.get("tool_name") or new_name
+            prefixes = {
+                value for key in ("provider_id", "provider_name", "provider", "plugin_id") if (value := tool.get(key))
+            }
+            if tool.get("plugin_id") and tool.get("provider"):
+                prefixes.add(f"{tool['plugin_id']}/{tool['provider']}")
+            if tool.get("tool_name"):
+                replacements.setdefault(old_name, new_name)
+            for prefix in prefixes:
+                replacements.setdefault(f"{prefix}/{old_name}", f"{new_provider_id}/{new_name}")
+                if not tool.get("tool_name"):
+                    replacements.setdefault(f"{prefix}/*", f"{new_provider_id}/{new_name}")
+        chunks: list[str] = []
+        cursor = 0
+        for mention in parse_prompt_mentions(prompt):
+            replacement = replacements.get(mention.ref_id) if mention.kind == MentionKind.TOOL else None
+            if replacement is None:
+                continue
+            suffix = mention.raw[len("[§tool:") + len(mention.ref_id) :]
+            chunks.extend((prompt[cursor : mention.start], f"[§tool:{replacement}{suffix}"))
+            cursor = mention.end
+        if chunks:
+            prompt_config["system_prompt"] = "".join((*chunks, prompt[cursor:]))
 
 
 def expand_prompt_mentions(prompt: str, resolver: MentionResolver) -> str:
@@ -390,6 +430,7 @@ __all__ = [
     "find_malformed_mention_markers",
     "normalize_previous_node_output_selector",
     "parse_prompt_mentions",
+    "rewrite_workflow_tool_mentions",
     "scrub_mention_markers",
     "workflow_previous_node_output_refs_from_selectors",
 ]

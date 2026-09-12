@@ -1,8 +1,6 @@
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type {
   AppDetailResponse,
-  DSLImportMode,
-  DSLImportResponse,
   TracingConfig,
   TracingStatus,
   UpdateAppModelConfigResponse,
@@ -83,66 +81,6 @@ export const updateAppInfo = ({
     max_active_requests,
   }
   return put<AppDetailResponse>(`apps/${appID}`, { body })
-}
-
-export const exportAppConfig = ({
-  appID,
-  include = false,
-  workflowID,
-}: {
-  appID: string
-  include?: boolean
-  workflowID?: string
-}): Promise<{ data: string }> => {
-  const params = new URLSearchParams({
-    include_secret: include.toString(),
-  })
-  if (workflowID) params.append('workflow_id', workflowID)
-  return get<{ data: string }>(`apps/${appID}/export?${params.toString()}`)
-}
-
-export const importDSL = ({
-  mode,
-  yaml_content,
-  yaml_url,
-  app_id,
-  name,
-  description,
-  icon_type,
-  icon,
-  icon_background,
-}: {
-  mode: DSLImportMode
-  yaml_content?: string
-  yaml_url?: string
-  app_id?: string
-  name?: string
-  description?: string
-  icon_type?: AppIconType
-  icon?: string
-  icon_background?: string
-}): Promise<DSLImportResponse> => {
-  return post<DSLImportResponse>('apps/imports', {
-    body: {
-      mode,
-      yaml_content,
-      yaml_url,
-      app_id,
-      name,
-      description,
-      icon,
-      icon_type,
-      icon_background,
-    },
-  })
-}
-
-export const importDSLConfirm = ({
-  import_id,
-}: {
-  import_id: string
-}): Promise<DSLImportResponse> => {
-  return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
 }
 
 export const deleteApp = (appID: string): Promise<CommonResponse> => {

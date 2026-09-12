@@ -1,7 +1,8 @@
 import type { Import } from '@dify/contracts/api/openapi/types.gen'
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { ActiveContext } from '@/auth/hosts'
-import { writeFileSync } from 'node:fs'
+import { Buffer } from 'node:buffer'
+import { rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
 import { DSL_YAML } from '@test/fixtures/dify-mock/scenarios'
@@ -63,6 +64,19 @@ describe('runImportApp', () => {
 
     expect(mock.lastImportBody?.mode).toBe('yaml-content')
     expect(mock.lastImportBody?.yaml_content).toBe(DSL_YAML)
+  })
+
+  it('sends a ZIP file as base64 bundle content regardless of its extension', async () => {
+    const filePath = join(os.tmpdir(), `difyctl-import-bundle-${Date.now()}`)
+    const content = Buffer.from('PK\x03\x04bundle')
+    writeFileSync(filePath, content)
+    try {
+      await runImportApp({ fromFile: filePath }, { active: baseActive, http: http() })
+      expect(mock.lastImportBody?.mode).toBe('bundle-content')
+      expect(mock.lastImportBody?.yaml_content).toBe(content.toString('base64'))
+    } finally {
+      rmSync(filePath, { force: true })
+    }
   })
 
   it('sends yaml_url when given --from-url', async () => {

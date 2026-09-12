@@ -6,7 +6,7 @@ import { agentGuide } from './guide'
 import { pluginDependencyLabel, runImportApp } from './run'
 
 export default class ImportStudioApp extends DifyCommand {
-  static override description = 'Import a studio app from a DSL YAML file or URL'
+  static override description = 'Import a studio app from a DSL YAML/ZIP file or URL'
 
   static override effect: CommandEffect = 'write'
 

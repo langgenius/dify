@@ -33,7 +33,7 @@ class RequestContext(BaseModel):
     path_params: dict[str, str]
     workspace_membership: bool = False
     allowed_roles: frozenset[TenantAccountRole] | None = None
-    rbac: RBACCheck | None = None
+    rbac: RBACCheck | tuple[RBACCheck, ...] | None = None
 
 
 class AuthData(BaseModel):
@@ -50,7 +50,7 @@ class AuthData(BaseModel):
     path_params: dict[str, str] = Field(default_factory=dict)
 
     allowed_roles: frozenset[TenantAccountRole] | None = None
-    rbac: RBACCheck | None = None
+    rbac: RBACCheck | tuple[RBACCheck, ...] | None = None
 
     app: App | None = None
     tenant: Tenant | None = None

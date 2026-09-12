@@ -5,6 +5,7 @@ _get_active_account helper. Auth/setup decorators are tested separately
 in test_auth_wraps.py; handler tests use inspect.unwrap() to bypass them.
 """
 
+import base64
 import inspect
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -276,6 +277,69 @@ class TestEnterpriseAppDSLExport:
         with patch.object(dsl_module, "db", SimpleNamespace(session=db_session)):
             yield db_session
         db_session.remove()
+
+    @pytest.mark.parametrize(
+        ("include_secret", "workflow_id"),
+        [(False, None), (True, "F1FD7266-56FC-45C7-9D81-A72CD5A1B4F6")],
+    )
+    def test_export_bundle_returns_base64_zip_and_forwards_options(
+        self,
+        api_instance: EnterpriseAppDSLExport,
+        app: Flask,
+        sqlite_session: Session,
+        scoped_db: scoped_session[Session],
+        monkeypatch: pytest.MonkeyPatch,
+        include_secret: bool,
+        workflow_id: str | None,
+    ) -> None:
+        app_model = _persist_app(sqlite_session)
+        bundle = b"PK\x03\x04bundle"
+        export_bundle = MagicMock(return_value=bundle)
+        monkeypatch.setattr(dsl_module.AppDslBundleService, "export_bundle", export_bundle)
+        query = f"?include_workflow_tools=true&include_secret={str(include_secret).lower()}"
+        if workflow_id:
+            query += f"&workflow_id={workflow_id}"
+
+        with app.test_request_context(query):
+            body, status = inspect.unwrap(api_instance.get)(api_instance, app_id=app_model.id)
+
+        assert status == 200
+        assert body == {"data": base64.b64encode(bundle).decode("ascii"), "format": "zip"}
+        export_bundle.assert_called_once_with(
+            app_model=scoped_db.get(App, app_model.id),
+            account=None,
+            include_secret=include_secret,
+            workflow_id=workflow_id.lower() if workflow_id else None,
+        )
+
+    @pytest.mark.parametrize(
+        ("error", "code", "status"),
+        [
+            (WorkflowNotFoundError("selected workflow missing"), "workflow_version_not_found", 404),
+            (IsDraftWorkflowError("selected workflow is a draft"), "workflow_version_not_published", 400),
+            (ValueError("nested workflow is unavailable"), "invalid_app_bundle", 400),
+        ],
+    )
+    def test_export_bundle_maps_service_errors(
+        self,
+        api_instance: EnterpriseAppDSLExport,
+        app: Flask,
+        sqlite_session: Session,
+        scoped_db: scoped_session[Session],
+        monkeypatch: pytest.MonkeyPatch,
+        error: Exception,
+        code: str,
+        status: int,
+    ) -> None:
+        app_model = _persist_app(sqlite_session)
+        monkeypatch.setattr(dsl_module.AppDslBundleService, "export_bundle", MagicMock(side_effect=error))
+
+        with app.test_request_context("?include_workflow_tools=true"):
+            body, response_status = inspect.unwrap(api_instance.get)(api_instance, app_id=app_model.id)
+
+        assert response_status == status
+        assert body == {"code": code, "message": str(error), "status": status}
+        assert scoped_db.get(App, app_model.id) is not None
 
     @patch("controllers.inner_api.app.dsl.AppDslService")
     def test_export_success_returns_200(

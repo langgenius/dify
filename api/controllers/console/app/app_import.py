@@ -1,3 +1,5 @@
+from typing import Literal
+
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -38,8 +40,10 @@ from .permission_keys import get_app_permission_keys
 
 
 class AppImportPayload(BaseModel):
-    mode: str = Field(..., description="Import mode")
-    yaml_content: str | None = Field(None)
+    mode: Literal["yaml-content", "yaml-url", "bundle-content"] = Field(
+        ..., description="Import YAML text, a URL, or a base64 ZIP bundle"
+    )
+    yaml_content: str | None = Field(None, description="YAML DSL text or base64-encoded ZIP for bundle-content")
     yaml_url: str | None = Field(None)
     name: str | None = Field(None)
     description: str | None = Field(None)
