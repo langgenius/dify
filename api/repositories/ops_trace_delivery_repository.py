@@ -1,6 +1,7 @@
 """Short SQL transactions own staging uploads and export leases."""
 
 import base64
+import json
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
@@ -8,6 +9,7 @@ from typing import cast
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
+from pydantic import JsonValue
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased, sessionmaker
@@ -410,13 +412,29 @@ class OpsTraceDeliveryRepository:
             session.commit()
             return signals
 
-    def complete_export_signal(self, delivery: OpsTraceDelivery, name: str) -> None:
+    def completed_export_signal_receipt(self, delivery: OpsTraceDelivery, name: str) -> dict[str, JsonValue] | None:
+        with self.session_factory() as session:
+            now = self.database_time(session)
+            persisted = self._lock_export_delivery(session, delivery, now)
+            receipt = (persisted.export_state or {}).get("signal_receipts", {}).get(name)
+            session.commit()
+            return receipt
+
+    def complete_export_signal(
+        self, delivery: OpsTraceDelivery, name: str, receipt: dict[str, JsonValue] | None = None
+    ) -> None:
         if not name or len(name) > 64:
             raise ValueError("invalid_export_signal")
         with self.session_factory() as session:
             now = self.database_time(session)
             persisted = self._lock_export_delivery(session, delivery, now)
             state = dict(persisted.export_state or {})
+            if receipt is not None:
+                receipts = dict(state.get("signal_receipts", {}))
+                receipts.setdefault(name, receipt)
+                if len(json.dumps(receipts, allow_nan=False).encode()) > 64 * 1024:
+                    raise ValueError("export_signal_receipts_too_large")
+                state["signal_receipts"] = receipts
             state["completed_signals"] = sorted({*state.get("completed_signals", []), name})
             persisted.export_state = state
             session.commit()
