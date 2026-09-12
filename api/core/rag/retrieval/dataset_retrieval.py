@@ -33,6 +33,7 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_context import with_credit_usage_created_by, with_credit_usage_metadata
 from core.model_manager import ModelInstance, ModelManager
@@ -108,6 +109,19 @@ default_retrieval_model: DefaultRetrievalModelDict = {
 }
 
 logger = logging.getLogger(__name__)
+
+_RETRIEVER_FATAL_ERRORS = (
+    QuotaExceededError,
+    ProviderTokenNotInitError,
+    ModelCurrentlyNotSupportError,
+    exc.KnowledgeRetrievalNodeError,
+)
+
+
+def _should_propagate_retriever_error(error: Exception) -> bool:
+    """Quota and credential failures must not be swallowed by per-dataset skip logic."""
+    return isinstance(error, _RETRIEVER_FATAL_ERRORS)
+
 
 _POSTGRES_DEADLOCK_SQLSTATE = "40P01"
 _HIT_COUNT_UPDATE_MAX_ATTEMPTS = 3
@@ -1273,7 +1287,7 @@ class DatasetRetrieval:
                 attachment_ids=attachment_ids,
             )
         except Exception as exc:
-            if skip_on_error:
+            if skip_on_error and not _should_propagate_retriever_error(exc):
                 logger.warning(
                     "Skipping dataset retrieval because retriever failed, dataset_id=%s, error_type=%s, error=%s",
                     dataset_id,
