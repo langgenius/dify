@@ -464,7 +464,7 @@ function Operation({
         {!isOpeningStatement && (
           <div
             className={cn(
-              'ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+              'ml-1 hidden max-md:flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
               answerActiveFlexClassName,
             )}
             data-testid="operation-actions"
