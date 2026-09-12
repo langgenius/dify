@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
@@ -296,6 +297,35 @@ def test_get_plugin_provider_raises_when_provider_missing():
         with patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context):
             with patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls:
                 mock_manager_cls.return_value.fetch_tool_provider.return_value = None
+                with pytest.raises(ToolProviderNotFoundError, match="plugin provider provider-a not found"):
+                    ToolManager.get_plugin_provider("provider-a", "tenant-1")
+
+
+@pytest.mark.parametrize(
+    "daemon_error",
+    [
+        PluginNotFoundError("plugin not found"),
+        PluginDaemonNotFoundError("daemon unreachable"),
+    ],
+)
+def test_get_plugin_provider_translates_plugin_daemon_errors_to_domain_error(daemon_error):
+    """#41805: ``PluginToolManager.fetch_tool_provider`` raises
+    ``PluginNotFoundError`` (the provider is unknown to the plugin
+    daemon) or ``PluginDaemonNotFoundError`` (the daemon itself is
+    unreachable) instead of returning ``None``. Without the boundary
+    translation at ``ToolManager.get_plugin_provider`` those errors
+    leak out as HTTP 500 from the builtin credential endpoints; with the
+    fix they surface as the existing ``ToolProviderNotFoundError``
+    domain error, which the controller layer maps to HTTP 400/404.
+    """
+    provider_context = _SimpleContextVar()
+    lock_context = _SimpleContextVar()
+    lock_context.set(threading.Lock())
+
+    with patch("core.tools.tool_manager.contexts.plugin_tool_providers", provider_context):
+        with patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context):
+            with patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls:
+                mock_manager_cls.return_value.fetch_tool_provider.side_effect = daemon_error
                 with pytest.raises(ToolProviderNotFoundError, match="plugin provider provider-a not found"):
                     ToolManager.get_plugin_provider("provider-a", "tenant-1")
 
