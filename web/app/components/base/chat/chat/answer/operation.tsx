@@ -44,8 +44,10 @@ type FeedbackTooltipProps = {
 }
 
 const feedbackTooltipClassName = 'max-w-[260px]'
-const answerActiveFlexClassName = 'group-hover:flex group-has-[[data-popup-open]]:flex'
-const answerActiveBlockClassName = 'group-hover:block group-has-[[data-popup-open]]:block'
+const answerActiveFlexClassName =
+  'group-hover:flex group-has-[[data-popup-open]]:flex [@media(hover:none)]:flex'
+const answerActiveBlockClassName =
+  'group-hover:block group-has-[[data-popup-open]]:block [@media(hover:none)]:block'
 const feedbackActionsClassName =
   'flex pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100'
 const accentPressedClassName =
