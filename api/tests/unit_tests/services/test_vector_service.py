@@ -414,6 +414,8 @@ def test_update_segment_vector_high_quality_uses_vector(
     vector_instance = MagicMock()
     vector_cls = MagicMock(return_value=vector_instance)
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
+    keyword_instance = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Keyword", MagicMock(return_value=keyword_instance))
 
     VectorService.update_segment_vector(["k"], segment, dataset, session=sqlite_session)
 
@@ -567,21 +569,38 @@ def test_create_child_chunk_vector_high_quality_adds_texts(
     vector_instance = MagicMock()
     vector_cls = MagicMock(return_value=vector_instance)
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
+    keyword_instance = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Keyword", MagicMock(return_value=keyword_instance))
 
     VectorService.create_child_chunk_vector(child_chunk, dataset, session=sqlite_session)
     vector_cls.assert_called_once_with(dataset=dataset, session=sqlite_session)
     vector_instance.add_texts.assert_called_once()
+    keyword_instance.add_texts.assert_called_once()
 
 
-def test_create_child_chunk_vector_economy_noop(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+def test_create_child_chunk_vector_economy_adds_keyword_without_vector(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
     vector_cls = MagicMock()
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
+    keyword_instance = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Keyword", MagicMock(return_value=keyword_instance))
 
     child_chunk = _make_child_chunk(index_node_id="id", index_node_hash="h")
 
     VectorService.create_child_chunk_vector(child_chunk, dataset, session=sqlite_session)
     vector_cls.assert_not_called()
+    keyword_documents = keyword_instance.add_texts.call_args.args[0]
+    assert len(keyword_documents) == 1
+    assert keyword_documents[0].page_content == "child"
+    assert keyword_documents[0].metadata == {
+        "doc_id": "id",
+        "doc_hash": "h",
+        "document_id": "doc-1",
+        "dataset_id": "dataset-1",
+    }
+    keyword_instance.add_texts.assert_called_once_with(keyword_documents, sqlite_session)
 
 
 def test_update_child_chunk_vector_high_quality_updates_vector(
@@ -600,6 +619,8 @@ def test_update_child_chunk_vector_high_quality_updates_vector(
     vector_instance = MagicMock()
     vector_cls = MagicMock(return_value=vector_instance)
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
+    keyword_instance = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Keyword", MagicMock(return_value=keyword_instance))
 
     VectorService.update_child_chunk_vector([new_chunk], [upd_chunk], [del_chunk], dataset, session=sqlite_session)
 
@@ -608,14 +629,61 @@ def test_update_child_chunk_vector_high_quality_updates_vector(
     vector_instance.add_texts.assert_called_once()
     docs = vector_instance.add_texts.call_args.args[0]
     assert len(docs) == 2
+    keyword_instance.delete_by_ids.assert_called_once_with(["uid", "did"], sqlite_session)
+    keyword_instance.add_texts.assert_called_once_with(docs, sqlite_session)
 
 
-def test_update_child_chunk_vector_economy_noop(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+def test_update_child_chunk_vector_economy_updates_keywords_without_vector(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
     vector_cls = MagicMock()
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
-    VectorService.update_child_chunk_vector([], [], [], dataset, session=sqlite_session)
+    keyword_instance = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Keyword", MagicMock(return_value=keyword_instance))
+
+    new_chunk = MagicMock(
+        content="new",
+        index_node_id="new-id",
+        index_node_hash="new-hash",
+        document_id="doc-1",
+        dataset_id="dataset-1",
+    )
+    updated_chunk = MagicMock(
+        content="updated",
+        index_node_id="updated-id",
+        index_node_hash="updated-hash",
+        document_id="doc-1",
+        dataset_id="dataset-1",
+    )
+    deleted_chunk = MagicMock(index_node_id="deleted-id")
+
+    VectorService.update_child_chunk_vector(
+        [new_chunk], [updated_chunk], [deleted_chunk], dataset, session=sqlite_session
+    )
+
     vector_cls.assert_not_called()
+    keyword_instance.delete_by_ids.assert_called_once_with(["updated-id", "deleted-id"], sqlite_session)
+    keyword_documents = keyword_instance.add_texts.call_args.args[0]
+    assert [document.page_content for document in keyword_documents] == ["new", "updated"]
+    assert [document.metadata["doc_id"] for document in keyword_documents] == ["new-id", "updated-id"]
+    keyword_instance.add_texts.assert_called_once_with(keyword_documents, sqlite_session)
+
+
+def test_update_child_chunk_vector_empty_change_does_not_touch_indexes(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
+    vector_cls = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
+    keyword_instance = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Keyword", MagicMock(return_value=keyword_instance))
+
+    VectorService.update_child_chunk_vector([], [], [], dataset, session=sqlite_session)
+
+    vector_cls.assert_not_called()
+    keyword_instance.delete_by_ids.assert_not_called()
+    keyword_instance.add_texts.assert_not_called()
 
 
 def test_delete_child_chunk_vector_deletes_by_id(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
@@ -625,10 +693,29 @@ def test_delete_child_chunk_vector_deletes_by_id(monkeypatch: pytest.MonkeyPatch
     vector_instance = MagicMock()
     vector_cls = MagicMock(return_value=vector_instance)
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
+    keyword_instance = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Keyword", MagicMock(return_value=keyword_instance))
 
     VectorService.delete_child_chunk_vector(child_chunk, dataset, session=sqlite_session)
     vector_cls.assert_called_once_with(dataset=dataset, session=sqlite_session)
     vector_instance.delete_by_ids.assert_called_once_with(["cid"])
+    keyword_instance.delete_by_ids.assert_called_once_with(["cid"], sqlite_session)
+
+
+def test_delete_child_chunk_vector_economy_skips_vector(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
+    child_chunk = MagicMock(index_node_id="cid")
+    vector_cls = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
+    keyword_instance = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Keyword", MagicMock(return_value=keyword_instance))
+
+    VectorService.delete_child_chunk_vector(child_chunk, dataset, session=sqlite_session)
+
+    vector_cls.assert_not_called()
+    keyword_instance.delete_by_ids.assert_called_once_with(["cid"], sqlite_session)
 
 
 # ---------------------------------------------------------------------------

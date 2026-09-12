@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from typing import Any, TypedDict, override
 
@@ -12,7 +13,9 @@ from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, DocumentSegment
+
+logger = logging.getLogger(__name__)
 
 
 class PreSegmentData(TypedDict):
@@ -115,15 +118,57 @@ class Jieba(BaseKeyword):
 
         documents = []
 
+        child_query_stmt = select(ChildChunk).where(
+            ChildChunk.dataset_id == self.dataset.id, ChildChunk.index_node_id.in_(sorted_chunk_indices)
+        )
         segment_query_stmt = select(DocumentSegment).where(
             DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id.in_(sorted_chunk_indices)
         )
         if document_ids_filter:
+            child_query_stmt = child_query_stmt.where(ChildChunk.document_id.in_(document_ids_filter))
             segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
 
+        child_chunks = session.scalars(child_query_stmt).all()
+        child_chunk_map = {child_chunk.index_node_id: child_chunk for child_chunk in child_chunks}
         segments = session.scalars(segment_query_stmt).all()
         segment_map = {segment.index_node_id: segment for segment in segments}
+
+        if not document_ids_filter:
+            resolved_chunk_indices = child_chunk_map.keys() | segment_map.keys()
+            unresolved_count = sum(chunk_index not in resolved_chunk_indices for chunk_index in sorted_chunk_indices)
+            if unresolved_count:
+                logger.warning(
+                    "Keyword index consistency check failed for dataset %s: "
+                    "%d of %d matched node IDs could not be materialized.",
+                    self.dataset.id,
+                    unresolved_count,
+                    len(sorted_chunk_indices),
+                )
+        elif sorted_chunk_indices and not child_chunk_map and not segment_map:
+            logger.debug(
+                "Keyword search for dataset %s had %d matched node IDs before document filtering, "
+                "but no documents remained after applying %d document ID filters.",
+                self.dataset.id,
+                len(sorted_chunk_indices),
+                len(document_ids_filter),
+            )
+
         for chunk_index in sorted_chunk_indices:
+            child_chunk = child_chunk_map.get(chunk_index)
+            if child_chunk:
+                documents.append(
+                    Document(
+                        page_content=child_chunk.content,
+                        metadata={
+                            "doc_id": chunk_index,
+                            "doc_hash": child_chunk.index_node_hash,
+                            "document_id": child_chunk.document_id,
+                            "dataset_id": child_chunk.dataset_id,
+                        },
+                    )
+                )
+                continue
+
             segment = segment_map.get(chunk_index)
 
             if segment:
