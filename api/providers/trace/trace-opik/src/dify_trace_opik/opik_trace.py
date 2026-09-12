@@ -8,7 +8,13 @@ from uuid import UUID
 from pydantic import JsonValue
 
 from core.helper.ssl_context import create_ssl_context
-from core.ops.provider_export import TraceExportError, TraceProviderHttpClient, export_span_id, span_attributes
+from core.ops.provider_export import (
+    TraceExportError,
+    TraceProviderHttpClient,
+    export_span_id,
+    json_text,
+    span_attributes,
+)
 from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_opik.config import OpikConfig
 
@@ -209,7 +215,8 @@ class OpikTraceClient:
             span.span_id: _make_opik_id(export_span_id(completed_trace, span.span_id), span.started_at)
             for span in spans
         }
-        requests: list[tuple[str, dict[str, JsonValue]]] = []
+        trace_values: dict[str, JsonValue] | None = None
+        span_values: list[dict[str, JsonValue]] = []
         for span in spans:
             assert span.started_at is not None
             assert span.ended_at is not None
@@ -234,19 +241,14 @@ class OpikTraceClient:
             if span.error:
                 values["error_info"] = {"message": span.error, "exception_type": span.status, "traceback": ""}
             if span.span_id == completed_trace.root_span_id and parent_span is None:
-                requests.append(
-                    (
-                        "v1/private/traces",
-                        {
-                            **values,
-                            "id": trace_id,
-                            "tags": ["dify", "message", "workflow"]
-                            if span.span_type == "workflow" and completed_trace.source.message_id
-                            else values["tags"],
-                            "thread_id": completed_trace.source.session_id or completed_trace.source.conversation_id,
-                        },
-                    )
-                )
+                trace_values = {
+                    **values,
+                    "id": trace_id,
+                    "tags": ["dify", "message", "workflow"]
+                    if span.span_type == "workflow" and completed_trace.source.message_id
+                    else values["tags"],
+                    "thread_id": completed_trace.source.session_id or completed_trace.source.conversation_id,
+                }
             values.update(
                 {
                     "id": span_ids[span.span_id],
@@ -265,9 +267,22 @@ class OpikTraceClient:
                 and (cost := span.usage.get("total_price", span.usage.get("total_cost"))) is not None
             ):
                 values["total_estimated_cost"] = float(str(cost))
-            requests.append(("v1/private/spans", values))
-        for path, values in requests:
-            self.http.request("POST", path, json=values)
+            span_values.append(values)
+        if trace_values is not None:
+            self.http.request("POST", "v1/private/traces", json=trace_values)
+        batch: list[dict[str, JsonValue]] = []
+        batch_bytes = 12  # {"spans":[]}
+        for values in span_values:
+            item_bytes = len(json_text(values).encode("utf-8")) + 1
+            # Opik's native batches hold up to 1,000 spans / 5 MiB; an oversized span is sent alone.
+            if batch and (len(batch) == 1000 or batch_bytes + item_bytes > 5 * 1024 * 1024):
+                self.http.request("POST", "v1/private/spans/batch", json={"spans": batch})
+                batch = []
+                batch_bytes = 12
+            batch.append(values)
+            batch_bytes += item_bytes
+        if batch:
+            self.http.request("POST", "v1/private/spans/batch", json={"spans": batch})
         return ExportedParentSpans(
             spans={span_id: {"trace_id": trace_id, "span_id": exported_id} for span_id, exported_id in span_ids.items()}
         )

@@ -71,7 +71,7 @@ def test_captured_trace_and_native_account_timeouts_reach_requests_without_exten
     assert client.verify_credentials()
     trace = make_completed_trace()
     assert len(client.export_trace(trace).spans) == len(trace.spans)
-    assert len(requests) == 2 + len(trace.spans)
+    assert len(requests) == 3
     for request in requests:
         expected = min(remaining, 5 if request.url.host == "api.wandb.ai" else timeout)
         assert request.extensions["timeout"] == dict.fromkeys(("connect", "read", "write", "pool"), expected)

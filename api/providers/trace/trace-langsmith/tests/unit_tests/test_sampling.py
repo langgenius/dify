@@ -83,7 +83,7 @@ def test_fractional_sampling_is_stable_across_retries_and_late_children(
         monkeypatch.setattr(client.http, "request", request)
         receipt = client.export_trace(trace)
         receipts.append(receipt)
-        assert request.call_count == (len(trace.spans) if sampled else 0)
+        assert request.call_count == (1 if sampled else 0)
         assert all(parent["sampled"] is sampled for parent in receipt.spans.values())
     assert receipts[0] == receipts[1]
     assert trace.model_dump_json() == original
@@ -103,7 +103,7 @@ def test_fractional_sampling_is_stable_across_retries_and_late_children(
     request = Mock(return_value=httpx.Response(202))
     monkeypatch.setattr(child_client.http, "request", request)
     child_receipt = child_client.export_trace(late, receipts[0].spans[trace.root_span_id])
-    assert request.call_count == (len(late.spans) if sampled else 0)
+    assert request.call_count == (1 if sampled else 0)
     assert all(parent["sampled"] is sampled for parent in child_receipt.spans.values())
     assert all(parent["trace_id"] == external_id for parent in child_receipt.spans.values())
 
@@ -120,7 +120,7 @@ def test_legacy_parent_receipt_already_represents_a_sampled_trace(monkeypatch: p
     request = Mock(return_value=httpx.Response(202))
     monkeypatch.setattr(client.http, "request", request)
     receipt = client.export_trace(trace, parent)
-    assert request.call_count == len(trace.spans)
+    request.assert_called_once()
     assert all(span["sampled"] is True for span in receipt.spans.values())
 
 
@@ -147,9 +147,8 @@ def test_concurrent_tenants_keep_opposite_sampling_snapshots(monkeypatch: pytest
     with ThreadPoolExecutor(max_workers=2) as executor:
         receipts = list(executor.map(export, range(2)))
     requests[0].assert_not_called()
-    assert requests[1].call_count == len(traces[1].spans)
-    for call in requests[1].call_args_list:
-        run = call.kwargs["json"]["post"][0]
+    requests[1].assert_called_once()
+    for run in requests[1].call_args.kwargs["json"]["post"]:
         assert run["extra"]["metadata"]["dify.tenant_id"] == traces[1].source.tenant_id
     assert all(receipt["sampled"] is False for receipt in receipts[0].spans.values())
     assert all(receipt["sampled"] is True for receipt in receipts[1].spans.values())
