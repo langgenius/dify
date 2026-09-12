@@ -33,6 +33,7 @@ from core.plugin.impl.exc import (
     PluginRuntimeError,
     PluginUniqueIdentifierError,
 )
+from core.plugin.impl.first_token_timeout import FirstTokenTimeoutError, first_token_backstop
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -93,6 +94,24 @@ def use_plugin_daemon_request_timeout(timeout_seconds: float) -> Generator[None,
 
 def _get_plugin_daemon_request_timeout() -> httpx.Timeout | None:
     return _plugin_daemon_request_timeout_override.get() or plugin_daemon_request_timeout
+
+
+def _resolve_stream_timeout(first_token_timeout: float | None) -> httpx.Timeout | None:
+    """Widen the read window so it never cuts a first-token budget short.
+
+    The window is only ever extended, never narrowed. Narrowing it to the budget would
+    make it bound every inter-token gap too, which is not what the setting means -- and
+    it is not needed, because the plugin enforces the budget and the daemon re-enforces
+    it at ``budget + e``. This is the outermost rung and only fires when both are wedged.
+    """
+    base = _get_plugin_daemon_request_timeout()
+    if not first_token_timeout or first_token_timeout <= 0 or base is None:
+        return base
+
+    backstop = first_token_backstop(first_token_timeout)
+    if base.read is None or base.read >= backstop:
+        return base
+    return httpx.Timeout(connect=base.connect, read=backstop, write=base.write, pool=base.pool)
 
 
 def _normalize_plugin_daemon_response_for_type(json_response: Any, type_: type[object]) -> Any:
@@ -227,6 +246,7 @@ class BasePluginClient:
         headers: dict[str, str] | None = None,
         data: bytes | dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
+        first_token_timeout: float | None = None,
     ) -> Generator[str, None, None]:
         """
         Make a stream request to the plugin daemon inner API
@@ -239,12 +259,14 @@ class BasePluginClient:
             "headers": headers,
             "params": params,
             "files": files,
-            "timeout": _get_plugin_daemon_request_timeout(),
+            "timeout": _resolve_stream_timeout(first_token_timeout),
         }
         if isinstance(prepared_data, dict):
             stream_kwargs["data"] = prepared_data
         elif prepared_data is not None:
             stream_kwargs["content"] = prepared_data
+
+        first_line_seen = False
 
         try:
             with _httpx_client.stream(**stream_kwargs) as response:
@@ -256,7 +278,17 @@ class BasePluginClient:
                     if line.startswith("data:"):
                         line = line[5:].strip()
                     if line:
+                        first_line_seen = True
                         yield line
+        except httpx.ReadTimeout as e:
+            if first_token_timeout and not first_line_seen:
+                # The daemon should have named this itself; reaching here means it never
+                # answered at all, so this side is the only one left that can say why.
+                raise FirstTokenTimeoutError(
+                    f"The plugin daemon sent nothing within {first_token_timeout}s of a first-token budget."
+                ) from e
+            logger.exception("Stream request to Plugin Daemon Service failed")
+            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed") from e
         except httpx.RequestError:
             logger.exception("Stream request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
@@ -358,11 +390,12 @@ class BasePluginClient:
         data: bytes | dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
+        first_token_timeout: float | None = None,
     ) -> Generator[T, None, None]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
-        for line in self._stream_request(method, path, params, headers, data, files):
+        for line in self._stream_request(method, path, params, headers, data, files, first_token_timeout):
             try:
                 rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
             except (ValueError, TypeError):
@@ -398,10 +431,15 @@ class BasePluginClient:
         match error_type:
             case PluginDaemonInnerError.__name__:
                 raise PluginDaemonInnerError(code=-500, message=message)
+            case FirstTokenTimeoutError.__name__:
+                # Raised by the daemon's own gate, one rung out from the plugin's.
+                raise FirstTokenTimeoutError(description=message)
             case PluginInvokeError.__name__:
                 error_object = json.loads(message)
                 invoke_error_type = error_object.get("error_type")
                 match invoke_error_type:
+                    case FirstTokenTimeoutError.__name__:
+                        raise FirstTokenTimeoutError(description=error_object.get("message"))
                     case InvokeRateLimitError.__name__:
                         raise InvokeRateLimitError(description=error_object.get("message"))
                     case InvokeAuthorizationError.__name__:

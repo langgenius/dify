@@ -198,6 +198,46 @@ class TestPluginModelClient:
 
         assert "app_id" not in stream_mock.call_args.kwargs["data"]
 
+    def test_invoke_llm_sends_the_first_token_budget(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        stream_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
+
+        list(
+            client.invoke_llm(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin:1",
+                provider="provider-a",
+                model="gpt-test",
+                credentials={},
+                prompt_messages=[],
+                first_token_timeout=2.0,
+            )
+        )
+
+        call_kwargs = stream_mock.call_args.kwargs
+        assert call_kwargs["data"]["data"]["first_token_timeout"] == 2.0
+        assert call_kwargs["first_token_timeout"] == 2.0
+
+    def test_invoke_llm_omits_the_first_token_budget_when_unset(self, mocker: MockerFixture):
+        """A daemon that predates the field must see a byte-identical payload."""
+        client = PluginModelClient()
+        stream_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
+
+        list(
+            client.invoke_llm(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin:1",
+                provider="provider-a",
+                model="gpt-test",
+                credentials={},
+                prompt_messages=[],
+            )
+        )
+
+        assert "first_token_timeout" not in stream_mock.call_args.kwargs["data"]["data"]
+
     def test_invoke_llm_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()
 
