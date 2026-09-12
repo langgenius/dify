@@ -1,4 +1,4 @@
-"""Real-Redis contracts for terminal finalization and cancellation observation."""
+"""Real-Redis contracts for terminal sealing and cancellation observation."""
 
 import asyncio
 from collections.abc import Iterator
@@ -26,9 +26,10 @@ from dify_agent.protocol.schemas import (
     utc_now,
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
+from dify_agent.runtime.event_sink import RunEventStreamSealedError
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_record_key
-from dify_agent.storage.redis_run_store import RedisRunStore
+from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
 
 
 pytestmark = pytest.mark.integration
@@ -170,6 +171,8 @@ def test_event_stream_is_trimmed_and_keeps_the_terminal_event(redis_url: str) ->
             run_id = record.run_id
             for _ in range(1000):
                 _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+            active_stream_length = await client.xlen(run_events_key(prefix, record.run_id))
+            assert max_length <= active_stream_length <= max_length * 2
             result = await store.finalize_run(
                 RunSucceededEvent(
                     run_id=record.run_id,
@@ -217,6 +220,124 @@ def test_terminal_first_rejects_late_cancellation(redis_url: str, terminal_statu
             assert await store.get_cancellation_intent(record.run_id) is None
             events = await store.get_events(record.run_id)
             assert [event.type for event in events.events] == [f"run_{terminal_status}"]
+        finally:
+            await client.aclose()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("terminal_status", ["succeeded", "failed", "cancelled"])
+def test_terminal_rejects_late_non_terminal_from_another_redis_client(redis_url: str, terminal_status: str) -> None:
+    async def scenario() -> None:
+        terminal_client = Redis.from_url(redis_url)
+        late_writer_client = Redis.from_url(redis_url)
+        prefix = f"terminal-stream-seal-{uuid4().hex}"
+        terminal_store = RedisRunStore(terminal_client, prefix=prefix, run_retention_seconds=60)
+        late_writer_store = RedisRunStore(late_writer_client, prefix=prefix, run_retention_seconds=60)
+        try:
+            record = await terminal_store.create_run()
+            if terminal_status == "cancelled":
+                cancellation_status = await terminal_store.request_cancellation(
+                    record.run_id,
+                    CancelRunRequest(reason="remote_cancel"),
+                )
+                assert cancellation_status == "running"
+                intent = await terminal_store.get_cancellation_intent(record.run_id)
+                assert intent is not None
+                finalization = await terminal_store.finalize_cancellation(record.run_id, intent)
+            else:
+                finalization = await terminal_store.finalize_run(
+                    _success_or_failure_event(terminal_status, record.run_id)
+                )
+            assert finalization.applied is True
+            assert finalization.event_id is not None
+
+            record_key = run_record_key(prefix, record.run_id)
+            events_key = run_events_key(prefix, record.run_id)
+            sealed_record = await terminal_client.get(record_key)
+            sealed_events = await terminal_client.xrange(events_key)
+            shortened_ttl_ms = 30_000
+            for key in (record_key, events_key):
+                assert await terminal_client.pexpire(key, shortened_ttl_ms)
+
+            with pytest.raises(RunEventStreamSealedError) as captured:
+                _ = await late_writer_store.append_event(RunStartedEvent(run_id=record.run_id))
+
+            assert captured.value.run_id == record.run_id
+            assert captured.value.status == terminal_status
+            assert await terminal_client.get(record_key) == sealed_record
+            assert await terminal_client.xrange(events_key) == sealed_events
+            for key in (record_key, events_key):
+                assert 0 < await terminal_client.pttl(key) <= shortened_ttl_ms
+            page = await terminal_store.get_events(record.run_id)
+            after_terminal = await late_writer_store.get_events(record.run_id, after=finalization.event_id)
+            assert [event.type for event in page.events] == [f"run_{terminal_status}"]
+            assert after_terminal.events == []
+            assert after_terminal.next_cursor == finalization.event_id
+        finally:
+            await terminal_client.aclose()
+            await late_writer_client.aclose()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("cancellation_pending", [False, True])
+def test_non_terminal_refreshes_retention_while_run_is_running(redis_url: str, cancellation_pending: bool) -> None:
+    async def scenario() -> None:
+        client = Redis.from_url(redis_url)
+        prefix = f"active-event-retention-{uuid4().hex}"
+        retention_seconds = 60
+        store = RedisRunStore(client, prefix=prefix, run_retention_seconds=retention_seconds)
+        try:
+            record = await store.create_run()
+            _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+            record_key = run_record_key(prefix, record.run_id)
+            events_key = run_events_key(prefix, record.run_id)
+            if cancellation_pending:
+                assert await store.request_cancellation(record.run_id, CancelRunRequest(reason="pending")) == "running"
+            shortened_ttl_ms = 30_000
+            for key in (record_key, events_key):
+                assert await client.pexpire(key, shortened_ttl_ms)
+
+            event_id = await store.append_event(RunStartedEvent(run_id=record.run_id))
+
+            assert (await store.get_run(record.run_id)).status == "running"
+            events = (await store.get_events(record.run_id)).events
+            assert [event.type for event in events] == ["run_started", "run_started"]
+            assert events[-1].id == event_id
+            for key in (record_key, events_key):
+                assert shortened_ttl_ms < await client.pttl(key) <= retention_seconds * 1000
+            if cancellation_pending:
+                assert await store.get_cancellation_intent(record.run_id) is not None
+        finally:
+            await client.aclose()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("with_retained_events", [False, True])
+def test_non_terminal_rejects_missing_record_without_mutating_stream(
+    redis_url: str, with_retained_events: bool
+) -> None:
+    async def scenario() -> None:
+        client = Redis.from_url(redis_url)
+        prefix = f"missing-event-record-{uuid4().hex}"
+        store = RedisRunStore(client, prefix=prefix, run_retention_seconds=60)
+        try:
+            record = await store.create_run()
+            record_key = run_record_key(prefix, record.run_id)
+            events_key = run_events_key(prefix, record.run_id)
+            if with_retained_events:
+                _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+            _ = await client.delete(record_key)
+            retained_events = await client.xrange(events_key)
+
+            with pytest.raises(RunNotFoundError):
+                _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+
+            assert await client.exists(record_key) == 0
+            assert await client.xrange(events_key) == retained_events
+            assert await client.exists(events_key) == int(with_retained_events)
         finally:
             await client.aclose()
 
@@ -303,6 +424,51 @@ def test_cancellation_finalization_without_intent_is_unapplied(redis_url: str) -
             assert (await store.get_run(record.run_id)).status == "running"
         finally:
             await client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_non_terminal_and_terminal_race_always_leaves_terminal_last(redis_url: str) -> None:
+    async def scenario() -> None:
+        writer_client = Redis.from_url(redis_url)
+        terminal_client = Redis.from_url(redis_url)
+        prefix = f"terminal-stream-race-{uuid4().hex}"
+        writer_store = RedisRunStore(writer_client, prefix=prefix, run_retention_seconds=60)
+        terminal_store = RedisRunStore(terminal_client, prefix=prefix, run_retention_seconds=60)
+        try:
+            for _attempt in range(32):
+                record = await writer_store.create_run()
+                cancellation_status = await terminal_store.request_cancellation(
+                    record.run_id,
+                    CancelRunRequest(reason="concurrent_cancel"),
+                )
+                assert cancellation_status == "running"
+                intent = await terminal_store.get_cancellation_intent(record.run_id)
+                assert intent is not None
+                append_outcome, finalization = await asyncio.gather(
+                    writer_store.append_event(RunStartedEvent(run_id=record.run_id)),
+                    terminal_store.finalize_cancellation(record.run_id, intent),
+                    return_exceptions=True,
+                )
+
+                assert not isinstance(finalization, BaseException)
+                assert finalization.applied is True
+                assert finalization.event_id is not None
+                if isinstance(append_outcome, BaseException):
+                    assert isinstance(append_outcome, RunEventStreamSealedError)
+                    expected_types = ["run_cancelled"]
+                else:
+                    expected_types = ["run_started", "run_cancelled"]
+
+                page = await terminal_store.get_events(record.run_id)
+                assert [event.type for event in page.events] == expected_types
+                assert page.events[-1].type == "run_cancelled"
+                after_terminal = await writer_store.get_events(record.run_id, after=finalization.event_id)
+                assert after_terminal.events == []
+                assert after_terminal.next_cursor == finalization.event_id
+        finally:
+            await writer_client.aclose()
+            await terminal_client.aclose()
 
     asyncio.run(scenario())
 
