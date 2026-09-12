@@ -3,12 +3,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
 
-from flask import request
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound, Unauthorized
 
 import services
 from controllers.common.fields import (
@@ -45,14 +45,16 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
     NotWorkflowAppError,
 )
+from controllers.console.explore.trial_app_admission import get_trial_app
 from controllers.console.explore.wraps import TrialAppResource
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
+    AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
@@ -61,23 +63,22 @@ from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.file_fields import FileResponse, FileWithSignedUrl
 from fields.message_fields import SuggestedQuestionsResponse
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
+from machinery.context import RequestContext
 from models import Account, App
 from models.account import TenantStatus
 from models.model import AppMode, Site
 from models.workflow import Workflow
+from services.account_errors import AccountNotFoundError
 from services.account_service import TenantService
 from services.app_definition_query_service import AppDefinitionUnavailableError
-from services.app_generate_service import AppGenerateService
 from services.app_ref_service import AppRefService
 from services.app_service import AppResponseView, AppService
 from services.audio_service import AudioService
@@ -96,6 +97,12 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+from services.trial_app_access_service import TrialAppRef
+from services.trial_app_generation_service import (
+    TrialAppNotChatError,
+    TrialAppNotCompletionError,
+    TrialAppNotWorkflowError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -483,38 +490,32 @@ class TrialAppRemoteFileUploadApi(TrialAppResource):
         return dump_response(FileWithSignedUrl, remote_file), 201
 
 
-class TrialAppWorkflowRunApi(TrialAppResource):
+class TrialAppWorkflowRunApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(200, "Success")
-    @with_current_user
-    @with_session
+    @console_account_admission()
+    @get_trial_app
     @model_validate(WorkflowRunRequest)
-    def post(self, req_data: WorkflowRunRequest, session: Session, current_user: Account, trial_app):
+    def post(self, req_data: WorkflowRunRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
         """
         Run workflow
         """
-        app_model = trial_app
-        if not app_model:
-            raise NotWorkflowAppError()
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
-            raise NotWorkflowAppError()
-
-        args = req_data.model_dump()
         try:
-            app_id = app_model.id
-            user_id = current_user.id
-            response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.EXPLORE,
-                streaming=True,
+            response = application_services().trial_app_generation.generate_workflow(
+                trial_app=trial_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(),
             )
-            application_services().trial_app_usage.record(app_id=app_id, account_id=user_id)
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TrialAppNotWorkflowError as error:
+            raise NotWorkflowAppError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
+        except services.errors.app_model_config.AppModelConfigBrokenError as error:
+            raise AppUnavailableError() from error
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -523,7 +524,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except InvokeRateLimitError as ex:
+        except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
@@ -532,41 +533,29 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             raise InternalServerError()
 
 
-class TrialAppWorkflowTaskStopApi(TrialAppResource):
+class TrialAppWorkflowTaskStopApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, trial_app, task_id: str):
+    @console_account_admission()
+    @get_trial_app
+    def post(self, request_context: RequestContext, trial_app: TrialAppRef, task_id: str) -> dict[str, object]:
         """
         Stop workflow task
         """
-        app_model = trial_app
-        if not app_model:
-            raise NotWorkflowAppError()
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
+        if trial_app.app_mode != "workflow":
             raise NotWorkflowAppError()
 
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
+        application_services().app_tasks.stop_workflow_task_no_user_check(task_id=task_id)
 
-        # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
-
-        return {"result": "success"}
+        return dump_response(SimpleResultResponse, {"result": "success"})
 
 
-class TrialChatApi(TrialAppResource):
+class TrialChatApi(Resource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
     @console_ns.response(200, "Success")
-    @with_current_user
-    @with_session
+    @console_account_admission()
+    @get_trial_app
     @model_validate(ChatRequest)
-    def post(self, req_data: ChatRequest, session: Session, current_user: Account, trial_app):
-        app_model = trial_app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
+    def post(self, req_data: ChatRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
         args = req_data.model_dump()
 
         # Validate UUID values if provided
@@ -575,24 +564,20 @@ class TrialChatApi(TrialAppResource):
         if args.get("parent_message_id"):
             args["parent_message_id"] = uuid_value(args["parent_message_id"])
 
-        args["auto_generate_name"] = False
-
         try:
-            # Get IDs before they might be detached from session
-            app_id = app_model.id
-            user_id = current_user.id
-
-            response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=current_user,
+            response = application_services().trial_app_generation.generate_chat(
+                trial_app=trial_app,
+                account_id=request_context.account_id,
                 args=args,
-                invoke_from=InvokeFrom.EXPLORE,
-                streaming=True,
             )
-            application_services().trial_app_usage.record(app_id=app_id, account_id=user_id)
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TrialAppNotChatError as error:
+            raise NotChatAppError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -608,7 +593,7 @@ class TrialChatApi(TrialAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except InvokeRateLimitError as ex:
+        except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
@@ -765,39 +750,27 @@ class TrialChatTextApi(TrialAppResource):
             raise InternalServerError()
 
 
-class TrialCompletionApi(TrialAppResource):
+class TrialCompletionApi(Resource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
     @console_ns.response(200, "Success")
-    @with_current_user
-    @with_session
+    @console_account_admission()
+    @get_trial_app
     @model_validate(CompletionRequest)
-    def post(self, req_data: CompletionRequest, session: Session, current_user: Account, trial_app):
-        app_model = trial_app
-        if app_model.mode != "completion":
-            raise NotCompletionAppError()
-
-        args = req_data.model_dump()
-
-        streaming = args["response_mode"] == "streaming"
-        args["auto_generate_name"] = False
-
+    def post(self, req_data: CompletionRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
         try:
-            # Get IDs before they might be detached from session
-            app_id = app_model.id
-            user_id = current_user.id
-
-            response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.EXPLORE,
-                streaming=streaming,
+            response = application_services().trial_app_generation.generate_completion(
+                trial_app=trial_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(),
             )
-
-            application_services().trial_app_usage.record(app_id=app_id, account_id=user_id)
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TrialAppNotCompletionError as error:
+            raise NotCompletionAppError() from error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AccountNotFoundError as error:
+            raise Unauthorized("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -813,6 +786,8 @@ class TrialCompletionApi(TrialAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+        except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
         except Exception:

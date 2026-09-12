@@ -13,12 +13,12 @@ from controllers.console.explore.error import (
     TrialAppLimitExceeded,
     TrialAppNotAllowed,
 )
+from controllers.console.explore.trial_app_admission import trial_feature_enable
 from controllers.console.explore.wraps import (
     InstalledAppResource,
     TrialAppResource,
     installed_app_required,
     trial_app_required,
-    trial_feature_enable,
     user_allowed_to_access_app,
 )
 from models import Account, AccountTrialAppRecord, App, AppMode, InstalledApp, TrialApp
@@ -252,14 +252,14 @@ def test_trial_app_required_success(
     assert result.id == app.id
 
 
-def test_trial_feature_enable_disabled():
+def test_trial_feature_enable_disabled() -> None:
     @trial_feature_enable
-    def view():
+    def view() -> str:
         return "ok"
 
     services = MagicMock()
     services.recommended_app_queries.is_trial_enabled.return_value = False
-    with patch("controllers.console.explore.wraps.application_services", return_value=services):
+    with patch("controllers.console.explore.trial_app_admission.application_services", return_value=services):
         with pytest.raises(TrialAppFeatureDisabledError) as exc_info:
             view()
 
@@ -270,14 +270,14 @@ def test_trial_feature_enable_disabled():
     }
 
 
-def test_trial_feature_enable_enabled():
+def test_trial_feature_enable_enabled() -> None:
     @trial_feature_enable
-    def view():
+    def view() -> str:
         return "ok"
 
     services = MagicMock()
     services.recommended_app_queries.is_trial_enabled.return_value = True
-    with patch("controllers.console.explore.wraps.application_services", return_value=services):
+    with patch("controllers.console.explore.trial_app_admission.application_services", return_value=services):
         assert view() == "ok"
 
 
