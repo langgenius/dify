@@ -79,7 +79,14 @@ def test_batch_create_segment_to_index_task_queries_max_position_once_per_batch(
 
     max_position_queries: list[str] = []
 
-    def count_max_position_query(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def count_max_position_query(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
         normalized_statement = statement.lower()
         if "max(" in normalized_statement and "document_segments.position" in normalized_statement:
             max_position_queries.append(statement)
