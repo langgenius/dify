@@ -13,14 +13,7 @@ Write or update a test when a change affects a stable, observable contract:
 - Business logic or a reusable utility with meaningful input/output behavior.
 - A bug fix whose regression can be reproduced through a public boundary.
 
-Do not add a test only because:
-
-- A component, hook, prop, branch, or file exists.
-- A component can be rendered without crashing.
-- An implementation uses `useState`, `useEffect`, `useMemo`, or `useCallback`.
-- A coverage report shows an uncovered line.
-- TypeScript already makes an input impossible.
-- A change only adjusts classes, spacing, colors, or responsive layout without changing behavior.
+Do not add tests merely for file/prop coverage, render-without-crashing checks, React implementation choices, or inputs excluded by TypeScript and the product contract.
 
 For visual-only changes, verify the real UI at representative widths and states. Use browser, screenshot, Storybook, or end-to-end coverage when the risk justifies automation.
 
@@ -53,9 +46,7 @@ Use the `browser` project only when you can name a browser-owned failure that `h
 - Native focus behavior or focus-event ordering changing because of browser-calculated focusability, `inert`, Shadow DOM traversal, or another browser default.
 - Selection, scrolling, real keyboard or pointer input, browser APIs, observers, or animation lifecycles whose native implementation changes the result.
 
-The presence of a portal, focus trap, shadow root, observer, focus assertion, or keyboard or pointer interaction does not justify Browser Mode by itself. Name the browser-owned result it can change; if you cannot name one, Browser Mode is not the right project.
-
-Rendering UI, reducing mocks, increasing confidence, or raising coverage is not enough reason to use Browser Mode. Each `*.browser.spec.{ts,tsx}` test under `web/app/` must exercise the smallest owner through semantic locators and justify its additional runtime with the browser-owned contract. Do not use forced interaction, fixed sleeps, private DOM or CSS assertions, or real network requests.
+A portal, focus trap, shadow root, observer, or interaction label alone does not justify Browser Mode, nor does reducing mocks or raising coverage. Each `*.browser.spec.{ts,tsx}` test under `web/app/` must exercise the smallest owner through semantic locators and identify the browser-owned result that justifies its runtime. Do not use forced interaction, fixed sleeps, private DOM assertions, or real network requests.
 
 Browser Mode remains a focused component or feature test and currently proves Chromium only. Use the end-to-end suite for a running application, authentication, real routing, backend APIs, persistence, or complete journeys.
 
@@ -68,7 +59,8 @@ Browser Mode remains a focused component or feature test and currently proves Ch
 - Test referential identity only when identity is itself a documented public contract.
 - One test should describe one behavior. It may contain multiple assertions when they jointly prove that behavior.
 - Test only input states supported by the type and product contract. Do not manufacture `null`, `undefined`, or extreme values without a reachable scenario.
-- Avoid snapshots and CSS class assertions unless the serialized output or class contract is intentionally public and stable.
+- Do not assert CSS class names. Verify relevant styling through rendered visibility, geometry, focus indicators, or visual review instead of locking tests to utility strings.
+- Use snapshots only when serialized output is itself an intentionally public, stable contract.
 
 ## Queries, Interaction, and Accessibility
 
@@ -85,8 +77,6 @@ If an interactive control cannot be found semantically, first check whether the 
 
 - In React Testing Library tests, use a `userEvent.setup()` instance inside the test. Use `fireEvent` only when the low-level event itself is the contract.
 - In Browser Mode, interact through awaited locators. Use `.element()` only for DOM APIs that locators do not expose.
-- Test keyboard and focus behavior when they are part of the interaction contract.
-- Assert accessible names and ARIA state when they communicate product state.
 - Semantic queries and automated checks do not constitute complete accessibility conformance.
 - Exact copy assertions are valid when the copy or translation key is the contract; otherwise prefer a semantic query or resilient match.
 - In React Testing Library, use `queryBy*` for synchronous absence, `findBy*` for asynchronous appearance, and `waitForElementToBeRemoved` or `waitFor` for asynchronous disappearance. In Browser Mode, use `expect.element` for eventual assertions.
@@ -112,7 +102,6 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 
 - Await user interactions, promises, `findBy*`, and `waitFor`.
 - Wait for observable state changes. Do not use fixed sleeps or broad retries to hide incorrect timing.
-- Use `findBy*` for an element that appears asynchronously and `waitFor` for an eventually true external assertion.
 - Use fake timers only when timer behavior is part of the contract. Restore real timers after the test.
 - Control time, randomness, network responses, and shared stores so tests are deterministic.
 - `web/vitest.setup.ts` already runs Testing Library cleanup and resets Zustand stores after each test.
@@ -129,15 +118,9 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 
 ## Workflow
 
-1. Read the behavior owner, its public dependencies, and nearby tests.
-1. State the contract and regression risk before deciding to add tests.
-1. Choose the smallest boundary that proves the contract.
-1. For a behavior change or bug fix, establish the failing case first when practical.
-1. Implement one coherent scenario, run its focused spec, and fix failures before expanding scope.
-1. Run the affected suite and the relevant repository checks.
-1. Remove redundant assertions, unnecessary mocks, and tests that only mirror implementation.
+Use the behavior owner and nearby tests to identify a realistic regression and the assertion that would catch it. For a behavior change or bug fix, establish the failing case first when practical. Remove redundant tests and assertions as readily as adding missing coverage.
 
-When working across several files, order the work by dependency and verify each coherent slice before continuing. Do not create one test file per source file by default.
+Run the focused spec and the affected suite when it adds coverage beyond that spec, plus the required [static checks]. Once these pass, broaden or repeat verification only for new changes, failures, or unresolved concerns. Diagnose CI-only failures from the failing job and reproduce them locally when possible; reruns do not replace diagnosis or reporting.
 
 ## Commands
 
@@ -158,17 +141,6 @@ vp test run --project unit --coverage path/to/spec-or-directory
 ```
 
 Always pass `--project unit` or `--project browser`. Bare `vp test` runs both registered projects and is not the standard Web test command.
-
-## Review Checklist
-
-- Does each test protect a reachable product contract or meaningful regression?
-- Is the behavior exercised through a public boundary?
-- Are semantic queries and accessibility contracts used where relevant?
-- Are mocks placed at intentional boundaries and faithful to those boundaries?
-- Is the suite deterministic, focused, and cheaper to maintain than the regression it prevents?
-- Would the test survive a refactor that preserves behavior?
-- Can the reviewer name one realistic regression and the assertion that would fail?
-- For Browser Mode, is the browser-owned contract explicit, impossible to prove faithfully in `happy-dom`, and worth the additional runtime?
 
 ## References
 
@@ -199,3 +171,4 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [Vitest documentation]: https://v4.vitest.dev/guide
 [Vitest test projects]: https://v4.vitest.dev/guide/projects
 [Why Browser Mode]: https://v4.vitest.dev/guide/browser/why
+[static checks]: lint.md

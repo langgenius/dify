@@ -16,7 +16,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AgentRosterList } from './components/agent-roster-list'
 import { RosterToolbar } from './components/roster-toolbar'
 import {

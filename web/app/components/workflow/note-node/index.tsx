@@ -43,7 +43,7 @@ const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
   return (
     <div
       className={cn(
-        'relative flex flex-col rounded-md border shadow-xs hover:shadow-md',
+        'group relative flex flex-col rounded-md border shadow-xs hover:shadow-md',
         THEME_MAP[theme]!.bg,
         data.selected ? THEME_MAP[theme]!.border : 'border-black/5',
       )}

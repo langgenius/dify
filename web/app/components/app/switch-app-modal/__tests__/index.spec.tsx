@@ -1,9 +1,10 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactElement } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import SwitchAppModal from '../index'
 
@@ -37,7 +38,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-let mockEnableBilling = false
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlan = {
   type: 'sandbox',
   usage: {
@@ -59,12 +60,6 @@ let mockPlan = {
     vectorSpace: 0,
   },
 }
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: mockPlan,
-    enableBilling: mockEnableBilling,
-  }),
-}))
 
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: ({ loc }: { loc: string }) => (
@@ -140,6 +135,13 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
 
 const setAppDetailSpy = vi.fn()
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { apps: { size: mockPlan.usage.buildApps, limit: mockPlan.total.buildApps } },
+  })
+}
+
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -152,7 +154,7 @@ describe('SwitchAppModal', () => {
       originalSetAppDetail(...args)
     })
     useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
     mockPlan = {
       type: 'sandbox',
       usage: {
@@ -216,7 +218,7 @@ describe('SwitchAppModal', () => {
 
     it('should render the apps full warning when plan limits are reached', () => {
       // Arrange
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan = {
         ...mockPlan,
         usage: { ...mockPlan.usage, buildApps: 10 },

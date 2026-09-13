@@ -117,7 +117,7 @@ export function AccessPointCard({
               (hasSwitchDisabledReason ? (
                 <Tooltip>
                   <TooltipTrigger render={switchControl} />
-                  <TooltipContent role="tooltip">{switchDisabledReason}</TooltipContent>
+                  <TooltipContent>{switchDisabledReason}</TooltipContent>
                 </Tooltip>
               ) : (
                 switchControl

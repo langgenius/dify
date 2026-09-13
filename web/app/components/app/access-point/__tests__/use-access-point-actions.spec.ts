@@ -23,7 +23,7 @@ vi.mock('@/service/apps', () => ({
   updateAppSiteConfig: mocks.updateAppSiteConfig,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       get: { key: () => ['apps'] },

@@ -42,9 +42,8 @@ def fake_current_user(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.fixture
 def fake_features(monkeypatch: pytest.MonkeyPatch):
-    """Features.billing.enabled == False to skip quota logic."""
     features = types.SimpleNamespace(
-        billing=types.SimpleNamespace(enabled=False, subscription=types.SimpleNamespace(plan="ENTERPRISE")),
+        billing=types.SimpleNamespace(subscription=types.SimpleNamespace(plan="ENTERPRISE")),
         documents_upload_quota=types.SimpleNamespace(limit=10_000, size=0),
     )
     monkeypatch.setattr(

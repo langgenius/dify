@@ -5,12 +5,15 @@ import type {
 import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type React from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor, within } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { AgentPermission } from '@/features/agent-v2/acl'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { seedSystemFeatures } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
@@ -81,7 +84,7 @@ vi.mock('@/context/permission-state', async () => {
     },
   }))
 })
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     account: {
       profile: {
@@ -95,6 +98,16 @@ vi.mock('@/service/client', () => ({
         queryKey: () => ['system-features'],
         queryOptions: (options: Record<string, unknown> = {}) => ({
           queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
+    features: {
+      get: {
+        queryKey: () => ['features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['features'],
+          staleTime: Infinity,
           ...options,
         }),
       },
@@ -140,6 +153,11 @@ vi.mock('@/service/client', () => ({
     agent: {
       byAgentId: {
         get: {
+          queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
+            queryKey: ['agent-detail', input.params.agent_id],
+            queryFn: async () => createAgent(),
+            staleTime: Infinity,
+          }),
           queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
             'agent-detail',
             input.params.agent_id,
@@ -194,6 +212,7 @@ vi.mock('@/service/client', () => ({
 
 function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite {
   return {
+    permission_keys: Object.values(AgentPermission),
     access_ready: true,
     enable_api: true,
     enable_site: true,
@@ -258,13 +277,24 @@ function createAgentApiAccessResponse(
   }
 }
 
+function createAccessCardWrapper(queryClient: QueryClient) {
+  const QueryWrapper = createQueryClientWrapper(queryClient)
+  return function AccessCardWrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    )
+  }
+}
+
 function renderWithQueryClient(
   ui: React.ReactElement,
   { webAppAuthEnabled = true }: { webAppAuthEnabled?: boolean } = {},
 ) {
   const queryClient = createConsoleQueryClient(webAppAuthEnabled)
 
-  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  render(ui, { wrapper: createAccessCardWrapper(queryClient) })
 
   return queryClient
 }
@@ -286,6 +316,12 @@ function createConsoleQueryClient(webAppAuthEnabled = true) {
     },
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  queryClient.setQueryData<AgentAppDetailWithSite>(
+    consoleQuery.agent.byAgentId.get.queryOptions({ input: { params: { agent_id: 'agent-1' } } })
+      .queryKey,
+    createAgent(),
+  )
+  seedFeatures(queryClient)
   return queryClient
 }
 
@@ -731,20 +767,15 @@ describe('Agent access surface cards', () => {
       })
       const queryClient = createConsoleQueryClient()
       const { rerender } = render(
-        <QueryClientProvider client={queryClient}>
-          <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />
-        </QueryClientProvider>,
+        <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />,
+        { wrapper: createAccessCardWrapper(queryClient) },
       )
 
       expect(
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
       ).toBeDisabled()
 
-      rerender(
-        <QueryClientProvider client={queryClient}>
-          <WebAppAccessCard agent={agentWithoutSite} agentId="agent-1" isLoading={false} />
-        </QueryClientProvider>,
-      )
+      rerender(<WebAppAccessCard agent={agentWithoutSite} agentId="agent-1" isLoading={false} />)
 
       expect(
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
@@ -784,13 +815,19 @@ describe('Agent access surface cards', () => {
 
       await user.tab()
       expect(accessSwitch).toHaveFocus()
-      expect(await screen.findByRole('tooltip')).toHaveTextContent(
-        'agentV2.agentDetail.access.publishRequired',
-      )
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.publishRequired', {
+          selector: '[data-open]',
+        }),
+      ).toBeVisible()
 
       await user.tab()
       await waitFor(() => {
-        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('agentV2.agentDetail.access.publishRequired', {
+            selector: '[data-open]',
+          }),
+        ).not.toBeInTheDocument()
       })
 
       await user.hover(
@@ -798,9 +835,11 @@ describe('Agent access surface cards', () => {
           name: 'agentV2.agentDetail.access.webApp.actions.open',
         }),
       )
-      expect(await screen.findByRole('tooltip')).toHaveTextContent(
-        'agentV2.agentDetail.access.publishRequired',
-      )
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.publishRequired', {
+          selector: '[data-open]',
+        }),
+      ).toBeVisible()
     })
   })
 
@@ -976,9 +1015,11 @@ describe('Agent access surface cards', () => {
 
       await user.tab()
       expect(accessSwitch).toHaveFocus()
-      expect(await screen.findByRole('tooltip')).toHaveTextContent(
-        'agentV2.agentDetail.access.publishRequired',
-      )
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.publishRequired', {
+          selector: '[data-open]',
+        }),
+      ).toBeVisible()
     })
 
     it('should show the unavailable status when the Service API query fails', async () => {
@@ -999,7 +1040,7 @@ describe('Agent access surface cards', () => {
       createAgent({
         access_mode: 'private_all',
         maintainer: 'user-2',
-        permission_keys: ['app.acl.release_and_version'],
+        permission_keys: [AgentPermission.ReleaseAndVersion],
       })
 
     const organizationAccessLabel = 'app.accessControlDialog.accessItems.organization'
@@ -1059,7 +1100,7 @@ describe('Agent access surface cards', () => {
           agent={createAgent({
             access_mode: 'private_all',
             maintainer: 'user-2',
-            permission_keys: [],
+            permission_keys: [AgentPermission.AccessPointManage],
           })}
           agentId="agent-1"
           isLoading={false}
@@ -1096,7 +1137,7 @@ describe('Agent access surface cards', () => {
             app_id: 'source-app-1',
             backing_app_id: 'backing-app-1',
             maintainer: 'user-2',
-            permission_keys: ['app.acl.release_and_version'],
+            permission_keys: [AgentPermission.ReleaseAndVersion],
           })}
           agentId="agent-1"
           isLoading={false}
@@ -1111,5 +1152,87 @@ describe('Agent access surface cards', () => {
         access_mode: 'private_all',
       })
     })
+  })
+  it('allows viewers to copy and open WebApp addresses while disabling management actions', async () => {
+    const user = userEvent.setup()
+    renderWithQueryClient(
+      <WebAppAccessCard
+        agent={createAgent({
+          permission_keys: [AgentPermission.Preview, AgentPermission.AccessPointView],
+        })}
+        agentId="agent-1"
+        isLoading={false}
+      />,
+    )
+    expect(
+      screen.getByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.open' }),
+    ).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.access.copyAccessUrl' }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.showQrCode' }),
+    ).toBeEnabled()
+    for (const action of ['embedIntoSite', 'customFrontend', 'settings']) {
+      expect(
+        screen.getByRole('button', { name: `agentV2.agentDetail.access.webApp.actions.${action}` }),
+      ).toBeDisabled()
+    }
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.refreshUrl' }),
+    ).toBeDisabled()
+    const toggle = screen.getByRole('switch')
+    await user.click(toggle)
+    expect(mocks.siteEnableMutation).not.toHaveBeenCalled()
+    expect(mocks.accessSubjectsQueryFn).not.toHaveBeenCalled()
+  })
+
+  it('allows API viewers to copy the endpoint and read documentation without fetching API keys', async () => {
+    const user = userEvent.setup()
+    mocks.apiAccessQueryFn.mockResolvedValue(createAgentApiAccessResponse())
+    const client = createConsoleQueryClient()
+    client.setQueryData(
+      ['agent-detail', 'agent-1'],
+      createAgent({ permission_keys: [AgentPermission.AccessPointView] }),
+    )
+    render(<ServiceApiAccessCard agentId="agent-1" />, {
+      wrapper: createAccessCardWrapper(client),
+    })
+    expect(
+      await screen.findByRole('button', { name: 'agentV2.agentDetail.access.copyServiceEndpoint' }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('link', {
+        name: 'agentV2.agentDetail.access.serviceApi.actions.apiReference',
+      }),
+    ).toHaveAttribute('href', 'https://docs.example.test/api-reference/guides/agent')
+    const apiKeys = screen.getByRole('button', { name: /serviceApi.actions.apiKey/ })
+    expect(apiKeys).toBeDisabled()
+    await user.click(apiKeys)
+    await user.click(screen.getByRole('switch'))
+    expect(mocks.apiKeysQueryFn).not.toHaveBeenCalled()
+    expect(mocks.apiEnableMutation).not.toHaveBeenCalled()
+  })
+
+  it('closes the settings dialog when Agent access point management is revoked', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    const { rerender } = render(
+      <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      { wrapper: createAccessCardWrapper(queryClient) },
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    rerender(
+      <WebAppAccessCard
+        agent={createAgent({ permission_keys: [AgentPermission.AccessPointView] })}
+        agentId="agent-1"
+        isLoading={false}
+      />,
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mocks.siteMutation).not.toHaveBeenCalled()
   })
 })

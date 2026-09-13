@@ -48,7 +48,7 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
     ) : null,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -69,6 +69,7 @@ const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial 
   icon_url: null,
   mode: 'agent',
   name: 'Research Agent',
+  permission_keys: [],
   role: 'Research Assistant',
   ...overrides,
 })

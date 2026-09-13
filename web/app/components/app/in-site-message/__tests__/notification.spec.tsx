@@ -16,7 +16,7 @@ vi.mock('@/context/i18n', () => ({
   useLocale: () => mockLocale.value,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {

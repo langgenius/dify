@@ -39,57 +39,40 @@ const ToolDatePicker: FC<Props> = ({
   const parsedValue = toDayjs(rawValue, { timezone, format: DATE_FMT })
 
   const renderTrigger = useCallback<NonNullable<DatePickerProps['renderTrigger']>>(
-    (props, _state, { value: date, handleClear, handleClickTrigger }: TriggerProps) => {
+    (props, _state, { value: date, handleClear }: TriggerProps) => {
       const displayValue = date ? formatToLocalTime(date, locale, displayFormat) : ''
       const triggerLabel = resolvedPlaceholder
         ? `${resolvedPlaceholder}${displayValue ? `: ${displayValue}` : ''}`
         : displayValue
 
       return (
-        <div
-          {...props}
-          aria-disabled={readOnly || undefined}
-          aria-label={triggerLabel}
-          className={cn(
-            'group/date-trigger relative flex h-8 min-w-0 grow cursor-pointer items-center space-x-0.5 rounded-lg bg-components-input-bg-normal px-2 system-sm-regular text-components-input-text-filled hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
-            readOnly && 'cursor-default opacity-60 hover:bg-components-input-bg-normal',
-            props.className,
-          )}
-          role="button"
-          tabIndex={readOnly ? -1 : 0}
-          onClick={(event) => {
-            if (readOnly) {
-              event.preventDefault()
-              event.stopPropagation()
-              return
-            }
-            handleClickTrigger(event)
-            props.onClick?.(event)
-          }}
-          onKeyDown={(event) => {
-            if (readOnly) {
-              event.preventDefault()
-              event.stopPropagation()
-              return
-            }
-            props.onKeyDown?.(event)
-          }}
-        >
-          <div className="shrink-0 p-px">
-            <span
-              className="i-ri-calendar-line block size-3.5 text-text-tertiary"
-              aria-hidden="true"
-            />
-          </div>
-          <span
+        <div className="group/date-trigger relative w-full min-w-0">
+          <button
+            {...props}
+            type="button"
+            aria-label={triggerLabel}
             className={cn(
-              'min-w-0 flex-1 truncate px-1',
-              !date && 'text-components-input-text-placeholder',
-              date && 'pr-5',
+              'flex h-8 w-full min-w-0 cursor-pointer items-center space-x-0.5 rounded-lg bg-components-input-bg-normal px-2 text-left system-sm-regular text-components-input-text-filled hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover',
+              readOnly && 'cursor-default opacity-60 hover:bg-components-input-bg-normal',
+              props.className,
             )}
           >
-            {displayValue || resolvedPlaceholder}
-          </span>
+            <span className="shrink-0 p-px">
+              <span
+                className="i-ri-calendar-line block size-3.5 text-text-tertiary"
+                aria-hidden="true"
+              />
+            </span>
+            <span
+              className={cn(
+                'min-w-0 flex-1 truncate px-1',
+                !date && 'text-components-input-text-placeholder',
+                date && 'pr-5',
+              )}
+            >
+              {displayValue || resolvedPlaceholder}
+            </span>
+          </button>
           {date && !readOnly && (
             <button
               type="button"
@@ -111,6 +94,7 @@ const ToolDatePicker: FC<Props> = ({
 
   return (
     <DatePicker
+      disabled={readOnly}
       value={parsedValue}
       timezone={timezone}
       onChange={(date) => onChange(date?.format(DATE_FMT) ?? '')}

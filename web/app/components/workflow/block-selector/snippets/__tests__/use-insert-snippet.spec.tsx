@@ -1,7 +1,7 @@
 import type { SnippetWorkflowResponse } from '@dify/contracts/api/console/snippets/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 import { NESTED_ELEMENT_Z_INDEX } from '../../../constants'

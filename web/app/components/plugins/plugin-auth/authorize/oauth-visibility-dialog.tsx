@@ -70,13 +70,7 @@ const OAuthVisibilityDialog = ({
             <Button disabled={loading} onClick={() => handleOpenChange(false)}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
-            <Button
-              variant="primary"
-              className="ml-2"
-              loading={loading}
-              aria-busy={loading}
-              onClick={onConfirm}
-            >
+            <Button variant="primary" className="ml-2" loading={loading} onClick={onConfirm}>
               {t(($) => $['auth.authorize'], { ns: 'plugin' })}
             </Button>
           </div>

@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   getInstalledAppParameters: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {

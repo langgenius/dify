@@ -1,7 +1,7 @@
 import type { DatasetListItemResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ActionItem, KnowledgeSearchResult } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { Folder } from '../../base/icons/src/vender/solid/files'
 
 const EXTERNAL_PROVIDER = 'external' as const

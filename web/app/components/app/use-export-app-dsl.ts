@@ -5,7 +5,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 
 type ExportAppDslInput = {

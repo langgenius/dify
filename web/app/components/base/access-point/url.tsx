@@ -77,7 +77,7 @@ export function AccessPointUrl({
   const disabledOpenAction = openDisabledReason ? (
     <Tooltip>
       <TooltipTrigger render={disabledOpenButton} />
-      <TooltipContent role="tooltip">{openDisabledReason}</TooltipContent>
+      <TooltipContent>{openDisabledReason}</TooltipContent>
     </Tooltip>
   ) : (
     disabledOpenButton

@@ -3,18 +3,14 @@ import type { AccessPolicyResourceType } from '@/models/access-control'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => {
   const { t } = useTranslation()
   const permissionCatalogQueryOptions =
-    resourceType === 'app'
-      ? consoleQuery.workspaces.current.rbac.rolePermissions.catalog.app.get.queryOptions({
-          input: {},
-        })
-      : consoleQuery.workspaces.current.rbac.rolePermissions.catalog.dataset.get.queryOptions({
-          input: {},
-        })
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog[resourceType].get.queryOptions({
+      input: {},
+    })
   const { data: permissionCatalog } = useQuery(permissionCatalogQueryOptions)
 
   const groups = useMemo(() => {

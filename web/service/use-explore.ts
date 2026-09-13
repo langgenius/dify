@@ -1,7 +1,7 @@
 import type { App, AppCategory } from '@/models/explore'
 import { useQuery } from '@tanstack/react-query'
 import { useLocale } from '@/context/i18n'
-import { consoleQuery } from './client'
+import { consoleQuery } from '@/service/console'
 import { fetchAppList, fetchLearnDifyAppList } from './explore'
 
 type ExploreAppListData = {

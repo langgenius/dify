@@ -31,9 +31,9 @@ def _end_user() -> EndUser:
     return make_end_user(end_user_id="eu-1")
 
 
-# The @model_validate decorator wraps the handler; tests call the undecorated
-# function so they can pass the validated pydantic payload directly and skip
-# the flask request-parsing step.
+# The @with_session and @model_validate decorators wrap the handler; tests call
+# the undecorated function so they can pass the validated pydantic payload and a
+# stub session directly and skip the flask request-parsing step.
 _list_get = inspect.unwrap(SavedMessageListApi.get)
 _list_post = inspect.unwrap(SavedMessageListApi.post)
 
@@ -46,7 +46,7 @@ class TestSavedMessageListApiGet:
         query = SavedMessageListQuery.model_validate({})
         with app.test_request_context("/saved-messages"):
             with pytest.raises(NotCompletionAppError):
-                _list_get(SavedMessageListApi(), query, _chat_app(), _end_user())
+                _list_get(SavedMessageListApi(), query, MagicMock(), _chat_app(), _end_user())
 
     @patch("controllers.web.saved_message.SavedMessageService.pagination_by_last_id")
     def test_happy_path(self, mock_paginate: MagicMock, app: Flask) -> None:
@@ -54,7 +54,7 @@ class TestSavedMessageListApiGet:
         query = SavedMessageListQuery.model_validate({"limit": 20})
 
         with app.test_request_context("/saved-messages?limit=20"):
-            result = _list_get(SavedMessageListApi(), query, _completion_app(), _end_user())
+            result = _list_get(SavedMessageListApi(), query, MagicMock(), _completion_app(), _end_user())
 
         assert result["limit"] == 20
         assert result["has_more"] is False
@@ -68,14 +68,14 @@ class TestSavedMessageListApiPost:
         payload = SavedMessageCreatePayload.model_validate({"message_id": str(uuid4())})
         with app.test_request_context("/saved-messages", method="POST"):
             with pytest.raises(NotCompletionAppError):
-                _list_post(SavedMessageListApi(), payload, _chat_app(), _end_user())
+                _list_post(SavedMessageListApi(), payload, MagicMock(), _chat_app(), _end_user())
 
     @patch("controllers.web.saved_message.SavedMessageService.save")
     def test_save_success(self, mock_save: MagicMock, app: Flask) -> None:
         payload = SavedMessageCreatePayload.model_validate({"message_id": str(uuid4())})
 
         with app.test_request_context("/saved-messages", method="POST"):
-            result = _list_post(SavedMessageListApi(), payload, _completion_app(), _end_user())
+            result = _list_post(SavedMessageListApi(), payload, MagicMock(), _completion_app(), _end_user())
 
         assert result["result"] == "success"
 
@@ -85,7 +85,7 @@ class TestSavedMessageListApiPost:
 
         with app.test_request_context("/saved-messages", method="POST"):
             with pytest.raises(NotFound, match="Message Not Exists"):
-                _list_post(SavedMessageListApi(), payload, _completion_app(), _end_user())
+                _list_post(SavedMessageListApi(), payload, MagicMock(), _completion_app(), _end_user())
 
 
 # ---------------------------------------------------------------------------

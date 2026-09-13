@@ -154,7 +154,7 @@ export function PublisherEnvironmentSummarySection({
                     </span>
                   }
                 />
-                <TooltipContent role="tooltip">{versionsBehindLabel}</TooltipContent>
+                <TooltipContent>{versionsBehindLabel}</TooltipContent>
               </Tooltip>
             )}
             {isLatestVersion && (

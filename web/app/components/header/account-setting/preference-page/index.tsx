@@ -18,7 +18,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { timezones } from '@/utils/timezone'
 
 type SelectOption = {

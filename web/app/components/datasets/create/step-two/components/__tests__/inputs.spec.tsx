@@ -10,9 +10,9 @@ describe('DelimiterInput', () => {
     vi.clearAllMocks()
   })
 
-  it('should render separator label', () => {
+  it('should associate the separator label with its input', () => {
     render(<DelimiterInput />)
-    expect(screen.getByText(`${ns}.stepTwo.separator`))!.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: `${ns}.stepTwo.separator` })).toBeInTheDocument()
   })
 
   it('should render text input with placeholder', () => {

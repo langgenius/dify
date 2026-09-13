@@ -6,11 +6,13 @@ from datetime import datetime
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from enums import DeploymentEdition
 from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
 from services.dataset_ref_service import DatasetRefService
+from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 
 from .dataset_service_test_helpers import (
@@ -550,6 +552,7 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
         with patch("services.dataset_service.current_user", account):
             yield account
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_without_dataset_id_creates_high_quality_dataset_with_default_retrieval_model(
         self, account_context, sqlite_session: Session
     ):
@@ -576,7 +579,7 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
         first_document = _document_row(name="VeryLongDocumentNameForDataset.txt")
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
                 return_value=binding,
@@ -612,6 +615,7 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
             session=sqlite_session,
         )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_without_dataset_id_uses_provided_retrieval_model(
         self, account_context, sqlite_session: Session
     ):
@@ -639,7 +643,7 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
         first_document = _document_row(name="Doc")
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch.object(
                 DocumentService,
                 "save_document_with_dataset_id",
@@ -657,6 +661,7 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
         assert dataset.collection_binding_id is None
         assert sqlite_session.get(Dataset, dataset.id) is dataset
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_save_document_without_dataset_id_rejects_sandbox_batch_upload(
         self, account_context, unbound_session: Session
     ):
@@ -673,7 +678,7 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
         with (
             patch(
                 "services.dataset_service.FeatureService.get_features",
-                return_value=_make_features(enabled=True, plan=CloudPlan.SANDBOX),
+                return_value=_make_features(plan=CloudPlan.SANDBOX),
             ),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
         ):
@@ -1075,13 +1080,14 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         ):
             yield account
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_save_document_with_dataset_id_requires_file_info_for_upload_source(
         self, account_context, unbound_session: Session
     ):
         dataset = _dataset_row()
         knowledge_config = _make_upload_knowledge_config(file_ids=None)
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=True)):
+        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()):
             with pytest.raises(ValueError, match="File source info is required"):
                 DocumentService.save_document_with_dataset_id(
                     dataset,
@@ -1090,6 +1096,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                     session=unbound_session,
                 )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_save_document_with_dataset_id_blocks_batch_upload_for_sandbox_plan(
         self, account_context, unbound_session: Session
     ):
@@ -1099,7 +1106,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         with (
             patch(
                 "services.dataset_service.FeatureService.get_features",
-                return_value=_make_features(enabled=True, plan=CloudPlan.SANDBOX),
+                return_value=_make_features(plan=CloudPlan.SANDBOX),
             ),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
         ):
@@ -1113,6 +1120,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
 
         check_quota.assert_not_called()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_save_document_with_dataset_id_enforces_batch_upload_limit(
         self,
         account_context,
@@ -1124,7 +1132,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         knowledge_config = _make_upload_knowledge_config(file_ids=["file-1", "file-2"])
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=True)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
         ):
             with pytest.raises(ValueError, match="batch upload limit of 1"):
@@ -1137,6 +1145,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
 
         check_quota.assert_not_called()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_updates_existing_document_and_data_source_type(
         self, account_context, sqlite_session: Session
     ):
@@ -1146,7 +1155,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         updated_document.batch = "batch-existing"
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch.object(
                 DocumentService, "update_document_with_dataset_id", return_value=updated_document
             ) as update_document,
@@ -1163,13 +1172,14 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         assert batch == "batch-existing"
         update_document.assert_called_once_with(dataset, knowledge_config, account_context, session=sqlite_session)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_requires_data_source_for_new_documents(
         self, account_context, unbound_session: Session
     ):
         dataset = _dataset_row()
         knowledge_config = _make_upload_knowledge_config(data_source=None)
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
+        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()):
             with pytest.raises(ValueError, match="Data source is required when creating new documents"):
                 DocumentService.save_document_with_dataset_id(
                     dataset,
@@ -1178,6 +1188,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                     session=unbound_session,
                 )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_requires_existing_process_rule_for_custom_mode(
         self, account_context, sqlite_session: Session
     ):
@@ -1189,7 +1200,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             process_rule=ProcessRule(mode="custom"),
         )
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
+        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()):
             with pytest.raises(ValueError, match="No process rule found"):
                 DocumentService.save_document_with_dataset_id(
                     dataset,
@@ -1198,6 +1209,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                     session=sqlite_session,
                 )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_rejects_invalid_indexing_technique(
         self, account_context, unbound_session: Session
     ):
@@ -1209,7 +1221,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             indexing_technique="broken-technique",
         )
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
+        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()):
             with pytest.raises(ValueError, match="Indexing technique is invalid"):
                 DocumentService.save_document_with_dataset_id(
                     dataset,
@@ -1218,6 +1230,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                     session=unbound_session,
                 )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_returns_empty_for_invalid_process_rule_mode(
         self, account_context, unbound_session: Session
     ):
@@ -1225,7 +1238,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         knowledge_config = _make_upload_knowledge_config(file_ids=["file-1"])
         knowledge_config.process_rule = SimpleNamespace(mode="unsupported-mode", rules=None)
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
+        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()):
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset,
                 knowledge_config,
@@ -1236,6 +1249,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         assert documents == []
         assert batch == ""
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_upload_file_creates_and_reindexes_documents(
         self, account_context, sqlite_session: Session
     ):
@@ -1249,7 +1263,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
             patch("services.dataset_service.DuplicateDocumentIndexingTaskProxy") as duplicate_proxy_cls,
@@ -1280,6 +1294,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         duplicate_proxy_cls.assert_called_once_with(dataset.tenant_id, dataset.id, ["doc-duplicate"])
         duplicate_proxy_cls.return_value.delay.assert_called_once()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_notion_import_truncates_names_and_cleans_removed_pages(
         self, account_context, sqlite_session: Session
     ):
@@ -1325,7 +1340,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.clean_notion_document_task") as clean_task,
             patch("services.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
@@ -1348,6 +1363,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         document_proxy_cls.assert_called_once_with(dataset.tenant_id, dataset.id, ["doc-new"])
         document_proxy_cls.return_value.delay.assert_called_once()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_website_crawl_truncates_long_urls(
         self, account_context, sqlite_session: Session
     ):
@@ -1374,7 +1390,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             doc_language="English",
         )
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
         ):
@@ -1706,6 +1722,7 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
         with patch("services.dataset_service.current_user", account):
             yield account
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_save_document_without_dataset_id_counts_notion_pages_for_quota(
         self,
         account_context,
@@ -1736,7 +1753,7 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
                 )
             ),
         )
-        features = _make_features(enabled=True)
+        features = _make_features()
         document = _document_row(name="Doc")
 
         with (
@@ -1758,6 +1775,7 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
         check_quota.assert_called_once_with(3, features)
         assert sqlite_session.get(Dataset, dataset.id) is dataset
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_save_document_without_dataset_id_enforces_batch_limit_for_website_urls(
         self,
         account_context,
@@ -1781,7 +1799,7 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
         )
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=True)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
         ):
             with pytest.raises(ValueError, match="batch upload limit of 1"):
@@ -1931,6 +1949,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         ):
             yield account
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_initializes_high_quality_dataset_from_default_embedding_model(
         self, account_context, sqlite_session: Session
     ):
@@ -1950,7 +1969,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         binding.id = "binding-1"
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
@@ -1986,6 +2005,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         }
         get_binding.assert_called_once_with("default-provider", "default-embedding", sqlite_session)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_uses_explicit_embedding_and_retrieval_model(
         self, account_context, sqlite_session: Session
     ):
@@ -2015,7 +2035,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         updated_document = _document_row(document_id="doc-1")
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
@@ -2033,6 +2053,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         assert dataset.embedding_model_provider == "explicit-provider"
         assert dataset.retrieval_model == knowledge_config.retrieval_model.model_dump()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_creates_custom_process_rule_for_new_upload_document(
         self, account_context, sqlite_session: Session
     ):
@@ -2052,7 +2073,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
             patch("services.dataset_service.time.strftime", return_value="20260101010101"),
@@ -2077,6 +2098,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         document_proxy_cls.assert_called_once_with("tenant-1", "dataset-1", [created_document.id])
         document_proxy_cls.return_value.delay.assert_called_once()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_creates_automatic_process_rule_for_new_upload_document(
         self, account_context, sqlite_session: Session
     ):
@@ -2089,7 +2111,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.DocumentIndexingTaskProxy"),
             patch("services.dataset_service.time.strftime", return_value="20260101010101"),
@@ -2109,6 +2131,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         assert created_rule.rules == json.dumps(DatasetProcessRule.AUTOMATIC_RULES)
         assert sqlite_session.get(Document, documents[0].id) is documents[0]
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_creates_fallback_automatic_process_rule_when_latest_is_missing(
         self, account_context, sqlite_session: Session
     ):
@@ -2118,7 +2141,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.DocumentIndexingTaskProxy"),
             patch("services.dataset_service.time.strftime", return_value="20260101010101"),
@@ -2137,6 +2160,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         assert created_rule.mode == "automatic"
         assert created_rule.rules == json.dumps(DatasetProcessRule.AUTOMATIC_RULES)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_raises_when_upload_file_lookup_is_incomplete(
         self, account_context, sqlite_session: Session
     ):
@@ -2146,7 +2170,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.time.strftime", return_value="20260101010101"),
             patch("services.dataset_service.secrets.randbelow", return_value=23),
@@ -2160,6 +2184,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                     session=sqlite_session,
                 )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_requires_notion_info_list_for_notion_import(
         self, account_context, sqlite_session: Session
     ):
@@ -2175,7 +2200,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         )
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.redis_client") as mock_redis,
         ):
             mock_redis.lock.return_value = _make_lock_context()
@@ -2188,6 +2213,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                     session=sqlite_session,
                 )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_requires_website_info_list_for_website_crawl(
         self, account_context, sqlite_session: Session
     ):
@@ -2203,7 +2229,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         )
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.dataset_service.redis_client") as mock_redis,
         ):
             mock_redis.lock.return_value = _make_lock_context()
