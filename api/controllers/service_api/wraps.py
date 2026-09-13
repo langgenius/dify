@@ -12,6 +12,7 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
@@ -61,6 +62,7 @@ class FetchUserArg(BaseModel):
 
 APP_TOKEN_FORBIDDEN_RESPONSE = {
     403: "Forbidden - token scope, app, dataset, or workspace access denied",
+    503: "Service unavailable - app token validation could not reach the database",
 }
 
 DATASET_TOKEN_AUTH_RESPONSES = {
@@ -73,6 +75,16 @@ VECTOR_SPACE_UNAVAILABLE_RESPONSE = {
         "plan only; retry the request later."
     ),
 }
+
+
+def _session_get_or_service_unavailable[T](entity: type[T], ident: object) -> T | None:
+    """Load an entity, mapping invalidated DB connections to HTTP 503."""
+    try:
+        return db.session.get(entity, ident)
+    except DBAPIError as exc:
+        if exc.connection_invalidated:
+            raise ServiceUnavailable("Unable to validate app token. Please try again later.") from exc
+        raise
 
 
 def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
@@ -112,7 +124,7 @@ def validate_app_token[**P, R](
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token("app")
 
-            app_model = db.session.get(App, api_token.app_id)
+            app_model = _session_get_or_service_unavailable(App, api_token.app_id)
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -122,7 +134,7 @@ def validate_app_token[**P, R](
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
 
-            tenant = db.session.get(Tenant, app_model.tenant_id)
+            tenant = _session_get_or_service_unavailable(Tenant, app_model.tenant_id)
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
