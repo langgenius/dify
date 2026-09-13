@@ -12,7 +12,6 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
@@ -35,6 +34,7 @@ from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
+from services.service_api_entity_loader import session_get_or_service_unavailable
 
 logger = logging.getLogger(__name__)
 
@@ -77,16 +77,6 @@ VECTOR_SPACE_UNAVAILABLE_RESPONSE = {
 }
 
 
-def _session_get_or_service_unavailable[T](entity: type[T], ident: object) -> T | None:
-    """Load an entity, mapping invalidated DB connections to HTTP 503."""
-    try:
-        return db.session.get(entity, ident)
-    except DBAPIError as exc:
-        if exc.connection_invalidated:
-            raise ServiceUnavailable("Unable to validate app token. Please try again later.") from exc
-        raise
-
-
 def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
     doc: dict[str, object] = {"responses": APP_TOKEN_FORBIDDEN_RESPONSE}
     if fetch_user_arg is not None:
@@ -124,7 +114,7 @@ def validate_app_token[**P, R](
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token("app")
 
-            app_model = _session_get_or_service_unavailable(App, api_token.app_id)
+            app_model = session_get_or_service_unavailable(db.session, App, api_token.app_id)
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -134,7 +124,7 @@ def validate_app_token[**P, R](
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
 
-            tenant = _session_get_or_service_unavailable(Tenant, app_model.tenant_id)
+            tenant = session_get_or_service_unavailable(db.session, Tenant, app_model.tenant_id)
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
