@@ -419,7 +419,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "_save_message", lambda **kwargs: None)
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -593,7 +593,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return self._items
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 self.calls = 0
 
             def __enter__(self):
@@ -679,7 +679,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "error_to_stream_response", lambda err: ErrorStreamResponse(task_id="task", err=err))
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -767,7 +767,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         agent_thought = _agent_thought()
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1190,7 +1190,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         )
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1526,7 +1526,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return []
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1565,7 +1565,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return []
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1628,7 +1628,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return self._items
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 self.calls = 0
 
             def __enter__(self):
@@ -1690,7 +1690,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         )
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
