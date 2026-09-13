@@ -40,8 +40,8 @@ vi.mock('../../hooks/use-workflow-run', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useWorkflowRunHistory: (url?: string, enabled?: boolean) =>
-    mockUseWorkflowRunHistory(url, enabled),
+  useWorkflowRunHistory: (url?: string, params?: Record<string, any>, enabled?: boolean) =>
+    mockUseWorkflowRunHistory(url, params, enabled),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -118,12 +118,12 @@ describe('ViewHistory', () => {
       },
     })
 
-    expect(mockUseWorkflowRunHistory).toHaveBeenCalledWith('/history', false)
+    expect(mockUseWorkflowRunHistory).toHaveBeenCalledWith('/history', undefined, false)
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
 
-    expect(mockUseWorkflowRunHistory).toHaveBeenLastCalledWith('/history', true)
+    expect(mockUseWorkflowRunHistory).toHaveBeenLastCalledWith('/history', undefined, true)
     expect(screen.getByText('workflow.common.notRunning')).toBeInTheDocument()
     expect(screen.getByText('workflow.common.showRunHistory')).toBeInTheDocument()
   })
@@ -254,5 +254,18 @@ describe('ViewHistory', () => {
 
     expect(onClearLogAndMessageModal).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+  })
+
+  it('renders status filter chip and passes status query param when selected', () => {
+    renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
+      hooksStoreProps: {
+        handleBackupDraft: vi.fn(),
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
+    expect(mockUseWorkflowRunHistory).toHaveBeenLastCalledWith('/history', undefined, true)
+
+    expect(screen.getByRole('combobox', { name: 'All' })).toBeInTheDocument()
   })
 })
