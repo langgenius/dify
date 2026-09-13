@@ -112,7 +112,8 @@ class AppListBaseQuery(BaseModel):
         if not isinstance(value, list):
             raise ValueError("Unsupported tag_ids type.")
 
-        items = [item.strip() for item in value if item and item.strip()]
+        # mode="before": elements may still be non-strings before pydantic validates.
+        items = [str(item).strip() for item in value if item and str(item).strip()]
         if not items:
             return None
 
@@ -130,7 +131,8 @@ class AppListBaseQuery(BaseModel):
         if not isinstance(value, list):
             raise ValueError("Unsupported creator_ids type.")
 
-        items = [item.strip() for item in value if item and item.strip()]
+        # mode="before": elements may still be non-strings before pydantic validates.
+        items = [str(item).strip() for item in value if item and str(item).strip()]
         if not items:
             return None
 
