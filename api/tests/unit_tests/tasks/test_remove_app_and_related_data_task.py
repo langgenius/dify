@@ -142,6 +142,30 @@ class TestDeleteDraftVariablesBatch:
         assert result == expected_return
         mock_batch_delete.assert_called_once_with(app_id, batch_size=1000)
 
+    @patch("extensions.ext_storage.storage")
+    @patch("tasks.remove_app_and_related_data_task.session_factory")
+    def test_delete_draft_variables_batch_deletes_storage_after_commit(self, mock_session_factory, mock_storage):
+        """Storage deletion must happen after the batch transaction is committed."""
+        events: list[str] = []
+
+        session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = session
+        session.begin.return_value.__exit__.side_effect = lambda *_args: events.append("commit")
+        mock_storage.delete.side_effect = lambda key: events.append(f"storage-delete:{key}")
+
+        session.execute.side_effect = [
+            [("var-1", "file-1")],  # draft variable batch
+            [("file-1", "storage-key-1", "upload-file-1")],  # offload file records
+            MagicMock(),  # delete upload_files
+            MagicMock(),  # delete workflow_draft_variable_files
+            MagicMock(rowcount=1),  # delete workflow_draft_variables
+            [],  # no further batches
+        ]
+
+        assert delete_draft_variables_batch("test-app-id", batch_size=10) == 1
+        # The last "commit" belongs to the empty batch that ends the loop.
+        assert events == ["commit", "storage-delete:storage-key-1", "commit"]
+
 
 class TestDeleteDraftVariableOffloadData:
     """Test the Offload data cleanup functionality."""
@@ -152,7 +176,7 @@ class TestDeleteDraftVariableOffloadData:
 
         result = _delete_draft_variable_offload_data(mock_conn, [])
 
-        assert result == 0
+        assert result == []
         mock_conn.execute.assert_not_called()
 
     def test_delete_draft_variable_offload_data_database_failure(self, caplog: pytest.LogCaptureFixture):
@@ -164,8 +188,20 @@ class TestDeleteDraftVariableOffloadData:
         with caplog.at_level(logging.ERROR):
             result = _delete_draft_variable_offload_data(mock_conn, file_ids)
 
-        assert result == 0
+        # No storage key is returned, as the rows may still exist.
+        assert result == []
         assert "Error deleting draft variable offload data:" in caplog.text
+
+    @patch("extensions.ext_storage.storage")
+    def test_delete_draft_variable_offload_data_does_not_touch_storage(self, mock_storage):
+        """Storage must not be touched while the caller's transaction is open."""
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = [("file-1", "storage-key-1", "upload-file-1")]
+
+        result = _delete_draft_variable_offload_data(mock_conn, ["file-1"])
+
+        assert result == ["storage-key-1"]
+        mock_storage.delete.assert_not_called()
 
 
 class TestDeleteWorkflowArchiveLogs:

@@ -1,6 +1,6 @@
 import logging
 import uuid
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import delete, func, select
@@ -17,6 +17,7 @@ from models.model import App, UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from tasks.remove_app_and_related_data_task import (
     _delete_draft_variable_offload_data,
+    _delete_storage_objects,
     delete_draft_variables_batch,
 )
 
@@ -146,9 +147,14 @@ class TestDeleteDraftVariablesBatch:
         assert result == 0
         assert db_session_with_containers.scalar(select(func.count()).select_from(WorkflowDraftVariable)) == 0
 
+    @patch("tasks.remove_app_and_related_data_task._delete_storage_objects")
     @patch("tasks.remove_app_and_related_data_task._delete_draft_variable_offload_data")
     def test_delete_draft_variables_batch_logs_progress(
-        self, mock_offload_cleanup, db_session_with_containers, caplog: pytest.LogCaptureFixture
+        self,
+        mock_offload_cleanup,
+        mock_delete_storage_objects,
+        db_session_with_containers,
+        caplog: pytest.LogCaptureFixture,
     ):
         """Test that batch deletion logs progress correctly."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
@@ -161,7 +167,9 @@ class TestDeleteDraftVariablesBatch:
                 file_id_by_index[i] = file_ids[i // 3]
         _create_draft_variables(db_session_with_containers, app_id=app.id, count=30, file_id_by_index=file_id_by_index)
 
-        mock_offload_cleanup.return_value = len(file_id_by_index)
+        storage_keys = [f"storage-key-{i}" for i in range(len(file_id_by_index))]
+        mock_offload_cleanup.return_value = storage_keys
+        mock_delete_storage_objects.return_value = len(storage_keys)
 
         with caplog.at_level(logging.INFO, logger="tasks.remove_app_and_related_data_task"):
             result = delete_draft_variables_batch(app.id, 50)
@@ -170,6 +178,7 @@ class TestDeleteDraftVariablesBatch:
         mock_offload_cleanup.assert_called_once()
         _, called_file_ids = mock_offload_cleanup.call_args.args
         assert {str(file_id) for file_id in called_file_ids} == {str(file_id) for file_id in file_id_by_index.values()}
+        mock_delete_storage_objects.assert_called_once_with(storage_keys)
         info_records = [record for record in caplog.records if record.levelno == logging.INFO]
         assert len(info_records) == 2
 
@@ -189,9 +198,9 @@ class TestDeleteDraftVariableOffloadData:
         with session_factory.create_session() as session, session.begin():
             result = _delete_draft_variable_offload_data(session, file_ids)
 
-        assert result == 3
-        expected_storage_calls = [call(storage_key) for storage_key in upload_file_keys]
-        mock_storage.delete.assert_has_calls(expected_storage_calls, any_order=True)
+        # The storage keys are returned for deletion after the transaction, not deleted here.
+        assert set(result) == set(upload_file_keys)
+        mock_storage.delete.assert_not_called()
 
         remaining_var_files_count = db_session_with_containers.scalar(
             select(func.count())
@@ -217,10 +226,13 @@ class TestDeleteDraftVariableOffloadData:
 
         mock_storage.delete.side_effect = [Exception("Storage error"), None]
 
-        with caplog.at_level(logging.ERROR):
-            with session_factory.create_session() as session, session.begin():
-                result = _delete_draft_variable_offload_data(session, file_ids)
+        with session_factory.create_session() as session, session.begin():
+            keys_to_delete = _delete_draft_variable_offload_data(session, file_ids)
 
+        with caplog.at_level(logging.ERROR):
+            result = _delete_storage_objects(sorted(keys_to_delete, key=storage_keys.index))
+
+        # The failing object is skipped, the remaining one is still deleted.
         assert result == 1
         assert f"Failed to delete storage object {storage_keys[0]}" in caplog.text
 
