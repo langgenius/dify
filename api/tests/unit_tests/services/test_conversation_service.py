@@ -385,6 +385,100 @@ class TestConversationServiceHelpers:
         assert condition is not None
 
 
+class TestConversationServiceTryGetConversation:
+    """Cover `ConversationService.try_get_conversation`, the lookup variant that
+    returns None instead of raising when the id is unknown.
+
+    The matching `get_conversation` raises `ConversationNotExistsError`, so callers
+    that want to provision a brand-new conversation with an external id (for
+    example the chatflow API allowing the caller to mint their own conversation
+    id) must use the try variant. See Issue #41448.
+    """
+
+    def _build_account(self) -> Account:
+        return ConversationServiceTestDataFactory.create_account()
+
+    def _build_app(self) -> App:
+        return ConversationServiceTestDataFactory.create_app()
+
+    def test_returns_conversation_when_visible_to_user(self, sqlite_session: Session) -> None:
+        app = self._build_app()
+        account = self._build_account()
+        conversation = ConversationServiceTestDataFactory.create_conversation(
+            from_source=ConversationFromSource.CONSOLE,
+            from_end_user_id=None,
+            from_account_id=account.id,
+        )
+        sqlite_session.add_all([app, account, conversation])
+        sqlite_session.flush()
+
+        result = ConversationService.try_get_conversation(
+            app_model=app,
+            conversation_id=conversation.id,
+            user=account,
+            session=sqlite_session,
+        )
+
+        assert result is conversation
+
+    def test_returns_none_when_conversation_missing(self, sqlite_session: Session) -> None:
+        app = self._build_app()
+        account = self._build_account()
+        sqlite_session.add_all([app, account])
+        sqlite_session.flush()
+
+        result = ConversationService.try_get_conversation(
+            app_model=app,
+            conversation_id=OTHER_CONVERSATION_ID,
+            user=account,
+            session=sqlite_session,
+        )
+
+        assert result is None
+
+    def test_returns_none_when_conversation_owned_by_other_user(self, sqlite_session: Session) -> None:
+        # Conversation belongs to a different account under the same app: must not
+        # leak to the requesting user, and must not raise.
+        app = self._build_app()
+        requesting_account = self._build_account()
+        other_account = ConversationServiceTestDataFactory.create_account(account_id=OTHER_VARIABLE_ID)
+        conversation = ConversationServiceTestDataFactory.create_conversation(
+            from_source=ConversationFromSource.CONSOLE,
+            from_end_user_id=None,
+            from_account_id=other_account.id,
+        )
+        sqlite_session.add_all([app, requesting_account, other_account, conversation])
+        sqlite_session.flush()
+
+        result = ConversationService.try_get_conversation(
+            app_model=app,
+            conversation_id=conversation.id,
+            user=requesting_account,
+            session=sqlite_session,
+        )
+
+        assert result is None
+
+    def test_get_conversation_still_raises_when_missing(self, sqlite_session: Session) -> None:
+        # Sanity check that the existing `get_conversation` contract is preserved:
+        # it must still raise so other callers (for example the rename endpoint)
+        # continue to see a hard 404.
+        from services.errors.conversation import ConversationNotExistsError
+
+        app = self._build_app()
+        account = self._build_account()
+        sqlite_session.add_all([app, account])
+        sqlite_session.flush()
+
+        with pytest.raises(ConversationNotExistsError):
+            ConversationService.get_conversation(
+                app_model=app,
+                conversation_id=OTHER_CONVERSATION_ID,
+                user=account,
+                session=sqlite_session,
+            )
+
+
 class TestConversationServiceConversationalVariable:
     """Test conversational variable operations."""
 

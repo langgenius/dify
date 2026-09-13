@@ -170,7 +170,27 @@ class ConversationService:
     def get_conversation(
         cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session
     ):
-        conversation = session.scalar(
+        conversation = cls.try_get_conversation(
+            app_model=app_model, conversation_id=conversation_id, user=user, session=session
+        )
+
+        if not conversation:
+            raise ConversationNotExistsError()
+
+        return conversation
+
+    @classmethod
+    def try_get_conversation(
+        cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session
+    ) -> Conversation | None:
+        """Look up a conversation scoped to (app, user, id) and return it, or None if missing.
+
+        Unlike ``get_conversation``, this never raises ``ConversationNotExistsError``. Use it when the
+        caller is allowed to pass a previously unseen ``conversation_id`` (for example to use an
+        external id minted by the caller's own system) and the generator must provision a new
+        conversation row with that id when the lookup misses.
+        """
+        return session.scalar(
             select(Conversation)
             .where(
                 Conversation.id == conversation_id,
@@ -182,11 +202,6 @@ class ConversationService:
             )
             .limit(1)
         )
-
-        if not conversation:
-            raise ConversationNotExistsError()
-
-        return conversation
 
     @classmethod
     def delete(cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session):
