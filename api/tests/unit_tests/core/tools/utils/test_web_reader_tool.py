@@ -207,6 +207,74 @@ def test_get_url_head_non_200_returns_status(monkeypatch: pytest.MonkeyPatch, st
     assert out == "URL returned status code 500."
 
 
+@pytest.mark.parametrize("status_code", [405, 501])
+def test_get_url_head_method_not_allowed_fallback_get(monkeypatch: pytest.MonkeyPatch, stub_support_types, status_code):
+    """HEAD 405 or 501 → fallback to GET, successfully extracting content if GET returns 200 HTML."""
+
+    def fake_head(url, headers=None, follow_redirects=True, timeout=None):
+        return FakeResponse(status_code=status_code)
+
+    def fake_get(url, headers=None, follow_redirects=True, timeout=None):
+        html = b"<html><head><title>x</title></head><body>fallback success</body></html>"
+        return FakeResponse(status_code=200, headers={"Content-Type": "text/html"}, content=html)
+
+    import core.tools.utils.web_reader_tool as mod
+
+    _patch_remote_fetcher(monkeypatch, mod, head=fake_head, get=fake_get)
+
+    mock_best = SimpleNamespace(encoding="utf-8")
+    mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
+    monkeypatch.setattr(mod.charset_normalizer, "from_bytes", lambda _: mock_from_bytes)
+
+    def fake_simple_json_from_html_string(html, use_readability=True):
+        return {
+            "title": "Fallback Title",
+            "byline": "Alice",
+            "plain_text": [{"type": "text", "text": "fallback success"}],
+        }
+
+    monkeypatch.setattr(mod, "simple_json_from_html_string", fake_simple_json_from_html_string)
+
+    out = get_url("https://x.test/page")
+    assert "TITLE: Fallback Title" in out
+    assert "AUTHOR: Alice" in out
+    assert "fallback success" in out
+
+
+def test_get_url_head_405_fallback_get_unsupported_content_type(monkeypatch: pytest.MonkeyPatch, stub_support_types):
+    """HEAD 405 → fallback to GET, but GET returns unsupported content type."""
+
+    def fake_head(url, headers=None, follow_redirects=True, timeout=None):
+        return FakeResponse(status_code=405)
+
+    def fake_get(url, headers=None, follow_redirects=True, timeout=None):
+        return FakeResponse(status_code=200, headers={"Content-Type": "image/png"})
+
+    import core.tools.utils.web_reader_tool as mod
+
+    _patch_remote_fetcher(monkeypatch, mod, head=fake_head, get=fake_get)
+
+    out = get_url("https://x.test/image.png")
+    assert out == "Unsupported content-type [image/png] of URL."
+
+
+def test_get_url_head_405_fallback_get_error_status(monkeypatch: pytest.MonkeyPatch, stub_support_types):
+    """HEAD 405 → fallback to GET, but GET returns 404."""
+
+    def fake_head(url, headers=None, follow_redirects=True, timeout=None):
+        return FakeResponse(status_code=405)
+
+    def fake_get(url, headers=None, follow_redirects=True, timeout=None):
+        return FakeResponse(status_code=404)
+
+    import core.tools.utils.web_reader_tool as mod
+
+    _patch_remote_fetcher(monkeypatch, mod, head=fake_head, get=fake_get)
+
+    out = get_url("https://x.test/notfound")
+    assert out == "URL returned status code 404."
+
+
 def test_get_url_content_disposition_filename_detection(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     """
     If HEAD 200 with no Content-Type but Content-Disposition filename suggests a supported type,

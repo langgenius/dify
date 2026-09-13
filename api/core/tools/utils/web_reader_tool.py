@@ -26,6 +26,22 @@ def page_result(text: str, cursor: int, max_length: int) -> str:
     return text[cursor : cursor + max_length]
 
 
+def _get_content_type(response: Any) -> str | None:
+    content_type = response.headers.get("Content-Type")
+    if content_type:
+        return content_type.split(";")[0].strip()
+
+    content_disposition = response.headers.get("Content-Disposition", "")
+    filename_match = re.search(r'filename="([^"]+)"', content_disposition)
+    if filename_match:
+        filename = unquote(filename_match.group(1))
+        extension = re.search(r"\.(\w+)$", filename)
+        if extension:
+            return mimetypes.guess_type(filename)[0]
+
+    return None
+
+
 def get_url(url: str, user_agent: str | None = None) -> str:
     """Fetch URL and return the contents as a string."""
     headers = {
@@ -40,18 +56,7 @@ def get_url(url: str, user_agent: str | None = None) -> str:
     response = remote_fetcher.make_request("HEAD", url, headers=headers, follow_redirects=True, timeout=(5, 10))
 
     if response.status_code == 200:
-        # check content-type
-        content_type = response.headers.get("Content-Type")
-        if content_type:
-            main_content_type = response.headers.get("Content-Type").split(";")[0].strip()
-        else:
-            content_disposition = response.headers.get("Content-Disposition", "")
-            filename_match = re.search(r'filename="([^"]+)"', content_disposition)
-            if filename_match:
-                filename = unquote(filename_match.group(1))
-                extension = re.search(r"\.(\w+)$", filename)
-                if extension:
-                    main_content_type = mimetypes.guess_type(filename)[0]
+        main_content_type = _get_content_type(response)
 
         if main_content_type not in supported_content_types:
             return f"Unsupported content-type [{main_content_type}] of URL."
@@ -60,6 +65,17 @@ def get_url(url: str, user_agent: str | None = None) -> str:
             return ExtractProcessor.load_from_url(url, return_text=True)
 
         response = remote_fetcher.make_request("GET", url, headers=headers, follow_redirects=True, timeout=(120, 300))
+    elif response.status_code in (405, 501):
+        # Some servers reject HEAD with 405 Method Not Allowed or 501 Not Implemented. Fall back to GET.
+        response = remote_fetcher.make_request("GET", url, headers=headers, follow_redirects=True, timeout=(120, 300))
+        if response.status_code == 200:
+            main_content_type = _get_content_type(response)
+
+            if main_content_type not in supported_content_types:
+                return f"Unsupported content-type [{main_content_type}] of URL."
+
+            if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
+                return ExtractProcessor.load_from_url(url, return_text=True)
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
         object.__setattr__(scraper, "perform_request", remote_fetcher.make_request)
