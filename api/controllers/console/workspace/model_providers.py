@@ -277,7 +277,7 @@ class ModelProviderCredentialApi(Resource):
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
-    @console_ns.expect(console_ns.models[ParserCredentialDelete.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserCredentialDelete))
     @console_ns.response(204, "Credential deleted successfully")
     @setup_required
     @login_required
@@ -286,7 +286,7 @@ class ModelProviderCredentialApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, provider: str):
-        payload = console_ns.payload or {}
+        payload = request.args.to_dict(flat=True) or (request.get_json(silent=True) or {})
         args = ParserCredentialDelete.model_validate(payload)
 
         model_provider_service = ModelProviderService()
