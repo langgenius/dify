@@ -254,7 +254,7 @@ def error_to_string(error: Exception | str | None) -> str:
             string_stacktrace = "".join(traceback.format_exception(error))
             error_message = f"{error.__class__.__name__}: {error}\n\n{string_stacktrace}"
         else:
-            error_message = str(error)
+            error_message = error
     return error_message
 
 
@@ -439,7 +439,7 @@ def _resolve_workflow_node_span_name(
     node_title_by_id: Mapping[str, str] | None = None,
 ) -> str:
     """Resolve the Phoenix workflow node span display name."""
-    node_type = str(node_execution.node_type or "")
+    node_type = node_execution.node_type or ""
     graph_node_title = None
     if node_title_by_id is not None and isinstance(node_execution.node_id, str):
         graph_node_title = node_title_by_id.get(node_execution.node_id)
@@ -565,7 +565,7 @@ def _record_exception_event(current_span: Span, error: Exception | str | None = 
         current_span.record_exception(error)
         return
 
-    exception_message = str(error) or repr(error)
+    exception_message = error or repr(error)
     attributes: dict[str, AttributeValue] = {
         exception_attributes.EXCEPTION_TYPE: error.__class__.__name__,
         exception_attributes.EXCEPTION_MESSAGE: exception_message,

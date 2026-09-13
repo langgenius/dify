@@ -65,7 +65,7 @@ class TestAppList:
                 api,
                 db_session_with_containers,
                 auth_data=auth_for(account),
-                query=AppListQuery(workspace_id=str(tenant.id)),
+                query=AppListQuery(workspace_id=tenant.id),
             )
 
         # The api-disabled app is gated out, so it counts neither in `data`
@@ -88,12 +88,12 @@ class TestAppList:
                 api,
                 db_session_with_containers,
                 auth_data=auth_for(account),
-                query=AppListQuery(workspace_id=str(tenant.id), name=str(target.id)),
+                query=AppListQuery(workspace_id=tenant.id, name=target.id),
             )
 
         assert result.total == 1
         assert result.data[0].id == target.id
-        assert result.data[0].workspace_id == str(tenant.id)
+        assert result.data[0].workspace_id == tenant.id
 
     def test_uuid_name_filter_for_foreign_app_returns_empty(
         self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
@@ -112,7 +112,7 @@ class TestAppList:
                 api,
                 db_session_with_containers,
                 auth_data=auth_for(outsider),
-                query=AppListQuery(workspace_id=str(outsider_tenant.id), name=str(foreign_app.id)),
+                query=AppListQuery(workspace_id=outsider_tenant.id, name=foreign_app.id),
             )
 
         assert result.total == 0
