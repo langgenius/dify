@@ -39,7 +39,7 @@ class SavedMessageListApi(InstalledAppResource):
         pagination = SavedMessageService.pagination_by_last_id(
             app_model,
             current_user,
-            str(req_data.last_id) if req_data.last_id else None,
+            req_data.last_id or None,
             req_data.limit,
             session=session,
         )
@@ -66,7 +66,7 @@ class SavedMessageListApi(InstalledAppResource):
             raise NotCompletionAppError()
 
         try:
-            SavedMessageService.save(app_model, current_user, str(req_data.message_id), session=db.session())
+            SavedMessageService.save(app_model, current_user, req_data.message_id, session=db.session())
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
