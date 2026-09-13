@@ -157,7 +157,7 @@ class TestChatAppGenerator:
 
         with (
             patch(
-                "core.app.apps.chat.app_generator.ConversationService.get_conversation", return_value=None
+                "core.app.apps.chat.app_generator.ConversationService.try_get_conversation", return_value=None
             ) as get_conversation,
             patch("core.app.apps.chat.app_generator.ChatAppConfigManager.config_validate", return_value={"x": 1}),
             patch(

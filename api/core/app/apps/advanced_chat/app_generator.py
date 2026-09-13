@@ -164,15 +164,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
-            try:
-                conversation = ConversationService.get_conversation(
-                    app_model=app_model, conversation_id=conversation_id, user=user, session=session
-                )
-            except ConversationNotExistsError:
-                if invoke_from == InvokeFrom.SERVICE_API:
-                    conversation = None
-                else:
-                    raise
+            conversation = ConversationService.try_get_conversation(
+                app_model=app_model, conversation_id=conversation_id, user=user, session=session
+            )
+            if conversation is None and invoke_from != InvokeFrom.SERVICE_API:
+                # Console / web callers still expect the historical 404 when the id is unknown.
+                raise ConversationNotExistsError()
 
         # parse files
         # TODO(QuantumGhost): Move file parsing logic to the API controller layer
@@ -264,6 +261,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 conversation=conversation,
+                provided_conversation_id=conversation_id if conversation is None else None,
                 stream=streaming,
                 pause_state_config=pause_state_config,
                 session=session,
@@ -517,6 +515,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         conversation: Conversation | None = None,
         message: Message | None = None,
+        provided_conversation_id: str | None = None,
         stream: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         pause_state_config: PauseStateLayerConfig | None = None,
@@ -536,6 +535,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param workflow_node_execution_repository: repository for workflow node execution
         :param conversation: conversation
         :param stream: is stream
+        :param provided_conversation_id: caller-provided id to use when provisioning a new conversation
         """
         with self._bind_file_access_scope(
             tenant_id=application_generate_entity.app_config.tenant_id,
@@ -551,6 +551,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     application_generate_entity,
                     conversation,
                     session=session,
+                    provided_conversation_id=provided_conversation_id if conversation is None else None,
                 )
 
             if is_first_conversation:
