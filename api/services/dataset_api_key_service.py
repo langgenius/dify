@@ -22,17 +22,16 @@ from models.model import ApiToken, DatasetApiTokenBinding
 
 def get_bound_dataset_ids(session: Session, api_token_id: str) -> set[str]:
     """Return the dataset ids a key is scoped to (empty set means unrestricted)."""
-    return {
-        str(dataset_id)
-        for dataset_id in session.scalars(
+    return set(
+        session.scalars(
             select(DatasetApiTokenBinding.dataset_id).where(DatasetApiTokenBinding.api_token_id == api_token_id)
         ).all()
-    }
+    )
 
 
 def list_bindings_by_token(session: Session, token_ids: Iterable[str]) -> dict[str, list[str]]:
     """Group bound dataset ids by api token id for the given tokens."""
-    ids = [str(token_id) for token_id in token_ids]
+    ids = list(token_ids)
     bindings_by_token: dict[str, list[str]] = {}
     if not ids:
         return bindings_by_token
@@ -50,12 +49,9 @@ def find_unknown_dataset_ids(session: Session, dataset_ids: list[str], tenant_id
     """Return the dataset ids that do not belong to the tenant (preserving order)."""
     if not dataset_ids:
         return []
-    existing = {
-        str(dataset_id)
-        for dataset_id in session.scalars(
-            select(Dataset.id).where(Dataset.id.in_(dataset_ids), Dataset.tenant_id == tenant_id)
-        ).all()
-    }
+    existing = set(
+        session.scalars(select(Dataset.id).where(Dataset.id.in_(dataset_ids), Dataset.tenant_id == tenant_id)).all()
+    )
     return [dataset_id for dataset_id in dataset_ids if dataset_id not in existing]
 
 
@@ -77,9 +73,8 @@ def delete_keys_scoped_only_to(session: Session, dataset_id: str) -> list[str]:
     Must run before the dataset row is deleted (so the bindings still exist).
     Returns the deleted api_token ids; the caller controls the transaction.
     """
-    orphan_ids = [
-        str(token_id)
-        for token_id in session.scalars(
+    orphan_ids = list(
+        session.scalars(
             select(DatasetApiTokenBinding.api_token_id)
             .where(DatasetApiTokenBinding.dataset_id == dataset_id)
             .where(
@@ -88,7 +83,7 @@ def delete_keys_scoped_only_to(session: Session, dataset_id: str) -> list[str]:
                 )
             )
         ).all()
-    ]
+    )
     if orphan_ids:
         session.execute(delete(ApiToken).where(ApiToken.id.in_(orphan_ids)))
     return orphan_ids

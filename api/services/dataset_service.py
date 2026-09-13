@@ -1363,7 +1363,7 @@ class DatasetService:
 
         # Remove any dataset API key scoped only to this knowledge base, so it cannot
         # silently degrade to unrestricted (access-all) once its last binding is gone.
-        dataset_api_key_service.delete_keys_scoped_only_to(session, str(dataset.id))
+        dataset_api_key_service.delete_keys_scoped_only_to(session, dataset.id)
 
         session.delete(dataset)
         session.commit()
@@ -1840,7 +1840,7 @@ class DocumentService:
         if not upload_file_id:
             raise NotFound(missing_file_message)
 
-        return str(upload_file_id)
+        return upload_file_id
 
     @staticmethod
     def _get_upload_file_for_upload_file_document(document: Document, session: Session) -> UploadFile:
@@ -2857,7 +2857,7 @@ class DocumentService:
         if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
             raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
 
-        batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+        batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
         if count > batch_upload_limit:
             raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
