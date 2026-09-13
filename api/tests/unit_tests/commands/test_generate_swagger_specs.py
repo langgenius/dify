@@ -475,16 +475,13 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
         "`service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox "
         "plan only; retry the request later."
     )
-    app_token_unavailable_description = (
-        "Service unavailable - app token validation could not reach the database"
-    )
+    app_token_unavailable_description = "Service unavailable - app token validation could not reach the database"
     vector_space_operations = {
         (method, path)
         for path, path_item in payload["paths"].items()
         for method, operation in path_item.items()
         if isinstance(operation, dict)
-        and operation.get("responses", {}).get("503", {}).get("description")
-        == vector_space_unavailable_description
+        and operation.get("responses", {}).get("503", {}).get("description") == vector_space_unavailable_description
     }
     assert vector_space_operations == {
         ("post", "/datasets/{dataset_id}/document/create-by-file"),
