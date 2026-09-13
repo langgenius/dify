@@ -1840,7 +1840,8 @@ class DocumentService:
         if not upload_file_id:
             raise NotFound(missing_file_message)
 
-        return upload_file_id
+        # data_source_info is persisted JSON: the id may be stored as a number.
+        return str(upload_file_id)
 
     @staticmethod
     def _get_upload_file_for_upload_file_document(document: Document, session: Session) -> UploadFile:
