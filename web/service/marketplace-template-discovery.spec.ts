@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   templateSearch: vi.fn(),
 }))
 
-vi.mock('./client', () => ({
+vi.mock('@/service/marketplace', () => ({
   marketplaceClient: {
     templateCollections: (...args: unknown[]) => mocks.templateCollections(...args),
     templateCollectionTemplates: (...args: unknown[]) => mocks.templateCollectionTemplates(...args),
@@ -52,7 +52,7 @@ describe('marketplace template discovery', () => {
       1,
       {
         params: { collectionName: 'featured' },
-        body: { limit: 20 },
+        body: {},
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )

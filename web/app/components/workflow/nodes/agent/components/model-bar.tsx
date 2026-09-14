@@ -1,11 +1,12 @@
 import type { FC } from 'react'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { consoleQuery } from '@/service/console'
 
 type ModelBarProps =
   | {
@@ -18,12 +19,42 @@ type ModelBarProps =
     }
 
 const useAllModel = () => {
-  const { data: textGeneration } = useModelList(ModelTypeEnum.textGeneration)
-  const { data: moderation } = useModelList(ModelTypeEnum.moderation)
-  const { data: rerank } = useModelList(ModelTypeEnum.rerank)
-  const { data: speech2text } = useModelList(ModelTypeEnum.speech2text)
-  const { data: textEmbedding } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: tts } = useModelList(ModelTypeEnum.tts)
+  const { data: textGeneration = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: moderation = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.moderation } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerank = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: speech2text = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.speech2text } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: textEmbedding = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: tts = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.tts } },
+      select: (response) => response.data,
+    }),
+  )
   const models = useMemo(() => {
     return textGeneration
       .concat(moderation)

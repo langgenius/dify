@@ -25,10 +25,9 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 type MainNavRadioItemContentProps = {
@@ -124,10 +123,14 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { enableEducationPlan } = useProviderContext()
+  const { data: enableEducationPlan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.education.enabled,
+    }),
+  )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      enabled: enableEducationPlan,
+      enabled: enableEducationPlan === true,
       select: ({ is_student }) => is_student ?? false,
     }),
   )

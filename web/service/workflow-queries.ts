@@ -1,5 +1,5 @@
 import { skipToken } from '@tanstack/react-query'
-import { consoleQuery } from './client'
+import { consoleQuery } from '@/service/console'
 
 const WORKFLOW_VERSIONS_PAGE_SIZE = 10
 

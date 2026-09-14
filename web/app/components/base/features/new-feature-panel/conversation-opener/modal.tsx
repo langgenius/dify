@@ -4,6 +4,7 @@ import type { PromptVariable } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -14,6 +15,7 @@ import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/conf
 import { getInputKeys } from '@/app/components/base/block-input'
 import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { checkKeys, getNewVar } from '@/utils/var'
 
@@ -121,6 +123,22 @@ const OpeningSettingModal = ({
     </span>
   )
 
+  const {
+    items: questions,
+    getHandleProps,
+    getItemKey,
+    isSorting,
+    announcement,
+  } = useKeyboardSortable({
+    items: tempSuggestedQuestions,
+    onChange: setTempSuggestedQuestions,
+    getItemLabel: (item) => item,
+  })
+  const questionList = useMemo(
+    () => questions.map((name, index) => ({ id: index, name })),
+    [questions],
+  )
+
   const renderQuestions = () => {
     return (
       <div>
@@ -144,20 +162,23 @@ const OpeningSettingModal = ({
           </div>
         </div>
         <Divider bgStyle="gradient" className="mb-3 h-px" />
+        {announcement}
         <ReactSortable
           className="space-y-1"
-          list={tempSuggestedQuestions.map((name, index) => {
-            return {
-              id: index,
-              name,
-            }
-          })}
-          setList={(list) => setTempSuggestedQuestions(list.map((item) => item.name))}
+          list={questionList}
+          setList={(list) => {
+            if (
+              !isSorting &&
+              list.some((item, index) => item.name !== tempSuggestedQuestions[index])
+            )
+              setTempSuggestedQuestions(list.map((item) => item.name))
+          }}
+          disabled={isSorting}
           handle=".handle"
           ghostClass="opacity-50"
           animation={150}
         >
-          {tempSuggestedQuestions.map((question, index) => {
+          {questions.map((question, index) => {
             return (
               <div
                 className={cn(
@@ -167,9 +188,14 @@ const OpeningSettingModal = ({
                   focusID === index &&
                     'border-components-input-border-active bg-components-input-bg-active hover:border-components-input-border-active hover:bg-components-input-bg-active',
                 )}
-                key={index}
+                key={getItemKey(index)}
               >
-                <span className="handle i-ri-draggable size-4 cursor-grab text-text-quaternary" />
+                <IconButton
+                  {...getHandleProps(index)}
+                  className="handle size-6 shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
+                >
+                  <span aria-hidden="true" className="i-ri-draggable size-4 text-text-quaternary" />
+                </IconButton>
                 <input
                   type="input"
                   value={question || ''}
@@ -182,7 +208,7 @@ const OpeningSettingModal = ({
                     const value = e.target.value
                     setTempSuggestedQuestions(
                       tempSuggestedQuestions.map((item, i) => {
-                        if (index === i) return value
+                        if (getItemKey(index) === i) return value
 
                         return item
                       }),
@@ -200,7 +226,9 @@ const OpeningSettingModal = ({
                 <div
                   className="absolute top-1/2 right-1.5 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
                   onClick={() => {
-                    setTempSuggestedQuestions(tempSuggestedQuestions.filter((_, i) => index !== i))
+                    setTempSuggestedQuestions(
+                      tempSuggestedQuestions.filter((_, i) => getItemKey(index) !== i),
+                    )
                   }}
                   onMouseEnter={() => setDeletingID(index)}
                   onMouseLeave={() => setDeletingID(null)}

@@ -8,6 +8,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from controllers.common.fields import SimpleDataResponse
+from controllers.common.rbac import DatasetByPipeline, RBACCheck
 from controllers.common.schema import (
     JsonResponseWithStatus,
     query_params_from_model,
@@ -19,7 +20,6 @@ from controllers.console.app.wraps import with_session
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     enterprise_license_required,
     knowledge_pipeline_publish_enabled,
@@ -223,7 +223,7 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @knowledge_pipeline_publish_enabled
     @with_current_user
     @get_rag_pipeline
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_RELEASE)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_RELEASE, DatasetByPipeline()))
     @model_validate(CustomizedPipelineTemplatePayload)
     def post(
         self,

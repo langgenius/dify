@@ -5,7 +5,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from '#i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
+import { getDocLanguage, getLanguage } from '@/i18n-config/language'
 import { docPathProductAvailability, isProductlessDocPath } from '@/types/doc-paths'
 
 export const useLocale = () => {
@@ -17,11 +17,6 @@ export const useGetLanguage = () => {
   const locale = useLocale()
 
   return getLanguage(locale)
-}
-export const useGetPricingPageLanguage = () => {
-  const locale = useLocale()
-
-  return getPricingPageLanguage(locale)
 }
 
 export const defaultDocBaseUrl = 'https://docs.dify.ai'

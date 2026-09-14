@@ -98,8 +98,6 @@ jobs:
               - '.github/actions/setup-web/**'
             e2e:
               - 'api/**'
-              - 'api/pyproject.toml'
-              - 'api/uv.lock'
               - 'e2e/**'
               - 'web/**'
               - 'packages/**'
@@ -108,6 +106,8 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/envs/middleware.env.example'
+              - 'docker/ssrf_proxy/**'
+              - 'docker/volumes/sandbox/conf/**'
               - '.github/workflows/web-e2e.yml'
               - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'

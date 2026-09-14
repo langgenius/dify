@@ -197,11 +197,10 @@ class ApiToolProvider(TypeBase):
     def credentials(self) -> dict[str, Any]:
         return dict[str, Any](json.loads(self.credentials_str))
 
-    @property
-    def user(self) -> Account | None:
+    def user(self, session: Session) -> Account | None:
         if not self.user_id:
             return None
-        return db.session.scalar(select(Account).where(Account.id == self.user_id))
+        return session.scalar(select(Account).where(Account.id == self.user_id))
 
     def tenant(self, session: Session) -> Tenant | None:
         return session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))

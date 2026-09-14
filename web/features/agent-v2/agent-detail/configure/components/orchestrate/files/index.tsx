@@ -26,7 +26,7 @@ import {
   removeAgentFileAtom,
   upsertAgentFileAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/files'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob, downloadUrl } from '@/utils/download'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'

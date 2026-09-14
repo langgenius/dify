@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 from sqlalchemy import event, select
@@ -968,6 +968,8 @@ def test_workflow_run_queries_delegate_to_repositories(monkeypatch: pytest.Monke
     )
     service._workflow_run_repo = workflow_run_repo
     service._node_execution_service_repo = node_execution_repo
+    service._session = Mock()
+    service._session_maker = Mock()
     snippet = _snippet()
     expected_traces = [SimpleNamespace(id="node-execution-1:retry:1"), SimpleNamespace(id="node-execution-1")]
     mock_assemble = Mock(return_value=expected_traces)
@@ -998,7 +1000,7 @@ def test_workflow_run_queries_delegate_to_repositories(monkeypatch: pytest.Monke
         workflow_run_id="run-1",
     )
     mock_assemble.assert_called_once_with(
-        node_execution_repo.get_executions_by_workflow_run.return_value, node_execution_repo
+        node_execution_repo.get_executions_by_workflow_run.return_value, node_execution_repo, session=ANY
     )
     node_execution_repo.get_node_last_execution.assert_called_once_with(
         tenant_id="tenant-1",

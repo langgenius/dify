@@ -11,7 +11,7 @@ import ExternalAPIPanel from '@/app/components/datasets/external-api/external-ap
 import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
 import { KnowledgeSpaceCard } from './components/knowledge-space-card'

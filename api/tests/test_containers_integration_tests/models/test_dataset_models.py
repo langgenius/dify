@@ -132,7 +132,7 @@ class TestDatasetDocumentProperties:
             db_session_with_containers.add(doc)
         db_session_with_containers.flush()
 
-        assert dataset.word_count == 5000
+        assert dataset.get_word_count(session=db_session_with_containers) == 5000
 
     def test_dataset_available_segment_count(self, db_session_with_containers: Session) -> None:
         """Test Dataset.available_segment_count counts completed and enabled segments."""
@@ -322,7 +322,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        related_dataset = segment.dataset
+        related_dataset = segment.get_dataset(session=db_session_with_containers)
 
         # Assert
         assert related_dataset is not None
@@ -369,7 +369,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        related_document = segment.document
+        related_document = segment.get_document(session=db_session_with_containers)
 
         # Assert
         assert related_document is not None
