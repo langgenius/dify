@@ -141,22 +141,25 @@ def batch_create_segment_to_index_task(
         tokens_list = [0] * len(content)
 
     with session_factory.create_session() as session, session.begin():
+        max_position = session.scalar(
+            select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document_config["id"])
+        )
+        current_position = max_position if max_position is not None else 0
+
         for segment, tokens in zip(content, tokens_list):
-            content = segment["content"]
+            segment_content = segment["content"]
             doc_id = str(uuid.uuid4())
-            segment_hash = helper.generate_text_hash(content)
-            max_position = session.scalar(
-                select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document_config["id"])
-            )
+            segment_hash = helper.generate_text_hash(segment_content)
+            current_position += 1
             segment_document = DocumentSegment(
                 tenant_id=tenant_id,
                 dataset_id=dataset_id,
                 document_id=document_id,
                 index_node_id=doc_id,
                 index_node_hash=segment_hash,
-                position=max_position + 1 if max_position else 1,
-                content=content,
-                word_count=len(content),
+                position=current_position,
+                content=segment_content,
+                word_count=len(segment_content),
                 tokens=tokens,
                 created_by=user_id,
                 indexing_at=naive_utc_now(),
