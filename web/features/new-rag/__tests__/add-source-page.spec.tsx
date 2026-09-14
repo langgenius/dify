@@ -94,7 +94,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       postKnowledgeSpacesByIdSourceConnections: clientMock.createConnection,

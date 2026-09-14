@@ -14,7 +14,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XCircle'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { TagSearchContent } from './tag-search-content'
 
 const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag['id'], true, Tag>['filter']> = (

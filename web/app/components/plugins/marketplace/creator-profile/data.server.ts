@@ -2,7 +2,7 @@ import type { MarketplaceCreator, MarketplaceOrganization } from '@dify/contract
 import type { CreatorSortField, CreatorSortOrder, LoadedCreatorProfile } from './model'
 import { cache } from 'react'
 import { MARKETPLACE_API_PREFIX } from '@/config'
-import { marketplaceClient } from '@/service/client'
+import { marketplaceClient } from '@/service/marketplace'
 import { getPluginIconInMarketplace } from '../utils'
 import {
   adaptCreatorProfile,

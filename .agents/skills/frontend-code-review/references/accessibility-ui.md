@@ -4,18 +4,14 @@ Accessibility findings are first-class review findings. Treat broken keyboard ac
 
 ## Review Evidence
 
-Before finalizing UI or accessibility findings, fetch the latest Web Interface Guidelines as a required baseline:
-
-```text
-https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md
-```
-
-Do not treat that document as the complete accessibility rule set. Combine it with:
+Use the sources relevant to the changed contract:
 
 - `packages/dify-ui/README.md`, `packages/dify-ui/AGENTS.md`, and the relevant primitive implementation when code uses `@langgenius/dify-ui/*`.
 - Base UI docs and local `.d.ts` contracts when primitive semantics, focus target, labels, or popup reachability are unclear.
 - MDN or relevant WAI-ARIA/browser standards when behavior, compatibility, or deprecation status matters.
 - The current feature's product semantics, because an accessible primitive can still be used in an inaccessible workflow.
+
+Consult current official documentation or standards when these sources leave a behavior unresolved. The [Web Interface Guidelines] are an optional broader UI reference, not a required fetch for each review.
 
 ## Semantic HTML
 
@@ -29,6 +25,14 @@ Flag:
 - Heading levels that skip hierarchy in page-level content.
 
 Prefer semantic HTML before ARIA.
+
+## Page Landmarks
+
+When reviewing Web page layouts, navigation, or landmark changes, read [Page landmarks].
+Inspect the composed page with its parent layouts for missing or duplicate main regions,
+inappropriate nesting or roles, and ambiguous or broken landmark names. Check affected
+unit and E2E locators when semantic elements change. Web owns these composition rules;
+use the existing naming contract for label-source decisions.
 
 ## Accessible Names And Descriptions
 
@@ -83,7 +87,7 @@ Flag:
   state ownership and obscures whether `disabled` expresses independent unavailability.
 - Spinner or decorative loading icon exposed to screen readers.
 - Disabled controls that hide the reason users cannot proceed.
-- `aria-disabled` used without manually blocking click, Space, and Enter.
+- Controls marked `aria-disabled` that still activate through supported pointer or keyboard input. Check the primitive's handling before requesting manual event guards.
 - Toasts, inline validation, or async status changes that are not announced when users need the update to continue.
 - Icon-only loading/error affordances without text or accessible status where the state matters.
 
@@ -108,7 +112,7 @@ Use Popover for explanatory content, rich help, and infotips. Use Tooltip only a
 Flag:
 
 - Text in flex/grid children without `min-w-0` when it can overflow.
-- Names, labels, file names, model names, workspace names, or user content lacking `truncate`, `line-clamp`, or `break-words`.
+- Long names, labels, or user content that overflow, obscure adjacent controls, or become unreadable in supported layouts.
 - Right-side icons, badges, checks, or actions that shrink before the text area.
 - Empty arrays or empty strings rendering broken layout instead of an empty state.
 - Button, tab, badge, chip, menu item, or card text that can overlap sibling controls at common viewport widths.
@@ -127,3 +131,5 @@ Flag:
 - Hardcoded dates, times, numbers, or currency formats instead of `Intl.*`.
 
 [Accessible names and descriptions]: ../../../../packages/dify-ui/docs/accessible-names-and-descriptions.md
+[Page landmarks]: ../../../../web/docs/landmarks.md
+[Web Interface Guidelines]: https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md

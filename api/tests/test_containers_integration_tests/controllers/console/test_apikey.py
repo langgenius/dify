@@ -219,12 +219,11 @@ class TestDatasetApiKeyListResource:
     """
 
     def _bound_dataset_ids(self, session: Session, api_token_id: str) -> set[str]:
-        return {
-            str(dataset_id)
-            for dataset_id in session.scalars(
+        return set(
+            session.scalars(
                 select(DatasetApiTokenBinding.dataset_id).where(DatasetApiTokenBinding.api_token_id == api_token_id)
             ).all()
-        }
+        )
 
     def test_create_unbound_key(
         self,
@@ -402,10 +401,9 @@ class TestDatasetDeleteCascadesToScopedKeys:
         assert resp.status_code == 204
         # The key survives, still scoped to the remaining dataset only.
         assert db_session_with_containers.scalar(select(ApiToken).where(ApiToken.id == api_key_id)) is not None
-        remaining = {
-            str(ds_id)
-            for ds_id in db_session_with_containers.scalars(
+        remaining = set(
+            db_session_with_containers.scalars(
                 select(DatasetApiTokenBinding.dataset_id).where(DatasetApiTokenBinding.api_token_id == api_key_id)
             ).all()
-        }
+        )
         assert remaining == {other_id}

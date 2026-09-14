@@ -16,7 +16,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
 import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import {
@@ -960,7 +960,7 @@ export function AddSourcePage({
 
   return (
     <>
-      <main className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
+      <div className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
         <header>
           <h2 className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newKnowledge.addSource'])}
@@ -1111,7 +1111,7 @@ export function AddSourcePage({
             </p>
           )}
         </div>
-      </main>
+      </div>
       <AddSourceExitDialog
         discarding={discarding}
         error={discardError}

@@ -5,14 +5,20 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
+import { ReactFlowProvider } from 'reactflow'
 import {
   createNodeTracing,
   createWorkflowRunningData,
 } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowComponent as renderWithWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { submitHumanInputForm } from '@/service/workflow'
 import WorkflowPreview from '../workflow-preview'
+
+const renderWorkflowComponent = (
+  ui: Parameters<typeof renderWithWorkflowStore>[0],
+  options?: Parameters<typeof renderWithWorkflowStore>[1],
+) => renderWithWorkflowStore(<ReactFlowProvider>{ui}</ReactFlowProvider>, options)
 
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
 
@@ -173,6 +179,22 @@ describe('WorkflowPreview', () => {
       configurable: true,
       value: 1200,
     })
+  })
+
+  it('resizes the run panel with the keyboard within the available canvas width', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: { previewPanelWidth: 480, workflowCanvasWidth: 1000 },
+    })
+    await user.tab()
+    const handle = screen.getByRole('separator', { name: 'workflow.singleRun.testRun' })
+    expect(handle).toHaveFocus()
+    await user.keyboard('{ArrowLeft}{Shift>}{ArrowLeft}{/Shift}')
+    expect(handle).toHaveAttribute('aria-valuenow', '520')
+    await user.keyboard('{End}{ArrowLeft}')
+    expect(handle).toHaveAttribute('aria-valuenow', '600')
+    await user.keyboard('{Home}{ArrowRight}')
+    expect(handle).toHaveAttribute('aria-valuenow', '400')
   })
 
   it('should keep the input tab active, switch to result after running, and close the preview panel', async () => {

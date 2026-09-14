@@ -6,7 +6,10 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.web import site as site_module
 from services.app_definition_query_service import AppSiteConfiguration
-from services.web_app_runtime_query_service import WebAppBootstrap, WebAppRuntimeUnavailableError
+from services.web_app_runtime_query_service import (
+    WebAppBootstrap,
+    WebAppRuntimeUnavailableError,
+)
 
 
 def _bootstrap() -> WebAppBootstrap:

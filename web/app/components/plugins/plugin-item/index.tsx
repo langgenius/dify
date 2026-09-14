@@ -146,7 +146,7 @@ const PluginItem: FC<Props> = ({
               height={40}
               loading="lazy"
               src={iconSrc}
-              alt={`plugin-${plugin_unique_identifier}-logo`}
+              alt=""
               width={40}
             />
           </div>

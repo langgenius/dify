@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
+from unittest import mock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -1498,7 +1499,7 @@ def test_get_rag_pipeline_workflow_run_node_executions_assembles_configured_repo
         app_id=pipeline.id,
         workflow_run_id="run-1",
     )
-    mock_assemble.assert_called_once_with(expected_executions, node_repo)
+    mock_assemble.assert_called_once_with(expected_executions, node_repo, session=mock.ANY)
 
 
 def test_get_recommended_plugins_returns_empty_when_no_active_plugins(

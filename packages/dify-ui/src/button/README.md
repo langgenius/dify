@@ -43,29 +43,9 @@ button semantics. It is not a link mode.
 
 `loading` owns Base UI's disabled interaction, retained focus, and the decorative spinner. The
 button remains in the tab order with `aria-disabled`, and Dify UI suppresses activation. Pass the
-pending state only to `loading`:
+pending state only to `loading`; keep independent availability conditions in `disabled`:
 
 ```tsx
-<Button loading={isSaving}>Save</Button>
-```
-
-Keep independent availability conditions in `disabled`:
-
-```tsx
-<Button loading={isSaving} disabled={!canManageSettings}>
-  Save
-</Button>
-```
-
-Do not repeat the pending state in `disabled`:
-
-```tsx
-// Incorrect: loading already handles isSaving.
-<Button loading={isSaving} disabled={isSaving || !canManageSettings}>
-  Save
-</Button>
-
-// Correct.
 <Button loading={isSaving} disabled={!canManageSettings}>
   Save
 </Button>
@@ -77,11 +57,7 @@ behavior and may leave the tab order.
 ### Accessible loading feedback
 
 The spinner is decorative. Keep a non-empty visible label throughout loading. If the visible label
-stays the same, its text continues to name the button:
-
-```tsx
-<Button loading={isSaving}>Save</Button>
-```
+stays the same, its text continues to name the button.
 
 When the label changes while the focused button enters loading, give the changing text a stable ID
 and reference it explicitly. Some browser and screen-reader combinations do not reliably announce

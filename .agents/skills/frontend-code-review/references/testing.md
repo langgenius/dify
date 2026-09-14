@@ -1,6 +1,6 @@
 # Testing Review Rules
 
-`web/docs/test.md` is the canonical frontend testing policy. Use this file only to translate that policy into review findings.
+Use `web/docs/test.md` for tests owned by `web/` and `packages/dify-ui/docs/testing.md` for tests owned by Dify UI. These owners define their test boundaries, environments, and checks; this reference only adds review questions.
 
 ## Request Missing Tests When Risk Justifies Them
 
@@ -30,8 +30,7 @@ Flag tests that:
 
 - Prefer semantic queries and accessible names.
 - Prefer real feature components when integration semantics matter.
-- Allow intentional child or provider mocks when setup would dominate the test and that boundary is covered independently.
-- Do not accept semantically inaccurate mocks of Dify UI or legacy base primitives.
+- Check mocks against the owning package's policy; allowed mocks must preserve the public contract and leave the behavior under review real.
 - Require a real-browser or visual verification plan when `happy-dom` cannot represent the risk.
 
 Treat test quality, determinism, and regression value as the review criteria. Do not use test count or coverage percentage as a proxy for quality.

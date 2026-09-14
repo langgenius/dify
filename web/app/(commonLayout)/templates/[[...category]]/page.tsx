@@ -1,6 +1,7 @@
 import { MARKETPLACE_CONTAINER_ID } from '@/app/components/plugins/marketplace/constants'
 import { EmbeddedTemplatesMarketplace } from '@/app/components/plugins/marketplace/templates'
-import { isTemplateCategory } from '@/app/components/plugins/marketplace/templates/categories'
+import { TemplateDetailRouteProvider } from '@/app/components/plugins/marketplace/templates/template-detail-route'
+import { parseTemplatesRoute } from '@/app/components/plugins/marketplace/templates/template-links'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { redirect } from '@/next/navigation'
 
@@ -60,19 +61,20 @@ async function TemplatesPageContent({ params, searchParams }: TemplatesPageProps
     redirect(`/apps?template-id=${encodeURIComponent(resolvedSearchParams.tid)}`)
   }
 
-  const requestedCategory = resolvedParams.category?.[0]
-  const category = isTemplateCategory(requestedCategory) ? requestedCategory : 'all'
+  const { category, selection } = parseTemplatesRoute(resolvedParams.category)
 
   return (
-    <EmbeddedTemplatesMarketplace
-      category={category}
-      languages={resolvedSearchParams.languages}
-      locale={locale}
-      page={parsePage(resolvedSearchParams.page)}
-      query={resolvedSearchParams.q ?? ''}
-      sortBy={parseSortBy(resolvedSearchParams.sort_by)}
-      sortOrder={parseSortOrder(resolvedSearchParams.sort_order)}
-      view={parseView(resolvedSearchParams.view)}
-    />
+    <TemplateDetailRouteProvider initialSelection={selection}>
+      <EmbeddedTemplatesMarketplace
+        category={category}
+        languages={resolvedSearchParams.languages}
+        locale={locale}
+        page={parsePage(resolvedSearchParams.page)}
+        query={resolvedSearchParams.q ?? ''}
+        sortBy={parseSortBy(resolvedSearchParams.sort_by)}
+        sortOrder={parseSortOrder(resolvedSearchParams.sort_order)}
+        view={parseView(resolvedSearchParams.view)}
+      />
+    </TemplateDetailRouteProvider>
   )
 }

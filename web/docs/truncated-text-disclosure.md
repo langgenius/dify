@@ -10,12 +10,9 @@ Missing `title` is not by itself an accessibility defect. Native title tooltips 
 - replace a visible label, accessible name, or accessible description;
 - compete with an existing hover, focus, pointer, expand, copy, or detail interaction.
 
-Before making a change:
+For automated `title` additions, trace the displayed value, final DOM element, and existing disclosure owner. Apply `SKIP`, `COVERED`, `AUTO`, and `REVIEW` in that order; add `title` only for `AUTO` candidates.
 
-1. Trace the value to the final rendered DOM element.
-2. Identify the existing owner of full-content disclosure.
-3. Apply `SKIP`, `COVERED`, `AUTO`, and `REVIEW` in that order, stopping at the first matching classification.
-4. Modify only `AUTO` candidates. Report the others without changing code.
+These classifications limit automatic `title` additions. For a requested disclosure fix, continue with the appropriate feature-owned interaction. `REVIEW` calls for resolving the disclosure design; it does not require stopping an already authorized fix or asking for approval of routine implementation choices.
 
 ## AUTO
 
@@ -56,7 +53,7 @@ Classify as `SKIP` and make no change when any condition below applies:
 
 ## REVIEW
 
-Classify as `REVIEW`, make no code change, and report the reason when:
+Classify a proposed automatic `title` addition as `REVIEW` and explain the unresolved disclosure requirement when:
 
 - the correct disclosure owner is ambiguous or product-specific;
 - users need the full value to understand, distinguish, or complete the task, but no cross-input disclosure owner exists;

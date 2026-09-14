@@ -11,7 +11,6 @@ import MainNavLayout from '../layout'
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     isCurrentWorkspaceDatasetOperator: false,
-    isCurrentWorkspaceEditor: true,
   },
 }))
 
@@ -65,7 +64,6 @@ describe('MainNavLayout', () => {
     ;(usePathname as Mock).mockReturnValue('/apps')
     mockConsoleState.current = {
       isCurrentWorkspaceDatasetOperator: false,
-      isCurrentWorkspaceEditor: true,
     }
     ;(useSuspenseQuery as Mock).mockReturnValue({
       data: {
@@ -245,7 +243,6 @@ describe('MainNavLayout', () => {
       pathname: '/agents/agent-1/configure',
       consoleState: {
         isCurrentWorkspaceDatasetOperator: true,
-        isCurrentWorkspaceEditor: true,
       },
       systemFeatures: {
         enable_app_deploy: true,
@@ -256,7 +253,6 @@ describe('MainNavLayout', () => {
       pathname: '/deployments/app-instance-1/overview',
       consoleState: {
         isCurrentWorkspaceDatasetOperator: false,
-        isCurrentWorkspaceEditor: false,
       },
       systemFeatures: {
         enable_app_deploy: true,
@@ -267,7 +263,6 @@ describe('MainNavLayout', () => {
       pathname: '/deployments/app-instance-1/overview',
       consoleState: {
         isCurrentWorkspaceDatasetOperator: false,
-        isCurrentWorkspaceEditor: true,
       },
       systemFeatures: {
         enable_app_deploy: false,

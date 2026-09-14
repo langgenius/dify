@@ -1,19 +1,11 @@
 import type { AnnotationReplyConfig } from '@/models/debug'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { sleep } from '@/utils'
 import useAnnotationConfig from '../use-annotation-config'
 
 let mockIsAnnotationFull = false
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: {
-      usage: { annotatedResponse: mockIsAnnotationFull ? 100 : 5 },
-      total: { annotatedResponse: 100 },
-    },
-    enableBilling: true,
-  }),
-}))
 
 vi.mock('@/service/annotation', () => ({
   updateAnnotationStatus: vi.fn().mockResolvedValue({ job_id: 'test-job-id' }),
@@ -23,6 +15,13 @@ vi.mock('@/service/annotation', () => ({
 vi.mock('@/utils', () => ({
   sleep: vi.fn().mockResolvedValue(undefined),
 }))
+
+function renderHook<Result>(callback: () => Result) {
+  return renderHookWithConsoleQuery(callback, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { annotation_quota_limit: { size: mockIsAnnotationFull ? 100 : 5, limit: 100 } },
+  })
+}
 
 describe('useAnnotationConfig', () => {
   const defaultConfig: AnnotationReplyConfig = {
@@ -38,6 +37,27 @@ describe('useAnnotationConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsAnnotationFull = false
+  })
+
+  it('edits enabled annotation parameters without depending on unused creation quota', async () => {
+    const setAnnotationConfig = vi.fn()
+    const { result } = renderHookWithConsoleQuery(
+      () =>
+        useAnnotationConfig({
+          appId: 'test-app',
+          annotationConfig: { ...defaultConfig, enabled: true },
+          setAnnotationConfig,
+        }),
+      { systemFeatures: { deployment_edition: 'CLOUD' } },
+    )
+
+    act(() => result.current.setIsShowAnnotationConfigInit(true))
+    expect(result.current.isShowAnnotationConfigInit).toBe(true)
+    await act(async () => {
+      await result.current.handleEnableAnnotation(defaultConfig.embedding_model!)
+    })
+    expect(updateAnnotationStatus).toHaveBeenCalled()
+    expect(setAnnotationConfig).toHaveBeenCalled()
   })
 
   it('should initialize with annotation config init hidden', () => {

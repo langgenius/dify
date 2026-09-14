@@ -6,14 +6,17 @@ import type { SnippetInputField } from '@/models/snippet'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useReactFlowStore } from 'reactflow'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import { getProcessedInputs } from '@/app/components/base/chat/chat/utils'
 import Loading from '@/app/components/base/loading'
+import ResizeHandle from '@/app/components/base/resize-handle'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
 import { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
+import { getPreviewPanelMaxWidth } from '@/app/components/workflow/panel/panel-width'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import ResultText from '@/app/components/workflow/run/result-text'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
@@ -66,6 +69,7 @@ const buildInitialInputs = (fields: SnippetRunField[]) => {
 
 const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
   const { t } = useTranslation()
+  const panelId = useId()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleRun } = useWorkflowRun()
   const { checkInputsForm } = useCheckInputsForms()
@@ -74,6 +78,8 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
   const panelWidth = useStore((s) => s.previewPanelWidth)
   const setPreviewPanelWidth = useStore((s) => s.setPreviewPanelWidth)
+  const hasSelectedNode = useReactFlowStore((s) => s.getNodes().some((node) => node.data.selected))
+  const maxPanelWidth = getPreviewPanelMaxWidth(workflowCanvasWidth, hasSelectedNode)
 
   const previewFields = useMemo(() => buildPreviewFields(fields), [fields])
   const initialInputs = useMemo(() => buildInitialInputs(previewFields), [previewFields])
@@ -125,12 +131,9 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
       if (!isResizing) return
 
       const newWidth = window.innerWidth - e.clientX
-      const reservedCanvasWidth = 400
-      const maxAllowed = workflowCanvasWidth ? workflowCanvasWidth - reservedCanvasWidth : 1024
-
-      if (newWidth >= 400 && newWidth <= maxAllowed) setPreviewPanelWidth(newWidth)
+      if (newWidth >= 400 && newWidth <= maxPanelWidth) setPreviewPanelWidth(newWidth)
     },
-    [isResizing, setPreviewPanelWidth, workflowCanvasWidth],
+    [isResizing, setPreviewPanelWidth, maxPanelWidth],
   )
 
   useEffect(() => {
@@ -144,11 +147,19 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
 
   return (
     <div
+      id={panelId}
       className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{ width: `${panelWidth}px` }}
     >
-      <div
-        className="absolute top-1/2 bottom-0 left-0.75 z-50 h-6 w-0.75 cursor-col-resize rounded bg-gray-300"
+      <ResizeHandle
+        side="left"
+        value={panelWidth}
+        min={400}
+        max={maxPanelWidth}
+        controls={panelId}
+        label={t(($) => $['singleRun.testRun'], { ns: 'workflow' })}
+        onResize={setPreviewPanelWidth}
+        className="absolute top-1/2 bottom-0 left-0.75 z-50 h-6 w-0.75 cursor-col-resize bg-state-base-handle"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">

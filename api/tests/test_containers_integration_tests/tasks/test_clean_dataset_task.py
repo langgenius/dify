@@ -295,7 +295,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
         )
 
         # Verify results
@@ -419,7 +419,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
         )
 
         # Verify results
@@ -552,7 +552,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
         )
 
         # Verify results - even with vector cleanup failure, documents and segments should be deleted
@@ -638,7 +638,7 @@ class TestCleanDatasetTask:
                 indexing_technique=dataset.indexing_technique,
                 index_struct=dataset.index_struct,
                 collection_binding_id=dataset.collection_binding_id,
-                doc_form=dataset.doc_form,
+                doc_form=dataset.get_doc_form(session=db_session_with_containers),
             )
 
         # Verify results
@@ -751,7 +751,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
         )
 
         end_time = time.time()
@@ -845,7 +845,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
         )
 
         # Verify results
@@ -999,7 +999,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=dataset.get_doc_form(session=db_session_with_containers),
         )
 
         # Verify results

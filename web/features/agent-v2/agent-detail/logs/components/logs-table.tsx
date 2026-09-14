@@ -13,12 +13,18 @@ import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
 import { LogSourceCell } from './source-cell'
 
+export type AgentLogsSort = {
+  field: 'created_at' | 'updated_at'
+  order: 'asc' | 'desc'
+}
+
 export function AgentLogsTable({
   logs,
   isPending,
   isError,
   isSuccess,
   selectedLogId,
+  sort,
   onOpenLog,
   onRetry,
 }: {
@@ -27,6 +33,7 @@ export function AgentLogsTable({
   isError: boolean
   isSuccess: boolean
   selectedLogId?: string
+  sort: AgentLogsSort
   onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
@@ -48,7 +55,7 @@ export function AgentLogsTable({
       <div className="shrink-0 pr-3">
         <table aria-hidden="true" className="w-full table-fixed border-collapse">
           <LogsTableColGroup />
-          <LogsTableHeader labels={tableHeaderLabels} />
+          <LogsTableHeader labels={tableHeaderLabels} sort={sort} />
         </table>
       </div>
 
@@ -62,7 +69,7 @@ export function AgentLogsTable({
           <ScrollAreaContent className="pr-3">
             <table className="w-full table-fixed border-collapse">
               <LogsTableColGroup />
-              <LogsTableHeader labels={tableHeaderLabels} rowClassName="sr-only" />
+              <LogsTableHeader labels={tableHeaderLabels} sort={sort} rowClassName="sr-only" />
               <AgentLogsTableBody
                 logs={logs}
                 isPending={isPending}
@@ -144,11 +151,15 @@ function AgentLogsTableBody({
             >
               <td className="px-0">
                 <span
+                  aria-hidden
                   className={cn(
                     'mx-auto block size-1.5 rounded-full',
                     log.unread ? 'bg-util-colors-blue-blue-500' : 'bg-transparent',
                   )}
                 />
+                {log.unread && (
+                  <span className="sr-only">{t(($) => $['agentDetail.logs.table.unread'])}</span>
+                )}
               </td>
               <TableCell>
                 <button
@@ -202,10 +213,13 @@ type LogsTableHeaderLabels = {
 function LogsTableHeader({
   labels,
   rowClassName,
+  sort,
 }: {
   labels: LogsTableHeaderLabels
   rowClassName?: string
+  sort: AgentLogsSort
 }) {
+  const sortDirection = sort.order === 'asc' ? 'ascending' : 'descending'
   return (
     <thead>
       <tr
@@ -223,8 +237,15 @@ function LogsTableHeader({
         <TableHead>{labels.messageCount}</TableHead>
         <TableHead>{labels.userRate}</TableHead>
         <TableHead>{labels.operationRate}</TableHead>
-        <TableHead>{labels.updatedTime}</TableHead>
-        <TableHead className="rounded-r-lg">{labels.createdTime}</TableHead>
+        <TableHead aria-sort={sort.field === 'updated_at' ? sortDirection : undefined}>
+          {labels.updatedTime}
+        </TableHead>
+        <TableHead
+          aria-sort={sort.field === 'created_at' ? sortDirection : undefined}
+          className="rounded-r-lg"
+        >
+          {labels.createdTime}
+        </TableHead>
       </tr>
     </thead>
   )

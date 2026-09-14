@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { shouldPollEnvironmentDeployment } from '@/app/components/app/deploy/utils/environment-deployment'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   appPublisherOpenAtom,
   finishPublisherEnvironmentDeploymentPollingAtom,

@@ -112,7 +112,7 @@ def batch_create_segment_to_index_task(
         file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
         storage.download(upload_file_key, file_path)
 
-        df = pd.read_csv(file_path)
+        df = pd.read_csv(file_path, dtype=str, keep_default_na=False)
         content = []
         for _, row in df.iterrows():
             if document_config["doc_form"] == IndexStructureType.QA_INDEX:
@@ -141,20 +141,24 @@ def batch_create_segment_to_index_task(
         tokens_list = [0] * len(content)
 
     with session_factory.create_session() as session, session.begin():
+        max_position = (
+            session.scalar(
+                select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document_config["id"])
+            )
+            or 0
+        )
         for segment, tokens in zip(content, tokens_list):
             content = segment["content"]
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
-            max_position = session.scalar(
-                select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document_config["id"])
-            )
+            max_position += 1
             segment_document = DocumentSegment(
                 tenant_id=tenant_id,
                 dataset_id=dataset_id,
                 document_id=document_id,
                 index_node_id=doc_id,
                 index_node_hash=segment_hash,
-                position=max_position + 1 if max_position else 1,
+                position=max_position,
                 content=content,
                 word_count=len(content),
                 tokens=tokens,

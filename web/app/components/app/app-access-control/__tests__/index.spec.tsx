@@ -32,7 +32,7 @@ vi.mock('@/service/access-control', () => ({
     mockUseSearchForWhiteListCandidates(...args),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {

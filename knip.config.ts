@@ -32,11 +32,7 @@ const config: KnipConfig = {
         '!vitest.setup.ts!',
       ],
       ignore: ['public/**'],
-      ignoreFiles: [
-        'features/agent-v2/agent-detail/configure/components/orchestrate/memory.tsx',
-        'features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/option-menu.tsx',
-        'i18n-config/locale-resources/*.ts',
-      ],
+      ignoreFiles: ['i18n-config/locale-resources/*.ts'],
       ignoreDependencies: ['@iconify-json/*', '@storybook/addon-onboarding'],
     },
   },

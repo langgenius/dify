@@ -3,7 +3,6 @@ import type { DocumentListResponse } from '@/models/datasets'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
 import { useDocumentList } from '@/service/knowledge/use-document'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
@@ -52,12 +51,6 @@ vi.mock('@/context/dataset-detail', () => ({
     }
     return selector(mockState as MockState)
   }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(() => ({
-    plan: { type: 'professional' },
-  })),
 }))
 
 vi.mock('@/context/workspace-state', async () => {
@@ -193,7 +186,6 @@ vi.mock('../components/documents-header', () => ({
     datasetId: string
     dataSourceType?: string
     embeddingAvailable: boolean
-    isFreePlan: boolean
     statusFilterValue: string
     sortValue: string
     inputValue: string
@@ -718,16 +710,6 @@ describe('Documents', () => {
       render(<Documents {...defaultProps} />)
 
       expect(screen.getByTestId('header-embedding-available')).toHaveTextContent('false')
-    })
-
-    it('should handle free plan user', () => {
-      vi.mocked(useProviderContext).mockReturnValueOnce({
-        plan: { type: 'sandbox' },
-      } as ReturnType<typeof useProviderContext>)
-
-      render(<Documents {...defaultProps} />)
-
-      expect(screen.getByTestId('documents-header')).toBeInTheDocument()
     })
   })
 

@@ -18,7 +18,7 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'triggers'

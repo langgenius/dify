@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.fields import SimpleResultResponse, TextContentResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
@@ -34,7 +35,6 @@ from tasks.document_indexing_sync_task import document_indexing_sync_task
 from .. import console_ns
 from ..wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
     model_validate,
@@ -140,7 +140,7 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[DataSourceIntegrateListResponse.__name__])
     @with_current_tenant_id
@@ -191,7 +191,7 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_tenant_id
@@ -420,7 +420,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, dataset_id: UUID) -> tuple[dict[str, str], int]:
         dataset_id_str = str(dataset_id)
@@ -440,7 +440,7 @@ class DataSourceNotionDocumentSyncApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, dataset_id: UUID, document_id: UUID) -> tuple[dict[str, str], int]:
         dataset_id_str = str(dataset_id)
