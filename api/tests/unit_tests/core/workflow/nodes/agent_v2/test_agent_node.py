@@ -22,7 +22,17 @@ from dify_agent.protocol import (
     RunSucceededEvent,
     RunSucceededEventData,
 )
-from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartDeltaEvent,
+    PartEndEvent,
+    RetryPromptPart,
+    TextPartDelta,
+    ThinkingPart,
+    ToolCallPart,
+    ToolReturnPart,
+)
 
 from clients.agent_backend import (
     AgentBackendInternalEventType,
@@ -35,6 +45,7 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.agent.events import AgentLogEvent
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
@@ -298,6 +309,91 @@ class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
         )
 
 
+class ToolTraceBackendClient(FakeAgentBackendRunClient):
+    """Streams the pydantic-ai events a real tool-calling agent run produces."""
+
+    def _events(self, run_id: str):
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+            PydanticAIStreamRunEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=PartEndEvent(index=0, part=ThinkingPart(content="I should check the weather.")),
+            ),
+            PydanticAIStreamRunEvent(
+                id="3-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=FunctionToolCallEvent(
+                    part=ToolCallPart(tool_name="get_weather", args={"city": "Beijing"}, tool_call_id="call-1")
+                ),
+            ),
+            PydanticAIStreamRunEvent(
+                id="4-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=FunctionToolResultEvent(
+                    part=ToolReturnPart(tool_name="get_weather", content={"temperature": "25C"}, tool_call_id="call-1")
+                ),
+            ),
+            PydanticAIStreamRunEvent(
+                id="5-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=PartDeltaEvent(index=1, delta=TextPartDelta(content_delta="It is 25C")),
+                agent_message_delta="It is 25C",
+            ),
+            RunSucceededEvent(
+                id="6-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=RunSucceededEventData(
+                    output={"text": "It is 25C in Beijing"},
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                ),
+            ),
+        )
+
+
+class FailedToolTraceBackendClient(FakeAgentBackendRunClient):
+    """Streams a tool call whose result comes back as a retry prompt."""
+
+    def _events(self, run_id: str):
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+            PydanticAIStreamRunEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=FunctionToolCallEvent(
+                    part=ToolCallPart(tool_name="get_weather", args='{"city": "Beijing"}', tool_call_id="call-1")
+                ),
+            ),
+            PydanticAIStreamRunEvent(
+                id="3-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=FunctionToolResultEvent(
+                    part=RetryPromptPart(
+                        content="city is not a known location", tool_name="get_weather", tool_call_id="call-1"
+                    )
+                ),
+            ),
+            RunSucceededEvent(
+                id="4-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=RunSucceededEventData(
+                    output={"text": "I could not find that city."},
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                ),
+            ),
+        )
+
+
 class FailingStreamBackendClient(FakeAgentBackendRunClient):
     def __init__(self) -> None:
         super().__init__()
@@ -463,6 +559,20 @@ def _node(
     return node
 
 
+def _drain_event_stream(
+    node: DifyAgentNode,
+    run_id: str,
+    **kwargs: object,
+) -> tuple[object | None, StreamCompletedEvent | None]:
+    """Exhaust the streaming consumer and hand back its ``(terminal, failure)`` result."""
+    generator = node._consume_event_stream(run_id, **kwargs)  # type: ignore[arg-type]
+    try:
+        while True:
+            next(generator)
+    except StopIteration as stop:
+        return stop.value
+
+
 def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_markers():
     mapping = DifyAgentNode._extract_variable_selector_to_variable_mapping(
         graph_config={},
@@ -617,6 +727,50 @@ def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_bui
     assert scope.node_execution_id == execution_id
     assert context.node_id == node.id
     assert context.node_execution_id == execution_id
+
+
+def test_agent_node_streams_agent_log_events_for_tool_calls_and_reasoning():
+    events = list(_node(agent_backend_client=ToolTraceBackendClient())._run())
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    assert [(log.label, log.status) for log in agent_logs] == [
+        ("thinking", "success"),
+        ("get_weather", "start"),
+        ("get_weather", "success"),
+    ]
+    assert agent_logs[0].data == {"thought": "I should check the weather."}
+    assert agent_logs[1].data["tool_input"] == {"city": "Beijing"}
+    assert agent_logs[2].data["observation"] == {"temperature": "25C"}
+    # Call and result share one id so consumers update the entry in place.
+    assert agent_logs[1].message_id == agent_logs[2].message_id
+    assert agent_logs[0].message_id != agent_logs[1].message_id
+    assert {log.node_id for log in agent_logs} == {"agent-node"}
+
+    completed = cast(StreamCompletedEvent, events[-1])
+    assert completed.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert completed.node_run_result.outputs == {"text": "It is 25C in Beijing"}
+
+
+def test_agent_node_agent_log_reports_failed_tool_call_with_error():
+    events = list(_node(agent_backend_client=FailedToolTraceBackendClient())._run())
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    assert [(log.label, log.status) for log in agent_logs] == [
+        ("get_weather", "start"),
+        ("get_weather", "error"),
+    ]
+    # Tool arguments streamed as JSON text are decoded for consumers.
+    assert agent_logs[0].data["tool_input"] == {"city": "Beijing"}
+    assert agent_logs[1].error == "city is not a known location"
+
+
+def test_agent_node_dispatches_agent_log_event_to_the_graph_agent_log_event():
+    node = _node(agent_backend_client=ToolTraceBackendClient())
+
+    graph_events = [event for event in node.run() if type(event).__name__ == "NodeRunAgentLogEvent"]
+
+    assert [event.label for event in graph_events] == ["thinking", "get_weather", "get_weather"]
+    assert {event.node_id for event in graph_events} == {"agent-node"}
 
 
 def test_agent_node_run_ignores_agent_message_delta_until_terminal_result():
@@ -982,7 +1136,8 @@ def test_agent_node_cancels_backend_run_when_stream_fails():
     client = FailingStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream(
+    terminal, failure = _drain_event_stream(
+        node,
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
@@ -1001,7 +1156,8 @@ def test_agent_node_forwards_last_stream_cursor_when_cancelling_after_failure() 
     client = FailingAfterStartedStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream(
+    terminal, failure = _drain_event_stream(
+        node,
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
@@ -1018,7 +1174,8 @@ def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event(
     client = EmptyStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream(
+    terminal, failure = _drain_event_stream(
+        node,
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
@@ -1035,7 +1192,8 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
     client = GenericFailingStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream(
+    terminal, failure = _drain_event_stream(
+        node,
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
@@ -1055,7 +1213,8 @@ def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
     node = _node(agent_backend_client=client)
     node.graph_runtime_state.graph_execution = SimpleNamespace(aborted=True)
 
-    terminal, failure = node._consume_event_stream(
+    terminal, failure = _drain_event_stream(
+        node,
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
@@ -1081,7 +1240,8 @@ def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
         return_value=[SimpleNamespace(type=AgentBackendInternalEventType.RUN_FAILED)]
     )
 
-    terminal, failure = node._consume_event_stream(
+    terminal, failure = _drain_event_stream(
+        node,
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
