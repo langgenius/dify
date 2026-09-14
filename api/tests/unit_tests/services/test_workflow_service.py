@@ -1036,6 +1036,85 @@ class TestWorkflowService:
         with pytest.raises(ValueError, match="Start node and trigger nodes cannot coexist"):
             workflow_service.validate_graph_structure(graph)
 
+    def test_validate_graph_structure_start_node_variables_valid(self, workflow_service: WorkflowService):
+        """Test validate_graph_structure accepts Start node variables the runtime can parse."""
+        graph = {
+            "nodes": [
+                {
+                    "id": "start",
+                    "data": {
+                        "type": BuiltinNodeTypes.START,
+                        "title": "START",
+                        "variables": [
+                            {
+                                "variable": "content",
+                                "label": "Content",
+                                "type": VariableEntityType.PARAGRAPH,
+                                "max_length": 100000,
+                            }
+                        ],
+                    },
+                }
+            ],
+            "edges": [],
+        }
+
+        # Should not raise any exception
+        workflow_service.validate_graph_structure(graph)
+
+    def test_validate_graph_structure_start_node_without_variables(self, workflow_service: WorkflowService):
+        """Test validate_graph_structure accepts a Start node that declares no variables."""
+        graph = {
+            "nodes": [
+                {
+                    "id": "start",
+                    "data": {
+                        "type": BuiltinNodeTypes.START,
+                        "title": "START",
+                    },
+                }
+            ],
+            "edges": [],
+        }
+
+        # Should not raise any exception
+        workflow_service.validate_graph_structure(graph)
+
+    def test_validate_graph_structure_start_node_variable_unparsable_raises_error(
+        self, workflow_service: WorkflowService
+    ):
+        """
+        Test validate_graph_structure rejects a Start node variable the runtime cannot parse.
+
+        The editor serializes a large max_length in exponential notation, making it a float
+        the runtime refuses to coerce to int. Without this check the workflow publishes
+        cleanly and then fails on every run, while its configuration is loaded: no workflow
+        run row is created, and the error names neither the node nor the variable.
+        """
+        graph = {
+            "nodes": [
+                {
+                    "id": "start",
+                    "data": {
+                        "type": BuiltinNodeTypes.START,
+                        "title": "START",
+                        "variables": [
+                            {
+                                "variable": "content",
+                                "label": "Content",
+                                "type": VariableEntityType.PARAGRAPH,
+                                "max_length": 1e29,
+                            }
+                        ],
+                    },
+                }
+            ],
+            "edges": [],
+        }
+
+        with pytest.raises(ValueError, match="Invalid Start node variable 'content'"):
+            workflow_service.validate_graph_structure(graph)
+
     def test_validate_features_structure_workflow_mode(self, workflow_service: WorkflowService):
         """
         Test validate_features_structure for workflow mode.
