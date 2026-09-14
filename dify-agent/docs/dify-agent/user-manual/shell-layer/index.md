@@ -278,4 +278,5 @@ Workspace, so shared Workspace attachment is unsupported.
 
 See [Runtime resources](../../concepts/runtime-resources/index.md) for the
 ledger and lifecycle contract. The [Operations Guide](../../guide/index.md)
-covers Local, E2B, and OpenShell validation.
+covers Local and E2B validation; the [OpenShell guide](../../guide/openshell.md)
+covers OpenShell configuration and validation.

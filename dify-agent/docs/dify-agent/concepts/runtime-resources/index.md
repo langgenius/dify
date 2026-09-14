@@ -228,5 +228,6 @@ resource setting does not own the Agent run terminal state. It is not a retentio
 TTL and does not delete paused resources or immutable snapshots.
 
 See the [Shell layer](../../user-manual/shell-layer/index.md) for request
-composition and the [Operations Guide](../../guide/index.md) for Local, E2B,
-and OpenShell validation.
+composition, the [Operations Guide](../../guide/index.md) for Local and E2B
+validation, and the [OpenShell guide](../../guide/openshell.md) for OpenShell
+configuration and validation.
