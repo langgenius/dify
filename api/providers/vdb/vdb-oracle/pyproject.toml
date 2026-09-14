@@ -3,7 +3,7 @@ name = "dify-vdb-oracle"
 version = "0.0.1"
 
 dependencies = [
-    "oracledb==4.0.2",
+    "oracledb==26.0.0",
 ]
 description = "Dify vector store backend (dify-vdb-oracle)."
 
