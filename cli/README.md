@@ -99,6 +99,10 @@ Tokens use the OS keychain by default, falling back to `tokens.yml` on hosts wit
 | `DIFY_CONFIG_DIR`   | Overrides the config directory                              |
 | `DIFY_CACHE_DIR`    | Overrides the catalog cache directory                       |
 
+Resource access tokens can also be passed through `DIFY_TOKEN`. They can list
+their own workspace and discover only apps bound to that token; workspace
+details, members, and workspace switching remain unavailable.
+
 ## Streaming
 
 Pass `--stream` on a streaming operation to print every event as one JSON line, instead of folding the whole run into a single result object:

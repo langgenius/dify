@@ -43,6 +43,7 @@ class Context:
     view_args: Mapping[str, str]
     request_id: str = field(default_factory=get_request_id)
     trace_id: str | None = field(default_factory=get_trace_id)
+    resource_app_ids: frozenset[str] | None = field(default=None, init=False)
     _app: App | None = field(default=None, init=False)
     _workspace: Tenant | None = field(default=None, init=False)
     _workspace_role: TenantAccountRole | None = field(default=None, init=False)
