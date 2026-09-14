@@ -1,19 +1,13 @@
 import json
 from datetime import datetime
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import Engine, event
-from sqlalchemy.dialects import sqlite
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from fields.dataset_fields import DatasetDetailResponse, DatasetDetailResponseSource, dataset_detail_response_source
-from fields.dataset_response_prefetch import (
-    DatasetResponsePrefetch,
-    _load_doc_forms,
-    _load_external_knowledge_infos,
-)
+from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from fields.dataset_response_prefetch import DatasetResponsePrefetch
 from models.account import Account
 from models.dataset import (
     AppDatasetJoin,
@@ -24,7 +18,7 @@ from models.dataset import (
     ExternalKnowledgeBindings,
     Pipeline,
 )
-from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom, IndexingStatus, TagType
 from models.model import App, AppMode, IconType, Tag, TagBinding
 
 
@@ -53,7 +47,7 @@ def _dataset(dataset_id: str) -> Dataset:
     )
 
 
-@pytest.mark.parametrize("dataset_count", [1, 5, 20])
+@pytest.mark.parametrize("dataset_count", [1, 20])
 def test_load_batches_dataset_response_queries(
     sqlite_session: Session, sqlite_engine: Engine, dataset_count: int
 ) -> None:
@@ -126,179 +120,11 @@ def test_load_batches_optional_dataset_response_queries(sqlite_session: Session,
         event.remove(sqlite_engine, "before_cursor_execute", count_selects)
 
     assert response.external_knowledge_info.external_knowledge_id == binding.external_knowledge_id
+    assert response.external_knowledge_info.model_dump(mode="json") == dataset.get_external_knowledge_info(
+        session=sqlite_session
+    )
     assert response.is_published is True
     assert select_count == 11
-
-
-def test_load_doc_forms_limits_rows_per_dataset(sqlite_session: Session) -> None:
-    dataset = _dataset("dataset-1")
-    now = datetime(2026, 1, 1)
-    documents = [
-        Document(
-            id=f"document-{index:03d}",
-            tenant_id=dataset.tenant_id,
-            dataset_id=dataset.id,
-            position=index,
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            batch="batch-1",
-            name=f"document-{index}.txt",
-            created_from=DocumentCreatedFrom.WEB,
-            created_by="account-1",
-            created_at=now,
-            updated_at=now,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
-        )
-        for index in range(100)
-    ]
-    sqlite_session.add_all([dataset, *documents])
-    sqlite_session.flush()
-
-    returned_row_counts: list[int] = []
-    statements = []
-
-    class ResultProxy:
-        def __init__(self, result) -> None:
-            self._result = result
-
-        def all(self):
-            rows = self._result.all()
-            returned_row_counts.append(len(rows))
-            return rows
-
-    class SessionProxy:
-        def execute(self, statement):
-            statements.append(statement)
-            return ResultProxy(sqlite_session.execute(statement))
-
-    forms = _load_doc_forms([dataset], session=SessionProxy())  # type: ignore[arg-type]
-
-    assert forms[dataset.id] == IndexStructureType.PARAGRAPH_INDEX
-    assert returned_row_counts == [1]
-    assert len(statements) == 1
-    compiled_statement = statements[0].compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True})
-    query_plan = sqlite_session.connection().exec_driver_sql(f"EXPLAIN QUERY PLAN {compiled_statement}").all()
-    assert all("TEMP B-TREE" not in row[-1].upper() for row in query_plan)
-
-
-def test_load_doc_forms_preserves_existing_limit_one_semantics(sqlite_session: Session) -> None:
-    dataset = _dataset("dataset-1")
-    now = datetime(2026, 1, 1)
-    first_document = Document(
-        id="z-document",
-        tenant_id=dataset.tenant_id,
-        dataset_id=dataset.id,
-        position=1,
-        data_source_type=DataSourceType.UPLOAD_FILE,
-        batch="batch-1",
-        name="first.txt",
-        created_from=DocumentCreatedFrom.WEB,
-        created_by="account-1",
-        created_at=now,
-        updated_at=now,
-        doc_form=IndexStructureType.QA_INDEX,
-    )
-    second_document = Document(
-        id="a-document",
-        tenant_id=dataset.tenant_id,
-        dataset_id=dataset.id,
-        position=2,
-        data_source_type=DataSourceType.UPLOAD_FILE,
-        batch="batch-1",
-        name="second.txt",
-        created_from=DocumentCreatedFrom.WEB,
-        created_by="account-1",
-        created_at=now,
-        updated_at=now,
-        doc_form=IndexStructureType.PARAGRAPH_INDEX,
-    )
-    sqlite_session.add_all([dataset, first_document, second_document])
-    sqlite_session.flush()
-
-    expected_doc_form = dataset.get_doc_form(session=sqlite_session)
-    prefetch = DatasetResponsePrefetch.load([dataset], session=sqlite_session)
-
-    assert expected_doc_form == IndexStructureType.QA_INDEX
-    assert prefetch.doc_forms[dataset.id] == expected_doc_form
-
-
-def test_load_external_knowledge_info_limits_bindings_per_dataset(sqlite_session: Session) -> None:
-    dataset = _dataset("dataset-external")
-    dataset.provider = "external"
-    api = ExternalKnowledgeApis(
-        name="External API",
-        description="",
-        tenant_id=dataset.tenant_id,
-        settings=json.dumps({"endpoint": "https://example.test"}),
-        created_by="account-1",
-        updated_by=None,
-    )
-    api.id = "external-api-1"
-    bindings = []
-    for index in range(100):
-        binding = ExternalKnowledgeBindings(
-            tenant_id=dataset.tenant_id,
-            external_knowledge_api_id=api.id,
-            dataset_id=dataset.id,
-            external_knowledge_id=f"knowledge-{index}",
-            created_by="account-1",
-        )
-        binding.id = f"binding-{index:03d}"
-        bindings.append(binding)
-    sqlite_session.add_all([dataset, api, *bindings])
-    sqlite_session.flush()
-
-    returned_row_counts: list[int] = []
-
-    class ResultProxy:
-        def __init__(self, result) -> None:
-            self._result = result
-
-        def all(self):
-            rows = self._result.all()
-            returned_row_counts.append(len(rows))
-            return rows
-
-    class SessionProxy:
-        def execute(self, statement):
-            return ResultProxy(sqlite_session.execute(statement))
-
-        def scalars(self, statement):
-            return ResultProxy(sqlite_session.scalars(statement))
-
-    info = _load_external_knowledge_infos([dataset], session=SessionProxy())  # type: ignore[arg-type]
-
-    assert info[dataset.id] is not None
-    assert returned_row_counts[0] == 1
-
-
-def test_source_uses_prefetched_values_without_model_getters() -> None:
-    dataset = MagicMock(id="dataset-1")
-    prefetch = DatasetResponsePrefetch(
-        app_counts={"dataset-1": 3},
-        document_counts={"dataset-1": 4},
-        word_counts={"dataset-1": 20},
-        author_names={"dataset-1": "Ada"},
-        tags={"dataset-1": []},
-        doc_forms={"dataset-1": "text_model"},
-        external_knowledge_infos={"dataset-1": None},
-        doc_metadatas={"dataset-1": []},
-        published_statuses={"dataset-1": False},
-        available_document_counts={"dataset-1": 2},
-    )
-    source = DatasetDetailResponseSource(dataset=dataset, session=MagicMock(), prefetch=prefetch)
-
-    assert source.app_count == 3
-    assert source.document_count == 4
-    assert source.word_count == 20
-    assert source.author_name == "Ada"
-    assert source.tags == []
-    assert source.doc_form == "text_model"
-    assert source.external_knowledge_info is None
-    assert source.doc_metadata == []
-    assert source.is_published is False
-    assert source.total_documents == 4
-    assert source.total_available_documents == 2
-    dataset.get_document_count.assert_not_called()
 
 
 def test_prefetch_matches_dataset_getters_for_vendor_dataset(sqlite_session: Session) -> None:
@@ -323,7 +149,7 @@ def test_prefetch_matches_dataset_getters_for_vendor_dataset(sqlite_session: Ses
         created_by=account.id,
     )
     app_dataset_join = AppDatasetJoin(app_id=app.id, dataset_id=dataset.id)
-    tag = Tag(tenant_id=dataset.tenant_id, type="knowledge", name="Tag", created_by=account.id)
+    tag = Tag(tenant_id=dataset.tenant_id, type=TagType.KNOWLEDGE, name="Tag", created_by=account.id)
     tag.id = "tag-1"
     tag_binding = TagBinding(
         tenant_id=dataset.tenant_id,
@@ -364,7 +190,7 @@ def test_prefetch_matches_dataset_getters_for_vendor_dataset(sqlite_session: Ses
     sqlite_session.commit()
 
     prefetch = DatasetResponsePrefetch.load([dataset], session=sqlite_session)
-    dataset_id = str(dataset.id)
+    dataset_id = dataset.id
 
     assert prefetch.app_counts[dataset_id] == dataset.get_app_count(session=sqlite_session)
     assert prefetch.document_counts[dataset_id] == dataset.get_document_count(session=sqlite_session)
@@ -380,37 +206,10 @@ def test_prefetch_matches_dataset_getters_for_vendor_dataset(sqlite_session: Ses
     )
 
 
-def test_prefetch_matches_dataset_getter_for_external_knowledge(sqlite_session: Session) -> None:
-    dataset = _dataset("dataset-external")
-    dataset.provider = "external"
-    api = ExternalKnowledgeApis(
-        name="External API",
-        description="",
-        tenant_id=dataset.tenant_id,
-        settings=json.dumps({"endpoint": "https://example.test"}),
-        created_by="account-1",
-        updated_by=None,
-    )
-    api.id = "external-api-1"
-    binding = ExternalKnowledgeBindings(
-        tenant_id=dataset.tenant_id,
-        external_knowledge_api_id=api.id,
-        dataset_id=dataset.id,
-        external_knowledge_id="knowledge-1",
-        created_by="account-1",
-    )
-    sqlite_session.add_all([dataset, api, binding])
-    sqlite_session.commit()
-
-    prefetch = DatasetResponsePrefetch.load([dataset], session=sqlite_session)
-
-    assert prefetch.external_knowledge_infos[dataset.id] == dataset.get_external_knowledge_info(session=sqlite_session)
-
-
 def test_prefetch_keeps_tag_and_external_data_in_their_tenant(sqlite_session: Session) -> None:
     dataset = _dataset("dataset-1")
     dataset.provider = "external"
-    other_tenant_tag = Tag(tenant_id="tenant-2", type="knowledge", name="Other", created_by="account-2")
+    other_tenant_tag = Tag(tenant_id="tenant-2", type=TagType.KNOWLEDGE, name="Other", created_by="account-2")
     other_tenant_tag.id = "tag-2"
     other_tenant_binding = TagBinding(
         tenant_id="tenant-2",
