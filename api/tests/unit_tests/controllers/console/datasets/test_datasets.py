@@ -45,6 +45,7 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.storage.storage_type import StorageType
+from fields.dataset_response_prefetch import DatasetResponsePrefetch
 from models.account import Account, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
@@ -239,11 +240,17 @@ class TestDatasetList(_UsesSQLiteSession):
             with (
                 patch.object(DatasetService, "get_datasets", return_value=([dataset], 1)),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
+                patch(
+                    "controllers.console.datasets.datasets.DatasetResponsePrefetch.load",
+                    autospec=True,
+                    return_value=DatasetResponsePrefetch.load([], session=session),
+                ) as load_prefetch,
             ):
                 method(api, session, "tenant-1", current_user)
 
+        load_prefetch.assert_called_once_with([dataset], session=session)
         for getter in dataset_model_property_defaults.values():
-            getter.assert_called_once_with(dataset, session=session)
+            getter.assert_not_called()
 
     def test_get_with_ids_filter(self, app: Flask):
         api = DatasetListApi()

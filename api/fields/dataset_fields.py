@@ -6,6 +6,7 @@ from pydantic import Field, field_validator
 from sqlalchemy.orm import Session
 
 from fields.base import ResponseModel
+from fields.dataset_response_prefetch import DatasetResponsePrefetch
 from libs.helper import to_timestamp
 
 
@@ -200,54 +201,82 @@ class DatasetDetailResponseSource:
 
     dataset: Any
     session: Session
+    prefetch: DatasetResponsePrefetch | None = None
 
     @property
     def app_count(self) -> int:
+        if self.prefetch is not None:
+            return self.prefetch.app_counts.get(str(self.dataset.id), 0)
         return self.dataset.get_app_count(session=self.session)
 
     @property
     def document_count(self) -> int:
+        if self.prefetch is not None:
+            return self.prefetch.document_counts.get(str(self.dataset.id), 0)
         return self.dataset.get_document_count(session=self.session)
 
     @property
     def word_count(self) -> int:
+        if self.prefetch is not None:
+            return self.prefetch.word_counts.get(str(self.dataset.id), 0)
         return self.dataset.get_word_count(session=self.session)
 
     @property
     def author_name(self) -> str | None:
+        if self.prefetch is not None:
+            return self.prefetch.author_names.get(str(self.dataset.id))
         return self.dataset.get_author_name(session=self.session)
 
     @property
     def tags(self) -> Any:
+        if self.prefetch is not None:
+            return self.prefetch.tags.get(str(self.dataset.id), [])
         return self.dataset.get_tags(session=self.session)
 
     @property
     def doc_form(self) -> str | None:
+        if self.prefetch is not None:
+            return self.prefetch.doc_forms.get(str(self.dataset.id))
         return self.dataset.get_doc_form(session=self.session)
 
     @property
     def external_knowledge_info(self) -> Any:
+        if self.prefetch is not None:
+            return self.prefetch.external_knowledge_infos.get(str(self.dataset.id))
         return self.dataset.get_external_knowledge_info(session=self.session)
 
     @property
     def doc_metadata(self) -> Any:
+        if self.prefetch is not None:
+            return self.prefetch.doc_metadatas.get(str(self.dataset.id), [])
         return self.dataset.get_doc_metadata(session=self.session)
 
     @property
     def is_published(self) -> bool:
+        if self.prefetch is not None:
+            return self.prefetch.published_statuses.get(str(self.dataset.id), False)
         return self.dataset.get_is_published(session=self.session)
 
     @property
     def total_documents(self) -> int:
+        if self.prefetch is not None:
+            return self.prefetch.document_counts.get(str(self.dataset.id), 0)
         return self.dataset.get_total_documents(session=self.session)
 
     @property
     def total_available_documents(self) -> int:
+        if self.prefetch is not None:
+            return self.prefetch.available_document_counts.get(str(self.dataset.id), 0)
         return self.dataset.get_total_available_documents(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.dataset, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
-def dataset_detail_response_source(dataset: Any, *, session: Session) -> DatasetDetailResponseSource:
-    return DatasetDetailResponseSource(dataset=dataset, session=session)
+def dataset_detail_response_source(
+    dataset: Any,
+    *,
+    session: Session,
+    prefetch: DatasetResponsePrefetch | None = None,
+) -> DatasetDetailResponseSource:
+    return DatasetDetailResponseSource(dataset=dataset, session=session, prefetch=prefetch)
