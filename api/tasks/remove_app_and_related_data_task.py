@@ -529,10 +529,10 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
             draft_var_ids = [row[0] for row in rows]
             file_ids = [row[1] for row in rows if row[1] is not None]
 
-            # Clean up associated Offload data first
+            storage_keys_to_delete: list[str] = []
+            # Clean up associated Offload DB records and collect storage keys
             if file_ids:
-                files_deleted = _delete_draft_variable_offload_data(session, file_ids)
-                total_files_deleted += files_deleted
+                storage_keys_to_delete = _delete_draft_variable_offload_data(session, file_ids)
 
             # Delete the draft variables
             delete_sql = """
@@ -548,6 +548,17 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
 
             logger.info(click.style(f"Deleted {batch_deleted} draft variables (batch) for app {app_id}", fg="green"))
 
+        # Clean up storage files outside the DB transaction to avoid holding DB connections / locks
+        if storage_keys_to_delete:
+            from extensions.ext_storage import storage
+
+            for storage_key in storage_keys_to_delete:
+                try:
+                    storage.delete(storage_key)
+                    total_files_deleted += 1
+                except Exception:
+                    logging.exception("Failed to delete storage object %s", storage_key)
+
     logger.info(
         click.style(
             f"Deleted {total_deleted} total draft variables for app {app_id}. "
@@ -558,13 +569,14 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
     return total_deleted
 
 
-def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
+def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> list[str]:
     """
-    Delete Offload data associated with WorkflowDraftVariable file_ids.
+    Delete Offload metadata in DB associated with WorkflowDraftVariable file_ids
+    and return the storage keys to be deleted from object storage outside the DB transaction.
 
     This function:
     1. Finds WorkflowDraftVariableFile records by file_ids
-    2. Deletes associated files from object storage
+    2. Collects associated storage keys and UploadFile IDs
     3. Deletes UploadFile records
     4. Deletes WorkflowDraftVariableFile records
 
@@ -573,14 +585,12 @@ def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
         file_ids: List of WorkflowDraftVariableFile IDs
 
     Returns:
-        Number of files cleaned up
+        List of storage keys to be deleted
     """
-    from extensions.ext_storage import storage
-
     if not file_ids:
-        return 0
+        return []
 
-    files_deleted = 0
+    storage_keys: list[str] = []
 
     try:
         # Get WorkflowDraftVariableFile records and their associated UploadFile keys
@@ -593,17 +603,11 @@ def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
         result = session.execute(sa.text(query_sql), {"file_ids": tuple(file_ids)})
         file_records = list(result)
 
-        # Delete from object storage and collect upload file IDs
         upload_file_ids = []
         for _, storage_key, upload_file_id in file_records:
-            try:
-                storage.delete(storage_key)
-                upload_file_ids.append(upload_file_id)
-                files_deleted += 1
-            except Exception:
-                logging.exception("Failed to delete storage object %s", storage_key)
-                # Continue with database cleanup even if storage deletion fails
-                upload_file_ids.append(upload_file_id)
+            if storage_key:
+                storage_keys.append(storage_key)
+            upload_file_ids.append(upload_file_id)
 
         # Delete UploadFile records
         if upload_file_ids:
@@ -626,7 +630,7 @@ def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
         logging.exception("Error deleting draft variable offload data:")
         # Don't raise, as we want to continue with the main deletion process
 
-    return files_deleted
+    return storage_keys
 
 
 def _delete_app_triggers(tenant_id: str, app_id: str):
