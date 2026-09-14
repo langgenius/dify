@@ -96,7 +96,8 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                     count = len(document_ids)
                     if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                         raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
-                    batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
+                    # config overrides (and the tests that exercise them) may set this as a string
+                    batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                     if count > batch_upload_limit:
                         raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
                     current = int(getattr(vector_space, "size", 0) or 0)

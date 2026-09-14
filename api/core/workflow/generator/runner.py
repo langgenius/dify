@@ -277,10 +277,12 @@ def _resolve_generation_mode(
     """
     if requested != "auto":
         return requested
-    planner_mode = (plan.get("mode") or "").strip().lower()
+    # plan fields come from parsed LLM JSON whose types are only truthiness-checked
+    # in _validate_planner_schema; coerce so a numeric mode stays lenient, not fatal
+    planner_mode = str(plan.get("mode") or "").strip().lower()
     if planner_mode in ("workflow", "advanced-chat"):
         return cast(WorkflowGenerationMode, planner_mode)
-    node_types = {(node.get("node_type") or "") for node in plan.get("nodes") or [] if isinstance(node, dict)}
+    node_types = {str(node.get("node_type") or "") for node in plan.get("nodes") or [] if isinstance(node, dict)}
     if BuiltinNodeTypes.ANSWER in node_types:
         return "advanced-chat"
     if BuiltinNodeTypes.END in node_types:
