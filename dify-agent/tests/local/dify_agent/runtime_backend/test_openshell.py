@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import httpx2 as httpx
 import pytest
+from httpx2 import AsyncClient
 
 from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellCommandStatus, ShellExecutionMode
 from dify_agent.runtime_backend import (
@@ -49,9 +51,12 @@ _SNAPSHOT_DIR = f"{_TENANT_SNAPSHOT_ROOT}/home-snap-1"
 class _FakeTunnel:
     base_url: str = "http://tunnel.invalid"
     closed: int = 0
+    close_error: BaseException | None = None
 
     async def close(self) -> None:
         self.closed += 1
+        if self.close_error is not None:
+            raise self.close_error
 
 
 @dataclass(slots=True)
@@ -205,11 +210,16 @@ class _RecordingCommands:
 
 @dataclass(slots=True)
 class _FakeShellctlClient:
+    closed: int = 0
+    close_error: BaseException | None = None
+
     async def health(self) -> object:
         return object()
 
     async def close(self) -> None:
-        return None
+        self.closed += 1
+        if self.close_error is not None:
+            raise self.close_error
 
 
 def _source_lease(commands: _RecordingCommands) -> OpenShellRuntimeLease:
@@ -300,8 +310,10 @@ async def test_openshell_acquire_bootstraps_shellctl_and_opens_tunnel(monkeypatc
     assert lease.layout.home_dir == "/home/dify"
 
     await backend.release(lease)
+    assert isinstance(lease.data_plane.owned_transport, AsyncClient)
+    assert lease.data_plane.owned_transport.is_closed
     assert control.tunnels[0].closed == 1
-    assert control.stopped == [_BINDING_NAME, _BINDING_NAME]
+    assert control.stopped == [_BINDING_NAME]
 
 
 @pytest.mark.anyio
@@ -323,6 +335,103 @@ async def test_openshell_acquire_cleans_up_when_bootstrap_fails() -> None:
     # Sandbox is stopped again after the failed acquisition; no tunnel leaks.
     assert control.stopped == [_BINDING_NAME, _BINDING_NAME]
     assert control.tunnels == []
+
+
+@pytest.mark.anyio
+async def test_openshell_release_leaves_other_leases_open(monkeypatch: pytest.MonkeyPatch) -> None:
+    _mock_http(monkeypatch, _healthy_handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+    first = await backend.acquire(_BINDING_NAME)
+    second = await backend.acquire(_BINDING_NAME)
+    assert isinstance(second, OpenShellRuntimeLease)
+
+    await backend.release(first)
+
+    assert control.stopped == [_BINDING_NAME]
+    assert control.tunnels[0].closed == 1
+    assert control.tunnels[1].closed == 0
+    assert isinstance(second.data_plane.owned_transport, AsyncClient)
+    assert not second.data_plane.owned_transport.is_closed
+    await second.data_plane.client.health()
+    await backend.release(second)
+    assert second.data_plane.owned_transport.is_closed
+    assert control.tunnels[1].closed == 1
+    assert control.stopped == [_BINDING_NAME]
+
+
+@pytest.mark.anyio
+async def test_openshell_release_does_not_require_existing_sandbox(monkeypatch: pytest.MonkeyPatch) -> None:
+    _mock_http(monkeypatch, _healthy_handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+    lease = await backend.acquire(_BINDING_NAME)
+    assert isinstance(lease, OpenShellRuntimeLease)
+    control.missing.add(_BINDING_NAME)
+
+    await backend.release(lease)
+
+    assert isinstance(lease.data_plane.owned_transport, AsyncClient)
+    assert lease.data_plane.owned_transport.is_closed
+    assert control.tunnels[0].closed == 1
+    assert control.stopped == [_BINDING_NAME]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("failure_stage", ["client", "tunnel", "both"])
+async def test_openshell_release_closes_both_resources_on_error(failure_stage: str) -> None:
+    control = _ControlPlane()
+    lease = _source_lease(_RecordingCommands())
+    client = lease.data_plane.client
+    tunnel = lease.tunnel
+    assert isinstance(client, _FakeShellctlClient)
+    assert isinstance(tunnel, _FakeTunnel)
+    transport = httpx.AsyncClient(transport=httpx.MockTransport(_healthy_handler))
+    lease.data_plane.owned_transport = transport
+    if failure_stage in {"client", "both"}:
+        client.close_error = RuntimeError("client close failed")
+    if failure_stage in {"tunnel", "both"}:
+        tunnel.close_error = RuntimeError("tunnel close failed")
+    expected_error = client.close_error or tunnel.close_error
+
+    with pytest.raises(BindingAcquireError, match=str(expected_error)) as exc_info:
+        await _backend(control).release(lease)
+
+    assert exc_info.value.__cause__ is expected_error
+    assert client.closed == 1
+    assert tunnel.closed == 1
+    assert transport.is_closed
+    assert control.stopped == []
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("failure_stage", ["client", "tunnel"])
+async def test_openshell_release_preserves_cancellation_and_closes_resources(failure_stage: str) -> None:
+    control = _ControlPlane()
+    lease = _source_lease(_RecordingCommands())
+    client = lease.data_plane.client
+    tunnel = lease.tunnel
+    assert isinstance(client, _FakeShellctlClient)
+    assert isinstance(tunnel, _FakeTunnel)
+    transport = httpx.AsyncClient(transport=httpx.MockTransport(_healthy_handler))
+    lease.data_plane.owned_transport = transport
+    cancellation = asyncio.CancelledError()
+    if failure_stage == "client":
+        client.close_error = cancellation
+        tunnel.close_error = RuntimeError("tunnel close failed")
+    else:
+        tunnel.close_error = cancellation
+
+    with pytest.raises(asyncio.CancelledError) as exc_info:
+        await _backend(control).release(lease)
+
+    assert exc_info.value is cancellation
+    assert client.closed == 1
+    assert tunnel.closed == 1
+    assert transport.is_closed
+    assert control.stopped == []
 
 
 @pytest.mark.anyio

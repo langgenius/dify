@@ -298,8 +298,16 @@ async def test_openshell_binding_checkpoint_and_collection() -> None:
             ),
             source=lease,
         )
+        sandbox_id = await control.wait_ready(allocation.binding_ref)
         await bindings.release(lease)
         lease = None
+        assert await control.exec_script(sandbox_id, "true") == (0, "")
+
+        lease = await bindings.acquire(allocation.binding_ref)
+        assert await _run(lease, "cat probe.txt", cwd=lease.layout.workspace_dir) == "openshell"
+        await bindings.release(lease)
+        lease = None
+        await control.stop_sandbox(allocation.binding_ref)
 
         # The stopped sandbox must restart and re-bootstrap shellctl on acquire.
         lease = await bindings.acquire(allocation.binding_ref)

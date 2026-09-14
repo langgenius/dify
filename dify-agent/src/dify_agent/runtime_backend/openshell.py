@@ -600,7 +600,10 @@ class OpenShellExecutionBindingBackend:
             _reraise_as(exc, error=BindingAcquireError, passthrough=(BindingLostError,))
 
     async def release(self, lease: RuntimeLease) -> None:
-        """Close the tunnel-backed data plane and stop the physical sandbox."""
+        """Close lease-owned connections without stopping the shared physical sandbox."""
+        # TODO: Revisit idle resource reclamation when upstream sandbox expiration leases are available:
+        # https://github.com/NVIDIA/OpenShell/issues/2591
+        # Expiration deletes the sandbox/workspace, so account for active leases and retention before adopting it.
         if not isinstance(lease, OpenShellRuntimeLease):
             raise TypeError("OpenShellExecutionBindingBackend can only release its own RuntimeLease")
         close_error: Exception | None = None
@@ -608,16 +611,11 @@ class OpenShellExecutionBindingBackend:
             await lease.data_plane.close()
         except Exception as exc:
             close_error = exc
-        try:
-            await lease.tunnel.close()
-        except Exception as exc:
-            close_error = close_error or exc
-        try:
-            await self.control_plane.stop_sandbox(lease.handle)
-        except OpenShellNotFoundError as exc:
-            raise BindingLostError(f"OpenShell Binding {lease.handle!r} no longer exists") from exc
-        except Exception as exc:
-            raise BindingAcquireError(str(exc)) from exc
+        finally:
+            try:
+                await lease.tunnel.close()
+            except Exception as exc:
+                close_error = close_error or exc
         if close_error is not None:
             raise BindingAcquireError(str(close_error)) from close_error
 
