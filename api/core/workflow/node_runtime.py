@@ -23,6 +23,7 @@ from core.llm_generator.output_parser.structured_output import invoke_llm_with_s
 from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
+from core.plugin.impl.first_token_timeout import FIRST_TOKEN_TIMEOUT_METADATA_KEY
 from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.repositories.human_input_repository import (
@@ -176,12 +177,34 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
         )
 
 
+def _with_first_token_budget(
+    request_metadata: Mapping[str, object] | None,
+    first_token_timeout: float | None,
+    stream: bool,
+) -> Mapping[str, object] | None:
+    """Attach the node's first-token budget to the metadata carried with the request.
+
+    Streaming only: without a stream the single result arrives once generation has
+    finished, so a first-token budget there would quietly become a total-time budget.
+    """
+    if not stream or not first_token_timeout or first_token_timeout <= 0:
+        return request_metadata
+
+    return {**(request_metadata or {}), FIRST_TOKEN_TIMEOUT_METADATA_KEY: first_token_timeout}
+
+
 class DifyPreparedLLM(LLMProtocol):
     """Workflow-layer adapter that hides the full `ModelInstance` API from `graphon` nodes."""
 
-    def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
+    def __init__(
+        self,
+        model_instance: ModelInstance,
+        request_metadata: Mapping[str, object] | None = None,
+        first_token_timeout: float | None = None,
+    ) -> None:
         self._model_instance = model_instance
         self._request_metadata = request_metadata
+        self._first_token_timeout = first_token_timeout
 
     @property
     @override
@@ -260,7 +283,11 @@ class DifyPreparedLLM(LLMProtocol):
             tools=list(tools or []),
             stop=list(stop or []),
             stream=stream,
-            request_metadata=self._request_metadata,
+            request_metadata=_with_first_token_budget(
+                self._request_metadata,
+                self._first_token_timeout,
+                stream,
+            ),
         )
 
     @overload
@@ -304,7 +331,11 @@ class DifyPreparedLLM(LLMProtocol):
             model_parameters=model_parameters,
             stop=list(stop or []),
             stream=stream,
-            request_metadata=self._request_metadata,
+            request_metadata=_with_first_token_budget(
+                self._request_metadata,
+                self._first_token_timeout,
+                stream,
+            ),
         )
 
     @override
@@ -318,8 +349,13 @@ class DifyPreparedLLM(LLMProtocol):
 class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
     """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
 
-    def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
-        super().__init__(model_instance, request_metadata=request_metadata)
+    def __init__(
+        self,
+        model_instance: ModelInstance,
+        request_metadata: Mapping[str, object] | None = None,
+        first_token_timeout: float | None = None,
+    ) -> None:
+        super().__init__(model_instance, request_metadata=request_metadata, first_token_timeout=first_token_timeout)
         model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
         self._polling_runtime = cast(PollingLLMRuntimeProtocol, model_type_instance.model_runtime)
         self._polling_quota_reservation = None

@@ -7,6 +7,7 @@
   "meta.status": "Status",
   "meta.steps": "Passos de Execução",
   "meta.time": "Tempo Decorrido",
+  "meta.timeToFirstToken": "Tempo até o Primeiro Token",
   "meta.title": "METADADOS",
   "meta.tokens": "Total de Tokens",
   "result": "RESULTADO",

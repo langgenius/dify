@@ -7,6 +7,7 @@
   "meta.status": "状態",
   "meta.steps": "処理ステップ数",
   "meta.time": "総処理時間",
+  "meta.timeToFirstToken": "最初のトークンまでの時間",
   "meta.title": "メタデータ",
   "meta.tokens": "トークン総数",
   "result": "結果",

@@ -7,6 +7,7 @@
   "meta.status": "狀態",
   "meta.steps": "執行步數",
   "meta.time": "執行時間",
+  "meta.timeToFirstToken": "首個 Token 耗時",
   "meta.title": "元資料",
   "meta.tokens": "總 token 數",
   "result": "結果",

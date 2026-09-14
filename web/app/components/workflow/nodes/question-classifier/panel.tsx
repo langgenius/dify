@@ -26,6 +26,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
     isChatMode,
     isChatModel,
     handleCompletionParamsChange,
+    handleInvocationChange,
     handleQueryVarChange,
     handleTopicsChange,
     hasSetBlockStatus,
@@ -52,9 +53,11 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
             isAdvancedMode={true}
             provider={model?.provider}
             completionParams={model.completion_params}
+            invocation={inputs.invocation}
             modelId={model.name}
             setModel={handleModelChanged}
             onCompletionParamsChange={handleCompletionParamsChange}
+            onInvocationChange={handleInvocationChange}
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
             readonly={readOnly}

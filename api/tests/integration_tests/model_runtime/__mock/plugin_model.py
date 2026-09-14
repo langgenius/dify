@@ -249,5 +249,6 @@ class MockModelClass(PluginModelClient):
         stop: list[str] | None = None,
         stream: bool = True,
         app_id: str | None = None,
+        first_token_timeout: float | None = None,
     ):
         return MockModelClass.mocked_chat_create_stream(model=model, prompt_messages=prompt_messages, tools=tools)

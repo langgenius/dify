@@ -192,6 +192,7 @@ const createConfigResult = (
   isChatMode: true,
   isChatModel: true,
   handleCompletionParamsChange: vi.fn(),
+  handleInvocationChange: vi.fn(),
   handleQueryVarChange: vi.fn(),
   filterVar: vi.fn(() => true),
   handleTopicsChange: vi.fn(),

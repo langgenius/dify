@@ -347,6 +347,28 @@ export const STOP_PARAMETER_RULE: ModelParameterRule = {
   },
 }
 
+// Rendered like a model parameter, but stored on the node's invocation policy and
+// consumed by the Dify backend. It is never sent to model providers.
+export const FIRST_TOKEN_TIMEOUT_PARAMETER_RULE: ModelParameterRule = {
+  default: 2000,
+  min: 100,
+  max: 600000,
+  precision: 0,
+  help: {
+    en_US:
+      'Max milliseconds to wait for the first streamed token. Generation after that token is not affected. On timeout the node fails; combine with node retry to re-run it automatically.',
+    zh_Hans:
+      '等待首个流式 Token 的最长毫秒数。首个 Token 之后的生成过程不受影响。超时后节点失败，可配合节点重试自动重跑。',
+  },
+  label: {
+    en_US: 'First token timeout (ms)',
+    zh_Hans: '首个 Token 超时（毫秒）',
+  },
+  name: 'first_token_timeout_ms',
+  required: false,
+  type: 'int',
+}
+
 export const PARTNER_STACK_CONFIG = {
   cookieName: 'partner_stack_info',
   saveCookieDays: 90,

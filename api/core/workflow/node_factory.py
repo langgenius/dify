@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast, final, override
 
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from configs import dify_config
@@ -670,12 +671,52 @@ class DifyNodeFactory(NodeFactory):
         model_instance: ModelInstance,
         request_metadata: Mapping[str, object] | None = None,
     ) -> DifyPreparedLLM:
+        first_token_timeout = DifyNodeFactory._node_first_token_timeout(node_data)
         # Only graphon's LLM node consumes the polling protocol. Keep classifier
         # and extractor nodes on the existing wrapper even if the same model
         # advertises polling support.
         if node_data.type == BuiltinNodeTypes.LLM and DifyNodeFactory._supports_plugin_llm_polling(model_instance):
-            return DifyPreparedPollingLLM(model_instance, request_metadata=request_metadata)
-        return DifyPreparedLLM(model_instance, request_metadata=request_metadata)
+            return DifyPreparedPollingLLM(
+                model_instance,
+                request_metadata=request_metadata,
+                first_token_timeout=first_token_timeout,
+            )
+        return DifyPreparedLLM(
+            model_instance,
+            request_metadata=request_metadata,
+            first_token_timeout=first_token_timeout,
+        )
+
+    @staticmethod
+    def _node_first_token_timeout(node_data: LLMCompatibleNodeData) -> float | None:
+        """Read the node's first-token timeout off its invocation policy.
+
+        Only the nodes that stream carry the block. The parameter extractor invokes
+        with ``stream=False``, where the single result arrives once generation has
+        finished, so a first-token timeout there would quietly become a
+        total-generation timeout.
+
+        The block is read through ``BaseNodeData.get`` rather than as an attribute:
+        graphon declares ``invocation`` as a field only from the release that
+        introduces it, and before that the key rides along as an undeclared
+        compatibility extra. So it arrives either as a plain dict or as a model, and
+        both are normalized to a mapping here, which keeps this working across the
+        pin bump. The value is validated either way, because an extra arrives
+        unvalidated. This is the only ms->s conversion on the path.
+        """
+        if node_data.type not in {BuiltinNodeTypes.LLM, BuiltinNodeTypes.QUESTION_CLASSIFIER}:
+            return None
+
+        invocation = node_data.get("invocation")
+        if isinstance(invocation, BaseModel):
+            invocation = invocation.model_dump()
+        if not isinstance(invocation, Mapping):
+            return None
+
+        timeout_ms = invocation.get("first_token_timeout_ms")
+        if not isinstance(timeout_ms, (int, float)) or isinstance(timeout_ms, bool) or timeout_ms <= 0:
+            return None
+        return float(timeout_ms) / 1000
 
     @staticmethod
     def _supports_plugin_llm_polling(model_instance: ModelInstance) -> bool:

@@ -9,6 +9,7 @@ type Props = {
   readonly startTime?: number
   readonly time?: number
   readonly tokens?: number
+  readonly timeToFirstToken?: number
   readonly steps?: number
   readonly showSteps?: boolean
 }
@@ -19,6 +20,7 @@ const MetaData: FC<Props> = ({
   startTime,
   time,
   tokens,
+  timeToFirstToken,
   steps = 1,
   showSteps = true,
 }) => {
@@ -97,6 +99,16 @@ const MetaData: FC<Props> = ({
             {!['running', 'paused'].includes(status) && <span>{`${tokens || 0} Tokens`}</span>}
           </div>
         </div>
+        {timeToFirstToken !== undefined && (
+          <div className="flex">
+            <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
+              {t(($) => $['meta.timeToFirstToken'], { ns: 'runLog' })}
+            </div>
+            <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
+              <span>{`${timeToFirstToken.toFixed(3)}s`}</span>
+            </div>
+          </div>
+        )}
         {showSteps && (
           <div className="flex">
             <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">

@@ -1,4 +1,4 @@
-import type { Memory, ValueSelector, Var } from '../../types'
+import type { InvocationConfig, Memory, ValueSelector, Var } from '../../types'
 import type { QuestionClassifierNodeType, Topic } from './types'
 import { produce } from 'immer'
 import { startTransition, useCallback, useEffect, useRef } from 'react'
@@ -99,6 +99,16 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     (newParams: Record<string, unknown>) => {
       const newInputs = produce(inputs, (draft) => {
         draft.model.completion_params = newParams
+      })
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
+
+  const handleInvocationChange = useCallback(
+    (invocation: InvocationConfig) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.invocation = invocation
       })
       setInputs(newInputs)
     },
@@ -255,6 +265,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     isChatMode,
     isChatModel,
     handleCompletionParamsChange,
+    handleInvocationChange,
     handleQueryVarChange,
     filterVar,
     handleTopicsChange: handleClassesChange,

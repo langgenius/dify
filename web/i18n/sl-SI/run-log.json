@@ -7,6 +7,7 @@
   "meta.status": "Status",
   "meta.steps": "Koraki izvajanja",
   "meta.time": "Pretečeni čas",
+  "meta.timeToFirstToken": "Čas do prvega žetona",
   "meta.title": "METAPODATKI",
   "meta.tokens": "Skupni žetoni",
   "result": "REZULTAT",
