@@ -5,6 +5,7 @@ import type { HttpClient } from '@/http/types'
 import type { TokenStore } from '@/store/token-store'
 import type { IOStreams } from '@/sys/io/streams'
 import { META_PROBE_TIMEOUT_MS, MetaClient } from '@/api/meta'
+import { environmentTokenContext } from '@/auth/environment-token'
 import { notLoggedInError, Registry } from '@/auth/hosts'
 import { loadAppInfoCache } from '@/cache/app-info'
 import { loadNudgeStore } from '@/cache/nudge-store'
@@ -40,19 +41,28 @@ export async function buildAuthedContext(
   opts: AuthedContextOptions,
 ): Promise<AuthedContext> {
   const io = realStreams(opts.format ?? '')
-  const reg = await Registry.load()
-  const active = reg.resolveActive()
-  if (active === undefined) fail(cmd, opts, io)
-
+  const envToken = getEnv('DIFY_TOKEN')?.trim()
+  const reg = envToken ? Registry.empty() : await Registry.load()
   const store = getTokenStore(reg.token_storage)
-  const bearer = await store.read(active.host, active.email)
-  if (bearer === '') fail(cmd, opts, io)
-
-  const { host, insecure } = activeHostInfo(active)
   const retryAttempts = resolveRetryAttempts({ flag: opts.retryFlag, env: getEnv })
-  const http = createHttpClient({ baseURL: openAPIBase(host), bearer, retryAttempts, insecure })
-
-  const cache = opts.withCache === true ? await loadAppInfoCache() : undefined
+  let active: ActiveContext
+  let http: HttpClient
+  if (envToken) {
+    const context = await environmentTokenContext(envToken, retryAttempts)
+    active = context.active
+    http = context.http
+  } else {
+    const stored = reg.resolveActive()
+    if (stored === undefined) fail(cmd, opts, io)
+    active = stored
+    const bearer = await store.read(active.host, active.email)
+    if (bearer === '') fail(cmd, opts, io)
+    const { host, insecure } = activeHostInfo(active)
+    http = createHttpClient({ baseURL: openAPIBase(host), bearer, retryAttempts, insecure })
+  }
+  const { host, insecure } = activeHostInfo(active)
+  // Metadata cached for a logged-in account must not cross an environment-token boundary.
+  const cache = opts.withCache === true && !envToken ? await loadAppInfoCache() : undefined
 
   // Hard gate: refuse a server too old for this difyctl (throws → exit 6).
   // Cached per host (1h) so most commands don't re-probe. Then the soft nudge

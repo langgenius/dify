@@ -3,7 +3,8 @@
 Bearer-authed counterparts to the cookie-authed /console/api/workspaces
 endpoints. Account bearers (dfoa_) see every tenant they're a member of.
 External SSO bearers (dfoe_) have no account_id and so see an empty list —
-that matches /openapi/v1/account.
+that matches /openapi/v1/account. Resource access bearers may list only their
+own tenant, without inheriting any account membership or role.
 
 Member-management endpoints use ``guard_workspace`` which enforces
 workspace membership and optional role requirements via the auth pipeline.
@@ -94,10 +95,23 @@ def _check_member_invite_quota(tenant_id: str) -> None:
 
 @openapi_ns.route("/workspaces")
 class WorkspacesApi(Resource):
-    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @auth_router.guard(
+        scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT, TokenType.RESOURCE_ACCESS})
+    )
     @returns(200, WorkspaceListResponse, description="Workspace list")
     @with_session(write=False)
     def get(self, session: Session, *, auth_data: AuthData):
+        if auth_data.token_type == TokenType.RESOURCE_ACCESS:
+            tenant = auth_data.tenant
+            if tenant is None:
+                raise NotFound("workspace not found")
+            return WorkspaceListResponse(
+                workspaces=[
+                    WorkspaceSummaryResponse(
+                        id=str(tenant.id), name=tenant.name, role="", status=tenant.status, current=True
+                    )
+                ]
+            )
         rows = TenantService.get_workspaces_for_account(str(auth_data.account_id), session=session)
 
         return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows)))

@@ -158,6 +158,32 @@ describe('ResourceAccessTokenPage', () => {
     expect(screen.queryByText('Help Center')).not.toBeInTheDocument()
   })
 
+  it('shows bound app and dataset names when hovering over the resource information', async () => {
+    const user = userEvent.setup()
+    renderWithQueryClient(<ResourceAccessTokenPage />)
+
+    await user.hover(
+      await screen.findByRole('button', {
+        name: 'Production clients · common.resourceAccessToken.accessibleResources',
+      }),
+    )
+
+    expect(await screen.findByText('Support Bot')).toBeInTheDocument()
+    expect(
+      within(
+        screen.getByRole('list', { name: 'common.resourceAccessToken.appsSection' }),
+      ).getByText('Support Bot'),
+    ).toBeInTheDocument()
+    expect(
+      within(
+        screen.getByRole('list', { name: 'common.resourceAccessToken.knowledgeBasesSection' }),
+      ).getByText('Help Center'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Sales Bot')).not.toBeInTheDocument()
+    expect(mocks.listApps).not.toHaveBeenCalled()
+    expect(mocks.listDatasets).not.toHaveBeenCalled()
+  })
+
   it('renders the empty state without the table when there are no access tokens', async () => {
     mocks.listResourceAccessTokens.mockResolvedValue({
       data: [],

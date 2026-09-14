@@ -17,6 +17,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
@@ -566,11 +567,43 @@ function ResourceAccessTokenRow({
       <div className="min-w-0 truncate font-mono text-[13px] text-text-primary">
         {row.maskedToken}
       </div>
-      <div className="min-w-0">
-        <div className="truncate text-text-secondary">
+      <div className="flex min-w-0 items-center gap-1">
+        <div className="min-w-0 truncate text-text-secondary">
           {resourceSummary ||
             t(($) => $['resourceAccessToken.noAccessibleResources'], { ns: 'common' })}
         </div>
+        <Infotip
+          iconVariant="information"
+          aria-label={`${row.name} · ${t(($) => $['resourceAccessToken.accessibleResources'], { ns: 'common' })}`}
+        >
+          <div className="grid max-h-60 min-w-48 gap-3 overflow-y-auto">
+            {(['app', 'knowledge'] as const).map((type) => {
+              const resources = row.relations.filter((relation) => relation.resource_type === type)
+              if (resources.length === 0) return null
+              const label = t(
+                ($) =>
+                  $[
+                    type === 'app'
+                      ? 'resourceAccessToken.appsSection'
+                      : 'resourceAccessToken.knowledgeBasesSection'
+                  ],
+                { ns: 'common' },
+              )
+              return (
+                <div key={type}>
+                  <div className="mb-1 system-xs-semibold text-text-secondary">{label}</div>
+                  <ul aria-label={label} className="grid gap-1">
+                    {resources.map((resource) => (
+                      <li key={resource.relation_id} className="wrap-break-word">
+                        {resource.resource_name || resource.resource_id}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
+        </Infotip>
       </div>
       <div className="min-w-0 truncate text-text-secondary">{formatTime(row.createdAt)}</div>
       <div className="flex items-center gap-1 text-text-tertiary">
