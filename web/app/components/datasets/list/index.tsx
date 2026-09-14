@@ -3,10 +3,9 @@
 import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/components/knowledge-view-switcher'
 // Libraries
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useBoolean } from 'ahooks'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { parseAsStringLiteral, useQueryState } from 'nuqs'
+import { parseAsStringLiteral, useQueryState, useQueryStates } from 'nuqs'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -38,6 +37,7 @@ import ExternalAPIPanel from '../external-api/external-api-panel'
 import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
+import { datasetListQueryParsers } from './query-params'
 
 const knowledgeViewParser = parseAsStringLiteral(['legacy', 'new']).withDefault('legacy')
 
@@ -51,14 +51,13 @@ function LegacyList({
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
-  const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
+  const [urlQuery, setUrlQuery] = useQueryStates(datasetListQueryParsers)
+  const { keyword: keywords, tag_ids: tagFilterValue, include_all: includeAll } = urlQuery
   const invalidDatasetList = useInvalidDatasetList()
   useDocumentTitle(t(($) => $.knowledge, { ns: 'dataset' }))
 
-  const [keywords, setKeywords] = useState('')
   const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
-  const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const debouncedTagIDs = useDebouncedValue(tagFilterValue, 500)
   const tagIDs = tagFilterValue.length > 0 ? debouncedTagIDs : []
 
@@ -136,10 +135,10 @@ function LegacyList({
         onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
         onConnectDataset={() => push('/datasets/connect')}
         onExternalApiClick={() => setShowExternalApiPanel(true)}
-        onIncludeAllChange={toggleIncludeAll}
-        onKeywordsChange={setKeywords}
+        onIncludeAllChange={() => void setUrlQuery({ include_all: !includeAll })}
+        onKeywordsChange={(value) => void setUrlQuery({ keyword: value })}
         onOpenTagManagement={() => setShowTagManagementModal(true)}
-        onTagsChange={setTagFilterValue}
+        onTagsChange={(value) => void setUrlQuery({ tag_ids: value })}
         stepByStepTourCreateMenuOpen={
           activeKnowledgeGuide ? shouldOpenStepByStepTourCreateMenu : undefined
         }
