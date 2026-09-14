@@ -11,6 +11,7 @@ from pydantic_ai.messages import (
     ToolCallPart,
 )
 
+from core.workflow.nodes.agent.events import AgentLogEvent
 from core.workflow.nodes.agent_v2.agent_log_translator import AgentBackendLogTranslator
 
 _EVENT_DATA_ADAPTER = TypeAdapter(object)
@@ -20,13 +21,13 @@ def _translator() -> AgentBackendLogTranslator:
     return AgentBackendLogTranslator(node_id="agent-node", node_execution_id="execution-1", run_id="run-1")
 
 
-def _translate(translator: AgentBackendLogTranslator, event: object):
+def _translate(translator: AgentBackendLogTranslator, event: object) -> list[AgentLogEvent]:
     """Feed a pydantic-ai event through the same JSON round-trip the SSE stream uses."""
     data = _EVENT_DATA_ADAPTER.dump_python(event, mode="json")
     return translator.translate(data, event_kind=data.get("event_kind"))
 
 
-def test_builtin_tool_parts_become_matching_start_and_success_logs():
+def test_builtin_tool_parts_become_matching_start_and_success_logs() -> None:
     translator = _translator()
 
     started = _translate(
@@ -51,7 +52,7 @@ def test_builtin_tool_parts_become_matching_start_and_success_logs():
     assert finished[0].metadata["elapsed_time"] >= 0
 
 
-def test_answer_and_reasoning_deltas_do_not_produce_logs():
+def test_answer_and_reasoning_deltas_do_not_produce_logs() -> None:
     translator = _translator()
 
     assert _translate(translator, PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hi"))) == []
@@ -59,7 +60,7 @@ def test_answer_and_reasoning_deltas_do_not_produce_logs():
     assert _translate(translator, PartEndEvent(index=0, part=ThinkingPart(content="   "))) == []
 
 
-def test_each_reasoning_part_gets_its_own_log_id():
+def test_each_reasoning_part_gets_its_own_log_id() -> None:
     translator = _translator()
 
     first = _translate(translator, PartEndEvent(index=0, part=ThinkingPart(content="step one")))
@@ -69,7 +70,7 @@ def test_each_reasoning_part_gets_its_own_log_id():
     assert [log.data["thought"] for log in first + second] == ["step one", "step two"]
 
 
-def test_log_ids_are_stable_per_run_and_tool_call():
+def test_log_ids_are_stable_per_run_and_tool_call() -> None:
     call = FunctionToolCallEvent(part=ToolCallPart(tool_name="t", args={}, tool_call_id="c1"))
 
     same_run = _translate(_translator(), call)[0].message_id
@@ -82,7 +83,7 @@ def test_log_ids_are_stable_per_run_and_tool_call():
     assert other_run != same_run
 
 
-def test_unknown_and_malformed_payloads_are_ignored():
+def test_unknown_and_malformed_payloads_are_ignored() -> None:
     translator = _translator()
 
     assert translator.translate("not-a-mapping", event_kind="function_tool_call") == []
