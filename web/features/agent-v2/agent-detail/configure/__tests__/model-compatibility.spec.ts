@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   ConfigurationMethodEnum,
+  ModelFeatureEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -172,9 +173,89 @@ describe('isAgentCompatibleModel', () => {
     expect(isAgentCompatibleModel(provider, createModelItem('grok-4'))).toBe(true)
     expect(isAgentCompatibleModel(provider, createModelItem('qwen3.7-max'))).toBe(true)
   })
+
+  it('should use declared function-calling capability for customizable models', () => {
+    const provider = createModel('openai-api-compatible')
+
+    // Regression: customizable qwen-max must not be blocked by the predefined
+    // family blacklist when tool-call is declared (#42092 / #39623).
+    expect(
+      isAgentCompatibleModel(
+        provider,
+        createModelItem('qwen-max', {
+          fetch_from: ConfigurationMethodEnum.customizableModel,
+          features: [ModelFeatureEnum.toolCall],
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      isAgentCompatibleModel(
+        provider,
+        createModelItemWithLabel('custom-id', 'gpt-4o', {
+          fetch_from: ConfigurationMethodEnum.customizableModel,
+          features: [ModelFeatureEnum.multiToolCall],
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      isAgentCompatibleModel(
+        provider,
+        createModelItem('custom-model', {
+          fetch_from: ConfigurationMethodEnum.customizableModel,
+          features: [ModelFeatureEnum.streamToolCall],
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      isAgentCompatibleModel(
+        provider,
+        createModelItem('custom-model', {
+          fetch_from: ConfigurationMethodEnum.customizableModel,
+          features: undefined,
+        }),
+      ),
+    ).toBe(false)
+    expect(
+      isAgentCompatibleModel(
+        provider,
+        createModelItem('custom-model', {
+          fetch_from: ConfigurationMethodEnum.customizableModel,
+          features: [ModelFeatureEnum.vision],
+        }),
+      ),
+    ).toBe(false)
+  })
+
+  it('should keep predefined-model blacklist behavior unchanged', () => {
+    const provider = createModel('qwen')
+
+    expect(isAgentCompatibleModel(provider, createModelItem('qwen-max'))).toBe(false)
+    expect(
+      isAgentCompatibleModel(
+        provider,
+        createModelItem('qwen-max', {
+          fetch_from: ConfigurationMethodEnum.predefinedModel,
+          features: [ModelFeatureEnum.toolCall],
+        }),
+      ),
+    ).toBe(false)
+  })
 })
 
 describe('isAgentSuggestedModel', () => {
+  it('should not auto-suggest customizable models that become technically eligible', () => {
+    const provider = createModel('openai-api-compatible')
+
+    expect(
+      isAgentSuggestedModel(
+        provider,
+        createModelItem('qwen-max', {
+          fetch_from: ConfigurationMethodEnum.customizableModel,
+          features: [ModelFeatureEnum.toolCall],
+        }),
+      ),
+    ).toBe(false)
+  })
   it('should suggest configured Agent baseline models by English label', () => {
     const provider = createModel('any-provider')
 
