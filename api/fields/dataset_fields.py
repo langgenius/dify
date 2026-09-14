@@ -222,7 +222,7 @@ class DatasetDetailPrefetch:
     document_counts: dict[str, int] = field(default_factory=dict)
     word_counts: dict[str, int] = field(default_factory=dict)
     available_document_counts: dict[str, int] = field(default_factory=dict)
-    author_names: dict[str, str | None] = field(default_factory=dict)
+    author_names: dict[str, str] = field(default_factory=dict)
     tags: dict[tuple[str, str], list[Tag]] = field(default_factory=dict)
     doc_forms: dict[tuple[str, str], str | None] = field(default_factory=dict)
     external_knowledge_infos: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
@@ -243,7 +243,9 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
             select(AppDatasetJoin.dataset_id, func.count(AppDatasetJoin.id))
             .where(AppDatasetJoin.dataset_id.in_(dataset_ids), App.id == AppDatasetJoin.app_id)
             .group_by(AppDatasetJoin.dataset_id)
-        ).all()
+        )
+        .tuples()
+        .all()
     )
 
     document_counts: dict[str, int] = {}
@@ -290,7 +292,9 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
         }
 
     author_ids = {dataset.created_by for dataset in datasets if dataset.created_by}
-    author_names = dict(session.execute(select(Account.id, Account.name).where(Account.id.in_(author_ids))).all())
+    author_names = dict(
+        session.execute(select(Account.id, Account.name).where(Account.id.in_(author_ids))).tuples().all()
+    )
 
     tags: dict[tuple[str, str], list[Tag]] = {}
     tag_rows = session.execute(
@@ -316,7 +320,9 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
     pipeline_published: dict[str, bool] = {}
     if pipeline_ids:
         pipeline_published = dict(
-            session.execute(select(Pipeline.id, Pipeline.is_published).where(Pipeline.id.in_(pipeline_ids))).all()
+            session.execute(select(Pipeline.id, Pipeline.is_published).where(Pipeline.id.in_(pipeline_ids)))
+            .tuples()
+            .all()
         )
 
     return DatasetDetailPrefetch(
