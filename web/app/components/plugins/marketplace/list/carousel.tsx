@@ -75,7 +75,7 @@ const CarouselControls = ({
   if (totalPages <= 1) return null
 
   return (
-    <div className="absolute -top-10 right-0 flex items-center gap-3">
+    <div className={cn(styles.controls, 'flex items-center justify-end gap-3')}>
       {showPagination && (
         <div className={cn(styles.pagination, 'flex items-center gap-1')}>
           {paginationItems.map((item, index) => (
@@ -344,7 +344,7 @@ const Carousel = ({
   return (
     <div
       ref={carouselRootRef}
-      className={cn('relative', className)}
+      className={cn(styles.root, 'relative', className)}
       role="region"
       aria-roledescription="carousel"
       aria-label={ariaLabel}
