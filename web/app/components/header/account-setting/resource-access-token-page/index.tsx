@@ -11,15 +11,16 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 
 const PAGE_SIZE = 20
@@ -577,11 +578,50 @@ function ResourceAccessTokenRow({
       <div className="min-w-0 truncate font-mono text-[13px] text-text-primary">
         {row.maskedToken}
       </div>
-      <div className="min-w-0">
-        <div className="truncate text-text-secondary">
+      <div className="flex min-w-0 items-center gap-1">
+        <div className="min-w-0 truncate text-text-secondary">
           {resourceSummary ||
             t(($) => $['resourceAccessToken.noAccessibleResources'], { ns: 'accountSettings' })}
         </div>
+        <Infotip>
+          <InfotipTrigger
+            iconVariant="information"
+            aria-label={`${row.name} · ${t(($) => $['resourceAccessToken.accessibleResources'], { ns: 'accountSettings' })}`}
+          />
+          <InfotipContent
+            aria-label={`${row.name} · ${t(($) => $['resourceAccessToken.accessibleResources'], { ns: 'accountSettings' })}`}
+          >
+            <div className="grid max-h-60 min-w-48 gap-3 overflow-y-auto">
+              {(['app', 'knowledge'] as const).map((type) => {
+                const resources = row.relations.filter(
+                  (relation) => relation.resource_type === type,
+                )
+                if (resources.length === 0) return null
+                const label = t(
+                  ($) =>
+                    $[
+                      type === 'app'
+                        ? 'resourceAccessToken.appsSection'
+                        : 'resourceAccessToken.knowledgeBasesSection'
+                    ],
+                  { ns: 'accountSettings' },
+                )
+                return (
+                  <div key={type}>
+                    <div className="mb-1 system-xs-semibold text-text-secondary">{label}</div>
+                    <ul aria-label={label} className="grid gap-1">
+                      {resources.map((resource) => (
+                        <li key={resource.relation_id} className="wrap-break-word">
+                          {resource.resource_name || resource.resource_id}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )
+              })}
+            </div>
+          </InfotipContent>
+        </Infotip>
       </div>
       <div className="min-w-0 truncate text-text-secondary">{formatTime(row.createdAt)}</div>
       <div className="flex items-center gap-1 text-text-tertiary">
