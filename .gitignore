@@ -240,6 +240,7 @@ mise.toml
 # AI Assistant
 .roo/
 /.claude/worktrees/
+/.claude/logs/
 api/.env.backup
 /clickzetta
 
