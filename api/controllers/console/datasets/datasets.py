@@ -42,7 +42,11 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from fields.base import ResponseModel
-from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from fields.dataset_fields import (
+    DatasetDetailResponse,
+    build_dataset_detail_prefetch,
+    dataset_detail_response_source,
+)
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
@@ -538,8 +542,11 @@ class DatasetListApi(Resource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
+        prefetch = build_dataset_detail_prefetch(datasets, session=session)
         data = [
-            dump_response(DatasetDetailResponse, dataset_detail_response_source(dataset, session=session))
+            dump_response(
+                DatasetDetailResponse, dataset_detail_response_source(dataset, session=session, prefetch=prefetch)
+            )
             for dataset in datasets
         ]
         dataset_ids = [item["id"] for item in data if item.get("permission") == "partial_members"]
