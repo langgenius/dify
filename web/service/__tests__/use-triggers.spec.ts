@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   verifyAndUpdate: vi.fn().mockResolvedValue({ verified: false }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     workspaces: {
       current: {

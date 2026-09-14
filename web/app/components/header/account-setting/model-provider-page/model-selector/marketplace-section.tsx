@@ -47,7 +47,7 @@ function MarketplaceSection({
         <div className="flex h-5.5 items-center pr-2 pl-4">
           <CollapsibleTrigger
             id={headingId}
-            className="group/marketplace min-h-0 flex-1 justify-start gap-0 rounded-none p-0 system-sm-medium text-text-primary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-primary data-panel-open:text-text-primary"
+            className="group/marketplace flex min-h-0 w-full flex-1 touch-manipulation items-center justify-start gap-0 text-start system-sm-medium text-text-primary outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             {t(($) => $['modelProvider.selector.fromMarketplace'], { ns: 'common' })}
             <span

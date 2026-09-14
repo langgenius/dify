@@ -18,7 +18,7 @@ import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-qu
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'

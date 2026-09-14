@@ -22,7 +22,7 @@ import {
   workspacePermissionKeysFetchingAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
 import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'

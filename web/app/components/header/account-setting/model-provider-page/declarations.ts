@@ -242,15 +242,6 @@ export type ModelProvider = {
   allow_custom_token?: boolean
 }
 
-export type Model = {
-  provider: string
-  icon_small: TypeWithI18N
-  icon_small_dark?: TypeWithI18N
-  label: TypeWithI18N
-  models: ModelItem[]
-  status: ModelStatusEnum
-}
-
 export type DefaultModelResponse = {
   model: string
   model_type: ModelTypeEnum

@@ -42,7 +42,7 @@ vi.mock('#i18n', async () => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/marketplace', () => ({
   marketplaceQuery: {
     searchAdvanced: {
       queryOptions: ({ input }: { input: unknown }) => ({

@@ -25,7 +25,7 @@ from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine
+from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -48,6 +48,7 @@ from controllers.service_api.dataset.document import (
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset, Document, DocumentSegment
@@ -65,6 +66,7 @@ from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _document_data_source_info() -> dict[str, str]:
@@ -658,6 +660,7 @@ class TestDocumentServiceFileOperations:
 class TestDocumentServiceSaveValidation:
     """Test validations during document saving."""
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     @patch("services.dataset_service.DatasetService.check_doc_form")
     @patch("services.dataset_service.FeatureService.get_features")
     def test_save_document_validates_doc_form(self, mock_features, mock_check_form, sqlite_session: Session):
@@ -665,7 +668,6 @@ class TestDocumentServiceSaveValidation:
         dataset = make_dataset(tenant_id="tenant_id")
         config = Mock()
         features = Mock()
-        features.billing.enabled = False
         mock_features.return_value = features
 
         class TestStopError(Exception):
@@ -1289,6 +1291,7 @@ class TestDocumentIndexingStatusApi(SQLiteControllerTest):
         )
 
         mock_doc_svc.get_batch_documents.return_value = [document]
+        mock_doc_svc.get_document_segment_counts.return_value = {document.id: (5, 5)}
 
         self._persist_dataset(mock_dataset)
         self.session.add_all(
@@ -1390,6 +1393,68 @@ class TestDocumentIndexingStatusApi(SQLiteControllerTest):
                     batch=batch_id,
                 )
 
+    def test_get_indexing_status_uses_one_aggregate_query(self, app: Flask, mock_tenant, mock_dataset, sqlite_engine):
+        batch_id = "batch_123"
+        documents = [
+            make_serializable_document(
+                id=str(uuid.uuid4()),
+                tenant_id=mock_tenant,
+                dataset_id=mock_dataset.id,
+            )
+            for _ in range(5)
+        ]
+        self._persist_dataset(mock_dataset)
+        self.session.add_all(
+            [
+                DocumentSegment(
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
+                    document_id=document.id,
+                    position=position,
+                    content=f"Segment {position}",
+                    word_count=2,
+                    tokens=2,
+                    created_by="user-1",
+                    status=SegmentStatus.COMPLETED,
+                    completed_at=datetime(2021, 1, 1, tzinfo=UTC) if position <= 2 else None,
+                )
+                for document in documents
+                for position in range(1, 4)
+            ]
+        )
+        self.session.commit()
+
+        select_statements: list[str] = []
+
+        def record_select(_connection, _cursor, statement, _parameters, _context, _executemany):
+            if statement.lstrip().upper().startswith("SELECT"):
+                select_statements.append(statement)
+
+        event.listen(sqlite_engine, "before_cursor_execute", record_select)
+        try:
+            with (
+                app.test_request_context(
+                    f"/datasets/{mock_dataset.id}/documents/{batch_id}/indexing-status",
+                    method="GET",
+                ),
+                patch.object(DocumentService, "get_batch_documents", return_value=documents),
+            ):
+                api = DocumentIndexingStatusApi()
+                response = inspect.unwrap(type(api).get)(
+                    api,
+                    self.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
+                    batch=batch_id,
+                )
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", record_select)
+
+        assert len(response["data"]) == 5
+        assert all(item["completed_segments"] == 2 for item in response["data"])
+        assert all(item["total_segments"] == 3 for item in response["data"])
+        assert len(select_statements) == 2
+
 
 class TestDocumentAddByTextApi(SQLiteControllerTest):
     """Test suite for DocumentAddByTextApi.post() endpoint.
@@ -1416,7 +1481,6 @@ class TestDocumentAddByTextApi(SQLiteControllerTest):
         mock_validate_token.return_value = api_token
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
         mock_vector_space = Mock()
@@ -1591,7 +1655,6 @@ def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
     api_token = ApiToken(tenant_id=tenant_id, type=ApiTokenType.DATASET, token="dataset-token")
     mock_validate_token.return_value = api_token
     mock_features = Mock()
-    mock_features.billing.enabled = False
     mock_feature_svc.get_features.return_value = mock_features
     mock_vector_space = Mock()
     mock_vector_space.limit = 10

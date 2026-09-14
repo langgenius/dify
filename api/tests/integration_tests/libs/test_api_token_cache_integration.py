@@ -303,7 +303,9 @@ class TestEndToEndCacheFlow:
             assert cached_token.token == test_token_value
 
             # Step 3: Verify tenant index
-            index_key = ApiTokenCache._make_tenant_index_key(test_token.tenant_id)
+            tenant_id = test_token.tenant_id
+            assert tenant_id is not None
+            index_key = ApiTokenCache._make_tenant_index_key(tenant_id)
             assert redis_client.exists(index_key) == 1
             assert cache_key.encode() in redis_client.smembers(index_key)
 
@@ -313,10 +315,12 @@ class TestEndToEndCacheFlow:
             assert cache_key.encode() not in redis_client.smembers(index_key)
 
         finally:
+            tenant_id = test_token.tenant_id
             db_session.delete(test_token)
             db_session.commit()
             redis_client.delete(f"api_token:{test_scope}:{test_token_value}")
-            redis_client.delete(ApiTokenCache._make_tenant_index_key(test_token.tenant_id))
+            if tenant_id is not None:
+                redis_client.delete(ApiTokenCache._make_tenant_index_key(tenant_id))
 
     def test_high_concurrency_simulation(self):
         """Simulate high concurrency access to cache."""

@@ -1,7 +1,7 @@
 'use client'
+import type { MouseEvent } from 'react'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -41,29 +41,38 @@ const MemberRow = ({
     onOpenDetails(member)
   }, [member, onOpenDetails])
 
+  const handleRowClick = useCallback(
+    (event: MouseEvent<HTMLTableRowElement>) => {
+      const target = event.target
+      if (
+        !(target instanceof Element) ||
+        !event.currentTarget.contains(target) ||
+        target.closest('button, a')
+      )
+        return
+      openDetails()
+    },
+    [openDetails],
+  )
+
   return (
-    <div
+    <tr
       data-testid={`member-row-${member.id}`}
-      className="relative border-b border-divider-subtle"
+      className="cursor-pointer border-b border-divider-subtle hover:bg-state-base-hover"
+      onClick={handleRowClick}
     >
-      <button
-        type="button"
-        aria-label={t(($) => $['members.memberDetails.openAria'], {
-          ns: 'common',
-          name: member.name,
-          defaultValue: 'Open member details for {{name}}',
-        })}
-        className={cn(
-          'flex w-full min-w-0 cursor-pointer bg-transparent text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden',
-          canManage && 'pr-12',
-        )}
-        onClick={openDetails}
-      >
-        <span className="flex w-65 shrink-0 items-center px-3 py-2">
+      <td className="px-3 py-2">
+        <div className="flex min-w-0 items-center">
           <Avatar avatar={member.avatar_url} size="sm" className="mr-2" name={member.name} />
-          <span className="min-w-0">
-            <span className="block system-sm-medium text-text-secondary">
-              {member.name}
+          <div className="min-w-0">
+            <div className="system-sm-medium text-text-secondary">
+              <button
+                type="button"
+                className="max-w-full cursor-pointer rounded-sm text-left wrap-break-word hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={openDetails}
+              >
+                {member.name}
+              </button>
               {member.status === 'pending' && (
                 <span className="ml-1 system-xs-medium text-text-warning">
                   {t(($) => $['members.pending'], { ns: 'common' })}
@@ -74,19 +83,21 @@ const MemberRow = ({
                   {t(($) => $['members.you'], { ns: 'common' })}
                 </span>
               )}
-            </span>
-            <span className="block system-xs-regular text-text-tertiary">{member.email}</span>
-          </span>
-        </span>
-        <span className="flex w-30 shrink-0 items-center py-2 system-sm-regular text-text-secondary">
-          {formatTimeFromNow(Number(member.last_active_at || member.created_at) * 1000)}
-        </span>
-        <span className="flex min-w-0 grow items-center gap-2 px-3">
-          <RoleBadges className="grow" roleNames={roleNames} />
-        </span>
-      </button>
-      <div className="absolute inset-y-0 right-0 flex items-center px-3">
-        {canManage && (
+            </div>
+            <div className="system-xs-regular wrap-break-word text-text-tertiary">
+              {member.email}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="py-2 system-sm-regular text-text-secondary">
+        {formatTimeFromNow(Number(member.last_active_at || member.created_at) * 1000)}
+      </td>
+      <td className="px-3 py-2">
+        <RoleBadges roleNames={roleNames} />
+      </td>
+      {canManage && (
+        <td className="px-3 py-2">
           <MemberMenu
             member={member}
             isCurrentUser={isCurrentUser}
@@ -94,9 +105,9 @@ const MemberRow = ({
             allowMultipleRoles={allowMultipleRoles}
             onTransferOwnership={onTransferOwnership}
           />
-        )}
-      </div>
-    </div>
+        </td>
+      )}
+    </tr>
   )
 }
 

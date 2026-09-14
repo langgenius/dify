@@ -19,7 +19,7 @@ import {
   PluginSource,
   TaskStatus,
 } from '@/app/components/plugins/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { renderHook } from '@/test/console/render'
 import {
   normalizeInstalledPluginDetail,

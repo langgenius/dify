@@ -31,7 +31,7 @@ type PermissionSetModalProps = {
   resourceType: AccessPolicyResourceType
   initialValues?: Partial<PermissionSetFormValues>
   onClose: () => void
-  onSubmit: (values: PermissionSetFormValues) => void
+  onSubmit: (values: PermissionSetFormValues) => void | Promise<void>
 }
 
 type PermissionSetModalBodyProps = Omit<PermissionSetModalProps, 'open'>
@@ -51,19 +51,29 @@ const PermissionSetModalBody = ({
   const [permissionKeys, setPermissionKeys] = useState<string[]>(
     initialValues?.permissionKeys ?? [],
   )
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitFailed, setSubmitFailed] = useState(false)
 
   const trimmedName = name.trim()
   const readonly = mode === 'view'
   const canSubmit = trimmedName.length > 0
 
-  const handleConfirm = () => {
-    if (readonly || !canSubmit) return
-    onSubmit({
-      name: trimmedName,
-      description: description.trim(),
-      permissionKeys,
-    })
-    onClose()
+  const handleConfirm = async () => {
+    if (readonly || !canSubmit || isSubmitting) return
+    setIsSubmitting(true)
+    setSubmitFailed(false)
+    try {
+      await onSubmit({
+        name: trimmedName,
+        description: description.trim(),
+        permissionKeys,
+      })
+      onClose()
+    } catch {
+      setSubmitFailed(true)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -71,102 +81,120 @@ const PermissionSetModalBody = ({
       className="flex h-[85vh] w-140 flex-col overflow-hidden p-0"
       backdropProps={{ forceRender: true }}
     >
-      <div className="relative shrink-0 px-6 pt-6 pb-4">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="pr-8">
-          <DialogTitle className="system-xl-semibold text-text-primary">
-            {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.title`], { ns: 'permission' })}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.description`], {
-              ns: 'permission',
-            })}
-          </DialogDescription>
-        </div>
-      </div>
-
-      <div className="border-t border-divider-subtle" />
-
-      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
-        <div className="flex shrink-0 flex-col gap-1">
-          <label htmlFor="permission-set-name" className="system-sm-medium text-text-secondary">
-            {t(($) => $['permissionSet.nameLabel'], { ns: 'permission' })}
-            <span aria-hidden className="ml-0.5 text-text-destructive">
-              *
-            </span>
-          </label>
-          <Input
-            id="permission-set-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t(($) => $['permissionSet.namePlaceholder'], { ns: 'permission' })}
-            disabled={readonly}
+      <form
+        className="contents"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void handleConfirm()
+        }}
+      >
+        <div className="relative shrink-0 px-6 pt-6 pb-4">
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
           />
-        </div>
-
-        <div className="flex shrink-0 flex-col gap-1">
-          <label
-            htmlFor="permission-set-description"
-            className="system-sm-medium text-text-secondary"
-          >
-            {t(($) => $['permissionSet.descriptionLabel'], { ns: 'permission' })}
-          </label>
-          <Textarea
-            id="permission-set-description"
-            value={description}
-            onValueChange={(value) => setDescription(value)}
-            placeholder={t(($) => $['permissionSet.descriptionPlaceholder'], { ns: 'permission' })}
-            className="min-h-20 resize-none"
-            disabled={readonly}
-          />
-        </div>
-
-        <div className="flex min-h-0 flex-1 flex-col gap-2">
-          <div className="system-sm-medium text-text-secondary">
-            {t(($) => $['permissionSet.permissions'], { ns: 'permission' })}
+          <div className="pr-8">
+            <DialogTitle className="system-xl-semibold text-text-primary">
+              {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.title`], {
+                ns: 'permission',
+              })}
+            </DialogTitle>
+            <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+              {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.description`], {
+                ns: 'permission',
+              })}
+            </DialogDescription>
           </div>
-          <PermissionPicker
-            resourceType={resourceType}
-            value={permissionKeys}
-            onChange={setPermissionKeys}
-            readonly={readonly}
-          />
         </div>
-      </div>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
-        <a
-          href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
-        >
-          <span>{t(($) => $['permissionSet.learnMore'], { ns: 'permission' })}</span>
-          <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
-        </a>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            {readonly
-              ? t(($) => $['operation.close'], { ns: 'common' })
-              : t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          {!readonly && (
-            <Button variant="primary" disabled={!canSubmit} onClick={handleConfirm}>
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </Button>
-          )}
+        <div className="border-t border-divider-subtle" />
+
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
+          <div className="flex shrink-0 flex-col gap-1">
+            <label htmlFor="permission-set-name" className="system-sm-medium text-text-secondary">
+              {t(($) => $['permissionSet.nameLabel'], { ns: 'permission' })}
+              <span aria-hidden className="ml-0.5 text-text-destructive">
+                *
+              </span>
+            </label>
+            <Input
+              id="permission-set-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t(($) => $['permissionSet.namePlaceholder'], { ns: 'permission' })}
+              disabled={readonly}
+              required
+            />
+          </div>
+
+          <div className="flex shrink-0 flex-col gap-1">
+            <label
+              htmlFor="permission-set-description"
+              className="system-sm-medium text-text-secondary"
+            >
+              {t(($) => $['permissionSet.descriptionLabel'], { ns: 'permission' })}
+            </label>
+            <Textarea
+              id="permission-set-description"
+              value={description}
+              onValueChange={(value) => setDescription(value)}
+              placeholder={t(($) => $['permissionSet.descriptionPlaceholder'], {
+                ns: 'permission',
+              })}
+              className="min-h-20 resize-none"
+              disabled={readonly}
+            />
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-2">
+            <div className="system-sm-medium text-text-secondary">
+              {t(($) => $['permissionSet.permissions'], { ns: 'permission' })}
+            </div>
+            <PermissionPicker
+              resourceType={resourceType}
+              value={permissionKeys}
+              onChange={setPermissionKeys}
+              readonly={readonly}
+            />
+          </div>
         </div>
-      </div>
+
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
+          {submitFailed && (
+            <p role="alert" className="system-xs-regular text-text-destructive">
+              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
+          )}
+          <a
+            href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
+          >
+            <span>{t(($) => $['permissionSet.learnMore'], { ns: 'permission' })}</span>
+            <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
+          </a>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              {readonly
+                ? t(($) => $['operation.close'], { ns: 'common' })
+                : t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+            {!readonly && (
+              <Button type="submit" variant="primary" disabled={!canSubmit} loading={isSubmitting}>
+                {t(($) => $['operation.confirm'], { ns: 'common' })}
+              </Button>
+            )}
+          </div>
+        </div>
+      </form>
     </DialogContent>
   )
 }

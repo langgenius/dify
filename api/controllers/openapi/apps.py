@@ -12,8 +12,8 @@ from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 from configs import dify_config
 from controllers.common.app_access import AppAccessFilter, resolve_app_access_filter
 from controllers.common.fields import Parameters
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.common.session import with_session
-from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
@@ -27,7 +27,7 @@ from controllers.openapi._models import (
     AppListRow,
 )
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
+from controllers.openapi.auth.data import AuthData, CallerKind
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from libs.oauth_bearer import Scope, TokenType
@@ -135,7 +135,7 @@ class AppDescribeApi(AppReadResource):
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
+        rbac=RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),
     )
     @returns(200, AppDescribeResponse, description="App description")
     @accepts(query=AppDescribeQuery)

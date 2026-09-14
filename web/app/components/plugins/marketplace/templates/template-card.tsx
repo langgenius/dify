@@ -11,6 +11,7 @@ import { useRouter } from '@/next/navigation'
 import { formatNumberAbbreviated } from '@/utils/format'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 import TemplateDetailDialog from './template-detail-dialog'
+import { useOptionalTemplateDetailRoute } from './use-optional-template-detail-route'
 
 type TemplateCardProps = {
   template: MarketplaceTemplate
@@ -22,6 +23,7 @@ const MAX_VISIBLE_PLUGIN_DEPENDENCIES = 7
 
 export default function TemplateCard({ template, className, partnerText }: TemplateCardProps) {
   const router = useRouter()
+  const templateDetailRoute = useOptionalTemplateDetailRoute()
   const [isDetailOpen, { setTrue: showDetail, setFalse: hideDetail }] = useBoolean(false)
   const publisher =
     template.publisher_handle || template.publisher_unique_handle || template.creator_email || ''
@@ -33,8 +35,13 @@ export default function TemplateCard({ template, className, partnerText }: Templ
   const imageUrl = template.icon_file_key
     ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
     : undefined
+  const openDetail = () => {
+    if (templateDetailRoute) templateDetailRoute.open(template)
+    else showDetail()
+  }
   const handleOpenChange = (open: boolean) => {
-    if (open) showDetail()
+    if (open) openDetail()
+    else if (templateDetailRoute) templateDetailRoute.close()
     else hideDetail()
   }
   const handleInstall = useCallback(() => {
@@ -54,7 +61,7 @@ export default function TemplateCard({ template, className, partnerText }: Templ
           type="button"
           aria-label={template.template_name}
           className="absolute inset-0 z-[1] cursor-pointer rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          onClick={showDetail}
+          onClick={openDetail}
         />
         <div className="relative z-0 flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
           <AppIcon
@@ -100,12 +107,14 @@ export default function TemplateCard({ template, className, partnerText }: Templ
           )}
         </div>
       </article>
-      <TemplateDetailDialog
-        open={isDetailOpen}
-        template={template}
-        onInstall={handleInstall}
-        onOpenChange={handleOpenChange}
-      />
+      {!templateDetailRoute && (
+        <TemplateDetailDialog
+          open={isDetailOpen}
+          template={template}
+          onInstall={handleInstall}
+          onOpenChange={handleOpenChange}
+        />
+      )}
     </>
   )
 }

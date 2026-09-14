@@ -22,7 +22,7 @@ import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/cha
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import dynamic from '@/next/dynamic'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })

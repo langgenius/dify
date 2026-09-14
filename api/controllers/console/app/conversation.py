@@ -9,13 +9,13 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, selectinload
 from werkzeug.exceptions import NotFound
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -106,7 +106,7 @@ class CompletionConversationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=AppMode.COMPLETION)
     @model_validate(CompletionConversationQuery)
@@ -187,7 +187,7 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
@@ -209,7 +209,7 @@ class CompletionConversationDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=AppMode.COMPLETION)
@@ -236,7 +236,7 @@ class ChatConversationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @model_validate(ChatConversationQuery)
@@ -356,7 +356,7 @@ class ChatConversationDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
@@ -378,7 +378,7 @@ class ChatConversationDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])

@@ -45,7 +45,7 @@ export default function CreatorProfileView({
   return (
     <div className="flex min-h-full shrink-0 flex-col bg-background-default">
       {header}
-      <main
+      <div
         className={cn(
           'flex w-full flex-1 flex-col px-4',
           isMarketplacePlatform ? 'md:px-6' : 'md:px-9',
@@ -104,7 +104,7 @@ export default function CreatorProfileView({
             />
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

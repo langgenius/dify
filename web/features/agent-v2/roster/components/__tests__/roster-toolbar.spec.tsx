@@ -4,6 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { RosterToolbar } from '../roster-toolbar'
 
+const permissions = vi.hoisted(() => ({ canCreate: true, canImport: true }))
+
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanCreateAgents: () => permissions.canCreate,
+  useCanImportAgents: () => permissions.canImport,
+}))
+
 vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
   default: ({ show, onSuccess }: { show: boolean; onSuccess?: () => void }) =>
     show ? (
@@ -39,6 +46,38 @@ const renderToolbar = ({
 }
 
 describe('RosterToolbar', () => {
+  beforeEach(() => {
+    permissions.canCreate = true
+    permissions.canImport = true
+  })
+
+  it.each([
+    { canCreate: true, canImport: false },
+    { canCreate: false, canImport: true },
+  ])('separates create and import permissions: %o', async (grants) => {
+    Object.assign(permissions, grants)
+    renderToolbar()
+
+    await userEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+    expect(Boolean(screen.queryByRole('menuitem', { name: 'app.newApp.startFromBlank' }))).toBe(
+      grants.canCreate,
+    )
+    expect(Boolean(screen.queryByRole('menuitem', { name: /app\.importDSL/ }))).toBe(
+      grants.canImport,
+    )
+  })
+
+  it('hides the create menu when neither action is permitted', () => {
+    permissions.canCreate = false
+    permissions.canImport = false
+    renderToolbar()
+
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.create' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('opens the shared create menu for blank Agent creation and DSL import', async () => {
     const user = userEvent.setup()
     const { queryClient } = renderToolbar()

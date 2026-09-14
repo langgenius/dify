@@ -9,7 +9,7 @@ const { mockDeleteApiBasedExtension } = vi.hoisted(() => ({
   mockDeleteApiBasedExtension: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apiBasedExtension: {
       byId: {

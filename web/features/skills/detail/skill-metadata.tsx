@@ -27,7 +27,7 @@ import { isCreateTagOption } from '@/features/tag-management/components/tag-comb
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import { TagSearchContentView } from '@/features/tag-management/components/tag-search-content'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { SkillPublishShortcut } from './publish-bar'
 import {
   invalidateSkillDetail,

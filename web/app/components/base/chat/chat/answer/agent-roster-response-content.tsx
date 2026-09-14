@@ -217,7 +217,7 @@ function ToolActivityItem({ tool }: { tool: ToolActivity }) {
     <div className="flex w-full max-w-full min-w-0 flex-col items-start">
       {hasDetails ? (
         <Collapsible className="w-full max-w-full items-start">
-          <CollapsibleTrigger className="group/tool h-6 min-h-0 w-auto max-w-full justify-start gap-0 rounded-md p-1 text-left system-xs-medium text-text-tertiary hover:not-data-disabled:bg-state-base-hover focus-visible:bg-state-base-hover">
+          <CollapsibleTrigger className="group/tool flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-md p-1 text-left system-xs-medium text-text-tertiary outline-hidden select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary">
             {content}
           </CollapsibleTrigger>
           <CollapsiblePanel className="w-full max-w-full">
@@ -308,7 +308,7 @@ function AgentActivityDisclosure({
     <Collapsible className="w-full max-w-full items-start gap-1" defaultOpen={defaultOpen}>
       <CollapsibleTrigger
         aria-label={title}
-        className="group/thinking h-6 min-h-0 w-auto max-w-full justify-start gap-1 rounded-md p-1 text-left system-xs-medium text-text-tertiary hover:not-data-disabled:bg-state-base-hover focus-visible:bg-state-base-hover"
+        className="group/thinking flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-1 rounded-md p-1 text-left system-xs-medium text-text-tertiary outline-hidden select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary"
       >
         <span>{thinking}</span>
         {duration && (

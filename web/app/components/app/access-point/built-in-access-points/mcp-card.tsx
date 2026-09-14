@@ -19,7 +19,7 @@ import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   useInvalidateMCPServerDetail,
   useMCPServerDetail,

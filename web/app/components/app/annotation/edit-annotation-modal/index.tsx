@@ -23,10 +23,8 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
-import AnnotationFull from '@/app/components/billing/annotation-full'
-import { useProviderContext } from '@/context/provider-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import { addAnnotation, editAnnotation } from '@/service/annotation'
+import { editAnnotation } from '@/service/annotation'
 import EditItem, { EditItemType } from './edit-item'
 
 type Props = Readonly<{
@@ -34,16 +32,10 @@ type Props = Readonly<{
   onHide: () => void
   appId: string
   messageId?: string
-  annotationId?: string
+  annotationId: string
   query: string
   answer: string
   onEdited: (editedQuery: string, editedAnswer: string) => void
-  onAdded: (
-    annotationId: string,
-    authorName: string,
-    editedQuery: string,
-    editedAnswer: string,
-  ) => void
   createdAt?: number
   onRemove: () => void
   onlyEditResponse?: boolean
@@ -55,7 +47,6 @@ const EditAnnotationModal: FC<Props> = ({
   query,
   answer,
   onEdited,
-  onAdded,
   appId,
   messageId,
   annotationId,
@@ -65,31 +56,18 @@ const EditAnnotationModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { plan, enableBilling } = useProviderContext()
-  const isAdd = !annotationId
-  const isAnnotationFull =
-    enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
   const handleSave = async (type: EditItemType, editedContent: string) => {
     let postQuery = query
     let postAnswer = answer
     if (type === EditItemType.Query) postQuery = editedContent
     else postAnswer = editedContent
     try {
-      if (!isAdd) {
-        await editAnnotation(appId, annotationId, {
-          message_id: messageId,
-          question: postQuery,
-          answer: postAnswer,
-        })
-        onEdited(postQuery, postAnswer)
-      } else {
-        const res = await addAnnotation(appId, {
-          question: postQuery,
-          answer: postAnswer,
-          message_id: messageId,
-        })
-        onAdded(res.id, res.account?.name ?? '', postQuery, postAnswer)
-      }
+      await editAnnotation(appId, annotationId, {
+        message_id: messageId,
+        question: postQuery,
+        answer: postAnswer,
+      })
+      onEdited(postQuery, postAnswer)
 
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
     } catch (error) {
@@ -135,13 +113,12 @@ const EditAnnotationModal: FC<Props> = ({
                     <EditItem
                       type={EditItemType.Query}
                       content={query}
-                      readonly={(isAdd && isAnnotationFull) || onlyEditResponse}
+                      readonly={onlyEditResponse}
                       onSave={(editedContent) => handleSave(EditItemType.Query, editedContent)}
                     />
                     <EditItem
                       type={EditItemType.Answer}
                       content={answer}
-                      readonly={isAdd && isAnnotationFull}
                       onSave={(editedContent) => handleSave(EditItemType.Answer, editedContent)}
                     />
                     <AlertDialog
@@ -179,35 +156,25 @@ const EditAnnotationModal: FC<Props> = ({
                   </div>
                 </div>
                 <div className="shrink-0">
-                  {isAnnotationFull && (
-                    <div className="mt-6 mb-4 px-6">
-                      <AnnotationFull />
+                  <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
+                    <div
+                      className="flex cursor-pointer items-center space-x-2 pl-3"
+                      onClick={() => setShowModal(true)}
+                    >
+                      <MessageCheckRemove />
+                      <div>{t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}</div>
                     </div>
-                  )}
-
-                  {annotationId ? (
-                    <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
-                      <div
-                        className="flex cursor-pointer items-center space-x-2 pl-3"
-                        onClick={() => setShowModal(true)}
-                      >
-                        <MessageCheckRemove />
-                        <div>
-                          {t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}
-                        </div>
+                    {!!createdAt && (
+                      <div>
+                        {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}
+                        &nbsp;
+                        {formatTime(
+                          createdAt,
+                          t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                        )}
                       </div>
-                      {!!createdAt && (
-                        <div>
-                          {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}
-                          &nbsp;
-                          {formatTime(
-                            createdAt,
-                            t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : undefined}
+                    )}
+                  </div>
                 </div>
               </DrawerContent>
             </DrawerPopup>

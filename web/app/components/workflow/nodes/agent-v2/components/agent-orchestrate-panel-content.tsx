@@ -70,9 +70,9 @@ import {
   trackAgentPreviewModeRun,
   useInlineAgentScope,
 } from '@/features/agent-v2/analytics'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 
@@ -827,9 +827,9 @@ function WorkflowInlineAgentConfigureMoreAction({
   onSaveInlineToRoster: () => void
 }) {
   const { t } = useTranslation('common')
-  const canManageAgents = useCanManageAgents()
+  const canCreateAgents = useCanCreateAgents()
 
-  if (!canManageAgents) return null
+  if (!canCreateAgents) return null
 
   return (
     <DropdownMenu modal={false}>

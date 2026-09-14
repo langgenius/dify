@@ -4,7 +4,7 @@ import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   DERIVED_MODEL_STATUS_BADGE_I18N,
   DERIVED_MODEL_STATUS_TOOLTIP_I18N,

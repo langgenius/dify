@@ -1,7 +1,7 @@
 import type { Plugin } from '../../plugins/types'
 import type { ActionItem, PluginSearchResult } from './types'
 import { renderI18nObject } from '@/i18n-config'
-import { marketplaceQuery } from '@/service/client'
+import { marketplaceQuery } from '@/service/marketplace'
 import Icon from '../../plugins/card/base/card-icon'
 import { getFormattedPlugin } from '../../plugins/marketplace/utils'
 

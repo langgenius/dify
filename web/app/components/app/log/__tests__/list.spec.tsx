@@ -1,6 +1,6 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -306,6 +306,34 @@ describe('ConversationList', () => {
     expect(update.searchParams.get('conversation_id')).toBe('conversation-1')
     expect(update.options.history).toBe('push')
   })
+
+  it.each(['keyboard', 'row'])(
+    'restores focus to the conversation entry after %s opening',
+    async (opening) => {
+      const user = userEvent.setup()
+      const { onUrlUpdate } = renderConversationList()
+      const trigger = screen.getByRole('button', { name: 'formatted-1710000000' })
+      if (opening === 'keyboard') {
+        trigger.focus()
+        await user.keyboard('{Enter}')
+      } else {
+        await user.click(screen.getByText('hello world'))
+      }
+      await screen.findByRole('dialog')
+      await waitFor(() => {
+        expect(onUrlUpdate.mock.calls.at(-1)![0].searchParams.get('conversation_id')).toBe(
+          'conversation-1',
+        )
+      })
+      await user.keyboard('{Escape}')
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        expect(trigger).toHaveFocus()
+      })
+      expect(mockOnRefresh).toHaveBeenCalledTimes(1)
+      expect(onUrlUpdate.mock.calls.at(-1)![0].searchParams.has('conversation_id')).toBe(false)
+    },
+  )
 
   it('should close the drawer, refresh, and clear modal flags', async () => {
     mockChatConversationDetail = {

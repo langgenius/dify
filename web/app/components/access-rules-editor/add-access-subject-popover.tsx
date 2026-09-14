@@ -1,15 +1,15 @@
 'use client'
 
-import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { DEFAULT_ACCESS_POLICY_ID } from './constants'
 
 type AddAccessSubjectPopoverProps = {
@@ -32,7 +32,12 @@ function AddAccessSubjectPopoverContent({
 }: AddAccessSubjectPopoverContentProps) {
   const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState('')
-  const { data: membersData, isLoading } = useMembers()
+  const {
+    data: membersData,
+    isPending: isLoading,
+    error,
+    refetch,
+  } = useQuery(consoleQuery.workspaces.current.members.get.queryOptions())
   const existingAccountIdSet = useMemo(() => new Set(existingAccountIds), [existingAccountIds])
   const availableMembers = useMemo(() => {
     const normalizedSearchValue = searchValue.trim().toLowerCase()
@@ -48,13 +53,6 @@ function AddAccessSubjectPopoverContent({
       )
     })
   }, [membersData?.accounts, searchValue])
-
-  const handleAddMember = useCallback(
-    (member: Member) => {
-      onAddAccessSubject(member.id, [DEFAULT_ACCESS_POLICY_ID])
-    },
-    [onAddAccessSubject],
-  )
 
   const addLabel = t(($) => $['operation.add'], { ns: 'common' })
   const addMembersTitle = t(($) => $['accessRule.addMembersTitle'], { ns: 'permission' })
@@ -87,7 +85,14 @@ function AddAccessSubjectPopoverContent({
           </InputGroupAddon>
         </InputGroup>
       </div>
-      {isLoading ? (
+      {error ? (
+        <div role="alert" className="flex items-center justify-center gap-2 p-3">
+          <span>{t(($) => $['api.actionFailed'], { ns: 'common' })}</span>
+          <Button onClick={() => void refetch()}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      ) : isLoading ? (
         <div className="flex h-20 items-center justify-center p-1">
           <Loading type="app" />
         </div>
@@ -143,7 +148,7 @@ function AddAccessSubjectPopoverContent({
                       'hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                       'disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent',
                     )}
-                    onClick={() => handleAddMember(member)}
+                    onClick={() => onAddAccessSubject(member.id, [DEFAULT_ACCESS_POLICY_ID])}
                   >
                     {isUpdating ? (
                       <span className="i-ri-loader-2-line size-3.5 animate-spin" aria-hidden />
