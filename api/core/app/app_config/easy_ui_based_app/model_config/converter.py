@@ -62,6 +62,8 @@ class ModelConfigConverter:
         if "stop" in completion_params:
             stop = completion_params["stop"]
             del completion_params["stop"]
+        # Workflow-only setting; never forward it to providers.
+        completion_params.pop("first_token_timeout_ms", None)
 
         model_schema = model_type_instance.get_model_schema(model_config.model, model_credentials)
 

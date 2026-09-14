@@ -23,6 +23,7 @@ from core.llm_generator.output_parser.structured_output import invoke_llm_with_s
 from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
+from core.plugin.impl.first_token_timeout import FIRST_TOKEN_TIMEOUT_METADATA_KEY
 from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.repositories.human_input_repository import (
@@ -176,6 +177,22 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
         )
 
 
+def _with_first_token_budget(
+    request_metadata: Mapping[str, object] | None,
+    first_token_timeout: float | None,
+    stream: bool,
+) -> Mapping[str, object] | None:
+    """Attach the node's first-token budget to the metadata carried with the request.
+
+    Streaming only: without a stream the single result arrives once generation has
+    finished, so a first-token budget there would quietly become a total-time budget.
+    """
+    if not stream or not first_token_timeout or first_token_timeout <= 0:
+        return request_metadata
+
+    return {**(request_metadata or {}), FIRST_TOKEN_TIMEOUT_METADATA_KEY: first_token_timeout}
+
+
 class DifyPreparedLLM(LLMProtocol):
     """Workflow-layer adapter that hides the full `ModelInstance` API from `graphon` nodes."""
 
@@ -260,7 +277,11 @@ class DifyPreparedLLM(LLMProtocol):
             tools=list(tools or []),
             stop=list(stop or []),
             stream=stream,
-            request_metadata=self._request_metadata,
+            request_metadata=_with_first_token_budget(
+                self._request_metadata,
+                self._model_instance.first_token_timeout,
+                stream,
+            ),
         )
 
     @overload
@@ -304,7 +325,11 @@ class DifyPreparedLLM(LLMProtocol):
             model_parameters=model_parameters,
             stop=list(stop or []),
             stream=stream,
-            request_metadata=self._request_metadata,
+            request_metadata=_with_first_token_budget(
+                self._request_metadata,
+                self._model_instance.first_token_timeout,
+                stream,
+            ),
         )
 
     @override

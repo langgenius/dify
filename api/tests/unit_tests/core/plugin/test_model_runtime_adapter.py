@@ -283,6 +283,7 @@ class TestPluginModelRuntime:
             tools=None,
             stop=None,
             stream=False,
+            first_token_timeout=None,
         )
 
     def test_invoke_llm_forwards_string_app_id_from_request_metadata(self) -> None:
@@ -316,6 +317,7 @@ class TestPluginModelRuntime:
             stop=None,
             stream=True,
             app_id="app-1",
+            first_token_timeout=None,
         )
 
     def test_invoke_llm_ignores_non_string_app_id_request_metadata(self) -> None:
@@ -368,7 +370,50 @@ class TestPluginModelRuntime:
             tools=None,
             stop=["END"],
             stream=True,
+            first_token_timeout=None,
         )
+
+    def test_invoke_llm_forwards_the_first_token_budget_from_request_metadata(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        client.invoke_llm.return_value = iter([])
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        list(
+            runtime.invoke_llm(
+                provider="langgenius/openai/openai",
+                model="gpt-4o-mini",
+                credentials={"api_key": "secret"},
+                model_parameters={},
+                prompt_messages=[],
+                tools=None,
+                stop=None,
+                stream=True,
+                request_metadata={"first_token_timeout": 2.0},
+            )
+        )
+
+        assert client.invoke_llm.call_args.kwargs["first_token_timeout"] == 2.0
+
+    def test_invoke_llm_ignores_a_non_numeric_first_token_budget(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        client.invoke_llm.return_value = iter([])
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        list(
+            runtime.invoke_llm(
+                provider="langgenius/openai/openai",
+                model="gpt-4o-mini",
+                credentials={"api_key": "secret"},
+                model_parameters={},
+                prompt_messages=[],
+                tools=None,
+                stop=None,
+                stream=True,
+                request_metadata={"first_token_timeout": "2.0"},
+            )
+        )
+
+        assert client.invoke_llm.call_args.kwargs["first_token_timeout"] is None
 
     def test_start_llm_polling_resolves_plugin_fields(self) -> None:
         client = Mock(spec=PluginModelClient)

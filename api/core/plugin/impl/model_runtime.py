@@ -15,6 +15,7 @@ from core.llm_generator.output_parser.structured_output import (
 )
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl.asset import PluginAssetManager
+from core.plugin.impl.first_token_timeout import FIRST_TOKEN_TIMEOUT_METADATA_KEY
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.plugin_service import PluginService
 from extensions.ext_redis import redis_client
@@ -322,6 +323,9 @@ class PluginModelRuntime(ModelRuntime):
         app_id = request_metadata.get("app_id") if request_metadata else None
         if not isinstance(app_id, str):
             app_id = None
+        first_token_timeout = request_metadata.get(FIRST_TOKEN_TIMEOUT_METADATA_KEY) if request_metadata else None
+        if not isinstance(first_token_timeout, (int, float)) or isinstance(first_token_timeout, bool):
+            first_token_timeout = None
         plugin_id, provider_name = self._split_provider(provider)
         if app_id is None:
             result = self.client.invoke_llm(
@@ -336,6 +340,7 @@ class PluginModelRuntime(ModelRuntime):
                 tools=tools,
                 stop=list(stop) if stop else None,
                 stream=stream,
+                first_token_timeout=first_token_timeout,
             )
         else:
             result = self.client.invoke_llm(
@@ -351,6 +356,7 @@ class PluginModelRuntime(ModelRuntime):
                 stop=list(stop) if stop else None,
                 stream=stream,
                 app_id=app_id,
+                first_token_timeout=first_token_timeout,
             )
         if stream:
             return result
