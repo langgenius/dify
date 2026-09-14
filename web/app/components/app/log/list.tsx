@@ -925,36 +925,36 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
               <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {isChatMode
                   ? t(($) => $['table.header.summary'], { ns: 'appLog' })
                   : t(($) => $['table.header.input'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.endUser'], { ns: 'appLog' })}
-              </td>
+              </th>
               {isChatflow && (
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.status'], { ns: 'appLog' })}
-                </td>
+                </th>
               )}
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {isChatMode
                   ? t(($) => $['table.header.messageCount'], { ns: 'appLog' })
                   : t(($) => $['table.header.output'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.userRate'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.adminRate'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.updatedTime'], { ns: 'appLog' })}
-              </td>
-              <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.time'], { ns: 'appLog' })}
-              </td>
+              </th>
             </tr>
           </thead>
           <tbody className="system-sm-regular text-text-secondary">

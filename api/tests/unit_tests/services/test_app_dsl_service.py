@@ -594,6 +594,45 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
     assert sqlite_session.in_transaction()
 
 
+def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
+    service = AppDslService(session=session)
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+    )
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    imported_graph: dict[str, object] = {
+        "nodes": [],
+        "edges": [],
+        "viewport": {"x": 100, "y": 200, "zoom": 1.5},
+    }
+
+    service._create_or_update_app(
+        app=cast(App, app),
+        data={
+            "app": {"mode": AppMode.WORKFLOW.value},
+            "workflow": {"graph": imported_graph},
+        },
+        account=Mock(id="account-1"),
+    )
+
+    assert workflow_service.sync_draft_workflow.call_args.kwargs["graph"] == {
+        "nodes": [],
+        "edges": [],
+    }
+    assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
+
+
 def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
     session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
     service = AppDslService(session=session)
