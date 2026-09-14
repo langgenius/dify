@@ -239,7 +239,7 @@ async def test_openshell_binding_create_initializes_layout_then_stops() -> None:
 
     assert allocation.binding_ref == _BINDING_NAME
     assert allocation.workspace_ref == allocation.binding_ref
-    (name, labels), = control.created
+    ((name, labels),) = control.created
     assert name == _BINDING_NAME
     assert labels == {
         "dify.resource": "runtime-sandbox",
@@ -249,7 +249,7 @@ async def test_openshell_binding_create_initializes_layout_then_stops() -> None:
         "dify.agent": _OPAQUE_AGENT,
     }
     assert control.extra_read_write == [(_TENANT_SNAPSHOT_ROOT,)]
-    (sandbox_id, script), = control.exec_calls
+    ((sandbox_id, script),) = control.exec_calls
     assert sandbox_id == f"{_BINDING_NAME}-id-1"
     assert "rm -rf -- /home/dify/workspace" in script
     assert "mkdir -p /home/dify/workspace" in script
@@ -263,7 +263,7 @@ async def test_openshell_binding_create_materializes_snapshot_without_fallback()
     control = _ControlPlane()
     _ = await _backend(control).create_binding(_create_spec(home_snapshot_ref=_SNAPSHOT_REF))
 
-    (_, script), = control.exec_calls
+    ((_, script),) = control.exec_calls
     lines = script.splitlines()
     snapshot_dir = _SNAPSHOT_DIR
     # The snapshot existence check must precede the copy: missing snapshots
@@ -532,13 +532,13 @@ async def test_openshell_snapshot_delete_uses_short_lived_maintenance_sandbox() 
 
     await snapshots.delete(_SNAPSHOT_REF)
 
-    (name, labels), = control.created
+    ((name, labels),) = control.created
     assert name.startswith("gc-")
     assert labels == {"dify.resource": "snapshot-gc"}
     # Unlinking the snapshot dir itself needs write on its parent under
     # Landlock, so the sandbox is granted the tenant's snapshot root.
     assert control.extra_read_write == [(_TENANT_SNAPSHOT_ROOT,)]
-    (_, script), = control.exec_calls
+    ((_, script),) = control.exec_calls
     assert script == f"rm -rf -- {_SNAPSHOT_DIR}"
     assert control.deleted == [name]
 
@@ -722,9 +722,7 @@ async def test_openshell_sdk_create_sends_enforced_egress_allowlist() -> None:
 
     policies = specs[0].policy.network_policies  # pyright: ignore[reportAttributeAccessIssue]
     assert len(policies) == 2
-    by_endpoint = {
-        (rule.endpoints[0].host, rule.endpoints[0].port): (key, rule) for key, rule in policies.items()
-    }
+    by_endpoint = {(rule.endpoints[0].host, rule.endpoints[0].port): (key, rule) for key, rule in policies.items()}
     assert set(by_endpoint) == {("agent.example.com", 5050), ("dify.example.com", 443)}
     for key, rule in by_endpoint.values():
         assert rule.name == key

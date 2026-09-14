@@ -136,9 +136,7 @@ class RuntimeBackendSettings(BaseSettings):
                 _ = _parse_openshell_driver_config(self.openshell_driver_config)
                 _ = _parse_openshell_egress_allow(self.openshell_egress_allow)
                 if not self.openshell_shellctl_auth_token.strip():
-                    raise ValueError(
-                        "openshell_shellctl_auth_token is required for the openshell runtime backend"
-                    )
+                    raise ValueError("openshell_shellctl_auth_token is required for the openshell runtime backend")
                 _validate_absolute_posix_path(
                     self.openshell_shared_mount_path,
                     field_name="openshell_shared_mount_path",
@@ -257,9 +255,7 @@ def _parse_openshell_egress_allow(value: str) -> tuple[tuple[str, int], ...]:
             continue
         host, _, port_text = entry.rpartition(":")
         if not host or "/" in entry or not port_text.isdigit() or not 1 <= int(port_text) <= 65535:
-            raise ValueError(
-                f"openshell_egress_allow entries must be host:port (no scheme or path), got: {entry!r}"
-            )
+            raise ValueError(f"openshell_egress_allow entries must be host:port (no scheme or path), got: {entry!r}")
         endpoints.append((host, int(port_text)))
     return tuple(endpoints)
 
@@ -271,8 +267,7 @@ def _parse_openshell_driver_config(value: str) -> dict[str, object]:
         raise ValueError("openshell_driver_config must be valid JSON") from exc
     if not isinstance(parsed, dict) or not parsed:
         raise ValueError(
-            "openshell_driver_config must be a non-empty JSON object that "
-            "must mount the shared Home Snapshot volume"
+            "openshell_driver_config must be a non-empty JSON object that must mount the shared Home Snapshot volume"
         )
     return {str(key): item for key, item in parsed.items()}
 

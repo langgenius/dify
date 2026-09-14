@@ -98,8 +98,7 @@ def test_local_backend_rejects_relative_roots() -> None:
 
 
 _OPENSHELL_DRIVER_CONFIG = (
-    '{"docker": {"mounts": [{"type": "volume", "source": "dify-agent-shared",'
-    ' "target": "/mnt/dify-agent-shared"}]}}'
+    '{"docker": {"mounts": [{"type": "volume", "source": "dify-agent-shared", "target": "/mnt/dify-agent-shared"}]}}'
 )
 
 
@@ -198,9 +197,7 @@ def test_openshell_backend_wires_shared_deployment_config_into_both_drivers() ->
     assert isinstance(control_plane, OpenShellSDKControlPlane)
     assert control_plane.endpoint == "gateway.example:17670"
     assert control_plane.driver_config == {
-        "docker": {
-            "mounts": [{"type": "volume", "source": "dify-agent-shared", "target": "/mnt/dify-agent-shared"}]
-        }
+        "docker": {"mounts": [{"type": "volume", "source": "dify-agent-shared", "target": "/mnt/dify-agent-shared"}]}
     }
     assert control_plane.shared_mount_path == "/mnt/shared"
     assert profile.home_snapshots.control_plane is control_plane

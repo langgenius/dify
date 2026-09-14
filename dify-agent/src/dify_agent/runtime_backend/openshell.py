@@ -514,9 +514,7 @@ class OpenShellExecutionBindingBackend:
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current OpenShell backend cannot attach to an existing Workspace")
         name = _binding_sandbox_name(spec.binding_id)
-        tenant_root = _tenant_snapshot_root(
-            self.shared_mount_path, spec.tenant_id, error=BindingCreateError
-        )
+        tenant_root = _tenant_snapshot_root(self.shared_mount_path, spec.tenant_id, error=BindingCreateError)
         created = False
         try:
             await self.control_plane.create_sandbox(
@@ -567,9 +565,7 @@ class OpenShellExecutionBindingBackend:
                 ),
             )
             if layout_code != 0:
-                raise BindingLostError(
-                    f"OpenShell Binding {binding_ref!r} no longer contains its Home or Workspace"
-                )
+                raise BindingLostError(f"OpenShell Binding {binding_ref!r} no longer contains its Home or Workspace")
             exit_code, output = await self.control_plane.exec_script(sandbox_id, self._bootstrap_script())
             if exit_code != 0:
                 raise BindingAcquireError(f"shellctl bootstrap failed: {output}")
@@ -682,7 +678,7 @@ class OpenShellExecutionBindingBackend:
                 f"setsid /usr/local/bin/shellctl serve --listen {listen} </dev/null >>/tmp/shellctl.log 2>&1 &",
                 "i=0",
                 f"until {health}; do",
-                '  i=$((i+1))',
+                "  i=$((i+1))",
                 '  [ "$i" -ge 10 ] && exit 1',
                 "  sleep 1",
                 "done",
@@ -718,6 +714,7 @@ class OpenShellExecutionBindingBackend:
             client_factory=client_factory,
             owned_transport=http_client,
         )
+
 
 @dataclass(slots=True)
 class OpenShellRuntimeLease:

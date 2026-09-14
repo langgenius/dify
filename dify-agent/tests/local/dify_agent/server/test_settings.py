@@ -432,8 +432,7 @@ def test_build_runtime_backend_profile_passes_e2b_active_timeout() -> None:
 
 
 _OPENSHELL_DRIVER_CONFIG = (
-    '{"docker": {"mounts": [{"type": "volume", "source": "dify-agent-shared",'
-    ' "target": "/mnt/dify-agent-shared"}]}}'
+    '{"docker": {"mounts": [{"type": "volume", "source": "dify-agent-shared", "target": "/mnt/dify-agent-shared"}]}}'
 )
 
 
