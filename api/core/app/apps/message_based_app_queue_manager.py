@@ -22,9 +22,9 @@ class MessageBasedAppQueueManager(AppQueueManager):
     ):
         super().__init__(task_id, user_id, invoke_from)
 
-        self._conversation_id = str(conversation_id)
+        self._conversation_id = conversation_id
         self._app_mode = app_mode
-        self._message_id = str(message_id)
+        self._message_id = message_id
 
     @override
     def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):
