@@ -565,6 +565,15 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
     # deliberately, so drop them before any engine can observe them.
     clear_app_task_cancellation_signals(generate_entity.task_id)
 
+    with session_factory() as status_session:
+        current_status = status_session.scalar(select(WorkflowRun.status).where(WorkflowRun.id == workflow_run_id))
+    if current_status == WorkflowExecutionStatus.RUNNING:
+        logger.info(
+            "Skipping overlapping resume attempt for workflow run %s because execution is already running",
+            workflow_run_id,
+        )
+        return
+
     workflow_run_repo.resume_workflow_pause(workflow_run_id, pause_entity)
 
     pause_config = PauseStateLayerConfig(
