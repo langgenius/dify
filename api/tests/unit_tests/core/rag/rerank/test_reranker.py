@@ -535,29 +535,59 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
         text_rerank_call_args = mock_text_rerank.call_args.args
         assert len(text_rerank_call_args[1]) == 3
 
-    def test_fetch_multimodal_rerank_skips_missing_image_upload(self, rerank_runner):
-        image_doc = Document(
-            page_content="image-content",
+    def test_run_skips_missing_image_upload_without_shifting_result_mapping(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sqlite_session: Session
+    ):
+        missing_image_doc = Document(
+            page_content="missing-image-content",
             metadata={"doc_id": "img-missing", "doc_type": DocType.IMAGE},
             provider="dify",
         )
-        rerank_result = RerankResult(model="rerank-model", docs=[])
+        text_doc = Document(
+            page_content="valid-text-content",
+            metadata={"doc_id": "txt-valid", "doc_type": DocType.TEXT},
+            provider="dify",
+        )
+        mock_model_instance.invoke_multimodal_rerank.return_value = RerankResult(
+            model="rerank-model",
+            docs=[RerankDocument(index=0, text="valid-text-content", score=0.91)],
+        )
+        query_upload = UploadFile(
+            tenant_id="00000000-0000-0000-0000-000000000001",
+            storage_type=StorageType.LOCAL,
+            key="query-image-key",
+            name="query.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="00000000-0000-0000-0000-000000000002",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        query_upload.id = "00000000-0000-0000-0000-000000000003"
+        sqlite_session.add(query_upload)
+        sqlite_session.commit()
 
-        with patch.object(
-            rerank_runner,
-            "fetch_text_rerank",
-            return_value=(rerank_result, [image_doc]),
-        ) as mock_text_rerank:
-            result, unique_documents = rerank_runner.fetch_multimodal_rerank(
-                query="python",
-                documents=[image_doc],
-                query_type=QueryType.TEXT_QUERY,
+        with (
+            patch.object(rerank_runner, "_session", sqlite_session),
+            patch("core.rag.rerank.rerank_model.ModelManager.for_tenant") as mock_mm,
+            patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"query-image-bytes") as mock_load,
+        ):
+            mock_mm.return_value.check_model_support_vision.return_value = True
+            result = rerank_runner.run(
+                query=query_upload.id,
+                documents=[missing_image_doc, text_doc],
+                query_type=QueryType.IMAGE_QUERY,
             )
 
-        assert result == rerank_result
-        assert unique_documents == [image_doc]
-        docs_arg = mock_text_rerank.call_args.args[1]
-        assert len(docs_arg) == 1
+        invoke_kwargs = mock_model_instance.invoke_multimodal_rerank.call_args.kwargs
+        assert len(invoke_kwargs["docs"]) == 1
+        assert invoke_kwargs["docs"][0]["content"] == "valid-text-content"
+        assert len(result) == 1
+        assert result[0].metadata["doc_id"] == "txt-valid"
+        assert result[0].metadata["score"] == 0.91
+        mock_load.assert_called_once_with("query-image-key")
 
     def test_fetch_multimodal_rerank_image_query_invokes_multimodal_model(
         self, rerank_runner: RerankModelRunner, mock_model_instance, sqlite_session: Session

@@ -142,17 +142,19 @@ class RerankModelRunner(BaseRerankRunner):
                 and document.metadata is not None
                 and document.metadata["doc_id"] not in doc_ids
             ):
+                doc_ids.add(document.metadata["doc_id"])
                 if document.metadata.get("doc_type") == DocType.IMAGE:
                     upload_file = self._session.get(UploadFile, document.metadata["doc_id"])
-                    if upload_file:
-                        blob = storage.load_once(upload_file.key)
-                        document_file_base64 = base64.b64encode(blob).decode()
-                        docs.append(
-                            MultimodalRerankInput(
-                                content=document_file_base64,
-                                content_type=document.metadata["doc_type"],
-                            )
+                    if not upload_file:
+                        continue
+                    blob = storage.load_once(upload_file.key)
+                    document_file_base64 = base64.b64encode(blob).decode()
+                    docs.append(
+                        MultimodalRerankInput(
+                            content=document_file_base64,
+                            content_type=document.metadata["doc_type"],
                         )
+                    )
                 else:
                     docs.append(
                         MultimodalRerankInput(
@@ -160,7 +162,6 @@ class RerankModelRunner(BaseRerankRunner):
                             content_type=document.metadata.get("doc_type") or DocType.TEXT,
                         )
                     )
-                doc_ids.add(document.metadata["doc_id"])
                 unique_documents.append(document)
             elif document.provider == "external":
                 if document not in unique_documents:
