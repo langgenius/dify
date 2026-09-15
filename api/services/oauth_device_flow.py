@@ -443,7 +443,7 @@ def _upsert(
     session.commit()
 
     return UpsertOutcome(
-        token_id=uuid.UUID(str(token_id)),
+        token_id=uuid.UUID(token_id),
         rotated=prior is not None,
         old_hash=old_hash,
     )

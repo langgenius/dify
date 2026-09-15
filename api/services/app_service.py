@@ -1220,4 +1220,4 @@ class AppService:
         site = session.scalar(select(Site).where(Site.code == app_code).limit(1))
         if not site:
             raise ValueError(f"App with code {app_code} not found")
-        return str(site.app_id)
+        return site.app_id
