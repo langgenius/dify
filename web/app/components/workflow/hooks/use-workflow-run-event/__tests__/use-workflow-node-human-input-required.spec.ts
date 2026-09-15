@@ -43,7 +43,7 @@ describe('useWorkflowNodeHumanInputRequired', () => {
     })
   })
 
-  it('updates existing form entry for the same node_id', () => {
+  it('updates existing form entry for the same form_id', () => {
     const { result, store } = renderViewportHook(() => useWorkflowNodeHumanInputRequired(), {
       nodes: [
         createNode({ id: 'n1', data: { _runningStatus: NodeRunningStatus.Running } }),
@@ -58,7 +58,7 @@ describe('useWorkflowNodeHumanInputRequired', () => {
         workflowRunningData: baseRunningData({
           tracing: [{ node_id: 'n1', status: NodeRunningStatus.Running }],
           humanInputFormDataList: [
-            { node_id: 'n1', form_id: 'old', node_title: 'Node 1', form_content: 'old' },
+            { node_id: 'n1', form_id: 'f1', node_title: 'Node 1', form_content: 'old' },
           ],
         }),
       },
@@ -66,13 +66,13 @@ describe('useWorkflowNodeHumanInputRequired', () => {
 
     act(() => {
       result.current.handleWorkflowNodeHumanInputRequired({
-        data: { node_id: 'n1', form_id: 'new', node_title: 'Node 1', form_content: 'new' },
+        data: { node_id: 'n1', form_id: 'f1', node_title: 'Node 1', form_content: 'new' },
       } as HumanInputRequiredResponse)
     })
 
     const formList = store.getState().workflowRunningData!.humanInputFormDataList!
     expect(formList).toHaveLength(1)
-    expect(formList[0]!.form_id).toBe('new')
+    expect(formList[0]!.form_content).toBe('new')
   })
 
   it('appends a new form entry for a different node_id', () => {

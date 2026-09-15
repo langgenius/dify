@@ -132,6 +132,7 @@ describe('workflow-stream-handlers helpers', () => {
     workflowProcessData = replaceResultText(workflowProcessData, 'Hello world')
     workflowProcessData = updateHumanInputRequired(workflowProcessData, createHumanInput())
     workflowProcessData = updateHumanInputFilled(workflowProcessData, {
+      form_id: 'form-1',
       action_id: 'action-1',
       action_text: 'Submit',
       node_id: 'node-1',
@@ -139,6 +140,7 @@ describe('workflow-stream-handlers helpers', () => {
       rendered_content: 'Done',
     })
     workflowProcessData = updateHumanInputTimeout(workflowProcessData, {
+      form_id: 'form-1',
       node_id: 'node-1',
       node_title: 'Node',
       expiration_time: 200,
@@ -232,6 +234,7 @@ describe('workflow-stream-handlers helpers', () => {
     process.humanInputFormDataList = [createHumanInput({ node_id: 'node-1' })]
     process.humanInputFilledFormDataList = [
       {
+        form_id: 'form-0',
         action_id: 'action-0',
         action_text: 'Existing',
         node_id: 'node-0',
@@ -307,10 +310,12 @@ describe('workflow-stream-handlers helpers', () => {
     const appendedHumanInput = updateHumanInputRequired(
       process,
       createHumanInput({
+        form_id: 'form-2',
         node_id: 'node-2',
       }),
     )
     const noListFilled = updateHumanInputFilled(undefined, {
+      form_id: 'form-1',
       action_id: 'action-1',
       action_text: 'Submit',
       node_id: 'node-1',
@@ -318,6 +323,7 @@ describe('workflow-stream-handlers helpers', () => {
       rendered_content: 'Done',
     })
     const appendedFilled = updateHumanInputFilled(process, {
+      form_id: 'form-2',
       action_id: 'action-2',
       action_text: 'Append',
       node_id: 'node-2',
@@ -325,11 +331,13 @@ describe('workflow-stream-handlers helpers', () => {
       rendered_content: 'More',
     })
     const timeoutWithoutList = updateHumanInputTimeout(undefined, {
+      form_id: 'form-1',
       node_id: 'node-1',
       node_title: 'Node',
       expiration_time: 200,
     })
     const timeoutWithMatch = updateHumanInputTimeout(process, {
+      form_id: 'form-1',
       node_id: 'node-1',
       node_title: 'Node',
       expiration_time: 400,
@@ -566,6 +574,7 @@ describe('createWorkflowStreamHandlers', () => {
         workflow_run_id: 'run-1',
         event: 'human_input_form_filled',
         data: {
+          form_id: 'form-1',
           node_id: 'node-1',
           node_title: 'Node',
           rendered_content: 'Done',
@@ -578,6 +587,7 @@ describe('createWorkflowStreamHandlers', () => {
         workflow_run_id: 'run-1',
         event: 'human_input_form_timeout',
         data: {
+          form_id: 'form-1',
           node_id: 'node-1',
           node_title: 'Node',
           expiration_time: 200,

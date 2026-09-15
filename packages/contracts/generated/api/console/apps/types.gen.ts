@@ -770,6 +770,10 @@ export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
 }
 
+export type WorkflowToolNodeExecutionListResponse = {
+  data: Array<WorkflowToolNodeExecutionResponse>
+}
+
 export type SandboxListResponse = {
   entries?: Array<SandboxFileEntryResponse>
   path: string
@@ -1692,6 +1696,35 @@ export type SimpleEndUser = {
   is_anonymous: boolean
   session_id?: string | null
   type: string
+}
+
+export type WorkflowToolNodeExecutionResponse = {
+  app_id: string
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  execution_metadata?: unknown
+  extras?: unknown
+  finished_at?: number | null
+  id: string
+  index?: number | null
+  inputs?: unknown
+  inputs_truncated?: boolean | null
+  node_execution_id?: string | null
+  node_id?: string | null
+  node_type?: string | null
+  outputs?: unknown
+  outputs_truncated?: boolean | null
+  predecessor_node_id?: string | null
+  process_data?: unknown
+  process_data_truncated?: boolean | null
+  retry_index?: number | null
+  status?: string | null
+  title?: string | null
+  workflow_id: string
 }
 
 export type SandboxFileEntryResponse = {
@@ -5256,6 +5289,28 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse =
   GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses]
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenData = {
+  body?: never
+  path: {
+    app_id: string
+    node_execution_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-runs/{run_id}/node-executions/{node_execution_id}/children'
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors = {
+  404: unknown
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses = {
+  200: WorkflowToolNodeExecutionListResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponse =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses]
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesData = {
   body?: never

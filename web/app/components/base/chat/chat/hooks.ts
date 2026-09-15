@@ -14,7 +14,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidV4 } from 'uuid'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
+import {
+  updateFilledHumanInputForm,
+  updateHumanInputFormTimeout,
+  updatePendingHumanInputForm,
+} from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
@@ -954,18 +958,7 @@ export const useChat = (
             options: otherOptions,
           }
           updateChatTreeNode(messageId, (responseItem) => {
-            if (!responseItem.humanInputFormDataList) {
-              responseItem.humanInputFormDataList = [humanInputRequiredData]
-            } else {
-              const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputRequiredData.node_id,
-              )
-              if (currentFormIndex > -1) {
-                responseItem.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
-              } else {
-                responseItem.humanInputFormDataList.push(humanInputRequiredData)
-              }
-            }
+            updatePendingHumanInputForm(responseItem, humanInputRequiredData)
             if (responseItem.workflowProcess?.tracing) {
               const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(
                 (item) => item.node_id === humanInputRequiredData.node_id,
@@ -980,38 +973,12 @@ export const useChat = (
           workflowPauseConfirmedRef.current = false
           handleResponding(true)
           updateChatTreeNode(messageId, (responseItem) => {
-            let requiredFormData:
-              | NonNullable<ChatItem['humanInputFormDataList']>[number]
-              | undefined
-            if (responseItem.humanInputFormDataList?.length) {
-              const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputFilledFormData.node_id,
-              )
-              if (currentFormIndex > -1) {
-                requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
-                responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
-              }
-            }
-            const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(
-              humanInputFilledFormData,
-              requiredFormData,
-            )
-            if (!responseItem.humanInputFilledFormDataList) {
-              responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
-            } else {
-              responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
-            }
+            updateFilledHumanInputForm(responseItem, humanInputFilledFormData)
           })
         },
         onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
           updateChatTreeNode(messageId, (responseItem) => {
-            if (responseItem.humanInputFormDataList?.length) {
-              const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputFormTimeoutData.node_id,
-              )
-              responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
-                humanInputFormTimeoutData.expiration_time
-            }
+            updateHumanInputFormTimeout(responseItem, humanInputFormTimeoutData)
           })
         },
         onWorkflowPaused: ({ data: workflowPausedData }) => {
@@ -1694,18 +1661,7 @@ export const useChat = (
             workflowRunId: pausedWorkflowRunId || currentWorkflowRunId,
             options: otherOptions,
           }
-          if (!responseItem.humanInputFormDataList) {
-            responseItem.humanInputFormDataList = [humanInputRequiredData]
-          } else {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputRequiredData.node_id,
-            )
-            if (currentFormIndex > -1) {
-              responseItem.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
-            } else {
-              responseItem.humanInputFormDataList.push(humanInputRequiredData)
-            }
-          }
+          updatePendingHumanInputForm(responseItem, humanInputRequiredData)
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(
             (item) => item.node_id === humanInputRequiredData.node_id,
           )
@@ -1723,25 +1679,7 @@ export const useChat = (
         onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
           workflowPauseConfirmedRef.current = false
           handleResponding(true)
-          let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
-          if (responseItem.humanInputFormDataList?.length) {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputFilledFormData.node_id,
-            )
-            if (currentFormIndex > -1) {
-              requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
-              responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
-            }
-          }
-          const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(
-            humanInputFilledFormData,
-            requiredFormData,
-          )
-          if (!responseItem.humanInputFilledFormDataList) {
-            responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
-          } else {
-            responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
-          }
+          updateFilledHumanInputForm(responseItem, humanInputFilledFormData)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1750,13 +1688,7 @@ export const useChat = (
           })
         },
         onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
-          if (responseItem.humanInputFormDataList?.length) {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputFormTimeoutData.node_id,
-            )
-            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
-              humanInputFormTimeoutData.expiration_time
-          }
+          updateHumanInputFormTimeout(responseItem, humanInputFormTimeoutData)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,

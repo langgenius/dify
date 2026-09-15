@@ -58,9 +58,9 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.exceptions import PendingTraceParentContextError
 from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from models import WorkflowNodeExecutionModel
+from models import WorkflowNodeExecutionModel, WorkflowRun
 
-pytestmark = pytest.mark.parametrize("sqlite3_session", [(WorkflowNodeExecutionModel,)], indirect=True)
+pytestmark = pytest.mark.parametrize("sqlite3_session", [(WorkflowNodeExecutionModel, WorkflowRun)], indirect=True)
 
 # --- Helpers ---
 
@@ -1427,20 +1427,28 @@ def test_workflow_trace_cleans_up_tool_span_when_parent_context_publish_fails(
     workflow_span.end.assert_called_once()
 
 
+@pytest.mark.parametrize("workflow_tool_child", [False, True])
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
-def test_workflow_trace_parents_serial_nodes_to_resolved_predecessor_span(mock_repo_factory, trace_instance):
-    info = _make_workflow_info()
+def test_workflow_trace_parents_serial_nodes_to_resolved_predecessor_span(
+    mock_repo_factory, trace_instance, workflow_tool_child
+):
+    info = _make_workflow_info(
+        workflow_data={"graph": {"nodes": [{"id": "node-1", "data": {"title": "Outer tool"}}]}}
+        if workflow_tool_child
+        else None
+    )
     repo = MagicMock()
     second_node = _make_node_execution(
         id="node-execution-2",
         node_execution_id="node-execution-2",
-        node_id="node-2",
+        node_id="node-1" if workflow_tool_child else "node-2",
         node_type="llm",
-        predecessor_node_id="node-1",
+        predecessor_node_id=None if workflow_tool_child else "node-1",
         process_data={
             "prompts": [{"role": "user", "content": "hi"}],
             "model_provider": "openai",
             "model_name": "gpt-4",
+            **({"workflow_tool_parent_execution_id": "node-execution-1"} if workflow_tool_child else {}),
         },
     )
     first_node = _make_node_execution(
@@ -1471,10 +1479,13 @@ def test_workflow_trace_parents_serial_nodes_to_resolved_predecessor_span(mock_r
     ):
         trace_instance.workflow_trace(info)
 
-    first_node_call = _get_start_span_call(trace_instance.tracer.start_span, span_name="tool_Node")
+    first_node_call = _get_start_span_call(
+        trace_instance.tracer.start_span, span_name="tool_Outer tool" if workflow_tool_child else "tool_Node"
+    )
     second_node_call = _get_start_span_call(trace_instance.tracer.start_span, span_name="llm_Node")
     assert first_node_call.kwargs["context"] == "context:workflow"
     assert second_node_call.kwargs["context"] == "context:node-1"
+    repo.get_by_workflow_execution.assert_called_once_with(workflow_execution_id="r1", include_workflow_tools=True)
 
 
 @pytest.mark.parametrize(

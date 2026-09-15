@@ -330,6 +330,23 @@ class TestTraceDispatcher:
 
 
 class TestWorkflowTrace:
+    def test_workflow_tool_children_use_their_invoking_tool_span(self, trace_instance, mock_tracing, mock_db):
+        tool = _make_node(id="tool", node_execution_id="tool-execution", node_type=BuiltinNodeTypes.TOOL)
+        child = _make_node(
+            id="child",
+            process_data='{"workflow_tool_parent_execution_id": "tool-execution"}',
+            process_data_dict={"workflow_tool_parent_execution_id": "tool-execution"},
+        )
+        mock_db.session.scalars.return_value.all.return_value = [child, tool]
+        workflow_span, tool_span, child_span = MagicMock(), MagicMock(), MagicMock()
+        mock_tracing["start"].side_effect = [workflow_span, tool_span, child_span]
+
+        trace_instance.workflow_trace(_make_workflow_trace_info())
+
+        assert mock_tracing["start"].call_args_list[1].kwargs["parent_span"] is workflow_span
+        assert mock_tracing["start"].call_args_list[2].kwargs["parent_span"] is tool_span
+        child_span.end.assert_called_once()
+
     def test_basic_workflow_no_nodes(self, trace_instance, mock_tracing, mock_db):
         mock_db.session.scalars.return_value.all.return_value = []
         span = MagicMock()

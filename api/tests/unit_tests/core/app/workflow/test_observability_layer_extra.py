@@ -5,7 +5,6 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.workflow.layers.observability import ObservabilityLayer
-from graphon.enums import BuiltinNodeTypes
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -46,71 +45,18 @@ class TestObservabilityLayerExtras:
 
         assert layer._is_disabled is True
 
-    def test_get_parser_uses_registry_when_node_type_matches(self):
-        layer = ObservabilityLayer()
-
-        parser = layer._get_parser(SimpleNamespace(node_type=BuiltinNodeTypes.TOOL))
-
-        assert parser is layer._parsers[BuiltinNodeTypes.TOOL]
-
-    def test_get_parser_defaults_when_node_type_missing(self):
-        layer = ObservabilityLayer()
-
-        parser = layer._get_parser(SimpleNamespace(node_type=None))
-
-        assert parser is layer._default_parser
-
-    def test_on_graph_start_clears_contexts(self):
-        layer = ObservabilityLayer()
-        layer._node_contexts["exec"] = SimpleNamespace(span=object(), token="token")
-
-        layer.on_graph_start()
-
-        assert layer._node_contexts == {}
-
-    def test_on_event_is_noop(self):
-        layer = ObservabilityLayer()
-
-        layer.on_event(object())
-
-    def test_on_graph_end_clears_unfinished_contexts(self, caplog: pytest.LogCaptureFixture):
-        layer = ObservabilityLayer()
-        layer._node_contexts["exec"] = SimpleNamespace(span=object(), token="token")
-
-        layer.on_graph_end(error=None)
-
-        assert layer._node_contexts == {}
-        assert "node spans were not properly ended" in caplog.text
-
-    def test_on_node_run_start_skips_without_execution_id(self):
-        layer = ObservabilityLayer()
-        layer._is_disabled = False
-        layer._tracer = None
-
-        layer.on_node_run_start(SimpleNamespace(execution_id=None, title="node", id="node"))
-
-        assert layer._node_contexts == {}
-
-    def test_on_node_run_start_skips_when_disabled(self):
-        layer = ObservabilityLayer()
-        layer._is_disabled = True
-        layer._tracer = SimpleNamespace(start_span=lambda *_args, **_kwargs: object())
-
-        layer.on_node_run_start(SimpleNamespace(execution_id="exec", title="node", id="node"))
-
-        assert layer._node_contexts == {}
-
-    def test_on_node_run_start_skips_when_execution_id_missing_even_with_tracer(self):
+    def test_node_run_context_skips_without_execution_id(self):
         layer = ObservabilityLayer()
         layer._is_disabled = False
         calls: list[str] = []
         layer._tracer = SimpleNamespace(start_span=lambda *_args, **_kwargs: calls.append("called"))
 
-        layer.on_node_run_start(SimpleNamespace(execution_id=None, title="node", id="node"))
+        with layer.node_run_context(SimpleNamespace(execution_id=None, title="node", id="node")):
+            assert calls == []
 
         assert calls == []
 
-    def test_on_node_run_start_logs_warning_when_span_creation_fails(self, caplog: pytest.LogCaptureFixture):
+    def test_node_runs_when_span_creation_fails(self, caplog: pytest.LogCaptureFixture):
         layer = ObservabilityLayer()
         layer._is_disabled = False
 
@@ -119,98 +65,9 @@ class TestObservabilityLayerExtras:
 
         layer._tracer = SimpleNamespace(start_span=_raise)
 
-        layer.on_node_run_start(SimpleNamespace(execution_id="exec", title="node", id="node"))
+        node_executed = False
+        with layer.node_run_context(SimpleNamespace(execution_id="exec", title="node", id="node")):
+            node_executed = True
 
-        assert "Failed to create OpenTelemetry span for node" in caplog.text
-
-    def test_on_node_run_end_without_context_noop(self):
-        layer = ObservabilityLayer()
-        layer._is_disabled = False
-
-        layer.on_node_run_end(SimpleNamespace(execution_id="missing", id="node"), error=None)
-
-        assert layer._node_contexts == {}
-
-    def test_on_node_run_end_skips_when_disabled(self):
-        layer = ObservabilityLayer()
-        layer._is_disabled = True
-        layer._node_contexts["exec"] = SimpleNamespace(span=object(), token="token")
-
-        layer.on_node_run_end(SimpleNamespace(execution_id="exec", id="node"), error=None)
-
-        assert "exec" in layer._node_contexts
-
-    def test_on_node_run_end_skips_without_execution_id(self):
-        layer = ObservabilityLayer()
-        layer._is_disabled = False
-
-        layer.on_node_run_end(SimpleNamespace(execution_id=None, id="node"), error=None)
-
-        assert layer._node_contexts == {}
-
-    def test_on_node_run_end_calls_span_end(self, monkeypatch: pytest.MonkeyPatch):
-        layer = ObservabilityLayer()
-        layer._is_disabled = False
-        ended: list[str] = []
-
-        class _Parser:
-            def parse(self, **_kwargs):
-                return None
-
-        span = SimpleNamespace(end=lambda: ended.append("ended"))
-        layer._default_parser = _Parser()
-        layer._node_contexts["exec"] = SimpleNamespace(span=span, token="token")
-
-        monkeypatch.setattr("core.app.workflow.layers.observability.context_api.detach", lambda _token: None)
-
-        node = SimpleNamespace(execution_id="exec", title="Node", id="node", node_type=None)
-        layer.on_node_run_end(node, error=None)
-
-        assert ended == ["ended"]
-        assert "exec" not in layer._node_contexts
-
-    def test_on_node_run_end_logs_detach_failure(
-        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-    ):
-        layer = ObservabilityLayer()
-        layer._is_disabled = False
-
-        class _Parser:
-            def parse(self, **_kwargs):
-                return None
-
-        layer._default_parser = _Parser()
-        layer._node_contexts["exec"] = SimpleNamespace(span=SimpleNamespace(end=lambda: None), token="bad-token")
-
-        def _raise(*_args, **_kwargs):
-            raise RuntimeError("detach failed")
-
-        monkeypatch.setattr("core.app.workflow.layers.observability.context_api.detach", _raise)
-
-        node = SimpleNamespace(execution_id="exec", title="Node", id="node", node_type=None)
-        layer.on_node_run_end(node, error=None)
-
-        assert "Failed to detach OpenTelemetry token" in caplog.text
-        assert "exec" not in layer._node_contexts
-
-    def test_on_node_run_start_and_end_creates_span(self, monkeypatch: pytest.MonkeyPatch):
-        layer = ObservabilityLayer()
-        layer._is_disabled = False
-
-        span = SimpleNamespace(end=lambda: None)
-        tracer = SimpleNamespace(start_span=lambda *args, **kwargs: span)
-
-        monkeypatch.setattr("core.app.workflow.layers.observability.context_api.get_current", lambda: object())
-        monkeypatch.setattr("core.app.workflow.layers.observability.set_span_in_context", lambda s: object())
-        monkeypatch.setattr("core.app.workflow.layers.observability.context_api.attach", lambda ctx: "token")
-        monkeypatch.setattr("core.app.workflow.layers.observability.context_api.detach", lambda token: None)
-
-        layer._tracer = tracer
-
-        node = SimpleNamespace(execution_id="exec", title="Node", id="node", node_type=None)
-
-        layer.on_node_run_start(node)
-        assert "exec" in layer._node_contexts
-
-        layer.on_node_run_end(node, error=None)
-        assert "exec" not in layer._node_contexts
+        assert node_executed
+        assert "start failed" in caplog.text

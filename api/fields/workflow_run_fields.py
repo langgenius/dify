@@ -210,3 +210,13 @@ def node_execution_response_source(node_execution: Any, *, session: Session) -> 
 
 class WorkflowRunNodeExecutionListResponse(ResponseModel):
     data: list[WorkflowRunNodeExecutionResponse]
+
+
+class WorkflowToolNodeExecutionResponse(WorkflowRunNodeExecutionResponse):
+    app_id: str
+    workflow_id: str
+    node_execution_id: str | None = None
+
+
+class WorkflowToolNodeExecutionListResponse(ResponseModel):
+    data: list[WorkflowToolNodeExecutionResponse]

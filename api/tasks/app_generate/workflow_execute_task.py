@@ -24,10 +24,10 @@ from core.app.entities.task_entities import WorkflowFinishStreamResponse, Workfl
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
-from graphon.filters import ResponseStreamFilter
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
 from libs.helper import to_timestamp
@@ -500,7 +500,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
 
     generate_entity = resumption_context.get_generate_entity()
 
-    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    graph_runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     conversation = None
@@ -617,7 +617,7 @@ def _resume_advanced_chat(
     conversation: Conversation,
     message: Message,
     generate_entity: AdvancedChatAppGenerateEntity,
-    graph_runtime_state: GraphRuntimeState,
+    graph_runtime_state: RuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
@@ -685,7 +685,7 @@ def _resume_workflow(
     workflow: Workflow,
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
-    graph_runtime_state: GraphRuntimeState,
+    graph_runtime_state: RuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,

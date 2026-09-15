@@ -137,8 +137,9 @@ def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+@pytest.mark.parametrize("workflow_tool_child", [False, True])
 def test_workflow_trace_with_message_id(
-    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session, workflow_tool_child: bool
 ) -> None:
     # Define constants for better readability
     WORKFLOW_ID = "fb05c7cd-6cec-4add-8a84-df03a408b4ce"
@@ -206,6 +207,10 @@ def test_workflow_trace_with_message_id(
     node_other.elapsed_time = 0.2
     node_other.metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS.value: 10}
 
+    if workflow_tool_child:
+        node_other.node_type = BuiltinNodeTypes.TOOL
+        node_llm.process_data["workflow_tool_parent_execution_id"] = node_other.id
+
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = [node_llm, node_other]
 
@@ -220,6 +225,9 @@ def test_workflow_trace_with_message_id(
 
     trace_instance.workflow_trace(trace_info)
 
+    repo.get_by_workflow_execution.assert_called_once_with(
+        workflow_execution_id=WORKFLOW_RUN_ID, include_workflow_tools=True
+    )
     trace_instance.add_trace.assert_called_once()
     trace_data = trace_instance.add_trace.call_args[1].get("opik_trace_data", trace_instance.add_trace.call_args[0][0])
     assert trace_data["name"] == TraceTaskName.MESSAGE_TRACE
@@ -227,6 +235,11 @@ def test_workflow_trace_with_message_id(
     assert "workflow" in trace_data["tags"]
 
     assert trace_instance.add_span.call_count >= 1
+    root_span, *node_spans = [call.args[0] for call in trace_instance.add_span.call_args_list]
+    nodes = {span["metadata"]["node_execution_id"]: span for span in node_spans}
+    assert nodes[LLM_NODE_ID]["parent_span_id"] == (
+        nodes[CODE_NODE_ID]["id"] if workflow_tool_child else root_span["id"]
+    )
 
 
 @pytest.mark.parametrize("sqlite3_session", [()], indirect=True)

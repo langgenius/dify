@@ -2,6 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
+from graphlib import TopologicalSorter
 from typing import cast, override
 
 from langsmith import Client
@@ -20,6 +21,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
 from core.ops.utils import filter_none_values, generate_dotted_order
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_langsmith.config import LangSmithConfig
@@ -162,10 +164,15 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         # Get all executions for this workflow run
         workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
-            workflow_execution_id=trace_info.workflow_run_id
+            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
         )
+        tool_parents = workflow_tool_parent_ids(workflow_node_executions)
+        node_dotted_orders: dict[str, str] = {}
+        nodes_by_id = {item.id: item for item in workflow_node_executions}
+        dependencies = {node_id: [tool_parents[node_id]] if node_id in tool_parents else [] for node_id in nodes_by_id}
 
-        for node_execution in workflow_node_executions:
+        for execution_id in TopologicalSorter(dependencies).static_order():
+            node_execution = nodes_by_id[execution_id]
             node_execution_id = node_execution.id
             tenant_id = trace_info.tenant_id  # Use from trace_info instead
             app_id = trace_info.metadata.get("app_id")  # Use from trace_info instead
@@ -220,7 +227,11 @@ class LangSmithDataTrace(BaseTraceInstance):
             except Exception:
                 logger.error("Failed to extract usage", exc_info=True)
 
-            node_dotted_order = generate_dotted_order(node_execution_id, created_at, workflow_dotted_order)
+            parent_id = tool_parents.get(node_execution_id, trace_info.workflow_run_id)
+            node_dotted_order = generate_dotted_order(
+                node_execution_id, created_at, node_dotted_orders.get(parent_id, workflow_dotted_order)
+            )
+            node_dotted_orders[node_execution_id] = node_dotted_order
             langsmith_run = LangSmithRunModel(
                 total_tokens=node_total_tokens,
                 input_tokens=prompt_tokens,
@@ -235,7 +246,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                 extra={
                     "metadata": metadata,
                 },
-                parent_run_id=trace_info.workflow_run_id,
+                parent_run_id=parent_id,
                 tags=["node_execution"],
                 id=node_execution_id,
                 trace_id=trace_id,
