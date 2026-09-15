@@ -81,6 +81,18 @@ class TestClampPagination:
     def test_valid_values_pass_through(self):
         assert clamp_pagination(2, 20, 100) == (2, 20)
 
+    def test_a_full_last_page_is_still_the_last_page(self):
+        """The other guess this replaces: `len(items) == per_page`.
+
+        Forty rows at twenty per page means page two is exactly full and also last.
+        Reading fullness as evidence of a next page costs the caller a round trip that
+        comes back empty.
+        """
+        page, size = clamp_pagination(2, 20, 100)
+        result = PaginatedResult(items=[object()] * size, total=40, page=page, per_page=size)
+        assert len(result.items) == size
+        assert (page * size < 40) is result.has_next is False
+
     @pytest.mark.parametrize("per_page", [0, -1])
     def test_clamped_values_agree_with_has_next(self, per_page):
         """What the helper returns has to make the caller's arithmetic match the truth."""
