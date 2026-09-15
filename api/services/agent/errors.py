@@ -71,6 +71,24 @@ class RosterAgentPackageExportFailedError(BaseHTTPException):
     code = 500
 
 
+class RosterAgentPackageImportFailedError(BaseHTTPException):
+    error_code = "roster_agent_package_import_failed"
+    description = "The Roster Agent package could not be imported."
+    code = 500
+
+
+class RosterAgentPackageDependenciesMissingError(BaseHTTPException):
+    error_code = "roster_agent_package_dependencies_missing"
+    description = "Install the missing plugins before importing the Roster Agent package."
+    code = 409
+
+
+class RosterAgentPackageResourceUnavailableError(BaseHTTPException):
+    error_code = "roster_agent_package_resource_unavailable"
+    description = "The Roster Agent package resources could not be stored."
+    code = 503
+
+
 class AgentSoulLockedError(BadRequest):
     description = "Agent Soul is locked for this workflow node."
 
