@@ -15,11 +15,15 @@ from models.dataset import Dataset
 def _build_fake_opensearch_modules():
     opensearchpy = types.ModuleType("opensearchpy")
     opensearch_helpers = types.ModuleType("opensearchpy.helpers")
+    opensearch_exceptions = types.ModuleType("opensearchpy.exceptions")
 
     class BulkIndexError(Exception):
         def __init__(self, errors):
             super().__init__("bulk error")
             self.errors = errors
+
+    class NotFoundError(Exception):
+        pass
 
     class OpenSearch:
         def __init__(self, **kwargs):
@@ -41,10 +45,12 @@ def _build_fake_opensearch_modules():
 
     opensearchpy.OpenSearch = OpenSearch
     opensearchpy.helpers = opensearch_helpers
+    opensearch_exceptions.NotFoundError = NotFoundError
 
     return {
         "opensearchpy": opensearchpy,
         "opensearchpy.helpers": opensearch_helpers,
+        "opensearchpy.exceptions": opensearch_exceptions,
     }
 
 
@@ -221,8 +227,17 @@ def test_delete_and_text_exists(lindorm_module):
     vector._client.indices.delete.assert_not_called()
 
     assert vector.text_exists("id-1") is True
-    vector._client.get.side_effect = RuntimeError("missing")
+    vector._client.get.side_effect = lindorm_module.NotFoundError
     assert vector.text_exists("id-1") is False
+
+
+def test_text_exists_propagates_non_notfound_errors(lindorm_module):
+    """Non-NotFoundError exceptions (transport, auth, etc.) must surface, not be swallowed."""
+    vector = lindorm_module.LindormVectorStore("collection", _config(lindorm_module), using_ugc=False)
+
+    vector._client.get.side_effect = RuntimeError("connection refused")
+    with pytest.raises(RuntimeError, match="connection refused"):
+        vector.text_exists("id-1")
 
 
 def test_search_by_vector_validation_and_success(lindorm_module):

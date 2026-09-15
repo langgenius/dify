@@ -17,11 +17,15 @@ from models.dataset import Dataset
 def _build_fake_opensearch_modules():
     opensearchpy = types.ModuleType("opensearchpy")
     opensearchpy_helpers = types.ModuleType("opensearchpy.helpers")
+    opensearchpy_exceptions = types.ModuleType("opensearchpy.exceptions")
 
     class BulkIndexError(Exception):
         def __init__(self, errors):
             super().__init__("bulk error")
             self.errors = errors
+
+    class NotFoundError(Exception):
+        pass
 
     class Urllib3AWSV4SignerAuth:
         def __init__(self, credentials, region, service):
@@ -48,14 +52,17 @@ def _build_fake_opensearch_modules():
     helpers = SimpleNamespace(bulk=MagicMock())
 
     opensearchpy.OpenSearch = OpenSearch
+    opensearchpy.NotFoundError = NotFoundError
     opensearchpy.Urllib3AWSV4SignerAuth = Urllib3AWSV4SignerAuth
     opensearchpy.Urllib3HttpConnection = Urllib3HttpConnection
     opensearchpy.helpers = helpers
     opensearchpy_helpers.BulkIndexError = BulkIndexError
+    opensearchpy_exceptions.NotFoundError = NotFoundError
 
     return {
         "opensearchpy": opensearchpy,
         "opensearchpy.helpers": opensearchpy_helpers,
+        "opensearchpy.exceptions": opensearchpy_exceptions,
     }
 
 
@@ -235,8 +242,17 @@ def test_delete_and_text_exists(opensearch_module):
 
     vector._client.get.return_value = {"_id": "id-1"}
     assert vector.text_exists("id-1") is True
-    vector._client.get.side_effect = RuntimeError("not found")
+    vector._client.get.side_effect = opensearch_module.NotFoundError
     assert vector.text_exists("id-1") is False
+
+
+def test_text_exists_propagates_non_notfound_errors(opensearch_module):
+    """Non-NotFoundError exceptions (transport, auth, etc.) must surface, not be swallowed."""
+    vector = opensearch_module.OpenSearchVector("collection_1", _config(opensearch_module))
+
+    vector._client.get.side_effect = RuntimeError("connection refused")
+    with pytest.raises(RuntimeError, match="connection refused"):
+        vector.text_exists("id-1")
 
 
 def test_search_by_vector_validates_and_builds_documents(opensearch_module):
