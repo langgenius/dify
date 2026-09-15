@@ -86,7 +86,7 @@ class ExternalDatasetService:
         if "api_key" not in settings or not settings["api_key"]:
             raise ValueError("api_key is required")
 
-        endpoint = f"{settings['endpoint']}/retrieval"
+        endpoint = f"{settings['endpoint'].rstrip('/')}/retrieval"
         api_key = settings["api_key"]
 
         parsed_url = urlparse(endpoint)
@@ -115,7 +115,7 @@ class ExternalDatasetService:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
         if response.status_code == 404:
             raise ValueError(f"Not Found: failed to connect to the endpoint: {endpoint}")
-        if response.status_code == 403:
+        if response.status_code in {401, 403}:
             raise ValueError("Forbidden: Authorization failed with the provided api_key")
 
     @staticmethod
@@ -396,7 +396,7 @@ class ExternalDatasetService:
         try:
             response = ExternalDatasetService.process_external_api(
                 ExternalKnowledgeApiSetting(
-                    url=f"{settings.get('endpoint')}/retrieval",
+                    url=f"{settings.get('endpoint', '').rstrip('/')}/retrieval",
                     request_method="post",
                     headers=headers,
                     params=request_params,
