@@ -541,6 +541,38 @@ describe('useFile', () => {
       vi.useRealTimers()
     })
 
+    it('should not leak the interval handle when the timer self-clears', () => {
+      vi.useFakeTimers()
+      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
+
+      // File starts at 60 so one tick takes it to 80, then the next tick hits
+      // the self-clear branch (progress is no longer < 80).
+      mockStoreFiles = [
+        {
+          id: 'mock-uuid',
+          name: 'https://example.com/file.txt',
+          type: '',
+          size: 0,
+          progress: 60,
+          transferMethod: 'remote_url',
+          supportFileType: '',
+        },
+      ] as FileEntity[]
+
+      const clearSpy = vi.spyOn(globalThis, 'clearInterval')
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLoadFileFromLink('https://example.com/file.txt')
+
+      // Drive past 80 — first tick increments to 80, second tick hits the
+      // `clearInterval(timer)` branch.
+      vi.advanceTimersByTime(2000)
+
+      expect(clearSpy).toHaveBeenCalled()
+
+      vi.useRealTimers()
+      clearSpy.mockRestore()
+    })
+
     it('should stop progress timer when progress is negative', () => {
       vi.useFakeTimers()
       mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
