@@ -1,4 +1,5 @@
 import type {
+  AgentHumanContactConfig,
   AgentKnowledgeDatasetConfig,
   AgentSoulAppFeaturesConfig,
   AgentSoulModelConfig,
@@ -125,6 +126,7 @@ export type AgentSoulConfigFormState = {
   files: AgentFileNode[]
   tools: AgentTool[]
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
+  humanContacts: AgentHumanContactConfig[]
   envVariables: EnvVariable[]
   toolSettings: Record<string, Record<string, unknown>>
 }
@@ -136,6 +138,7 @@ export const defaultAgentSoulConfigFormState: AgentSoulConfigFormState = {
   files: [],
   tools: [],
   knowledgeRetrievals: [],
+  humanContacts: [],
   envVariables: [],
   toolSettings: {},
 }

@@ -39,6 +39,8 @@ import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { getAgentHumanContactAliases } from '@/features/agent-v2/agent-composer/human-contacts'
+import { agentComposerHumanContactsAtom } from '@/features/agent-v2/agent-composer/store-modules/human-contacts'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
@@ -449,6 +451,7 @@ export function AgentPromptEditor() {
   const addProviderTools = useSetAtom(addProviderToolsAtom)
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
+  const humanContacts = useAtomValue(agentComposerHumanContactsAtom)
   const addActions = useAgentOrchestrateAddActions()
   const promptTip = t(($) => $['agentDetail.configure.prompt.tip'])
   const promptPlaceholder = (
@@ -504,13 +507,16 @@ export function AgentPromptEditor() {
       }
     })
 
+    const humanIds = new Set(humanContacts.flatMap(getAgentHumanContactAliases))
+
     return {
       skills: skillIds,
       files: fileIds,
       knowledge: new Set(retrievals.map((retrieval) => retrieval.id)),
       cliTools: new Set(tools.flatMap((tool) => (tool.kind === 'cli' ? [tool.id] : []))),
+      humans: humanIds,
     }
-  }, [files, retrievals, skills, tools])
+  }, [files, humanContacts, retrievals, skills, tools])
 
   const handleCopyPrompt = useCallback(() => {
     void copy(value)
@@ -838,6 +844,9 @@ export function AgentPromptEditor() {
       if (token.kind === 'knowledge')
         return configuredReferenceIds.knowledge.has(token.id) ? undefined : warning
 
+      if (token.kind === 'human')
+        return configuredReferenceIds.humans.has(token.id) ? undefined : warning
+
       if (token.kind === 'cli_tool')
         return ENABLE_AGENT_CLI_TOOLS && configuredReferenceIds.cliTools.has(token.id)
           ? undefined
@@ -1015,6 +1024,11 @@ export function AgentPromptEditor() {
       key: 'tools',
       label: t(($) => $['agentDetail.configure.tools.label']),
       icon: 'i-ri-box-3-line',
+    },
+    {
+      key: 'humans',
+      label: t(($) => $['agentDetail.configure.humanContacts.label']),
+      icon: 'i-ri-user-3-line',
     },
     ...(ENABLE_AGENT_KNOWLEDGE_RETRIEVAL
       ? [

@@ -1,6 +1,6 @@
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
 
-type RosterReferenceKind = 'skill' | 'file' | 'tool-all' | 'tool' | 'cli_tool' | 'knowledge'
+type RosterReferenceKind = 'skill' | 'file' | 'tool-all' | 'tool' | 'cli_tool' | 'knowledge' | 'human'
 
 export type RosterReferenceToken = {
   kind: RosterReferenceKind
@@ -9,7 +9,7 @@ export type RosterReferenceToken = {
 }
 
 export const ROSTER_REFERENCE_REGEX =
-  /\[§(?:skill|file|tool-all|tool|cli_tool|knowledge):[^\]§\n\r]+§\]/
+  /\[§(?:skill|file|tool-all|tool|cli_tool|knowledge|human):[^\]§\n\r]+§\]/
 
 const KNOWN_KINDS = new Set<RosterReferenceKind>([
   'skill',
@@ -18,6 +18,7 @@ const KNOWN_KINDS = new Set<RosterReferenceKind>([
   'tool',
   'cli_tool',
   'knowledge',
+  'human',
 ])
 
 export function parseRosterReferenceToken(text: string): RosterReferenceToken | null {
@@ -106,5 +107,7 @@ export function getRosterReferenceIconClassName(token: RosterReferenceToken) {
       return 'i-ri-terminal-box-line text-text-primary-on-surface'
     case 'knowledge':
       return 'i-ri-book-open-line'
+    case 'human':
+      return 'i-ri-user-3-line text-text-tertiary'
   }
 }

@@ -601,6 +601,10 @@ export const formStateToAgentSoulConfig = ({
       dify_tools: toDifyToolConfigs(formState.tools, formState.toolSettings),
       cli_tools: toCliToolConfigs(formState.tools),
     },
+    human: {
+      ...baseConfig?.human,
+      contacts: formState.humanContacts,
+    },
     app_features: formState.appFeatures ?? baseConfig?.app_features,
     knowledge: toKnowledgeConfig(formState.knowledgeRetrievals),
     env: toEnvConfig(formState.envVariables),
@@ -626,6 +630,7 @@ export const agentSoulConfigToFormState = (
     files: toFileFormState(config),
     tools: [...providerToolState.tools, ...toCliToolFormState(config)],
     knowledgeRetrievals: toKnowledgeRetrievalFormState(config),
+    humanContacts: config?.human?.contacts ?? [],
     envVariables: toEnvVariableFormState(config),
     toolSettings: providerToolState.toolSettings,
   }

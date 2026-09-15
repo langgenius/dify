@@ -26,6 +26,7 @@ import { AgentBuildDraftChangedKeysProvider } from './build-draft-changes-contex
 import { AgentConfigApiContextProvider } from './config-context'
 import { AgentFiles } from './files'
 import { AgentOrchestrateHeader } from './header'
+import { AgentHumanContacts } from './human-contacts'
 import { AgentKnowledgeRetrieval } from './knowledge'
 import { AgentModelField } from './model-config/field'
 import { AgentPromptEditor } from './prompt-editor'
@@ -170,6 +171,7 @@ export function AgentOrchestratePanel({
                         onSelect={onSelectModel}
                       />
                       <AgentPromptEditor />
+                      <AgentHumanContacts />
                       <AgentSkills />
                       <AgentFiles />
                       <AgentTools />
