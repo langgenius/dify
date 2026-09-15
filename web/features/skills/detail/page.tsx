@@ -1,7 +1,5 @@
 'use client'
 
-/* oxlint-disable eslint-react/set-state-in-effect -- The detail route resets local draft overrides when the selected skill or authoritative query snapshot changes. */
-
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SkillFileMutationCoordinator } from './shared'
 import {

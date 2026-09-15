@@ -6,9 +6,14 @@ from sqlalchemy import select
 
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.db.session_factory import session_factory
+from core.workflow.nodes.agent_v2.session_store import (
+    WorkflowAgentWorkspaceStore,
+    resolve_workflow_agent_workspace_owner_scope,
+)
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
+    AgentConfigVersionKind,
     AgentScope,
     AgentStatus,
     WorkflowAgentBindingType,
@@ -43,8 +48,9 @@ class WorkflowAgentBindingResolver:
         node_id: str,
         binding_id: str | None = None,
         snapshot_id: str | None = None,
+        conversation_id: str | None = None,
     ) -> WorkflowAgentBindingBundle:
-        """Resolve the current binding, optionally at a generation pinned by an existing execution."""
+        """Resolve the generation pinned by an execution or a Chatflow conversation participant."""
 
         if (binding_id is None) != (snapshot_id is None):
             raise WorkflowAgentBindingError(
@@ -85,6 +91,29 @@ class WorkflowAgentBindingResolver:
                     "agent_not_available",
                     f"Agent {binding.agent_id} is not available or has not been published.",
                 )
+
+            # A new node execution in the same conversation must keep its participant's
+            # config/Home generation even after the roster Agent publishes a new version.
+            if snapshot_id is None and conversation_id:
+                participant = WorkflowAgentWorkspaceStore.load_active_participant(
+                    session=session,
+                    scope=resolve_workflow_agent_workspace_owner_scope(
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        conversation_id=conversation_id,
+                        workflow_run_id=None,
+                        node_id=node_id,
+                        workflow_agent_binding_id=binding.id,
+                    ),
+                    agent_id=agent.id,
+                )
+                if participant is not None:
+                    if participant.agent_config_version_kind != AgentConfigVersionKind.SNAPSHOT:
+                        raise WorkflowAgentBindingError(
+                            "agent_binding_generation_invalid",
+                            "Chatflow Agent participant must reference a config snapshot.",
+                        )
+                    snapshot_id = participant.agent_config_version_id
 
             effective_snapshot_id = (
                 (

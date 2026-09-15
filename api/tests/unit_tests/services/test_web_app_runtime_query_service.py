@@ -5,6 +5,7 @@ import pytest
 from enums import DeploymentEdition
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
+from services.errors.file import FileNotExistsError
 from services.file_service import FileService
 from services.web_app_runtime_query_service import (
     WebAppBootstrap,
@@ -158,3 +159,17 @@ def test_get_bootstrap_skips_legacy_custom_config_when_branding_is_not_allowed(
     assert result.site == {**record.site._asdict(), "icon_url": None}
     assert result.can_replace_logo is False
     assert result.custom_config is None
+
+
+def test_get_bootstrap_falls_back_when_site_icon_is_unavailable() -> None:
+    runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
+    runtime.get_runtime_record.return_value = _runtime_record()
+    file_service = MagicMock(spec=FileService)
+    file_service.get_icon_url.side_effect = FileNotExistsError("File reference not found")
+
+    result = _service(runtime, file_service=file_service).get_bootstrap("app-1")
+
+    assert result.site["icon_type"] == "emoji"
+    assert result.site["icon"] == "🤖"
+    assert result.site["icon_background"] == "#FFEAD5"
+    assert result.site["icon_url"] is None

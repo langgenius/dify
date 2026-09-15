@@ -793,6 +793,7 @@ export const Workflow: FC<WorkflowProps> = memo(
             onSelectionContextMenu={handleSelectionContextMenu}
             connectionLineComponent={CustomConnectionLine}
             defaultViewport={viewport}
+            fitView={!viewport}
             multiSelectionKeyCode={null}
             deleteKeyCode={null}
             nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}

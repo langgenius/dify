@@ -42,7 +42,6 @@ import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigat
 import { useGetLanguage } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
@@ -231,14 +230,13 @@ export function GotoAnything() {
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()
-  const canManageAgents = useCanManageAgents()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const { data: enableSkill } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.enable_skill,
     }),
   )
-  const agentsAvailable = isAgentV2Enabled() && canManageAgents
+  const agentsAvailable = isAgentV2Enabled()
   const skillsAvailable = enableSkill === true && !isCurrentWorkspaceDatasetOperator
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)

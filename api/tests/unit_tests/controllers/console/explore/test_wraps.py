@@ -128,8 +128,9 @@ def test_installed_app_required_success(
         result = view(installed_app.id)
 
     assert result.id == installed_app.id
-    assert result.app is not None
-    assert result.app.id == app.id
+    app_model = result.app_with_session(session=sqlite_session)
+    assert app_model is not None
+    assert app_model.id == app.id
 
 
 def test_user_allowed_to_access_app_denied():

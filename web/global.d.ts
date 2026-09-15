@@ -15,7 +15,6 @@ declare global {
     (command: 'set', config: GtagEventParams): void
   }
 
-  // eslint-disable-next-line ts/consistent-type-definitions -- interface required for declaration merging
   interface Window {
     gtag?: Gtag
     dataLayer?: unknown[]

@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { AgentConfig } from '@/models/debug'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

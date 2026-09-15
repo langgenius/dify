@@ -788,6 +788,30 @@ def test_create_or_update_pipeline_flushes_caller_transaction_and_updates_existi
     assert workflow.graph_dict["nodes"] == [{"id": "node"}]
 
 
+def test_create_or_update_pipeline_removes_imported_workflow_viewport(
+    service: RagPipelineDslService, sqlite_session: Session
+) -> None:
+    imported_graph: dict[str, Any] = {
+        "nodes": [],
+        "edges": [],
+        "viewport": {"x": 100, "y": 200, "zoom": 1.5},
+    }
+
+    pipeline = service._create_or_update_pipeline(
+        pipeline=None,
+        data={
+            "rag_pipeline": {"name": "Pipeline"},
+            "workflow": {"graph": imported_graph},
+        },
+        account=_account(),
+    )
+
+    workflow = sqlite_session.get(Workflow, pipeline.workflow_id)
+    assert workflow is not None
+    assert workflow.graph_dict == {"nodes": [], "edges": []}
+    assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
+
+
 def test_create_pipeline_flush_failure_is_rolled_back_by_caller(
     service: RagPipelineDslService, sqlite_session: Session, sqlite_engine: Engine
 ) -> None:

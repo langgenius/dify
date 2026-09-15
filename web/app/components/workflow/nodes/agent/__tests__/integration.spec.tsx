@@ -1,6 +1,5 @@
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
-/* oxlint-disable typescript/no-explicit-any */
 import type { AgentNodeType } from '../types'
 import type { StrategyParamItem } from '@/app/components/plugins/types'
 import type { PanelProps } from '@/types/workflow'

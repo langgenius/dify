@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "Навігація агента",
   "agentDetail.publish": "Опублікувати",
   "agentDetail.sections.access": "Точка доступу",
+  "agentDetail.sections.access-config": "Доступ до ресурсів",
   "agentDetail.sections.configure": "Налаштувати",
   "agentDetail.sections.logs": "Журнали",
   "agentDetail.sections.monitoring": "Моніторинг",

@@ -10,8 +10,6 @@ import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annota
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import HeaderOptions from '../index'
 
-/* oxlint-disable typescript/no-explicit-any */
-
 const mockJsonToCSV = vi.fn((_: unknown) => 'csv-content')
 const mockCSVDownloader = vi.fn(({ children }) => <>{children}</>)
 
