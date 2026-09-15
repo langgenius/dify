@@ -32,6 +32,7 @@ import { notification } from './notification/orpc.gen'
 import { notion } from './notion/orpc.gen'
 import { oauth } from './oauth/orpc.gen'
 import { onboarding } from './onboarding/orpc.gen'
+import { pageGenerate } from './page-generate/orpc.gen'
 import { ping } from './ping/orpc.gen'
 import { rag } from './rag/orpc.gen'
 import { refreshToken } from './refresh-token/orpc.gen'
@@ -50,6 +51,7 @@ import { trialApps } from './trial-apps/orpc.gen'
 import { trialModels } from './trial-models/orpc.gen'
 import { version } from './version/orpc.gen'
 import { website } from './website/orpc.gen'
+import { workflowCopilot } from './workflow-copilot/orpc.gen'
 import { workflowGenerate } from './workflow-generate/orpc.gen'
 import { workflowRunArchives } from './workflow-run-archives/orpc.gen'
 import { workflow } from './workflow/orpc.gen'
@@ -87,6 +89,7 @@ const communityContract = {
   notion,
   oauth,
   onboarding,
+  pageGenerate,
   ping,
   rag,
   refreshToken,
@@ -106,6 +109,7 @@ const communityContract = {
   version,
   website,
   workflow,
+  workflowCopilot,
   workflowGenerate,
   workflowRunArchives,
   workspaces,
