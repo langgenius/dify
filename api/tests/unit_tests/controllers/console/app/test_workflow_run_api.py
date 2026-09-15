@@ -198,6 +198,42 @@ def test_workflow_run_list_returns_frontend_history_contract(
     )
 
 
+def test_workflow_run_list_with_status_filter(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _account(sqlite_session)
+    workflow_run = _workflow_run_summary(sqlite_session)
+    workflow_runs = Mock()
+    workflow_runs.get_paginate_workflow_runs.return_value = {
+        "limit": 10,
+        "has_more": False,
+        "data": [workflow_run],
+    }
+    _mock_application_services(monkeypatch, workflow_runs)
+    monkeypatch.setattr(db, "session", sqlite_session)
+    request_context = _request_context()
+
+    api = workflow_run_module.WorkflowRunListApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/apps/app-1/workflow-runs?limit=10&status=failed", method="GET"):
+        payload = handler(
+            api,
+            workflow_run_module.WorkflowRunListQuery(limit=10, status="failed"),
+            request_context,
+            app_model=_app(),
+        )
+
+    response = _serialize_200_response(api.get, payload)
+    assert response["limit"] == 10
+    workflow_runs.get_paginate_workflow_runs.assert_called_once_with(
+        request_context,
+        app_id="app-1",
+        args={"limit": 10, "status": "failed"},
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+    )
+
+
 def test_advanced_chat_workflow_run_list_keeps_message_fields(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
