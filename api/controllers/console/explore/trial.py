@@ -906,16 +906,22 @@ class DatasetListApi(Resource):
     @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
         page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
         ids = request.args.getlist("ids")
 
         tenant_id = app_model.tenant_id
         if ids:
+            effective_limit = len(ids)
             datasets, total = DatasetService.get_datasets_by_ids(ids, tenant_id, session=session)
         else:
             raise NeedAddIdsError()
 
-        response = {"data": datasets, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+        response = {
+            "data": datasets,
+            "has_more": page * effective_limit < total,
+            "limit": effective_limit,
+            "total": total,
+            "page": page,
+        }
         return dump_response(TrialDatasetListResponse, response)
 
 

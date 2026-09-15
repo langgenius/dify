@@ -188,10 +188,39 @@ def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask, unbound_se
             }
         ],
         "has_more": False,
-        "limit": 20,
+        "limit": 1,
         "total": 1,
         "page": 1,
     }
+
+
+def test_trial_dataset_list_has_more_tracks_ids_count_not_limit(app: Flask, unbound_session: Session):
+    api = module.DatasetListApi()
+    method = unwrap(api.get)
+    app_model = _app(app_id="app-1", mode=AppMode.CHAT)
+    datasets = [
+        Dataset(
+            id=f"dataset-{i}",
+            tenant_id=app_model.tenant_id,
+            name=f"Dataset {i}",
+            permission="only_me",
+            data_source_type="upload_file",
+            indexing_technique="high_quality",
+            created_by="user-1",
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
+        )
+        for i in range(20)
+    ]
+    with (
+        app.test_request_context("/?page=1&limit=20&ids=" + "&ids=".join(f"dataset-{i}" for i in range(20))),
+        patch.object(module.DatasetService, "get_datasets_by_ids", return_value=(datasets, 20)) as get_datasets,
+    ):
+        result = method(api, unbound_session, app_model)
+
+    get_datasets.assert_called_once_with([f"dataset-{i}" for i in range(20)], "tenant-1", session=unbound_session)
+    assert result["has_more"] is False
+    assert result["limit"] == 20
+    assert result["total"] == 20
 
 
 @pytest.mark.parametrize(
