@@ -23,6 +23,7 @@ class TestOperationService:
 
         mock_response = MagicMock()
         mock_response.json.return_value = {"status": "success"}
+        mock_response.raise_for_status.return_value = None
         mock_request.return_value = mock_response
 
         method = "POST"
@@ -120,3 +121,39 @@ class TestOperationService:
         # Assert
         assert result == {"status": "recorded"}
         mock_send.assert_called_once_with("POST", "/tenant_utms", params=expected_params)
+
+    @patch("httpx.request")
+    def test_should_raise_on_non_2xx_response(self, mock_request: MagicMock, monkeypatch: pytest.MonkeyPatch):
+        """Test that _send_request raises httpx.HTTPStatusError on non-2xx responses"""
+        monkeypatch.setattr(OperationService, "base_url", "https://billing.example")
+        monkeypatch.setattr(OperationService, "secret_key", "s3cr3t")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Server Error", request=MagicMock(), response=mock_response
+        )
+        mock_request.return_value = mock_response
+
+        with pytest.raises(httpx.HTTPStatusError):
+            OperationService._send_request("POST", "/test")
+
+    @patch("httpx.request")
+    def test_should_pass_bounded_timeout(self, mock_request: MagicMock, monkeypatch: pytest.MonkeyPatch):
+        """Credential validation must not use the default unbounded timeout."""
+        monkeypatch.setattr(OperationService, "base_url", "https://billing.example")
+        monkeypatch.setattr(OperationService, "secret_key", "s3cr3t")
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"status": "ok"}
+        mock_response.raise_for_status.return_value = None
+        mock_request.return_value = mock_response
+
+        OperationService._send_request("GET", "/health")
+
+        call_kwargs = mock_request.call_args.kwargs
+        assert "timeout" in call_kwargs, "timeout keyword is missing from httpx.request"
+        timeout = call_kwargs["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect == OPERATION_REQUEST_TIMEOUT.connect
+        assert timeout.read == OPERATION_REQUEST_TIMEOUT.read
