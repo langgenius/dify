@@ -20,14 +20,14 @@ describe('AppDslClient.exportDsl', () => {
     await stub?.stop()
   })
 
-  it('returns the data string from the response', async () => {
+  it('returns the DSL response', async () => {
     stub = await startStubServer((cap) => jsonResponder(200, { data: DSL_YAML }, cap))
 
     const yaml = await makeClient(stub.url).exportDsl('app-1')
 
     expect(stub.captured.method).toBe('GET')
     expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1/dsl')
-    expect(yaml).toBe(DSL_YAML)
+    expect(yaml.data).toBe(DSL_YAML)
   })
 
   it('throws when response has no data field', async () => {

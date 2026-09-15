@@ -396,6 +396,43 @@ describe('CreateFromDSLModal', () => {
     )
   })
 
+  it('imports a ZIP bundle with its binary content preserved', async () => {
+    const user = userEvent.setup()
+    mockImportDSL.mockResolvedValue({ id: 'bundle-import', status: DSLImportStatus.COMPLETED })
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+        droppedFile={new File([new Uint8Array([80, 75, 3, 4, 0, 255])], 'workflow.ZIP')}
+      />,
+    )
+
+    await user.click(getCreateButton())
+
+    await waitFor(() =>
+      expect(mockImportDSL).toHaveBeenCalledWith({
+        mode: 'bundle-content',
+        yaml_content: btoa('PK\u0003\u0004\u0000\u00FF'),
+      }),
+    )
+  })
+
+  it('rejects bundle uploads over 10 MB before sending an import', async () => {
+    const user = userEvent.setup()
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+        droppedFile={new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'workflow.zip')}
+      />,
+    )
+
+    await user.click(getCreateButton())
+
+    await waitFor(() => expect(toastMocks.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
+    expect(mockImportDSL).not.toHaveBeenCalled()
+  })
+
   it('should lock the complete file import while reading its content', async () => {
     let resolveFileText!: (value: string) => void
     const file = new File(['app: demo'], 'demo.yml', { type: 'text/yaml' })

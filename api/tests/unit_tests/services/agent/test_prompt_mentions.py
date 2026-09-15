@@ -22,11 +22,58 @@ from services.agent.prompt_mentions import (
     extract_workflow_variable_selectors,
     normalize_previous_node_output_selector,
     parse_prompt_mentions,
+    rewrite_workflow_tool_mentions,
     scrub_mention_markers,
     workflow_previous_node_output_refs_from_selectors,
 )
 
 # ── parse ─────────────────────────────────────────────────────────────────────
+
+
+def test_bundle_mentions_remap_tool_pointers_without_rewriting_labels_or_other_text():
+    prompt = (
+        "Use [§tool:source/calculate:source/calculate§], [§tool:calculate:§], "
+        "[§tool:display/calculate§], [§tool:all-source/*:All tools§] and [§tool:all-source/lookup§]. "
+        "Literal §tool:source/calculate:Label§. "
+        "Keep [§tool:other/untouched§], [§skill:source/calculate§], and source/calculate."
+    )
+    document = {
+        "agent_packages": {
+            "agent_1": {
+                "soul": {
+                    "prompt": {"system_prompt": prompt},
+                    "tools": {
+                        "dify_tools": [
+                            {
+                                "provider_type": "workflow",
+                                "provider_id": "source",
+                                "provider": "display",
+                                "tool_name": "calculate",
+                            },
+                            {"provider_type": "workflow", "provider_id": "all-source", "tool_name": None},
+                            {"provider_type": "builtin", "provider_id": "other", "tool_name": "untouched"},
+                        ]
+                    },
+                }
+            }
+        },
+        "workflow": {"system_prompt": prompt},
+    }
+
+    rewrite_workflow_tool_mentions(
+        document,
+        {"source": ("target", "calculate_2"), "all-source": ("all-target", "lookup"), "other": ("wrong", "wrong")},
+    )
+
+    soul = document["agent_packages"]["agent_1"]["soul"]
+    assert soul["prompt"]["system_prompt"] == (
+        "Use [§tool:target/calculate_2:source/calculate§], [§tool:calculate_2:§], "
+        "[§tool:target/calculate_2§], [§tool:all-target/lookup:All tools§] and [§tool:all-target/lookup§]. "
+        "Literal §tool:source/calculate:Label§. "
+        "Keep [§tool:other/untouched§], [§skill:source/calculate§], and source/calculate."
+    )
+    assert soul["tools"]["dify_tools"][0]["provider_id"] == "source"
+    assert document["workflow"]["system_prompt"] == prompt
 
 
 def test_parse_extracts_kind_id_and_optional_label():

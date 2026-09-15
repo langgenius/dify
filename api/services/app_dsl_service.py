@@ -12,7 +12,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging.version import parse as parse_version
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -50,6 +50,7 @@ from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.app_dsl_bundle import AppDslBundleService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.enterprise.enterprise_service import EnterpriseService
@@ -180,7 +181,7 @@ class AppDslService:
         app_id: str | None = None,
         import_app_id: str | None = None,
     ) -> Import:
-        """Import an app from YAML content or URL."""
+        """Import YAML or a base64 workflow ZIP bundle, inline or from a URL."""
         self._warnings = []
         import_id = str(uuid.uuid4())
 
@@ -192,7 +193,9 @@ class AppDslService:
 
         # Get YAML content
         content: str = ""
-        if mode == ImportMode.YAML_URL:
+        if mode == ImportMode.BUNDLE_CONTENT:
+            content = yaml_content or ""
+        elif mode == ImportMode.YAML_URL:
             if not yaml_url:
                 return Import(
                     id=import_id,
@@ -220,7 +223,11 @@ class AppDslService:
                         error="File size exceeds the limit of 10MB",
                     )
 
-                content = raw_content.decode("utf-8")
+                if raw_content.startswith(b"PK"):
+                    content = base64.b64encode(raw_content).decode("ascii")
+                    mode = ImportMode.BUNDLE_CONTENT
+                else:
+                    content = raw_content.decode("utf-8")
                 if not content:
                     return Import(
                         id=import_id,
@@ -247,6 +254,20 @@ class AppDslService:
                     status=ImportStatus.FAILED,
                     error="File size exceeds the limit of 10MB",
                 )
+
+        if mode == ImportMode.BUNDLE_CONTENT:
+            return self._import_bundle(
+                content=content,
+                account=account,
+                import_id=import_id,
+                name=name,
+                description=description,
+                icon_type=icon_type,
+                icon=icon,
+                icon_background=icon_background,
+                app_id=app_id,
+                import_app_id=import_app_id,
+            )
 
         # Process YAML content
         try:
@@ -388,6 +409,109 @@ class AppDslService:
                 error=str(e),
             )
 
+    def _import_bundle(
+        self,
+        *,
+        content: str,
+        account: Account,
+        import_id: str,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+        app_id: str | None = None,
+        import_app_id: str | None = None,
+        confirmed: bool = False,
+    ) -> Import:
+        """Validate the complete bundle before creating any apps or tool deployments."""
+        try:
+            if len(content) > 4 * ((DSL_MAX_SIZE + 2) // 3):
+                raise ValueError("File size exceeds the limit of 10MB")
+            bundle_service = AppDslBundleService(self._session)
+            bundle = bundle_service.parse_bundle(base64.b64decode(content, validate=True))
+            versions = [document.get("version", "0.1.0") for document in bundle.documents.values()]
+            if not all(isinstance(version, str) for version in versions):
+                raise ValueError("Every app DSL version must be a string")
+            statuses = [check_version_compatibility(version, CURRENT_DSL_VERSION) for version in versions]
+            if ImportStatus.FAILED in statuses:
+                raise ValueError("Invalid app DSL version")
+            imported_version = max(versions, key=parse_version)
+            app = self._load_app_for_overwrite(account, app_id) if app_id else None
+            if app_id and app is None:
+                raise ValueError("App not found")
+            if app is not None:
+                entry = bundle.documents[bundle.manifest.entrypoint]
+                if app.mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT} or entry["app"]["mode"] != app.mode:
+                    raise ValueError("The imported workflow app mode must match the overwritten app")
+
+            if ImportStatus.PENDING in statuses and not confirmed:
+                if account.current_tenant_id is None:
+                    raise ValueError("Current tenant is not set")
+                pending_data = PendingData(
+                    tenant_id=account.current_tenant_id,
+                    account_id=account.id,
+                    import_mode=ImportMode.BUNDLE_CONTENT,
+                    yaml_content=content,
+                    name=name,
+                    description=description,
+                    icon_type=icon_type,
+                    icon=icon,
+                    icon_background=icon_background,
+                    app_id=app_id,
+                )
+                redis_client.setex(
+                    f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}",
+                    IMPORT_INFO_REDIS_EXPIRY,
+                    pending_data.model_dump_json(),
+                )
+                return Import(
+                    id=import_id, status=ImportStatus.PENDING, app_id=app_id, imported_dsl_version=imported_version
+                )
+
+            dependencies = [
+                PluginDependency.model_validate(dependency)
+                for document in bundle.documents.values()
+                for dependency in document.get("dependencies", [])
+            ]
+            app = bundle_service.import_bundle(
+                bundle,
+                account=account,
+                dsl_service=self,
+                app=app,
+                name=name,
+                description=description,
+                icon_type=icon_type,
+                icon=icon,
+                icon_background=icon_background,
+                import_app_id=import_app_id,
+            )
+            WorkflowDraftVariableService(session=self._session).delete_app_workflow_variables(app_id=app.id)
+            if dependencies:
+                redis_client.setex(
+                    f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app.id}",
+                    IMPORT_INFO_REDIS_EXPIRY,
+                    CheckDependenciesPendingData(app_id=app.id, dependencies=dependencies).model_dump_json(),
+                )
+            status = (
+                ImportStatus.COMPLETED_WITH_WARNINGS
+                if ImportStatus.COMPLETED_WITH_WARNINGS in statuses
+                else ImportStatus.COMPLETED
+            )
+            return Import(
+                id=import_id,
+                status=self._status_with_warnings(status),
+                app_id=app.id,
+                app_mode=app.mode,
+                imported_dsl_version=imported_version,
+                warnings=self._warnings,
+            )
+        except NoPermissionError:
+            raise
+        except Exception as exc:
+            logger.exception("Failed to import workflow DSL bundle")
+            return Import(id=import_id, status=ImportStatus.FAILED, error=str(exc))
+
     def confirm_import(self, *, import_id: str, account: Account) -> Import:
         """
         Confirm an import that requires confirmation
@@ -420,6 +544,22 @@ class AppDslService:
                     status=ImportStatus.FAILED,
                     error="Import information expired or does not exist",
                 )
+            if pending_data.import_mode == ImportMode.BUNDLE_CONTENT:
+                result = self._import_bundle(
+                    content=pending_data.yaml_content,
+                    account=account,
+                    import_id=import_id,
+                    name=pending_data.name,
+                    description=pending_data.description,
+                    icon_type=pending_data.icon_type,
+                    icon=pending_data.icon,
+                    icon_background=pending_data.icon_background,
+                    app_id=pending_data.app_id,
+                    confirmed=True,
+                )
+                if result.status != ImportStatus.FAILED:
+                    redis_client.delete(redis_key)
+                return result
             data = yaml.safe_load(pending_data.yaml_content)
 
             app = None
@@ -516,7 +656,7 @@ class AppDslService:
             raise NoPermissionError("You do not have permission to overwrite this app")
         return app
 
-    def _ensure_agent_import_permission(self, account: Account, *, app: App | None) -> None:
+    def _ensure_agent_dsl_permission(self, account: Account, *, app: App | None) -> None:
         if not dify_config.RBAC_ENABLED:
             return
         if account.current_tenant_id is None:
@@ -527,7 +667,7 @@ class AppDslService:
             else None
         )
         if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
-            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
+            raise NoPermissionError("Agent DSL permission is required for this Agent App")
         allowed = RBACService.CheckAccess.check(
             account.current_tenant_id,
             account.id,
@@ -536,7 +676,7 @@ class AppDslService:
             resource_id=str(binding.id) if binding is not None else None,
         )
         if not allowed:
-            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
+            raise NoPermissionError("Agent DSL permission is required for this Agent App")
 
     def _create_or_update_app(
         self,
@@ -551,15 +691,16 @@ class AppDslService:
         icon_background: str | None = None,
         dependencies: list[PluginDependency] | None = None,
         import_app_id: str | None = None,
+        commit: bool = True,
     ) -> App:
-        """Create a new app or update an existing one."""
+        """Create or update an app; bundles defer workflow commits until every app is restored."""
         app_data = data.get("app", {})
         app_mode = app_data.get("mode")
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
         if app_mode == AppMode.AGENT:
-            self._ensure_agent_import_permission(account, app=app)
+            self._ensure_agent_dsl_permission(account, app=app)
 
         target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
         if target_tenant_id is None:
@@ -675,27 +816,49 @@ class AppDslService:
                     environment_variables=environment_variables,
                     conversation_variables=conversation_variables,
                     session=self._session,
-                    commit=not raw_agent_packages,
-                    sync_agent_bindings=not raw_agent_packages,
+                    commit=commit and not raw_agent_packages,
+                    sync_agent_bindings=commit and not raw_agent_packages,
                 )
-                if raw_agent_packages:
-                    _, warnings, retirement_candidates = AgentDslService(self._session).import_workflow_packages(
-                        workflow=draft_workflow,
-                        portable_graph=graph,
-                        raw_packages=raw_agent_packages,
-                        account=account,
-                    )
-                    self._warnings.extend(warnings)
+                if raw_agent_packages or not commit:
+                    if raw_agent_packages:
+                        _, warnings, retirement_candidates = AgentDslService(self._session).import_workflow_packages(
+                            workflow=draft_workflow,
+                            portable_graph=graph,
+                            raw_packages=raw_agent_packages,
+                            account=account,
+                        )
+                        self._warnings.extend(warnings)
+                    else:
+                        retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                            session=self._session, draft_workflow=draft_workflow, account_id=account.id
+                        )
                     WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
                         session=self._session,
                         draft_workflow=draft_workflow,
                     )
-                    self._session.commit()
-                    WorkflowAgentRetirementService.retire_unowned(
-                        tenant_id=app.tenant_id,
-                        agent_ids=retirement_candidates,
-                        account_id=account.id,
-                    )
+                    if commit:
+                        self._session.commit()
+                        WorkflowAgentRetirementService.retire_unowned(
+                            tenant_id=app.tenant_id,
+                            agent_ids=retirement_candidates,
+                            account_id=account.id,
+                        )
+                    elif retirement_candidates:
+                        cancelled = False
+                        tenant_id = app.tenant_id
+
+                        def cancel_retirement(_session: Session) -> None:
+                            nonlocal cancelled
+                            cancelled = True
+
+                        def retire_after_commit(_session: Session) -> None:
+                            if not cancelled:
+                                WorkflowAgentRetirementService.retire_unowned(
+                                    tenant_id=tenant_id, agent_ids=retirement_candidates, account_id=account.id
+                                )
+
+                        event.listen(self._session, "after_rollback", cancel_retirement, once=True)
+                        event.listen(self._session, "after_commit", retire_after_commit, once=True)
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
                 model_config = data.get("model_config")
