@@ -224,6 +224,18 @@ def _invoke_stream_response(
     return httpx.Response(200, text=stream_payload)
 
 
+def _uploaded_tool_file_response() -> dict[str, object]:
+    return {
+        "id": "tool-file-1",
+        "reference": "dify-file-ref:tool-file-1",
+        "name": "tool-output.bin",
+        "size": 11,
+        "extension": ".bin",
+        "mime_type": "application/octet-stream",
+        "preview_url": "/files/tools/tool-file-1.bin",
+    }
+
+
 def _tool_transport(
     *,
     invoke_error_payload: dict[str, object] | None = None,
@@ -243,6 +255,15 @@ def _tool_transport(
                 "auth_scope": "workspace",
             }
             return _invoke_stream_response(error_payload=invoke_error_payload, chunked_blob=chunked_blob)
+
+        if request.url.path.endswith("/inner/api/agent/files/upload-request"):
+            payload = json.loads(request.content.decode("utf-8"))
+            assert payload["tenant_id"] == "tenant-1"
+            assert payload["user_id"] == "user-1"
+            return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=test"})
+
+        if request.url.path.endswith("/files/upload/for-plugin"):
+            return httpx.Response(201, json=_uploaded_tool_file_response())
 
         raise AssertionError(f"Unexpected request path: {request.url.path}")
 
@@ -1041,7 +1062,88 @@ def test_dify_plugin_tools_layer_merges_blob_chunks_before_observation_conversio
                     None,  # pyright: ignore[reportArgumentType]
                 )
 
-                assert "hello world" in result
-                assert "sequence=0" not in result
+                assert hasattr(result, "metadata")
+                assert "generated file" in str(result.content)
+                assert "sequence=0" not in str(result.content)
+                assert result.metadata == {
+                    "tool_files": [
+                        {
+                            "tool_file_id": "tool-file-1",
+                            "reference": "dify-file-ref:tool-file-1",
+                            "filename": "tool-output.bin",
+                            "mime_type": "application/octet-stream",
+                            "url": "/files/tools/tool-file-1.bin",
+                            "transfer_method": "tool_file",
+                            "type": "custom",
+                        }
+                    ]
+                }
+
+    asyncio.run(scenario())
+
+
+def test_dify_plugin_tools_layer_uploads_image_blob_and_returns_compact_observation() -> None:
+    async def scenario() -> None:
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path.endswith("/dispatch/tool/invoke"):
+                stream_payload = "\n".join(
+                    [
+                        "data: "
+                        + json.dumps(
+                            {
+                                "code": 0,
+                                "message": "ok",
+                                "data": {
+                                    "type": "blob",
+                                    "message": {"blob": "aGVsbG8="},
+                                    "meta": {"mime_type": "image/png", "filename": "cat.png"},
+                                },
+                            }
+                        ),
+                        "",
+                    ]
+                )
+                return httpx.Response(200, text=stream_payload)
+            if request.url.path.endswith("/inner/api/agent/files/upload-request"):
+                return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=test"})
+            if request.url.path.endswith("/files/upload/for-plugin"):
+                return httpx.Response(
+                    201,
+                    json={
+                        "id": "tool-file-image",
+                        "reference": "dify-file-ref:tool-file-image",
+                        "name": "cat.png",
+                        "size": 5,
+                        "extension": ".png",
+                        "mime_type": "image/png",
+                        "preview_url": "/files/tools/tool-file-image.png",
+                    },
+                )
+            raise AssertionError(f"Unexpected request path: {request.url.path}")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
+            ) as run:
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client, dify_api_http_client=client
+                    )
+                )[0]
+                result = await tool.function_schema.call(
+                    {"query": "dify", "region": "global"},
+                    None,  # pyright: ignore[reportArgumentType]
+                )
+
+                assert "image has been created" in str(result.content)
+                assert "blob=" not in str(result.content)
+                assert result.metadata["tool_files"][0]["type"] == "image"
 
     asyncio.run(scenario())
