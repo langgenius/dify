@@ -664,7 +664,24 @@ export class CollaborationManager {
     }
     const connectGeneration = this.connectGeneration
 
-    if (!this.crdtRuntime) await this.ensureCrdtRuntime()
+    if (!this.crdtRuntime) {
+      try {
+        await this.ensureCrdtRuntime()
+      } catch (error) {
+        console.error('Failed to load collaboration runtime, falling back to local editing:', error)
+        if (connectGeneration === this.connectGeneration && this.targetAppId === appId) {
+          this.currentAppId = appId
+          // Mirrors activateLocalDraftFallback(): only degrade to local-only editing on the
+          // default self-hosted socket URL. A configured (Cloud/Enterprise) socket implies a real
+          // collaboration server may have other users editing live, so editing stays blocked here.
+          if (isDefaultSocketUrl() && !this.hasEstablishedConnection)
+            this.localDraftFallbackActive = true
+          this.activeConnections.add(connectionId)
+          this.emitGraphReadyState()
+        }
+        return connectionId
+      }
+    }
 
     if (connectGeneration !== this.connectGeneration || this.targetAppId !== appId)
       return connectionId
