@@ -519,10 +519,13 @@ class DatasetDocumentListApi(Resource):
                 document.total_segments = total_segments
         response = {
             "data": document_with_segments_responses(documents, session=session),
-            "has_more": len(documents) == limit,
-            "limit": limit,
+            # The result object already knows: it was built from the page the query
+            # ran with, where `len(documents) == limit` is only ever a guess that a
+            # full page means another one follows.
+            "has_more": paginated_documents.has_next,
+            "limit": paginated_documents.per_page,
             "total": paginated_documents.total,
-            "page": page,
+            "page": paginated_documents.page,
         }
 
         return dump_response(DocumentWithSegmentsListResponse, response)
