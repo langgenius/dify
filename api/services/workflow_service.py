@@ -1828,6 +1828,20 @@ class WorkflowService:
             node_data = node.get("data", {})
             node_type = node_data.get("type")
 
+            if node_type == BuiltinNodeTypes.START:
+                for variable in node_data.get("variables", []):
+                    max_length = variable.get("max_length")
+                    # Pydantic rejects large JSON floats for integer fields. Catch
+                    # the same invalid representation while publishing, with context.
+                    if isinstance(max_length, float) and (
+                        not max_length.is_integer() or abs(max_length) >= 10**19
+                    ):
+                        variable_name = variable.get("variable", "unknown")
+                        raise ValueError(
+                            f"Invalid max_length for start variable '{variable_name}': "
+                            "must be an integer within the supported range"
+                        )
+
             if node_type == BuiltinNodeTypes.HUMAN_INPUT:
                 self._validate_human_input_node_data(node_data)
 

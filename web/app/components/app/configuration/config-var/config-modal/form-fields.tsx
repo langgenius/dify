@@ -152,7 +152,9 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         >
           <ConfigString
             id={`${fieldId}-max-length`}
-            maxLength={type === InputVarType.textInput ? TEXT_MAX_LENGTH : Infinity}
+            // Keep paragraph limits within JavaScript's exact integer range so
+            // JSON serialization cannot turn them into exponential floats.
+            maxLength={type === InputVarType.textInput ? TEXT_MAX_LENGTH : Number.MAX_SAFE_INTEGER}
             modelId={modelId}
             value={maxLength}
             onChange={onPayloadChange('max_length')}

@@ -1036,6 +1036,22 @@ class TestWorkflowService:
         with pytest.raises(ValueError, match="Start node and trigger nodes cannot coexist"):
             workflow_service.validate_graph_structure(graph)
 
+    def test_validate_graph_structure_rejects_large_float_max_length(self, workflow_service: WorkflowService):
+        graph = {
+            "nodes": [
+                {
+                    "id": "start",
+                    "data": {
+                        "type": "start",
+                        "variables": [{"variable": "content", "max_length": 1e29}],
+                    },
+                }
+            ]
+        }
+
+        with pytest.raises(ValueError, match="Invalid max_length.*content"):
+            workflow_service.validate_graph_structure(graph)
+
     def test_validate_features_structure_workflow_mode(self, workflow_service: WorkflowService):
         """
         Test validate_features_structure for workflow mode.
