@@ -187,9 +187,14 @@ def test_variable_collection_get_raises_when_draft_workflow_missing(
     api = module.SnippetWorkflowVariableCollectionApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/?page=1&limit=20"):
+    with app.test_request_context("/"):
         with pytest.raises(module.DraftWorkflowNotExist):
-            handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
+            handler(
+                api,
+                module.WorkflowDraftVariableListQuery(page=1, limit=20),
+                _make_account(),
+                snippet=SimpleNamespace(id="snippet-1"),
+            )
 
 
 def test_node_variable_collection_get_lists_persisted_node_variables(
