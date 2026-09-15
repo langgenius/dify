@@ -21,7 +21,7 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
 
 if TYPE_CHECKING:
-    from core.ops.ops_trace_manager import TraceQueueManager
+    from core.ops.message_trace import MessageTraceRecorder
 
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
@@ -203,7 +203,8 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    trace_manager: "TraceQueueManager | None" = Field(default=None, exclude=True, repr=False)
+    trace_recorder: "MessageTraceRecorder | None" = Field(default=None, exclude=True, repr=False)
+    workflow_trace_state: dict[str, Any] | None = None
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -377,7 +378,7 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     start_node_id: str | None = None
 
 
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.message_trace import MessageTraceRecorder
 
 AppGenerateEntity.model_rebuild()
 EasyUIBasedAppGenerateEntity.model_rebuild()

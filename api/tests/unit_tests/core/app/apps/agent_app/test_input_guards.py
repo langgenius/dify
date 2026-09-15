@@ -39,7 +39,7 @@ def _make_entity(query: str = "hello") -> SimpleNamespace:
         model_conf=SimpleNamespace(model="gpt-4o-mini"),
         inputs={},
         query=query,
-        trace_manager=None,
+        trace_recorder=None,
         user_id="user-1",
         invoke_from=SimpleNamespace(),
     )

@@ -439,6 +439,8 @@ class App(Base):
     is_public: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.false())
     is_universal: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.false())
     tracing = mapped_column(LongText, nullable=True)
+    tracing_revision: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="0", default=0)
+    tracing_destination_revision: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="0", default=0)
     max_active_requests: Mapped[int | None]
     created_by = mapped_column(StringUUID, nullable=True)
     maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -2674,6 +2676,7 @@ class TraceAppConfig(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tracing_app_config_pkey"),
         sa.Index("trace_app_config_app_id_idx", "app_id"),
+        sa.UniqueConstraint("app_id", "tracing_provider", name="trace_app_config_app_provider_unique"),
     )
 
     id: Mapped[str] = mapped_column(

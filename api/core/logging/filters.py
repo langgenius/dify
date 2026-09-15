@@ -2,9 +2,41 @@
 
 import contextlib
 import logging
+from collections.abc import Mapping
 from typing import override
 
+import httpx
+
 from core.logging.context import get_identity_context, get_request_id, get_trace_id
+
+
+class HTTPURLRedactionFilter(logging.Filter):
+    """Remove credentials from URL log arguments without changing request URLs."""
+
+    @override
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple):
+            record.args = tuple(
+                argument.copy_with(userinfo=b"", query=None, fragment=None)
+                if isinstance(argument, httpx.URL)
+                else argument
+                for argument in record.args
+            )
+            # urllib3's request log uses a string target instead of a URL object.
+            if (
+                record.name == "urllib3.connectionpool"
+                and record.msg == '%s://%s:%s "%s %s %s" %s %s'
+                and len(record.args) == 8
+                and isinstance(record.args[4], str)
+            ):
+                redacted_url = httpx.URL(record.args[4]).copy_with(userinfo=b"", query=None, fragment=None)
+                record.args = (*record.args[:4], redacted_url, *record.args[5:])
+        elif isinstance(record.args, Mapping):
+            record.args = {
+                key: value.copy_with(userinfo=b"", query=None, fragment=None) if isinstance(value, httpx.URL) else value
+                for key, value in record.args.items()
+            }
+        return True
 
 
 class TraceContextFilter(logging.Filter):

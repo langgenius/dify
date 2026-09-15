@@ -16,6 +16,7 @@ class AppTracingConfigRecord:
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    revision: int = 0
 
 
 class AppTracingConfigStore(Protocol):
@@ -43,6 +44,7 @@ class AppTracingConfigStore(Protocol):
         app_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any],
+        expected_revision: int,
     ) -> bool: ...
 
     def delete(
@@ -95,6 +97,11 @@ class AppTracingConfigAppNotFoundError(AppTracingConfigError):
 class AppTracingConfigAlreadyExistsError(AppTracingConfigError):
     def __init__(self) -> None:
         super().__init__("Trace config is exist.")
+
+
+class AppTracingConfigChangedError(AppTracingConfigError):
+    def __init__(self) -> None:
+        super().__init__("Tracing configuration changed; reload before saving")
 
 
 class AppTracingConfigNotFoundError(AppTracingConfigError):
@@ -211,6 +218,7 @@ class AppTracingConfigService:
             current_tracing_config=current.tracing_config,
         )
         updated = self._configs.update(
+            expected_revision=current.revision,
             workspace_id=workspace_id,
             app_id=app_id,
             tracing_provider=tracing_provider,

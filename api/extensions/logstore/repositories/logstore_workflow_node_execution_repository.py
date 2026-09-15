@@ -12,11 +12,11 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, override
 
+from pydantic import TypeAdapter
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
@@ -49,10 +49,10 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
     """
     logger.debug("_dict_to_workflow_node_execution: data keys=%s", list(data.keys())[:5])
     # Parse JSON fields
-    inputs = JSON_DICT_ADAPTER.validate_json(data.get("inputs") or "{}")
-    process_data = JSON_DICT_ADAPTER.validate_json(data.get("process_data") or "{}")
-    outputs = JSON_DICT_ADAPTER.validate_json(data.get("outputs") or "{}")
-    metadata = JSON_DICT_ADAPTER.validate_json(data.get("execution_metadata") or "{}")
+    inputs = TypeAdapter(dict[str, Any]).validate_json(data.get("inputs") or "{}")
+    process_data = TypeAdapter(dict[str, Any]).validate_json(data.get("process_data") or "{}")
+    outputs = TypeAdapter(dict[str, Any]).validate_json(data.get("outputs") or "{}")
+    metadata = TypeAdapter(dict[str, Any]).validate_json(data.get("execution_metadata") or "{}")
 
     # Convert metadata to domain enum keys
     domain_metadata = {}

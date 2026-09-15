@@ -1,604 +1,357 @@
-import logging
-import os
-import uuid
-from datetime import UTC, datetime, timedelta
-from typing import override
+"""Export completed observations to Langfuse v4 with attempt-owned SDK resources."""
 
-import httpx
+import math
+from datetime import timedelta
+from typing import Any, override
+from uuid import UUID
+
 from langfuse import __version__ as langfuse_version
-from langfuse.api import (
-    CreateGenerationBody,
-    CreateSpanBody,
-    IngestionEvent_GenerationCreate,
-    IngestionEvent_SpanCreate,
-    IngestionEvent_TraceCreate,
-    LangfuseAPI,
-    TraceBody,
-)
-from langfuse.api.commons.types.usage import Usage
-from sqlalchemy.orm import sessionmaker
+from langfuse import propagate_attributes
 
-from core.ops.base_trace_instance import BaseTraceInstance
-from core.ops.entities.trace_entity import (
-    BaseTraceInfo,
-    DatasetRetrievalTraceInfo,
-    GenerateNameTraceInfo,
-    MessageTraceInfo,
-    ModerationTraceInfo,
-    SuggestedQuestionTraceInfo,
-    ToolTraceInfo,
-    TraceTaskName,
-    WorkflowTraceInfo,
+# The pinned SDK's public client caches resources by public key and cannot backdate
+# observations. Use its serializers and processor without initializing that client.
+from langfuse._client.attributes import create_generation_attributes, create_span_attributes
+from langfuse._client.span_processor import LangfuseSpanProcessor
+from langfuse.api import MapValue
+from opentelemetry import context, trace
+from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import SpanLimits, TracerProvider
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.sdk.trace.id_generator import IdGenerator
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON
+from pydantic import JsonValue
+
+from core.ops.otlp_trace import OtlpTraceClient
+from core.ops.provider_export import (
+    TraceExportError,
+    TraceProviderHttpClient,
+    basic_auth,
+    export_span_id,
+    json_text,
+    provider_uuid,
+    span_attributes,
+    span_id_bytes,
+    timestamp_ns,
 )
-from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
-from core.ops.utils import filter_none_values
-from core.repositories import DifyCoreRepositoryFactory
+from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_langfuse.config import LangfuseConfig
-from dify_trace_langfuse.entities.langfuse_trace_entity import (
-    GenerationUsage,
-    LangfuseGeneration,
-    LangfuseSpan,
-    LangfuseTrace,
-    LevelEnum,
-    UnitEnum,
-)
-from extensions.ext_database import db
-from graphon.enums import BuiltinNodeTypes
-from models import EndUser, WorkflowNodeExecutionTriggeredFrom
-from models.enums import MessageStatus
-
-logger = logging.getLogger(__name__)
 
 
-class LangFuseDataTrace(BaseTraceInstance):
-    def __init__(
-        self,
-        langfuse_config: LangfuseConfig,
-    ):
-        super().__init__(langfuse_config)
-        timeout = int(os.environ.get("LANGFUSE_TIMEOUT", 5))
-        self._http_client: httpx.Client | None = httpx.Client(timeout=timeout)
-        self.langfuse_client = LangfuseAPI(
-            base_url=langfuse_config.host,
-            username=langfuse_config.public_key,
-            password=langfuse_config.secret_key,
-            x_langfuse_sdk_name="python",
-            x_langfuse_sdk_version=langfuse_version,
-            x_langfuse_public_key=langfuse_config.public_key,
-            timeout=timeout,
-            httpx_client=self._http_client,
-        )
-        self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
-
-    def close(self) -> None:
-        client = getattr(self, "_http_client", None)
-        if client is None:
-            return
-        self._http_client = None
-        try:
-            client.close()
-        except Exception:
-            logger.debug("Failed to close Langfuse HTTP client", exc_info=True)
-
-    def __del__(self) -> None:
-        self.close()
-
-    @staticmethod
-    def _get_completion_start_time(
-        start_time: datetime | None, time_to_first_token: float | int | None
-    ) -> datetime | None:
-        """Convert a relative TTFT value in seconds into Langfuse's absolute completion start time."""
-        if start_time is None or time_to_first_token is None:
-            return None
-
-        try:
-            ttft_seconds = float(time_to_first_token)
-        except (TypeError, ValueError):
-            return None
-
-        if ttft_seconds < 0:
-            return None
-
-        return start_time + timedelta(seconds=ttft_seconds)
-
-    @override
-    def trace(self, trace_info: BaseTraceInfo):
-        match trace_info:
-            case WorkflowTraceInfo():
-                self.workflow_trace(trace_info)
-            case MessageTraceInfo():
-                self.message_trace(trace_info)
-            case ModerationTraceInfo():
-                self.moderation_trace(trace_info)
-            case SuggestedQuestionTraceInfo():
-                self.suggested_question_trace(trace_info)
-            case DatasetRetrievalTraceInfo():
-                self.dataset_retrieval_trace(trace_info)
-            case ToolTraceInfo():
-                self.tool_trace(trace_info)
-            case GenerateNameTraceInfo():
-                self.generate_name_trace(trace_info)
-            case _:
-                pass
-
-    def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = trace_info.trace_id or trace_info.workflow_run_id
-        user_id = trace_info.metadata.get("user_id")
-        metadata = trace_info.metadata
-        metadata["workflow_app_log_id"] = trace_info.workflow_app_log_id
-
-        if trace_info.message_id:
-            trace_id = trace_info.trace_id or trace_info.message_id
-            name = TraceTaskName.MESSAGE_TRACE
-            trace_data = LangfuseTrace(
-                id=trace_id,
-                user_id=user_id,
-                name=name,
-                input=dict(trace_info.workflow_run_inputs),
-                output=dict(trace_info.workflow_run_outputs),
-                metadata=metadata,
-                session_id=trace_info.conversation_id,
-                tags=["message", "workflow"],
-                version=trace_info.workflow_run_version,
-            )
-            self.add_trace(langfuse_trace_data=trace_data)
-            workflow_span_data = LangfuseSpan(
-                id=trace_info.workflow_run_id,
-                name=TraceTaskName.WORKFLOW_TRACE,
-                input=dict(trace_info.workflow_run_inputs),
-                output=dict(trace_info.workflow_run_outputs),
-                trace_id=trace_id,
-                start_time=trace_info.start_time,
-                end_time=trace_info.end_time,
-                metadata=metadata,
-                level=LevelEnum.DEFAULT if trace_info.error == "" else LevelEnum.ERROR,
-                status_message=trace_info.error or "",
-            )
-            self.add_span(langfuse_span_data=workflow_span_data)
-        else:
-            trace_data = LangfuseTrace(
-                id=trace_id,
-                user_id=user_id,
-                name=TraceTaskName.WORKFLOW_TRACE,
-                input=dict(trace_info.workflow_run_inputs),
-                output=dict(trace_info.workflow_run_outputs),
-                metadata=metadata,
-                session_id=trace_info.conversation_id,
-                tags=["workflow"],
-                version=trace_info.workflow_run_version,
-            )
-            self.add_trace(langfuse_trace_data=trace_data)
-
-        # through workflow_run_id get all_nodes_execution using repository
-        session_factory = sessionmaker(bind=db.engine)
-        # Find the app's creator account
-        app_id = trace_info.metadata.get("app_id")
-        if not app_id:
-            raise ValueError("No app_id found in trace_info metadata")
-
-        service_account = self.get_service_account_with_tenant(app_id)
-
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-            session_factory=session_factory,
-            tenant_id=trace_info.tenant_id,
-            user=service_account,
-            app_id=app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        )
-
-        # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
-            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
-        )
-        tool_parents = workflow_tool_parent_ids(workflow_node_executions)
-
-        for node_execution in workflow_node_executions:
-            node_execution_id = node_execution.id
-            tenant_id = trace_info.tenant_id  # Use from trace_info instead
-            app_id = trace_info.metadata.get("app_id")  # Use from trace_info instead
-            node_name = node_execution.title
-            node_type = node_execution.node_type
-            status = node_execution.status
-            if node_type == BuiltinNodeTypes.LLM:
-                inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
-            else:
-                inputs = node_execution.inputs or {}
-            outputs = node_execution.outputs or {}
-            created_at = node_execution.created_at or datetime.now()
-            elapsed_time = node_execution.elapsed_time
-            finished_at = created_at + timedelta(seconds=elapsed_time)
-
-            execution_metadata = node_execution.metadata or {}
-            metadata = {str(k): v for k, v in execution_metadata.items()}
-            metadata.update(
-                {
-                    "workflow_run_id": trace_info.workflow_run_id,
-                    "node_execution_id": node_execution_id,
-                    "tenant_id": tenant_id,
-                    "app_id": app_id,
-                    "node_name": node_name,
-                    "node_type": node_type,
-                    "status": status,
+def _prepare_timed_spans(completed_trace: CompletedTrace) -> list[TraceSpan]:
+    """Keep untimed details as marked instants at a captured endpoint, never export time."""
+    spans: dict[str, TraceSpan] = {}
+    for span in completed_trace.spans:
+        if span.started_at is None or span.ended_at is None:
+            parent = spans.get(span.parent_span_id or "")
+            anchor = span.started_at or span.ended_at or (parent.started_at if parent else None)
+            if anchor is None:
+                raise TraceExportError("langfuse_span_time_missing")
+            span = span.model_copy(
+                update={
+                    "started_at": anchor,
+                    "ended_at": anchor,
+                    "attributes": {
+                        **span.attributes,
+                        "dify.timing.estimated": True,
+                        "dify.timing.source": "captured_endpoint",
+                    },
                 }
             )
-            process_data = node_execution.process_data or {}
-            model_provider = process_data.get("model_provider", None)
-            model_name = process_data.get("model_name", None)
-            if model_provider is not None and model_name is not None:
-                metadata.update(
-                    {
-                        "model_provider": model_provider,
-                        "model_name": model_name,
-                    }
-                )
+        assert span.started_at is not None
+        assert span.ended_at is not None
+        if span.ended_at < span.started_at:
+            raise TraceExportError("langfuse_span_time_invalid")
+        spans[span.span_id] = span
+    return list(spans.values())
 
-            # add generation span
-            if process_data and process_data.get("model_mode") == "chat":
-                total_token = metadata.get("total_tokens", 0)
-                prompt_tokens = 0
-                completion_tokens = 0
-                completion_start_time = None
-                try:
-                    usage_data = process_data.get("usage")
-                    if not isinstance(usage_data, dict):
-                        usage_data = outputs.get("usage")
-                    if not isinstance(usage_data, dict):
-                        usage_data = {}
-                    prompt_tokens = usage_data.get("prompt_tokens", 0)
-                    completion_tokens = usage_data.get("completion_tokens", 0)
-                    completion_start_time = self._get_completion_start_time(
-                        created_at, usage_data.get("time_to_first_token")
-                    )
-                except Exception:
-                    logger.error("Failed to extract usage", exc_info=True)
 
-                # add generation
-                generation_usage = GenerationUsage(
-                    input=prompt_tokens,
-                    output=completion_tokens,
-                    total=total_token,
-                    unit=UnitEnum.TOKENS,
-                )
+def _normalize_messages(value: JsonValue) -> JsonValue:
+    if isinstance(value, list):
+        return [_normalize_messages(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    message = dict(value)
+    if "role" in message:
+        if message["role"] == "human":
+            message["role"] = "user"
+        elif message["role"] == "ai":
+            message["role"] = "assistant"
+        if "text" in message and "content" not in message:
+            message["content"] = message.pop("text")
+    if "messages" in message:
+        message["messages"] = _normalize_messages(message["messages"])
+    return message
 
-                node_generation_data = LangfuseGeneration(
-                    id=node_execution_id,
-                    name=node_name,
-                    trace_id=trace_id,
-                    model=process_data.get("model_name"),
-                    start_time=created_at,
-                    completion_start_time=completion_start_time,
-                    end_time=finished_at,
-                    input=inputs,
-                    output=outputs,
-                    metadata=metadata,
-                    level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
-                    status_message=trace_info.error or "",
-                    parent_observation_id=tool_parents.get(node_execution_id)
-                    or (trace_info.workflow_run_id if trace_info.message_id else None),
-                    usage=generation_usage,
-                )
 
-                self.add_generation(langfuse_generation_data=node_generation_data)
+def _map_model_parameters(value: JsonValue) -> dict[str, MapValue] | None:
+    if not isinstance(value, dict):
+        return None
+    parameters: dict[str, MapValue] = {}
+    for key, parameter in value.items():
+        if parameter is None or isinstance(parameter, (str, int, float, bool)):
+            parameters[key] = parameter
+        elif isinstance(parameter, list) and all(isinstance(item, str) for item in parameter):
+            parameters[key] = [item for item in parameter if isinstance(item, str)]
+        else:
+            parameters[key] = json_text(parameter)
+    return parameters
 
-            # add normal span
-            else:
-                span_data = LangfuseSpan(
-                    id=node_execution_id,
-                    name=node_name,
-                    input=inputs,
-                    output=outputs,
-                    trace_id=trace_id,
-                    start_time=created_at,
-                    end_time=finished_at,
-                    metadata=metadata,
-                    level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
-                    status_message=trace_info.error or "",
-                    parent_observation_id=tool_parents.get(node_execution_id)
-                    or (trace_info.workflow_run_id if trace_info.message_id else None),
-                )
 
-                self.add_span(langfuse_span_data=span_data)
+class LangfuseSpanIds(IdGenerator):
+    def __init__(self, trace_id: str, span_ids: dict[str, str]):
+        self.trace_id = int(trace_id, 16)
+        self.span_ids = iter(span_ids.values())
 
-    def message_trace(self, trace_info: MessageTraceInfo, **kwargs):
-        # get message file data
-        file_list = trace_info.file_list
-        metadata = trace_info.metadata
-        message_data = trace_info.message_data
-        if message_data is None:
-            return
-        message_id = message_data.id
+    @override
+    def generate_trace_id(self) -> int:
+        return self.trace_id
 
-        user_id = message_data.from_account_id
-        if message_data.from_end_user_id:
-            end_user_data: EndUser | None = db.session.get(EndUser, message_data.from_end_user_id)
-            if end_user_data is not None:
-                user_id = end_user_data.session_id
-                metadata["user_id"] = user_id
+    @override
+    def generate_span_id(self) -> int:
+        return int(next(self.span_ids), 16)
 
-        trace_id = trace_info.trace_id or message_id
 
-        trace_data = LangfuseTrace(
-            id=trace_id,
-            user_id=user_id,
-            name=TraceTaskName.MESSAGE_TRACE,
-            input={
-                "message": trace_info.inputs,
-                "files": file_list,
-                "message_tokens": trace_info.message_tokens,
-                "answer_tokens": trace_info.answer_tokens,
-                "total_tokens": trace_info.total_tokens,
-                "error": trace_info.error,
-                "provider_response_latency": message_data.provider_response_latency,
-                "created_at": trace_info.start_time,
-            },
-            output=trace_info.outputs,
-            metadata=metadata,
-            session_id=message_data.conversation_id,
-            tags=["message", str(trace_info.conversation_mode)],
-            version=None,
-            release=None,
-            public=None,
+class LangfuseTraceClient:
+    def __init__(self, provider_config: dict[str, Any]):
+        self.config = LangfuseConfig.model_validate(provider_config)
+        runtime_settings = (
+            provider_config["_runtime_settings"]
+            if "_runtime_settings" in provider_config
+            else LangfuseConfig.load_runtime_settings(provider_config)
         )
-        self.add_trace(langfuse_trace_data=trace_data)
-
-        # add generation
-        generation_usage = GenerationUsage(
-            input=trace_info.message_tokens,
-            output=trace_info.answer_tokens,
-            total=trace_info.total_tokens,
-            unit=UnitEnum.TOKENS,
-            totalCost=message_data.total_price,
-        )
-        completion_start_time = self._get_completion_start_time(
-            trace_info.start_time,
-            trace_info.gen_ai_server_time_to_first_token,
+        self.http = TraceProviderHttpClient(
+            self.config.host,
+            {"Authorization": basic_auth(self.config.public_key, self.config.secret_key)},
+            request_timeout=runtime_settings.get("request_timeout", 5),
         )
 
-        langfuse_generation_data = LangfuseGeneration(
-            name="llm",
-            trace_id=trace_id,
-            start_time=trace_info.start_time,
-            completion_start_time=completion_start_time,
-            end_time=trace_info.end_time,
-            model=message_data.model_id,
-            input=trace_info.inputs,
-            output=message_data.answer,
-            metadata=metadata,
-            level=(LevelEnum.DEFAULT if message_data.status != MessageStatus.ERROR else LevelEnum.ERROR),
-            status_message=message_data.error or "",
-            usage=generation_usage,
-        )
-
-        self.add_generation(langfuse_generation_data)
-
-    def moderation_trace(self, trace_info: ModerationTraceInfo):
-        if trace_info.message_data is None:
-            return
-        span_data = LangfuseSpan(
-            name=TraceTaskName.MODERATION_TRACE,
-            input=trace_info.inputs,
-            output={
-                "action": trace_info.action,
-                "flagged": trace_info.flagged,
-                "preset_response": trace_info.preset_response,
-                "inputs": trace_info.inputs,
-            },
-            trace_id=trace_info.trace_id or trace_info.message_id,
-            start_time=trace_info.start_time or trace_info.message_data.created_at,
-            end_time=trace_info.end_time or trace_info.message_data.created_at,
-            metadata=trace_info.metadata,
-        )
-
-        self.add_span(langfuse_span_data=span_data)
-
-    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
-        message_data = trace_info.message_data
-        if message_data is None:
-            return
-        generation_usage = GenerationUsage(
-            total=len(str(trace_info.suggested_question)),
-            input=len(trace_info.inputs) if trace_info.inputs else 0,
-            output=len(trace_info.suggested_question),
-            unit=UnitEnum.CHARACTERS,
-        )
-
-        generation_data = LangfuseGeneration(
-            name=TraceTaskName.SUGGESTED_QUESTION_TRACE,
-            input=trace_info.inputs,
-            output=str(trace_info.suggested_question),
-            trace_id=trace_info.trace_id or trace_info.message_id,
-            start_time=trace_info.start_time,
-            end_time=trace_info.end_time,
-            metadata=trace_info.metadata,
-            level=(LevelEnum.DEFAULT if message_data.status != MessageStatus.ERROR else LevelEnum.ERROR),
-            status_message=message_data.error or "",
-            usage=generation_usage,
-        )
-
-        self.add_generation(langfuse_generation_data=generation_data)
-
-    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
-        if trace_info.message_data is None:
-            return
-        dataset_retrieval_span_data = LangfuseSpan(
-            name=TraceTaskName.DATASET_RETRIEVAL_TRACE,
-            input=trace_info.inputs,
-            output={"documents": trace_info.documents},
-            trace_id=trace_info.trace_id or trace_info.message_id,
-            start_time=trace_info.start_time or trace_info.message_data.created_at,
-            end_time=trace_info.end_time or trace_info.message_data.updated_at,
-            metadata=trace_info.metadata,
-        )
-
-        self.add_span(langfuse_span_data=dataset_retrieval_span_data)
-
-    def tool_trace(self, trace_info: ToolTraceInfo):
-        tool_span_data = LangfuseSpan(
-            name=trace_info.tool_name,
-            input=trace_info.tool_inputs,
-            output=trace_info.tool_outputs,
-            trace_id=trace_info.trace_id or trace_info.message_id,
-            start_time=trace_info.start_time,
-            end_time=trace_info.end_time,
-            metadata=trace_info.metadata,
-            level=(LevelEnum.DEFAULT if trace_info.error == "" or trace_info.error is None else LevelEnum.ERROR),
-            status_message=trace_info.error,
-        )
-
-        self.add_span(langfuse_span_data=tool_span_data)
-
-    def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
-        name_generation_trace_data = LangfuseTrace(
-            name=TraceTaskName.GENERATE_NAME_TRACE,
-            input=trace_info.inputs,
-            output=trace_info.outputs,
-            user_id=trace_info.tenant_id,
-            metadata=trace_info.metadata,
-            session_id=trace_info.conversation_id,
-        )
-
-        self.add_trace(langfuse_trace_data=name_generation_trace_data)
-
-        name_generation_span_data = LangfuseSpan(
-            name=TraceTaskName.GENERATE_NAME_TRACE,
-            input=trace_info.inputs,
-            output=trace_info.outputs,
-            trace_id=trace_info.conversation_id,
-            start_time=trace_info.start_time,
-            end_time=trace_info.end_time,
-            metadata=trace_info.metadata,
-        )
-        self.add_span(langfuse_span_data=name_generation_span_data)
-
-    def _make_event_id(self) -> str:
-        return str(uuid.uuid4())
-
-    def _now_iso(self) -> str:
-        return datetime.now(UTC).isoformat()
-
-    def add_trace(self, langfuse_trace_data: LangfuseTrace | None = None):
-        data = filter_none_values(langfuse_trace_data.model_dump()) if langfuse_trace_data else {}
-        try:
-            body = TraceBody(
-                id=data.get("id"),
-                name=data.get("name"),
-                user_id=data.get("user_id"),
-                input=data.get("input"),
-                output=data.get("output"),
-                metadata=data.get("metadata"),
-                session_id=data.get("session_id"),
-                version=data.get("version"),
-                release=data.get("release"),
-                tags=data.get("tags"),
-                public=data.get("public"),
-            )
-            event = IngestionEvent_TraceCreate(
-                body=body,
-                id=self._make_event_id(),
-                timestamp=self._now_iso(),
-            )
-            self.langfuse_client.ingestion.batch(batch=[event])
-            logger.debug("LangFuse Trace created successfully")
-        except Exception as e:
-            raise ValueError(f"LangFuse Failed to create trace: {str(e)}")
-
-    def add_span(self, langfuse_span_data: LangfuseSpan | None = None):
-        data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
-        try:
-            body = CreateSpanBody(
-                id=data.get("id"),
-                trace_id=data.get("trace_id"),
-                name=data.get("name"),
-                start_time=data.get("start_time"),
-                end_time=data.get("end_time"),
-                input=data.get("input"),
-                output=data.get("output"),
-                metadata=data.get("metadata"),
-                level=data.get("level"),
-                status_message=data.get("status_message"),
-                parent_observation_id=data.get("parent_observation_id"),
-                version=data.get("version"),
-            )
-            event = IngestionEvent_SpanCreate(
-                body=body,
-                id=self._make_event_id(),
-                timestamp=self._now_iso(),
-            )
-            self.langfuse_client.ingestion.batch(batch=[event])
-            logger.debug("LangFuse Span created successfully")
-        except Exception as e:
-            raise ValueError(f"LangFuse Failed to create span: {str(e)}")
-
-    def update_span(self, span, langfuse_span_data: LangfuseSpan | None = None):
-        format_span_data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
-
-        span.end(**format_span_data)
-
-    def add_generation(self, langfuse_generation_data: LangfuseGeneration | None = None):
-        data = filter_none_values(langfuse_generation_data.model_dump()) if langfuse_generation_data else {}
-        try:
-            usage_data = data.pop("usage", None)
-            usage = None
-            if usage_data:
-                usage = Usage(
-                    input=usage_data.get("input", 0) or 0,
-                    output=usage_data.get("output", 0) or 0,
-                    total=usage_data.get("total", 0) or 0,
-                    unit=usage_data.get("unit"),
-                    input_cost=usage_data.get("inputCost"),
-                    output_cost=usage_data.get("outputCost"),
-                    total_cost=usage_data.get("totalCost"),
-                )
-
-            body = CreateGenerationBody(
-                id=data.get("id"),
-                trace_id=data.get("trace_id"),
-                name=data.get("name"),
-                start_time=data.get("start_time"),
-                end_time=data.get("end_time"),
-                model=data.get("model"),
-                model_parameters=data.get("model_parameters"),
-                input=data.get("input"),
-                output=data.get("output"),
-                usage=usage,
-                metadata=data.get("metadata"),
-                level=data.get("level"),
-                status_message=data.get("status_message"),
-                parent_observation_id=data.get("parent_observation_id"),
-                version=data.get("version"),
-                completion_start_time=data.get("completion_start_time"),
-            )
-            event = IngestionEvent_GenerationCreate(
-                body=body,
-                id=self._make_event_id(),
-                timestamp=self._now_iso(),
-            )
-            self.langfuse_client.ingestion.batch(batch=[event])
-            logger.debug("LangFuse Generation created successfully")
-        except Exception as e:
-            raise ValueError(f"LangFuse Failed to create generation: {str(e)}")
-
-    def update_generation(self, generation, langfuse_generation_data: LangfuseGeneration | None = None):
-        format_generation_data = (
-            filter_none_values(langfuse_generation_data.model_dump()) if langfuse_generation_data else {}
-        )
-
-        generation.end(**format_generation_data)
-
-    def api_check(self):
-        try:
-            projects = self.langfuse_client.projects.get()
-        except Exception as e:
-            logger.debug("LangFuse API check failed", exc_info=True)
-            raise ValueError(f"LangFuse API check failed: {str(e)}")
-        if not projects.data:
-            raise ValueError("LangFuse API check failed: no project found for the provided credentials")
+    def verify_credentials(self) -> bool:
+        self.http.request("GET", "api/public/projects")
         return True
 
-    def get_project_key(self):
+    def get_project_url(self) -> str:
         try:
-            projects = self.langfuse_client.projects.get()
-            return projects.data[0].id
-        except Exception as e:
-            logger.debug("LangFuse get project key failed", exc_info=True)
-            raise ValueError(f"LangFuse get project key failed: {str(e)}")
+            projects = self.http.request("GET", "api/public/projects").json().get("data", [])
+            if projects:
+                return f"{self.config.host.rstrip('/')}/project/{projects[0]['id']}"
+        except Exception:
+            # Project discovery must not prevent reading saved settings.
+            return f"{self.config.host.rstrip('/')}/"
+        return f"{self.config.host.rstrip('/')}/"
+
+    def export_trace(
+        self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
+    ) -> ExportedParentSpans:
+        spans = _prepare_timed_spans(completed_trace)
+        root = spans[0]
+        trace_id = UUID(provider_uuid(completed_trace.trace_id)).hex
+        if parent_span is None and (external_id := completed_trace.source.external_trace_id):
+            try:
+                external_uuid = UUID(external_id)
+                if external_uuid.int:
+                    trace_id = external_uuid.hex
+            except ValueError:
+                pass
+        trace_name, trace_version = root.span_name, root.source_workflow_version
+        operation_type = root.attributes.get("operation_type", root.span_type)
+        trace_tags = [operation_type if isinstance(operation_type, str) else root.span_type]
+        if root.span_type == "workflow" and completed_trace.source.message_id:
+            trace_tags.insert(0, "message")
+        elif operation_type == "message":
+            if isinstance(mode := root.attributes.get("conversation_mode", root.attributes.get("app_mode")), str):
+                trace_tags.append(mode)
+        parent = None
+        if parent_span is not None:
+            trace_id, parent_id = str(parent_span["trace_id"]), str(parent_span["span_id"])
+            # Legacy UUID observation IDs cannot be represented by 64-bit OTEL parents.
+            if len(trace_id) != 32 or len(parent_id) != 16:
+                raise TraceExportError("langfuse_legacy_parent_receipt")
+            parent = trace.NonRecordingSpan(
+                trace.SpanContext(int(trace_id, 16), int(parent_id, 16), True, trace.TraceFlags(1))
+            )
+            if not parent.get_span_context().is_valid:
+                raise TraceExportError("langfuse_invalid_parent_receipt")
+            trace_name = str(parent_span.get("trace_name", trace_name))
+            if parent_span.get("version") is not None:
+                trace_version = str(parent_span["version"])
+            if isinstance(parent_tags := parent_span.get("tags"), list):
+                trace_tags = [tag for tag in parent_tags if isinstance(tag, str)]
+        if (
+            completed_trace.source.message_id
+            and completed_trace.source.workflow_run_id
+            and "workflow" not in trace_tags
+        ):
+            trace_tags.append("workflow")
+        span_ids = {span.span_id: span_id_bytes(export_span_id(completed_trace, span.span_id)).hex() for span in spans}
+        collector = InMemorySpanExporter()
+        provider = TracerProvider(
+            resource=Resource({"service.name": "dify"}),
+            sampler=ALWAYS_ON,
+            id_generator=LangfuseSpanIds(trace_id, span_ids),
+            # CompletedTrace already bounds content; do not silently drop its metadata.
+            span_limits=SpanLimits(
+                max_span_attributes=SpanLimits.UNSET,
+                max_span_attribute_length=SpanLimits.UNSET,
+            ),
+            shutdown_on_exit=False,
+        )
+        # This provider only serializes observations; the previous HTTP API ignored OTEL_SDK_DISABLED.
+        provider._disabled = False
+        token = context.attach(context.Context())
+        try:
+            processor = LangfuseSpanProcessor(
+                public_key=self.config.public_key,
+                secret_key=self.config.secret_key,
+                base_url=self.config.host,
+                span_exporter=collector,
+                flush_at=1,
+                flush_interval=1,
+            )
+            provider.add_span_processor(processor)
+            tracer = provider.get_tracer(
+                "langfuse-sdk", langfuse_version, attributes={"public_key": self.config.public_key}
+            )
+            observations: dict[str, trace.Span] = {}
+            with propagate_attributes(
+                user_id=completed_trace.source.actor_id,
+                session_id=completed_trace.source.session_id or completed_trace.source.conversation_id,
+                trace_name=trace_name,
+                version=trace_version,
+                tags=trace_tags,
+                metadata={"dify.tenant_id": completed_trace.source.tenant_id},
+            ):
+                for span in spans:
+                    inputs = _normalize_messages(span.inputs) if span.span_type == "llm" else span.inputs
+                    if span.node_execution_id and span.attributes.get("node_type") in (
+                        "question-classifier",
+                        "parameter-extractor",
+                    ):
+                        inputs = span.attributes.get("original_inputs", span.inputs)
+                    observation_failed = (
+                        span.status == "error"
+                        or (span.status == "handled_error" and span.span_type != "workflow")
+                        or (span.status == "cancelled" and bool(span.error))
+                    )
+                    attributes = create_span_attributes(
+                        input=inputs,
+                        output=span.outputs,
+                        metadata={**root.attributes, **span_attributes(completed_trace, span)},
+                        level="ERROR" if observation_failed else "DEFAULT",
+                        status_message=span.error,
+                    )
+                    # SDK propagation caps strings at 200 characters; keep Dify's
+                    # longer correlation values on every observation as well.
+                    attributes.update(
+                        {
+                            key: value
+                            for key, value in {
+                                "user.id": completed_trace.source.actor_id,
+                                "session.id": completed_trace.source.session_id
+                                or completed_trace.source.conversation_id,
+                                "langfuse.trace.name": trace_name,
+                                "langfuse.version": trace_version,
+                                "langfuse.trace.tags": trace_tags,
+                            }.items()
+                            if value is not None
+                        }
+                    )
+                    is_generation = span.span_type == "llm" and span.attributes.get("operation_type") != "generate_name"
+                    if span.node_execution_id and isinstance(span.attributes.get("node_type"), str):
+                        process_data = span.attributes.get("process_data")
+                        is_generation = (
+                            span.attributes.get(
+                                "model_mode", process_data.get("model_mode") if isinstance(process_data, dict) else None
+                            )
+                            == "chat"
+                        )
+                    if is_generation:
+                        cost = span.usage.get("total_price", span.usage.get("total_cost"))
+                        model = span.attributes.get("model_name")
+                        completion_start_time = None
+                        ttft = span.usage.get("time_to_first_token")
+                        if (
+                            isinstance(ttft, (int, float))
+                            and math.isfinite(ttft)
+                            and ttft >= 0
+                            and span.started_at is not None
+                            and not span.attributes.get("dify.timing.estimated")
+                        ):
+                            completion_start_time = span.started_at + timedelta(seconds=ttft)
+                        attributes.update(
+                            create_generation_attributes(
+                                model=model if isinstance(model, str) else None,
+                                model_parameters=_map_model_parameters(span.attributes.get("model_parameters")),
+                                completion_start_time=completion_start_time,
+                                usage_details={
+                                    key: tokens
+                                    for key, value in (
+                                        ("input", "prompt_tokens"),
+                                        ("output", "completion_tokens"),
+                                        ("total", "total_tokens"),
+                                    )
+                                    if isinstance(tokens := span.usage.get(value), int)
+                                },
+                                cost_details={"total": float(str(cost))} if cost is not None else None,
+                            )
+                        )
+                    # OTLP integer attributes are signed 64-bit; preserve larger JSON numbers as strings.
+                    for key, value in attributes.items():
+                        if isinstance(value, int) and not -(2**63) <= value < 2**63:
+                            attributes[key] = str(value)
+                    observation_parent = observations[span.parent_span_id] if span.parent_span_id else parent
+                    observation = tracer.start_span(
+                        span.span_name,
+                        context=trace.set_span_in_context(observation_parent)
+                        if observation_parent is not None
+                        else context.get_current(),
+                        attributes=attributes,
+                        start_time=timestamp_ns(span.started_at),
+                    )
+                    if parent is not None and span.span_id == completed_trace.root_span_id:
+                        observation.set_attribute("langfuse.internal.is_app_root", False)
+                    if observation_failed:
+                        observation.set_status(trace.StatusCode.ERROR, span.error)
+                    observations[span.span_id] = observation
+                # Keep parents alive until their children have inherited the SDK root scope.
+                for span in spans:
+                    observations[span.span_id].end(end_time=timestamp_ns(span.ended_at))
+                    # Drain locally so even trees larger than the SDK queue cannot lose spans.
+                    if not provider.force_flush():
+                        raise TraceExportError("langfuse_flush_failed", retryable=True)
+            finished = collector.get_finished_spans()
+            if len(finished) != len(spans):
+                raise TraceExportError("langfuse_incomplete_export")
+            request = encode_spans(finished)
+        finally:
+            context.detach(token)
+            provider.shutdown()
+        # SDK flushing only fills our local collector. The existing transport checks
+        # actual HTTP/OTLP acceptance, and OPS owns retries after ambiguous failures.
+        transport = OtlpTraceClient(
+            f"{self.http.endpoint}/api/public/otel/v1/traces",
+            {
+                **self.http.headers,
+                "x-langfuse-ingestion-version": "4",
+                "x-langfuse-sdk-name": "python",
+                "x-langfuse-sdk-version": langfuse_version,
+            },
+            {},
+            self.config.host,
+        )
+        transport.http.deadline = self.http.deadline
+        transport.http.request_timeout = self.http.request_timeout
+        transport.send_traces(request)
+        receipt_tags: list[JsonValue] = list(trace_tags)
+        return ExportedParentSpans(
+            spans={
+                span_id: {
+                    "trace_id": trace_id,
+                    "span_id": exported_id,
+                    "trace_name": trace_name,
+                    "version": trace_version,
+                    "tags": receipt_tags,
+                }
+                for span_id, exported_id in span_ids.items()
+            }
+        )

@@ -23,7 +23,7 @@ class TestLangfuseConfig:
     def test_default_values(self):
         """Test default values are set correctly"""
         config = LangfuseConfig(public_key="public", secret_key="secret")
-        assert config.host == "https://api.langfuse.com"
+        assert config.host == "https://cloud.langfuse.com"
 
     def test_missing_required_fields(self):
         """Test that required fields are enforced"""
@@ -39,4 +39,4 @@ class TestLangfuseConfig:
     def test_host_validation_empty(self):
         """Test host validation with empty value"""
         config = LangfuseConfig(public_key="public", secret_key="secret", host="")
-        assert config.host == "https://api.langfuse.com"
+        assert config.host == "https://cloud.langfuse.com"

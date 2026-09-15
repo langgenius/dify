@@ -12,6 +12,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.helper.code_executor.code_executor import CodeExecutionError
+from core.ops.workflow_trace import WorkflowTraceRecorder
 from core.repositories.human_input_repository import (
     FormCreateParams,
     HumanInputFormEntity,
@@ -85,6 +86,7 @@ def _workflow_tool_node(
     app_id: str = "outer-app",
     version: str = "1",
     tool_node_version: str | None = None,
+    bind_execution: bool = True,
 ) -> tuple[DifyWorkflowToolNode, MagicMock, WorkflowToolContainerPayload]:
     graph_config = {
         "nodes": [
@@ -139,7 +141,8 @@ def _workflow_tool_node(
         tool_file_manager=MagicMock(spec=ToolFileManagerProtocol),
         runtime=runtime,
     )
-    node.bind_execution_id("tool-execution")
+    if bind_execution:
+        node.bind_execution_id("tool-execution")
     return node, runtime, payload
 
 
@@ -1008,8 +1011,10 @@ def test_workflow_tool_empty_outputs_match_direct_invocation() -> None:
     assert outputs["json"].to_object() == [{}]
 
 
+@pytest.mark.parametrize("trace_enabled", [False, True])
 def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     monkeypatch: pytest.MonkeyPatch,
+    trace_enabled: bool,
 ) -> None:
     source_app, source_workflow = _source_human_input_workflow()
     source_repository = MagicMock(spec=WorkflowToolSourceRepository)
@@ -1021,7 +1026,10 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
         environment_variables=source_workflow.environment_variables,
         workflow_kind=source_workflow.kind_or_standard,
     )
-    handler_factory = partial(WorkflowToolContainerHandler, source_repository=source_repository)
+    workflow_trace = MagicMock(spec=WorkflowTraceRecorder) if trace_enabled else None
+    handler_factory = partial(
+        WorkflowToolContainerHandler, source_repository=source_repository, workflow_trace=workflow_trace
+    )
     form_repository = _TestFormRepository()
     human_input_app_ids: list[str] = []
 
@@ -1096,7 +1104,10 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
         )
         == "tool"
     )
-    restored_node, _, _ = _workflow_tool_node(restored_state, app_id="intermediate-app")
+    restored_node, _, _ = _workflow_tool_node(restored_state, app_id="intermediate-app", bind_execution=False)
+    parent_execution_id = restored_state.graph_execution.node_executions[(ROOT_FRAME_ID, "tool")].execution_id
+    with pytest.raises(RuntimeError, match="node execution_id must be bound before use"):
+        _ = restored_node.execution_id
     restored_graph = _outer_graph(restored_node)
     restored_owner_factory = object.__new__(DifyNodeFactory)
     restored_owner_factory._human_input_run_context = initial_owner_factory.human_input_run_context
@@ -1114,6 +1125,9 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     )
 
     assert isinstance(resumed_events[-1], GraphRunSucceededEvent)
+    if workflow_trace is not None:
+        assert workflow_trace.register_workflow_source.call_count == 2
+        assert workflow_trace.register_workflow_source.call_args.kwargs["parent_execution_id"] == parent_execution_id
     tool_succeeded = next(
         event for event in resumed_events if isinstance(event, NodeRunSucceededEvent) and event.node_id == "tool"
     )

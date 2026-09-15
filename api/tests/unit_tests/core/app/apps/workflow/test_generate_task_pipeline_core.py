@@ -99,7 +99,7 @@ def _make_pipeline():
         user_id="user",
         stream=False,
         invoke_from=InvokeFrom.WEB_APP,
-        trace_manager=None,
+        trace_recorder=None,
         workflow_execution_id="run-id",
         extras={},
         call_depth=0,
@@ -380,6 +380,27 @@ class TestWorkflowGenerateTaskPipeline:
         assert saved_log.workflow_run_id == "run-id"
         assert saved_log.created_from == "service-api"
 
+    @pytest.mark.parametrize("sqlite_session", [(WorkflowAppLog,)], indirect=True)
+    @pytest.mark.parametrize("invoke_from", list(InvokeFrom))
+    def test_save_workflow_app_log_uses_preallocated_id(self, sqlite_session: Session, invoke_from: InvokeFrom):
+        pipeline = _make_pipeline()
+        pipeline._application_generate_entity.invoke_from = invoke_from
+        workflow_app_log_id = "00000000-0000-0000-0000-000000000001"
+        pipeline._application_generate_entity.extras["workflow_app_log_id"] = workflow_app_log_id
+
+        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id="run-id")
+        sqlite_session.flush()
+
+        saved_log = sqlite_session.scalar(select(WorkflowAppLog))
+        if invoke_from in (InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI, InvokeFrom.EXPLORE, InvokeFrom.WEB_APP):
+            assert saved_log is not None
+            assert saved_log.id == workflow_app_log_id
+            assert saved_log.workflow_run_id == "run-id"
+            assert saved_log.tenant_id == pipeline._application_generate_entity.app_config.tenant_id
+            assert saved_log.app_id == pipeline._application_generate_entity.app_config.app_id
+        else:
+            assert saved_log is None
+
     def test_iteration_loop_and_human_input_handlers(self):
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
@@ -535,7 +556,7 @@ class TestWorkflowGenerateTaskPipeline:
             user_id="end-user-id",
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
-            trace_manager=None,
+            trace_recorder=None,
             workflow_execution_id="run-id",
             extras={},
             call_depth=0,

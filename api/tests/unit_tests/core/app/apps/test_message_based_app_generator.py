@@ -27,7 +27,7 @@ class DummyModelConf:
 
 
 class DummyCompletionGenerateEntity:
-    __slots__ = ("app_config", "invoke_from", "user_id", "query", "inputs", "files", "model_conf")
+    __slots__ = ("app_config", "invoke_from", "user_id", "query", "inputs", "files", "model_conf", "trace_recorder")
     app_config: EasyUIBasedAppConfig
     invoke_from: InvokeFrom
     user_id: str
@@ -44,6 +44,7 @@ class DummyCompletionGenerateEntity:
         self.inputs = {}
         self.files = []
         self.model_conf = DummyModelConf()
+        self.trace_recorder = None
 
 
 def _app(*, app_id: str = "app") -> App:
@@ -96,7 +97,7 @@ def _make_chat_generate_entity(app_config: EasyUIBasedAppConfig) -> ChatAppGener
         invoke_from=InvokeFrom.WEB_APP,
         extras={},
         call_depth=0,
-        trace_manager=None,
+        trace_recorder=None,
     )
 
 
