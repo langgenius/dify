@@ -65,10 +65,23 @@ class RunFailureType(StrEnum):
     """Stable machine-readable categories for failed Dify Agent runs.
 
     Run-limit failures cover execution budgets enforced by Dify Agent, not
-    provider, connection, or wall-clock timeouts.
+    provider, connection, or wall-clock timeouts. ``BINDING_LOST`` covers the
+    retained agent working environment disappearing out from under a run.
+    The ``MODEL_INVOKE_*`` members cover the closed set of Dify/graphon model
+    invocation error categories (``dify_agent.adapters.llm.provider``) that
+    already have a dedicated exception class on the API side; provider- or
+    plugin-defined error strings outside that closed set, and other
+    diagnostic detail, are intentionally not classified here and remain in
+    the legacy ``reason`` field.
     """
 
     AGENT_RUN_LIMIT_EXCEEDED = "agent_run_limit_exceeded"
+    BINDING_LOST = "binding_lost"
+    MODEL_INVOKE_AUTHORIZATION_ERROR = "model_invoke_authorization_error"
+    MODEL_INVOKE_BAD_REQUEST_ERROR = "model_invoke_bad_request_error"
+    MODEL_INVOKE_CONNECTION_ERROR = "model_invoke_connection_error"
+    MODEL_INVOKE_RATE_LIMIT_ERROR = "model_invoke_rate_limit_error"
+    MODEL_INVOKE_SERVER_UNAVAILABLE_ERROR = "model_invoke_server_unavailable_error"
 
 
 def utc_now() -> datetime:
