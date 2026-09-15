@@ -3,15 +3,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderHook } from '@/test/console/render'
-import { useAllToolProviders, useRefreshMCPServerCode } from '../use-tools'
+import { useAllToolProviders, useDeleteMCP, useRefreshMCPServerCode } from '../use-tools'
 
-const { mockGet, mockPost } = vi.hoisted(() => ({
+const { mockDel, mockGet, mockPost } = vi.hoisted(() => ({
+  mockDel: vi.fn(),
   mockGet: vi.fn(),
   mockPost: vi.fn(),
 }))
 
 vi.mock('@/service/base', () => ({
-  del: vi.fn(),
+  del: mockDel,
   get: mockGet,
   post: mockPost,
   put: vi.fn(),
@@ -66,6 +67,29 @@ describe('useRefreshMCPServerCode', () => {
       },
     })
     expect(mockGet).not.toHaveBeenCalled()
+  })
+})
+
+describe('useDeleteMCP', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('sends provider_id as a DELETE query parameter', async () => {
+    const providerId = '123e4567-e89b-12d3-a456-426614174000'
+    const { result } = renderHook(() => useDeleteMCP({}), {
+      wrapper: createWrapper(),
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync(providerId)
+    })
+
+    expect(mockDel).toHaveBeenCalledWith('/workspaces/current/tool-provider/mcp', {
+      params: {
+        provider_id: providerId,
+      },
+    })
   })
 })
 
