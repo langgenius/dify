@@ -66,7 +66,7 @@
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
 
-DifyはオープンソースのLLMアプリケーション開発プラットフォームです。直感的なインターフェイスには、AIワークフロー、RAGパイプライン、エージェント機能、モデル管理、観測機能などが組み合わさっており、プロトタイプから生産まで迅速に進めることができます。以下の機能が含まれます：
+DifyはオープンソースのLLMアプリケーション開発プラットフォームです。直感的なインターフェイスには、AIワークフロー、RAGパイプライン、エージェント機能、モデル管理、[Opik](https://www.comet.com/docs/opik/integrations/dify)、[Langfuse](https://docs.langfuse.com)、[Arize Phoenix](https://docs.arize.com/phoenix)を含む観測機能などが組み合わさっており、プロトタイプから生産まで迅速に進めることができます。以下の機能が含まれます：
 </br> </br>
 
 **1. ワークフロー**:
@@ -128,6 +128,10 @@ docker compose up -d
 ```
 
 実行後、ブラウザで[http://localhost/install](http://localhost/install)にアクセスし、初期化プロセスを開始できます。
+
+#### ヘルプが必要な場合
+
+Difyのセットアップで問題が発生した場合は、[FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs)をご確認ください。それでも解決しない場合は、[コミュニティとお問い合わせ](#コミュニティ--お問い合わせ)をご利用ください。
 
 > Difyに貢献したり、追加の開発を行う場合は、[ソースコードからのデプロイガイド](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)を参照してください。
 
