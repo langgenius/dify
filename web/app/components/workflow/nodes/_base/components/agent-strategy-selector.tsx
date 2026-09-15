@@ -113,6 +113,10 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   const stra = useStrategyProviders()
   const { getIconUrl } = useGetIcon()
   const list = stra.data ? formatStrategy(stra.data, getIconUrl) : undefined
+  const installedPluginIds = useMemo(
+    () => new Set(stra.data?.map((provider) => provider.plugin_id) ?? []),
+    [stra.data],
+  )
   const filteredTools = useMemo(() => {
     if (!list) return []
     return list.filter((tool) => tool.name.toLowerCase().includes(query.toLowerCase()))
@@ -147,8 +151,12 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
 
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
-  const { queryPluginsWithDebounced: fetchPlugins, plugins: notInstalledPlugins = [] } =
+  const { queryPluginsWithDebounced: fetchPlugins, plugins: marketplacePlugins } =
     useMarketplacePlugins()
+  const notInstalledPlugins = useMemo(
+    () => (marketplacePlugins ?? []).filter((plugin) => !installedPluginIds.has(plugin.plugin_id)),
+    [installedPluginIds, marketplacePlugins],
+  )
 
   useEffect(() => {
     if (!enable_marketplace) return
