@@ -60,7 +60,7 @@ export const useDeleteProviderCredential = (provider: string) => {
   return useMutation({
     mutationFn: (data: { credential_id: string }) =>
       del<{ result: string }>(`/workspaces/current/model-providers/${provider}/credentials`, {
-        body: data,
+        params: data,
       }),
   })
 }

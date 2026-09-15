@@ -270,7 +270,7 @@ class ModelProviderCredentialApi(Resource):
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
-    @console_ns.expect(console_ns.models[ParserCredentialDelete.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserCredentialDelete))
     @console_ns.response(204, "Credential deleted successfully")
     @setup_required
     @login_required
