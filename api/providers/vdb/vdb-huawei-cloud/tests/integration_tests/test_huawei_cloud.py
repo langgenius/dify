@@ -28,5 +28,5 @@ class HuaweiCloudVectorTest(AbstractVectorTest):
         assert len(hits_by_full_text) == 3
 
 
-def test_huawei_cloud_vector(setup_mock_redis, setup_client_mock):
+def test_huawei_cloud_vector(setup_real_redis, setup_client_mock):
     HuaweiCloudVectorTest().run_all_tests()

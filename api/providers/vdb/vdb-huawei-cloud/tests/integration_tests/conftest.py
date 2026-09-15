@@ -1,89 +1,98 @@
 import os
+from typing import Any
+from urllib.parse import unquote
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from elasticsearch import Elasticsearch
+from elastic_transport import ApiResponseMeta, HttpHeaders, NodeConfig, Transport
 
 from core.rag.datasource.vdb.field import Field
 
 
-class MockIndicesClient:
-    def __init__(self):
-        pass
+class InMemoryElasticsearchTransport:
+    """Handle Elasticsearch requests after the real clients serialize them."""
 
-    def create(self, index, mappings, settings):
-        return {"acknowledge": True}
+    def __init__(self) -> None:
+        self.indices: set[str] = set()
+        self.documents: dict[str, dict[str, dict[str, Any]]] = {}
+        self.meta = ApiResponseMeta(
+            status=200,
+            http_version="1.1",
+            headers=HttpHeaders({"x-elastic-product": "Elasticsearch"}),
+            duration=0.0,
+            node=NodeConfig("https", "127.0.0.1", 9200),
+        )
 
-    def refresh(self, index):
-        return {"acknowledge": True}
+    def perform_request(self, method: str, target: str, *, body: Any = None, **kwargs):
+        parts = [unquote(part) for part in target.split("?", 1)[0].split("/") if part]
+        index = parts[0] if parts else ""
 
-    def delete(self, index):
-        return {"acknowledge": True}
+        if method == "HEAD":
+            exists = index in self.indices if len(parts) == 1 else parts[-1] in self.documents.get(index, {})
+            return self._response({"exists": exists}, status=200 if exists else 404)
 
-    def exists(self, index):
-        return True
+        if method in {"PUT", "POST"} and len(parts) == 1:
+            self.indices.add(index)
+            self.documents.setdefault(index, {})
+            return self._response({"acknowledged": True})
 
+        if method in {"PUT", "POST"} and len(parts) >= 3 and parts[1] in {"_doc", "_create"}:
+            self.indices.add(index)
+            self.documents.setdefault(index, {})[parts[2]] = body
+            return self._response({"result": "created", "_id": parts[2]}, status=201)
 
-class MockClient:
-    def __init__(self, **kwargs):
-        self.indices = MockIndicesClient()
+        if parts[-1:] == ["_refresh"]:
+            return self._response({"_shards": {"successful": 1}})
 
-    def index(self, **kwargs):
-        return {"acknowledge": True}
+        if parts[-1:] == ["_search"]:
+            stored_documents = list(self.documents.get(index, {}).values())
+            seed = (
+                stored_documents[0]
+                if stored_documents
+                else {
+                    Field.CONTENT_KEY: "test_text",
+                    Field.VECTOR: [1.0, 2.0],
+                    Field.METADATA_KEY: {},
+                }
+            )
+            hits = [
+                {"_id": str(position), "_source": seed, "_score": score}
+                for position, score in enumerate((1.0, 0.9, 0.8), start=1)
+            ]
+            return self._response({"took": 1, "hits": {"hits": hits}})
 
-    def exists(self, **kwargs):
-        return True
+        if method == "DELETE" and len(parts) >= 3 and parts[1] == "_doc":
+            self.documents.get(index, {}).pop(parts[2], None)
+            return self._response({"result": "deleted"})
 
-    def delete(self, **kwargs):
-        return {"acknowledge": True}
+        if method == "DELETE" and len(parts) == 1:
+            self.indices.discard(index)
+            self.documents.pop(index, None)
+            return self._response({"acknowledged": True})
 
-    def search(self, **kwargs):
-        return {
-            "took": 1,
-            "hits": {
-                "hits": [
-                    {
-                        "_source": {
-                            Field.CONTENT_KEY: "abcdef",
-                            Field.VECTOR: [1, 2],
-                            Field.METADATA_KEY: {},
-                        },
-                        "_score": 1.0,
-                    },
-                    {
-                        "_source": {
-                            Field.CONTENT_KEY: "123456",
-                            Field.VECTOR: [2, 2],
-                            Field.METADATA_KEY: {},
-                        },
-                        "_score": 0.9,
-                    },
-                    {
-                        "_source": {
-                            Field.CONTENT_KEY: "a1b2c3",
-                            Field.VECTOR: [3, 2],
-                            Field.METADATA_KEY: {},
-                        },
-                        "_score": 0.8,
-                    },
-                ]
-            },
-        }
+        raise AssertionError(f"Unhandled Elasticsearch request: {method} {target} body={body}")
+
+    def _response(self, body: Any, status: int = 200):
+        if status == self.meta.status:
+            return self.meta, body
+        return ApiResponseMeta(
+            status=status,
+            http_version=self.meta.http_version,
+            headers=self.meta.headers,
+            duration=self.meta.duration,
+            node=self.meta.node,
+        ), body
 
 
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
 @pytest.fixture
-def setup_client_mock(request, monkeypatch: MonkeyPatch):
+def setup_client_mock(monkeypatch: MonkeyPatch):
     if MOCK:
-        monkeypatch.setattr(Elasticsearch, "__init__", MockClient.__init__)
-        monkeypatch.setattr(Elasticsearch, "index", MockClient.index)
-        monkeypatch.setattr(Elasticsearch, "exists", MockClient.exists)
-        monkeypatch.setattr(Elasticsearch, "delete", MockClient.delete)
-        monkeypatch.setattr(Elasticsearch, "search", MockClient.search)
+        transport = InMemoryElasticsearchTransport()
 
-    yield
+        def perform_request(client, method, target, **kwargs):
+            return transport.perform_request(method, target, **kwargs)
 
-    if MOCK:
-        monkeypatch.undo()
+        monkeypatch.setattr(Transport, "perform_request", perform_request)
