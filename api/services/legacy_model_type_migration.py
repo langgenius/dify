@@ -718,7 +718,7 @@ class Migration:
                 break
 
             for candidate in candidates:
-                last_id = str(candidate.row.id)
+                last_id = candidate.row.id
                 business_key = _ProviderModelBusinessKey(
                     tenant_id=candidate.row.tenant_id,
                     provider_name=candidate.row.provider_name,
@@ -826,7 +826,7 @@ class Migration:
         lock_rows: bool,
     ) -> _ProviderModelGroupPlan:
         rows = self._load_provider_model_group(session, candidate, lock_rows=lock_rows)
-        group_row_ids = [str(row.row.id) for row in rows]
+        group_row_ids = [row.row.id for row in rows]
         if not self._has_legacy_rows(rows):
             return _ProviderModelGroupPlan(group_row_ids=group_row_ids, winner=None, loser_rows=[])
 
@@ -851,21 +851,21 @@ class Migration:
         cache_plans: list[_CacheDeletePlan] = []
         for loser in plan.loser_rows:
             if self._apply:
-                session.execute(sa.delete(ProviderModel).where(ProviderModel.id == str(loser.row.id)))
+                session.execute(sa.delete(ProviderModel).where(ProviderModel.id == loser.row.id))
             self._log_row_deleted(
                 ProviderModel.__tablename__,
                 loser,
                 tx_id=tx_id,
                 business_key=business_key,
-                related_winner_id=str(plan.winner.row.id),
+                related_winner_id=plan.winner.row.id,
             )
             cache_plans.append(
                 _CacheDeletePlan(
                     tenant_id=self._tenant_id,
-                    identity_id=str(loser.row.id),
+                    identity_id=loser.row.id,
                     cache_type=ProviderCredentialsCacheType.MODEL,
                     table_name=ProviderModel.__tablename__,
-                    row_id=str(loser.row.id),
+                    row_id=loser.row.id,
                     tx_id=tx_id,
                     business_key=business_key,
                 )
@@ -875,12 +875,12 @@ class Migration:
             if self._apply:
                 session.execute(
                     sa.update(ProviderModel)
-                    .where(ProviderModel.id == str(plan.winner.row.id))
+                    .where(ProviderModel.id == plan.winner.row.id)
                     .values(model_type=plan.winner.canonical_model_type.value)
                 )
             self._log_row_updated(
                 ProviderModel.__tablename__,
-                str(plan.winner.row.id),
+                plan.winner.row.id,
                 {"model_type": plan.winner.raw_model_type},
                 {"model_type": plan.winner.canonical_model_type.value},
                 tx_id=tx_id,
@@ -889,10 +889,10 @@ class Migration:
             cache_plans.append(
                 _CacheDeletePlan(
                     tenant_id=self._tenant_id,
-                    identity_id=str(plan.winner.row.id),
+                    identity_id=plan.winner.row.id,
                     cache_type=ProviderCredentialsCacheType.MODEL,
                     table_name=ProviderModel.__tablename__,
-                    row_id=str(plan.winner.row.id),
+                    row_id=plan.winner.row.id,
                     tx_id=tx_id,
                     business_key=business_key,
                 )
@@ -912,7 +912,7 @@ class Migration:
         business_key: _ProviderModelBusinessKey,
     ) -> list[str]:
         tx_id = self._new_tx_id()
-        group_row_ids = [str(candidate.row.id)]
+        group_row_ids = [candidate.row.id]
 
         try:
             with _session_factory(self._engine) as session, session.begin():
@@ -929,7 +929,7 @@ class Migration:
             if self._is_lock_timeout_error(exc):
                 self._log_lock_timeout(
                     ProviderModel.__tablename__,
-                    str(candidate.row.id),
+                    candidate.row.id,
                     tx_id,
                     business_key,
                     exc,
@@ -956,7 +956,7 @@ class Migration:
                 break
 
             for candidate in candidates:
-                last_id = str(candidate.row.id)
+                last_id = candidate.row.id
                 business_key = _TenantDefaultModelBusinessKey(
                     tenant_id=candidate.row.tenant_id,
                     model_type=candidate.canonical_model_type,
@@ -1062,7 +1062,7 @@ class Migration:
         lock_rows: bool,
     ) -> _TenantDefaultModelGroupPlan:
         rows = self._load_tenant_default_model_group(session, candidate, lock_rows=lock_rows)
-        group_row_ids = [str(row.row.id) for row in rows]
+        group_row_ids = [row.row.id for row in rows]
         if not self._has_legacy_rows(rows):
             return _TenantDefaultModelGroupPlan(group_row_ids=group_row_ids, winner=None, loser_rows=[])
 
@@ -1086,24 +1086,24 @@ class Migration:
 
         for loser in plan.loser_rows:
             if self._apply:
-                session.execute(sa.delete(TenantDefaultModel).where(TenantDefaultModel.id == str(loser.row.id)))
+                session.execute(sa.delete(TenantDefaultModel).where(TenantDefaultModel.id == loser.row.id))
             self._log_row_deleted(
                 TenantDefaultModel.__tablename__,
                 loser,
                 tx_id=tx_id,
                 business_key=business_key,
-                related_winner_id=str(plan.winner.row.id),
+                related_winner_id=plan.winner.row.id,
             )
         if plan.winner.raw_model_type != plan.winner.canonical_model_type.value:
             if self._apply:
                 session.execute(
                     sa.update(TenantDefaultModel)
-                    .where(TenantDefaultModel.id == str(plan.winner.row.id))
+                    .where(TenantDefaultModel.id == plan.winner.row.id)
                     .values(model_type=plan.winner.canonical_model_type.value)
                 )
             self._log_row_updated(
                 TenantDefaultModel.__tablename__,
-                str(plan.winner.row.id),
+                plan.winner.row.id,
                 {"model_type": plan.winner.raw_model_type},
                 {"model_type": plan.winner.canonical_model_type.value},
                 tx_id=tx_id,
@@ -1123,7 +1123,7 @@ class Migration:
         business_key: _TenantDefaultModelBusinessKey,
     ) -> list[str]:
         tx_id = self._new_tx_id()
-        group_row_ids = [str(candidate.row.id)]
+        group_row_ids = [candidate.row.id]
 
         try:
             with _session_factory(self._engine) as session, session.begin():
@@ -1140,7 +1140,7 @@ class Migration:
             if self._is_lock_timeout_error(exc):
                 self._log_lock_timeout(
                     TenantDefaultModel.__tablename__,
-                    str(candidate.row.id),
+                    candidate.row.id,
                     tx_id,
                     business_key,
                     exc,
@@ -1166,7 +1166,7 @@ class Migration:
                 break
 
             for candidate in candidates:
-                last_id = str(candidate.row.id)
+                last_id = candidate.row.id
                 business_key = _ProviderModelSettingBusinessKey(
                     tenant_id=candidate.row.tenant_id,
                     provider_name=candidate.row.provider_name,
@@ -1276,7 +1276,7 @@ class Migration:
         lock_rows: bool,
     ) -> _ProviderModelSettingGroupPlan:
         rows = self._load_provider_model_setting_group(session, candidate, lock_rows=lock_rows)
-        group_row_ids = [str(row.row.id) for row in rows]
+        group_row_ids = [row.row.id for row in rows]
         if not self._has_legacy_rows(rows):
             return _ProviderModelSettingGroupPlan(group_row_ids=group_row_ids, winner=None, loser_rows=[])
 
@@ -1300,25 +1300,25 @@ class Migration:
 
         for loser in plan.loser_rows:
             if self._apply:
-                session.execute(sa.delete(ProviderModelSetting).where(ProviderModelSetting.id == str(loser.row.id)))
+                session.execute(sa.delete(ProviderModelSetting).where(ProviderModelSetting.id == loser.row.id))
             self._log_row_deleted(
                 ProviderModelSetting.__tablename__,
                 loser,
                 tx_id=tx_id,
                 business_key=business_key,
-                related_winner_id=str(plan.winner.row.id),
+                related_winner_id=plan.winner.row.id,
             )
 
         if plan.winner.raw_model_type != plan.winner.canonical_model_type.value:
             if self._apply:
                 session.execute(
                     sa.update(ProviderModelSetting)
-                    .where(ProviderModelSetting.id == str(plan.winner.row.id))
+                    .where(ProviderModelSetting.id == plan.winner.row.id)
                     .values(model_type=plan.winner.canonical_model_type.value)
                 )
             self._log_row_updated(
                 ProviderModelSetting.__tablename__,
-                str(plan.winner.row.id),
+                plan.winner.row.id,
                 {"model_type": plan.winner.raw_model_type},
                 {"model_type": plan.winner.canonical_model_type.value},
                 tx_id=tx_id,
@@ -1338,7 +1338,7 @@ class Migration:
         business_key: _ProviderModelSettingBusinessKey,
     ) -> list[str]:
         tx_id = self._new_tx_id()
-        group_row_ids = [str(candidate.row.id)]
+        group_row_ids = [candidate.row.id]
 
         try:
             with _session_factory(self._engine) as session, session.begin():
@@ -1355,7 +1355,7 @@ class Migration:
             if self._is_lock_timeout_error(exc):
                 self._log_lock_timeout(
                     ProviderModelSetting.__tablename__,
-                    str(candidate.row.id),
+                    candidate.row.id,
                     tx_id,
                     business_key,
                     exc,
@@ -1394,7 +1394,7 @@ class Migration:
                 break
 
             for candidate in candidates:
-                last_id = str(candidate.row.id)
+                last_id = candidate.row.id
                 processed_rows += 1
                 self._process_load_balancing_model_config_row(candidate)
 
@@ -1421,7 +1421,7 @@ class Migration:
                 break
 
             for candidate in candidates:
-                last_id = str(candidate.row.id)
+                last_id = candidate.row.id
                 business_key = _LoadBalancingModelConfigInheritBusinessKey(
                     tenant_id=candidate.row.tenant_id,
                     provider_name=candidate.row.provider_name,
@@ -1531,7 +1531,7 @@ class Migration:
         lock_rows: bool,
     ) -> _LoadBalancingModelConfigInheritGroupPlan:
         rows = self._load_load_balancing_inherit_group(session, candidate, lock_rows=lock_rows)
-        group_row_ids = [str(row.row.id) for row in rows]
+        group_row_ids = [row.row.id for row in rows]
         if len(rows) <= 1:
             return _LoadBalancingModelConfigInheritGroupPlan(group_row_ids=group_row_ids, winner=None, loser_rows=[])
 
@@ -1555,7 +1555,7 @@ class Migration:
 
         cache_plans: list[_CacheDeletePlan] = []
         for loser in plan.loser_rows:
-            loser_row_id = str(loser.row.id)
+            loser_row_id = loser.row.id
             if self._apply:
                 session.execute(sa.delete(LoadBalancingModelConfig).where(LoadBalancingModelConfig.id == loser_row_id))
             self._log_row_deleted(
@@ -1563,7 +1563,7 @@ class Migration:
                 loser,
                 tx_id=tx_id,
                 business_key=business_key,
-                related_winner_id=str(plan.winner.row.id),
+                related_winner_id=plan.winner.row.id,
             )
             cache_plans.append(
                 _CacheDeletePlan(
@@ -1591,7 +1591,7 @@ class Migration:
         business_key: _LoadBalancingModelConfigInheritBusinessKey,
     ) -> list[str]:
         tx_id = self._new_tx_id()
-        group_row_ids = [str(candidate.row.id)]
+        group_row_ids = [candidate.row.id]
 
         try:
             with _session_factory(self._engine) as session, session.begin():
@@ -1608,7 +1608,7 @@ class Migration:
             if self._is_lock_timeout_error(exc):
                 self._log_lock_timeout(
                     LoadBalancingModelConfig.__tablename__,
-                    str(candidate.row.id),
+                    candidate.row.id,
                     tx_id,
                     business_key,
                     exc,
@@ -1745,7 +1745,7 @@ class Migration:
                 current_row = self._reload_load_balancing_model_config_candidate(session, candidate, lock_rows=True)
                 if current_row is None:
                     return
-                processed_row_id = str(current_row.row.id)
+                processed_row_id = current_row.row.id
 
                 if self._apply:
                     session.execute(
@@ -1764,7 +1764,7 @@ class Migration:
             if self._is_lock_timeout_error(exc):
                 self._log_lock_timeout(
                     LoadBalancingModelConfig.__tablename__,
-                    str(candidate.row.id),
+                    candidate.row.id,
                     tx_id,
                     None,
                     exc,
@@ -1796,7 +1796,7 @@ class Migration:
                 break
 
             for candidate in candidates:
-                last_id = str(candidate.row.id)
+                last_id = candidate.row.id
                 business_key = _ProviderModelCredentialBusinessKey(
                     tenant_id=candidate.row.tenant_id,
                     provider_name=candidate.row.provider_name,
@@ -1911,7 +1911,7 @@ class Migration:
         lock_rows: bool,
     ) -> _ProviderModelCredentialGroupPlan:
         rows = self._load_provider_model_credential_group(session, candidate, lock_rows=lock_rows)
-        group_row_ids = [str(row.row.id) for row in rows]
+        group_row_ids = [row.row.id for row in rows]
         if not self._has_legacy_rows(rows):
             return _ProviderModelCredentialGroupPlan(
                 group_row_ids=group_row_ids,
@@ -2054,8 +2054,8 @@ class Migration:
         if plan.winner is None:
             return
 
-        loser_credential_ids = [str(row.row.id) for row in plan.loser_rows]
-        winner_credential_id = str(plan.winner.row.id)
+        loser_credential_ids = [row.row.id for row in plan.loser_rows]
+        winner_credential_id = plan.winner.row.id
         cache_plans: list[_CacheDeletePlan] = []
         cache_plans.extend(
             self._emit_provider_model_reference_rewrites(
@@ -2080,9 +2080,7 @@ class Migration:
 
         for loser in plan.loser_rows:
             if self._apply:
-                session.execute(
-                    sa.delete(ProviderModelCredential).where(ProviderModelCredential.id == str(loser.row.id))
-                )
+                session.execute(sa.delete(ProviderModelCredential).where(ProviderModelCredential.id == loser.row.id))
             self._log_row_deleted(
                 ProviderModelCredential.__tablename__,
                 loser,
@@ -2121,7 +2119,7 @@ class Migration:
         business_key: _ProviderModelCredentialBusinessKey,
     ) -> list[str]:
         tx_id = self._new_tx_id()
-        group_row_ids = [str(candidate.row.id)]
+        group_row_ids = [candidate.row.id]
 
         try:
             with _session_factory(self._engine) as session, session.begin():
@@ -2138,7 +2136,7 @@ class Migration:
             if self._is_lock_timeout_error(exc):
                 self._log_lock_timeout(
                     ProviderModelCredential.__tablename__,
-                    str(candidate.row.id),
+                    candidate.row.id,
                     tx_id,
                     business_key,
                     exc,
@@ -2156,7 +2154,7 @@ class Migration:
         *,
         lock_rows: bool,
     ) -> list[_ProviderModelReferenceRewritePlan]:
-        loser_ids = [str(row.row.id) for row in loser_rows]
+        loser_ids = [row.row.id for row in loser_rows]
         if not loser_ids:
             return []
 
@@ -2177,9 +2175,9 @@ class Migration:
         for provider_model in provider_models:
             rewrite_plans.append(
                 _ProviderModelReferenceRewritePlan(
-                    row_id=str(provider_model.id),
+                    row_id=provider_model.id,
                     old_credential_id=str(provider_model.credential_id),
-                    new_credential_id=str(winner.row.id),
+                    new_credential_id=winner.row.id,
                 )
             )
         return rewrite_plans
@@ -2192,7 +2190,7 @@ class Migration:
         *,
         lock_rows: bool,
     ) -> list[_LoadBalancingCredentialRewritePlan]:
-        loser_ids = [str(row.row.id) for row in loser_rows]
+        loser_ids = [row.row.id for row in loser_rows]
         if not loser_ids:
             return []
 
@@ -2209,7 +2207,7 @@ class Migration:
             stmt = stmt.with_for_update()
 
         winner_credential = winner.row
-        winner_credential_id = str(winner_credential.id)
+        winner_credential_id = winner_credential.id
         winner_credential_name = winner_credential.credential_name
         winner_encrypted_config = winner_credential.encrypted_config
 
@@ -2218,7 +2216,7 @@ class Migration:
         for load_balancing_model_config in load_balancing_model_configs:
             rewrite_plans.append(
                 _LoadBalancingCredentialRewritePlan(
-                    row_id=str(load_balancing_model_config.id),
+                    row_id=load_balancing_model_config.id,
                     old_credential_id=load_balancing_model_config.credential_id,
                     old_name=load_balancing_model_config.name,
                     old_encrypted_config=load_balancing_model_config.encrypted_config,
