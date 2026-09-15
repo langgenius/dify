@@ -52,17 +52,17 @@ export const zResourceAccessTokenResourcePayload = z.object({
 })
 
 /**
- * ResourceAccessTokenUpdatePayload
+ * ResourceAccessTokenCreatePayload
  */
-export const zResourceAccessTokenUpdatePayload = z.object({
+export const zResourceAccessTokenCreatePayload = z.object({
   name: z.string().min(1),
   resources: z.array(zResourceAccessTokenResourcePayload).min(1),
 })
 
 /**
- * ResourceAccessTokenCreatePayload
+ * ResourceAccessTokenUpdatePayload
  */
-export const zResourceAccessTokenCreatePayload = z.object({
+export const zResourceAccessTokenUpdatePayload = z.object({
   name: z.string().min(1),
   resources: z.array(zResourceAccessTokenResourcePayload).min(1),
 })

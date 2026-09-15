@@ -133,9 +133,7 @@ class ResourceAccessTokenService:
     @classmethod
     def count_rows(cls, *, tenant_id: str, session: Session) -> int:
         return (
-            session.scalar(
-                select(func.count(ResourceAccessToken.id)).where(ResourceAccessToken.tenant_id == tenant_id)
-            )
+            session.scalar(select(func.count(ResourceAccessToken.id)).where(ResourceAccessToken.tenant_id == tenant_id))
             or 0
         )
 
@@ -203,9 +201,7 @@ class ResourceAccessTokenService:
         if relation is None:
             raise NotFound("Resource access token relation not found.")
 
-        session.execute(
-            delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token.id)
-        )
+        session.execute(delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token.id))
         session.delete(token)
         session.commit()
 
@@ -429,9 +425,7 @@ class ResourceAccessTokenService:
         relation: ResourceAccessTokenRelation,
     ) -> tuple[ResourceAccessTokenResourceType, str]:
         resource_id = (
-            relation.app_id
-            if relation.resource_type == ResourceAccessTokenResourceType.APP
-            else relation.dataset_id
+            relation.app_id if relation.resource_type == ResourceAccessTokenResourceType.APP else relation.dataset_id
         )
         assert resource_id is not None
         return relation.resource_type, resource_id
@@ -447,9 +441,7 @@ class ResourceAccessTokenService:
         include_token: bool,
     ) -> ResourceAccessTokenRow:
         resource_id = (
-            relation.app_id
-            if relation.resource_type == ResourceAccessTokenResourceType.APP
-            else relation.dataset_id
+            relation.app_id if relation.resource_type == ResourceAccessTokenResourceType.APP else relation.dataset_id
         )
         assert resource_id is not None
         return ResourceAccessTokenRow(

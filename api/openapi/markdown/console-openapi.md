@@ -8430,6 +8430,66 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 
+### [GET] /resource-access-tokens
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Resource access tokens | **application/json**: [ResourceAccessTokenListResponse](#resourceaccesstokenlistresponse)<br> |
+
+### [POST] /resource-access-tokens
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ResourceAccessTokenCreatePayload](#resourceaccesstokencreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Resource access token created | **application/json**: [ResourceAccessTokenCreateResponse](#resourceaccesstokencreateresponse)<br> |
+
+### [PATCH] /resource-access-tokens/{token_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ResourceAccessTokenUpdatePayload](#resourceaccesstokenupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Resource access token updated | **application/json**: [ResourceAccessTokenListResponse](#resourceaccesstokenlistresponse)<br> |
+
+### [DELETE] /resource-access-tokens/{token_id}/relations/{relation_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| relation_id | path |  | Yes | string (uuid) |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Resource access token relation deleted |
+
 ### [POST] /rule-code-generate
 Generate code rules using LLM
 
@@ -21614,6 +21674,73 @@ Resource types understood by access policies.
 | ---- | ---- | ----------- | -------- |
 | reranking_model_name | string | Name of the reranking model. | No |
 | reranking_provider_name | string | Provider name of the reranking model. | No |
+
+#### ResourceAccessTokenCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| resources | [ [ResourceAccessTokenResourcePayload](#resourceaccesstokenresourcepayload) ] |  | Yes |
+
+#### ResourceAccessTokenCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ResourceAccessTokenRowResponse](#resourceaccesstokenrowresponse) ] |  | Yes |
+| token | string |  | Yes |
+
+#### ResourceAccessTokenListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### ResourceAccessTokenListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ResourceAccessTokenRowResponse](#resourceaccesstokenrowresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### ResourceAccessTokenResourcePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| type | [ResourceAccessTokenResourceType](#resourceaccesstokenresourcetype) |  | Yes |
+
+#### ResourceAccessTokenResourceType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ResourceAccessTokenResourceType | string |  |  |
+
+#### ResourceAccessTokenRowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| last_used_at | integer |  | No |
+| masked_token | string |  | Yes |
+| name | string |  | Yes |
+| relation_id | string |  | Yes |
+| resource_id | string |  | Yes |
+| resource_name | string |  | Yes |
+| resource_type | [ResourceAccessTokenResourceType](#resourceaccesstokenresourcetype) |  | Yes |
+| token | string |  | No |
+| token_id | string |  | Yes |
+| track_id | string |  | Yes |
+
+#### ResourceAccessTokenUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| resources | [ [ResourceAccessTokenResourcePayload](#resourceaccesstokenresourcepayload) ] |  | Yes |
 
 #### ResourcePermissionKeys
 
