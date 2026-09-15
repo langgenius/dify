@@ -34,7 +34,6 @@ ACCOUNT_ID = "00000000-0000-0000-0000-000000000003"
 def _make_auth_data(**kwargs: object) -> AuthData:
     return AuthData(
         token_type=kwargs.pop("token_type", TokenType.OAUTH_ACCOUNT),
-        token_hash=kwargs.pop("token_hash", "testhash"),
         scopes=kwargs.pop("scopes", frozenset()),
         **kwargs,
     )

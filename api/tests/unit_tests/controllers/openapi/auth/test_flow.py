@@ -11,7 +11,7 @@ def _ctx():
 
 
 def _data():
-    return AuthData(token_type=TokenType.OAUTH_ACCOUNT, token_hash="x", scopes=frozenset())
+    return AuthData(token_type=TokenType.OAUTH_ACCOUNT, scopes=frozenset())
 
 
 def test_applies_returns_true_when_condition_true():
