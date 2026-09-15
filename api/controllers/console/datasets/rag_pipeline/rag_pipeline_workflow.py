@@ -54,6 +54,8 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
     node_execution_response_source,
+    workflow_run_pagination_response_source,
+    workflow_run_response_source,
 )
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
@@ -928,10 +930,13 @@ class RagPipelineWorkflowRunListApi(Resource):
             "limit": query.limit,
         }
 
-        rag_pipeline_service = RagPipelineService(db.session())
+        session = db.session()
+        rag_pipeline_service = RagPipelineService(session)
         result = rag_pipeline_service.get_rag_pipeline_paginate_workflow_runs(pipeline=pipeline, args=args)
 
-        return WorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunPaginationResponse.model_validate(
+            workflow_run_pagination_response_source(result, session=session), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>")
@@ -951,12 +956,15 @@ class RagPipelineWorkflowRunDetailApi(Resource):
         """
         run_id_str = str(run_id)
 
-        rag_pipeline_service = RagPipelineService(db.session())
+        session = db.session()
+        rag_pipeline_service = RagPipelineService(session)
         workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=run_id_str)
         if workflow_run is None:
             raise NotFound("Workflow run not found")
 
-        return WorkflowRunDetailResponse.model_validate(workflow_run, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunDetailResponse.model_validate(
+            workflow_run_response_source(workflow_run, session=session), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>/node-executions")
