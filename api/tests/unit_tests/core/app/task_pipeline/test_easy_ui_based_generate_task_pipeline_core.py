@@ -147,7 +147,7 @@ def _make_conversation(app_mode: AppMode) -> Conversation:
         model_id=None,
         mode=app_mode,
         name="conversation",
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
@@ -166,7 +166,7 @@ def _make_message() -> Message:
     message = Message(
         app_id="app",
         conversation_id="conv",
-        inputs={},
+        _inputs={},
         query="query",
         message="",
         message_tokens=0,

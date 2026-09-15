@@ -843,11 +843,11 @@ class TestWorkflowAppLogQueryService:
             tenant_id=app.tenant_id,
             app_id=app.id,
             type=EndUserType.BROWSER,
-            is_anonymous=False,
+            _is_anonymous=False,
             session_id="test_session_123",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
         )
+        end_user.created_at = datetime.now(UTC)
+        end_user.updated_at = datetime.now(UTC)
         db_session_with_containers.add(end_user)
         db_session_with_containers.commit()
 

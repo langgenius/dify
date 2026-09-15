@@ -161,10 +161,10 @@ class ConversationServiceTestDataFactory:
             from_end_user_id=kwargs.get("from_end_user_id"),
             from_account_id=kwargs.get("from_account_id", ACCOUNT_ID),
             is_deleted=kwargs.get("is_deleted", False),
-            created_at=kwargs.get("created_at", naive_utc_now()),
-            updated_at=kwargs.get("updated_at", naive_utc_now()),
         )
         conversation._inputs = {}
+        conversation.created_at = kwargs.get("created_at", naive_utc_now())
+        conversation.updated_at = kwargs.get("updated_at", naive_utc_now())
         for key, value in kwargs.items():
             setattr(conversation, key, value)
         return conversation
