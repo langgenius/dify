@@ -2755,21 +2755,27 @@ def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(mon
     assert exc_info.value.code == "archive_too_large"
 
 
-def test_import_skill_package_rejects_zip_bomb_before_reading_members() -> None:
+def test_import_skill_package_rejects_excessive_expansion_before_reading_members(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=1024 * 1024)
     package = io.BytesIO()
     with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("payload.bin", b"\x00" * (8 * 1024 * 1024))
 
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
 
-    with pytest.raises(SkillManagementServiceError) as exc_info:
+    with (
+        patch.object(zipfile.ZipFile, "read", side_effect=AssertionError("member read before size validation")),
+        pytest.raises(SkillManagementServiceError) as exc_info,
+    ):
         service._draft_payload_from_zip(
             tenant_id=TENANT,
             user_id=USER,
             archive_bytes=package.getvalue(),
         )
 
-    assert exc_info.value.code == "invalid_skill_package"
+    assert exc_info.value.code == "skill_too_large"
 
 
 def test_publish_and_export_include_binary_tool_files() -> None:
@@ -3199,6 +3205,7 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
         description="draft description",
     )
     version = SimpleNamespace(
+        id="version-1",
         archive_tool_file_id="archive-1",
         archive_size=10,
         hash_code="hash-1",
@@ -3209,8 +3216,10 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
             description="published description",
         ),
     )
+    binding = SimpleNamespace(priority=0)
+    tool_file = SimpleNamespace(file_key="tools/archive-1.zip")
     session = MagicMock()
-    session.execute.return_value = [(SimpleNamespace(), skill, version)]
+    session.execute.return_value = [(binding, skill, version, tool_file)]
 
     with patch("services.skill_management_service.session_factory.create_session") as create_session:
         create_session.return_value.__enter__.return_value = session
@@ -3304,3 +3313,14 @@ def test_runtime_agent_skill_pull_normalizes_archive_identity_to_published_metad
         assert "description: Published description" in skill_md
         assert "display-name: Published Name" in skill_md
         assert archive.read("references/example.md") == b"Example"
+
+
+def test_archive_limits_accept_high_compression_ratio_within_size_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("data.bin", b"x" * (1024 * 1024))
+    with zipfile.ZipFile(io.BytesIO(output.getvalue())) as archive:
+        assert SkillManagementService._validate_archive_limits(archive)[0].file_size == 1024 * 1024
+        apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=1024)
+        with pytest.raises(SkillManagementServiceError, match="uncompressed size limit"):
+            SkillManagementService._validate_archive_limits(archive)
