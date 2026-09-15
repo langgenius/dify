@@ -481,6 +481,60 @@ describe('agent composer store conversions', () => {
     ])
   })
 
+  it('should persist model-selector tool settings as runtime parameters', () => {
+    const publishConfig = formStateToAgentSoulConfig({
+      formState: {
+        ...defaultAgentSoulConfigFormState,
+        tools: [
+          {
+            id: 'hjlarry/database/database',
+            kind: 'provider',
+            name: 'database',
+            iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
+            providerType: 'plugin',
+            credentialVariant: 'authorized',
+            credentialId: 'credential-db',
+            credentialType: 'api-key',
+            actions: [
+              {
+                id: 'hjlarry/database/database:text2sql',
+                name: 'Text to SQL',
+                toolName: 'text2sql',
+                description: 'Generate SQL.',
+              },
+            ],
+          },
+        ],
+        toolSettings: {
+          'hjlarry/database/database:text2sql': {
+            tables: 'orders',
+            model: {
+              provider: 'openai',
+              model: 'gpt-4.1',
+              model_type: 'llm',
+              type: 'model-selector',
+            },
+          },
+        },
+      },
+    })
+
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        provider_id: 'hjlarry/database/database',
+        tool_name: 'text2sql',
+        runtime_parameters: {
+          tables: 'orders',
+          model: {
+            provider: 'openai',
+            model: 'gpt-4.1',
+            model_type: 'llm',
+          },
+        },
+      }),
+    ])
+  })
+
   it('should preserve oauth2 credential references when saving tool config', () => {
     const baseConfig = {
       tools: {
