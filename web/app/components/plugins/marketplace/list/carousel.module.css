@@ -1,3 +1,29 @@
+/*
+ * The controls sit overlaid on the collection header's right edge, which only
+ * works while the carousel is wide enough to spare that strip. It is the
+ * carousel's own width that decides, not the viewport's: inside the console
+ * the marketplace column is far narrower than the window, and there the
+ * overlaid controls land on the collection description and the
+ * "Become a Partner" action. Below the threshold they become a normal row
+ * above the slides instead.
+ */
+.root {
+  container-type: inline-size;
+}
+
+.controls {
+  position: absolute;
+  top: -40px;
+  right: 0;
+}
+
+@container (max-width: 639px) {
+  .controls {
+    position: static;
+    margin-bottom: 8px;
+  }
+}
+
 @media (max-width: 879px) {
   :global([data-marketplace-standalone]) .pagination {
     display: none;

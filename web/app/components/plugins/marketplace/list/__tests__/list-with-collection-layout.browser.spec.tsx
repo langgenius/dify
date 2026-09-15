@@ -118,6 +118,31 @@ describe('Partner collection header layout', () => {
     expect(getComputedStyle(separator).display).toBe('none')
   })
 
+  it('drops the carousel controls below the header in a narrow column', async () => {
+    await page.viewport(390, 844)
+    // The console embeds the marketplace beside its sidebar, leaving the
+    // collection a column far narrower than the viewport. Overlaid controls
+    // land on the description and the call to action at that width.
+    const screen = await renderPartnerCollection({ standalone: false, width: 160 })
+
+    const descriptionRect = screen
+      .getByText('Plugins verified by Dify partners.')
+      .element()
+      .getBoundingClientRect()
+    const partnerLinkRect = screen
+      .getByRole('link', { name: 'Become a Partner' })
+      .element()
+      .getBoundingClientRect()
+    const previousButtonRect = screen
+      .getByRole('button', { name: 'Previous' })
+      .element()
+      .getBoundingClientRect()
+
+    expect(previousButtonRect.top).toBeGreaterThanOrEqual(
+      Math.max(descriptionRect.bottom, partnerLinkRect.bottom),
+    )
+  })
+
   it('keeps the mobile action 12px from the title when navigation is absent', async () => {
     await page.viewport(390, 844)
     const screen = await renderPartnerCollection({ pluginCount: 2 })
