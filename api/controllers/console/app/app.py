@@ -112,6 +112,7 @@ class AppListBaseQuery(BaseModel):
         if not isinstance(value, list):
             raise ValueError("Unsupported tag_ids type.")
 
+        # mode="before": elements may still be non-strings before pydantic validates.
         items = [str(item).strip() for item in value if item and str(item).strip()]
         if not items:
             return None
@@ -130,6 +131,7 @@ class AppListBaseQuery(BaseModel):
         if not isinstance(value, list):
             raise ValueError("Unsupported creator_ids type.")
 
+        # mode="before": elements may still be non-strings before pydantic validates.
         items = [str(item).strip() for item in value if item and str(item).strip()]
         if not items:
             return None
@@ -517,14 +519,14 @@ class AppImportResponse(ResponseModel):
 
 def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: str) -> None:
     if SystemFeatureService.is_webapp_auth_enabled():
-        app_ids = [str(app.id) for app in apps]
+        app_ids = [app.id for app in apps]
         res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
         if len(res) != len(app_ids):
             raise BadRequest("Invalid app id in webapp auth")
 
         for app in apps:
-            if str(app.id) in res:
-                app.access_mode = res[str(app.id)].access_mode
+            if app.id in res:
+                app.access_mode = res[app.id].access_mode
 
     workflow_capable_app_ids = [str(app.id) for app in apps if app.mode in {"workflow", "advanced-chat"}]
     draft_trigger_app_ids: set[str] = set()
@@ -546,14 +548,14 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
             try:
                 for node_id, node_data in workflow.walk_nodes():
                     if node_data.get("type") in trigger_node_types:
-                        draft_trigger_app_ids.add(str(workflow.app_id))
+                        draft_trigger_app_ids.add(workflow.app_id)
                         break
             except Exception:
                 _logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
                 continue
 
     for app in apps:
-        app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
+        app.has_draft_trigger = app.id in draft_trigger_app_ids
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
@@ -714,20 +716,20 @@ class AppListApi(Resource):
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             current_tenant_id,
             current_user.id,
-            [str(app.id)],
+            [app.id],
             session=session,
         )
         app_detail = AppDetailWithSite.model_validate(
             app,
             from_attributes=True,
             context={"session": session},
-        ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
+        ).model_copy(update={"permission_keys": permission_keys_map.get(app.id, [])})
 
         if dify_config.RBAC_ENABLED:
             enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
                 current_tenant_id,
                 current_user.id,
-                str(app.id),
+                app.id,
                 enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
             )
 
@@ -878,22 +880,22 @@ class AppApi(Resource):
         app_model = app_service.get_app(app_model, session=session)
 
         if SystemFeatureService.is_webapp_auth_enabled():
-            app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
+            app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_model.id)
             app_model.access_mode = app_setting.access_mode
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             current_tenant_id,
             current_user.id,
-            app_id=str(app_model.id),
+            app_id=app_model.id,
             session=session,
         )
-        permission_keys_map = permissions.app.permission_keys_by_resource_ids([str(app_model.id)])
+        permission_keys_map = permissions.app.permission_keys_by_resource_ids([app_model.id])
 
         response_model = AppDetailWithSite.model_validate(
             app_model,
             from_attributes=True,
             context={"session": session},
-        ).model_copy(update={"permission_keys": permission_keys_map.get(str(app_model.id), [])})
+        ).model_copy(update={"permission_keys": permission_keys_map.get(app_model.id, [])})
         return response_model.model_dump(mode="json")
 
     @console_ns.doc("update_app")
@@ -1010,14 +1012,14 @@ class AppCopyApi(Resource):
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             current_tenant_id,
             current_user.id,
-            [str(app.id)],
+            [app.id],
             session=session,
         )
         response_model = AppDetailWithSite.model_validate(
             app,
             from_attributes=True,
             context={"session": session},
-        ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
+        ).model_copy(update={"permission_keys": permission_keys_map.get(app.id, [])})
         return response_model.model_dump(mode="json"), 201
 
 

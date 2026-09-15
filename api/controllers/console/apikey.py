@@ -86,7 +86,7 @@ def build_masked_api_key_list(
     for api_token in api_tokens:
         item = ApiKeyItem.model_validate(api_token, from_attributes=True)
         item.token = mask_api_token(item.token)
-        item.dataset_ids = bindings_by_token.get(str(api_token.id), [])
+        item.dataset_ids = bindings_by_token.get(api_token.id, [])
         items.append(item)
     return ApiKeyList(data=items)
 

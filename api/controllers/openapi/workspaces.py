@@ -183,7 +183,7 @@ class WorkspaceMembersApi(Resource):
         inviter = _load_account(session, auth_data.account_id)
         tenant = _load_tenant(session, workspace_id)
 
-        _check_member_invite_quota(str(tenant.id))
+        _check_member_invite_quota(tenant.id)
 
         try:
             token = RegisterService.invite_new_member(
@@ -216,7 +216,7 @@ class WorkspaceMembersApi(Resource):
             role=body.role,
             member_id=str(member.id),
             invite_url=invite_url,
-            tenant_id=str(tenant.id),
+            tenant_id=tenant.id,
         )
 
 
@@ -294,7 +294,7 @@ class WorkspaceMemberApi(Resource):
 
 def _workspace_summary(tenant: Tenant, membership: TenantAccountJoin) -> WorkspaceSummaryResponse:
     return WorkspaceSummaryResponse(
-        id=str(tenant.id),
+        id=tenant.id,
         name=tenant.name,
         role=getattr(membership, "role", ""),
         status=tenant.status,
@@ -304,7 +304,7 @@ def _workspace_summary(tenant: Tenant, membership: TenantAccountJoin) -> Workspa
 
 def _workspace_detail(tenant: Tenant, membership: TenantAccountJoin) -> WorkspaceDetailResponse:
     return WorkspaceDetailResponse(
-        id=str(tenant.id),
+        id=tenant.id,
         name=tenant.name,
         role=getattr(membership, "role", ""),
         status=tenant.status,
