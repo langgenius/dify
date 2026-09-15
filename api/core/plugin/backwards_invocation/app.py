@@ -281,7 +281,10 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def _get_workflow(cls, app: App) -> Workflow | None:
         """
-        get workflow without relying on App.workflow's request-scoped session property
+        get workflow with an owned session, additionally scoped by tenant and app
+
+        `App.workflow_with_session` resolves by `workflow_id` alone; a plugin
+        invocation must also confirm the workflow belongs to this tenant and app.
         """
         if not app.workflow_id:
             return None

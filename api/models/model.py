@@ -470,19 +470,11 @@ class App(Base):
     def site_with_session(self, *, session: Session) -> Site | None:
         return session.scalar(select(Site).where(Site.app_id == self.id))
 
-    @property
-    def app_model_config(self) -> AppModelConfig | None:
-        return self.app_model_config_with_session(session=db.session())
-
     def app_model_config_with_session(self, *, session: Session) -> AppModelConfig | None:
         if self.app_model_config_id:
             return session.scalar(select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id))
 
         return None
-
-    @property
-    def workflow(self) -> Workflow | None:
-        return self.workflow_with_session(session=db.session())
 
     def workflow_with_session(self, *, session: Session) -> Workflow | None:
         if self.workflow_id:
