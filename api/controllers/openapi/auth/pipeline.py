@@ -28,6 +28,7 @@ from controllers.openapi.auth.flow import When
 from enums import DeploymentEdition
 from libs.oauth_bearer import (
     AuthContext,
+    InvalidBearerError,
     Scope,
     TokenType,
     extract_bearer,
@@ -227,7 +228,10 @@ class PipelineRouter:
         if not token:
             raise Unauthorized("bearer required")
 
-        identity = get_authenticator().authenticate(token)
+        try:
+            identity = get_authenticator().authenticate(token)
+        except InvalidBearerError as e:
+            raise Unauthorized(str(e))
 
         if allowed_token_types is not None and identity.token_type not in allowed_token_types:
             emit_wrong_surface(
