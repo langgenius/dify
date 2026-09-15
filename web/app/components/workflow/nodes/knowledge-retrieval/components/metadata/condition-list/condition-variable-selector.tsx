@@ -37,7 +37,7 @@ const ConditionVariableSelector = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        // TODO: Declare non-native button semantics for this div trigger to support keyboard activation.
+        nativeButton={false}
         render={
           <div className="flex h-6 grow cursor-pointer items-center">
             {!!valueSelector.length && (
