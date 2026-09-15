@@ -1,9 +1,9 @@
 import inspect
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi.auth.conditions import Cond
 from controllers.openapi.auth.data import AuthData, RequestContext
 from controllers.openapi.auth.flow import When
-from libs.oauth_bearer import TokenType
 
 
 def _ctx():

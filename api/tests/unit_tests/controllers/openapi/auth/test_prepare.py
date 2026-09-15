@@ -8,6 +8,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound, Unauthorized
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi.auth.data import AuthData, ExternalIdentity
 from controllers.openapi.auth.prepare import (
     load_account,
@@ -18,7 +19,6 @@ from controllers.openapi.auth.prepare import (
     load_workspace_role,
     resolve_external_user,
 )
-from libs.oauth_bearer import TokenType
 from models import Account, App, EndUser, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus

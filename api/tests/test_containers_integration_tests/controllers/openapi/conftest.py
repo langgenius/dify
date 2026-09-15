@@ -10,8 +10,8 @@ from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import Scope, TokenType
 from machinery.context import AccountRequestContext
 from models import Account, Tenant
 from services.account_service import AccountService, TenantService

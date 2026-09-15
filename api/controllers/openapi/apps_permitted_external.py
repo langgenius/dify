@@ -11,6 +11,7 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.common.session import with_session
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
@@ -25,7 +26,6 @@ from controllers.openapi.apps import build_app_describe_response
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
 from enums import DeploymentEdition
-from libs.oauth_bearer import Scope, TokenType
 from models import App
 from models.enums import AppStatus
 from services.account_service import TenantService

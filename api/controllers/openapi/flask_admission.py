@@ -1,4 +1,4 @@
-"""Flask adapter for account-authenticated OpenAPI admission."""
+"""Flask admission adapters for OpenAPI account and device-flow endpoints."""
 
 from __future__ import annotations
 
@@ -7,16 +7,18 @@ from functools import wraps
 from typing import Concatenate
 
 from flask import Response, request
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
 from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
-from libs.oauth_bearer import Scope, TokenType
+from extensions.ext_application_services import application_services
 from libs.rate_limit import RateLimit, enforce
 from machinery.context import AccountRequestContext
 from models.account import Account, AccountStatus
+from services.oauth_device_contracts import DeviceRequestContext
 
 
 def openapi_account_admission[T, **P, R](
@@ -86,3 +88,21 @@ def openapi_account_admission[T, **P, R](
         return admitted
 
     return decorator
+
+
+def oauth_device_sso_admission[**P, R](
+    view: Callable[Concatenate[DeviceRequestContext, P], R],
+) -> Callable[P, R]:
+    """Require an active Enterprise license and inject stable request metadata."""
+
+    @wraps(view)
+    def admitted(*args: P.args, **kwargs: P.kwargs) -> R:
+        if not application_services().feature_queries.has_valid_enterprise_license():
+            raise NotFound()
+        context = DeviceRequestContext(
+            request_id=get_request_id(),
+            trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+        )
+        return view(context, *args, **kwargs)
+
+    return admitted

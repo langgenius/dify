@@ -6,6 +6,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.verify import (
@@ -20,7 +21,6 @@ from controllers.openapi.auth.verify import (
     check_workspace_role,
 )
 from core.rbac import RBACPermission
-from libs.oauth_bearer import Scope, TokenType
 from models.account import Tenant, TenantAccountRole
 from models.model import App
 from services.enterprise.enterprise_service import WebAppAccessMode

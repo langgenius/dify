@@ -1,6 +1,6 @@
 """Wire-contract tests for the canonical /openapi/v1 error body."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from werkzeug.exceptions import (
@@ -44,6 +44,7 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from services.oauth_device_contracts import ExpiredTokenError
 
 
 @pytest.fixture
@@ -278,12 +279,9 @@ class TestWireContract:
         # not intercepted → Flask's default HTML 404, not the canonical JSON body
         assert "application/json" not in (resp.content_type or "")
 
-    @patch("controllers.openapi.oauth_device.DeviceFlowRedis")
-    def test_oauth_device_token_keeps_rfc8628_shape(self, mock_redis_cls, openapi_app):
-        store = MagicMock()
-        mock_redis_cls.return_value = store
-        store.record_poll.return_value = None  # not SlowDownDecision.SLOW_DOWN
-        store.load_by_device_code.return_value = None  # unknown code → expired_token
+    @patch("controllers.openapi.oauth_device.application_services")
+    def test_oauth_device_token_keeps_rfc8628_shape(self, mock_application_services, openapi_app):
+        mock_application_services.return_value.oauth_device.poll.side_effect = ExpiredTokenError
 
         client = openapi_app.test_client()
 

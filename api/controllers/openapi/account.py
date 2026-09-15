@@ -6,6 +6,7 @@ from uuid import UUID
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
+from constants.oauth_bearer import Scope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import (
@@ -19,7 +20,6 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.flask_admission import openapi_account_admission
 from extensions.ext_application_services import application_services
-from libs.oauth_bearer import Scope
 from libs.rate_limit import LIMIT_ME_PER_ACCOUNT
 from machinery.context import AccountRequestContext
 from services.account_errors import AccountNotFoundError, AccountSessionNotFoundError
