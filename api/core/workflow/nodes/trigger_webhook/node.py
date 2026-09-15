@@ -169,11 +169,11 @@ class TriggerWebhookNode(Node[WebhookData]):
                             if file_var:
                                 outputs[param_name] = file_var
                             else:
-                                outputs[param_name] = files
+                                outputs[param_name] = None
                         else:
-                            outputs[param_name] = files
+                            outputs[param_name] = None
                     else:
-                        outputs[param_name] = files
+                        outputs[param_name] = None
                 case _:
                     # Get regular body parameter
                     outputs[param_name] = webhook_data.get("body", {}).get(param_name)
