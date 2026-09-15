@@ -11,7 +11,7 @@ from models import ToolFile, UploadFile
 from models.enums import CreatorUserRole
 
 from .protocols import FileAccessControllerProtocol
-from .scope import FileAccessScope, get_current_file_access_scope
+from .scope import FileAccessScope, get_current_file_access_scope, get_effective_granted_upload_file_ids
 
 
 class DatabaseFileAccessController(FileAccessControllerProtocol):
@@ -55,13 +55,14 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
             UploadFile.created_by_role == CreatorUserRole.END_USER,
             UploadFile.created_by == resolved_scope.user_id,
         )
-        if not resolved_scope.granted_upload_file_ids:
+        granted_upload_file_ids = get_effective_granted_upload_file_ids(resolved_scope)
+        if not granted_upload_file_ids:
             return scoped_stmt.where(user_owned_filter)
 
         return scoped_stmt.where(
             or_(
                 user_owned_filter,
-                UploadFile.id.in_(resolved_scope.granted_upload_file_ids),
+                UploadFile.id.in_(granted_upload_file_ids),
             )
         )
 
