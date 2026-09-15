@@ -24,6 +24,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from extensions.storage.storage_type import StorageType
 from models import dataset as dataset_module
 from models.account import Account
+from models.base import Base, TypeBase
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
@@ -129,6 +130,16 @@ def _make_segments(document: Document, hit_counts: list[int]) -> list[DocumentSe
 
 class TestDatasetModelValidation:
     """Test suite for Dataset model validation and basic operations."""
+
+    def test_dataset_uses_typebase_registry_and_generates_ids(self):
+        generated_dataset = Dataset()
+        another_dataset = Dataset()
+        explicit_id = str(uuid4())
+
+        assert Dataset.__mapper__.registry is TypeBase.registry
+        assert Dataset.__mapper__.registry is not Base.registry
+        assert generated_dataset.id != another_dataset.id
+        assert Dataset(id=explicit_id).id == explicit_id
 
     def test_dataset_creation_with_required_fields(self):
         """Test creating a dataset with all required fields."""

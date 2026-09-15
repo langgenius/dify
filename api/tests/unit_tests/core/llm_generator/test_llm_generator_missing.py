@@ -44,13 +44,12 @@ def _model_manager() -> tuple[MagicMock, MagicMock]:
     return model_manager, model_instance
 
 
-def _dataset(*, dataset_id: str, tenant_id: str, name: str, created_at: datetime) -> Dataset:
+def _dataset(*, dataset_id: str, tenant_id: str, name: str) -> Dataset:
     return Dataset(
         id=dataset_id,
         tenant_id=tenant_id,
         name=name,
         created_by="account-id",
-        created_at=created_at,
     )
 
 
