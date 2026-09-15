@@ -34,6 +34,7 @@ from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
+from services.service_api_entity_loader import session_get_or_service_unavailable
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class FetchUserArg(BaseModel):
 
 APP_TOKEN_FORBIDDEN_RESPONSE = {
     403: "Forbidden - token scope, app, dataset, or workspace access denied",
+    503: "Service unavailable - app token validation could not reach the database",
 }
 
 DATASET_TOKEN_AUTH_RESPONSES = {
@@ -112,7 +114,7 @@ def validate_app_token[**P, R](
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token("app")
 
-            app_model = db.session.get(App, api_token.app_id)
+            app_model = session_get_or_service_unavailable(db.session, App, api_token.app_id)
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -122,7 +124,7 @@ def validate_app_token[**P, R](
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
 
-            tenant = db.session.get(Tenant, app_model.tenant_id)
+            tenant = session_get_or_service_unavailable(db.session, Tenant, app_model.tenant_id)
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
