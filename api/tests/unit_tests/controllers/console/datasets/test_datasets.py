@@ -230,7 +230,6 @@ class TestDatasetList(_UsesSQLiteSession):
             "icon_url": None,
         }
 
-<<<<<<< HEAD
     def test_get_has_more_false_on_last_page_exact_limit(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)
