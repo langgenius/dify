@@ -20,6 +20,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
     MessageSnapshot,
     WorkflowSnapshot,
 )
+from core.app.apps.common.user_snapshot import UserSnapshot
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -578,6 +579,9 @@ class TestAdvancedChatAppGeneratorInternals:
         assert commit_count == 1
         assert json.loads(conversation.override_model_configs) == {"feature": True}
         assert captured["draft_var_saver_factory"] == "draft-factory"
+        assert isinstance(captured["user"], UserSnapshot)
+        assert captured["user"].id == "user"
+        assert captured["user"].name == "Advanced Chat User"
         assert isinstance(captured["workflow"], WorkflowSnapshot)
         assert isinstance(captured["conversation"], ConversationSnapshot)
         assert isinstance(captured["message"], MessageSnapshot)
