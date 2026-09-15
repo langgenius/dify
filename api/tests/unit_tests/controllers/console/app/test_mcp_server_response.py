@@ -20,8 +20,9 @@ from controllers.console.wraps import RBACPermission, RBACResourceScope
 from models import Account
 from models.account import AccountStatus
 from models.enums import AppMCPServerStatus
-from models.model import App, AppMCPServer, AppMode, IconType
+from models.model import App, AppMCPServer
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_app
 
 
 def _app(
@@ -31,19 +32,7 @@ def _app(
     name: str = "Demo App",
     description: str = "App description",
 ) -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name=name,
-        description=description,
-        mode=AppMode.CHAT,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-    )
+    return make_app(app_id=app_id, tenant_id=tenant_id, name=name, description=description)
 
 
 def _server(
