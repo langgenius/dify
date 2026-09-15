@@ -101,6 +101,11 @@ class AliyunTraceClient(OtlpTraceClient):
                 node_type, "node"
             )
         inputs = captured.get("original_inputs", span.inputs) if native_type == "node" else span.inputs
+        if native_type == "node" and captured.get("node_type") == "http-request" and isinstance(process_data, dict):
+            request = process_data.get("request")
+            if isinstance(request, str) and request.strip():
+                # Reuse the node's masked request log without reconstructing the outbound request.
+                inputs = {"request": request}
         attributes: dict[str, Any] = {
             **span_attributes(completed_trace, span),
             "input.value": json_text(inputs),
@@ -125,6 +130,8 @@ class AliyunTraceClient(OtlpTraceClient):
         }
         attributes.pop("dify.inputs", None)
         attributes.pop("dify.outputs", None)
+        if native_type == "node":
+            attributes["dify.node.type"] = captured.get("node_type")
         usage = span.usage or captured.get("aggregate_usage")
         if isinstance(usage, dict):
             for field, key in (
