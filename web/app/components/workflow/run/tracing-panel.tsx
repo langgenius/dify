@@ -16,6 +16,7 @@ type TracingPanelProps = {
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
+  totalElapsedTime?: number
 }
 
 const TracingPanel: FC<TracingPanelProps> = ({
@@ -23,6 +24,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
+  totalElapsedTime,
 }) => {
   const { t } = useTranslation()
   const treeNodes = formatNodeList(list, t)
@@ -189,6 +191,20 @@ const TracingPanel: FC<TracingPanelProps> = ({
         e.nativeEvent.stopImmediatePropagation()
       }}
     >
+      {totalElapsedTime != null && (
+        <div
+          className="mx-4 mb-2 rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2"
+          title={t(($) => $['tracing.totalTimeTip'], { ns: 'runLog' })}
+        >
+          <div className="system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['tracing.totalTime'], { ns: 'runLog' })}
+          </div>
+          <div className="system-sm-medium text-text-secondary">{`${totalElapsedTime.toFixed(3)}s`}</div>
+          <div className="mt-1 system-xs-regular text-text-quaternary">
+            {t(($) => $['tracing.totalTimeTip'], { ns: 'runLog' })}
+          </div>
+        </div>
+      )}
       {treeNodes.map(renderNode)}
     </div>
   )

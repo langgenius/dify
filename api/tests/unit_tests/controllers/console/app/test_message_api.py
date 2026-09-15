@@ -11,8 +11,16 @@ from sqlalchemy.orm import Session
 
 from controllers.console.app import message as message_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from fields.conversation_fields import MessageResponseSource
+from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
-from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
+from models.enums import (
+    ConversationFromSource,
+    CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
+    WorkflowRunTriggeredFrom,
+)
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -23,6 +31,7 @@ from models.model import (
     MessageAnnotation,
     MessageFeedback,
 )
+from models.workflow import WorkflowRun, WorkflowType
 
 
 def _account() -> Account:
@@ -360,6 +369,76 @@ def test_suggested_questions_response(app: Flask, monkeypatch: pytest.MonkeyPatc
     assert response.data[0] == "What is AI?"
 
 
+def test_batch_workflow_run_elapsed_times_returns_mapping(sqlite_session: Session) -> None:
+    message = _persist_message(sqlite_session, message_id="550e8400-e29b-41d4-a716-446655440000")
+    created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+    workflow_run = WorkflowRun(
+        id="workflow-run-1",
+        tenant_id="tenant-1",
+        app_id=message.app_id,
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="v1",
+        graph='{"nodes": []}',
+        inputs="{}",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        outputs="{}",
+        error=None,
+        elapsed_time=12.5,
+        total_tokens=10,
+        total_steps=2,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=created_at,
+        finished_at=created_at,
+        exceptions_count=0,
+    )
+    message.workflow_run_id = workflow_run.id
+    sqlite_session.add(workflow_run)
+    sqlite_session.commit()
+
+    from services.message_service import get_workflow_run_elapsed_times_for_messages
+
+    elapsed_times = get_workflow_run_elapsed_times_for_messages(sqlite_session, [message])
+
+    assert elapsed_times == {"workflow-run-1": 12.5}
+
+
+def test_message_response_source_exposes_workflow_run_elapsed_time(sqlite_session: Session) -> None:
+    message = _persist_message(sqlite_session, message_id="550e8400-e29b-41d4-a716-446655440001")
+    created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+    workflow_run = WorkflowRun(
+        id="workflow-run-2",
+        tenant_id="tenant-1",
+        app_id=message.app_id,
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="v1",
+        graph='{"nodes": []}',
+        inputs="{}",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        outputs="{}",
+        error=None,
+        elapsed_time=8.25,
+        total_tokens=10,
+        total_steps=2,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=created_at,
+        finished_at=created_at,
+        exceptions_count=0,
+    )
+    message.workflow_run_id = workflow_run.id
+    sqlite_session.add(workflow_run)
+    sqlite_session.commit()
+
+    source = MessageResponseSource(message, session=sqlite_session, workflow_run_elapsed_time=8.25)
+
+    assert source.workflow_run_elapsed_time == 8.25
+
+
 def test_message_detail_response_normalizes_aliases_and_timestamp(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test MessageDetailResponse normalizes alias fields and datetime timestamps."""
     created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
@@ -379,6 +458,7 @@ def test_message_detail_response_normalizes_aliases_and_timestamp(app: Flask, mo
             "from_account_id": "550e8400-e29b-41d4-a716-446655440002",
             "feedbacks": [],
             "workflow_run_id": None,
+            "workflow_run_elapsed_time": None,
             "annotation": None,
             "annotation_hit_history": None,
             "status": "normal",
@@ -412,6 +492,7 @@ def test_message_detail_response_normalizes_aliases_and_timestamp(app: Flask, mo
         "from_account_id": "550e8400-e29b-41d4-a716-446655440002",
         "feedbacks": [],
         "workflow_run_id": None,
+        "workflow_run_elapsed_time": None,
         "annotation": None,
         "annotation_hit_history": None,
         "created_at": int(created_at.timestamp()),
