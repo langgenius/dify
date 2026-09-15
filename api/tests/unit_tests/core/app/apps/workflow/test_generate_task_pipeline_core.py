@@ -67,7 +67,7 @@ def _workflow() -> Workflow:
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features=json.dumps({}),
+        _features=json.dumps({}),
         created_by="user",
     )
 

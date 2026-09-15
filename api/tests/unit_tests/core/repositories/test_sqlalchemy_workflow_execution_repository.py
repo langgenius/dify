@@ -188,9 +188,9 @@ class TestSQLAlchemyWorkflowExecutionRepository:
             exceptions_count=1,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
             finished_at=datetime.now(UTC),
         )
+        db_model.created_at = datetime.now(UTC)
         sqlite_session.add(db_model)
         sqlite_session.commit()
         sqlite_session.expunge_all()

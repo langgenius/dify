@@ -48,11 +48,11 @@ def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: d
         kind=WorkflowKind.SNIPPET.value,
         version=version,
         graph=json.dumps(graph),
-        features=json.dumps(features),
+        _features=json.dumps(features),
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 
@@ -852,11 +852,11 @@ def test_delete_snippet_keeps_agent_with_persisted_external_owner(
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     external_binding = WorkflowAgentNodeBinding(
         tenant_id=snippet.tenant_id,
