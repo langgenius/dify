@@ -288,3 +288,29 @@ def test_completion_conversation_delete_maps_not_found(
     session = unbound_session
     with pytest.raises(NotFound):
         method(api, session, _make_account(), app_model=_app(), conversation_id="c1")
+
+
+def test_try_parse_uuid_accepts_valid_and_rejects_invalid() -> None:
+    valid = "123e4567-e89b-12d3-a456-426614174000"
+    assert conversation_module._try_parse_uuid(valid) is not None
+    assert conversation_module._try_parse_uuid(f"  {valid}  ") is not None
+    assert conversation_module._try_parse_uuid("") is None
+    assert conversation_module._try_parse_uuid("not-a-uuid") is None
+    assert conversation_module._try_parse_uuid("hello world") is None
+
+
+def test_id_search_conditions_match_conversation_and_message_ids() -> None:
+    from models import Conversation, Message
+
+    parsed = conversation_module._try_parse_uuid("123e4567-e89b-12d3-a456-426614174000")
+    assert parsed is not None
+    conditions = conversation_module._id_search_conditions("123e4567-e89b-12d3-a456-426614174000")
+    assert len(conditions) == 2
+    assert conditions[0].left.name == Conversation.id.key
+    assert conditions[1].left.name == Message.id.key
+    assert conditions[0].right.value == parsed
+    assert conditions[1].right.value == parsed
+
+
+def test_id_search_conditions_empty_for_plain_text_keyword() -> None:
+    assert conversation_module._id_search_conditions("refund policy") == []
