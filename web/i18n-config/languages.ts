@@ -168,6 +168,13 @@ const data = {
       example: 'مرحبا، Dify!',
       supported: true,
     },
+    {
+      value: 'az-AZ',
+      name: 'Azərbaycan dili (Azərbaycan)',
+      prompt_name: 'Azerbaijani',
+      example: 'Salam, Dify!',
+      supported: true,
+    },
   ],
 } as const
 
