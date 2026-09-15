@@ -1,8 +1,8 @@
 {
   "action.checkForUpdates": "Güncellemeleri kontrol et",
   "action.delete": "Eklentiyi kaldır",
-  "action.deleteContentLeft": "Kaldırmak ister misiniz",
-  "action.deleteContentRight": "eklenti?",
+  "action.deleteContentLeft": "Şunu kaldırmak ister misiniz: ",
+  "action.deleteContentRight": " eklentisi?",
   "action.deleteSuccess": "Eklenti başarıyla kaldırıldı",
   "action.pluginInfo": "Eklenti bilgisi",
   "allCategories": "Tüm Kategoriler",
