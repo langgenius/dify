@@ -52,7 +52,7 @@ from services.errors.conversation import ConversationNotExistsError
 
 
 class BaseConversationQuery(BaseModel):
-    keyword: str | None = Field(default=None, description="Search keyword")
+    keyword: str | None = Field(default=None, description="Search keyword (message text or conversation/message UUID)")
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
     end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
     annotation_status: Literal["annotated", "not_annotated", "all"] = Field(
@@ -120,12 +120,12 @@ class CompletionConversationApi(Resource):
             from libs.helper import escape_like_pattern
 
             escaped_keyword = escape_like_pattern(req_data.keyword)
-            query = query.join(Message, Message.conversation_id == Conversation.id).where(
-                or_(
-                    Message.query.ilike(f"%{escaped_keyword}%", escape="\\"),
-                    Message.answer.ilike(f"%{escaped_keyword}%", escape="\\"),
-                )
-            )
+            keyword_conditions = [
+                Message.query.ilike(f"%{escaped_keyword}%", escape="\\"),
+                Message.answer.ilike(f"%{escaped_keyword}%", escape="\\"),
+            ]
+            keyword_conditions.extend(_id_search_conditions(req_data.keyword))
+            query = query.join(Message, Message.conversation_id == Conversation.id).where(or_(*keyword_conditions))
 
         account = current_user
         assert account.timezone is not None
@@ -255,21 +255,21 @@ class ChatConversationApi(Resource):
 
             escaped_keyword = escape_like_pattern(req_data.keyword)
             keyword_filter = f"%{escaped_keyword}%"
+            keyword_conditions = [
+                Message.query.ilike(keyword_filter, escape="\\"),
+                Message.answer.ilike(keyword_filter, escape="\\"),
+                Conversation.name.ilike(keyword_filter, escape="\\"),
+                Conversation.introduction.ilike(keyword_filter, escape="\\"),
+                subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
+                *_id_search_conditions(req_data.keyword),
+            ]
             query = (
                 query.join(
                     Message,
                     Message.conversation_id == Conversation.id,
                 )
                 .join(subquery, subquery.c.conversation_id == Conversation.id)
-                .where(
-                    or_(
-                        Message.query.ilike(keyword_filter, escape="\\"),
-                        Message.answer.ilike(keyword_filter, escape="\\"),
-                        Conversation.name.ilike(keyword_filter, escape="\\"),
-                        Conversation.introduction.ilike(keyword_filter, escape="\\"),
-                        subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
-                    ),
-                )
+                .where(or_(*keyword_conditions))
                 .group_by(Conversation.id)
             )
 
@@ -391,6 +391,24 @@ class ChatConversationDetailApi(Resource):
             raise NotFound("Conversation Not Exists.")
 
         return "", 204
+
+
+def _try_parse_uuid(value: str) -> UUID | None:
+    candidate = value.strip()
+    if not candidate:
+        return None
+    try:
+        return UUID(candidate)
+    except ValueError:
+        return None
+
+
+def _id_search_conditions(keyword: str) -> list:
+    """Return exact-match conditions when the keyword is a conversation or message UUID."""
+    parsed = _try_parse_uuid(keyword)
+    if parsed is None:
+        return []
+    return [Conversation.id == parsed, Message.id == parsed]
 
 
 def _get_conversation(session: Session, current_user: Account, app_model, conversation_id):
