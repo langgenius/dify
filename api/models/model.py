@@ -2174,11 +2174,11 @@ class AppMCPServer(TypeBase):
     )
 
     @staticmethod
-    def generate_server_code(n: int) -> str:
+    def generate_server_code(n: int, *, session: Session) -> str:
         while True:
             result = generate_string(n)
             while (
-                db.session.scalar(select(func.count(AppMCPServer.id)).where(AppMCPServer.server_code == result)) or 0
+                session.scalar(select(func.count(AppMCPServer.id)).where(AppMCPServer.server_code == result)) or 0
             ) > 0:
                 result = generate_string(n)
 
