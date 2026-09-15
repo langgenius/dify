@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 from dify_trace_aliyun.aliyun_trace import create_trace_client
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
-from opentelemetry.proto.trace.v1.trace_pb2 import Span
+from opentelemetry.proto.trace.v1.trace_pb2 import Span, Status
 from pydantic import JsonValue
 
 from core.ops.basic_chat_trace import record_basic_chat_result
@@ -107,6 +107,8 @@ def test_recorded_workflow_native_kind_and_output(
     attributes = {item.key: item.value.string_value for item in exported.attributes}
     assert attributes["gen_ai.span.kind"] == kind
     assert attributes["output.value"] == output
+    if kind == "TASK":
+        assert attributes["dify.node.type"] == node_type
     if node_type == "llm":
         assert attributes["gen_ai.completion"] == output
         assert "gen_ai.request.model" not in attributes
@@ -116,6 +118,79 @@ def test_recorded_workflow_native_kind_and_output(
     elif node_type == "knowledge-retrieval":
         assert attributes["input.value"] == attributes["retrieval.query"] == "hello"
         assert json.loads(attributes["retrieval.document"])[0]["document"]["content"] == "world"
+
+
+@pytest.mark.parametrize("error", [None, "Connection refused"])
+@pytest.mark.parametrize(
+    ("node_type", "process_data", "expected_inputs"),
+    [
+        (
+            "http-request",
+            {"request": "POST /collect HTTP/1.1\r\nAuthorization: Bearer ******\r\n\r\n测试", "unrelated": "data"},
+            {"request": "POST /collect HTTP/1.1\r\nAuthorization: Bearer ******\r\n\r\n测试"},
+        ),
+        ("http-request", {}, {"fallback": True}),
+        *[
+            ("http-request", {"request": request}, {"fallback": True})
+            for request in (None, "", " \r\n", 42, True, {}, [])
+        ],
+        ("code", {"request": "must not replace inputs"}, {"fallback": True}),
+    ],
+)
+def test_recorded_http_task_uses_masked_request_snapshot(
+    node_type: str,
+    process_data: dict[str, JsonValue],
+    expected_inputs: dict[str, JsonValue],
+    error: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
+    submitted: list[CompletedTrace] = []
+    recorder = WorkflowTraceRecorder(
+        source=source,
+        workflow_id="workflow",
+        workflow_version="1",
+        inputs={},
+        submit_completed_trace=lambda trace: submitted.append(trace) is None,
+    )
+    node = workflow_node(source, node_type=node_type)
+    start_node(recorder, node)
+    outputs = {"error_message": error} if error else {"status_code": 200}
+    result = NodeRunResult(inputs={"fallback": True}, process_data=process_data, outputs=outputs)
+    started = datetime.now(UTC)
+    recorder.on_event(
+        NodeRunFailedEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type=node_type,
+            start_at=started,
+            node_run_result=result,
+            error=error,
+        )
+        if error
+        else NodeRunSucceededEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type=node_type,
+            start_at=started,
+            node_run_result=result,
+            finished_at=datetime.now(UTC),
+        )
+    )
+    recorder.on_event(GraphRunFailedEvent(error=error) if error else GraphRunSucceededEvent())
+    assert recorder.finish_workflow_trace()
+    trace = CompletedTrace.model_validate_json(submitted[0].model_dump_json())
+    root, exported = export_spans(trace, monkeypatch)
+    attributes = {item.key: item.value.string_value for item in exported.attributes}
+    assert attributes["gen_ai.span.kind"] == "TASK"
+    assert attributes["dify.node.type"] == node_type
+    assert json.loads(attributes["input.value"]) == expected_inputs
+    assert json.loads(attributes["output.value"]) == outputs
+    assert trace.spans[1].attributes["process_data"] == process_data
+    assert exported.trace_id == root.trace_id
+    assert exported.parent_span_id == root.span_id
+    assert exported.kind == Span.SPAN_KIND_INTERNAL
+    assert exported.status.code == (Status.STATUS_CODE_ERROR if error else Status.STATUS_CODE_OK)
 
 
 @pytest.mark.parametrize("outputs", [{"error_message": "rate limited", "error_type": "RateLimitError"}, {}, None])
