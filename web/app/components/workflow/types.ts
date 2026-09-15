@@ -243,6 +243,7 @@ export type InputVar = {
   hide?: boolean
   isFileItem?: boolean
   json_schema?: string | Record<string, any> // for jsonObject type
+  reset_on_change?: string[]
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = LLMEnvironmentVariableValue & {
