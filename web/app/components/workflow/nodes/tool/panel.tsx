@@ -89,6 +89,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
                   schema={toolSettingSchema as any}
                   value={toolSettingValue}
                   onChange={setToolSettingValue}
+                  currentProvider={currCollection}
+                  currentTool={currTool}
                 />
               </OutputVars>
               <Split />
