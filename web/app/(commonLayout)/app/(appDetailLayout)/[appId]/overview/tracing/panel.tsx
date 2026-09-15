@@ -9,6 +9,7 @@ import type {
   LangSmithConfig,
   MLflowConfig,
   OpikConfig,
+  OTelConfig,
   PhoenixConfig,
   TencentConfig,
   WeaveConfig,
@@ -48,6 +49,7 @@ import {
 } from '@/service/apps'
 import { getAppACLCapabilities } from '@/utils/permission'
 import ConfigButton from './config-button'
+import { OtelIcon } from './otel-icon'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
 
@@ -116,6 +118,7 @@ const Panel: FC = () => {
     [TracingProvider.mlflow]: MlflowIcon,
     [TracingProvider.databricks]: DatabricksIcon,
     [TracingProvider.tencent]: TencentIcon,
+    [TracingProvider.otel]: OtelIcon,
   }
   const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
@@ -129,6 +132,7 @@ const Panel: FC = () => {
   const [mlflowConfig, setMLflowConfig] = useState<MLflowConfig | null>(null)
   const [databricksConfig, setDatabricksConfig] = useState<DatabricksConfig | null>(null)
   const [tencentConfig, setTencentConfig] = useState<TencentConfig | null>(null)
+  const [otelConfig, setOTelConfig] = useState<OTelConfig | null>(null)
   const hasConfiguredTracing = !!(
     langSmithConfig ||
     langFuseConfig ||
@@ -139,7 +143,8 @@ const Panel: FC = () => {
     aliyunConfig ||
     mlflowConfig ||
     databricksConfig ||
-    tencentConfig
+    tencentConfig ||
+    otelConfig
   )
 
   const fetchTracingConfig = async () => {
@@ -193,6 +198,11 @@ const Panel: FC = () => {
         await doFetchTracingConfig({ appId, provider: TracingProvider.tencent })
       if (!tencentHasNotConfig) setTencentConfig(tencentConfig as TencentConfig)
     }
+    const getOTelConfig = async () => {
+      const { tracing_config: otelConfig, has_not_configured: otelHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.otel })
+      if (!otelHasNotConfig) setOTelConfig(otelConfig as OTelConfig)
+    }
     Promise.all([
       getArizeConfig(),
       getPhoenixConfig(),
@@ -204,6 +214,7 @@ const Panel: FC = () => {
       getMLflowConfig(),
       getDatabricksConfig(),
       getTencentConfig(),
+      getOTelConfig(),
     ])
   }
 
@@ -220,6 +231,7 @@ const Panel: FC = () => {
     else if (provider === TracingProvider.weave) setWeaveConfig(tracing_config as WeaveConfig)
     else if (provider === TracingProvider.aliyun) setAliyunConfig(tracing_config as AliyunConfig)
     else if (provider === TracingProvider.tencent) setTencentConfig(tracing_config as TencentConfig)
+    else if (provider === TracingProvider.otel) setOTelConfig(tracing_config as OTelConfig)
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
@@ -233,6 +245,7 @@ const Panel: FC = () => {
     else if (provider === TracingProvider.mlflow) setMLflowConfig(null)
     else if (provider === TracingProvider.databricks) setDatabricksConfig(null)
     else if (provider === TracingProvider.tencent) setTencentConfig(null)
+    else if (provider === TracingProvider.otel) setOTelConfig(null)
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange(
         {
@@ -284,6 +297,7 @@ const Panel: FC = () => {
           mlflowConfig={mlflowConfig}
           databricksConfig={databricksConfig}
           tencentConfig={tencentConfig}
+          otelConfig={otelConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
         >
@@ -325,6 +339,7 @@ const Panel: FC = () => {
           mlflowConfig={mlflowConfig}
           databricksConfig={databricksConfig}
           tencentConfig={tencentConfig}
+          otelConfig={otelConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
         >

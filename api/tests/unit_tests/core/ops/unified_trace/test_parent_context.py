@@ -10,6 +10,7 @@ from core.ops.exceptions import (
     PendingTraceParentContextError,
     TraceParentContextAccessError,
 )
+from core.ops.unified_trace import parent_context as parent_context_module
 from core.ops.unified_trace.parent_context import (
     ParentContextCoordinator,
     ParentDestination,
@@ -17,7 +18,9 @@ from core.ops.unified_trace.parent_context import (
     ProviderParentContext,
     destination_scope,
     parent_destination_from_config,
+    resolve_parent_destination,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def parent() -> ParentTraceContext:
@@ -53,6 +56,93 @@ def test_parent_destination_uses_non_secret_provider_scope() -> None:
         unified=True,
     )
     assert "secret" not in destination.scope
+
+
+def test_parent_destination_uses_service_name_for_otel_scope() -> None:
+    destination = parent_destination_from_config(
+        "otel",
+        {
+            "headers": "encrypted-secret",
+            "endpoint": "http://collector:4318/v1/traces",
+            "service_name": "my-test-app",
+        },
+        unified=True,
+    )
+
+    assert destination == ParentDestination(
+        provider="otel",
+        scope=destination_scope("otel", "http://collector:4318/v1/traces", "my-test-app"),
+        unified=True,
+    )
+    assert "secret" not in destination.scope
+
+
+def test_parent_destination_ignores_foreign_scope_field() -> None:
+    # "project" belongs to Phoenix/LangSmith; the OTel entry declares "service_name", so a
+    # stray project value must not leak into the scope.
+    destination = parent_destination_from_config(
+        "otel",
+        {"endpoint": "http://collector:4318/v1/traces", "project": "not-the-scope-key"},
+        unified=True,
+    )
+
+    assert destination.scope == destination_scope("otel", "http://collector:4318/v1/traces", "")
+
+
+def test_parent_destination_for_unregistered_provider_has_empty_scope_key() -> None:
+    destination = parent_destination_from_config(
+        "langfuse",
+        {"endpoint": "https://cloud.langfuse.com", "project": "project-a", "service_name": "svc"},
+        unified=False,
+    )
+
+    assert destination.scope == destination_scope("langfuse", "https://cloud.langfuse.com", "")
+    assert destination.unified is False
+
+
+def _stub_parent_app(monkeypatch: pytest.MonkeyPatch, provider: str, tracing_config: dict[str, object]) -> None:
+    session = MagicMock()
+    session.__enter__.return_value = session
+    session.get.side_effect = [
+        SimpleNamespace(app_id="app-1"),
+        SimpleNamespace(id="app-1", tracing=json.dumps({"enabled": True, "tracing_provider": provider})),
+    ]
+    session.scalar.return_value = SimpleNamespace(tracing_config=tracing_config)
+    monkeypatch.setattr(parent_context_module, "Session", lambda _engine: session)
+    monkeypatch.setattr(parent_context_module, "db", SimpleNamespace(engine=object()))
+
+
+def test_resolve_parent_destination_marks_unified_only_provider_without_switch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A parent app on the OTel provider publishes restorable context even when the deployment
+    # never opted Phoenix/LangSmith into the unified runtime.
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=False)
+    _stub_parent_app(
+        monkeypatch,
+        "otel",
+        {"endpoint": "http://collector:4318/v1/traces", "service_name": "svc", "headers": "ciphertext"},
+    )
+
+    destination = resolve_parent_destination("outer-run")
+
+    assert destination == ParentDestination(
+        provider="otel",
+        scope=destination_scope("otel", "http://collector:4318/v1/traces", "svc"),
+        unified=True,
+    )
+
+
+def test_resolve_parent_destination_keeps_switch_for_legacy_capable_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=False)
+    _stub_parent_app(monkeypatch, "phoenix", {"endpoint": "https://phoenix.example", "project": "p"})
+
+    destination = resolve_parent_destination("outer-run")
+
+    assert destination is not None
+    assert destination.unified is False
 
 
 def test_publish_uses_unified_namespace_and_configured_ttl(monkeypatch: pytest.MonkeyPatch) -> None:

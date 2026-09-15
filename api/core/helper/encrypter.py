@@ -14,6 +14,18 @@ def full_mask_token(token_length: int = 20) -> str:
     return "*" * token_length
 
 
+def is_obfuscated_token(value: str) -> bool:
+    """Return True when ``value`` is a masked display value rather than a real secret.
+
+    Masked values come from ``obfuscated_token`` (a run of 12 asterisks between the visible
+    prefix and suffix), ``full_mask_token`` (asterisks only), or an all-asterisk placeholder
+    sent by a client. A real secret that merely contains an asterisk is not masked.
+    """
+    if not value:
+        return False
+    return value.strip("*") == "" or "*" * 12 in value
+
+
 def encrypt_token(tenant_id: str, token: str) -> str:
     from extensions.ext_key_provider import key_provider_manager
 
