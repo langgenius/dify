@@ -103,3 +103,74 @@ def test_resume_workflow_execution_raises_do_not_use_printf_positional_args():
             assert "%s" not in call.args[0].value, (
                 f"raise {ast.unparse(call)} still contains '%s' in its message; use an f-string."
             )
+
+
+# ---------------------------------------------------------------------------
+# Rollback of poisoned session in _execute_workflow_common failure path
+# ---------------------------------------------------------------------------
+#
+# Regression: when WorkflowAppGenerator.generate() raised a SQLAlchemy
+# flush error, the session was left in a failed-transaction state. The
+# bookkeeping block then attempted session.commit() and raised
+# PendingRollbackError, dropping the failure record.
+#
+# The fix rolls back the session inside the except block before the
+# bookkeeping updates, and reloads trigger_log from the repository.
+
+
+def test_execute_workflow_common_rolls_back_poisoned_session_before_bookkeeping(monkeypatch):
+    from contextlib import contextmanager
+    from unittest.mock import MagicMock
+
+    from tasks import async_workflow_tasks
+
+    session = MagicMock(name="session")
+    trigger_log = MagicMock(name="trigger_log")
+    trigger_log.id = "trigger-log-1"
+
+    @contextmanager
+    def _session_ctx():
+        yield session
+
+    monkeypatch.setattr(async_workflow_tasks, "session_factory")
+    async_workflow_tasks.session_factory.create_session = _session_ctx
+
+    repo = MagicMock(name="repo")
+    repo.get_by_id.return_value = trigger_log
+    monkeypatch.setattr(
+        async_workflow_tasks, "SQLAlchemyWorkflowTriggerLogRepository", lambda _session: repo
+    )
+
+    # generator.generate() raises a SQLAlchemy flush error.
+    generator = MagicMock(name="generator")
+    generator.generate.side_effect = RuntimeError("flush error")
+
+    class _FakeGenerator:
+        def __init__(self):
+            self._g = generator
+
+        def generate(self, **kwargs):
+            return self._g.generate(**kwargs)
+
+    monkeypatch.setattr(async_workflow_tasks, "WorkflowAppGenerator", _FakeGenerator)
+
+    # Configure the rest of the mocks the function needs. Anything not
+    # explicitly configured returns a MagicMock, which is enough for this
+    # smoke check on the rollback/commit ordering.
+    task_data = MagicMock(name="task_data")
+    task_data.workflow_trigger_log_id = "trigger-log-1"
+    scheduler = MagicMock(name="scheduler")
+    entity = MagicMock(name="entity")
+
+    async_workflow_tasks._execute_workflow_common(task_data, scheduler, entity)
+
+    # The session must have been rolled back before the bookkeeping commit.
+    session.rollback.assert_called_once()
+    # And the bookkeeping commit must succeed.
+    assert session.commit.called, "expected the bookkeeping commit to be called"
+    # trigger_log must be re-fetched after the rollback so attribute writes
+    # bind to the now-clean session.
+    repo.get_by_id.assert_called_with("trigger-log-1")
+    # The bookkeeping write should mark the log as FAILED with the original error.
+    assert trigger_log.status == async_workflow_tasks.WorkflowTriggerStatus.FAILED
+    assert trigger_log.error == "flush error"
