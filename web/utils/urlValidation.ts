@@ -27,16 +27,32 @@ export function validateRedirectUrl(url: string): void {
 export function isPrivateOrLocalAddress(url: string): boolean {
   try {
     const urlObj = new URL(url)
+    // URL.hostname keeps the surrounding brackets for IPv6 literals
+    // (e.g. `http://[::1]:8080/x` yields `[::1]`) and is already separated
+    // from the port. URL.host would include the port as `:8080` which
+    // breaks string equality checks for IPv6 literals — use hostname.
     const hostname = urlObj.hostname.toLowerCase()
 
-    // Check for localhost
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true
+    // Strip the brackets an IPv6 literal carries in `hostname`.
+    const bare = hostname.startsWith('[') && hostname.endsWith(']')
+      ? hostname.slice(1, -1)
+      : hostname
 
-    // Check for private IP ranges
+    // Check for localhost / loopback / unspecified
+    if (
+      bare === 'localhost'
+      || bare === '127.0.0.1'
+      || bare === '::1'
+      || bare === '0.0.0.0'
+    ) return true
+
+    // Check for private IPv4 ranges
     const ipv4Regex = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/
-    const ipv4Match = ipv4Regex.exec(hostname)
+    const ipv4Match = ipv4Regex.exec(bare)
     if (ipv4Match) {
       const [, a, b] = ipv4Match.map(Number)
+      // 127.0.0.0/8 (full IPv4 loopback)
+      if (a === 127) return true
       // 10.0.0.0/8
       if (a === 10) return true
       // 172.16.0.0/12
@@ -46,6 +62,18 @@ export function isPrivateOrLocalAddress(url: string): boolean {
       // 169.254.0.0/16 (link-local)
       if (a === 169 && b === 254) return true
     }
+
+    // Check for private IPv6 ranges (post-bracket-stripping)
+    // ::1 loopback (already covered above)
+    // fc00::/7 (IPv6 unique-local: fc00:: and fd00:: ranges)
+    if (bare.startsWith('fc') || bare.startsWith('fd')) return true
+    // fe80::/10 (link-local)
+    if (
+      bare.startsWith('fe8')
+      || bare.startsWith('fe9')
+      || bare.startsWith('fea')
+      || bare.startsWith('feb')
+    ) return true
 
     // Check for .local domains
     return hostname.endsWith('.local')
