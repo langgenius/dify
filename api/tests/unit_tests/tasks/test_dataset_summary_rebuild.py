@@ -1,6 +1,5 @@
-import importlib
 import uuid
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from types import ModuleType
 from unittest.mock import MagicMock, patch
@@ -16,8 +15,15 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, Se
 
 
 @pytest.fixture(params=["deal_dataset_vector_index_task", "deal_dataset_index_update_task"])
-def task_module(request: pytest.FixtureRequest) -> ModuleType:
-    return importlib.import_module(f"tasks.{request.param}")
+def dataset_task(request: pytest.FixtureRequest) -> tuple[ModuleType, Callable[[str, str], None]]:
+    if request.param == "deal_dataset_vector_index_task":
+        from tasks import deal_dataset_vector_index_task
+
+        return deal_dataset_vector_index_task, deal_dataset_vector_index_task.deal_dataset_vector_index_task.run
+
+    from tasks import deal_dataset_index_update_task
+
+    return deal_dataset_index_update_task, deal_dataset_index_update_task.deal_dataset_index_update_task.run
 
 
 @pytest.fixture
@@ -92,13 +98,14 @@ def _record_commits(factory: sessionmaker[Session], events: list[str]) -> Genera
 @pytest.mark.parametrize("failed_document", [False, True], ids=["all-loaded", "one-load-fails"])
 @pytest.mark.parametrize("summaries_enabled", [True, False], ids=["summaries-enabled", "summaries-disabled"])
 def test_update_dispatches_summaries_after_body_rebuild_commits(
-    task_module: ModuleType,
+    dataset_task: tuple[ModuleType, Callable[[str, str], None]],
     indexed_dataset: tuple[Dataset, list[Document]],
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     failed_document: bool,
     summaries_enabled: bool,
 ) -> None:
+    task_module, run_task = dataset_task
     dataset, documents = indexed_dataset
     dataset.summary_index_setting = {"enable": summaries_enabled}
     sqlite_session.commit()
@@ -139,7 +146,7 @@ def test_update_dispatches_summaries_after_body_rebuild_commits(
         patch("tasks.regenerate_summary_index_task.regenerate_summary_index_task.delay", side_effect=dispatch) as delay,
     ):
         processor_factory.return_value.init_index_processor.return_value = processor
-        getattr(task_module, task_module.__name__.rsplit(".", 1)[1]).run(dataset.id, "update")
+        run_task(dataset.id, "update")
 
     delay.assert_called_once_with(dataset.id, regenerate_reason="embedding_model_changed", regenerate_vectors_only=True)
     assert observed_statuses == [expected_statuses]
@@ -150,9 +157,10 @@ def test_update_dispatches_summaries_after_body_rebuild_commits(
 
 
 def test_update_does_not_dispatch_summaries_when_cleanup_fails(
-    task_module: ModuleType,
+    dataset_task: tuple[ModuleType, Callable[[str, str], None]],
     indexed_dataset: tuple[Dataset, list[Document]],
 ) -> None:
+    task_module, run_task = dataset_task
     dataset, _documents = indexed_dataset
     with (
         patch.object(task_module, "IndexProcessorFactory") as processor_factory,
@@ -160,17 +168,18 @@ def test_update_does_not_dispatch_summaries_when_cleanup_fails(
     ):
         processor = processor_factory.return_value.init_index_processor.return_value
         processor.clean.side_effect = RuntimeError("Vector store unavailable")
-        getattr(task_module, task_module.__name__.rsplit(".", 1)[1]).run(dataset.id, "update")
+        run_task(dataset.id, "update")
 
     processor.load.assert_not_called()
     delay.assert_not_called()
 
 
 def test_update_dispatches_after_cleanup_without_completed_documents(
-    task_module: ModuleType,
+    dataset_task: tuple[ModuleType, Callable[[str, str], None]],
     indexed_dataset: tuple[Dataset, list[Document]],
     sqlite_session: Session,
 ) -> None:
+    task_module, run_task = dataset_task
     dataset, documents = indexed_dataset
     for document in documents:
         document.indexing_status = IndexingStatus.ERROR
@@ -188,7 +197,7 @@ def test_update_dispatches_after_cleanup_without_completed_documents(
         processor = processor_factory.return_value.init_index_processor.return_value
         processor.clean.side_effect = lambda *_args, **_kwargs: events.append("clean")
         delay.side_effect = dispatch
-        getattr(task_module, task_module.__name__.rsplit(".", 1)[1]).run(dataset.id, "update")
+        run_task(dataset.id, "update")
 
     processor.load.assert_not_called()
     delay.assert_called_once_with(dataset.id, regenerate_reason="embedding_model_changed", regenerate_vectors_only=True)
@@ -196,28 +205,31 @@ def test_update_dispatches_after_cleanup_without_completed_documents(
 
 
 def test_other_actions_do_not_dispatch_summary_rebuild(
-    task_module: ModuleType,
+    dataset_task: tuple[ModuleType, Callable[[str, str], None]],
     indexed_dataset: tuple[Dataset, list[Document]],
 ) -> None:
+    task_module, run_task = dataset_task
     dataset, _documents = indexed_dataset
     actions = ("add", "remove") if task_module.__name__.endswith("vector_index_task") else ("upgrade",)
     with (
         patch.object(task_module, "IndexProcessorFactory"),
         patch("tasks.regenerate_summary_index_task.regenerate_summary_index_task.delay") as delay,
     ):
-        task = getattr(task_module, task_module.__name__.rsplit(".", 1)[1])
         for action in actions:
-            task.run(dataset.id, action)
+            run_task(dataset.id, action)
 
     delay.assert_not_called()
 
 
-def test_missing_dataset_does_not_dispatch_summary_rebuild(task_module: ModuleType) -> None:
+def test_missing_dataset_does_not_dispatch_summary_rebuild(
+    dataset_task: tuple[ModuleType, Callable[[str, str], None]],
+) -> None:
+    task_module, run_task = dataset_task
     with (
         patch.object(task_module, "IndexProcessorFactory") as processor_factory,
         patch("tasks.regenerate_summary_index_task.regenerate_summary_index_task.delay") as delay,
     ):
-        getattr(task_module, task_module.__name__.rsplit(".", 1)[1]).run(str(uuid.uuid4()), "update")
+        run_task(str(uuid.uuid4()), "update")
 
     processor_factory.assert_not_called()
     delay.assert_not_called()
