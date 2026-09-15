@@ -16,6 +16,7 @@ import {
   getNodeCustomTypeByNodeDataType,
   getTopLeftNodePosition,
   hasRetryNode,
+  resolveContainerParentId,
 } from '../node'
 
 describe('nested workflow node layering', () => {
@@ -154,6 +155,36 @@ describe('getIterationStartNode', () => {
     expect(node.draggable).toBe(false)
     expect(node.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
     expect(node.position).toEqual({ x: 24, y: 68 })
+  })
+})
+
+describe('resolveContainerParentId', () => {
+  it('should prefer parentId when present', () => {
+    const node = {
+      id: 'child',
+      parentId: 'loop-1',
+      data: { isInLoop: true, loop_id: 'loop-2' },
+    } as Node
+
+    expect(resolveContainerParentId(node)).toBe('loop-1')
+  })
+
+  it('should fall back to loop_id when parentId is missing', () => {
+    const node = {
+      id: 'child',
+      data: { isInLoop: true, loop_id: 'loop-1' },
+    } as Node
+
+    expect(resolveContainerParentId(node)).toBe('loop-1')
+  })
+
+  it('should fall back to iteration_id when parentId is missing', () => {
+    const node = {
+      id: 'child',
+      data: { isInIteration: true, iteration_id: 'iter-1' },
+    } as Node
+
+    expect(resolveContainerParentId(node)).toBe('iter-1')
   })
 })
 

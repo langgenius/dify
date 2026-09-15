@@ -49,6 +49,7 @@ import {
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getNodesWithSameDefaultDataType,
   getTopLeftNodePosition,
+  resolveContainerParentId,
   isClipboardEdgeStructurallyValid,
   isClipboardNodeStructurallyValid,
   isClipboardValueCompatibleWithDefault,
@@ -884,14 +885,17 @@ export const useNodesInteractions = () => {
             ? lastOutgoer.position.y + lastOutgoer.height! + Y_OFFSET
             : prevNode!.position.y,
         }
-        newNode.parentId = prevNode!.parentId
+        const containerParentId = resolveContainerParentId(prevNode!)
+        newNode.parentId = containerParentId
         newNode.extent = prevNode!.extent
 
-        const parentNode = nodes.find((node) => node.id === prevNode!.parentId) || null
+        const parentNode = containerParentId
+          ? nodes.find((node) => node.id === containerParentId) || null
+          : null
         const isInIteration = !!parentNode && parentNode.data.type === BlockEnum.Iteration
         const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
 
-        if (prevNode!.parentId) {
+        if (containerParentId) {
           newNode.data.isInIteration = isInIteration
           newNode.data.isInLoop = isInLoop
           if (isInIteration) {
@@ -936,11 +940,11 @@ export const useNodesInteractions = () => {
               targetType: newNode.data.type,
               isInIteration,
               isInLoop,
-              iteration_id: isInIteration ? prevNode!.parentId : undefined,
-              loop_id: isInLoop ? prevNode!.parentId : undefined,
+              iteration_id: isInIteration ? containerParentId : undefined,
+              loop_id: isInLoop ? containerParentId : undefined,
               _connectedNodeIsSelected: true,
             },
-            zIndex: prevNode!.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
+            zIndex: containerParentId ? NESTED_ELEMENT_Z_INDEX : 0,
           }
         }
 
@@ -960,14 +964,14 @@ export const useNodesInteractions = () => {
               }
             }
 
-            if (node.data.type === BlockEnum.Iteration && prevNode!.parentId === node.id) {
+            if (node.data.type === BlockEnum.Iteration && containerParentId === node.id) {
               node.data._children?.push({
                 nodeId: newNode.id,
                 nodeType: newNode.data.type,
               })
             }
 
-            if (node.data.type === BlockEnum.Loop && prevNode!.parentId === node.id) {
+            if (node.data.type === BlockEnum.Loop && containerParentId === node.id) {
               node.data._children?.push({
                 nodeId: newNode.id,
                 nodeType: newNode.data.type,
@@ -1026,14 +1030,17 @@ export const useNodesInteractions = () => {
           x: nextNode.position.x,
           y: nextNode.position.y,
         }
-        newNode.parentId = nextNode.parentId
+        const nextContainerParentId = resolveContainerParentId(nextNode)
+        newNode.parentId = nextContainerParentId
         newNode.extent = nextNode.extent
 
-        const parentNode = nodes.find((node) => node.id === nextNode.parentId) || null
+        const parentNode = nextContainerParentId
+          ? nodes.find((node) => node.id === nextContainerParentId) || null
+          : null
         const isInIteration = !!parentNode && parentNode.data.type === BlockEnum.Iteration
         const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
 
-        if (parentNode && nextNode.parentId) {
+        if (parentNode && nextContainerParentId) {
           newNode.data.isInIteration = isInIteration
           newNode.data.isInLoop = isInLoop
           if (isInIteration) {
@@ -1066,11 +1073,11 @@ export const useNodesInteractions = () => {
               targetType: nextNode.data.type,
               isInIteration,
               isInLoop,
-              iteration_id: isInIteration ? nextNode.parentId : undefined,
-              loop_id: isInLoop ? nextNode.parentId : undefined,
+              iteration_id: isInIteration ? nextContainerParentId : undefined,
+              loop_id: isInLoop ? nextContainerParentId : undefined,
               _connectedNodeIsSelected: true,
             },
-            zIndex: nextNode.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
+            zIndex: nextContainerParentId ? NESTED_ELEMENT_Z_INDEX : 0,
           }
         }
 
@@ -1099,7 +1106,7 @@ export const useNodesInteractions = () => {
               }
             }
 
-            if (node.data.type === BlockEnum.Iteration && nextNode.parentId === node.id) {
+            if (node.data.type === BlockEnum.Iteration && nextContainerParentId === node.id) {
               node.data._children?.push({
                 nodeId: newNode.id,
                 nodeType: newNode.data.type,
@@ -1111,7 +1118,7 @@ export const useNodesInteractions = () => {
               node.data.startNodeType = newNode.data.type
             }
 
-            if (node.data.type === BlockEnum.Loop && nextNode.parentId === node.id) {
+            if (node.data.type === BlockEnum.Loop && nextContainerParentId === node.id) {
               node.data._children?.push({
                 nodeId: newNode.id,
                 nodeType: newNode.data.type,
@@ -1155,14 +1162,17 @@ export const useNodesInteractions = () => {
           x: nextNode.position.x,
           y: nextNode.position.y,
         }
-        newNode.parentId = prevNode.parentId
+        const betweenContainerParentId = resolveContainerParentId(prevNode)
+        newNode.parentId = betweenContainerParentId
         newNode.extent = prevNode.extent
 
-        const parentNode = nodes.find((node) => node.id === prevNode.parentId) || null
+        const parentNode = betweenContainerParentId
+          ? nodes.find((node) => node.id === betweenContainerParentId) || null
+          : null
         const isInIteration = !!parentNode && parentNode.data.type === BlockEnum.Iteration
         const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
 
-        if (parentNode && prevNode.parentId) {
+        if (parentNode && betweenContainerParentId) {
           newNode.data.isInIteration = isInIteration
           newNode.data.isInLoop = isInLoop
           if (isInIteration) {
@@ -1193,17 +1203,20 @@ export const useNodesInteractions = () => {
               targetType: newNode.data.type,
               isInIteration,
               isInLoop,
-              iteration_id: isInIteration ? prevNode.parentId : undefined,
-              loop_id: isInLoop ? prevNode.parentId : undefined,
+              iteration_id: isInIteration ? betweenContainerParentId : undefined,
+              loop_id: isInLoop ? betweenContainerParentId : undefined,
               _connectedNodeIsSelected: true,
             },
-            zIndex: prevNode.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
+            zIndex: betweenContainerParentId ? NESTED_ELEMENT_Z_INDEX : 0,
           }
         }
 
         let newNextEdge: Edge | null = null
 
-        const nextNodeParentNode = nodes.find((node) => node.id === nextNode.parentId) || null
+        const nextContainerParentId = resolveContainerParentId(nextNode)
+        const nextNodeParentNode = nextContainerParentId
+          ? nodes.find((node) => node.id === nextContainerParentId) || null
+          : null
         const isNextNodeInIteration =
           !!nextNodeParentNode && nextNodeParentNode.data.type === BlockEnum.Iteration
         const isNextNodeInLoop =
@@ -1227,11 +1240,11 @@ export const useNodesInteractions = () => {
               targetType: nextNode.data.type,
               isInIteration: isNextNodeInIteration,
               isInLoop: isNextNodeInLoop,
-              iteration_id: isNextNodeInIteration ? nextNode.parentId : undefined,
-              loop_id: isNextNodeInLoop ? nextNode.parentId : undefined,
+              iteration_id: isNextNodeInIteration ? nextContainerParentId : undefined,
+              loop_id: isNextNodeInLoop ? nextContainerParentId : undefined,
               _connectedNodeIsSelected: true,
             },
-            zIndex: nextNode.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
+            zIndex: nextContainerParentId ? NESTED_ELEMENT_Z_INDEX : 0,
           }
         }
         const nodesConnectedSourceOrTargetHandleIdsMap =
@@ -1258,13 +1271,13 @@ export const useNodesInteractions = () => {
             }
             if (afterNodesInSameBranchIds.includes(node.id)) node.position.x += NODE_WIDTH_X_OFFSET
 
-            if (node.data.type === BlockEnum.Iteration && prevNode.parentId === node.id) {
+            if (node.data.type === BlockEnum.Iteration && betweenContainerParentId === node.id) {
               node.data._children?.push({
                 nodeId: newNode.id,
                 nodeType: newNode.data.type,
               })
             }
-            if (node.data.type === BlockEnum.Loop && prevNode.parentId === node.id) {
+            if (node.data.type === BlockEnum.Loop && betweenContainerParentId === node.id) {
               node.data._children?.push({
                 nodeId: newNode.id,
                 nodeType: newNode.data.type,
