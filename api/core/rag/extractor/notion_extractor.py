@@ -205,9 +205,8 @@ class NotionExtractor(BaseExtractor):
                 else:
                     if "rich_text" in result_obj:
                         for rich_text in result_obj["rich_text"]:
-                            # skip if doesn't have text object
-                            if "text" in rich_text:
-                                text = rich_text["text"]["content"]
+                            text = rich_text.get("plain_text") or rich_text.get("text", {}).get("content", "")
+                            if text:
                                 cur_result_text_arr.append(text)
 
                     result_block_id = result["id"]
@@ -263,9 +262,8 @@ class NotionExtractor(BaseExtractor):
                 else:
                     if "rich_text" in result_obj:
                         for rich_text in result_obj["rich_text"]:
-                            # skip if doesn't have text object
-                            if "text" in rich_text:
-                                text = rich_text["text"]["content"]
+                            text = rich_text.get("plain_text") or rich_text.get("text", {}).get("content", "")
+                            if text:
                                 prefix = "\t" * num_tabs
                                 cur_result_text_arr.append(prefix + text)
                     result_block_id = result["id"]
