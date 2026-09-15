@@ -62,7 +62,7 @@ def _dataset(*, built_in_field_enabled: bool) -> Dataset:
 
 
 def _document() -> Document:
-    return Document(
+    document = Document(
         id=DOCUMENT_ID,
         tenant_id="tenant-1",
         dataset_id="dataset-1",
@@ -72,10 +72,11 @@ def _document() -> Document:
         name="Document",
         created_from=DocumentCreatedFrom.API,
         created_by="account-1",
-        created_at=datetime(2026, 1, 1),
-        updated_at=datetime(2026, 1, 2),
         doc_metadata={},
     )
+    document.created_at = datetime(2026, 1, 1)
+    document.updated_at = datetime(2026, 1, 2)
+    return document
 
 
 def test_enable_built_in_field_uses_caller_session_for_uploader(sqlite_session: Session) -> None:

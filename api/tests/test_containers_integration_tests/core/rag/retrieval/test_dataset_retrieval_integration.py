@@ -482,7 +482,6 @@ class TestKnowledgeRetrievalIntegration:
         db_session_with_containers.add(dataset)
 
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
