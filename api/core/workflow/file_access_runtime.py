@@ -9,9 +9,10 @@ _FILE_ACCESS_RUN_GRANTS_ATTR = "_dify_file_access_run_grants"
 
 def attach_file_access_run_grants(graph_runtime_state: GraphRuntimeState) -> FileAccessRunGrants:
     """Attach (or reuse) run-scoped file grants on a workflow graph runtime state."""
-    existing = getattr(graph_runtime_state, _FILE_ACCESS_RUN_GRANTS_ATTR, None)
+    state_attrs = graph_runtime_state.__dict__
+    existing = state_attrs.get(_FILE_ACCESS_RUN_GRANTS_ATTR)
     if not isinstance(existing, FileAccessRunGrants):
         existing = FileAccessRunGrants()
-        setattr(graph_runtime_state, _FILE_ACCESS_RUN_GRANTS_ATTR, existing)
+        state_attrs[_FILE_ACCESS_RUN_GRANTS_ATTR] = existing
     bind_file_access_run_grants(existing)
     return existing
