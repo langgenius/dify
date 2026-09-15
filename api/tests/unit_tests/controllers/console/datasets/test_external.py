@@ -227,7 +227,7 @@ class TestExternalApiTemplateListApi(_UsesSQLiteSession):
         api = ExternalApiTemplateListApi()
         method = inspect.unwrap(api.get)
 
-        api_items = [_external_api_object(str(i)) for i in range(20)]
+        api_items = [_external_api_object(self.session, str(i)) for i in range(20)]
         with (
             app.test_request_context("/?page=1&limit=20"),
             patch.object(
@@ -247,7 +247,7 @@ class TestExternalApiTemplateListApi(_UsesSQLiteSession):
         api = ExternalApiTemplateListApi()
         method = inspect.unwrap(api.get)
 
-        api_items = [_external_api_object(str(i)) for i in range(100)]
+        api_items = [_external_api_object(self.session, str(i)) for i in range(100)]
         with (
             app.test_request_context("/?page=1&limit=200"),
             patch.object(
