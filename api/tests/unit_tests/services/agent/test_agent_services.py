@@ -5552,7 +5552,7 @@ class TestWorkflowAgentDraftBindingSync:
                 draft_workflow=self._agent_workflow(),
             )
 
-    def test_publish_validation_accepts_snapshot_bound_workspace_skill_refs(self, sqlite_session: Session):
+    def test_publish_validation_keeps_workspace_skill_refs_when_config_files_are_present(self, sqlite_session: Session):
         session = sqlite_session
         binding = self._agent_binding()
         agent_soul = AgentSoulConfig.model_validate(
@@ -5562,7 +5562,14 @@ class TestWorkflowAgentDraftBindingSync:
                     "model_provider": "openai",
                     "model": "gpt-4o",
                 },
-                "prompt": {"system_prompt": "Use [§skill:research:Research§]."},
+                "prompt": {"system_prompt": "Use [§skill:research:Research§] and [§file:guide.md:Guide§]."},
+                "config_files": [
+                    {
+                        "name": "guide.md",
+                        "file_kind": "upload_file",
+                        "file_id": "file-1",
+                    }
+                ],
             }
         )
         agent = self._publish_agent()
