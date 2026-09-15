@@ -299,14 +299,6 @@ class ChatMessageTextApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -349,14 +341,6 @@ class TextModesApi(Resource):
             return dump_response(TextToSpeechVoiceListResponse, response)
         except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
             raise AppUnavailableError("Text to audio voices language parameter loss.")
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
