@@ -1831,6 +1831,9 @@ class WorkflowService:
             if node_type == BuiltinNodeTypes.HUMAN_INPUT:
                 self._validate_human_input_node_data(node_data)
 
+            if node_type == BuiltinNodeTypes.START:
+                self._validate_start_node_variables(node_data)
+
     def validate_features_structure(self, app_model: App, features: dict[str, Any]):
         match app_model.mode:
             case AppMode.ADVANCED_CHAT:
@@ -1860,6 +1863,33 @@ class WorkflowService:
             HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_data))
         except Exception as e:
             raise ValueError(f"Invalid HumanInput node data: {str(e)}")
+
+    def _validate_start_node_variables(self, node_data: dict[str, Any]) -> None:
+        """
+        Validate Start node input variables.
+
+        The runtime parses these entries into `VariableEntity` when it loads the
+        workflow. Without this check, a graph the editor accepted but that model
+        rejects still publishes cleanly, then fails on every run: the workflow
+        dies while its configuration is loaded, so no workflow run row is ever
+        created and the error names neither the node nor the variable. Reusing
+        the runtime's own model keeps the two paths from disagreeing.
+
+        Args:
+            node_data: The node data dictionary
+
+        Raises:
+            ValueError: If a variable cannot be parsed by the runtime
+        """
+        from graphon.variables.input_entities import VariableEntity
+
+        for variable in node_data.get("variables") or []:
+            try:
+                VariableEntity.model_validate(variable)
+            except Exception as e:
+                name = variable.get("variable") if isinstance(variable, dict) else None
+                label = name or "<unnamed>"
+                raise ValueError(f"Invalid Start node variable '{label}': {str(e)}")
 
     def update_workflow(
         self,
