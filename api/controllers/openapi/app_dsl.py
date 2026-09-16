@@ -6,7 +6,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -42,6 +42,9 @@ class AppDslImportApi(Resource):
     """
 
     @endpoint(
+        op="console_app.dsl.import",
+        kind=Kind.OBJECT,
+        summary="Import an app from DSL text or URL",
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
@@ -103,6 +106,9 @@ class AppDslImportConfirmApi(Resource):
     """
 
     @endpoint(
+        op="console_app.dsl.import_confirm",
+        kind=Kind.OBJECT,
+        summary="Confirm a pending DSL import",
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
@@ -145,6 +151,9 @@ class AppDslExportApi(Resource):
     """
 
     @endpoint(
+        op="console_app.dsl.export",
+        kind=Kind.OBJECT,
+        summary="Export app DSL as YAML text inside a JSON object",
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckAppApiEnabled(),
@@ -180,6 +189,9 @@ class AppDslCheckDependenciesApi(Resource):
     """
 
     @endpoint(
+        op="console_app.dependencies.check",
+        kind=Kind.OBJECT,
+        summary="Check plugin dependencies of an app",
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckAppApiEnabled(),
