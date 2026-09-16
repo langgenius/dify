@@ -17,12 +17,11 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
-from models import dataset as dataset_module
 from models.account import Account
 from models.dataset import (
     AppDatasetJoin,
