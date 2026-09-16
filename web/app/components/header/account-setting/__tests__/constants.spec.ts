@@ -7,6 +7,7 @@ import {
 describe('settingsQueryParser', () => {
   it.each([
     ['roles-and-permissions', 'roles-and-permissions'],
+    ['ip-policies', 'ip-policies'],
     ['preferences', 'preferences'],
     ['provider', 'provider'],
     ['mcp', 'mcp'],

@@ -34,6 +34,7 @@ from repositories.app_statistic_query_repository import AppStatisticQueryReposit
 from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
@@ -76,6 +77,11 @@ from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.message_file_preview_service import MessageFilePreviewService
+from services.network_access_group_gateway import (
+    BillingNetworkAccessGroupEntitlementGateway,
+    NetworkAccessGroupGateway,
+)
+from services.network_access_group_service import NetworkAccessGroupService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
@@ -477,6 +483,24 @@ def test_build_application_services_wires_billing_service(
     get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
     get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
     sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
+
+
+def test_build_application_services_wires_network_access_group_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.CLOUD,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    network_access_groups = services.network_access_groups
+    assert isinstance(network_access_groups, NetworkAccessGroupService)
+    assert isinstance(network_access_groups._control_plane, NetworkAccessGroupGateway)
+    assert isinstance(network_access_groups._apps, SQLAlchemyNetworkAccessGroupAppRepository)
+    assert network_access_groups._apps._session_factory is sqlite_session_factory
+    assert isinstance(network_access_groups._entitlement, BillingNetworkAccessGroupEntitlementGateway)
 
 
 def test_build_application_services_wires_compliance_downloads(

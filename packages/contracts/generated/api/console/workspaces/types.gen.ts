@@ -368,6 +368,39 @@ export type AvailableModelListResponse = {
   data: Array<ProviderWithModelsResponse>
 }
 
+export type NetworkAccessGroupListResponse = {
+  entitled: boolean
+  groups: Array<NetworkAccessGroupResponse>
+  tenant_id: string
+}
+
+export type NetworkAccessGroupCreatePayload = {
+  allowed_cidrs: Array<string>
+  description?: string
+  name: string
+}
+
+export type NetworkAccessGroupMutationResponse = {
+  group: NetworkAccessGroupResponse
+}
+
+export type NetworkAccessGroupDeleteResponse = {
+  deleted: boolean
+}
+
+export type NetworkAccessGroupUpdatePayload = {
+  allowed_cidrs: Array<string>
+  description?: string
+  expected_version: number
+  name: string
+}
+
+export type NetworkAccessGroupCurrentIpCheckResponse = {
+  allowed: boolean
+  client_ip: string
+  policy_version: number
+}
+
 export type WorkspacePermissionResponse = {
   allow_member_invite: boolean
   allow_owner_transfer: boolean
@@ -1499,6 +1532,22 @@ export type ProviderWithModelsResponse = {
   tenant_id: string
 }
 
+export type NetworkAccessGroupResponse = {
+  allowed_cidrs: Array<string>
+  app_ids: Array<string>
+  apps: Array<NetworkAccessGroupAppResponse>
+  created_at: string
+  description?: string
+  enforcing_count: number
+  id: string
+  name: string
+  tenant_id: string
+  updated_at: string
+  updated_by_account_id?: string | null
+  used_by_count: number
+  version: number
+}
+
 export type PluginAutoUpgradeSettingsPayload = {
   exclude_plugins?: Array<string>
   include_plugins?: Array<string>
@@ -2188,6 +2237,16 @@ export type ProviderModelWithStatusEntity = {
 }
 
 export type CustomConfigurationStatus = 'active' | 'no-configure'
+
+export type NetworkAccessGroupAppResponse = {
+  bound_agent_id?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  mode: string
+  name: string
+}
 
 export type TenantPluginAutoUpgradeStrategySetting = 'disabled' | 'fix_only' | 'latest'
 
@@ -3861,6 +3920,100 @@ export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponses = {
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponse =
   GetWorkspacesCurrentModelsModelTypesByModelTypeResponses[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeResponses]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/network-access-groups'
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsResponses = {
+  200: NetworkAccessGroupListResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsResponse =
+  GetWorkspacesCurrentNetworkAccessGroupsResponses[keyof GetWorkspacesCurrentNetworkAccessGroupsResponses]
+
+export type PostWorkspacesCurrentNetworkAccessGroupsData = {
+  body: NetworkAccessGroupCreatePayload
+  path?: never
+  query?: never
+  url: '/workspaces/current/network-access-groups'
+}
+
+export type PostWorkspacesCurrentNetworkAccessGroupsResponses = {
+  201: NetworkAccessGroupMutationResponse
+}
+
+export type PostWorkspacesCurrentNetworkAccessGroupsResponse =
+  PostWorkspacesCurrentNetworkAccessGroupsResponses[keyof PostWorkspacesCurrentNetworkAccessGroupsResponses]
+
+export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdData = {
+  body?: never
+  path: {
+    group_id: string
+  }
+  query: {
+    expected_version: number
+  }
+  url: '/workspaces/current/network-access-groups/{group_id}'
+}
+
+export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses = {
+  200: NetworkAccessGroupDeleteResponse
+}
+
+export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses[keyof DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdData = {
+  body?: never
+  path: {
+    group_id: string
+  }
+  query?: never
+  url: '/workspaces/current/network-access-groups/{group_id}'
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses = {
+  200: NetworkAccessGroupMutationResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  GetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses[keyof GetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses]
+
+export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdData = {
+  body: NetworkAccessGroupUpdatePayload
+  path: {
+    group_id: string
+  }
+  query?: never
+  url: '/workspaces/current/network-access-groups/{group_id}'
+}
+
+export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses = {
+  200: NetworkAccessGroupMutationResponse
+}
+
+export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses[keyof PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpData = {
+  body?: never
+  path: {
+    group_id: string
+  }
+  query?: never
+  url: '/workspaces/current/network-access-groups/{group_id}/check-current-ip'
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponses = {
+  200: NetworkAccessGroupCurrentIpCheckResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponse =
+  GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponses[keyof GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponses]
 
 export type GetWorkspacesCurrentPermissionData = {
   body?: never
