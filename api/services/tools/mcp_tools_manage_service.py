@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
@@ -32,6 +33,15 @@ UNCHANGED_SERVER_URL_PLACEHOLDER = "[__HIDDEN__]"
 CLIENT_NAME = "Dify"
 EMPTY_TOOLS_JSON = "[]"
 EMPTY_CREDENTIALS_JSON = "{}"
+
+
+def _is_uuid(value: str | None) -> bool:
+    """Return True when the value is a valid UUID string."""
+    try:
+        uuid.UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        return False
+    return True
 
 
 class OAuthDataType(StrEnum):
@@ -90,7 +100,8 @@ class MCPToolManageService:
         Get MCP provider by ID or server identifier.
 
         Args:
-            provider_id: Provider ID (UUID)
+            provider_id: Provider ID (UUID) or server identifier (for backward compatibility
+                with console endpoints that pass the identifier in the provider_id slot)
             server_identifier: Server identifier
             tenant_id: Tenant ID
 
@@ -103,6 +114,14 @@ class MCPToolManageService:
         if server_identifier:
             stmt = select(MCPToolProvider).where(
                 MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier
+            )
+        elif provider_id and not _is_uuid(provider_id):
+            # The MCP list API returns the server identifier as the provider ``id``, and the
+            # console detail/update/delete endpoints forward it in the ``provider_id`` path
+            # parameter. Comparing it against the UUID primary key makes PostgreSQL raise
+            # "invalid input syntax for type uuid" (500). Fall back to an identifier lookup.
+            stmt = select(MCPToolProvider).where(
+                MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == provider_id
             )
         else:
             stmt = select(MCPToolProvider).where(

@@ -223,6 +223,45 @@ class TestMCPToolManageService:
         with pytest.raises(ValueError, match="MCP tool not found"):
             service.get_provider(provider_id=mcp_provider1.id, tenant_id=tenant2.id)
 
+    def test_get_mcp_provider_by_identifier_in_provider_id_slot(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test retrieval of MCP provider when the server identifier is passed in the provider_id slot.
+
+        The MCP list API returns the server identifier as the provider ``id`` and the console
+        detail/update/delete endpoints forward it in the ``provider_id`` path parameter. The
+        lookup must fall back to the server identifier instead of comparing a non-UUID string
+        against the UUID primary key (which makes PostgreSQL raise a cast error / HTTP 500).
+
+        This test verifies:
+        - A non-UUID provider_id is resolved as a server identifier
+        - A UUID provider_id keeps resolving via the primary key
+        """
+        # Arrange: Create test data
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        mcp_provider = self._create_test_mcp_provider(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+        )
+        # Use a non-UUID identifier, as created through the UI (e.g. "monday_mcp")
+        mcp_provider.server_identifier = "my_mcp_server"
+        db_session_with_containers.commit()
+
+        # Act: identifier passed in the provider_id slot
+        service = MCPToolManageService(db_session_with_containers)
+        result = service.get_provider(provider_id="my_mcp_server", tenant_id=tenant.id)
+
+        # Assert
+        assert result.id == mcp_provider.id
+        assert result.server_identifier == "my_mcp_server"
+
+        # A UUID provider_id must still resolve via the primary key
+        result_by_uuid = service.get_provider(provider_id=str(mcp_provider.id), tenant_id=tenant.id)
+        assert result_by_uuid.id == mcp_provider.id
+
     def test_get_mcp_provider_by_server_identifier_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
