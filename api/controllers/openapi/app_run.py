@@ -50,7 +50,7 @@ from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.oauth_bearer import Scope
+from libs.oauth_bearer import Scope, TokenType
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
@@ -189,6 +189,11 @@ class AppRunTaskStopApi(Resource):
     @returns(200, TaskStopResponse, description="Task stopped")
     def post(self, app_id: str, task_id: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()
+        if auth_data.token_type == TokenType.RESOURCE_ACCESS:
+            # A bound app must not let a machine token stop another caller's task.
+            owner = redis_client.get(AppQueueManager._generate_task_belong_cache_key(task_id))
+            if owner != f"end-user-{caller.id}".encode():
+                raise NotFound("Task not found")
         AppQueueManager.set_stop_flag_no_user_check(task_id)
         GraphEngineManager(redis_client).send_stop_command(task_id)
         return TaskStopResponse(result="success")

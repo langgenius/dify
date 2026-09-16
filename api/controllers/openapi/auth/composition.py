@@ -22,6 +22,7 @@ from controllers.openapi.auth.prepare import (
     load_workspace_role,
     resolve_external_user,
 )
+from controllers.openapi.auth.resource_access import prepare_resource_access
 from controllers.openapi.auth.verify import (
     check_acl,
     check_app_api_enabled,
@@ -73,6 +74,7 @@ external_sso_pipeline = AuthPipeline(
 
 auth_router = PipelineRouter(
     {
+        TokenType.RESOURCE_ACCESS: PipelineRoute(AuthPipeline(prepare=[prepare_resource_access], auth=[check_scope])),
         TokenType.OAUTH_ACCOUNT: PipelineRoute(account_pipeline),
         TokenType.OAUTH_EXTERNAL_SSO: PipelineRoute(
             external_sso_pipeline,

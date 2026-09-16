@@ -134,7 +134,7 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
 class AppDescribeApi(AppReadResource):
     @auth_router.guard(
         scope=Scope.APPS_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT, TokenType.RESOURCE_ACCESS}),
         rbac=RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),
     )
     @returns(200, AppDescribeResponse, description="App description")
@@ -148,7 +148,9 @@ class AppDescribeApi(AppReadResource):
 
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
-    @auth_router.guard_workspace(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @auth_router.guard_workspace(
+        scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT, TokenType.RESOURCE_ACCESS})
+    )
     @returns(200, AppListResponse, description="App list")
     @accepts(query=AppListQuery)
     @with_session(write=False)
@@ -187,6 +189,10 @@ class AppListApi(Resource):
             app: App | None = AppService.get_visible_app_by_id(str(parsed_uuid), session)
             if app is None or str(app.tenant_id) != workspace_id:
                 return empty
+            if auth_data.resource_app_ids is not None and (
+                str(app.id) not in auth_data.resource_app_ids or app.status != AppStatus.NORMAL
+            ):
+                return empty
             if not _is_listable(app):
                 return empty
             # Apply RBAC visibility to the UUID fast-path the same way the service
@@ -222,7 +228,11 @@ class AppListApi(Resource):
         if apply_rbac_filter:
             access_filter.apply_to_params(params)
 
-        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, session)
+        if auth_data.resource_app_ids is not None:
+            params.accessible_app_ids = list(auth_data.resource_app_ids)
+            params.include_own_apps = False
+        caller_id = auth_data.account_id or auth_data.token_id
+        pagination = AppService().get_paginate_apps(str(caller_id), workspace_id, params, session)
         if pagination is None:
             return empty
 

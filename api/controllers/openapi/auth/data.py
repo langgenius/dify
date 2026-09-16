@@ -56,6 +56,8 @@ class AuthData(BaseModel):
     tenant: Tenant | None = None
     app_access_mode: WebAppAccessMode | None = None
 
+    resource_app_ids: frozenset[str] | None = None
+
     tenant_role: TenantAccountRole | None = None
 
     caller: Account | EndUser | None = None

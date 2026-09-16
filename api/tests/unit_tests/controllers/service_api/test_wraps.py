@@ -30,6 +30,11 @@ from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode, DatasetApiTokenBinding, IconType
+from models.resource_access_token import (
+    ResourceAccessToken,
+    ResourceAccessTokenRelation,
+    ResourceAccessTokenResourceType,
+)
 from tests.unit_tests.config_override import config_overrides_context
 
 
@@ -222,6 +227,59 @@ class TestValidateAppToken:
         assert result["success"] is True
         assert result["app_id"] == app_model.id
         assert account.current_tenant_id == tenant.id
+
+    @patch("controllers.service_api.wraps.user_logged_in")
+    @patch("controllers.service_api.wraps.current_app")
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(App, ResourceAccessToken, ResourceAccessTokenRelation, Tenant, Account, TenantAccountJoin)],
+        indirect=True,
+    )
+    def test_resource_access_token_allows_bound_app(
+        self,
+        mock_current_app,
+        mock_user_logged_in,
+        app: Flask,
+        sqlite_session: Session,
+    ):
+        _configure_current_app_mock(mock_current_app)
+        tenant, account, _ = _persist_workspace(sqlite_session)
+        app_model = _app_model(tenant_id=tenant.id)
+        access_token = ResourceAccessToken(
+            tenant_id=tenant.id,
+            name="Production integration",
+            track_id="a" * 32,
+            token="sk-00000000-0000-0000-0000-000000000000",
+            created_by=account.id,
+        )
+        sqlite_session.add_all([app_model, access_token])
+        sqlite_session.flush()
+        sqlite_session.add(
+            ResourceAccessTokenRelation(
+                token_id=access_token.id,
+                resource_type=ResourceAccessTokenResourceType.APP,
+                app_id=app_model.id,
+                dataset_id=None,
+            )
+        )
+        sqlite_session.commit()
+
+        @validate_app_token
+        def protected_view(app_model):
+            return {"success": True, "app_id": app_model.id}
+
+        with (
+            app.test_request_context(
+                "/",
+                method="GET",
+                headers={"Authorization": f"Bearer {access_token.token}"},
+            ),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            result = protected_view()
+
+        assert result["app_id"] == app_model.id
+        assert sqlite_session.get(ResourceAccessToken, access_token.id).last_used_at is not None
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
@@ -694,6 +752,62 @@ class TestValidateDatasetToken:
         assert result["success"] is True
         assert result["tenant_id"] == tenant.id
         assert account.current_tenant_id == tenant.id
+
+    @patch("controllers.service_api.wraps.user_logged_in")
+    @patch("controllers.service_api.wraps.current_app")
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(Dataset, ResourceAccessToken, ResourceAccessTokenRelation, Tenant, Account, TenantAccountJoin)],
+        indirect=True,
+    )
+    def test_resource_access_token_allows_bound_dataset(
+        self,
+        mock_current_app,
+        mock_user_logged_in,
+        app: Flask,
+        sqlite_session: Session,
+    ):
+        _configure_current_app_mock(mock_current_app)
+        tenant, account, _ = _persist_workspace(sqlite_session)
+        dataset = Dataset(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant.id,
+            name="Customer Support",
+            created_by=account.id,
+            enable_api=True,
+        )
+        access_token = ResourceAccessToken(
+            tenant_id=tenant.id,
+            name="Production integration",
+            track_id="b" * 32,
+            token="sk-00000000-0000-0000-0000-000000000001",
+            created_by=account.id,
+        )
+        sqlite_session.add_all([dataset, access_token])
+        sqlite_session.flush()
+        sqlite_session.add(
+            ResourceAccessTokenRelation(
+                token_id=access_token.id,
+                resource_type=ResourceAccessTokenResourceType.KNOWLEDGE,
+                app_id=None,
+                dataset_id=dataset.id,
+            )
+        )
+        sqlite_session.commit()
+
+        @validate_dataset_token
+        def protected_view(tenant_id, dataset_id=None):
+            return {"success": True, "tenant_id": tenant_id, "dataset_id": dataset_id}
+
+        with (
+            app.test_request_context("/", method="GET", headers={"Authorization": f"Bearer {access_token.token}"}),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            result = protected_view(dataset_id=dataset.id)
+
+        assert result["tenant_id"] == tenant.id
+        assert result["dataset_id"] == dataset.id
+        assert sqlite_session.get(ResourceAccessToken, access_token.id).last_used_at is not None
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)

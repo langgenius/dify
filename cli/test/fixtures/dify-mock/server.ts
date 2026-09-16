@@ -142,7 +142,15 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       return
     }
     const auth = c.req.header('Authorization') ?? ''
-    if (!TOKEN_RE.test(auth)) return unauthorized()
+    const resourceToken = getScenario() === 'resource-token' && auth === 'Bearer sk-test-resource'
+    if (!TOKEN_RE.test(auth) && !resourceToken) return unauthorized()
+    if (
+      resourceToken &&
+      c.req.path !== '/openapi/v1/workspaces' &&
+      c.req.path !== '/openapi/v1/apps' &&
+      !c.req.path.startsWith(`/openapi/v1/apps/${APPS[0]!.id}`)
+    )
+      return c.json({ code: 'forbidden', message: 'resource_not_authorized', status: 403 }, 403)
     const scenario = getScenario()
     if (scenario === 'auth-expired') return unauthorized()
     await next()
@@ -224,6 +232,20 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
 
   app.get('/openapi/v1/workspaces', (c) => {
     if (getScenario() === 'sso') return c.json({ workspaces: [] })
+    if (getScenario() === 'resource-token') {
+      const workspace = WORKSPACES.find((w) => w.id === APPS[0]!.workspace_id)!
+      return c.json({
+        workspaces: [
+          {
+            id: workspace.id,
+            name: workspace.name,
+            role: '',
+            status: workspace.status,
+            current: true,
+          },
+        ],
+      })
+    }
     return c.json({
       workspaces: WORKSPACES.map((w) => ({
         id: w.id,
@@ -243,6 +265,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const name = c.req.query('name')
     const workspaceId = c.req.query('workspace_id') ?? ACCOUNT.current_workspace_id
     let filtered = APPS.filter((a) => a.workspace_id === workspaceId)
+    if (getScenario() === 'resource-token') filtered = filtered.filter((a) => a.id === APPS[0]!.id)
     if (mode !== undefined && mode !== '') filtered = filtered.filter((a) => a.mode === mode)
     if (tag !== undefined && tag !== '')
       filtered = filtered.filter((a) => a.tags.some((t) => t.name === tag))
