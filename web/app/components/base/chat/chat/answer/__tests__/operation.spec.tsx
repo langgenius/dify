@@ -352,11 +352,21 @@ describe('Operation', () => {
       renderOperation({ ...baseProps, showPromptLog: true })
 
       expect(screen.getByTestId('operation-actions')).toHaveClass(
-        'group-has-[[data-popup-open]]:flex',
+        '[@media(hover:hover)]:group-has-[[data-popup-open]]:flex',
       )
       expect(screen.getByTestId('log-btn').parentElement).toHaveClass(
-        'group-has-[[data-popup-open]]:block',
+        '[@media(hover:hover)]:group-has-[[data-popup-open]]:block',
       )
+    })
+
+    it('should keep action buttons visible on touch-only devices (no hover)', () => {
+      renderOperation()
+
+      // The action bar should be visible by default (display: flex) so that
+      // touch-only devices can tap it. Hover-capable devices still hide it
+      // until the parent is hovered via the [@media(hover:hover)] media query.
+      expect(screen.getByTestId('operation-actions')).toHaveClass('flex')
+      expect(screen.getByTestId('operation-actions')).toHaveClass('[@media(hover:hover)]:hidden')
     })
 
     it('should not show prompt log for opening statements', () => {

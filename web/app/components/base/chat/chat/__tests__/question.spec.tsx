@@ -211,6 +211,18 @@ describe('Question component', () => {
     expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
   })
 
+  it('should keep action bar visible on touch-only devices (no hover)', () => {
+    renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate)
+
+    // On touch-only devices the action bar must be visible without a hover
+    // state. Hover-capable devices still hide it via the [@media(hover:hover)]
+    // media query until the parent is hovered.
+    const actionContainer = screen.getByTestId('action-container')
+    expect(actionContainer).toHaveClass('flex')
+    expect(actionContainer).toHaveClass('[@media(hover:hover)]:hidden')
+    expect(actionContainer).toHaveClass('[@media(hover:hover)]:group-hover:flex')
+  })
+
   it('should enter edit mode when edit action clicked, allow editing and call onRegenerate on resend', async () => {
     const user = userEvent.setup()
     const onRegenerate = vi.fn() as unknown as OnRegenerate
