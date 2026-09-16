@@ -22371,6 +22371,7 @@ Resource types understood by access policies.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| icon_info | [IconInfo](#iconinfo) |  | No |
 | yaml_content | string |  | Yes |
 
 #### RagPipelineDatasourceListResponse
