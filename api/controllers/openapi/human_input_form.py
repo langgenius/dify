@@ -14,6 +14,7 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
+from controllers.openapi._files import FileRowKind, materialize_files
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse, OpenApiFormSubmitPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import PathParam, load_app
@@ -145,12 +146,20 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             logger.warning("Recipient type is None for form, form_token=%s", form_token)
             raise BadRequest("Form recipient type is invalid")
 
+        inputs, _ = materialize_files(
+            app=ctx.app,
+            caller=ctx.caller,
+            inputs=body.inputs,
+            files=body.files,
+            rows=dict.fromkeys(body.files or {}, FileRowKind.SINGLE),
+        )
+
         try:
             service.submit_form_by_token(
                 recipient_type=form.recipient_type,
                 form_token=form_token,
                 selected_action_id=body.action,
-                form_data=body.inputs,
+                form_data=inputs,
                 submission_user_id=submission_user_id,
                 submission_end_user_id=submission_end_user_id,
             )
