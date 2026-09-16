@@ -8,18 +8,21 @@ from bs4 import BeautifulSoup
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 
-# Elements a browser lays out on a line of their own. The markup is the only
-# place that boundary exists, so without a break after them the text on either
-# side runs together.
+# Elements a browser lays out on a line of their own, plus the few that are not
+# laid out at all but still read as a line when a document is flattened
+# (`title`, `option`). The markup is the only place that boundary exists, so
+# without a break after them the text on either side runs together.
 _BLOCK_LEVEL_TAGS = (
     "address",
     "article",
     "aside",
     "blockquote",
+    "caption",
     "dd",
     "div",
     "dl",
     "dt",
+    "details",
     "fieldset",
     "figcaption",
     "figure",
@@ -32,17 +35,22 @@ _BLOCK_LEVEL_TAGS = (
     "h5",
     "h6",
     "header",
+    "hgroup",
     "hr",
+    "legend",
     "li",
     "main",
     "nav",
     "ol",
+    "option",
     "p",
     "pre",
     "section",
+    "summary",
     "table",
     "td",
     "th",
+    "title",
     "tr",
     "ul",
 )

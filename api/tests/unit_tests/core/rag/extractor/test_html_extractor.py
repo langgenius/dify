@@ -37,6 +37,16 @@ class TestHtmlExtractor:
 
         assert HtmlExtractor(str(file_path))._load_as_text() == "Hello world! See this."
 
+    def test_the_title_reads_as_its_own_line(self, tmp_path: Path):
+        """Not a block, but it is a line once the document is flattened."""
+        file_path = tmp_path / "sample.html"
+        file_path.write_text(
+            "<html><head><title>Test Page</title></head><body><p>Body text</p></body></html>",
+            encoding="utf-8",
+        )
+
+        assert HtmlExtractor(str(file_path))._load_as_text() == "Test Page\nBody text"
+
     def test_a_line_break_element_becomes_a_line_break(self, tmp_path: Path):
         file_path = tmp_path / "sample.html"
         file_path.write_text("<html><body><p>line one<br>line two</p></body></html>", encoding="utf-8")
