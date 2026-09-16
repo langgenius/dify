@@ -554,9 +554,9 @@ class AnnotationHitHistoryListApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     def get(self, session: Session, app_id: UUID, annotation_id: UUID):
-        page = request.args.get("page", default=1, type=int)
+        page = max(1, request.args.get("page", default=1, type=int))
         limit = request.args.get("limit", default=20, type=int)
-        effective_limit = min(limit, 100)
+        effective_limit = max(1, min(limit, 100))
         app_ref = _get_app_ref(session, str(app_id))
         annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
         annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(
