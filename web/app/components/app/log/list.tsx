@@ -451,21 +451,17 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="shrink-0">
           <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
-            {isChatMode
-              ? t(($) => $['detail.conversationId'], { ns: 'appLog' })
-              : t(($) => $['detail.time'], { ns: 'appLog' })}
+            {t(($) => $['detail.conversationId'], { ns: 'appLog' })}
           </div>
-          {isChatMode && (
-            <div className="flex items-center system-2xs-regular-uppercase text-text-secondary">
-              <Tooltip>
-                <TooltipTrigger render={<div className="truncate">{detail.id}</div>} />
-                <TooltipContent>{detail.id}</TooltipContent>
-              </Tooltip>
-              <CopyIcon content={detail.id} />
-            </div>
-          )}
+          <div className="flex items-center system-2xs-regular-uppercase text-text-secondary">
+            <Tooltip>
+              <TooltipTrigger render={<div className="truncate">{detail.id}</div>} />
+              <TooltipContent>{detail.id}</TooltipContent>
+            </Tooltip>
+            <CopyIcon content={detail.id} />
+          </div>
           {!isChatMode && (
-            <div className="system-2xs-regular-uppercase text-text-secondary">
+            <div className="mt-0.5 system-2xs-regular-uppercase text-text-tertiary">
               {formatTime(
                 detail.created_at,
                 t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
