@@ -820,3 +820,110 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+_TEXT_BOX_NAMESPACES = " ".join(
+    f'xmlns:{prefix}="{uri}"'
+    for prefix, uri in (
+        ("w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main"),
+        ("mc", "http://schemas.openxmlformats.org/markup-compatibility/2006"),
+        ("wps", "http://schemas.microsoft.com/office/word/2010/wordprocessingShape"),
+        ("a", "http://schemas.openxmlformats.org/drawingml/2006/main"),
+        ("wp", "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"),
+        ("v", "urn:schemas-microsoft-com:vml"),
+    )
+)
+
+_MODERN_TEXT_BOX = """
+<w:p {ns}>
+  <w:r><w:t>{before}</w:t></w:r>
+  <w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">
+    <wp:extent cx="2743200" cy="914400"/><wp:docPr id="1" name="Text Box 1"/>
+    <a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+      <wps:wsp><wps:txbx><w:txbxContent>
+        <w:p><w:r><w:t>{inside}</w:t></w:r></w:p>
+      </w:txbxContent></wps:txbx></wps:wsp>
+    </a:graphicData></a:graphic>
+  </wp:inline></w:drawing></w:r>
+</w:p>
+"""
+
+_TEXT_BOX_WITH_VML_FALLBACK = """
+<w:p {ns}>
+  <w:r><w:t>{before}</w:t></w:r>
+  <w:r><mc:AlternateContent>
+    <mc:Choice Requires="wps"><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">
+      <wp:extent cx="2743200" cy="914400"/><wp:docPr id="1" name="Text Box 1"/>
+      <a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+        <wps:wsp><wps:txbx><w:txbxContent>
+          <w:p><w:r><w:t>{inside}</w:t></w:r></w:p>
+        </w:txbxContent></wps:txbx></wps:wsp>
+      </a:graphicData></a:graphic>
+    </wp:inline></w:drawing></mc:Choice>
+    <mc:Fallback><w:pict><v:shape id="_x0000_s1026" type="#_x0000_t202">
+      <v:textbox><w:txbxContent>
+        <w:p><w:r><w:t>{inside}</w:t></w:r></w:p>
+      </w:txbxContent></v:textbox>
+    </v:shape></w:pict></mc:Fallback>
+  </mc:AlternateContent></w:r>
+</w:p>
+"""
+
+
+def _docx_with_text_box(template: str, before: str = "Paragraph text", inside: str = "Callout") -> str:
+    """Save a DOCX whose first paragraph anchors a text box, return its path."""
+    from lxml import etree
+
+    doc = Document()
+    body = doc.element.body
+    body.insert(
+        len(body) - 1,
+        etree.fromstring(template.format(ns=_TEXT_BOX_NAMESPACES, before=before, inside=inside).strip()),
+    )
+    doc.add_paragraph("After")
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        return tmp.name
+
+
+def _extract_text(monkeypatch: pytest.MonkeyPatch, session: Session, path: str) -> str:
+    monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
+    monkeypatch.setattr(we, "db", SimpleNamespace(session=session))
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
+    try:
+        return WordExtractor(path, "tenant_id", "user_id").extract()[0].page_content
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
+
+
+def test_extract_reads_text_inside_a_text_box(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+    """A text box keeps its paragraphs under w:txbxContent, which Run.text never reaches."""
+    content = _extract_text(monkeypatch, unbound_session, _docx_with_text_box(_MODERN_TEXT_BOX))
+
+    assert "Callout" in content
+    # In reading order, between the paragraphs it sits among.
+    assert content.index("Paragraph text") < content.index("Callout") < content.index("After")
+
+
+def test_extract_reads_a_text_box_with_a_vml_fallback_once(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+):
+    """Word writes the same text under mc:Choice and again under mc:Fallback."""
+    content = _extract_text(monkeypatch, unbound_session, _docx_with_text_box(_TEXT_BOX_WITH_VML_FALLBACK))
+
+    assert content.count("Callout") == 1
+
+
+def test_extract_is_unchanged_without_a_text_box(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+    doc = Document()
+    doc.add_paragraph("Paragraph text")
+    doc.add_paragraph("After")
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        path = tmp.name
+
+    content = _extract_text(monkeypatch, unbound_session, path)
+
+    assert content == "Paragraph text\nAfter"
