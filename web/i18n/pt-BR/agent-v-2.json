@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "Navegação do agente",
   "agentDetail.publish": "Publicar",
   "agentDetail.sections.access": "Ponto de acesso",
+  "agentDetail.sections.access-config": "Acesso a Recursos",
   "agentDetail.sections.configure": "Configurar",
   "agentDetail.sections.logs": "Logs",
   "agentDetail.sections.monitoring": "Monitoramento",

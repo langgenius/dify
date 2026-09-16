@@ -519,10 +519,13 @@ class DatasetDocumentListApi(Resource):
                 document.total_segments = total_segments
         response = {
             "data": document_with_segments_responses(documents, session=session),
-            "has_more": len(documents) == limit,
-            "limit": limit,
+            # The result object already knows: it was built from the page the query
+            # ran with, where `len(documents) == limit` is only ever a guess that a
+            # full page means another one follows.
+            "has_more": paginated_documents.has_next,
+            "limit": paginated_documents.per_page,
             "total": paginated_documents.total,
-            "page": page,
+            "page": paginated_documents.page,
         }
 
         return dump_response(DocumentWithSegmentsListResponse, response)
@@ -939,27 +942,10 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
     def get(self, session: Session, current_user: Account, dataset_id: UUID, batch: str):
         dataset_id_str = str(dataset_id)
         documents = self.get_batch_documents(session, dataset_id_str, batch, current_user)
+        segment_counts = DocumentService.get_document_segment_counts(documents, session=session)
         documents_status = []
         for document in documents:
-            completed_segments = (
-                session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.completed_at.isnot(None),
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
-            total_segments = (
-                session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
+            completed_segments, total_segments = segment_counts.get(str(document.id), (0, 0))
             # Create a dictionary with document attributes and additional fields
             document_dict = {
                 "id": document.id,

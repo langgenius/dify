@@ -1,3 +1,4 @@
+import type { AssignerNodeType } from '../../nodes/assigner/types'
 import type { IterationNodeType } from '../../nodes/iteration/types'
 import type { LoopNodeType } from '../../nodes/loop/types'
 import type { Edge, Node, OnNodeAdd, ValueSelector } from '../../types'
@@ -12,10 +13,16 @@ import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } fr
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks/use-workflow-history'
 import { getNodeUsedVars, updateNodeVars } from '../../nodes/_base/components/variable/utils'
+import { AssignerNodeInputType } from '../../nodes/assigner/types'
 import { BlockEnum } from '../../types'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../../utils'
 
 type SnippetInsertPayload = Parameters<OnNodeAdd>[1]
+
+type LegacyAssignerNodeType = Node['data'] & {
+  assigned_variable_selector?: ValueSelector
+  input_variable_selector?: ValueSelector
+}
 
 const getSnippetGraph = (graph: Record<string, unknown> | undefined) => {
   if (!graph) return { nodes: [] as Node[], edges: [] as Edge[] }
@@ -113,6 +120,48 @@ const remapSnippetValueSelector = (
   if (!mappedNodeId) return selector
 
   return [mappedNodeId, ...selector.slice(1)]
+}
+
+const remapSnippetAssignerReferences = (node: Node, idMapping: Map<string, string>): Node => {
+  if (node.data.type !== BlockEnum.Assigner) return node
+
+  const assignerData = node.data as AssignerNodeType
+  if (assignerData.version === '2') {
+    const data: AssignerNodeType = {
+      ...assignerData,
+      items: (assignerData.items ?? []).map((item) => ({
+        ...item,
+        variable_selector: remapSnippetValueSelector(item.variable_selector, idMapping)!,
+        value:
+          item.input_type === AssignerNodeInputType.variable
+            ? remapSnippetValueSelector(item.value, idMapping)
+            : item.value,
+      })),
+    }
+
+    return {
+      ...node,
+      data,
+    }
+  }
+
+  const legacyAssignerData = node.data as LegacyAssignerNodeType
+  const data: LegacyAssignerNodeType = {
+    ...legacyAssignerData,
+    assigned_variable_selector: remapSnippetValueSelector(
+      legacyAssignerData.assigned_variable_selector,
+      idMapping,
+    ),
+    input_variable_selector: remapSnippetValueSelector(
+      legacyAssignerData.input_variable_selector,
+      idMapping,
+    ),
+  }
+
+  return {
+    ...node,
+    data,
+  }
 }
 
 const remapSnippetNodeStructuralReferences = (node: Node, idMapping: Map<string, string>): Node => {
@@ -220,7 +269,11 @@ const remapSnippetGraph = (
 
     const structurallyRemappedNode = remapSnippetNodeStructuralReferences(remappedNode, idMapping)
 
-    return remapSnippetNodeVariableReferences(structurallyRemappedNode, idMapping)
+    const variableRemappedNode = remapSnippetNodeVariableReferences(
+      structurallyRemappedNode,
+      idMapping,
+    )
+    return remapSnippetAssignerReferences(variableRemappedNode, idMapping)
   })
 
   const edges = snippetEdges.map((edge) => ({

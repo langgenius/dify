@@ -1,6 +1,8 @@
 // @ts-check
+/// <reference types="node" />
 
 import markdown from '@eslint/markdown'
+import gitignore from 'eslint-config-flat-gitignore'
 import md from 'eslint-markdown'
 import jsonc from 'eslint-plugin-jsonc'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
@@ -213,6 +215,11 @@ export default defineConfig([
     ],
     'Project lint scope',
   ),
+  gitignore({
+    cwd: import.meta.dirname,
+    root: true,
+    recursive: { skipDirs: ['.venv', 'volumes'] },
+  }),
   globalIgnores([codeFiles], 'Migration tradeoff: code files are handled by Oxlint only'),
   globalIgnores(
     [

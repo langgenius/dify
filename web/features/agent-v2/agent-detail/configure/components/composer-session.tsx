@@ -83,7 +83,7 @@ export function AgentConfigureComposerScope({
     agentId,
     activeVersionId,
     composerAgentSoulConfig: composerQuery.data?.agent_soul,
-    isBuildMode: rightPanelMode === 'build',
+    isBuildMode: configureData.capabilities.canBuild && rightPanelMode === 'build',
     isViewingVersion,
     normalAgentSoulConfig: agentSoulConfig,
     setSoulSourceOverride,
@@ -284,6 +284,7 @@ function AgentConfigurePageComposerContent({
   onSelectVersion: (versionId: string | null) => void
 }) {
   const {
+    capabilities,
     agentQuery,
     composerQuery,
     versionQuery,
@@ -333,7 +334,7 @@ function AgentConfigurePageComposerContent({
   const setShowPreviewVersions = useSetAtom(agentConfigureShowPreviewVersionsAtom)
   const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
   const queryClient = useQueryClient()
-  const showBuildDraftBar = buildDraft.isActive
+  const showBuildDraftBar = capabilities.canBuild && buildDraft.isActive
   const resetBuildChatState = useCallback(async () => {
     setCompletedBuildConversationId(null)
     setConversationId({ mode: 'build', conversationId: null })
@@ -355,7 +356,13 @@ function AgentConfigurePageComposerContent({
     agentName: agentQuery.data?.name,
     baseConfig: agentSoulConfig,
     currentModel,
-    enabled: composerQuery.isSuccess && !selectedVersionId && !buildDraft.isActive,
+    enabled:
+      capabilities.canEdit && composerQuery.isSuccess && !selectedVersionId && !buildDraft.isActive,
+    publishEnabled:
+      capabilities.canReleaseAndVersion &&
+      composerQuery.isSuccess &&
+      !selectedVersionId &&
+      !buildDraft.isActive,
   })
   const {
     buildCallbackGeneration,
@@ -429,6 +436,7 @@ function AgentConfigurePageComposerContent({
       ? (agentQuery.data?.debug_conversation_has_messages ?? false) || buildDraft.isActive
       : !!conversationIds[rightPanelChatMode]
   const isRestartCurrentChatDisabled =
+    !capabilities.canTestAndRun ||
     !hasRestartCurrentChatTarget ||
     buildDraftActionsDisabled ||
     isEnteringBuildMode ||
@@ -436,6 +444,7 @@ function AgentConfigurePageComposerContent({
     buildDraftActions.isApplyingBuildDraft ||
     buildDraftActions.isDiscardingBuildDraft
   const isChatFeaturesReadOnly =
+    !capabilities.canEdit ||
     isEnteringBuildMode ||
     buildDraftActionsDisabled ||
     (isViewingVersion && versionQuery.isPending) ||
@@ -478,6 +487,7 @@ function AgentConfigurePageComposerContent({
           textGenerationModelList={textGenerationModelList}
           isPublishing={isPublishing}
           readOnly={
+            !capabilities.canEdit ||
             !composerQuery.isSuccess ||
             isViewingVersion ||
             buildDraft.isActive ||
@@ -486,7 +496,7 @@ function AgentConfigurePageComposerContent({
           selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
-          showPublishBar={!buildDraft.isActive}
+          showPublishBar={capabilities.canReleaseAndVersion && !buildDraft.isActive}
           bottomAction={
             showBuildDraftBar ? (
               <AgentBuildDraftBar
@@ -524,6 +534,8 @@ function AgentConfigurePageComposerContent({
             <AgentPreviewHeader
               mode={rightPanelChatMode}
               previewEnabled={previewEnabled}
+              buildEnabled={capabilities.canBuild}
+              showChatFeaturesAction={capabilities.canEdit}
               isChatFeaturesOpen={showChatFeatures}
               onModeChange={changeRightPanelMode}
               onToggleChatFeatures={() => setShowChatFeatures((open) => !open)}
@@ -533,11 +545,13 @@ function AgentConfigurePageComposerContent({
               }}
               onRefresh={restartCurrentChat}
               refreshDisabled={isRestartCurrentChatDisabled}
-              showWorkingDirectoryAction={showWorkingDirectoryAction}
+              showWorkingDirectoryAction={capabilities.canBuild && showWorkingDirectoryAction}
             />
           }
           chat={
-            buildDraft.isPending ? (
+            !(rightPanelMode === 'build'
+              ? capabilities.canBuild
+              : previewEnabled) ? null : buildDraft.isPending ? (
               <Loading type="app" />
             ) : (
               <AgentConfigureRightPanelChat
@@ -612,7 +626,7 @@ function AgentConfigurePageComposerContent({
       }
       sidePanels={
         <>
-          {showPreviewVersions && (
+          {capabilities.canReleaseAndVersion && showPreviewVersions && (
             <AgentPreviewVersionsPanel
               agentId={agentId}
               activeVersionId={activeVersionId}
@@ -620,15 +634,15 @@ function AgentConfigurePageComposerContent({
               onClose={() => setShowPreviewVersions(false)}
             />
           )}
-          {workingDirectoryPanel.panel}
+          {capabilities.canBuild && workingDirectoryPanel.panel}
           <AgentChatFeaturesPanel
-            show={showChatFeatures}
+            show={capabilities.canEdit && showChatFeatures}
             appFeatures={buildDraft.agentSoulConfig?.app_features}
             disabled={isChatFeaturesReadOnly}
             onClose={() => setShowChatFeatures(false)}
           />
           <AgentConfigureClearSessionConfirmDialog
-            open={showSwitchToPreviewConfirm}
+            open={capabilities.canBuild && showSwitchToPreviewConfirm}
             title={t(($) => $['agentDetail.configure.switchToPreviewConfirm.title'])}
             onOpenChange={setShowSwitchToPreviewConfirm}
             onConfirm={confirmSwitchToPreview}

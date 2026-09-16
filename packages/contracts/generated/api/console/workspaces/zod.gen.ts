@@ -374,6 +374,32 @@ export const zParserGithubUpload = z.object({
 })
 
 /**
+ * AccessPolicy
+ */
+export const zAccessPolicy = z.object({
+  category: z.string().optional().default(''),
+  created_at: z.int().optional().default(0),
+  description: z.string().optional().default(''),
+  id: z.string(),
+  is_builtin: z.boolean().optional().default(false),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  policy_key: z.string().optional().default(''),
+  resource_type: z.string(),
+  tenant_id: z.string().optional().default(''),
+  updated_at: z.int().optional().default(0),
+})
+
+/**
+ * _AccessPolicyUpdateRequest
+ */
+export const zAccessPolicyUpdateRequest = z.object({
+  description: z.string().optional().default(''),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional().default([]),
+})
+
+/**
  * _DeleteMemberBindingsRequest
  */
 export const zDeleteMemberBindingsRequest = z.object({
@@ -386,6 +412,13 @@ export const zDeleteMemberBindingsRequest = z.object({
 export const zReplaceUserAccessPolicies = z.object({
   access_policy_ids: z.array(z.string()).optional(),
   account_ids: z.array(z.string()).optional(),
+})
+
+/**
+ * ReplaceUserAccessPoliciesResponse
+ */
+export const zReplaceUserAccessPoliciesResponse = z.object({
+  access_policies: z.array(zAccessPolicy).optional(),
 })
 
 /**
@@ -1013,6 +1046,14 @@ export const zMemberInviteResponse = z.object({
 })
 
 /**
+ * LoadBalancingPayload
+ */
+export const zLoadBalancingPayload = z.object({
+  configs: z.array(z.record(z.string(), z.unknown())).nullish(),
+  enabled: z.boolean().nullish(),
+})
+
+/**
  * ModelType
  *
  * Enum class for model type.
@@ -1027,18 +1068,12 @@ export const zModelType = z.enum([
 ])
 
 /**
- * ParserDeleteModels
+ * ParserPostModels
  */
-export const zParserDeleteModels = z.object({
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
- * ParserDeleteCredential
- */
-export const zParserDeleteCredential = z.object({
-  credential_id: z.string(),
+export const zParserPostModels = z.object({
+  config_from: z.string().nullish(),
+  credential_id: z.string().nullish(),
+  load_balancing: zLoadBalancingPayload.nullish(),
   model: z.string(),
   model_type: zModelType,
 })
@@ -1083,6 +1118,14 @@ export const zParserValidate = z.object({
 })
 
 /**
+ * ParserDeleteModels
+ */
+export const zParserDeleteModels = z.object({
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
  * LoadBalancingCredentialPayload
  */
 export const zLoadBalancingCredentialPayload = z.object({
@@ -1105,25 +1148,6 @@ export const zInner = z.object({
  */
 export const zParserPostDefault = z.object({
   model_settings: z.array(zInner),
-})
-
-/**
- * LoadBalancingPayload
- */
-export const zLoadBalancingPayload = z.object({
-  configs: z.array(z.record(z.string(), z.unknown())).nullish(),
-  enabled: z.boolean().nullish(),
-})
-
-/**
- * ParserPostModels
- */
-export const zParserPostModels = z.object({
-  config_from: z.string().nullish(),
-  credential_id: z.string().nullish(),
-  load_balancing: zLoadBalancingPayload.nullish(),
-  model: z.string(),
-  model_type: zModelType,
 })
 
 /**
@@ -1202,6 +1226,23 @@ export const zPluginPermissionResponse = z.object({
 })
 
 /**
+ * RBACResourceType
+ *
+ * Resource types understood by access policies.
+ */
+export const zRbacResourceType = z.enum(['agent', 'app', 'dataset'])
+
+/**
+ * _AccessPolicyCreateRequest
+ */
+export const zAccessPolicyCreateRequest = z.object({
+  description: z.string().optional().default(''),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional().default([]),
+  resource_type: zRbacResourceType,
+})
+
+/**
  * AccessPolicyMemberBinding
  */
 export const zAccessPolicyMemberBinding = z.object({
@@ -1251,30 +1292,6 @@ export const zPagination = z.object({
   per_page: z.int().optional().default(0),
   total_count: z.int().optional().default(0),
   total_pages: z.int().optional().default(0),
-})
-
-/**
- * AccessPolicy
- */
-export const zAccessPolicy = z.object({
-  category: z.string().optional().default(''),
-  created_at: z.int().optional().default(0),
-  description: z.string().optional().default(''),
-  id: z.string(),
-  is_builtin: z.boolean().optional().default(false),
-  name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
-  policy_key: z.string().optional().default(''),
-  resource_type: z.string(),
-  tenant_id: z.string().optional().default(''),
-  updated_at: z.int().optional().default(0),
-})
-
-/**
- * ReplaceUserAccessPoliciesResponse
- */
-export const zReplaceUserAccessPoliciesResponse = z.object({
-  access_policies: z.array(zAccessPolicy).optional(),
 })
 
 /**
@@ -4345,10 +4362,13 @@ export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidatePa
 export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponse =
   zValidationResultResponse
 
-export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody = zParserDeleteModels
-
 export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath = z.object({
   provider: z.string(),
+})
+
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsQuery = z.object({
+  model: z.string(),
+  model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
 })
 
 /**
@@ -4377,11 +4397,14 @@ export const zPostWorkspacesCurrentModelProvidersByProviderModelsPath = z.object
  */
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsResponse = zSimpleResultResponse
 
-export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody =
-  zParserDeleteCredential
-
 export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath = z.object({
   provider: z.string(),
+})
+
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsQuery = z.object({
+  credential_id: z.string(),
+  model: z.string(),
+  model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
 })
 
 /**
@@ -4830,10 +4853,12 @@ export const zGetWorkspacesCurrentPluginByCategoryListResponse = zPluginCategory
  */
 export const zGetWorkspacesCurrentRbacAccessPoliciesResponse = z.record(z.string(), z.unknown())
 
+export const zPostWorkspacesCurrentRbacAccessPoliciesBody = zAccessPolicyCreateRequest
+
 /**
- * Success
+ * Policy created
  */
-export const zPostWorkspacesCurrentRbacAccessPoliciesResponse = z.record(z.string(), z.unknown())
+export const zPostWorkspacesCurrentRbacAccessPoliciesResponse = zAccessPolicy
 
 export const zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
   policy_id: z.uuid(),
@@ -4859,6 +4884,8 @@ export const zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = z.recor
   z.unknown(),
 )
 
+export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdBody = zAccessPolicyUpdateRequest
+
 export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
   policy_id: z.uuid(),
 })
@@ -4866,10 +4893,7 @@ export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = zAccessPolicy
 
 export const zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath = z.object({
   policy_id: z.uuid(),

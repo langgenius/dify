@@ -19,6 +19,7 @@ import SettingsModal from '@/app/components/app/overview/settings'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
+import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
@@ -48,7 +49,10 @@ export function WebAppAccessCard({
     site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
   const webAppUrl = getAgentWebAppUrl(agent)
   const accessReady = Boolean(agent?.access_ready)
-  const canManageWebApp = Boolean(appId && accessReady)
+  const { canManageAccessPoint, canReleaseAndVersion } = getAgentACLCapabilities(
+    agent?.permission_keys,
+  )
+  const canManageWebApp = canManageAccessPoint && Boolean(appId && accessReady)
   const embeddedConfig =
     appId && accessToken
       ? {
@@ -131,6 +135,8 @@ export function WebAppAccessCard({
     toggleSiteMutation.isPending && pendingEnabled !== undefined
       ? pendingEnabled
       : Boolean(agent?.enable_site)
+  const canUseIntegrationActions =
+    canManageWebApp && optimisticEnabled && !toggleSiteMutation.isPending
   const status = isLoading ? 'loading' : optimisticEnabled ? 'inService' : 'disabled'
   const statusLabel = isLoading
     ? tCommon(($) => $.loading)
@@ -145,12 +151,14 @@ export function WebAppAccessCard({
   const icon = agent ? getSettingsIcon(agent) : null
   const notAvailableLabel = t(($) => $['agentDetail.access.workflow.notAvailable'])
   const openUrl =
-    webAppUrl && agent?.enable_site && !toggleSiteMutation.isPending ? webAppUrl : undefined
+    accessReady && webAppUrl && agent?.enable_site && !toggleSiteMutation.isPending
+      ? webAppUrl
+      : undefined
   const publishRequiredMessage = t(($) => $['agentDetail.access.publishRequired'])
   const showPublishRequiredMessage = !isLoading && !accessReady
 
   function handleEnabledChange(enabled: boolean) {
-    if (!appId) return
+    if (!appId || !canManageWebApp) return
 
     toggleSiteMutation.mutate({
       params: {
@@ -163,7 +171,7 @@ export function WebAppAccessCard({
   }
 
   function handleRefreshUrl() {
-    if (!appId) return
+    if (!appId || !canManageWebApp) return
 
     resetAccessTokenMutation.mutate({
       params: {
@@ -173,7 +181,7 @@ export function WebAppAccessCard({
   }
 
   async function handleSaveSettings(params: ConfigParams) {
-    if (!appId) return
+    if (!appId || !canManageWebApp) return
 
     const { enable_sso: _enableSso, ...body } = params
     const sitePayload = body satisfies AppSiteUpdatePayload
@@ -251,7 +259,7 @@ export function WebAppAccessCard({
           <>
             <Button
               variant="secondary"
-              disabled={!embeddedConfig}
+              disabled={!canUseIntegrationActions || !embeddedConfig}
               onClick={() => setShowEmbeddedModal(true)}
               className="flex items-center gap-1 px-3"
             >
@@ -260,7 +268,7 @@ export function WebAppAccessCard({
             </Button>
             <Button
               variant="secondary"
-              disabled={!customizeConfig}
+              disabled={!canUseIntegrationActions || !customizeConfig}
               onClick={() => setShowCustomizeModal(true)}
               className="flex items-center gap-1 px-3"
             >
@@ -269,7 +277,7 @@ export function WebAppAccessCard({
             </Button>
             <Button
               variant="secondary"
-              disabled={!settingsAppInfo || updateSiteMutation.isPending}
+              disabled={!canManageWebApp || !settingsAppInfo || updateSiteMutation.isPending}
               onClick={() => setShowSettingsModal(true)}
               className="flex items-center gap-1 px-3"
             >
@@ -314,7 +322,7 @@ export function WebAppAccessCard({
         )}
       </AccessPointCard>
 
-      {settingsAppInfo && (
+      {canManageWebApp && settingsAppInfo && (
         <SettingsModal
           isChat
           appInfo={settingsAppInfo}
@@ -323,7 +331,7 @@ export function WebAppAccessCard({
           onSave={handleSaveSettings}
         />
       )}
-      {customizeConfig && (
+      {canManageWebApp && customizeConfig && (
         <CustomizeModal
           isShow={showCustomizeModal}
           onClose={() => setShowCustomizeModal(false)}
@@ -332,7 +340,7 @@ export function WebAppAccessCard({
           sourceCodeRepository="webapp-conversation"
         />
       )}
-      {embeddedConfig && (
+      {canManageWebApp && embeddedConfig && (
         <EmbeddedModal
           isShow={showEmbeddedModal}
           onClose={() => setShowEmbeddedModal(false)}
@@ -342,7 +350,7 @@ export function WebAppAccessCard({
           webAppRoute="agent"
         />
       )}
-      {showAccessControl && accessControl.state === 'ready' && (
+      {canReleaseAndVersion && showAccessControl && accessControl.state === 'ready' && (
         <AccessControl
           app={accessControl.app}
           onClose={() => setShowAccessControl(false)}

@@ -31,6 +31,7 @@
     "@typescript/native": "catalog:",
     "concurrently": "catalog:",
     "eslint": "catalog:",
+    "eslint-config-flat-gitignore": "catalog:",
     "eslint-markdown": "catalog:",
     "eslint-plugin-antfu": "catalog:",
     "eslint-plugin-better-tailwindcss": "catalog:",

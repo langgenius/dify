@@ -4,11 +4,17 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AgentPermission } from '@/features/agent-v2/acl'
 import { AgentRosterList } from '../agent-roster-list'
 
 const { duplicateAgentMutationFn } = vi.hoisted(() => ({
   duplicateAgentMutationFn: vi.fn(),
 }))
+const workspacePermissions = vi.hoisted(() => ({ canCreate: true }))
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanCreateAgents: () => workspacePermissions.canCreate,
+}))
+
 const exportAppDslMock = vi.hoisted(() => vi.fn())
 const exportAppDslState = vi.hoisted(() => ({ isExporting: false }))
 
@@ -58,6 +64,7 @@ vi.mock('@/service/console', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial => ({
+  permission_keys: Object.values(AgentPermission),
   active_config_is_published: false,
   app_id: 'app-1',
   description: 'Find and summarize market materials.',
@@ -104,6 +111,7 @@ const renderList = (agents: AgentAppPartial[], overrides: Partial<ReadyState> = 
 describe('AgentRosterList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    workspacePermissions.canCreate = true
     vi.spyOn(toast, 'error').mockReturnValue('toast-id')
     vi.spyOn(toast, 'success').mockReturnValue('toast-id')
     duplicateAgentMutationFn.mockResolvedValue(
@@ -594,5 +602,38 @@ describe('AgentRosterList', () => {
     expect(
       within(reopenedDialog).getByRole('button', { name: 'common.operation.save' }),
     ).toBeDisabled()
+  })
+
+  it('renders preview-only agent cards without navigation', () => {
+    workspacePermissions.canCreate = false
+    renderList([createAgent({ permission_keys: [AgentPermission.Preview] })])
+
+    const card = screen.getByRole('listitem', { name: 'Research Agent' })
+    expect(within(card).queryByRole('link', { name: 'Research Agent' })).not.toBeInTheDocument()
+    expect(card).toHaveAccessibleDescription(
+      'agentV2.roster.usageStatus.draft Find and summarize market materials.',
+    )
+  })
+
+  it('links viewers to access points and hides mutation menus including the context menu', async () => {
+    workspacePermissions.canCreate = false
+    renderList([
+      createAgent({ permission_keys: [AgentPermission.Preview, AgentPermission.AccessPointView] }),
+    ])
+    const link = screen.getByRole('link', { name: 'Research Agent' })
+    expect(link).toHaveAttribute('href', '/agents/agent-1/access')
+    expect(screen.queryByRole('button', { name: /roster.moreActions/ })).not.toBeInTheDocument()
+    await userEvent.pointer({ target: link, keys: '[MouseRight]' })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('allows duplication with workspace create permission without granting resource edits', async () => {
+    renderList([
+      createAgent({ permission_keys: [AgentPermission.Preview, AgentPermission.AccessPointView] }),
+    ])
+    await userEvent.click(screen.getByRole('button', { name: /roster.moreActions/ }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'common.operation.duplicate',
+    ])
   })
 })
