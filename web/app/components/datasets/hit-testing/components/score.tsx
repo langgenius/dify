@@ -9,7 +9,7 @@ type Props = {
 }
 
 const Score: FC<Props> = ({ value, besideChunkName }) => {
-  if (!value || isNaN(value)) return null
+  if (value === null || value === undefined || Number.isNaN(value)) return null
   return (
     <div
       className={cn(

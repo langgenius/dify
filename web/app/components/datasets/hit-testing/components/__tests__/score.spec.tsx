@@ -8,8 +8,14 @@ describe('Score', () => {
     expect(screen.getByText('0.68')).toBeInTheDocument()
   })
 
-  it.each([null, 0, Number.NaN])('does not display an absent score for %s', (value) => {
-    const { container } = render(<Score value={value} />)
+  it('displays a zero retrieval score', () => {
+    render(<Score value={0} />)
+
+    expect(screen.getByText('0.00')).toBeInTheDocument()
+  })
+
+  it.each([null, undefined, Number.NaN])('does not display an absent score for %s', (value) => {
+    const { container } = render(<Score value={value as number | null} />)
 
     expect(container).toBeEmptyDOMElement()
   })
