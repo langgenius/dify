@@ -1,5 +1,6 @@
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -33,9 +34,14 @@ class TokenBufferMemory:
         self,
         conversation: Conversation,
         model_instance: ModelInstance,
+        app_features: Mapping[str, Any] | None = None,
     ):
         self.conversation = conversation
         self.model_instance = model_instance
+        # Effective app features for Agent Apps, whose model, prompt, and tools
+        # live in the bound Agent Soul rather than a legacy model config. The
+        # caller resolves them because the Soul lives above the core layer.
+        self.app_features = app_features
         self._workflow_run_repo: APIWorkflowRunRepository | None = None
 
     @property
@@ -82,6 +88,15 @@ class TokenBufferMemory:
                 if not workflow:
                     raise ValueError(f"Workflow not found: {workflow_run.workflow_id}")
                 file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+            case AppMode.AGENT:
+                # An Agent App keeps model, prompt, and tools in the bound Agent
+                # Soul, so the caller projects the effective features (see
+                # ``merge_agent_app_features``) instead of this layer reading the
+                # app's legacy feature row. ``is_vision=True`` matches
+                # AgentAppGenerator and the chat/completion branch above.
+                if self.app_features is None:
+                    raise ValueError("Agent App conversation memory requires the projected Agent App features")
+                file_extra_config = FileUploadConfigManager.convert(self.app_features, is_vision=True)
             case _:
                 raise AssertionError(f"Invalid app mode: {self.conversation.mode}")
 
