@@ -158,30 +158,48 @@ def test_agent_enums_match_prd_boundaries():
     assert WorkflowAgentBindingType.INLINE_AGENT.value == "inline_agent"
 
 
-def test_agent_table_uses_db_unique_constraint_for_active_roster_names():
+def test_agent_table_uses_partial_unique_index_for_active_roster_names():
     agent_table = cast(sa.Table, Agent.__table__)
+
+    # The generated column + UniqueConstraint was replaced with a partial
+    # unique index to avoid PostgreSQL logical replication conflicts
+    # (generated columns cannot be published). See issue #39460.
+    assert "roster_unique_name" not in agent_table.c
+
     unique_constraints = {
         str(constraint.name): tuple(column.name for column in constraint.columns)
         for constraint in agent_table.constraints
         if isinstance(constraint, sa.UniqueConstraint)
     }
+    assert "agents_tenant_id_key" not in unique_constraints
 
-    assert unique_constraints["agents_tenant_id_key"] == ("tenant_id", "roster_unique_name")
+    indexes = {str(index.name): index for index in agent_table.indexes}
+    roster_index = indexes["agents_tenant_id_active_roster_name_key"]
+    assert tuple(column.name for column in roster_index.columns) == ("tenant_id", "name")
+    assert roster_index.unique is True
+    # The partial condition is dialect-specific (postgresql_where); verify
+    # it is present in the dialect options.
+    pg_dialect_opts = roster_index.dialect_options.get("postgresql", {})
+    where_clause = str(pg_dialect_opts.get("where", ""))
+    assert "scope = 'roster'" in where_clause
+    assert "status = 'active'" in where_clause
 
-    roster_unique_name = agent_table.c.roster_unique_name
-    assert roster_unique_name.computed is not None
-    computed_sql = str(roster_unique_name.computed.sqltext)
-    assert "scope = 'roster'" in computed_sql
-    assert "status = 'active'" in computed_sql
-
-    indexes = {str(index.name): tuple(column.name for column in index.columns) for index in agent_table.indexes}
-    assert indexes["agent_tenant_updated_at_idx"] == ("tenant_id", "updated_at")
-    assert indexes["agent_tenant_scope_idx"] == ("tenant_id", "scope")
+    assert tuple(column.name for column in indexes["agent_tenant_updated_at_idx"].columns) == (
+        "tenant_id",
+        "updated_at",
+    )
+    assert tuple(column.name for column in indexes["agent_tenant_scope_idx"].columns) == (
+        "tenant_id",
+        "scope",
+    )
 
 
 def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow_only_duplicates(
     sqlite_engine: sa.Engine,
 ):
+    # The generated column was replaced by a partial unique index declared with
+    # both postgresql_where and sqlite_where, so enforcement is exercised here
+    # on SQLite and by the PostgreSQL integration tests.
     engine = sqlite_engine
     agent_table = cast(sa.Table, Agent.__table__)
     insert_agent = agent_table.insert()
@@ -233,6 +251,37 @@ def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow
                     "status": AgentStatus.ACTIVE.value,
                 },
             )
+
+    # Verify the partial unique index exists and targets the right columns.
+    roster_index = next(idx for idx in agent_table.indexes if idx.name == "agents_tenant_id_active_roster_name_key")
+    assert roster_index.unique is True
+    assert tuple(col.name for col in roster_index.columns) == ("tenant_id", "name")
+
+    # Verify no generated column remains that would conflict with logical replication.
+    assert "roster_unique_name" not in agent_table.c
+
+    # Verify archived and workflow-only agents are excluded from the partial
+    # index condition (only scope='roster' AND status='active' is constrained).
+    pg_dialect_opts = roster_index.dialect_options.get("postgresql", {})
+    where_clause = str(pg_dialect_opts.get("where", ""))
+    assert "scope = 'roster'" in where_clause
+    assert "status = 'active'" in where_clause
+
+
+    # Verify the partial unique index exists and targets the right columns.
+    roster_index = next(idx for idx in agent_table.indexes if idx.name == "agents_tenant_id_active_roster_name_key")
+    assert roster_index.unique is True
+    assert tuple(col.name for col in roster_index.columns) == ("tenant_id", "name")
+
+    # Verify no generated column remains that would conflict with logical replication.
+    assert "roster_unique_name" not in agent_table.c
+
+    # Verify archived and workflow-only agents are excluded from the partial
+    # index condition (only scope='roster' AND status='active' is constrained).
+    pg_dialect_opts = roster_index.dialect_options.get("postgresql", {})
+    where_clause = str(pg_dialect_opts.get("where", ""))
+    assert "scope = 'roster'" in where_clause
+    assert "status = 'active'" in where_clause
 
 
 def test_current_snapshot_stores_agent_soul_snapshot_as_long_text_json():
