@@ -109,6 +109,13 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     resetCatalogScroll()
     setSortBy(nextSortBy)
   }
+  const clearFilters = useCallback(() => {
+    resetCatalogScroll()
+    setCreatorIDs([])
+    setTagIDs([])
+    setSortBy('last_modified')
+    void setUrlQuery({ category: 'all', keywords: '' })
+  }, [setUrlQuery])
 
   const openCreateBlankModal = useCallback(() => {
     if (canCreateApp) setCreationDialog({ type: 'blank' })
@@ -168,6 +175,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
                   canCreateApp={canCreateApp}
                   dragging={dragging}
                   hasActiveFilters={hasActiveFilters}
+                  onClearFilters={clearFilters}
                   onCreateBlank={openCreateBlankModal}
                   onCreateLearnDify={onCreateLearnDify}
                   onCreateTemplate={openCreateTemplateDialog}

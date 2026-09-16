@@ -42,6 +42,7 @@ type AppListCatalogProps = Readonly<{
   canCreateApp: boolean
   dragging: boolean
   hasActiveFilters: boolean
+  onClearFilters?: () => void
   onCreateBlank: () => void
   onCreateLearnDify?: (app: App) => void
   onCreateTemplate: () => void
@@ -88,6 +89,7 @@ function AppListCatalogContent({
   isFetching,
   isFetchingNextPage,
   isPlaceholderData,
+  onClearFilters,
   onCreateBlank,
   onCreateLearnDify,
   onCreateTemplate,
@@ -233,6 +235,10 @@ function AppListCatalogContent({
                       ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty
                       : undefined
                   }
+                  actionLabel={
+                    hasActiveFilters ? t(($) => $['operation.resetKeywords'], { ns: 'common' }) : undefined
+                  }
+                  onAction={hasActiveFilters ? onClearFilters : undefined}
                 />
               </div>
             )}
@@ -289,6 +295,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
     canCreateApp,
     dragging,
     hasActiveFilters,
+    onClearFilters,
     onCreateBlank,
     onCreateLearnDify,
     onCreateTemplate,
@@ -348,6 +355,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
       isFetching={appList.isFetching}
       isFetchingNextPage={appList.isFetchingNextPage}
       isPlaceholderData={appList.isPlaceholderData}
+      onClearFilters={onClearFilters}
       onCreateBlank={onCreateBlank}
       onCreateLearnDify={onCreateLearnDify}
       onCreateTemplate={onCreateTemplate}

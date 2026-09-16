@@ -5,9 +5,11 @@ import FilterEmptyState from '@/app/components/base/filter-empty-state'
 type EmptyProps = {
   message?: string
   stepByStepTourTarget?: string
+  actionLabel?: string
+  onAction?: () => void
 }
 
-const Empty = ({ message, stepByStepTourTarget }: EmptyProps) => {
+const Empty = ({ message, stepByStepTourTarget, actionLabel, onAction }: EmptyProps) => {
   const { t } = useTranslation()
 
   return (
@@ -16,6 +18,8 @@ const Empty = ({ message, stepByStepTourTarget }: EmptyProps) => {
       contentDataAttributes={
         stepByStepTourTarget ? { 'data-step-by-step-tour-target': stepByStepTourTarget } : undefined
       }
+      actionLabel={actionLabel}
+      onAction={onAction}
     />
   )
 }
