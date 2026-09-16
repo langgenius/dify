@@ -21,11 +21,26 @@ export const getFileUploadErrorMessage = (
   t: TFunction,
 ): string => {
   const errorCode = error?.response?.code
+  const serverMessage = typeof error?.response?.message === 'string' ? error.response.message : ''
 
-  if (errorCode === 'forbidden') return error?.response?.message
+  if (errorCode === 'forbidden') return serverMessage || defaultMessage
 
   if (errorCode === 'file_extension_blocked')
     return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
+
+  if (errorCode === 'unsupported_file_type')
+    return t(($) => $['fileUploader.fileExtensionNotSupport'], { ns: 'common' })
+
+  if (errorCode === 'file_too_large') return serverMessage || defaultMessage
+
+  if (errorCode === 'too_many_files' || errorCode === 'no_file_uploaded')
+    return serverMessage || defaultMessage
+
+  if (errorCode && serverMessage) return serverMessage
+
+  // Network / aborted requests usually have no structured API response
+  if (error && !error.response)
+    return t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' })
 
   return defaultMessage
 }

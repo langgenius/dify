@@ -47,12 +47,36 @@ describe('file-uploader utils', () => {
       )
     })
 
+    it('should return unsupported_file_type translation when error code matches', () => {
+      const error = { response: { code: 'unsupported_file_type' } }
+      expect(getFileUploadErrorMessage(error, 'default', createMockT())).toBe(
+        'fileUploader.fileExtensionNotSupport',
+      )
+    })
+
+    it('should prefer server message for file_too_large', () => {
+      const error = { response: { code: 'file_too_large', message: 'max 15MB' } }
+      expect(getFileUploadErrorMessage(error, 'default', createMockT())).toBe('max 15MB')
+    })
+
+    it('should return server message for other structured API errors', () => {
+      const error = { response: { code: 'invalid_param', message: 'bad file' } }
+      expect(getFileUploadErrorMessage(error, 'default', createMockT())).toBe('bad file')
+    })
+
+    it('should return upload retry translation for network errors without response', () => {
+      const error = new TypeError('Failed to fetch')
+      expect(getFileUploadErrorMessage(error, 'default', createMockT())).toBe(
+        'fileUploader.uploadFromComputerUploadError',
+      )
+    })
+
     it('should return default message for other errors', () => {
       const error = { response: { code: 'unknown_error' } }
       expect(getFileUploadErrorMessage(error, 'Upload failed', createMockT())).toBe('Upload failed')
     })
 
-    it('should return default message when error has no response', () => {
+    it('should return default message when error has no response payload', () => {
       expect(getFileUploadErrorMessage(null, 'Upload failed', createMockT())).toBe('Upload failed')
     })
   })

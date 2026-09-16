@@ -188,7 +188,8 @@ export const useFileUpload = ({
             t(($) => $['stepOne.uploader.failed'], { ns: 'datasetCreation' }),
             t,
           )
-          toast.error(errorMessage)
+          const fileName = fileItem.file?.name
+          toast.error(fileName ? `${fileName}: ${errorMessage}` : errorMessage)
           onFileUpdate(fileItem, PROGRESS_ERROR, fileListRef.current)
           return Promise.resolve({ ...fileItem })
         })
