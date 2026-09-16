@@ -25,7 +25,7 @@ const apiMocks = vi.hoisted(() => ({
   deleteEnvironment: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       byResourceId: {
@@ -123,7 +123,6 @@ vi.mock('@/context/workspace-state', async () => {
   return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: mockCurrentWorkspace(),
     isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
   }))
 })
 

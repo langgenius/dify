@@ -11,7 +11,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import AppUnavailable from '../../base/app-unavailable'
 import { toInstalledAppAccessMode, toInstalledAppMeta, toInstalledAppParameters } from './runtime'
 

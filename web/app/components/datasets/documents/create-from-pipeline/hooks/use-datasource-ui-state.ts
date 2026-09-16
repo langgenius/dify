@@ -14,7 +14,6 @@ type DatasourceUIStateParams = {
   onlineDriveFileList: OnlineDriveFile[]
   isVectorSpaceFull: boolean
   isCheckingVectorSpace?: boolean
-  enableBilling: boolean
   currentWorkspacePagesLength: number
   fileUploadConfig: { file_size_limit: number; batch_count_limit: number }
 }
@@ -32,7 +31,6 @@ export const useDatasourceUIState = ({
   onlineDriveFileList,
   isVectorSpaceFull,
   isCheckingVectorSpace = false,
-  enableBilling,
   currentWorkspacePagesLength,
   fileUploadConfig,
 }: DatasourceUIStateParams) => {
@@ -51,7 +49,7 @@ export const useDatasourceUIState = ({
     }
 
     const condition = vectorSpaceFullConditions[datasourceType]
-    return condition && isVectorSpaceFull && enableBilling
+    return condition && isVectorSpaceFull
   }, [
     datasource,
     datasourceType,
@@ -60,7 +58,6 @@ export const useDatasourceUIState = ({
     websitePagesLength,
     onlineDriveFileList.length,
     isVectorSpaceFull,
-    enableBilling,
   ])
 
   // Lookup table for next button disabled conditions

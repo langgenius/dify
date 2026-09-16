@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type SnippetTagsFilterProps = {
   embedded?: boolean

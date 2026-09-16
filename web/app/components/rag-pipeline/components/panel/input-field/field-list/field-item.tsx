@@ -1,4 +1,5 @@
 'use client'
+import type { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { InputVar } from '@/models/pipeline'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,13 +15,21 @@ import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/i
 
 type FieldItemProps = {
   readonly?: boolean
+  dragHandleProps?: ReturnType<ReturnType<typeof useKeyboardSortable>['getHandleProps']>
   payload: InputVar
   index: number
   onClickEdit: (id: string) => void
   onRemove: (index: number) => void
 }
 
-const FieldItem = ({ readonly, payload, index, onClickEdit, onRemove }: FieldItemProps) => {
+const FieldItem = ({
+  readonly,
+  payload,
+  index,
+  onClickEdit,
+  onRemove,
+  dragHandleProps,
+}: FieldItemProps) => {
   const { t } = useTranslation()
 
   const ref = useRef(null)
@@ -48,18 +57,29 @@ const FieldItem = ({ readonly, payload, index, onClickEdit, onRemove }: FieldIte
     <div
       ref={ref}
       className={cn(
-        'handle flex h-8 cursor-pointer items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 pl-2 shadow-xs hover:shadow-sm',
+        'group flex h-8 cursor-pointer items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 pl-2 shadow-xs hover:shadow-sm',
         isHovering && !readonly ? 'cursor-all-scroll pr-1' : 'pr-2.5',
         readonly && 'cursor-default',
       )}
       // onClick={handleOnClickEdit}
     >
-      <div className="flex grow basis-0 items-center gap-x-1 overflow-hidden">
-        {isHovering && !readonly ? (
-          <RiDraggable className="size-4 shrink-0 text-text-quaternary" />
-        ) : (
-          <InputField className="size-4 shrink-0 text-text-accent" />
+      <div className="relative size-4 shrink-0">
+        <InputField
+          className={cn(
+            'size-4 text-text-accent',
+            !readonly && !!dragHandleProps && 'group-focus-within:opacity-0 group-hover:opacity-0',
+          )}
+        />
+        {!readonly && dragHandleProps && (
+          <IconButton
+            {...dragHandleProps}
+            className="handle pointer-events-none absolute -top-1 -left-1 size-6 cursor-grab opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 aria-pressed:bg-state-accent-hover"
+          >
+            <RiDraggable aria-hidden="true" className="size-4 text-text-quaternary" />
+          </IconButton>
         )}
+      </div>
+      <div className="flex grow basis-0 items-center gap-x-1 overflow-hidden">
         <div
           title={payload.variable}
           className="max-w-32.5 shrink-0 truncate system-sm-medium text-text-secondary"

@@ -13,6 +13,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from configs import dify_config
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
@@ -21,7 +22,6 @@ from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     enterprise_license_required,
@@ -42,14 +42,18 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from fields.base import ResponseModel
-from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from fields.dataset_fields import (
+    DatasetDetailResponse,
+    build_dataset_detail_prefetch,
+    dataset_detail_response_source,
+)
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from libs.url_utils import normalize_api_base_url
-from models import Account, ApiToken, App, Dataset, Document, DocumentSegment, UploadFile
+from models import Account, ApiToken, App, Dataset, Document, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
-from models.enums import ApiTokenType, SegmentStatus
+from models.enums import ApiTokenType
 from models.provider_ids import ModelProviderID
 from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache
@@ -538,8 +542,11 @@ class DatasetListApi(Resource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
+        prefetch = build_dataset_detail_prefetch(datasets, session=session)
         data = [
-            dump_response(DatasetDetailResponse, dataset_detail_response_source(dataset, session=session))
+            dump_response(
+                DatasetDetailResponse, dataset_detail_response_source(dataset, session=session, prefetch=prefetch)
+            )
             for dataset in datasets
         ]
         dataset_ids = [item["id"] for item in data if item.get("permission") == "partial_members"]
@@ -589,9 +596,7 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace()))
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
@@ -662,7 +667,7 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -731,7 +736,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(DatasetUpdatePayload)
     def patch(
@@ -798,7 +803,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Dataset deleted successfully")
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def delete(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -831,7 +836,7 @@ class DatasetUseCheckApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -853,7 +858,7 @@ class DatasetQueryApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1009,7 +1014,7 @@ class DatasetRelatedAppListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1048,7 +1053,7 @@ class DatasetIndexingStatusApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -1056,31 +1061,13 @@ class DatasetIndexingStatusApi(Resource):
         documents = session.scalars(
             select(Document).where(Document.dataset_id == dataset.id, Document.tenant_id == dataset.tenant_id)
         ).all()
+        segment_counts = DocumentService.get_document_segment_counts(
+            documents,
+            session=session,
+        )
         documents_status = []
         for document in documents:
-            completed_segments = (
-                session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.completed_at.isnot(None),
-                        DocumentSegment.tenant_id == dataset.tenant_id,
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
-            total_segments = (
-                session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.tenant_id == dataset.tenant_id,
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                    )
-                )
-                or 0
-            )
+            completed_segments, total_segments = segment_counts.get(str(document.id), (0, 0))
             # Create a dictionary with document attributes and additional fields
             document_dict = {
                 "id": document.id,
@@ -1112,7 +1099,7 @@ class DatasetApiKeyApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session(write=False)
@@ -1130,7 +1117,7 @@ class DatasetApiKeyApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session
@@ -1191,7 +1178,7 @@ class DatasetApiDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session
@@ -1228,7 +1215,7 @@ class DatasetEnableApiApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, status: str):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -1303,7 +1290,7 @@ class DatasetErrorDocs(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -1330,7 +1317,7 @@ class DatasetPermissionUserListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1363,7 +1350,7 @@ class DatasetAutoDisableLogApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)

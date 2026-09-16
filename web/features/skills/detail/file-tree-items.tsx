@@ -564,33 +564,31 @@ export function FileTreeItem({
               data-skill-file-tree-item
               draggable={!readonly}
               className={cn(
-                'group flex h-6 w-full min-w-0 items-center gap-2 rounded-md pr-1.5 pl-2 system-xs-regular text-text-secondary outline-hidden transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                'group flex h-6 w-full min-w-0 items-center rounded-md pr-1.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary',
                 isDropTarget && 'bg-state-accent-hover ring-1 ring-state-accent-solid ring-inset',
                 isSelected && 'bg-state-accent-hover text-text-accent',
                 isDragging && 'opacity-30',
               )}
-              role="button"
-              tabIndex={0}
-              title={node.path}
-              onClick={(event) => onItemSelect(node, event)}
               onContextMenu={(event) => {
                 event.stopPropagation()
                 onItemSelect(node, event)
               }}
               onDragEnd={handleDragEnd}
               onDragStart={handleDragStart}
-              onDoubleClick={() => onToggleFolder(node.path)}
-              onKeyDown={(event) => {
-                if (event.key !== 'Enter' && event.key !== ' ') return
-                event.preventDefault()
-                onItemSelect(node, event as unknown as MouseEvent<HTMLElement>)
-              }}
             >
-              <span
-                aria-hidden
-                className="i-ri-folder-5-line size-4 shrink-0 text-text-secondary"
-              />
-              {nameNode}
+              <button
+                type="button"
+                className="flex h-full w-0 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-left system-xs-regular outline-hidden transition-colors group-hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                title={node.path}
+                onClick={(event) => onItemSelect(node, event)}
+                onDoubleClick={() => onToggleFolder(node.path)}
+              >
+                <span
+                  aria-hidden
+                  className="i-ri-folder-5-line size-4 shrink-0 text-text-secondary"
+                />
+                {nameNode}
+              </button>
               {!readonly && detail && (
                 <FileActions
                   node={node}

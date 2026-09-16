@@ -4,11 +4,11 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.rbac import PlainApp, RBACCheck, Workspace
 from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_resource_check,
     edit_permission_required,
@@ -82,7 +82,7 @@ class AppImportApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()))
     @with_current_user
     @model_validate(AppImportPayload)
     def post(self, req_data: AppImportPayload, current_user: Account | None = None):
@@ -149,7 +149,7 @@ class AppImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()))
     @with_current_user
     def post(self, current_user: Account | None = None, import_id: str = ""):
         current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
@@ -208,7 +208,7 @@ class AppImportCheckDependenciesApi(Resource):
     @get_app_model
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     def get(self, app_model: App):
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)

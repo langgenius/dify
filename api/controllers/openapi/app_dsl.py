@@ -6,12 +6,12 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from controllers.common.wraps import RBACPermission, RBACResourceScope
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import Account, App
@@ -40,11 +40,7 @@ class AppDslImportApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(
-            resource_type=RBACResourceScope.APP,
-            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
-            resource_required=False,
-        ),
+        rbac=RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()),
     )
     @returns(200, Import, "Import completed")
     @returns(202, Import, "Import pending confirmation")
@@ -100,11 +96,7 @@ class AppDslImportConfirmApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(
-            resource_type=RBACResourceScope.APP,
-            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
-            resource_required=False,
-        ),
+        rbac=RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()),
     )
     @returns(200, Import, "Import confirmed")
     @returns(400, Import, "Import failed")
@@ -144,7 +136,7 @@ class AppDslExportApi(Resource):
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+        rbac=RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
     )
     @accepts(query=AppDslExportQuery)
     @returns(200, AppDslExportResponse, "Export successful")
@@ -176,7 +168,7 @@ class AppDslCheckDependenciesApi(Resource):
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+        rbac=RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
     )
     @returns(200, CheckDependenciesResult, "Dependencies checked")
     def get(self, app_id: str, *, auth_data: AuthData):

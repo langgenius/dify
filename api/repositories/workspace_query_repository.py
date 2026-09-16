@@ -7,11 +7,17 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Tenant, TenantAccountJoin, TenantStatus
 from services.account_login_service import ConsoleAuthWorkspaceQuery
-from services.account_ports import AccountWorkspaceMembershipQuery
+from services.account_ports import AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery
+from services.entities.account_access_entities import AccountWorkspaceSnapshot
 from services.workspace_query_service import WorkspaceQuery, WorkspaceRecord
 
 
-class WorkspaceQueryRepository(WorkspaceQuery, AccountWorkspaceMembershipQuery, ConsoleAuthWorkspaceQuery):
+class WorkspaceQueryRepository(
+    WorkspaceQuery,
+    AccountWorkspaceMembershipQuery,
+    AccountWorkspaceSnapshotQuery,
+    ConsoleAuthWorkspaceQuery,
+):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -51,6 +57,35 @@ class WorkspaceQueryRepository(WorkspaceQuery, AccountWorkspaceMembershipQuery, 
         stmt = select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == account_id)
         with self._session_factory() as session:
             return tuple(session.scalars(stmt).all())
+
+    @override
+    def list_account_access_workspaces(self, account_id: str) -> tuple[AccountWorkspaceSnapshot, ...]:
+        """List every membership for the OpenAPI account identity response.
+
+        Unlike the Console workspace picker, the identity response preserves
+        its existing behavior of including archived memberships.
+        """
+        stmt = (
+            select(
+                Tenant.id,
+                Tenant.name,
+                TenantAccountJoin.role,
+                TenantAccountJoin.current,
+            )
+            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+            .where(TenantAccountJoin.account_id == account_id)
+            .order_by(Tenant.created_at.asc(), Tenant.id.asc())
+        )
+        with self._session_factory() as session:
+            return tuple(
+                AccountWorkspaceSnapshot(
+                    id=workspace_id,
+                    name=name,
+                    role=role.value,
+                    current=current,
+                )
+                for workspace_id, name, role, current in session.execute(stmt).all()
+            )
 
     @override
     def has_active_for_account(self, account_id: str) -> bool:

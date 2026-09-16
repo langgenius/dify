@@ -1,4 +1,3 @@
-/* eslint-disable style/multiline-ternary */
 'use client'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { Button } from '@langgenius/dify-ui/button'

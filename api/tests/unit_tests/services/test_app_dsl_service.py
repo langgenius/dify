@@ -14,10 +14,12 @@ from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode, Tenant
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow, WorkflowType
-from services.app_dsl_service import AppDslService, PendingData
+from services.app_dsl_service import AppDslService, Import, PendingData
+from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.system_feature_service import SystemFeatureService
 from tests.unit_tests.config_override import apply_config_overrides
 
 _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
@@ -103,6 +105,90 @@ def _workflow(
     )
     workflow.environment_variables = environment_variables or []
     return workflow
+
+
+@pytest.mark.parametrize("status", [ImportStatus.FAILED, ImportStatus.PENDING])
+def test_copy_app_rolls_back_incomplete_import(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, status: ImportStatus
+) -> None:
+    original = _persist_overwrite_target(sqlite_session)
+    service = AppDslService(sqlite_session)
+    monkeypatch.setattr(service, "export_dsl", Mock(return_value="dsl"))
+
+    def import_app(**_kwargs: object) -> Import:
+        original.name = "Uncommitted change"
+        sqlite_session.flush()
+        return Import(id="import-1", status=status)
+
+    monkeypatch.setattr(service, "import_app", import_app)
+    auth_enabled = Mock()
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", auth_enabled)
+
+    result, copied = service.copy_app(app_model=original, account=_account(tenant_id=_TENANT_ID), tenant_id=_TENANT_ID)
+
+    assert result.status == status
+    assert copied is None
+    assert original.name == "Target"
+    auth_enabled.assert_not_called()
+
+
+@pytest.mark.parametrize("status", [ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS])
+@pytest.mark.parametrize("missing_settings", [False, True])
+def test_copy_app_commits_before_inheriting_access(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, status: ImportStatus, missing_settings: bool
+) -> None:
+    original = _persist_overwrite_target(sqlite_session)
+    service = AppDslService(sqlite_session)
+    monkeypatch.setattr(service, "export_dsl", Mock(return_value="dsl"))
+    copied_id = "55555555-5555-4555-8555-555555555555"
+
+    def import_app(**_kwargs: object) -> Import:
+        sqlite_session.add(_app(app_id=copied_id, tenant_id=_TENANT_ID))
+        return Import(id="import-1", status=status, app_id=copied_id)
+
+    def get_access_mode(app_id: str) -> SimpleNamespace:
+        assert not sqlite_session.in_transaction()
+        assert app_id == _OVERWRITE_APP_ID
+        if missing_settings:
+            raise ValueError("No settings")
+        return SimpleNamespace(access_mode="private")
+
+    def update_access_mode(app_id: str, access_mode: str) -> None:
+        assert not sqlite_session.in_transaction()
+        assert app_id == copied_id
+        assert access_mode == ("public" if missing_settings else "private")
+
+    monkeypatch.setattr(service, "import_app", import_app)
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: True)
+    monkeypatch.setattr(EnterpriseService.WebAppAuth, "get_app_access_mode_by_id", get_access_mode)
+    update_access = Mock(side_effect=update_access_mode)
+    monkeypatch.setattr(EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
+
+    result, copied = service.copy_app(app_model=original, account=_account(tenant_id=_TENANT_ID), tenant_id=_TENANT_ID)
+
+    assert result.status == status
+    assert copied is not None
+    assert copied.id == copied_id
+    update_access.assert_called_once()
+
+
+def test_copy_app_scopes_result_to_current_tenant(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    original = _persist_overwrite_target(sqlite_session)
+    foreign_app = _app(tenant_id="66666666-6666-4666-8666-666666666666", app_id=_OTHER_ACCOUNT_ID)
+    sqlite_session.add(foreign_app)
+    sqlite_session.commit()
+    service = AppDslService(sqlite_session)
+    monkeypatch.setattr(service, "export_dsl", Mock(return_value="dsl"))
+    monkeypatch.setattr(
+        service,
+        "import_app",
+        Mock(return_value=Import(id="import-1", status=ImportStatus.COMPLETED, app_id=foreign_app.id)),
+    )
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
+
+    _, copied = service.copy_app(app_model=original, account=_account(tenant_id=_TENANT_ID), tenant_id=_TENANT_ID)
+
+    assert copied is None
 
 
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -348,11 +434,17 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
 
     monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending_imports.get)
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending_imports.pop)
-    monkeypatch.setattr(
-        service,
-        "_create_or_update_app",
-        Mock(return_value=_app(app_id="app-1", mode=AppMode.WORKFLOW)),
-    )
+    create_or_update = Mock(return_value=_app(app_id="app-1", mode=AppMode.WORKFLOW))
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+    load = Mock(wraps=yaml.safe_load)
+    monkeypatch.setattr("services.app_dsl_service.yaml.safe_load", load)
+
+    pending_imports[redis_key] = pending_data.model_dump_json(exclude={"tenant_id", "account_id"})
+    assert service.confirm_import(import_id=pending.id, account=creator).status == ImportStatus.FAILED
+    load.assert_not_called()
+    create_or_update.assert_not_called()
+    assert redis_key in pending_imports
+    pending_imports[redis_key] = pending_data.model_dump_json()
 
     for other_account in (
         _account(tenant_id="tenant-2"),
@@ -364,36 +456,60 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
     assert redis_key not in pending_imports
 
 
+def test_pending_import_requires_current_tenant(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    setex = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", setex)
+    account = _account()
+    account._current_tenant = None
+
+    result = AppDslService(session=unbound_session).import_app(
+        account=account,
+        import_mode="yaml-content",
+        yaml_content="version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "Current tenant is not set"
+    setex.assert_not_called()
+
+
 @pytest.mark.parametrize(
-    ("tenant_id", "account_id", "expected"),
+    ("caller_tenant_id", "caller_account_id", "expected"),
     [
         ("tenant-1", "account-1", True),
         (None, "account-1", False),
-        ("tenant-1", None, False),
         ("tenant-2", "account-1", False),
         ("tenant-1", "account-2", False),
     ],
 )
 def test_pending_import_owner_access(
-    tenant_id: str | None,
-    account_id: str | None,
+    caller_tenant_id: str | None,
+    caller_account_id: str,
     expected: bool,
 ) -> None:
     pending = PendingData(
-        tenant_id=tenant_id,
-        account_id=account_id,
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content="",
     )
 
-    assert pending.is_accessible_by(tenant_id="tenant-1", account_id="account-1") is expected
+    assert pending.is_accessible_by(tenant_id=caller_tenant_id, account_id=caller_account_id) is expected
 
 
-def test_pending_import_owner_access_accepts_legacy_json() -> None:
-    pending = PendingData.model_validate_json('{"import_mode":"yaml-content","yaml_content":""}')
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '{"import_mode":"yaml-content","yaml_content":"secret-token-123"}',
+        '{"tenant_id":"tenant-1","import_mode":"yaml-content","yaml_content":"secret-token-123"}',
+        '{"account_id":"account-1","import_mode":"yaml-content","yaml_content":"secret-token-123"}',
+    ],
+)
+def test_pending_import_owner_is_required(payload: str) -> None:
+    with pytest.raises(ValueError) as exc_info:
+        PendingData.model_validate_json(payload)
 
-    assert pending.is_accessible_by(tenant_id="tenant-1", account_id="account-1")
-    assert not pending.is_accessible_by(tenant_id=None, account_id="account-1")
+    assert "secret-token-123" not in str(exc_info.value)
 
 
 def test_create_or_update_app_loads_existing_model_config_with_service_session(
@@ -421,6 +537,28 @@ def test_create_or_update_app_loads_existing_model_config_with_service_session(
         assert app.app_model_config_id == app_model_config_id
         configs = list(service_session.scalars(select(AppModelConfig)))
         assert [config.id for config in configs] == [app_model_config_id]
+
+
+def test_create_or_update_app_silently_discards_invalid_image_icon(sqlite_session: Session) -> None:
+    app = _app(tenant_id=_TENANT_ID)
+    service = AppDslService(session=sqlite_session)
+
+    result = service._create_or_update_app(
+        app=app,
+        data={
+            "app": {
+                "mode": AppMode.CHAT.value,
+                "icon_type": IconType.IMAGE.value,
+                "icon": "55555555-5555-4555-8555-555555555555",
+            },
+            "model_config": {"model": {}},
+        },
+        account=_account(tenant_id=_TENANT_ID),
+    )
+
+    assert result.icon_type == IconType.EMOJI
+    assert result.icon == "🤖"
+    assert service._warnings == []
 
 
 def test_create_or_update_app_flushes_new_model_config_before_signal(
@@ -454,6 +592,45 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
     assert app.app_model_config_id is not None
     assert sqlite_session.get(AppModelConfig, app.app_model_config_id) is not None
     assert sqlite_session.in_transaction()
+
+
+def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
+    service = AppDslService(session=session)
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+    )
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    imported_graph: dict[str, object] = {
+        "nodes": [],
+        "edges": [],
+        "viewport": {"x": 100, "y": 200, "zoom": 1.5},
+    }
+
+    service._create_or_update_app(
+        app=cast(App, app),
+        data={
+            "app": {"mode": AppMode.WORKFLOW.value},
+            "workflow": {"graph": imported_graph},
+        },
+        account=Mock(id="account-1"),
+    )
+
+    assert workflow_service.sync_draft_workflow.call_args.kwargs["graph"] == {
+        "nodes": [],
+        "edges": [],
+    }
+    assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
 
 
 def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -542,38 +719,25 @@ def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session
         load_annotation_reply_config.assert_called_once_with(service_session, app_id)
 
 
-def test_ensure_agent_manage_permission_noops_when_rbac_disabled(
-    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-) -> None:
-    config_overrides(RBAC_ENABLED=False)
-    check = Mock()
-    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
-
-    AppDslService._ensure_agent_manage_permission(_account())
-
-    check.assert_not_called()
-
-
-def test_ensure_agent_manage_permission_allows_agent_manager(
-    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+def test_agent_import_of_new_agent_checks_function_scope(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session: Session,
+    config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(RBAC_ENABLED=True)
     check = Mock(return_value=True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
+    account = _account()
 
-    AppDslService._ensure_agent_manage_permission(_account())
+    AppDslService(session=unbound_session)._ensure_agent_import_permission(account, app=None)
 
-    check.assert_called_once_with("tenant-1", "account-1", scene=RBACPermission.AGENT_MANAGE)
-
-
-def test_ensure_agent_manage_permission_rejects_without_agent_manage(
-    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-) -> None:
-    config_overrides(RBAC_ENABLED=True)
-    monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
-
-    with pytest.raises(NoPermissionError):
-        AppDslService._ensure_agent_manage_permission(_account())
+    check.assert_called_once_with(
+        account.current_tenant_id,
+        account.id,
+        scene=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
+        resource_type=None,
+        resource_id=None,
+    )
 
 
 def test_create_or_update_app_gates_agent_mode_before_creation(

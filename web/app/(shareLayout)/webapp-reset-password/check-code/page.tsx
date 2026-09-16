@@ -94,13 +94,7 @@ export default function CheckCode() {
           className="mt-1"
           placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) || ''}
         />
-        <Button
-          loading={loading}
-          disabled={loading}
-          className="my-3 w-full"
-          variant="primary"
-          onClick={verify}
-        >
+        <Button loading={loading} className="my-3 w-full" variant="primary" onClick={verify}>
           {t(($) => $['checkCode.verify'], { ns: 'login' })}
         </Button>
         <Countdown onResend={resendCode} />

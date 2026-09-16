@@ -98,7 +98,6 @@ const createDeletedAgentTool = (providerId: string): AgentTool => ({
 
 const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['value'] => ({
   appId: 'app-1',
-  isAPIKeySet: true,
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,

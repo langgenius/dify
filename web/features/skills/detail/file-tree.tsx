@@ -55,15 +55,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { formatForDisplay, matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
+import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyboard'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchSkillFileBlob, uploadSkillFile } from '../client'
 import { SkillDropDestinationHint, SkillUploadStatusPanel } from './file-tree-dnd'
 import { FileTreeItem, FileTreeNameInput, RootFileActionMenuItems } from './file-tree-items'
@@ -107,7 +108,6 @@ import {
 
 const skillSidebarMinWidth = 240
 const skillSidebarMaxWidth = 420
-const skillSidebarKeyboardStep = 8
 
 const skillSidebarHelpTriggerIcon = (
   <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
@@ -175,6 +175,8 @@ export function FileTree({
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
+  const filesTitleId = useId()
+  const sidebarPanelId = useId()
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [inlineAction, setInlineAction] = useState<FileTreeInlineAction>()
   const [draggingPaths, setDraggingPaths] = useState<string[]>([])
@@ -287,15 +289,17 @@ export function FileTree({
   )
 
   const handleSidebarResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    let nextWidth: number | undefined
-    if (event.key === 'ArrowLeft') nextWidth = sidebarWidth - skillSidebarKeyboardStep
-    if (event.key === 'ArrowRight') nextWidth = sidebarWidth + skillSidebarKeyboardStep
-    if (event.key === 'Home') nextWidth = skillSidebarMinWidth
-    if (event.key === 'End') nextWidth = skillSidebarMaxWidth
+    const nextWidth = getKeyboardResizeValue(event, {
+      side: 'right',
+      value: sidebarWidth,
+      min: skillSidebarMinWidth,
+      max: skillSidebarMaxWidth,
+    })
     if (nextWidth === undefined) return
 
     event.preventDefault()
-    setSidebarWidth(clampSkillSidebarWidth(nextWidth))
+    event.stopPropagation()
+    setSidebarWidth(nextWidth)
   }
 
   const fileMutation = useMutation(
@@ -1105,7 +1109,7 @@ export function FileTree({
   const creatorName = detail?.created_by_name ?? detail?.created_by ?? '-'
   if (collapsed && !sidebarFloating) {
     return (
-      <aside
+      <div
         data-testid="skill-detail-sidebar-shell"
         className="relative flex h-full w-16 shrink-0 bg-background-body p-1"
         onMouseEnter={openSidebarFloatingPreview}
@@ -1137,13 +1141,14 @@ export function FileTree({
             <SkillSidebarAccountFooter compact />
           </div>
         </div>
-      </aside>
+      </div>
     )
   }
 
   return (
     <>
-      <aside
+      <section
+        aria-labelledby={filesTitleId}
         ref={sidebarRef}
         data-testid="skill-detail-sidebar-shell"
         className={cn(
@@ -1155,6 +1160,7 @@ export function FileTree({
         onMouseLeave={collapsed ? closeSidebarFloatingPreview : undefined}
       >
         <div
+          id={sidebarPanelId}
           data-testid="skill-detail-sidebar"
           className={cn(
             'group/sidebar relative flex min-h-0 flex-col rounded-lg bg-components-panel-bg',
@@ -1172,6 +1178,8 @@ export function FileTree({
               aria-valuemax={skillSidebarMaxWidth}
               aria-valuemin={skillSidebarMinWidth}
               aria-valuenow={sidebarWidth}
+              aria-valuetext={t(($) => $['resize.width'], { ns: 'common', width: sidebarWidth })}
+              aria-controls={sidebarPanelId}
               tabIndex={0}
               className="group/resize absolute top-0 -right-2 z-40 flex h-full w-4 cursor-col-resize touch-none items-center justify-center outline-hidden"
               onKeyDown={handleSidebarResizeKeyDown}
@@ -1313,7 +1321,10 @@ export function FileTree({
             <div className="h-px w-full bg-linear-to-r from-divider-subtle to-transparent" />
           </div>
           <div className="flex h-8 shrink-0 items-center gap-1 px-3">
-            <h2 className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary">
+            <h2
+              id={filesTitleId}
+              className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary"
+            >
               {t(
                 ($) =>
                   fileCount === 1
@@ -1325,6 +1336,7 @@ export function FileTree({
             {!readonly && (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger
+                  aria-label={tCommon(($) => $['operation.add'])}
                   className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
                   disabled={!detail || isMutating}
                 >
@@ -1601,7 +1613,7 @@ export function FileTree({
           </div>
           <SkillSidebarAccountFooter />
         </div>
-      </aside>
+      </section>
     </>
   )
 }

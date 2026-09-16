@@ -45,6 +45,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowListQuery,
     WorkflowUpdatePayload,
 )
+from fields.workflow_run_fields import node_execution_response_source
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountRole
@@ -802,8 +803,12 @@ class TestRagPipelineWorkflowRunNodeExecutionListApi:
         run_id = uuid4()
         node_exec = make_node_execution(workflow_run_id=str(run_id))
 
+        session_stub = MagicMock()
+        session_stub.scalar.return_value = None
         service = MagicMock()
-        service.get_rag_pipeline_workflow_run_node_executions.return_value = [node_exec]
+        service.get_rag_pipeline_workflow_run_node_executions.return_value = [
+            node_execution_response_source(node_exec, session=session_stub)
+        ]
 
         with (
             app.test_request_context("/"),

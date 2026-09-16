@@ -114,7 +114,7 @@ const MemberMenu = ({
   if (!canAssignRoles && !canRemove && !showTransferOwnership) return null
 
   return (
-    <div role="presentation">
+    <div>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={

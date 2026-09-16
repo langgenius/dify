@@ -7,6 +7,7 @@ import type {
   ValueSelector,
 } from '@/app/components/workflow/types'
 import * as z from 'zod'
+import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
 import { extractPluginId } from '../../utils/plugin'
 import { ArrayType, Type } from './types'
@@ -14,13 +15,6 @@ import { ArrayType, Type } from './types'
 export enum LLMModelIssueCode {
   providerRequired = 'provider-required',
   providerPluginUnavailable = 'provider-plugin-unavailable',
-}
-
-const isLLMEnvironmentVariableValue = (value: unknown): value is LLMEnvironmentVariableValue => {
-  if (!value || typeof value !== 'object') return false
-
-  const candidate = value as Partial<LLMEnvironmentVariableValue>
-  return !!candidate.provider && !!candidate.name && !!candidate.mode
 }
 
 export const isEnvironmentModelSource = (modelSelector: ValueSelector | undefined) =>

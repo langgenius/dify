@@ -1,3 +1,5 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { render, screen } from '@testing-library/react'
 import { ModelBar } from '../model-bar'
@@ -7,13 +9,7 @@ type ModelProviderItem = {
   models: Array<{ model: string }>
 }
 
-const mockModelLists = new Map<ModelTypeEnum, ModelProviderItem[]>()
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: (modelType: ModelTypeEnum) => ({
-    data: mockModelLists.get(modelType) || [],
-  }),
-}))
+const mockModelLists = new Map<string, ModelProviderItem[]>()
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: ({
@@ -71,4 +67,25 @@ describe('agent/model-bar', () => {
     expect(screen.getByText('indicator:error')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+
+      const modelType = options.queryKey[1].input?.params?.model_type
+      if (!modelType) throw new Error('Missing model type in query')
+      return {
+        data: mockModelLists.get(modelType) || [],
+      }
+    },
+  }
 })

@@ -303,7 +303,7 @@ class TenantAccountJoin(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     account_id: Mapped[str] = mapped_column(StringUUID)
-    current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"), default=False)
+    current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.false(), default=False)
     role: Mapped[TenantAccountRole] = mapped_column(
         EnumText(TenantAccountRole, length=16), server_default="normal", default=TenantAccountRole.NORMAL
     )

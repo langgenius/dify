@@ -169,11 +169,10 @@ class ExternalApi(Api):
         kwargs["doc"] = dify_config.SWAGGER_UI_PATH if dify_config.SWAGGER_UI_ENABLED else False
         if error_body_formatter is not None:
             kwargs.setdefault("catch_all_404s", True)
-            # the overrides below patch private flask-restx methods; fail at
-            # startup (not at the first 404) if an upgrade removes them
-            for private_hook in ("_should_use_fr_error_handler", "_help_on_404"):
-                if not callable(getattr(Api, private_hook, None)):
-                    raise RuntimeError(f"flask-restx no longer exposes {private_hook}; update ExternalApi overrides")
+            # the override below patches a private flask-restx method; fail at
+            # startup (not at the first 404) if an upgrade removes it
+            if not callable(getattr(Api, "_should_use_fr_error_handler", None)):
+                raise RuntimeError("flask-restx no longer exposes _should_use_fr_error_handler; update ExternalApi")
 
         # manual separate call on construction and init_app to ensure configs in kwargs effective
         super().__init__(app=None, *args, **kwargs)
@@ -208,12 +207,3 @@ class ExternalApi(Api):
         if not prefix:
             return True
         return request.path == prefix or request.path.startswith(prefix.rstrip("/") + "/")
-
-    @override
-    def _help_on_404(self, message: str | None = None) -> str | None:
-        # flask-restx appends route suggestions post-handler; with a canonical
-        # formatter installed, that would corrupt the contract and enumerate
-        # routes to unauthenticated callers.
-        if self._error_body_formatter is not None:
-            return message
-        return super()._help_on_404(message)

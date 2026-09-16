@@ -9,11 +9,12 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
-import { cloneElement, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { cloneElement, memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import ResizeHandle from '@/app/components/base/resize-handle'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
@@ -94,6 +95,7 @@ type BasePanelProps = {
 
 const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const { t } = useTranslation()
+  const panelId = useId()
   const language = useLanguage()
   const appId = useStore((s) => s.appId)
   const { data: userProfile } = useSuspenseQuery({
@@ -553,13 +555,21 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         } as CSSProperties
       }
     >
-      <div
+      <ResizeHandle
         ref={triggerRef}
-        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
+        side="left"
+        value={nodePanelWidth}
+        min={400}
+        max={maxNodePanelWidth}
+        label={t(($) => $['panel.nodePanel'], { ns: 'workflow' })}
+        controls={panelId}
+        onResize={handleResize}
+        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize items-center justify-center"
       >
-        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
-      </div>
+        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle group-focus-visible/resize:h-full group-focus-visible/resize:bg-state-accent-solid hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
+      </ResizeHandle>
       <Tabs
+        id={panelId}
         ref={containerRef}
         value={tabType}
         onValueChange={(selectedValue) => setTabType(selectedValue)}

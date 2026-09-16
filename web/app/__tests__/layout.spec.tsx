@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   headers: vi.fn(async () => new Headers()),
 }))
 
+vi.mock('@/service/console/server', () => ({}))
+
 vi.mock('@/features/system-features/server', () => ({
   dehydrateSystemFeatures: mocks.dehydrateSystemFeatures,
   getOptionalSystemFeatures: mocks.getOptionalSystemFeatures,
