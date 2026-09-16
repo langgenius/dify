@@ -860,6 +860,10 @@ def test_import_does_not_create_records_when_storage_fails(
         (RosterAgentPackageTooLargeError(), RosterAgentPackageTooLargeError),
         (RosterAgentPackageResourceUnavailableError(), RosterAgentPackageResourceUnavailableError),
         (IntegrityError("insert", {}, RuntimeError("roster_unique_name")), AgentNameConflictError),
+        (
+            IntegrityError("insert", {}, RuntimeError("agents_tenant_id_active_roster_name_key")),
+            AgentNameConflictError,
+        ),
         (IntegrityError("insert", {}, RuntimeError("other constraint")), RosterAgentPackageImportFailedError),
         (RuntimeError("unexpected failure"), RosterAgentPackageImportFailedError),
     ],
