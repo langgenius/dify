@@ -60,34 +60,36 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
   return (
     <Popover open={open} onOpenChange={(newOpen) => !disabled && setOpen(newOpen)}>
       <Tooltip>
-        <TooltipTrigger>
-          <PopoverTrigger
-            disabled={disabled}
-            render={
-              <button
-                type="button"
-                className={cn(
-                  'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
-                  'data-disabled:cursor-not-allowed data-disabled:opacity-50',
-                )}
-                disabled={disabled || undefined}
-                aria-label={checklistLabel}
-              >
-                <span className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover">
-                  <span
-                    className="i-ri-list-check-3 size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text"
-                    aria-hidden="true"
-                  />
-                </span>
-                {!!needWarningNodes.length && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
-                    {needWarningNodes.length}
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              disabled={disabled}
+              render={
+                <button
+                  type="button"
+                  className={cn(
+                    'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
+                    'data-disabled:cursor-not-allowed data-disabled:opacity-50',
+                  )}
+                  disabled={disabled || undefined}
+                  aria-label={checklistLabel}
+                >
+                  <span className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover">
+                    <span
+                      className="i-ri-list-check-3 size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text"
+                      aria-hidden="true"
+                    />
                   </span>
-                )}
-              </button>
-            }
-          />
-        </TooltipTrigger>
+                  {!!needWarningNodes.length && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
+                      {needWarningNodes.length}
+                    </span>
+                  )}
+                </button>
+              }
+            />
+          }
+        />
         <TooltipContent>{checklistLabel}</TooltipContent>
       </Tooltip>
       <PopoverContent

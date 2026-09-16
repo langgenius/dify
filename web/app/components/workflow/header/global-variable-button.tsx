@@ -27,27 +27,29 @@ const GlobalVariableButton = ({ disabled }: { disabled: boolean }) => {
 
   return (
     <Tooltip>
-      <TooltipTrigger>
-        <IconButton
-          aria-label={t(($) => $['globalVar.title'], { ns: 'workflow' })}
-          aria-expanded={showGlobalVariablePanel}
-          size="lg"
-          className={cn(
-            'border border-transparent',
-            theme === 'dark' &&
-              showGlobalVariablePanel &&
-              'border-black/5 bg-white/10 backdrop-blur-xs',
-          )}
-          disabled={disabled}
-          onClick={handleClick}
-          variant="ghost"
-        >
-          <span
-            aria-hidden
-            className="i-custom-vender-line-others-global-variable size-4 text-components-button-secondary-text"
-          />
-        </IconButton>
-      </TooltipTrigger>
+      <TooltipTrigger
+        render={
+          <IconButton
+            aria-label={t(($) => $['globalVar.title'], { ns: 'workflow' })}
+            aria-expanded={showGlobalVariablePanel}
+            size="lg"
+            className={cn(
+              'border border-transparent',
+              theme === 'dark' &&
+                showGlobalVariablePanel &&
+                'border-black/5 bg-white/10 backdrop-blur-xs',
+            )}
+            disabled={disabled}
+            onClick={handleClick}
+            variant="ghost"
+          >
+            <span
+              aria-hidden
+              className="i-custom-vender-line-others-global-variable size-4 text-components-button-secondary-text"
+            />
+          </IconButton>
+        }
+      />
       <TooltipContent>{t(($) => $['globalVar.title'], { ns: 'workflow' })}</TooltipContent>
     </Tooltip>
   )

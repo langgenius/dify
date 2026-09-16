@@ -27,25 +27,27 @@ const EnvButton = ({ disabled }: { disabled: boolean }) => {
 
   return (
     <Tooltip>
-      <TooltipTrigger>
-        <IconButton
-          aria-label={t(($) => $['env.envPanelTitle'], { ns: 'workflow' })}
-          aria-expanded={showEnvPanel}
-          size="lg"
-          className={cn(
-            'border border-transparent',
-            theme === 'dark' && showEnvPanel && 'border-black/5 bg-white/10 backdrop-blur-xs',
-          )}
-          variant="ghost"
-          disabled={disabled}
-          onClick={handleClick}
-        >
-          <span
-            aria-hidden
-            className="i-custom-vender-line-others-env size-4 text-components-button-secondary-text"
-          />
-        </IconButton>
-      </TooltipTrigger>
+      <TooltipTrigger
+        render={
+          <IconButton
+            aria-label={t(($) => $['env.envPanelTitle'], { ns: 'workflow' })}
+            aria-expanded={showEnvPanel}
+            size="lg"
+            className={cn(
+              'border border-transparent',
+              theme === 'dark' && showEnvPanel && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            )}
+            variant="ghost"
+            disabled={disabled}
+            onClick={handleClick}
+          >
+            <span
+              aria-hidden
+              className="i-custom-vender-line-others-env size-4 text-components-button-secondary-text"
+            />
+          </IconButton>
+        }
+      />
       <TooltipContent>{t(($) => $['env.envPanelTitle'], { ns: 'workflow' })}</TooltipContent>
     </Tooltip>
   )

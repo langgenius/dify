@@ -24,29 +24,31 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
 
   return (
     <Tooltip>
-      <TooltipTrigger>
-        <IconButton
-          aria-label={t(($) => $['chatVariable.panelTitle'], {
-            ns: 'workflow',
-          })}
-          aria-expanded={showChatVariablePanel}
-          size="lg"
-          className={cn(
-            'border border-transparent',
-            theme === 'dark' &&
-              showChatVariablePanel &&
-              'border-black/5 bg-white/10 backdrop-blur-xs',
-          )}
-          disabled={disabled}
-          onClick={handleClick}
-          variant="ghost"
-        >
-          <span
-            aria-hidden
-            className="i-custom-vender-line-others-bubble-x size-4 text-components-button-secondary-text"
-          />
-        </IconButton>
-      </TooltipTrigger>
+      <TooltipTrigger
+        render={
+          <IconButton
+            aria-label={t(($) => $['chatVariable.panelTitle'], {
+              ns: 'workflow',
+            })}
+            aria-expanded={showChatVariablePanel}
+            size="lg"
+            className={cn(
+              'border border-transparent',
+              theme === 'dark' &&
+                showChatVariablePanel &&
+                'border-black/5 bg-white/10 backdrop-blur-xs',
+            )}
+            disabled={disabled}
+            onClick={handleClick}
+            variant="ghost"
+          >
+            <span
+              aria-hidden
+              className="i-custom-vender-line-others-bubble-x size-4 text-components-button-secondary-text"
+            />
+          </IconButton>
+        }
+      />
 
       <TooltipContent>
         {t(($) => $['chatVariable.panelTitle'], {
