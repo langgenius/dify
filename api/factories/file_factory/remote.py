@@ -73,6 +73,41 @@ def _guess_mime_type(filename: str) -> str:
     return guessed_mime or ""
 
 
+def _metadata_from_response(
+    resp: httpx.Response,
+    url_path: str,
+    filename: str,
+    mime_type: str,
+    file_size: int,
+) -> tuple[str, str, int]:
+    content_disposition = resp.headers.get("Content-Disposition")
+    extracted_filename = extract_filename(url_path, content_disposition)
+    if extracted_filename:
+        filename = extracted_filename
+        mime_type = _guess_mime_type(filename)
+    file_size = int(resp.headers.get("Content-Length", file_size))
+    if not mime_type:
+        mime_type = resp.headers.get("Content-Type", "").split(";")[0].strip()
+    return mime_type, filename, file_size
+
+
+def _get_metadata_after_head_unsupported(
+    url: str,
+    url_path: str,
+    filename: str,
+    mime_type: str,
+    file_size: int,
+) -> tuple[str, str, int]:
+    """When HEAD is unsupported, probe metadata via a streaming GET without reading the body."""
+    get_resp = remote_fetcher.make_request("GET", url, follow_redirects=True, stream_response=True)
+    try:
+        if get_resp.status_code == httpx.codes.OK:
+            return _metadata_from_response(get_resp, url_path, filename, mime_type, file_size)
+    finally:
+        get_resp.close()
+    return mime_type, filename, file_size
+
+
 def get_remote_file_info(url: str) -> tuple[str, str, int]:
     """Resolve remote file metadata with SSRF-safe HEAD probing."""
     file_size = -1
@@ -83,14 +118,11 @@ def get_remote_file_info(url: str) -> tuple[str, str, int]:
 
     resp = remote_fetcher.make_request("HEAD", url, follow_redirects=True)
     if resp.status_code == httpx.codes.OK:
-        content_disposition = resp.headers.get("Content-Disposition")
-        extracted_filename = extract_filename(url_path, content_disposition)
-        if extracted_filename:
-            filename = extracted_filename
-            mime_type = _guess_mime_type(filename)
-        file_size = int(resp.headers.get("Content-Length", file_size))
-        if not mime_type:
-            mime_type = resp.headers.get("Content-Type", "").split(";")[0].strip()
+        mime_type, filename, file_size = _metadata_from_response(resp, url_path, filename, mime_type, file_size)
+    elif resp.status_code in (httpx.codes.METHOD_NOT_ALLOWED, httpx.codes.NOT_IMPLEMENTED):
+        mime_type, filename, file_size = _get_metadata_after_head_unsupported(
+            url, url_path, filename, mime_type, file_size
+        )
 
     if not filename:
         extension = mimetypes.guess_extension(mime_type) or ".bin"
