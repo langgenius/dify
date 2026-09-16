@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import ImportFromMarketplaceTemplateModal from '../import-from-marketplace-template-modal'
 
 const mockUseMarketplaceTemplateDetail = vi.fn()
@@ -43,5 +43,60 @@ describe('ImportFromMarketplaceTemplateModal', () => {
 
     expect(screen.getByText('Human Input: Writing Assistant')).toBeInTheDocument()
     expect(screen.queryByText('technologist')).not.toBeInTheDocument()
+    expect(document.querySelector('em-emoji')?.parentElement).toHaveAttribute('aria-hidden', 'true')
+    expect(
+      screen.getByRole('dialog', { name: /marketplace\.template\.modalTitle/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('exposes a named close control', () => {
+    const onClose = vi.fn()
+    render(
+      <ImportFromMarketplaceTemplateModal
+        templateId="human-input-writing"
+        onClose={onClose}
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
+
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('exposes loading progress and announces the error state', () => {
+    mockUseMarketplaceTemplateDetail.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+    })
+    const { rerender } = render(
+      <ImportFromMarketplaceTemplateModal
+        templateId="human-input-writing"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('common.loading').parentElement?.parentElement).toHaveAttribute(
+      'aria-busy',
+      'true',
+    )
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+    mockUseMarketplaceTemplateDetail.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+    })
+    rerender(
+      <ImportFromMarketplaceTemplateModal
+        templateId="human-input-writing"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent('app.marketplace.template.fetchFailed')
   })
 })

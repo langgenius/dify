@@ -1,8 +1,8 @@
-import type { KnowledgeBaseNodeType } from '../types'
 import type {
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { KnowledgeBaseNodeType } from '../types'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
@@ -14,8 +14,9 @@ import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '
 
 const t = withSelectorKey((key: string, _options?: Record<string, unknown>) => key)
 
-const makeEmbeddingModelList = (status: ModelStatusEnum): Model[] => [
+const makeEmbeddingModelList = (status: ModelStatusEnum): ProviderWithModelsResponse[] => [
   {
+    tenant_id: 'test-workspace',
     provider: 'openai',
     icon_small: { en_US: '', zh_Hans: '' },
     label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -30,11 +31,13 @@ const makeEmbeddingModelList = (status: ModelStatusEnum): Model[] => [
         load_balancing_enabled: false,
       },
     ],
-    status,
+    status: 'active',
   },
 ]
 
-const makeEmbeddingProviderModelList = (status: ModelStatusEnum): ModelItem[] => [
+const makeEmbeddingProviderModelList = (
+  status: ModelStatusEnum,
+): ProviderModelWithStatusEntity[] => [
   {
     model: 'text-embedding-3-large',
     label: { en_US: 'Text Embedding 3 Large', zh_Hans: 'Text Embedding 3 Large' },

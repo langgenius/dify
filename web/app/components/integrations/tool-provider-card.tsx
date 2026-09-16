@@ -131,13 +131,13 @@ function IntegrationsToolProviderCard({
         <div className="flex h-4 min-w-0 flex-1 items-center gap-0.5 system-xs-regular">
           {!!org && (
             <>
-              <div className="min-w-0 flex-1 truncate text-text-tertiary" title={org}>
+              <div className="min-w-0 shrink truncate text-text-tertiary" title={org}>
                 {org}
               </div>
               <div className="shrink-0 text-text-quaternary">/</div>
             </>
           )}
-          <div className="min-w-0 flex-1 truncate text-text-tertiary" title={name}>
+          <div className="min-w-0 shrink truncate text-text-tertiary" title={name}>
             {name}
           </div>
         </div>

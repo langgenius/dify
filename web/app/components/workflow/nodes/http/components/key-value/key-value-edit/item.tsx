@@ -130,7 +130,7 @@ const KeyValueItem: FC<Props> = ({
             </SelectTrigger>
             <SelectPortal>
               <SelectPositioner>
-                <SelectPopup className="w-[80px]">
+                <SelectPopup className="w-20">
                   <SelectList className="min-w-0">
                     <SelectItem value="text">
                       <SelectItemText>text</SelectItemText>

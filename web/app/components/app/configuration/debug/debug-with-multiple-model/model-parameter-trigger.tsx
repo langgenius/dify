@@ -17,7 +17,7 @@ import ModelName from '@/app/components/header/account-setting/model-provider-pa
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { useCredentialPanelState } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useDebugWithMultipleModelContext } from './context'
 
 type ModelParameterTriggerProps = {
@@ -108,10 +108,9 @@ const DebugModelParameterTrigger: FC<DebugModelParameterTriggerProps> = ({
               className={`i-ri-arrow-down-s-line size-3 ${isEmpty ? 'text-text-accent' : 'text-text-tertiary'}`}
             />
             {statusTooltipLabel && (
-              <span
-                aria-label={statusTooltipLabel}
-                className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]"
-              />
+              <span className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]">
+                <span className="sr-only">{statusTooltipLabel}</span>
+              </span>
             )}
           </button>
         }

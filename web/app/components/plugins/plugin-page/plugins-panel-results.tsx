@@ -43,8 +43,8 @@ type PluginsPanelResultsProps = {
   isLastPage: boolean
   keywords: string
   loadNextPage: () => void
+  onSelectBuiltinTool: (id: string) => void
   scrollAreaLabel?: string
-  setCurrentBuiltinToolID: (id: string) => void
   showCategoryEmptyState: boolean
   tagFilterValue: string[]
 }
@@ -71,8 +71,8 @@ const PluginsPanelResults = ({
   isLastPage,
   keywords,
   loadNextPage,
+  onSelectBuiltinTool,
   scrollAreaLabel,
-  setCurrentBuiltinToolID,
   showCategoryEmptyState,
   tagFilterValue,
 }: PluginsPanelResultsProps) => {
@@ -152,7 +152,7 @@ const PluginsPanelResults = ({
                   data-step-by-step-tour-target={
                     filteredList.length === 0 && index === 0 ? firstBuiltinToolTarget : undefined
                   }
-                  onClick={() => setCurrentBuiltinToolID(collection.id)}
+                  onClick={() => onSelectBuiltinTool(collection.id)}
                 >
                   <IntegrationsToolProviderCard
                     collection={collection}

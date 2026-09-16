@@ -19,7 +19,7 @@ import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
@@ -1786,7 +1786,6 @@ export const useNodesInteractions = () => {
       BlockEnum.Loop,
       BlockEnum.DataSource,
       BlockEnum.KnowledgeBase,
-      BlockEnum.HumanInput,
     ]
     // Same-canvas copy keeps the source container selected, so only treat a
     // selected container as the paste target when it is not part of the clipboard.

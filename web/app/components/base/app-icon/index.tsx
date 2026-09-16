@@ -28,6 +28,7 @@ type AppIconProps = {
   icon?: string
   background?: string | null
   imageUrl?: string | null
+  decorative?: boolean
   className?: string
   innerIcon?: React.ReactNode
   coverElement?: React.ReactNode
@@ -103,6 +104,7 @@ const AppIcon: FC<AppIconProps> = ({
   icon,
   background,
   imageUrl,
+  decorative = false,
   className,
   innerIcon,
   coverElement,
@@ -110,6 +112,7 @@ const AppIcon: FC<AppIconProps> = ({
   showEditIcon = false,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
+  const isDecorative = decorative && !onClick
   const emojiIcon = icon && icon !== '' ? icon : '🤖'
   const isHydrated = useIsHydrated()
   const Icon = isHydrated ? <em-emoji key={emojiIcon} id={emojiIcon} /> : emojiIcon
@@ -133,9 +136,10 @@ const AppIcon: FC<AppIconProps> = ({
       onKeyDown={onClick ? handleKeyDown : undefined}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
+      aria-hidden={isDecorative || undefined}
     >
       {isValidImageIcon ? (
-        <img src={imageUrl} className="size-full" alt="app icon" />
+        <img src={imageUrl} className="size-full" alt={isDecorative ? '' : 'app icon'} />
       ) : (
         innerIcon || Icon
       )}

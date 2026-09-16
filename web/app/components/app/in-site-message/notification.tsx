@@ -3,8 +3,9 @@
 import type { InSiteMessageActionItem } from './index'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import InSiteMessage from './index'
 
 type NotificationBodyPayload = {
@@ -56,6 +57,7 @@ function parseNotificationBody(body: string): NotificationBodyPayload | null {
 
 function InSiteMessageNotification() {
   const { t } = useTranslation()
+  const locale = useLocale()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -67,6 +69,7 @@ function InSiteMessageNotification() {
 
   const { data } = useQuery(
     consoleQuery.notification.get.queryOptions({
+      input: { query: { language: locale } },
       enabled: isCloudEdition,
     }),
   )

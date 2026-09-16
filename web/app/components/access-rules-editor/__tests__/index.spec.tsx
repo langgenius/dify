@@ -8,10 +8,11 @@ const mockMembers = vi.hoisted(() => ({
   accounts: [] as Member[] | null,
   isLoading: false,
 }))
-const mockUseMembers = vi.hoisted(() => vi.fn())
+const mockMembersQuery = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: mockUseMembers,
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: mockMembersQuery,
 }))
 
 const createRule = (resourceType: 'app' | 'dataset'): AccessPolicyWithBindings => ({
@@ -89,9 +90,9 @@ describe('AccessRulesEditor', () => {
     vi.clearAllMocks()
     mockMembers.accounts = []
     mockMembers.isLoading = false
-    mockUseMembers.mockImplementation(() => ({
+    mockMembersQuery.mockImplementation(() => ({
       data: { accounts: mockMembers.accounts },
-      isLoading: mockMembers.isLoading,
+      isPending: mockMembers.isLoading,
     }))
   })
 
@@ -433,9 +434,9 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
-    expect(mockUseMembers).not.toHaveBeenCalled()
+    expect(mockMembersQuery).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    expect(mockUseMembers).toHaveBeenCalledTimes(1)
+    expect(mockMembersQuery).toHaveBeenCalledTimes(1)
 
     const dialog = await screen.findByRole('dialog', {
       name: 'permission.accessRule.addMembersTitle',

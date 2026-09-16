@@ -122,7 +122,6 @@ const ClassItem: FC<Props> = ({
   ) : (
     <button
       type="button"
-      aria-label={displayLabel}
       className={cn(
         '-ml-1 rounded px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary transition-colors',
         'cursor-text hover:bg-state-base-hover',

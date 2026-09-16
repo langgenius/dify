@@ -3,13 +3,13 @@ import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBugLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useId, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
@@ -34,6 +34,9 @@ const EmailConfigureModal = ({
   availableNodes = [],
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
+  const subjectId = useId()
+  const debugModeId = useId()
+  const debugDescriptionId = useId()
   const { data: email } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
@@ -116,15 +119,19 @@ const EmailConfigureModal = ({
         </div>
         <div className="mt-6 space-y-5">
           <div>
-            <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+            <label
+              htmlFor={subjectId}
+              className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+            >
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subject`], {
                 ns: 'workflow',
               })}
-            </div>
+            </label>
             <Input
+              id={subjectId}
               className="w-full"
               value={subject}
-              onChange={(e) => setSubject(e.target.value)}
+              onValueChange={setSubject}
               placeholder={t(
                 ($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`],
                 { ns: 'workflow' },
@@ -155,12 +162,12 @@ const EmailConfigureModal = ({
               <RiBugLine className="size-3.5 text-text-primary-on-surface" />
             </div>
             <div className="grow space-y-1">
-              <div className="system-sm-medium text-text-secondary">
+              <label htmlFor={debugModeId} className="system-sm-medium text-text-secondary">
                 {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`], {
                   ns: 'workflow',
                 })}
-              </div>
-              <div className="body-xs-regular text-text-tertiary">
+              </label>
+              <div id={debugDescriptionId} className="body-xs-regular text-text-tertiary">
                 <Trans
                   i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`]}
                   ns="workflow"
@@ -176,7 +183,12 @@ const EmailConfigureModal = ({
                 </div>
               </div>
             </div>
-            <Switch checked={debugMode} onCheckedChange={(checked) => setDebugMode(checked)} />
+            <Switch
+              id={debugModeId}
+              aria-describedby={debugDescriptionId}
+              checked={debugMode}
+              onCheckedChange={(checked) => setDebugMode(checked)}
+            />
           </div>
         </div>
         <div className="mt-6 flex flex-row-reverse gap-2">

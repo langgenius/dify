@@ -1,8 +1,9 @@
 import type {
+  WorkflowToolOutputVariable,
   WorkflowToolProviderRequest,
   WorkflowToolProviderResponse,
 } from '@/app/components/tools/types'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { isParametersOutdated, useConfigureButton } from '../use-configure-button'
@@ -46,12 +47,15 @@ const createMockInputVar = (overrides: Partial<InputVar> = {}): InputVar =>
     ...overrides,
   }) as InputVar
 
-const createMockVariable = (overrides: Partial<Variable> = {}): Variable =>
+const createMockVariable = (
+  overrides: Partial<WorkflowToolOutputVariable> = {},
+): WorkflowToolOutputVariable =>
   ({
     variable: 'output_var',
     value_type: 'string',
+    source: { nodeId: 'end-1', nodeTitle: 'Success End', outputIndex: 0 },
     ...overrides,
-  }) as Variable
+  }) as WorkflowToolOutputVariable
 
 const createMockDetail = (
   overrides: Partial<WorkflowToolProviderResponse> = {},
@@ -293,6 +297,10 @@ describe('useConfigureButton', () => {
         form: 'llm',
         description: '',
       })
+      expect(result.current.payload.outputParameters[0]).toMatchObject({
+        name: 'output_var',
+        source: { nodeId: 'end-1', nodeTitle: 'Success End', outputIndex: 0 },
+      })
     })
 
     it('should use detail values when published with detail', () => {
@@ -370,6 +378,46 @@ describe('useConfigureButton', () => {
 
   // Mutation handlers
   describe('handleCreate', () => {
+    it('should publish before creating the provider', async () => {
+      mockCreateWorkflowToolProvider.mockResolvedValue({})
+      const handlePublish = vi.fn().mockResolvedValue(undefined)
+      const { result } = renderHook(() =>
+        useConfigureButton(createDefaultOptions({ handlePublish })),
+      )
+
+      await act(async () => {
+        await result.current.handleCreate(
+          createMockRequest({ workflow_app_id: 'app-123' }) as WorkflowToolProviderRequest & {
+            workflow_app_id: string
+          },
+        )
+      })
+
+      expect(handlePublish).toHaveBeenCalledOnce()
+      expect(mockCreateWorkflowToolProvider).toHaveBeenCalledOnce()
+      expect(handlePublish.mock.invocationCallOrder[0]).toBeLessThan(
+        mockCreateWorkflowToolProvider.mock.invocationCallOrder[0]!,
+      )
+    })
+
+    it('should not create the provider when publishing fails', async () => {
+      const handlePublish = vi.fn().mockRejectedValue(new Error('Publish failed'))
+      const { result } = renderHook(() =>
+        useConfigureButton(createDefaultOptions({ handlePublish })),
+      )
+
+      await act(async () => {
+        await result.current.handleCreate(
+          createMockRequest({ workflow_app_id: 'app-123' }) as WorkflowToolProviderRequest & {
+            workflow_app_id: string
+          },
+        )
+      })
+
+      expect(mockCreateWorkflowToolProvider).not.toHaveBeenCalled()
+      expect(mockToastNotify).toHaveBeenCalledWith({ type: 'error', message: 'Publish failed' })
+    })
+
     it('should create provider, invalidate caches, refresh, and notify configured', async () => {
       mockCreateWorkflowToolProvider.mockResolvedValue({})
       const onRefreshData = vi.fn()
@@ -439,6 +487,7 @@ describe('useConfigureButton', () => {
       expect(onRefreshData).toHaveBeenCalled()
       expect(mockInvalidateAllWorkflowTools).toHaveBeenCalled()
       expect(mockInvalidateWorkflowToolDetailByAppID).toHaveBeenCalledWith('app-123')
+      expect(mockToastNotify).toHaveBeenCalledWith({ type: 'success', message: expect.any(String) })
       expect(onConfigured).toHaveBeenCalled()
     })
 

@@ -3,7 +3,7 @@ import { agentAction, agentSearchQueryOptions } from '../agent'
 
 const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: { agent: { get: { queryOptions: serviceMocks.queryOptions } } },
 }))
 
@@ -24,6 +24,7 @@ function agent(overrides: Partial<AgentAppPartial> = {}): AgentAppPartial {
     description: 'Investigates a topic',
     mode: 'agent-chat',
     icon_url: null,
+    permission_keys: [],
     ...overrides,
   }
 }
@@ -67,6 +68,7 @@ describe('agent search query', () => {
       has_more: false,
       limit: 10,
       page: 1,
+      publication_counts: { drafts: 0, published: 1 },
       total: 1,
     })
 

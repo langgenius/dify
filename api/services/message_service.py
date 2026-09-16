@@ -411,10 +411,14 @@ class MessageService:
             if suggested_questions_after_answer_config.get("enabled", False) is False:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
-        model_instance = model_manager.get_default_model_instance(
-            tenant_id=app_model.tenant_id,
-            model_type=ModelType.LLM,
-        )
+        try:
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=app_model.tenant_id,
+                model_type=ModelType.LLM,
+            )
+        except Exception:
+            logger.exception("Failed to resolve the history model for suggested questions")
+            return []
 
         # get memory of conversation (read-only)
         memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)

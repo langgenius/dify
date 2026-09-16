@@ -7,15 +7,16 @@ import type { ModelSelectorValue } from '@/app/components/header/account-setting
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSettingsTrigger } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-settings-trigger'
 import { SplitModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { consoleQuery } from '@/service/console'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
@@ -69,12 +70,42 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       .map((item) => item as ModelFeatureEnum)
   }, [scopeArray])
 
-  const { data: textGenerationList } = useModelList(ModelTypeEnum.textGeneration)
-  const { data: textEmbeddingList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankList } = useModelList(ModelTypeEnum.rerank)
-  const { data: moderationList } = useModelList(ModelTypeEnum.moderation)
-  const { data: sttList } = useModelList(ModelTypeEnum.speech2text)
-  const { data: ttsList } = useModelList(ModelTypeEnum.tts)
+  const { data: textGenerationList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: textEmbeddingList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: moderationList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.moderation } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: sttList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.speech2text } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: ttsList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.tts } },
+      select: (response) => response.data,
+    }),
+  )
 
   const scopedModelList = useMemo(() => {
     if (scopeArray.includes('all')) {

@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useAutoDisabledDocuments,
@@ -20,14 +19,14 @@ const AutoDisabledDocument: FC<Props> = ({ datasetId }) => {
   const { data, isLoading } = useAutoDisabledDocuments(datasetId)
   const invalidDisabledDocument = useInvalidDisabledDocument()
   const documentIds = data?.document_ids
-  const hasDisabledDocument = documentIds && documentIds.length > 0
   const { mutateAsync: enableDocument } = useDocumentEnable()
-  const handleEnableDocuments = useCallback(async () => {
+  if (!documentIds?.length || isLoading) return null
+
+  const handleEnableDocuments = async () => {
     await enableDocument({ datasetId, documentIds })
     invalidDisabledDocument()
     toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-  }, [])
-  if (!hasDisabledDocument || isLoading) return null
+  }
 
   return (
     <StatusWithAction

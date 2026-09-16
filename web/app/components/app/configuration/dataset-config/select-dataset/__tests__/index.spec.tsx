@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { DataSet } from '@/models/datasets'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'

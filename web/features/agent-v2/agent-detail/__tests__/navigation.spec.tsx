@@ -2,6 +2,7 @@ import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/t
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AgentPermission } from '@/features/agent-v2/acl'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
@@ -10,6 +11,14 @@ const mocks = vi.hoisted(() => ({
   pathname: '/agents/agent-1/configure',
   queryData: undefined as AgentAppDetailWithSite | undefined,
   replace: vi.fn(),
+}))
+
+vi.mock('@/features/agent-v2/permissions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/agent-v2/permissions')>()),
+  useCanCreateAgents: () => true,
+}))
+vi.mock('@/features/system-features/client', () => ({
+  systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
 }))
 
 vi.mock('@/app/components/app/use-export-app-dsl', () => ({
@@ -24,6 +33,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
   return {
     ...actual,
+    useSuspenseQuery: () => ({ data: { rbac_enabled: true } }),
     useQuery: () => ({
       data: mocks.queryData,
       isPending: !mocks.queryData,
@@ -47,7 +57,7 @@ vi.mock('@/app/components/base/divider', () => ({
   default: () => <div data-testid="divider" />,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -81,6 +91,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
+  permission_keys: Object.values(AgentPermission),
   app_id: 'app-1',
   description: 'Find and summarize market materials.',
   enable_api: true,
@@ -126,15 +137,20 @@ describe('AgentDetailSection', () => {
     expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
     expect(container.querySelector('em-emoji')).toHaveAttribute('id', '🧪')
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
-    expect(agentAvatar?.parentElement?.parentElement).toHaveClass('mr-2')
-    expect(agentName.parentElement?.parentElement).toHaveClass('h-10')
-    expect(agentName.parentElement?.parentElement?.parentElement).toHaveClass(
-      'h-13',
-      'py-1.5',
-      'pl-1.5',
-      'pr-2',
-    )
   })
+
+  it.each([null, '', '   '])(
+    'omits an empty role without adding a type placeholder (%s)',
+    (role) => {
+      mocks.queryData = createAgent({ role })
+      renderAgentDetailSection()
+
+      expect(screen.getByText('Research Agent')).toBeInTheDocument()
+      expect(screen.queryByText('Research Assistant')).not.toBeInTheDocument()
+      expect(screen.queryByText('agentV2.agentDetail.type')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Research Agent/ })).toBeInTheDocument()
+    },
+  )
 
   it('renders compact more actions beside the expanded sidebar agent identity', async () => {
     const user = userEvent.setup()

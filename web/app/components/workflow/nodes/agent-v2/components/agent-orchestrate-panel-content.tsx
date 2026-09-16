@@ -70,9 +70,9 @@ import {
   trackAgentPreviewModeRun,
   useInlineAgentScope,
 } from '@/features/agent-v2/analytics'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 
@@ -193,7 +193,7 @@ export function WorkflowInlineAgentConfigureWorkspace(
           | undefined)
       : undefined
 
-  if (!agentId || !agentSoulConfig) {
+  if (!agentId) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
         <Loading type="app" />
@@ -227,7 +227,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
 }: Omit<WorkflowInlineAgentConfigureWorkspaceProps, 'agentId'> & {
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
-  agentSoulConfig: AgentSoulConfig
+  agentSoulConfig?: AgentSoulConfig
 }) {
   const soulSourceOverride = useAtomValue(agentConfigureSoulSourceOverrideAtom)
   const rightPanelMode = useAtomValue(agentConfigureRightPanelModeAtom)
@@ -236,7 +236,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
     agentId,
     activeVersionId: activeConfigSnapshot?.id,
     composerAgentSoulConfig: agentSoulConfig,
-    isBuildMode: rightPanelMode === 'build',
+    isBuildMode: props.open && rightPanelMode === 'build',
     isViewingVersion: false,
     normalAgentSoulConfig: agentSoulConfig,
     setSoulSourceOverride,
@@ -244,7 +244,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
   })
   const composerSessionKey = `${props.nodeId}:${agentId}`
 
-  if (buildDraft.isPending) {
+  if (!agentSoulConfig || buildDraft.isPending) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
         <Loading type="app" />
@@ -827,9 +827,9 @@ function WorkflowInlineAgentConfigureMoreAction({
   onSaveInlineToRoster: () => void
 }) {
   const { t } = useTranslation('common')
-  const canManageAgents = useCanManageAgents()
+  const canCreateAgents = useCanCreateAgents()
 
-  if (!canManageAgents) return null
+  if (!canCreateAgents) return null
 
   return (
     <DropdownMenu modal={false}>

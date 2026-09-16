@@ -89,14 +89,15 @@ The scripts resolve paths relative to their location, so you can run them from a
 
 1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`, more can check [Claude.md](../CLAUDE.md)
 
+   Continue in the `api` directory from the previous step.
+
    ```bash
-   cd api
    uv run pytest                           # Run all tests
    uv run pytest tests/unit_tests/         # Unit tests only
    uv run pytest tests/integration_tests/  # Integration tests
 
    # Code quality
-   ./dev/reformat               # Run all formatters and linters
+   ../dev/reformat              # Run all formatters and linters
    uv run ruff check --fix ./   # Fix linting issues
    uv run ruff format ./        # Format code
    uv run pyrefly check         # Type checking

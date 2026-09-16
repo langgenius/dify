@@ -21,7 +21,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchAppDetail } from '@/service/explore'
 import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
@@ -32,7 +32,7 @@ import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
 type AppsProps = {
-  onSuccess?: () => void
+  onClose: () => void
   onCreateFromBlank?: () => void
 }
 
@@ -41,7 +41,7 @@ type AppsProps = {
 //   CREATE = 'create',
 // }
 
-const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
+const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({
@@ -151,7 +151,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
 
       setIsShowCreateModal(false)
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-      if (onSuccess) onSuccess()
+      onClose()
       await handleCheckPluginDependencies(app.app_id)
       getRedirection(
         { id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys },

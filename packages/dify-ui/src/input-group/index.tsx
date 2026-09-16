@@ -19,9 +19,9 @@ function InputGroup({ className, onMouseDown, ...props }: InputGroupProps) {
       {...props}
       className={cn(
         [
-          'flex min-h-8 w-full min-w-0 items-center rounded-lg border border-transparent bg-components-input-bg-normal transition-[background-color,border-color,box-shadow]',
-          'has-[>input:enabled]:not-has-[>input[readonly]]:hover:border-components-input-border-hover has-[>input:enabled]:not-has-[>input[readonly]]:hover:bg-components-input-bg-hover',
-          'has-[>input:focus]:not-has-[>input[readonly]]:border-components-input-border-active has-[>input:focus]:not-has-[>input[readonly]]:bg-components-input-bg-active has-[>input:focus]:not-has-[>input[readonly]]:shadow-xs',
+          'flex min-h-8 w-full min-w-0 items-center rounded-lg border border-transparent bg-components-input-bg-normal transition-[background-color,border-color]',
+          'has-[>input:enabled]:not-has-[>input:is([readonly],[data-invalid])]:hover:border-components-input-border-hover has-[>input:enabled]:not-has-[>input:is([readonly],[data-invalid])]:hover:bg-components-input-bg-hover',
+          'has-[>input:focus]:not-has-[>input:is([readonly],[data-invalid])]:border-components-input-border-active has-[>input:focus]:not-has-[>input:is([readonly],[data-invalid])]:bg-components-input-bg-active has-[>input:focus]:not-has-[>input[readonly]]:shadow-xs',
           'has-[>input[data-invalid]]:border-components-input-border-destructive has-[>input[data-invalid]]:bg-components-input-bg-destructive',
           'has-[>input[data-disabled]]:cursor-not-allowed has-[>input[data-disabled]]:border-transparent has-[>input[data-disabled]]:bg-components-input-bg-disabled has-[>input[data-disabled]]:text-components-input-text-filled-disabled',
           'has-[>input[data-disabled]]:*:data-align:cursor-not-allowed has-[>input[data-disabled]]:*:data-align:text-components-input-text-filled-disabled',

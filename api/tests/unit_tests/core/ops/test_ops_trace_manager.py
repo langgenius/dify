@@ -14,10 +14,9 @@ from uuid import UUID
 import pytest
 from flask import Flask
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import core.ops.ops_trace_manager as module
-from configs import dify_config
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
 from core.rag.models.document import Document as RetrievalDocument
 from graphon.enums import WorkflowExecutionStatus
@@ -26,6 +25,7 @@ from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus,
 from models.model import App, AppMode, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class DummyConfig:
@@ -144,8 +144,9 @@ class RecordingDispatcher:
 
 @pytest.fixture
 def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session]:
+    session_proxy = scoped_session(lambda: sqlite_session)
     with (
-        patch.object(module.db, "session", sqlite_session),
+        patch.object(module.db, "session", session_proxy),
         patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
     ):
         yield sqlite_session
@@ -155,7 +156,7 @@ def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session
 def trace_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr(module, "provider_config_map", FakeProviderMap({"dummy": PROVIDER_ENTRY}))
     monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap({}))
-    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", False)
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=False)
     OpsTraceManager.ops_trace_instances_cache.clear()
     OpsTraceManager.decrypted_configs_cache.clear()
     monkeypatch.setattr(module.threading, "Timer", DummyTimer)
@@ -289,7 +290,11 @@ def _message_data(**overrides):
         "inputs": "inputs",
     }
     data.update(overrides)
-    return SimpleNamespace(**data, to_dict=lambda: data)
+    return SimpleNamespace(
+        **data,
+        agent_thoughts_with_session=lambda *, session: data["agent_thoughts"],
+        to_dict=lambda: data,
+    )
 
 
 def test_encrypt_decrypt_obfuscate_and_cache(
@@ -386,7 +391,7 @@ def test_ops_trace_instance_routes_by_unified_switch(
     app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
     database.add(TraceAppConfig(app_id=app.id, tracing_provider="dummy", tracing_config={}))
     database.commit()
-    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", enabled)
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=enabled)
     entries = {"dummy": UNIFIED_PROVIDER_ENTRY} if registered else {}
     monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap(entries))
 
@@ -404,7 +409,7 @@ def test_registered_unified_provider_does_not_fallback_when_construction_fails(
     app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
     database.add(TraceAppConfig(app_id=app.id, tracing_provider="dummy", tracing_config={}))
     database.commit()
-    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", True)
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=True)
     monkeypatch.setattr(
         module,
         "unified_provider_config_map",
@@ -433,9 +438,9 @@ def test_unified_and_legacy_instances_have_separate_cache_entries(
     database.commit()
     monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap({"dummy": UNIFIED_PROVIDER_ENTRY}))
 
-    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", False)
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=False)
     legacy = OpsTraceManager.get_ops_trace_instance(app.id)
-    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", True)
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=True)
     unified = OpsTraceManager.get_ops_trace_instance(app.id)
 
     assert type(legacy) is DummyTraceInstance

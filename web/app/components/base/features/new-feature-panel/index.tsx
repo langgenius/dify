@@ -3,6 +3,7 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
 import { DrawerCloseButton } from '@langgenius/dify-ui/drawer'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
 import Citation from '@/app/components/base/features/new-feature-panel/citation'
@@ -15,8 +16,13 @@ import Moderation from '@/app/components/base/features/new-feature-panel/moderat
 import MoreLikeThis from '@/app/components/base/features/new-feature-panel/more-like-this'
 import SpeechToText from '@/app/components/base/features/new-feature-panel/speech-to-text'
 import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-to-speech'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModalContext } from '@/context/modal-context'
 
 type Props = Readonly<{
   show: boolean
@@ -53,13 +59,15 @@ const NewFeaturePanel = ({
   description,
   drawerClassName,
 }: Props) => {
+  const [pricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const { t } = useTranslation()
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
+  const { hasBlockingModalOpen } = useModalContext()
 
   return (
     <FeaturePanelDrawer
-      show={show}
+      show={show && !hasBlockingModalOpen && pricing !== 'open'}
       onClose={onClose}
       inWorkflow={inWorkflow}
       className={drawerClassName}

@@ -10,7 +10,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import controllers.web.human_input_form as human_input_module
@@ -268,9 +268,7 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
     service_mock.resolve_form_inputs.assert_called_once_with(form)
 
 
-def test_create_upload_token_returns_token_and_form_expiration(
-    monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine
-):
+def test_create_upload_token_returns_token_and_form_expiration(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     """POST returns a HITL upload token for an active form token."""
 
     expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
@@ -279,26 +277,11 @@ def test_create_upload_token_returns_token_and_form_expiration(
         upload_token="hitl_upload_token-1",
         expires_at=expiration_time,
     )
-    workflow_run_repository = MagicMock()
-    repo_factory = MagicMock(return_value=workflow_run_repository)
-    captured: dict[str, object] = {}
-
-    def _service_factory(session_factory, workflow_run_repository):
-        captured["session_factory"] = session_factory
-        captured["workflow_run_repository"] = workflow_run_repository
-        return service_mock
-
-    monkeypatch.setattr(
-        human_input_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_run_repository",
-        repo_factory,
-    )
     monkeypatch.setattr(
         human_input_module,
-        "HumanInputFileUploadService",
-        _service_factory,
+        "application_services",
+        lambda: SimpleNamespace(human_input_file_uploads=service_mock),
     )
-    monkeypatch.setattr(human_input_module, "db", SimpleNamespace(engine=sqlite_engine))
 
     limiter_mock = MagicMock()
     limiter_mock.is_rate_limited.return_value = False
@@ -313,11 +296,6 @@ def test_create_upload_token_returns_token_and_form_expiration(
         "upload_token": "hitl_upload_token-1",
         "expires_at": int(expiration_time.timestamp()),
     }
-    repo_factory.assert_called_once()
-    assert captured["workflow_run_repository"] is workflow_run_repository
-    session_factory = captured["session_factory"]
-    assert isinstance(session_factory, sessionmaker)
-    assert session_factory.kw["bind"] is sqlite_engine
     service_mock.issue_upload_token.assert_called_once_with("token-1")
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 

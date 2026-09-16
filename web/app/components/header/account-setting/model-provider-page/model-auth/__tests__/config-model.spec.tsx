@@ -12,11 +12,11 @@ describe('ConfigModel', () => {
       name: 'common.modelProvider.auth.authorizationError',
       props: { loadBalancingInvalid: true },
     },
-  ])('announces loading for the $name action', ({ name, props }) => {
+  ])('keeps the $name action focusable and unavailable while loading', ({ name, props }) => {
     render(<ConfigModel {...props} loading />)
 
     const action = screen.getByRole('button', { name })
-    expect(action).toHaveAttribute('aria-busy', 'true')
     expect(action).toHaveAttribute('aria-disabled', 'true')
+    expect(action).not.toHaveAttribute('aria-busy')
   })
 })

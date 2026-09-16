@@ -71,13 +71,7 @@ jobs:
             tests/local/dify_agent/runtime_backend/test_local_rollout.py \
             tests/local/dify_agent/runtime_backend/test_profile.py \
             tests/local/dify_agent/server/test_settings.py
-          uv run basedpyright --level error \
-            src/dify_agent/runtime_backend/local_rollout.py \
-            src/dify_agent/runtime_backend/profile.py \
-            src/dify_agent/server/settings.py \
-            tests/local/dify_agent/runtime_backend/test_local_rollout.py \
-            tests/local/dify_agent/runtime_backend/test_profile.py \
-            tests/local/dify_agent/server/test_settings.py
+          uv run pyrefly check
 
   sandbox-runtime-lint:
     name: Sandbox Runtime Lint

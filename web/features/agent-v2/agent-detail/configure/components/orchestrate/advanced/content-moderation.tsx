@@ -166,7 +166,9 @@ function AgentContentModerationSettingsContent() {
             <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
               {t(($) => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}
             </div>
-            <div className="truncate system-xs-regular text-text-secondary">{enabledContent}</div>
+            <div className="truncate system-xs-regular text-text-secondary" title={enabledContent}>
+              {enabledContent}
+            </div>
           </div>
         </div>
       ) : (

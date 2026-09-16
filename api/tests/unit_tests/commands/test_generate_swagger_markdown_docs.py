@@ -238,6 +238,42 @@ def test_patch_union_schema_markdown_fills_regular_schema_union_property(tmp_pat
     assert "| value | string<br>integer<br>number<br>boolean |  | No |" in patched
 
 
+def test_patch_union_schema_markdown_preserves_nullable_enum_values(tmp_path: Path):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "console-openapi.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "components": {
+                    "schemas": {
+                        "StepByStepTourStatePatchPayload": {
+                            "properties": {
+                                "task_id": {
+                                    "anyOf": [
+                                        {"enum": ["home", "studio"], "type": "string"},
+                                        {"type": "null"},
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    markdown = """#### StepByStepTourStatePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| task_id | string | Task ID | No |
+"""
+
+    patched = module._patch_union_schema_markdown(markdown, spec_path)
+
+    assert '| task_id | string, <br>**Available values:** "home", "studio" | Task ID | No |' in patched
+
+
 def test_patch_union_schema_markdown_fills_array_item_union_property(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-openapi.json"

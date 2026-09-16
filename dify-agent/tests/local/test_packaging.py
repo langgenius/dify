@@ -16,12 +16,14 @@ CLIENT_SHARED_DTO_DEPENDENCIES = {
 }
 
 SERVER_RUNTIME_DEPENDENCIES = {
-    "e2b>=2.34.0,<3.0.0",
+    "e2b>=2.38.0,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.5.2",
+    "grpcio>=1.60.0,<2.0.0",
     "jsonschema>=4.23.0,<5.0.0",
     "jwcrypto>=1.5.6,<2",
     "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
+    "openshell>=0.0.106,<0.1.0",
     "pydantic-ai-slim[anthropic,google,openai]>=2.30.0,<3.0.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
@@ -29,8 +31,8 @@ SERVER_RUNTIME_DEPENDENCIES = {
 }
 
 DEV_DEPENDENCIES = {
-    "basedpyright>=1.39.3",
     "coverage[toml]>=7.10.7",
+    "pyrefly>=1.2.0",
     "pytest>=9.0.3",
     "pytest-examples>=0.0.18",
     "pytest-mock>=3.14.0",

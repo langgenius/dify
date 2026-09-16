@@ -1,6 +1,6 @@
 {
   "name": "@langgenius/difyctl",
-  "version": "1.17.0",
+  "version": "1.17.1",
   "description": "Dify command-line interface",
   "license": "Apache-2.0",
   "files": [
@@ -66,13 +66,13 @@
     "vitest": "catalog:"
   },
   "engines": {
-    "node": "^22.22.1"
+    "node": "^24.20.0"
   },
   "difyctl": {
     "channel": "stable",
     "compat": {
       "minDify": "1.16.0",
-      "maxDify": "1.17.0"
+      "maxDify": "1.17.1"
     },
     "release": {
       "tagPrefix": "difyctl-v",

@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { DocumentDetailHeader } from './document-detail-header'
 import { initialDocumentRevision, responseStatus } from './document-detail-model'
@@ -202,8 +202,6 @@ export function DocumentDetailPage({
         onRevisionChange={(revision) => void setSelectedRevision(revision)}
         reindexDisabled={
           !canEdit ||
-          reindexBusy ||
-          submissionPending ||
           taskIsActive ||
           tasksPending ||
           isFetchingNextTaskPage ||
@@ -215,7 +213,6 @@ export function DocumentDetailPage({
         reindexDisabledReasonId={!hasEditPermission ? REINDEX_RESTRICTION_ID : undefined}
         reindexing={reindexBusy || submissionPending}
         revisions={availableRevisions}
-        taskIsActive={taskIsActive}
         titleRef={titleRef}
       />
       {!hasEditPermission && (

@@ -22,7 +22,7 @@ export default defineConfig({
     sourcemap: true,
     treeshake: false,
     outDir: 'dist',
-    target: 'node22',
+    target: 'node24',
     define: {
       __DIFYCTL_VERSION__: JSON.stringify(buildInfo.version),
       __DIFYCTL_COMMIT__: JSON.stringify(buildInfo.commit),

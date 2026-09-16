@@ -76,6 +76,10 @@ def _schema_markdown_type(schema: object) -> str:
         item_type = _schema_markdown_type(schema.get("items"))
         return f"[ {item_type or 'object'} ]"
     if isinstance(schema_type, str):
+        enum_values = schema.get("enum")
+        if isinstance(enum_values, list) and enum_values:
+            rendered_values = ", ".join(json.dumps(value, ensure_ascii=False) for value in enum_values)
+            return f"{schema_type}, <br>**Available values:** {rendered_values}"
         return schema_type
 
     return ""

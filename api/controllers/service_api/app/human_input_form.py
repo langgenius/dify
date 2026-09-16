@@ -17,6 +17,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -163,9 +164,8 @@ class WorkflowHumanInputFormApi(Resource):
         service_api_ns.models[HumanInputFormSubmitResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, form_token: str):
-        payload = HumanInputFormSubmitPayload.model_validate(service_api_ns.payload or {})
-
+    @model_validate(HumanInputFormSubmitPayload)
+    def post(self, payload: HumanInputFormSubmitPayload, app_model: App, end_user: EndUser, form_token: str):
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:

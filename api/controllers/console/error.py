@@ -76,6 +76,12 @@ class AccountNotFound(BaseHTTPException):
     code = 400
 
 
+class InvalidAccountPasswordRequestError(BaseHTTPException):
+    error_code = "invalid_account_password"
+    description = "The password does not satisfy the account password policy."
+    code = 400
+
+
 class EmailSendIpLimitError(BaseHTTPException):
     error_code = "email_send_ip_limit"
     description = "Too many emails have been sent from this IP address recently. Please try again later."
