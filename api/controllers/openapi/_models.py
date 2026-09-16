@@ -7,6 +7,8 @@ from typing import Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.openapi._upload import UploadParts
 from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from libs.oauth_bearer import SubjectType
@@ -274,13 +276,26 @@ class AppListQuery(BaseModel):
 
 
 class AppRunRequest(BaseModel):
-    inputs: dict[str, Any]
-    query: str | None = None
-    files: list[dict[str, Any]] | None = Field(default=None)
-    conversation_id: UUIDStrOrEmpty | None = None
-    auto_generate_name: bool = True
-    workflow_id: str | None = None
-    workspace_id: UUIDStrOrEmpty | None = None
+    inputs: dict[str, Any] = Field(
+        description=(
+            "Variables declared by the app. The exact shape is per app: read `input_schema` from "
+            "console_app.describe. File variables accept an https URL string here; local files go in `files`."
+        )
+    )
+    query: str | None = Field(
+        default=None, description="User message. Required for chat-family apps, rejected for workflow apps"
+    )
+    files: UploadParts | None = Field(
+        default=None,
+        description=(
+            "Local files keyed by the app's file variable name. One part per file; a file-list variable takes "
+            "several parts under the same name. The server uploads them and merges them into `inputs`"
+        ),
+    )
+    conversation_id: UUIDStrOrEmpty | None = Field(default=None, description="Continue an existing conversation")
+    auto_generate_name: bool = Field(default=True, description="Let the server name a new conversation")
+    workflow_id: str | None = Field(default=None, description="Pin a published workflow version")
+    workspace_id: UUIDStrOrEmpty | None = Field(default=None, description="Workspace that owns the app")
 
     @field_validator("conversation_id", mode="before")
     @classmethod
@@ -449,6 +464,15 @@ class FormSubmitResponse(BaseModel):
     than an under-annotated open object."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
+    """The console payload plus local file parts; `_files.materialize_files` merges them into `inputs`."""
+
+    files: UploadParts | None = Field(
+        default=None,
+        description="Local files keyed by the form's file input name, same convention as console_app.run",
+    )
 
 
 class HumanInputFormDefinitionResponse(BaseModel):
