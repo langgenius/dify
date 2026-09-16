@@ -41,6 +41,12 @@ export const useOAuthCallback = () => {
         )
       }
       window.close()
+    } else if (subscriptionId || error) {
+      // Top-level navigation flow (e.g., MCP OAuth server-side redirect).
+      // The OAuth credentials are already stored on the server side; there
+      // is no parent window to notify. Redirect back to the console home so
+      // the user can continue normally instead of staring at a blank page.
+      window.location.replace(new URL('/', window.location.origin).toString())
     }
   }, [])
 }
