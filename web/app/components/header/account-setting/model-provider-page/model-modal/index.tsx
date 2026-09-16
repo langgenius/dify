@@ -17,6 +17,7 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -152,7 +153,10 @@ const ModelModal: FC<ModelModalProps> = ({
       needCheckValidatedValues: true,
       needTransformWhenSecretFieldIsPristine: true,
     }) || { isCheckValidated: false, values: {} }
-    if (!isCheckValidated || !modelNameAndTypeIsCheckValidated) return
+    if (!isCheckValidated || !modelNameAndTypeIsCheckValidated) {
+      toast.error(t(($) => $['modelProvider.toBeConfigured'], { ns: 'common' }))
+      return
+    }
 
     const { __model_name, __model_type } = modelNameAndTypeValues
     const { __authorization_name__, ...rest } = values
@@ -162,7 +166,10 @@ const ModelModal: FC<ModelModalProps> = ({
       (mode === ModelModalModeEnum.addCustomModelToModelList &&
         selectedCredential?.addNewCredential)
     if (shouldSaveModelCredential) {
-      if (!__model_name || !__model_type) return
+      if (!__model_name || !__model_type) {
+        toast.error(t(($) => $['modelProvider.toBeConfigured'], { ns: 'common' }))
+        return
+      }
 
       await handleSaveCredential({
         credential_id: credential?.credential_id,
@@ -192,6 +199,7 @@ const ModelModal: FC<ModelModalProps> = ({
     onCancel,
     handleSaveCredential,
     credential,
+    t,
   ])
 
   const modalTitle = useMemo(() => {
