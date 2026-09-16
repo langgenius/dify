@@ -109,7 +109,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
-            conversation = ConversationService.get_conversation(
+            conversation = ConversationService.try_get_conversation(
                 app_model=app_model, conversation_id=conversation_id, user=user, session=session
             )
         # get app model config
@@ -201,6 +201,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 application_generate_entity,
                 conversation,
                 session=session,
+                provided_conversation_id=conversation_id if conversation is None else None,
             )
 
             # init queue manager

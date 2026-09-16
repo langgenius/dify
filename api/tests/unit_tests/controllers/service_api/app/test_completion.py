@@ -53,7 +53,6 @@ from models.model import App, AppMode, Conversation, EndUser, IconType, Message
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.billing_service import BillingService
-from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
@@ -722,17 +721,22 @@ class TestChatApiController:
             with pytest.raises(AgentNotPublishedError):
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
-    def test_invalid_conversation_id_fails_fast_as_not_found(
+    def test_well_formed_but_unknown_conversation_id_is_provisioned_by_generator(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
     ) -> None:
-        # A well-formed but nonexistent conversation_id must fail fast as 404, before the
-        # streaming generator is created. Previously the lookup only ran inside the generator,
-        # so an invalid id surfaced as a hang instead of a clean error.
-        get_conversation_mock = Mock(side_effect=ConversationNotExistsError())
-        monkeypatch.setattr(ConversationService, "get_conversation", get_conversation_mock)
+        # Issue #41448: external callers (chatflow / chat API) can mint their own conversation id.
+        # A well-formed but unknown id no longer fails fast with 404 — the generator must
+        # receive it and provision a fresh Conversation row using that id.
+        provided_conversation_id = str(uuid.uuid4())
 
-        generate_mock = Mock(return_value={"text": "unused"})
-        monkeypatch.setattr(AppGenerateService, "generate", generate_mock)
+        # Generator returns a stub that records what id was forwarded to it.
+        captured: dict[str, object] = {}
+
+        def fake_generate(*_args, **kwargs):
+            captured["args"] = kwargs.get("args")
+            return {"text": "unused"}
+
+        monkeypatch.setattr(AppGenerateService, "generate", fake_generate)
 
         api = ChatApi()
         handler = unwrap(api.post)
@@ -741,14 +745,13 @@ class TestChatApiController:
         with app.test_request_context(
             "/chat-messages",
             method="POST",
-            json={"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())},
+            json={"inputs": {}, "query": "hi", "conversation_id": provided_conversation_id},
         ):
-            with pytest.raises(NotFound):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
-        # The lookup must run before generation, so the generator is never started.
-        generate_mock.assert_not_called()
-        assert get_conversation_mock.call_args.kwargs["session"] is orm_session
+        # The unknown id was forwarded verbatim to the generator so it can
+        # provision a new Conversation row with that value.
+        assert captured["args"]["conversation_id"] == provided_conversation_id
 
 
 class TestChatStopApiController:

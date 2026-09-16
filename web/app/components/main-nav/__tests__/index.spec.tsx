@@ -1725,4 +1725,63 @@ describe('MainNav', () => {
       expect(mockToastSuccess).toHaveBeenCalledWith('common.api.remove')
     })
   })
+
+  describe('Main nav collapse/expand toggle', () => {
+    beforeEach(() => {
+      localStorage.removeItem('main-nav-collapse-or-expand')
+    })
+
+    it('renders expanded by default with a collapse toggle button', () => {
+      renderMainNav()
+
+      const nav = screen.getByTestId('main-nav')
+      expect(nav).toHaveAttribute('data-mode', 'expand')
+      expect(nav).toHaveClass('w-62')
+      expect(screen.getByTestId('main-nav-toggle')).toBeInTheDocument()
+      expect(screen.getByTestId('main-nav-toggle')).toHaveAttribute(
+        'aria-label',
+        expect.stringMatching(/layout\.sidebar\.collapseSidebar|Collapse sidebar/),
+      )
+    })
+
+    it('switches to collapsed mode and persists the choice when the toggle is clicked', async () => {
+      const user = userEvent.setup()
+      renderMainNav()
+
+      expect(screen.getByTestId('main-nav')).toHaveAttribute('data-mode', 'expand')
+
+      await user.click(screen.getByTestId('main-nav-toggle'))
+
+      const nav = screen.getByTestId('main-nav')
+      expect(nav).toHaveAttribute('data-mode', 'collapse')
+      expect(nav).toHaveClass('w-16')
+      expect(localStorage.getItem('main-nav-collapse-or-expand')).toBe('collapse')
+      expect(screen.getByTestId('main-nav-toggle')).toHaveAttribute(
+        'aria-label',
+        expect.stringMatching(/layout\.sidebar\.expandSidebar|Expand sidebar/),
+      )
+    })
+
+    it('hides secondary sidebar content (workspace card, web apps section, env tag) when collapsed', async () => {
+      const user = userEvent.setup()
+      renderMainNav()
+
+      expect(screen.getByText('Solar Studio')).toBeInTheDocument()
+
+      await user.click(screen.getByTestId('main-nav-toggle'))
+
+      // Workspace card name should no longer be visible when collapsed.
+      expect(screen.queryByText('Solar Studio')).not.toBeInTheDocument()
+    })
+
+    it('restores the collapsed mode from localStorage on subsequent renders', () => {
+      localStorage.setItem('main-nav-collapse-or-expand', 'collapse')
+
+      renderMainNav()
+
+      const nav = screen.getByTestId('main-nav')
+      expect(nav).toHaveAttribute('data-mode', 'collapse')
+      expect(nav).toHaveClass('w-16')
+    })
+  })
 })

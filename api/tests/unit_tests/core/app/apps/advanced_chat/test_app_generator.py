@@ -216,7 +216,7 @@ class TestAdvancedChatAppGeneratorInternals:
         get_conversation = MagicMock(return_value=conversation)
 
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.ConversationService.get_conversation",
+            "core.app.apps.advanced_chat.app_generator.ConversationService.try_get_conversation",
             get_conversation,
         )
         monkeypatch.setattr(
