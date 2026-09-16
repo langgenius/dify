@@ -165,7 +165,7 @@ class DraftVarLoader(VariableLoader):
         return list(variable_by_selector.values())
 
     def _load_offloaded_variable(self, draft_var: WorkflowDraftVariable) -> tuple[tuple[str, str], VariableBase]:
-        # This logic is closely tied to `WorkflowDraftVaribleService._try_offload_large_variable`
+        # This logic is closely tied to `DraftVariableSaver._try_offload_large_variable`
         # and must remain synchronized with it.
         # Ideally, these should be co-located for better maintainability.
         # However, due to the current code structure, this is not straightforward.
