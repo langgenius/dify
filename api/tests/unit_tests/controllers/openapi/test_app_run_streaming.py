@@ -95,6 +95,9 @@ def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monke
         generate = generate_mock
 
     monkeypatch.setattr(sys.modules["controllers.openapi.app_run"], "AppGenerateService", GenerateService)
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi._files"], "resolve_app_config", lambda _app, **_kwargs: ({}, [])
+    )
 
     ctx = _SealableContext(
         app=_make_app(),

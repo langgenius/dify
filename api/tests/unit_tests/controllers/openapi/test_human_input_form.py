@@ -21,9 +21,8 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 
-from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
-from controllers.openapi._models import FormSubmitResponse
+from controllers.openapi._models import FormSubmitResponse, OpenApiFormSubmitPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Rank
 from controllers.openapi.auth.subjects import Subject
@@ -165,7 +164,7 @@ class TestOpenApiHumanInputFormPost:
                 _context(_make_account("acct-42"), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 form_token="tok-1",
-                body=HumanInputFormSubmitPayload(action="approve", inputs={"field1": "val"}),
+                body=OpenApiFormSubmitPayload(action="approve", inputs={"field1": "val"}),
             )
 
         service_mock.submit_form_by_token.assert_called_once_with(
@@ -192,7 +191,7 @@ class TestOpenApiHumanInputFormPost:
                 _context(_make_end_user("eu-7"), CreatorUserRole.END_USER),
                 app_id="app-1",
                 form_token="tok-1",
-                body=HumanInputFormSubmitPayload(action="approve", inputs={}),
+                body=OpenApiFormSubmitPayload(action="approve", inputs={}),
             )
 
         service_mock.submit_form_by_token.assert_called_once_with(

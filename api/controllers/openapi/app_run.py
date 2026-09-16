@@ -24,6 +24,7 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Kind, endpoint
+from controllers.openapi._files import file_rows_of, materialize_files
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -118,16 +119,29 @@ def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool, sess
     )
 
 
+def _args_with_files(
+    app: App, caller: Any, payload: AppRunRequest, session: Session, *, exclude: set[str]
+) -> dict[str, Any]:
+    inputs, vision = materialize_files(
+        app=app, caller=caller, inputs=payload.inputs, files=payload.files, rows=file_rows_of(app, session)
+    )
+    args = payload.model_dump(exclude={"files", *exclude}, exclude_none=True)
+    args["inputs"] = inputs
+    if vision:
+        args["files"] = vision
+    return args
+
+
 def _run_chat(app: App, caller: Any, payload: AppRunRequest, session: Session):
     if not payload.query or not payload.query.strip():
         raise UnprocessableEntity("query_required_for_chat")
-    args = payload.model_dump(exclude_none=True)
+    args = _args_with_files(app, caller, payload, session, exclude=set())
     with _translate_service_errors():
         return _generate(app, caller, args, streaming=True, session=session)
 
 
 def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Session):
-    args = payload.model_dump(exclude_none=True)
+    args = _args_with_files(app, caller, payload, session, exclude=set())
     args["auto_generate_name"] = False
     args.setdefault("query", "")
     with _translate_service_errors():
@@ -137,7 +151,7 @@ def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Sess
 def _run_workflow(app: App, caller: Any, payload: AppRunRequest, session: Session):
     if payload.query is not None:
         raise UnprocessableEntity("query_not_supported_for_workflow")
-    args = payload.model_dump(exclude={"query", "conversation_id", "auto_generate_name"}, exclude_none=True)
+    args = _args_with_files(app, caller, payload, session, exclude={"query", "conversation_id", "auto_generate_name"})
     with _translate_service_errors():
         return _generate(app, caller, args, streaming=True, session=session)
 
