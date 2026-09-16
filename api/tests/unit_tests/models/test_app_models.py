@@ -11,7 +11,7 @@ This test suite covers:
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -529,7 +529,7 @@ class TestConversationModel:
         assert conversation.from_end_user_id == from_end_user_id
 
     def test_conversation_with_inputs(self):
-        """Test conversation inputs property."""
+        """Test conversation inputs round-trip through the session-aware accessor."""
         # Arrange
         inputs = {"query": "Hello", "context": "test"}
         conversation = Conversation(
@@ -543,10 +543,17 @@ class TestConversationModel:
         conversation._inputs = inputs
 
         # Act
-        result = conversation.inputs
+        result = conversation.inputs_with_session(session=Mock())
 
         # Assert
         assert result == inputs
+
+    def test_conversation_inputs_is_write_only(self):
+        """Reading conversation.inputs must fail loudly; reads go through inputs_with_session."""
+        conversation = Conversation(app_id=str(uuid4()), _inputs={})
+
+        with pytest.raises(AttributeError, match="no getter"):
+            _ = conversation.inputs
 
     def test_conversation_inputs_setter(self):
         """Test conversation inputs setter."""
@@ -773,7 +780,7 @@ class TestMessageModel:
         assert message.from_source == "api"
 
     def test_message_with_inputs(self):
-        """Test message inputs property."""
+        """Test message inputs round-trip through the session-aware accessor."""
         # Arrange
         inputs = {"query": "Hello", "context": "test"}
         message = Message(
@@ -790,10 +797,17 @@ class TestMessageModel:
         )
 
         # Act
-        result = message.inputs
+        result = message.inputs_with_session(session=Mock())
 
         # Assert
         assert result == inputs
+
+    def test_message_inputs_is_write_only(self):
+        """Reading message.inputs must fail loudly; reads go through inputs_with_session."""
+        message = Message(app_id=str(uuid4()), _inputs={})
+
+        with pytest.raises(AttributeError, match="no getter"):
+            _ = message.inputs
 
     def test_message_inputs_setter(self):
         """Test message inputs setter."""

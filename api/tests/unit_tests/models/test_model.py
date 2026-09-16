@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -119,7 +119,7 @@ def test_inputs_restore_external_remote_url_file_mappings(owner_cls: type[Conver
         }
     }
 
-    restored_file = owner.inputs["file"]
+    restored_file = owner.inputs_with_session(session=Mock())["file"]
 
     assert restored_file.transfer_method == FileTransferMethod.REMOTE_URL
     assert restored_file.remote_url == "https://example.com/report.pdf"
