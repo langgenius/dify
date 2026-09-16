@@ -1,11 +1,51 @@
 """Abstract interface for document loader implementations."""
 
+import re
 from typing import override
 
 from bs4 import BeautifulSoup
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
+
+# Elements a browser lays out on a line of their own. The markup is the only
+# place that boundary exists, so without a break after them the text on either
+# side runs together.
+_BLOCK_LEVEL_TAGS = (
+    "address",
+    "article",
+    "aside",
+    "blockquote",
+    "dd",
+    "div",
+    "dl",
+    "dt",
+    "fieldset",
+    "figcaption",
+    "figure",
+    "footer",
+    "form",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "header",
+    "hr",
+    "li",
+    "main",
+    "nav",
+    "ol",
+    "p",
+    "pre",
+    "section",
+    "table",
+    "td",
+    "th",
+    "tr",
+    "ul",
+)
 
 
 class HtmlExtractor(BaseExtractor):
@@ -26,10 +66,17 @@ class HtmlExtractor(BaseExtractor):
         return [Document(page_content=self._load_as_text())]
 
     def _load_as_text(self) -> str:
-        text: str = ""
         with open(self._file_path, "rb") as fp:
             soup = BeautifulSoup(fp, "html.parser")
-            text = soup.get_text()
-            text = text.strip() if text else ""
 
-        return text
+        for line_break in soup.find_all("br"):
+            line_break.replace_with("\n")
+
+        # A separator argument to get_text() would also land between inline
+        # elements, turning "Hello <b>world</b>!" into "Hello world !", so the
+        # end of each block is marked instead.
+        for block in soup.find_all(_BLOCK_LEVEL_TAGS):
+            block.append("\n")
+
+        text: str = soup.get_text()
+        return re.sub(r"\n{3,}", "\n\n", text).strip() if text else ""
