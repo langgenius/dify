@@ -122,8 +122,9 @@ class TestAppModelValidation:
         # Assert
         assert {t.value for t in IconType} == {"image", "emoji", "link"}
 
-    def test_app_desc_or_prompt_with_description(self):
-        """Test desc_or_prompt property when description exists."""
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_desc_or_prompt_with_description(self, sqlite_session: Session):
+        """Test desc_or_prompt_with_session when description exists."""
         # Arrange
         app = App(
             tenant_id=str(uuid4()),
@@ -136,7 +137,7 @@ class TestAppModelValidation:
         )
 
         # Act
-        result = app.desc_or_prompt
+        result = app.desc_or_prompt_with_session(session=sqlite_session)
 
         # Assert
         assert result == "App description"
