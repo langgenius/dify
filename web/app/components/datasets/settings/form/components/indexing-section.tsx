@@ -1,7 +1,11 @@
 'use client'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import type {
+  DataSet,
+  GraphIndexSetting as GraphIndexSettingType,
+  SummaryIndexSetting as SummaryIndexSettingType,
+} from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +22,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
 import { IndexingType } from '../../../create/step-two'
 import ChunkStructure from '../../chunk-structure'
+import GraphIndexSetting from '../../graph-index-setting'
 import IndexMethod from '../../index-method'
 import SummaryIndexSetting from '../../summary-index-setting'
 
@@ -37,6 +42,8 @@ type IndexingSectionProps = {
   setRetrievalConfig: (value: RetrievalConfig) => void
   summaryIndexSetting: SummaryIndexSettingType | undefined
   handleSummaryIndexSettingChange: (payload: SummaryIndexSettingType) => void
+  graphIndexSetting: GraphIndexSettingType | undefined
+  handleGraphIndexSettingChange: (payload: GraphIndexSettingType) => void
   showMultiModalTip: boolean
   readonly?: boolean
 }
@@ -54,6 +61,8 @@ const IndexingSection = ({
   setRetrievalConfig,
   summaryIndexSetting,
   handleSummaryIndexSettingChange,
+  graphIndexSetting,
+  handleGraphIndexSettingChange,
   showMultiModalTip,
   readonly = false,
 }: IndexingSectionProps) => {
@@ -182,6 +191,20 @@ const IndexingSection = ({
             entry="dataset-settings"
             summaryIndexSetting={summaryIndexSetting}
             onSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+            readonly={readonly}
+          />
+        </>
+      )}
+
+      {/* Knowledge Graph Index Setting.
+          External knowledge bases have no documents of their own to extract a
+          graph from, so the control would do nothing there. */}
+      {!!indexMethod && currentDataset?.provider !== 'external' && (
+        <>
+          <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+          <GraphIndexSetting
+            graphIndexSetting={graphIndexSetting}
+            onGraphIndexSettingChange={handleGraphIndexSettingChange}
             readonly={readonly}
           />
         </>

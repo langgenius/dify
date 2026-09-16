@@ -132,6 +132,20 @@ def _expected_dataset_detail_payload() -> dict[str, Any]:
             "model_provider_name": "provider-a",
             "summary_prompt": "Summarize this.",
         },
+        # External datasets never build a knowledge graph, so every field stays unset.
+        "graph_index_setting": {
+            "enabled": None,
+            "model_name": None,
+            "model_provider_name": None,
+            "entity_types": None,
+            "max_entities_per_chunk": None,
+            "extract_prompt": None,
+            "max_depth": None,
+            "max_seed_entities": None,
+            "max_neighbors_per_hop": None,
+            "hop_decay": None,
+            "llm_query_fallback": None,
+        },
         "tags": [{"id": "tag-1", "name": "Support", "type": "knowledge"}],
         "doc_form": "text_model",
         "external_knowledge_info": {
