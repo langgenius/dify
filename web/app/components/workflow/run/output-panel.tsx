@@ -8,6 +8,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import StatusContainer from '@/app/components/workflow/run/status-container'
+import { summarizeWorkflowError } from './error-summary'
 
 type OutputPanelProps = {
   isRunning?: boolean
@@ -54,7 +55,7 @@ const OutputPanel: FC<OutputPanelProps> = ({ isRunning, outputs, error, height }
       {!isRunning && error && (
         <div className="px-4">
           <StatusContainer status="failed" copyContent={error}>
-            {error}
+            <span title={error}>{summarizeWorkflowError(error)}</span>
           </StatusContainer>
         </div>
       )}

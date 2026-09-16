@@ -29,6 +29,7 @@ import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import { AgentLogTrigger } from './agent-log/agent-log-trigger'
+import { summarizeWorkflowError } from './error-summary'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
@@ -238,8 +239,8 @@ const NodePanel: FC<Props> = ({
                 </StatusContainer>
               )}
               {nodeInfo.status === 'exception' && (
-                <StatusContainer status="stopped">
-                  {nodeInfo.error}
+                <StatusContainer status="stopped" copyContent={nodeInfo.error}>
+                  <span title={nodeInfo.error}>{summarizeWorkflowError(nodeInfo.error)}</span>
                   <a
                     href={docLink('/use-dify/debug/error-type')}
                     target="_blank"
@@ -251,10 +252,14 @@ const NodePanel: FC<Props> = ({
                 </StatusContainer>
               )}
               {nodeInfo.status === 'failed' && (
-                <StatusContainer status="failed">{nodeInfo.error}</StatusContainer>
+                <StatusContainer status="failed" copyContent={nodeInfo.error}>
+                  <span title={nodeInfo.error}>{summarizeWorkflowError(nodeInfo.error)}</span>
+                </StatusContainer>
               )}
               {nodeInfo.status === 'retry' && (
-                <StatusContainer status="failed">{nodeInfo.error}</StatusContainer>
+                <StatusContainer status="failed" copyContent={nodeInfo.error}>
+                  <span title={nodeInfo.error}>{summarizeWorkflowError(nodeInfo.error)}</span>
+                </StatusContainer>
               )}
               {nodeInfo.status === 'paused' && (
                 <StatusContainer status="paused">
