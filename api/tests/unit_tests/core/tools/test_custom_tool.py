@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from typing import Any
 
@@ -187,6 +188,50 @@ def test_get_parameter_value_and_type_conversion_helpers():
     assert tool._convert_body_property_type({"type": "array"}, "[1,2]") == [1, 2]
     assert tool._convert_body_property_type({"type": "invalid"}, "v") == "v"
     assert tool._convert_body_property_type({"anyOf": [{"type": "integer"}]}, "2") == 2
+
+
+def test_convert_body_property_type_parses_boolean_strings():
+    tool = _build_tool()
+
+    assert tool._convert_body_property_type({"type": "boolean"}, "false") is False
+    assert tool._convert_body_property_type({"type": "boolean"}, "False") is False
+    assert tool._convert_body_property_type({"type": "boolean"}, "0") is False
+    assert tool._convert_body_property_type({"type": "boolean"}, "true") is True
+    assert tool._convert_body_property_type({"type": "boolean"}, "1") is True
+    assert tool._convert_body_property_type({"type": "boolean"}, False) is False
+    assert tool._convert_body_property_type({"type": "boolean"}, True) is True
+
+
+def test_do_http_request_serializes_boolean_string_body_property(monkeypatch: pytest.MonkeyPatch):
+    openapi = {
+        "parameters": [],
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {"enabled": {"type": "boolean"}},
+                    }
+                }
+            }
+        },
+    }
+    tool = _build_tool(openapi=openapi)
+    captured = {}
+
+    def _fake_post(url, **kwargs):
+        captured["data"] = kwargs["data"]
+        return httpx.Response(200, text="ok")
+
+    monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.post", _fake_post)
+    tool.do_http_request(
+        "https://api.example.com/items",
+        "POST",
+        headers={},
+        parameters={"enabled": "false"},
+    )
+
+    assert json.loads(captured["data"]) == {"enabled": False}
 
 
 def test_do_http_request_builds_arguments_and_handles_invalid_method(monkeypatch: pytest.MonkeyPatch):
