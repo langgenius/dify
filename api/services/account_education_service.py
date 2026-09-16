@@ -2,6 +2,7 @@
 
 from typing import Protocol
 
+from enums import DeploymentEdition
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError, EducationRateLimitExceededError
 from services.account_ports import AccountRepository
@@ -11,6 +12,9 @@ from services.entities.account_entities import (
     AccountEducationStatus,
     AccountEducationVerification,
 )
+
+EDUCATION_EDITIONS: frozenset[DeploymentEdition] = frozenset({DeploymentEdition.CLOUD})
+"""Editions running the education program: the Console admission gate and `education.enabled` share it."""
 
 
 class AccountEducationRateLimiter(Protocol):

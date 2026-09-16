@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "Agentnavigatie",
   "agentDetail.publish": "Publiceren",
   "agentDetail.sections.access": "Toegangspunt",
+  "agentDetail.sections.access-config": "Toegang tot bronnen",
   "agentDetail.sections.configure": "Configureren",
   "agentDetail.sections.logs": "Logs",
   "agentDetail.sections.monitoring": "Monitoring",

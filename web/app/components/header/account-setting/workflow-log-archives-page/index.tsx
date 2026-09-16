@@ -63,8 +63,6 @@ function buildArchiveDownloadFileUrl(downloadId: string) {
   return `${API_PREFIX}/workflow-run-archives/downloads/${downloadId}/file`
 }
 
-const tableGridClassName = 'grid-cols-[0.66fr_0.78fr_0.78fr_1fr]'
-
 export default function WorkflowLogArchivesPage() {
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -171,94 +169,111 @@ export default function WorkflowLogArchivesPage() {
 
       <div className="overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs">
         <div className="overflow-x-auto">
-          <div className="min-w-115">
-            <div
-              className={cn(
-                'grid h-8 items-center gap-3 border-b border-divider-subtle bg-background-section-burn px-4 system-xs-medium-uppercase text-text-tertiary',
-                tableGridClassName,
+          <table className="w-full min-w-115 table-fixed">
+            <colgroup>
+              <col className="w-[20.5%]" />
+              <col className="w-[24.2%]" />
+              <col className="w-[24.2%]" />
+              <col />
+            </colgroup>
+            <thead>
+              <tr className="h-8 border-b border-divider-subtle bg-background-section-burn">
+                <th className="px-2 text-center system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['archives.table.month'], { ns: 'appLog' })}
+                </th>
+                <th className="px-2 text-center system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['archives.table.runs'], { ns: 'appLog' })}
+                </th>
+                <th className="px-2 text-center system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['archives.table.size'], { ns: 'appLog' })}
+                </th>
+                <th className="px-2 text-center system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['archives.table.action'], { ns: 'appLog' })}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && (
+                <>
+                  {['first', 'second', 'third'].map((key) => (
+                    <tr
+                      key={key}
+                      className="h-15 border-b border-divider-subtle last:border-b-0"
+                      aria-hidden="true"
+                    >
+                      <td className="px-2 py-3">
+                        <SkeletonRectangle className="mx-auto h-4 w-16 animate-pulse" />
+                      </td>
+                      <td className="px-2 py-3">
+                        <SkeletonRectangle className="mx-auto h-4 w-16 animate-pulse" />
+                      </td>
+                      <td className="px-2 py-3">
+                        <SkeletonRectangle className="mx-auto h-4 w-14 animate-pulse" />
+                      </td>
+                      <td className="px-2 py-3">
+                        <SkeletonRectangle className="mx-auto h-8 w-24 animate-pulse rounded-lg" />
+                      </td>
+                    </tr>
+                  ))}
+                </>
               )}
-            >
-              <div className="text-center">
-                {t(($) => $['archives.table.month'], { ns: 'appLog' })}
-              </div>
-              <div className="text-center">
-                {t(($) => $['archives.table.runs'], { ns: 'appLog' })}
-              </div>
-              <div className="text-center">
-                {t(($) => $['archives.table.size'], { ns: 'appLog' })}
-              </div>
-              <div className="text-center">
-                {t(($) => $['archives.table.action'], { ns: 'appLog' })}
-              </div>
-            </div>
-            {isLoading && (
-              <>
-                {['first', 'second', 'third'].map((key) => (
-                  <div
-                    key={key}
-                    className={cn(
-                      'grid min-h-15 items-center gap-3 border-b border-divider-subtle px-4 py-3 last:border-b-0',
-                      tableGridClassName,
-                    )}
-                  >
-                    <div className="flex justify-center">
-                      <SkeletonRectangle className="h-4 w-16 animate-pulse" />
+              {!isLoading && archiveListQuery.isError && (
+                <tr>
+                  <td colSpan={4}>
+                    <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
+                      <span
+                        className="i-ri-error-warning-line size-6 text-text-tertiary"
+                        aria-hidden="true"
+                      />
+                      <div className="system-sm-semibold text-text-secondary">
+                        {t(($) => $['archives.error.title'], { ns: 'appLog' })}
+                      </div>
+                      <div className="system-xs-regular text-text-tertiary">
+                        {t(($) => $['archives.error.description'], { ns: 'appLog' })}
+                      </div>
                     </div>
-                    <div className="flex justify-center">
-                      <SkeletonRectangle className="h-4 w-16 animate-pulse" />
+                  </td>
+                </tr>
+              )}
+              {!isLoading && !archiveListQuery.isError && archiveMonths.length === 0 && (
+                <tr>
+                  <td colSpan={4}>
+                    <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
+                      <span
+                        className="i-ri-archive-line size-6 text-text-tertiary"
+                        aria-hidden="true"
+                      />
+                      <div className="system-sm-semibold text-text-secondary">
+                        {t(($) => $['archives.empty.title'], { ns: 'appLog' })}
+                      </div>
+                      <div className="system-xs-regular text-text-tertiary">
+                        {t(($) => $['archives.empty.description'], { ns: 'appLog' })}
+                      </div>
                     </div>
-                    <div className="flex justify-center">
-                      <SkeletonRectangle className="h-4 w-14 animate-pulse" />
-                    </div>
-                    <div className="flex justify-center">
-                      <SkeletonRectangle className="h-8 w-24 animate-pulse rounded-lg" />
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
-            {!isLoading && archiveListQuery.isError && (
-              <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
-                <span
-                  className="i-ri-error-warning-line size-6 text-text-tertiary"
-                  aria-hidden="true"
-                />
-                <div className="system-sm-semibold text-text-secondary">
-                  {t(($) => $['archives.error.title'], { ns: 'appLog' })}
-                </div>
-                <div className="system-xs-regular text-text-tertiary">
-                  {t(($) => $['archives.error.description'], { ns: 'appLog' })}
-                </div>
-              </div>
-            )}
-            {!isLoading && !archiveListQuery.isError && archiveMonths.length === 0 && (
-              <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
-                <span className="i-ri-archive-line size-6 text-text-tertiary" aria-hidden="true" />
-                <div className="system-sm-semibold text-text-secondary">
-                  {t(($) => $['archives.empty.title'], { ns: 'appLog' })}
-                </div>
-                <div className="system-xs-regular text-text-tertiary">
-                  {t(($) => $['archives.empty.description'], { ns: 'appLog' })}
-                </div>
-              </div>
-            )}
-            {!isLoading &&
-              !archiveListQuery.isError &&
-              visibleArchiveMonths.map((archive) => {
-                const archiveMonth = formatMonth(archive.year, archive.month)
+                  </td>
+                </tr>
+              )}
+              {!isLoading &&
+                !archiveListQuery.isError &&
+                visibleArchiveMonths.map((archive) => {
+                  const archiveMonth = formatMonth(archive.year, archive.month)
 
-                return <WorkflowArchiveMonthRow key={archiveMonth} archive={archive} />
-              })}
-            {!isLoading && !archiveListQuery.isError && hasMoreArchives && (
-              <div
-                ref={loadMoreRef}
-                className="flex h-10 items-center justify-center border-t border-divider-subtle bg-components-card-bg"
-                aria-hidden="true"
-              >
-                <SkeletonRectangle className="h-4 w-20 animate-pulse rounded-md" />
-              </div>
-            )}
-          </div>
+                  return <WorkflowArchiveMonthRow key={archiveMonth} archive={archive} />
+                })}
+              {!isLoading && !archiveListQuery.isError && hasMoreArchives && (
+                <tr aria-hidden="true">
+                  <td colSpan={4}>
+                    <div
+                      ref={loadMoreRef}
+                      className="flex h-10 items-center justify-center border-t border-divider-subtle bg-components-card-bg"
+                    >
+                      <SkeletonRectangle className="h-4 w-20 animate-pulse rounded-md" />
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -380,24 +395,19 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const onAction = isReady ? downloadArchive : prepareDownload
 
   return (
-    <div
-      className={cn(
-        'grid min-h-15 items-center gap-3 border-b border-divider-subtle px-4 py-3 last:border-b-0',
-        tableGridClassName,
-      )}
-    >
-      <div className="min-w-0 text-center">
+    <tr className="h-15 border-b border-divider-subtle last:border-b-0">
+      <td className="px-2 py-3 text-center">
         <span id={archiveMonthLabelId} className="truncate system-sm-semibold text-text-primary">
           {archiveMonth}
         </span>
-      </div>
-      <div className="text-center system-sm-medium text-text-secondary tabular-nums">
+      </td>
+      <td className="px-2 py-3 text-center system-sm-medium text-text-secondary tabular-nums">
         {formatNumber(archive.workflow_run_count)}
-      </div>
-      <div className="text-center system-sm-medium text-text-secondary tabular-nums">
+      </td>
+      <td className="px-2 py-3 text-center system-sm-medium text-text-secondary tabular-nums">
         {formatBytes(archive.archive_bytes)}
-      </div>
-      <div className="flex min-w-0 justify-center">
+      </td>
+      <td className="px-2 py-3 text-center">
         <Tooltip>
           <TooltipTrigger
             render={
@@ -426,7 +436,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
             {downloadHint}
           </TooltipContent>
         </Tooltip>
-      </div>
-    </div>
+      </td>
+    </tr>
   )
 }

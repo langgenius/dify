@@ -198,7 +198,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
           />
         </div>
       )}
-      <div className="px-1 py-2">
+      <div className={cn('px-1 py-2', expand && '-mx-2')}>
         <AppInfoView expand={expand} actions={appInfoActions} />
       </div>
       <nav className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}>

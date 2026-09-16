@@ -15,12 +15,14 @@ from core.app.entities.app_invoke_entities import (
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
     is_start_node_type,
     resolve_workflow_node_class,
 )
+from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
 from core.workflow.system_variables import (
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -70,7 +72,10 @@ def iter_dify_graph_engine_events(
     yield from filter_graph_events(
         engine.run(),
         context=GraphEventFilterContext.from_engine(engine),
-        filters=[response_stream_filter or ResponseStreamFilter()],
+        filters=[
+            HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository()),
+            response_stream_filter or ResponseStreamFilter(),
+        ],
     )
 
 

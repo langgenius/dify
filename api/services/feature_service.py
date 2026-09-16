@@ -1,5 +1,6 @@
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
+from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
@@ -112,7 +113,9 @@ class FeatureService:
     def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel):
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
-        features.education.enabled = dify_config.EDUCATION_ENABLED
+        features.education.enabled = (
+            dify_config.EDUCATION_ENABLED and dify_config.DEPLOYMENT_EDITION in EDUCATION_EDITIONS
+        )
         features.enable_skill = dify_config.ENABLE_SKILL
 
     @classmethod

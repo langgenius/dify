@@ -1,6 +1,5 @@
 import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
-import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import ky, { HTTPError } from 'ky'
 import {
@@ -15,6 +14,7 @@ import {
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
+import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -84,10 +84,12 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
         !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
       const errorMessage = errorData?.message || errorData?.error
-      if (shouldNotifyError && errorMessage) toast.error(errorMessage)
+      if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`
+    } else {
+      clearRequestErrorToasts(request)
     }
   }
 }

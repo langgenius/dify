@@ -49,9 +49,6 @@ vi.mock('@/i18n-config', () => ({
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => true,
 }))
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => true,
-}))
 
 vi.mock('../command-bus', () => ({
   executeCommand: (...args: unknown[]) => mockExecuteCommand(...args),

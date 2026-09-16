@@ -139,9 +139,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(screen.getByText('Research legal questions with cited sources.')).toBeInTheDocument()
 
     await user.click(screen.getByText('Legal Research Agent'))
-    expect(mockAssign).toHaveBeenCalledWith(
-      '/template/dify/Legal%20Research%20Agent?templateId=template-1',
-    )
+    expect(mockAssign).toHaveBeenCalledWith('/template/dify/template-1')
 
     expect(container.querySelector('form')).toHaveAttribute('action', '/templates/knowledge')
     expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('name', 'q')

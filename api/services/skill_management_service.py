@@ -2265,8 +2265,9 @@ class SkillManagementService:
         tenant_id: str,
         agent_id: str,
         include_draft: bool = False,
+        config_snapshot_id: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Return workspace Skills from the Agent draft or active published snapshot."""
+        """Return workspace Skills from the Agent draft or a published snapshot."""
         with self._session_scope() as session:
             binding_model = AgentSkillBinding if include_draft else AgentSkillBindingSnapshot
             conditions = [
@@ -2276,7 +2277,10 @@ class SkillManagementService:
                 Agent.tenant_id == tenant_id,
             ]
             if not include_draft:
-                conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
+                if config_snapshot_id is None:
+                    conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
+                else:
+                    conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == config_snapshot_id)
             rows = list(
                 session.execute(
                     select(binding_model, Skill, SkillVersion)

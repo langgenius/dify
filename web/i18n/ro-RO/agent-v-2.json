@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "Navigarea agentului",
   "agentDetail.publish": "Publică",
   "agentDetail.sections.access": "Punct de acces",
+  "agentDetail.sections.access-config": "Acces la resurse",
   "agentDetail.sections.configure": "Configurează",
   "agentDetail.sections.logs": "Jurnale",
   "agentDetail.sections.monitoring": "Monitorizare",

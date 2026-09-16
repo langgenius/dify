@@ -1,5 +1,5 @@
 import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { loadCreatorProfile } from '../data.server'
 
 const mocks = vi.hoisted(() => ({
