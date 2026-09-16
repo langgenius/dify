@@ -1073,7 +1073,10 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <DrawerPortal>
           <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
           <DrawerViewport>
-            <DrawerPopup className="bg-components-panel-bg p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-4 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl">
+            <DrawerPopup
+              aria-label={t(($) => $['detail.conversationId'], { ns: 'appLog' })}
+              className="bg-components-panel-bg p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-4 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl"
+            >
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                 {isChatMode ? (
                   <ChatConversationDetailComp
