@@ -420,7 +420,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, dataset_id: UUID) -> tuple[dict[str, str], int]:
         dataset_id_str = str(dataset_id)
@@ -440,7 +440,7 @@ class DataSourceNotionDocumentSyncApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, DatasetId()))
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, dataset_id: UUID, document_id: UUID) -> tuple[dict[str, str], int]:
         dataset_id_str = str(dataset_id)
