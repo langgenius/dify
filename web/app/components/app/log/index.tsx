@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { App } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
@@ -112,6 +113,11 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...(isChatMode ? { sort_by: requestQueryParams.sort_by } : {}),
     ...omit(requestQueryParams, ['period']),
   }
+  const hasActiveResultFilters = Boolean(
+    requestQueryParams.keyword
+    || (requestQueryParams.annotation_status
+      && requestQueryParams.annotation_status !== 'all'),
+  )
 
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, refetch: mutateChatList } = useChatConversations({
@@ -170,6 +176,26 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
             appDetail={appDetail}
             onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
           />
+        ) : hasActiveResultFilters ? (
+          <div className="flex h-full min-h-40 flex-col items-center justify-center gap-3">
+            <div className="system-sm-regular text-text-tertiary">
+              {t(($) => $['operation.noSearchResults'], {
+                ns: 'common',
+                content: t(($) => $.title, { ns: 'appLog' }).toLowerCase(),
+              })}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                handleQueryParamsChange({
+                  ...defaultQueryParams,
+                  period: effectiveQueryParams.period,
+                })
+              }}
+            >
+              {t(($) => $['operation.resetKeywords'], { ns: 'common' })}
+            </Button>
+          </div>
         ) : (
           <EmptyElement appDetail={appDetail} />
         )}
