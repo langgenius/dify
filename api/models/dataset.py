@@ -367,6 +367,16 @@ class Dataset(Base):
                 ExternalKnowledgeApis.tenant_id == self.tenant_id,
             )
         )
+        return self.build_external_knowledge_info(external_knowledge_binding, external_knowledge_api)
+
+    @staticmethod
+    def build_external_knowledge_info(
+        external_knowledge_binding: "ExternalKnowledgeBindings | None",
+        external_knowledge_api: "ExternalKnowledgeApis | None",
+    ) -> dict[str, Any] | None:
+        """Format an external knowledge binding and its API into the response payload."""
+        if external_knowledge_binding is None:
+            return None
         if external_knowledge_api is None or external_knowledge_api.settings is None:
             return None
         return {
@@ -386,6 +396,10 @@ class Dataset(Base):
     def get_doc_metadata(self, *, session: Session) -> list[dict[str, str]]:
         dataset_metadatas = session.scalars(select(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id)).all()
 
+        return self.build_doc_metadata(dataset_metadatas)
+
+    def build_doc_metadata(self, dataset_metadatas: "Sequence[DatasetMetadata]") -> list[dict[str, str]]:
+        """Format metadata rows, appending the built-in fields when they are enabled."""
         doc_metadata = [
             {
                 "id": dataset_metadata.id,
