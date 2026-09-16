@@ -9,13 +9,12 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
-from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
+from controllers.common.human_input import stringify_form_default_values
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
-from controllers.common.schema import register_schema_models
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
-from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
+from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse, OpenApiFormSubmitPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import PathParam, load_app
 from controllers.openapi.auth.requirements import (
@@ -38,8 +37,6 @@ from models.model import App
 from services.human_input_service import FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
-
-register_schema_models(openapi_ns, HumanInputFormSubmitPayload)
 
 
 class CheckFormSurface(Requirement):
@@ -126,10 +123,10 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             CheckAppAccess(),
             CheckFormSurface(),
         ),
-        body=HumanInputFormSubmitPayload,
+        body=OpenApiFormSubmitPayload,
         returns=(200, FormSubmitResponse, "Form submitted"),
     )
-    def post(self, ctx: Context, app_id: str, form_token: str, *, body: HumanInputFormSubmitPayload):
+    def post(self, ctx: Context, app_id: str, form_token: str, *, body: OpenApiFormSubmitPayload):
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:

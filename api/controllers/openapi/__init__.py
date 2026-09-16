@@ -57,6 +57,7 @@ from controllers.openapi._models import (
     MemberResponse,
     MemberRoleUpdatePayload,
     MessageMetadata,
+    OpenApiFormSubmitPayload,
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
     RevokeResponse,
@@ -90,6 +91,7 @@ register_schema_models(
     MemberInvitePayload,
     MemberListQuery,
     MemberRoleUpdatePayload,
+    OpenApiFormSubmitPayload,
     PermittedExternalAppsListQuery,
     SessionListQuery,
 )

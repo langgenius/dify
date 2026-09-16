@@ -257,3 +257,9 @@ class RecipientSurfaceMismatch(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.RECIPIENT_SURFACE_MISMATCH
     description = "This form's recipient can't be submitted via the OpenAPI surface."
     hint = "Action it through its channel (web app or console)."
+
+
+class InvalidFilePart(OpenApiError):  # noqa: N818
+    code = 422
+    error_code = OpenApiErrorCode.INVALID_PARAM
+    description = "A request part could not be used"

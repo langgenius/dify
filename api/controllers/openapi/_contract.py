@@ -14,13 +14,13 @@ from collections.abc import Callable, Sequence
 from functools import wraps
 from typing import Any, cast
 
-from flask import request
 from flask_restx import abort
 from pydantic import BaseModel, ValidationError
 
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody
+from controllers.openapi._multipart import body_from_request
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import EndpointSpec, Kind
@@ -39,7 +39,7 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
                 if query is not None:
                     kwargs["query"] = query_params_from_request(query)
                 if body is not None:
-                    kwargs["body"] = body.model_validate(request.get_json(silent=True) or {})
+                    kwargs["body"] = body.model_validate(body_from_request())
             except ValidationError as exc:
                 # Sanitized 422 — no pydantic `url` (version) or `input` (user payload) leak.
                 abort(
