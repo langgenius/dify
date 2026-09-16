@@ -2026,8 +2026,19 @@ class WorkflowGenerator:
                         case _:
                             cls._rewrite_refs_in_data(v, id_map)
             case list():
-                for item in value:
-                    cls._rewrite_refs_in_data(item, id_map)
+                for index, item in enumerate(value):
+                    match item:
+                        case [str(v0), str(v1)] if v0 in id_map:
+                            # A ``["node-id", "var"]`` selector nested inside a
+                            # list (e.g. an aggregator's ``variables``) still
+                            # needs the id remap.
+                            value[index] = [id_map[v0], v1]
+                        case str():
+                            rewritten = cls._LENIENT_VAR_REF_RE.sub(lambda m: cls._rewrite_var_ref(m, id_map), item)
+                            if rewritten != item:
+                                value[index] = rewritten
+                        case _:
+                            cls._rewrite_refs_in_data(item, id_map)
 
     @classmethod
     def _rewrite_var_ref(cls, m: re.Match[str], id_map: dict[str, str]) -> str:
