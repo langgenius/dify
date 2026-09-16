@@ -258,7 +258,13 @@ class RosterAgentPackageImporter:
                 soul=resolved_soul,
             )
         except Exception as exc:
-            if isinstance(exc, IntegrityError) and "roster_unique_name" in str(exc):
+            # The active-roster uniqueness guard moved from the generated
+            # roster_unique_name column to the partial unique index
+            # agents_tenant_id_active_roster_name_key (#39460); match both
+            # so name conflicts keep mapping to AgentNameConflictError.
+            if isinstance(exc, IntegrityError) and (
+                "roster_unique_name" in str(exc) or "agents_tenant_id_active_roster_name_key" in str(exc)
+            ):
                 raise AgentNameConflictError() from exc
             if isinstance(
                 exc,
