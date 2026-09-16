@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import { useDocLink } from '@/context/i18n'
+import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { consoleQuery } from '@/service/console'
 import { AgentApiKeyModal } from './agent-api-key-modal'
 
@@ -19,6 +20,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   const docLink = useDocLink()
   const queryClient = useQueryClient()
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
+  const { canManageAccessPoint } = useAgentPermissions(agentId)
   const apiAccessQueryOptions = consoleQuery.agent.byAgentId.apiAccess.get.queryOptions({
     input: {
       params: {
@@ -78,11 +80,13 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
             ],
         )
   const notAvailableLabel = t(($) => $['agentDetail.access.workflow.notAvailable'])
-  const apiKeyActionDisabled = apiAccessQuery.isPending || apiAccessQuery.isError || !accessReady
+  const apiKeyActionDisabled =
+    !canManageAccessPoint || apiAccessQuery.isPending || apiAccessQuery.isError || !accessReady
   const showPublishRequiredMessage =
     !apiAccessQuery.isPending && !apiAccessQuery.isError && !accessReady
 
   function handleEnabledChange(enabled: boolean) {
+    if (!canManageAccessPoint) return
     toggleServiceApiMutation.mutate({
       params: {
         agent_id: agentId,
@@ -96,14 +100,14 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   return (
     <>
       <AccessPointCard
-        className="min-h-[222px]"
+        className="min-h-55.5"
         headingLevel={3}
         title={t(($) => $['agentDetail.access.serviceApi.title'])}
         description={t(($) => $['agentDetail.access.serviceApi.description'])}
         icon="i-custom-vender-knowledge-api-aggregate"
         status={status}
         statusLabel={statusLabel}
-        switchDisabled={apiAccessQuery.isPending || apiAccessQuery.isError || !accessReady}
+        switchDisabled={apiKeyActionDisabled}
         switchDisabledReason={
           showPublishRequiredMessage ? t(($) => $['agentDetail.access.publishRequired']) : undefined
         }
@@ -175,11 +179,13 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
         />
       </AccessPointCard>
 
-      <AgentApiKeyModal
-        agentId={agentId}
-        open={apiKeyModalOpen}
-        onOpenChange={setApiKeyModalOpen}
-      />
+      {canManageAccessPoint && (
+        <AgentApiKeyModal
+          agentId={agentId}
+          open={apiKeyModalOpen}
+          onOpenChange={setApiKeyModalOpen}
+        />
+      )}
     </>
   )
 }

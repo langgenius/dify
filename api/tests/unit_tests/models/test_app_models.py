@@ -16,9 +16,8 @@ from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
-from models import model as model_module
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType, ConversationFromSource, CustomizeTokenStrategy
 from models.model import (
@@ -166,8 +165,8 @@ class TestAppModelValidation:
         assert result == ""
 
     @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-    def test_app_is_agent_property_false(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
-        """Test is_agent property returns False when not configured as agent."""
+    def test_app_is_agent_false_when_not_configured_as_agent(self, sqlite_session: Session):
+        """`is_agent_with_session` returns False when the config has no agent mode."""
         # Arrange
         app = App(
             tenant_id=str(uuid4()),
@@ -180,11 +179,9 @@ class TestAppModelValidation:
         )
         sqlite_session.add(app)
         sqlite_session.flush()
-        session_registry = scoped_session(lambda: sqlite_session)
-        monkeypatch.setattr(model_module.db, "session", session_registry)
 
         # Act
-        result = app.is_agent
+        result = app.is_agent_with_session(session=sqlite_session)
 
         # Assert
         assert result is False

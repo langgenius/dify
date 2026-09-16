@@ -31,7 +31,7 @@ When('I open the app from the app list', async function (this: DifyWorld) {
   const page = this.getPage()
   await page.goto('/apps')
   await waitForAppsConsole(page)
-  const appLink = page.getByRole('link', { name: appName, exact: true })
+  const appLink = page.getByRole('main').getByRole('link', { name: appName, exact: true })
   await expect(appLink).toBeVisible()
   await appLink.click()
 })

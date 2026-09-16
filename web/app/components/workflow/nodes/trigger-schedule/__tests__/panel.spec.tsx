@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ScheduleTriggerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'

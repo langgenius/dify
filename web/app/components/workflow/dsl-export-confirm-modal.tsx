@@ -59,12 +59,12 @@ export const DSLExportConfirmContent = ({
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
               <tr>
-                <td width={220} className="h-7 border-r border-b border-divider-regular pl-3">
+                <th className="h-7 w-55 border-r border-b border-divider-regular pl-3 text-left font-[weight:inherit]">
                   {t(($) => $['env.export.name'], { ns: 'workflow' })}
-                </td>
-                <td className="h-7 border-b border-divider-regular pl-3">
+                </th>
+                <th className="h-7 border-b border-divider-regular pl-3 text-left font-[weight:inherit]">
                   {t(($) => $['env.export.value'], { ns: 'workflow' })}
-                </td>
+                </th>
               </tr>
             </thead>
             <tbody>

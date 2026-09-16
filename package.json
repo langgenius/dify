@@ -31,6 +31,7 @@
     "@typescript/native": "catalog:",
     "concurrently": "catalog:",
     "eslint": "catalog:",
+    "eslint-config-flat-gitignore": "catalog:",
     "eslint-markdown": "catalog:",
     "eslint-plugin-antfu": "catalog:",
     "eslint-plugin-better-tailwindcss": "catalog:",
@@ -63,5 +64,5 @@
   "engines": {
     "node": "^24.20.0"
   },
-  "packageManager": "pnpm@11.25.0"
+  "packageManager": "pnpm@12.3.4"
 }
