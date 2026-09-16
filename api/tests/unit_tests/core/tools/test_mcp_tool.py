@@ -327,8 +327,8 @@ def test_invoke_merges_oauth_token_when_custom_headers_present():
 
         mock_service = MagicMock()
         mock_service.get_provider_entity.return_value = provider_entity
-        mock_service._prepare_auth_headers = (
-            lambda entity: RealMCPToolManageService._prepare_auth_headers(mock_service, entity)
+        mock_service._prepare_auth_headers = lambda entity: RealMCPToolManageService._prepare_auth_headers(
+            mock_service, entity
         )
         with (
             patch("extensions.ext_database.db") as mock_db,
@@ -373,8 +373,8 @@ def test_invoke_applies_oauth_token_when_headers_empty():
 
         mock_service = MagicMock()
         mock_service.get_provider_entity.return_value = provider_entity
-        mock_service._prepare_auth_headers = (
-            lambda entity: RealMCPToolManageService._prepare_auth_headers(mock_service, entity)
+        mock_service._prepare_auth_headers = lambda entity: RealMCPToolManageService._prepare_auth_headers(
+            mock_service, entity
         )
         with (
             patch("extensions.ext_database.db") as mock_db,
