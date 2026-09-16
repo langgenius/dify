@@ -64,6 +64,48 @@ class TestCreateRagPipelineDatasetApi:
             "error": "",
         }
 
+
+    def test_post_uses_provided_icon_info(self, app: Flask) -> None:
+        api = CreateRagPipelineDatasetApi()
+        method = unwrap(api.post)
+
+        payload = {
+            "yaml_content": "name: test",
+            "icon_info": {
+                "icon": "📊",
+                "icon_background": "#FFF4ED",
+                "icon_type": "emoji",
+            },
+        }
+        user = MagicMock(is_dataset_editor=True)
+        import_info = {
+            "id": "import-1",
+            "status": ImportStatus.COMPLETED,
+            "dataset_id": "ds-1",
+            "pipeline_id": "pipeline-1",
+            "current_dsl_version": "0.1.0",
+            "imported_dsl_version": "0.1.0",
+            "error": "",
+        }
+
+        mock_service = MagicMock()
+        mock_service.create_rag_pipeline_dataset.return_value = import_info
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.RagPipelineDslService",
+                return_value=mock_service,
+            ),
+        ):
+            method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+
+        entity = mock_service.create_rag_pipeline_dataset.call_args.kwargs["rag_pipeline_dataset_create_entity"]
+        assert entity.icon_info.icon == "📊"
+        assert entity.icon_info.icon_background == "#FFF4ED"
+        assert entity.icon_info.icon_type == "emoji"
+
     def test_post_forbidden_non_editor(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
