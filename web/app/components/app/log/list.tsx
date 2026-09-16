@@ -970,7 +970,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 <tr
                   key={log.id}
                   className={cn(
-                    'cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover',
+                    'group cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover',
                     activeConversationId !== log.id ? '' : 'bg-background-default-hover',
                   )}
                   onClick={(event) => {
@@ -988,7 +988,14 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                     )}
                   </td>
                   <td className="w-40 p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
-                    {renderTdValue(leftValue, isLeftEmpty, isChatMode && log.annotated)}
+                    <div className="flex min-w-0 items-center gap-0.5">
+                      <div className="min-w-0 grow">
+                        {renderTdValue(leftValue, isLeftEmpty, isChatMode && log.annotated)}
+                      </div>
+                      <span className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                        <CopyIcon content={log.id} />
+                      </span>
+                    </div>
                   </td>
                   <td className="p-3 pr-2">{renderTdValue(endUser || defaultValue, !endUser)}</td>
                   {isChatflow && (
