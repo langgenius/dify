@@ -282,7 +282,7 @@ class TestBuildPromptMessageWithFiles:
     # Mode: CHAT / AGENT_CHAT / COMPLETION (simple branch)
     # ------------------------------------------------------------------
 
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.COMPLETION])
     def test_chat_mode_no_files_user_message(self, mode):
         """When file_extra_config is falsy or app_record is None → plain UserPromptMessage."""
         conv = _make_conversation(mode)
@@ -304,7 +304,7 @@ class TestBuildPromptMessageWithFiles:
         assert isinstance(result, UserPromptMessage)
         assert result.content == "hello"
 
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.COMPLETION])
     def test_chat_mode_no_files_assistant_message(self, mode):
         """Plain AssistantPromptMessage when no files and is_user_message=False."""
         conv = _make_conversation(mode)
@@ -325,7 +325,7 @@ class TestBuildPromptMessageWithFiles:
         assert isinstance(result, AssistantPromptMessage)
         assert result.content == "ai reply"
 
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.COMPLETION])
     def test_chat_mode_with_files_user_message(self, mode):
         """When files are present, returns UserPromptMessage with list content."""
         conv = _make_conversation(mode)
@@ -412,7 +412,7 @@ class TestBuildPromptMessageWithFiles:
         mock_build.assert_called_once()
         assert "config" not in mock_build.call_args.kwargs
 
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.COMPLETION])
     def test_chat_mode_with_files_assistant_message(self, mode):
         """When files are present, returns AssistantPromptMessage with list content."""
         conv = _make_conversation(mode)
@@ -452,7 +452,7 @@ class TestBuildPromptMessageWithFiles:
         assert isinstance(result, AssistantPromptMessage)
         assert isinstance(result.content, list)
 
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.COMPLETION])
     def test_chat_mode_with_files_image_detail_overridden(self, mode):
         """When image_config.detail is set, detail is taken from config."""
         conv = _make_conversation(mode)
@@ -496,7 +496,7 @@ class TestBuildPromptMessageWithFiles:
                 mock_to_prompt.call_args[0][0], image_detail_config=ImagePromptMessageContent.DETAIL.LOW
             )
 
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT, AppMode.COMPLETION])
     def test_chat_mode_app_record_none_returns_empty_file_objs(self, mode):
         """app_record=None path → file_objs stays empty → plain messages."""
         conv = _make_conversation(mode)
