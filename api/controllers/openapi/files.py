@@ -15,7 +15,7 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._errors import FilenameNotExists
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -45,6 +45,9 @@ class AppFileUploadApi(Resource):
         }
     )
     @endpoint(
+        op="console_app.file.upload",
+        kind=Kind.OBJECT,
+        summary="Upload a file and get a file id for later runs",
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),

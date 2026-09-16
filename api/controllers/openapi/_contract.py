@@ -23,8 +23,10 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.auth.spec import EndpointSpec, Kind
 from enums import DeploymentEdition
+
+__all__ = ["Kind", "accepts", "endpoint", "returns"]
 
 
 def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
@@ -102,11 +104,16 @@ def _normalize_returns(returns: ReturnSpec | Sequence[ReturnSpec] | None) -> tup
 
 def endpoint(
     *,
+    op: str,
+    kind: Kind,
+    summary: str,
     requirements: Sequence[Requirement] = (),
     query: type[BaseModel] | None = None,
     body: type[BaseModel] | None = None,
     returns: ReturnSpec | Sequence[ReturnSpec] | None = None,
     edition: frozenset[DeploymentEdition] | None = None,
+    internal: bool = False,
+    deprecated: bool = False,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
     serialisation — auth, then ``accepts``, then ``returns``. Exposes
@@ -118,12 +125,26 @@ def endpoint(
     order and gets the identical nesting back — first entry outermost, last entry
     closest to the handler — including the N-times ``"default"`` error registration
     that stacking N ``@returns`` already produces.
+
+    ``op``/``kind``/``summary`` feed the catalog (see ``_catalog.py``); ``internal``
+    hides the op from the CLI's default listing; ``deprecated`` marks it as kept
+    for compatibility only.
     """
     requirements = tuple(requirements)
     for requirement in requirements:
         if not isinstance(requirement, Requirement):
             raise TypeError(f"requirements must be instances of Requirement, not {requirement!r}")
-    spec = EndpointSpec(requirements=requirements, edition=edition)
+    spec = EndpointSpec(
+        requirements=requirements,
+        edition=edition,
+        op=op,
+        kind=kind,
+        summary=summary.strip(),
+        query=query,
+        body=body,
+        internal=internal,
+        deprecated=deprecated,
+    )
     return_specs = _normalize_returns(returns)
 
     def decorator(view: Callable[..., Any]) -> Callable[..., Any]:

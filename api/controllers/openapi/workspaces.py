@@ -21,7 +21,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from configs import dify_config
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi._models import (
     MemberActionResponse,
@@ -88,6 +88,9 @@ def _check_member_invite_quota(tenant_id: str) -> None:
 @openapi_ns.route("/workspaces")
 class WorkspacesApi(Resource):
     @endpoint(
+        op="workspace.list",
+        kind=Kind.LIST,
+        summary="List workspaces of the current account",
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
         returns=(200, WorkspaceListResponse, "Workspace list"),
     )
@@ -100,6 +103,9 @@ class WorkspacesApi(Resource):
 @openapi_ns.route("/workspaces/<string:workspace_id>")
 class WorkspaceByIdApi(Resource):
     @endpoint(
+        op="workspace.get",
+        kind=Kind.OBJECT,
+        summary="Workspace detail",
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
         returns=(200, WorkspaceDetailResponse, "Workspace detail"),
     )
@@ -122,6 +128,10 @@ class WorkspaceSwitchApi(Resource):
     """
 
     @endpoint(
+        op="workspace.switch",
+        kind=Kind.OBJECT,
+        summary="Server-side current workspace switch (shared with the web console)",
+        internal=True,
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),
@@ -151,6 +161,9 @@ class WorkspaceMembersApi(Resource):
     """
 
     @endpoint(
+        op="workspace.members.list",
+        kind=Kind.LIST,
+        summary="List workspace members",
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_READ),
@@ -172,6 +185,9 @@ class WorkspaceMembersApi(Resource):
         )
 
     @endpoint(
+        op="workspace.members.invite",
+        kind=Kind.OBJECT,
+        summary="Invite a member by email",
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
@@ -232,6 +248,9 @@ class WorkspaceMemberApi(Resource):
     """
 
     @endpoint(
+        op="workspace.members.remove",
+        kind=Kind.OBJECT,
+        summary="Remove a member",
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
@@ -258,6 +277,9 @@ class WorkspaceMemberApi(Resource):
         return MemberActionResponse()
 
     @endpoint(
+        op="workspace.members.set_role",
+        kind=Kind.OBJECT,
+        summary="Change a member's role",
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),

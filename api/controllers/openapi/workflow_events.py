@@ -20,7 +20,7 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -54,6 +54,9 @@ class WorkflowEventsQuery(BaseModel):
 class OpenApiWorkflowEventsApi(Resource):
     @openapi_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @endpoint(
+        op="run.events",
+        kind=Kind.SSE,
+        summary="Stream the events of a workflow run",
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),

@@ -13,7 +13,7 @@ from controllers.common.human_input import HumanInputFormSubmitPayload, stringif
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.common.schema import register_schema_models
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.context import Context
@@ -86,6 +86,9 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
+        op="run.form.get",
+        kind=Kind.OBJECT,
+        summary="Read a human-input form",
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),
@@ -111,6 +114,9 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>:submit")
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @endpoint(
+        op="run.form.submit",
+        kind=Kind.OBJECT,
+        summary="Submit a human-input form",
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),

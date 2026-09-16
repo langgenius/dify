@@ -13,7 +13,7 @@ from controllers.common.app_access import AppAccessFilter, resolve_app_access_fi
 from controllers.common.fields import Parameters
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
 from controllers.openapi._models import (
     SUPPORTED_APP_TYPES,
@@ -103,6 +103,9 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
 @openapi_ns.route("/apps/<string:app_id>")
 class AppDescribeApi(Resource):
     @endpoint(
+        op="console_app.describe",
+        kind=Kind.OBJECT,
+        summary="App detail, parameters and runtime input_schema",
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckAppApiEnabled(),
@@ -121,6 +124,9 @@ class AppDescribeApi(Resource):
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @endpoint(
+        op="console_app.list",
+        kind=Kind.LIST,
+        summary="List apps in a workspace",
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.APPS_READ),

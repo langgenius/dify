@@ -15,7 +15,7 @@ import libs.rate_limit as rate_limit_module
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.auth.spec import EndpointSpec, Kind
 from controllers.openapi.auth.subjects import AccountSubject
 from enums import DeploymentEdition
 from libs.oauth_bearer import (
@@ -61,7 +61,9 @@ def _guard(
     requirements: tuple[Requirement, ...] = (),
     edition: frozenset[DeploymentEdition] | None = None,
 ) -> Callable[..., object]:
-    return subject_router.guard(EndpointSpec(requirements=requirements, edition=edition))(view)
+    return subject_router.guard(
+        EndpointSpec(requirements=requirements, edition=edition, op="test.op", kind=Kind.OBJECT, summary="test")
+    )(view)
 
 
 def _nothing(**_kwargs: object) -> None:

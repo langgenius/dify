@@ -23,7 +23,7 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
-from controllers.openapi._contract import endpoint
+from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -154,6 +154,9 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, Session], Any]] = {
 @openapi_ns.route("/apps/<string:app_id>:run")
 class AppRunApi(Resource):
     @endpoint(
+        op="console_app.run",
+        kind=Kind.SSE,
+        summary="Run an app (chat, agent, completion, advanced-chat or workflow); streams events",
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),
@@ -196,6 +199,9 @@ class AppRunApi(Resource):
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
 class AppRunTaskStopApi(Resource):
     @endpoint(
+        op="run.stop",
+        kind=Kind.OBJECT,
+        summary="Stop a running task",
         requirements=(
             CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
             CheckAppApiEnabled(),
