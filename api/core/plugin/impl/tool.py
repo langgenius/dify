@@ -7,11 +7,20 @@ from configs import dify_config
 
 # from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import CredentialType, PluginBasicBooleanResponse, PluginToolProviderEntity
-from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.base import (
+    BasePluginClient,
+    keep_declaration_items_with_identity,
+    plugin_daemon_item_identity_hint,
+)
 from core.plugin.utils.chunk_merger import merge_blob_chunks
 from core.schemas.resolver import resolve_dify_schema_refs
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from models.provider_ids import GenericProviderID, ToolProviderID
+
+
+def _resolve_output_schema_refs(item: dict[str, Any]) -> None:
+    if item.get("output_schema"):
+        item["output_schema"] = resolve_dify_schema_refs(item["output_schema"])
 
 
 class PluginToolManager(BasePluginClient):
@@ -21,14 +30,24 @@ class PluginToolManager(BasePluginClient):
         """
 
         def transformer(json_response: dict[str, Any]):
-            for provider in json_response.get("data", []):
-                declaration = provider.get("declaration", {}) or {}
-                provider_name = declaration.get("identity", {}).get("name")
-                for tool in declaration.get("tools", []):
-                    tool["identity"]["provider"] = provider_name
-                    # resolve refs
-                    if tool.get("output_schema"):
-                        tool["output_schema"] = resolve_dify_schema_refs(tool["output_schema"])
+            providers = json_response.get("data")
+            if not isinstance(providers, list):
+                return json_response
+            for provider in providers:
+                if not isinstance(provider, dict):
+                    continue
+                declaration = provider.get("declaration")
+                if not isinstance(declaration, dict):
+                    continue
+                identity = declaration.get("identity")
+                provider_name = identity.get("name") if isinstance(identity, dict) else None
+                declaration["tools"] = keep_declaration_items_with_identity(
+                    declaration.get("tools"),
+                    provider_name,
+                    item_kind="tool",
+                    provider_hint=plugin_daemon_item_identity_hint(provider),
+                    mutate_item=_resolve_output_schema_refs,
+                )
 
             return json_response
 
