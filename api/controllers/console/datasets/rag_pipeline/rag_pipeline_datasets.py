@@ -25,7 +25,6 @@ from services.dataset_service import DatasetPermissionService, DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
-
 DEFAULT_RAG_PIPELINE_DATASET_ICON = IconInfo(
     icon="📙",
     icon_background="#FFF4ED",

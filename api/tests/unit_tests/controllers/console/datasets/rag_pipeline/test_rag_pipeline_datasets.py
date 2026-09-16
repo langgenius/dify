@@ -64,7 +64,6 @@ class TestCreateRagPipelineDatasetApi:
             "error": "",
         }
 
-
     def test_post_uses_provided_icon_info(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
