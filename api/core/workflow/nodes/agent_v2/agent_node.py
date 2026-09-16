@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Generator, Mapping, Sequence
+from functools import singledispatchmethod
 from typing import TYPE_CHECKING, Any, override
 
 from agenton.compositor import CompositorSessionSnapshot
@@ -25,18 +26,20 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.workflow.nodes.agent.events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.graph_events import NodeRunPauseRequestedEvent
+from graphon.graph_events import GraphNodeEventBase, NodeRunPauseRequestedEvent
 from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
+from .agent_log_translator import AgentBackendLogTranslator
 from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
 from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
@@ -116,6 +119,30 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     @override
     def populate_start_event(self, event) -> None:
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
+
+    @override
+    @singledispatchmethod
+    def _dispatch(  # pyrefly: ignore[missing-override-decorator]
+        self, event: NodeEventBase
+    ) -> GraphNodeEventBase:
+        return super()._dispatch(event)
+
+    @_dispatch.register
+    def _dispatch_agent_log(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
+        """Reuse the legacy Agent node's graph event so the pipeline emits ``agent_log`` SSE."""
+        return NodeRunAgentLogEvent(
+            id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            message_id=event.message_id,
+            label=event.label,
+            node_execution_id=event.node_execution_id,
+            parent_id=event.parent_id,
+            error=event.error,
+            status=event.status,
+            data=event.data,
+            metadata=event.metadata,
+        )
 
     @staticmethod
     def _to_graph_pause_reason(reason: HumanInputRequired | SchedulingPause) -> HitlRequired | SchedulingPause:
@@ -333,7 +360,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "status": create_response.status,
             }
 
-            terminal_event, exhausted = self._consume_event_stream(
+            terminal_event, exhausted = yield from self._consume_event_stream(
                 create_response.run_id,
                 inputs=inputs,
                 process_data=process_data,
@@ -508,11 +535,19 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-    ) -> tuple[
-        _TerminalAgentBackendEvent | None,
-        StreamCompletedEvent | None,
+    ) -> Generator[
+        AgentLogEvent,
+        None,
+        tuple[
+            _TerminalAgentBackendEvent | None,
+            StreamCompletedEvent | None,
+        ],
     ]:
         """Consume the SSE stream for one Agent backend run.
+
+        Yields an ``AgentLogEvent`` for every intermediate step the backend
+        reports (tool call, tool result, reasoning part) so workflow and chatflow
+        consumers see the agent's execution live instead of only the final answer.
 
         Returns a 2-tuple ``(terminal_event, transport_failure)``:
         - ``terminal_event``: the first non-stream/non-started internal event,
@@ -524,6 +559,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         """
         stream_event_count = 0
         last_event_id: str | None = None
+        log_translator = AgentBackendLogTranslator(
+            node_id=self._node_id,
+            node_execution_id=self.execution_id,
+            run_id=run_id,
+        )
         try:
             for public_event in self._agent_backend_client.stream_events(
                 run_id,
@@ -538,6 +578,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
+                            yield from log_translator.translate(
+                                internal_event.data,
+                                event_kind=internal_event.event_kind,
+                            )
                         continue
                     if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
                         if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
