@@ -39,7 +39,7 @@ const FeatureCard = ({
         {icon}
         <div className="flex grow items-center system-sm-semibold text-text-secondary">
           <span id={titleId}>{title}</span>
-          {tooltip && (
+          {!!tooltip && (
             <Infotip
               aria-label={typeof tooltip === 'string' ? tooltip : String(title)}
               className="ml-0.5 size-3.5"
