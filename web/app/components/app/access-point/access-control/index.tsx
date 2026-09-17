@@ -1,15 +1,16 @@
 'use client'
 
+import type { ComponentProps } from 'react'
 import type { AccessControlAssignment } from './chip-status'
 import type { AccessControlDraft } from './draft'
+import type AppIcon from '@/app/components/base/app-icon'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   pricingQueryParamName,
   pricingQueryParser,
@@ -19,8 +20,10 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
-import { deploymentEditionAtom } from '@/features/system-features/state'
+import {
+  canManageNetworkAccessPoliciesAtom,
+  canReadNetworkAccessAtom,
+} from '@/features/network-access/permissions'
 import { consoleQuery } from '@/service/console'
 import { AccessControlChipAffix } from './chip-affix'
 import { getAccessControlChipState } from './chip-status'
@@ -31,26 +34,39 @@ import { AccessControlFreePaywall } from './free-paywall'
 import {
   accessPointsFromScopes,
   draftFromBinding,
+  getAvailableAccessPoints,
   getNetworkAccessErrorStatus,
-  scopesFromAccessPoints,
 } from './network-access'
 import { AccessControlStatusPanel } from './status-panel'
 
+export type AccessControlAppIcon = Pick<
+  ComponentProps<typeof AppIcon>,
+  'iconType' | 'icon' | 'background' | 'imageUrl'
+>
+
+type AccessControlEntryProps = {
+  appId: string
+  appIcon: AccessControlAppIcon
+  canEditBinding: boolean
+}
+
 type GtagHandler = (command: 'event', action: 'click_upgrade_btn', payload: { loc: string }) => void
 
-export function AccessControlEntry() {
+export function AccessControlEntry(props: AccessControlEntryProps) {
+  return <AccessControlSession key={`${props.appId}:${props.canEditBinding}`} {...props} />
+}
+
+function AccessControlSession({ appId, appIcon, canEditBinding }: AccessControlEntryProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const isManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const canRead = useAtomValue(canReadNetworkAccessAtom)
+  const canManagePolicies = useAtomValue(canManageNetworkAccessPoliciesAtom)
   const [_pricing, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const [_settingsDestination, setSettingsDestination] = useQueryState(
     settingsQueryParamName,
     settingsQueryParser,
   )
-  const appInfo = useAppStore((state) => state.appDetail)
-  const appId = appInfo?.id
-  const canFetchNetworkAccess = deploymentEdition === 'CLOUD' && isManager
+  const canFetchNetworkAccess = canRead && Boolean(appId)
   const groupsQuery = useQuery(
     consoleQuery.workspaces.current.networkAccessGroups.get.queryOptions({
       enabled: canFetchNetworkAccess,
@@ -59,7 +75,7 @@ export function AccessControlEntry() {
   )
   const bindingQuery = useQuery(
     consoleQuery.apps.byAppId.networkAccessGroup.get.queryOptions({
-      input: appId ? { params: { app_id: appId } } : skipToken,
+      input: { params: { app_id: appId } },
       context: { silent: true },
       retry: false,
       enabled: canFetchNetworkAccess && Boolean(appId),
@@ -83,44 +99,49 @@ export function AccessControlEntry() {
     Boolean(appId) &&
     (bindingErrorStatus === 400 || bindingErrorStatus === 403 || bindingErrorStatus === 404)
 
-  if (deploymentEdition !== 'CLOUD' || !isManager) return null
+  if (!canFetchNetworkAccess) return null
   if (hideForUnsupportedApp) return null
-  if (groupsQuery.isPending || (appId && bindingQuery.isPending)) return null
+  if (groupsQuery.isPending || bindingQuery.isPending) return null
+  if (groupsQuery.isError || bindingQuery.isError || !groupsQuery.data || !bindingQuery.data)
+    return null
+  if (!Array.isArray(bindingQuery.data.available_access_points)) return null
+  const availableAccessPoints = getAvailableAccessPoints(bindingQuery.data.available_access_points)
+  if (!availableAccessPoints.length) return null
 
   const label = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
-  const groups = groupsQuery.data?.groups ?? []
-  const binding = bindingQuery.data?.binding
+  const groups = groupsQuery.data.groups
+  const binding = bindingQuery.data.binding
   const policies = groups.map((group) => ({
     id: group.id,
     name: group.name,
     allowed_cidrs: group.allowed_cidrs,
   }))
-  const baseline = draftFromBinding(binding)
-  const resolvedDraft = draft ?? baseline
+  const baseline = draftFromBinding(binding, availableAccessPoints)
+  const entitled = bindingQuery.data.entitled
+  const canMutate = canRead && canEditBinding && entitled
+  const resolvedDraft = canMutate ? (draft ?? baseline) : baseline
   const assignment: AccessControlAssignment | null = binding?.group_id
     ? {
         policyId: binding.group_id,
         policyName: groups.find((group) => group.id === binding.group_id)?.name ?? binding.group_id,
-        scopes: scopesFromAccessPoints(binding.access_points),
+        scopes: baseline.scopes,
         enabled: binding.enabled,
       }
     : null
-  const entitled = bindingQuery.data?.entitled ?? groupsQuery.data?.entitled
-  const canMutate = entitled === true
-  const dirty = !isAccessControlDraftEqual(resolvedDraft, baseline)
+  const dirty = !isAccessControlDraftEqual(resolvedDraft, baseline, availableAccessPoints)
   const persistableAccessPoints = accessPointsFromScopes(
     resolvedDraft.scopes,
-    bindingQuery.data?.available_access_points,
+    availableAccessPoints,
   )
   const canSave = canSaveAccessControl({
     draft: resolvedDraft,
     baseline,
-    persistableAccessPoints,
+    availableAccessPoints,
   })
-  const chip = getAccessControlChipState({ entitled, assignment })
+  const chip = getAccessControlChipState({ entitled, assignment, availableAccessPoints })
   const showPaywall = chip.kind === 'pro'
-  const showDowngrade = Boolean(assignment) && !canMutate
-  const showStatus = Boolean(assignment) && canMutate && view === 'status'
+  const showDowngrade = Boolean(assignment) && !entitled
+  const showStatus = Boolean(assignment) && entitled && (!canMutate || view === 'status')
 
   const tooltip =
     chip.kind === 'pro'
@@ -170,6 +191,7 @@ export function AccessControlEntry() {
   }
 
   const handleCreatePolicy = () => {
+    if (!canMutate || !canManagePolicies) return
     setOpen(false)
     setCreatePolicyOpen(true)
   }
@@ -197,7 +219,7 @@ export function AccessControlEntry() {
     },
     onSuccess?: () => void,
   ) => {
-    if (!appId) return
+    if (!canMutate) return
 
     updateBinding.mutate(
       {
@@ -287,17 +309,23 @@ export function AccessControlEntry() {
             {showPaywall ? (
               <AccessControlFreePaywall onTurnOn={handleTurnOn} />
             ) : showDowngrade && assignment ? (
-              <AccessControlDowngradePanel assignment={assignment} onTurnOn={handleTurnOn} />
+              <AccessControlDowngradePanel
+                assignment={assignment}
+                appIcon={appIcon}
+                availableAccessPoints={availableAccessPoints}
+                onTurnOn={handleTurnOn}
+              />
             ) : showStatus && assignment ? (
               <AccessControlStatusPanel
                 draft={resolvedDraft}
+                appIcon={appIcon}
+                availableAccessPoints={availableAccessPoints}
                 policies={policies}
                 enabled={resolvedDraft.enabled}
                 updating={updateBinding.isPending}
                 dirty={dirty}
                 canSave={canSave}
                 readOnly={!canMutate}
-                onUpgrade={handleTurnOn}
                 onEnabledChange={handleEnabledChange}
                 onCancel={handleCancel}
                 onSave={handleSave}
@@ -311,8 +339,11 @@ export function AccessControlEntry() {
             ) : (
               <AccessControlConfigPanel
                 draft={resolvedDraft}
+                appIcon={appIcon}
+                availableAccessPoints={availableAccessPoints}
                 policies={policies}
-                persistableAccessPoints={persistableAccessPoints}
+                readOnly={!canMutate}
+                canManagePolicies={canManagePolicies}
                 baseline={baseline}
                 showBack={showBack}
                 saving={updateBinding.isPending}
@@ -320,7 +351,9 @@ export function AccessControlEntry() {
                 onCancel={handleCancel}
                 onCreatePolicy={handleCreatePolicy}
                 onManagePolicies={handleManagePolicies}
-                onDraftChange={setDraft}
+                onDraftChange={(nextDraft) => {
+                  if (canMutate) setDraft(nextDraft)
+                }}
                 onSave={handleSave}
               />
             )}
@@ -328,13 +361,14 @@ export function AccessControlEntry() {
         </Popover>
         <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
-      {createPolicyOpen && (
+      {createPolicyOpen && canMutate && canManagePolicies && (
         <IpPolicyDialog
           mode="create"
           open
           isPending={createGroup.isPending}
           onOpenChange={handlePolicyDialogOpenChange}
           onSubmit={(payload) => {
+            if (!canMutate || !canManagePolicies) return
             createGroup.mutate(
               {
                 body: {

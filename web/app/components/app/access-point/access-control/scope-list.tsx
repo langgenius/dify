@@ -1,12 +1,11 @@
 'use client'
 
 import type { AccessControlDraft } from './draft'
+import type { AccessControlAppIcon } from './index'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
-import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 
 const SCOPE_ICONS: Record<Exclude<AccessPoint, 'webApp'>, string> = {
@@ -17,12 +16,20 @@ const SCOPE_ICONS: Record<Exclude<AccessPoint, 'webApp'>, string> = {
 
 type AccessControlScopeListProps = {
   draft: AccessControlDraft
+  appIcon: AccessControlAppIcon
+  availableAccessPoints: readonly AccessPoint[]
+  readOnly?: boolean
   onDraftChange: (draft: AccessControlDraft) => void
 }
 
-export function AccessControlScopeList({ draft, onDraftChange }: AccessControlScopeListProps) {
+export function AccessControlScopeList({
+  draft,
+  appIcon,
+  availableAccessPoints,
+  readOnly = false,
+  onDraftChange,
+}: AccessControlScopeListProps) {
   const { t } = useTranslation()
-  const appInfo = useAppStore((state) => state.appDetail)
 
   const labels: Record<AccessPoint, string> = {
     webApp: t(($) => $['overview.appInfo.title'], { ns: 'appOverview' }),
@@ -33,7 +40,7 @@ export function AccessControlScopeList({ draft, onDraftChange }: AccessControlSc
 
   return (
     <div className="flex w-full flex-col gap-0.5">
-      {ACCESS_POINT_ORDER.map((scope) => {
+      {availableAccessPoints.map((scope) => {
         const label = labels[scope]
 
         return (
@@ -42,10 +49,7 @@ export function AccessControlScopeList({ draft, onDraftChange }: AccessControlSc
               <AppIcon
                 size="tiny"
                 decorative
-                iconType={appInfo?.icon_type}
-                icon={appInfo?.icon}
-                background={appInfo?.icon_background ?? undefined}
-                imageUrl={appInfo?.icon_url}
+                {...appIcon}
                 className="rounded-sm bg-util-colors-orange-orange-100"
               />
             ) : (
@@ -59,8 +63,10 @@ export function AccessControlScopeList({ draft, onDraftChange }: AccessControlSc
             <span className="min-w-0 flex-1 system-sm-medium text-text-secondary">{label}</span>
             <Switch
               checked={draft.scopes[scope]}
+              disabled={readOnly}
               aria-label={label}
               onCheckedChange={(checked) => {
+                if (readOnly) return
                 onDraftChange({
                   ...draft,
                   scopes: {

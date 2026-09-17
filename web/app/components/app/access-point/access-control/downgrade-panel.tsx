@@ -1,13 +1,12 @@
 'use client'
 
 import type { AccessControlAssignment } from './chip-status'
+import type { AccessControlAppIcon } from './index'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
-import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import { getInServiceCoverage } from './chip-status'
 
@@ -19,17 +18,20 @@ const SCOPE_ICONS: Record<Exclude<AccessPoint, 'webApp'>, string> = {
 
 type AccessControlDowngradePanelProps = {
   assignment: AccessControlAssignment
+  appIcon: AccessControlAppIcon
+  availableAccessPoints: readonly AccessPoint[]
   onTurnOn: () => void
 }
 
 export function AccessControlDowngradePanel({
   assignment,
+  appIcon,
+  availableAccessPoints,
   onTurnOn,
 }: AccessControlDowngradePanelProps) {
   const { t } = useTranslation()
-  const appInfo = useAppStore((state) => state.appDetail)
-  const coverage = getInServiceCoverage(assignment.scopes)
-  const protectedScopes = ACCESS_POINT_ORDER.filter((scope) => assignment.scopes[scope])
+  const coverage = getInServiceCoverage(assignment.scopes, availableAccessPoints)
+  const protectedScopes = availableAccessPoints.filter((scope) => assignment.scopes[scope])
   const title = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
   const turnOn = t(($) => $['studio.accessControl.turnOn'], { ns: 'deployments' })
   const pro = t(($) => $['studio.accessControl.proBadge'], { ns: 'deployments' })
@@ -64,10 +66,7 @@ export function AccessControlDowngradePanel({
                       key={scope}
                       size="tiny"
                       decorative
-                      iconType={appInfo?.icon_type}
-                      icon={appInfo?.icon}
-                      background={appInfo?.icon_background ?? undefined}
-                      imageUrl={appInfo?.icon_url}
+                      {...appIcon}
                       className="rounded-sm bg-util-colors-orange-orange-100"
                     />
                   ) : (

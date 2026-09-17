@@ -26,6 +26,8 @@ type AccessControlPolicyFieldProps = {
   policies: readonly AccessControlPolicy[]
   selectedPolicyId: string | null
   currentIp?: string
+  readOnly?: boolean
+  canManagePolicies: boolean
   onCreatePolicy: () => void
   onManagePolicies: () => void
   onSelectPolicy: (policyId: string) => void
@@ -35,6 +37,8 @@ export function AccessControlPolicyField({
   policies,
   selectedPolicyId,
   currentIp,
+  readOnly = false,
+  canManagePolicies,
   onCreatePolicy,
   onManagePolicies,
   onSelectPolicy,
@@ -56,9 +60,15 @@ export function AccessControlPolicyField({
         <p className="w-full text-center system-sm-medium text-text-secondary">
           {t(($) => $['studio.accessControl.emptyPoliciesTitle'], { ns: 'deployments' })}
         </p>
-        <Button type="button" variant="secondary-accent" onClick={onCreatePolicy}>
-          {t(($) => $['studio.accessControl.createIpPolicy'], { ns: 'deployments' })}
-        </Button>
+        {canManagePolicies && !readOnly ? (
+          <Button type="button" variant="secondary-accent" onClick={onCreatePolicy}>
+            {t(($) => $['studio.accessControl.createIpPolicy'], { ns: 'deployments' })}
+          </Button>
+        ) : (
+          <Button type="button" variant="secondary" onClick={onManagePolicies}>
+            {t(($) => $['studio.accessControl.manageIpPolicies'], { ns: 'deployments' })}
+          </Button>
+        )}
       </div>
     )
   }
@@ -123,8 +133,11 @@ export function AccessControlPolicyField({
               type="button"
               role="option"
               aria-selected={false}
+              disabled={readOnly}
               className="flex h-8 w-full cursor-pointer items-center rounded-lg px-2 text-left system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              onClick={() => onSelectPolicy(policy.id)}
+              onClick={() => {
+                if (!readOnly) onSelectPolicy(policy.id)
+              }}
             >
               <span className="min-w-0 flex-1 truncate px-1">{policy.name}</span>
               <span className="shrink-0 system-xs-regular text-text-tertiary">
@@ -155,7 +168,9 @@ export function AccessControlPolicyField({
       <div className="flex w-full items-center gap-1">
         <Select
           value={selectedPolicyId}
+          disabled={readOnly}
           onValueChange={(value) => {
+            if (readOnly) return
             if (value === MANAGE_POLICIES_VALUE) {
               onManagePolicies()
               return

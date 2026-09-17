@@ -1,6 +1,8 @@
+import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 import {
   accessPointsFromScopes,
   draftFromBinding,
+  getAvailableAccessPoints,
   getNetworkAccessErrorStatus,
   scopesFromAccessPoints,
   toApiAccessPoint,
@@ -31,12 +33,15 @@ describe('network access mappers', () => {
 
   it('includes every selected access point in the PUT payload', () => {
     expect(
-      accessPointsFromScopes({
-        webApp: true,
-        serviceApi: true,
-        mcp: true,
-        trigger: true,
-      }),
+      accessPointsFromScopes(
+        {
+          webApp: true,
+          serviceApi: true,
+          mcp: true,
+          trigger: true,
+        },
+        ACCESS_POINT_ORDER,
+      ),
     ).toEqual(['webapp', 'service_api', 'mcp', 'trigger'])
   })
 
@@ -49,13 +54,13 @@ describe('network access mappers', () => {
           mcp: true,
           trigger: true,
         },
-        ['webapp', 'service_api', 'mcp'],
+        ['webApp', 'serviceApi', 'mcp'],
       ),
     ).toEqual(['webapp', 'service_api', 'mcp'])
   })
 
   it('creates an empty draft when the app has no binding', () => {
-    expect(draftFromBinding(null)).toEqual({
+    expect(draftFromBinding(null, ACCESS_POINT_ORDER)).toEqual({
       selectedPolicyId: null,
       enabled: true,
       scopes: {
@@ -69,17 +74,20 @@ describe('network access mappers', () => {
 
   it('hydrates a draft from a bound group', () => {
     expect(
-      draftFromBinding({
-        id: 'binding-1',
-        tenant_id: 'workspace-1',
-        app_id: 'app-1',
-        enabled: true,
-        group_id: 'group-1',
-        access_points: ['webapp', 'service_api'],
-        version: 3,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
-      }),
+      draftFromBinding(
+        {
+          id: 'binding-1',
+          tenant_id: 'workspace-1',
+          app_id: 'app-1',
+          enabled: true,
+          group_id: 'group-1',
+          access_points: ['webapp', 'service_api'],
+          version: 3,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+        ['webApp', 'serviceApi'],
+      ),
     ).toEqual({
       selectedPolicyId: 'group-1',
       enabled: true,
@@ -90,5 +98,21 @@ describe('network access mappers', () => {
         trigger: false,
       },
     })
+  })
+})
+
+describe('available scope mapping', () => {
+  it('orders supported access points independently of response order', () => {
+    expect(getAvailableAccessPoints(['mcp', 'webapp', 'service_api'])).toEqual([
+      'webApp',
+      'serviceApi',
+      'mcp',
+    ])
+  })
+  it('keeps an explicit empty capability list empty', () => {
+    expect(getAvailableAccessPoints([])).toEqual([])
+    expect(
+      accessPointsFromScopes({ webApp: true, serviceApi: true, mcp: true, trigger: true }, []),
+    ).toEqual([])
   })
 })

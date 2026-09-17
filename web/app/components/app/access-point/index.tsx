@@ -55,6 +55,7 @@ function AccessPointContent({
   showEnvironmentTabs,
 }: AccessPointContentProps) {
   const { t } = useTranslation()
+  const appInfo = useAppStore((state) => state.appDetail)
   const environments = useAtomValue(inUseAppEnvironmentsAtom)
   const [queryStates, setQueryStates] = useQueryStates(accessPointQueryStates)
   const { accessPoint: highlightedAccessPoint, environment } = queryStates
@@ -75,7 +76,16 @@ function AccessPointContent({
             <h1 id="access-point-title" className="title-xl-semi-bold text-text-primary">
               {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
             </h1>
-            <AccessControlEntry />
+            <AccessControlEntry
+              appId={appId}
+              appIcon={{
+                iconType: appInfo?.icon_type,
+                icon: appInfo?.icon,
+                background: appInfo?.icon_background,
+                imageUrl: appInfo?.icon_url,
+              }}
+              canEditBinding={canManageAccessPoint}
+            />
           </div>
           <p className="system-xs-regular text-text-tertiary">
             {t(($) => $['studio.accessPoint.description'], { ns: 'deployments' })}
