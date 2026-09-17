@@ -39,7 +39,13 @@ const shouldSkipDraftSync = (
   appId: string | undefined,
   isWorkflowDataLoaded: boolean,
   isSyncingWorkflowDraft: boolean,
-) => !appId || !isWorkflowDataLoaded || isSyncingWorkflowDraft || isAppDeletingOrDeleted(appId)
+  hasWorkflowDraftConflict: boolean,
+) =>
+  !appId ||
+  !isWorkflowDataLoaded ||
+  isSyncingWorkflowDraft ||
+  hasWorkflowDraftConflict ||
+  isAppDeletingOrDeleted(appId)
 
 const isEmptyGraph = (graph: { nodes: unknown[]; edges: unknown[] }) =>
   graph.nodes.length === 0 && graph.edges.length === 0
@@ -98,10 +104,19 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       syncWorkflowDraftHash,
       isWorkflowDataLoaded,
       isSyncingWorkflowDraft,
+      hasWorkflowDraftConflict,
       workflowDraftGeneration,
     } = workflowStore.getState()
 
-    if (!appId || shouldSkipDraftSync(appId, isWorkflowDataLoaded, isSyncingWorkflowDraft))
+    if (
+      !appId ||
+      shouldSkipDraftSync(
+        appId,
+        isWorkflowDataLoaded,
+        isSyncingWorkflowDraft,
+        hasWorkflowDraftConflict,
+      )
+    )
       return null
 
     const features = featuresStore!.getState().features
@@ -181,11 +196,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const performLocalSync = useCallback(
     async (
       baseParams: NonNullable<ReturnType<typeof getPostParams>>,
-      notRefreshWhenSyncError?: boolean,
       callback?: SyncDraftCallback,
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
-      if (getNodesReadOnly()) return null
+      if (getNodesReadOnly()) {
+        callback?.onSettled?.()
+        return null
+      }
       const isCurrent = () => {
         const state = workflowStore.getState()
         return (
@@ -195,6 +212,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
             state.appId,
             state.isWorkflowDataLoaded,
             state.isSyncingWorkflowDraft,
+            state.hasWorkflowDraftConflict,
           )
         )
       }
@@ -355,17 +373,29 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     ],
   )
 
-  const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
+  const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync)
   const doSyncWorkflowDraft = useCallback(
     async (
-      notRefreshWhenSyncError?: boolean,
+      _notRefreshWhenSyncError?: boolean,
       callback?: SyncDraftCallback,
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
-      if (getNodesReadOnly()) return null
-      const { appId, isWorkflowDataLoaded, isSyncingWorkflowDraft, workflowDraftGeneration } =
-        workflowStore.getState()
-      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded, isSyncingWorkflowDraft)) {
+      const {
+        appId,
+        isWorkflowDataLoaded,
+        isSyncingWorkflowDraft,
+        workflowDraftGeneration,
+        hasWorkflowDraftConflict,
+      } = workflowStore.getState()
+      if (
+        getNodesReadOnly() ||
+        shouldSkipDraftSync(
+          appId,
+          isWorkflowDataLoaded,
+          isSyncingWorkflowDraft,
+          hasWorkflowDraftConflict,
+        )
+      ) {
         callback?.onSettled?.()
         return null
       }
@@ -422,7 +452,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         setDraftUpdatedAt(result.updatedAt)
         callback?.onSuccess?.()
         return result
-      } catch {
+      } catch (error) {
         const state = workflowStore.getState()
         if (
           state.appId === appId &&
@@ -431,9 +461,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
             state.appId,
             state.isWorkflowDataLoaded,
             state.isSyncingWorkflowDraft,
+            state.hasWorkflowDraftConflict,
           )
-        )
+        ) {
+          if (error instanceof Error && error.message === 'draft_workflow_not_sync')
+            state.setWorkflowDraftConflict(true)
           callback?.onError?.()
+        }
         return null
       } finally {
         callback?.onSettled?.()
