@@ -58,7 +58,7 @@ const Operation: FC<Props> = ({
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        className="min-w-[120px]"
+        className="min-w-30"
         onClick={(e) => e.stopPropagation()}
       >
         <DropdownMenuItem

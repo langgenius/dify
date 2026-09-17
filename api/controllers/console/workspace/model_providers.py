@@ -7,12 +7,12 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
     model_validate,
@@ -260,7 +260,7 @@ class ModelProviderCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserCredentialId)
@@ -278,7 +278,7 @@ class ModelProviderCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_CREATE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserCredentialCreate)
@@ -302,7 +302,7 @@ class ModelProviderCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserCredentialUpdate)
@@ -327,7 +327,7 @@ class ModelProviderCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserCredentialDelete)
@@ -347,7 +347,7 @@ class ModelProviderCredentialSwitchApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_USE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserCredentialSwitch)
@@ -424,7 +424,7 @@ class PreferredProviderTypeUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_USE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserPreferredProviderType)

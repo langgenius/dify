@@ -178,10 +178,10 @@ def test_delete_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPa
     sqlite_session.flush()
     events: list[str] = []
     get_binding = MagicMock(return_value=_workspace_binding("conversation-binding-1"))
-    retire_binding = MagicMock(side_effect=lambda **_kwargs: events.append("retire") or "conversation-binding-1")
+    retire_conversation = MagicMock(side_effect=lambda **_kwargs: events.append("retire") or ["workspace-1"])
     monkeypatch.setattr(ConversationService, "get_conversation", MagicMock(return_value=conversation))
     monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
-    monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
+    monkeypatch.setattr(AgentWorkspaceService, "retire_all_for_conversation", retire_conversation)
     event.listen(sqlite_session, "after_commit", lambda _session: events.append("commit"))
     monkeypatch.setattr(
         conversation_service,
@@ -196,7 +196,7 @@ def test_delete_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPa
     assert events == ["retire", "commit", "enqueue"]
     assert conversation.is_deleted is True
     assert get_binding.call_args.kwargs["binding_id"] == "conversation-binding-1"
-    assert retire_binding.call_args.kwargs["binding_id"] == "conversation-binding-1"
+    assert retire_conversation.call_args.kwargs["conversation_id"] == conversation.id
     delete_related.assert_called_once_with(conversation.id)
 
 
@@ -219,7 +219,7 @@ def test_delete_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch,
         "get_active_binding",
         MagicMock(return_value=_workspace_binding("binding-1")),
     )
-    monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock(return_value="binding-1"))
+    monkeypatch.setattr(AgentWorkspaceService, "retire_all_for_conversation", MagicMock(return_value=["workspace-1"]))
     enqueue_collection = MagicMock()
     delete_related = MagicMock()
     monkeypatch.setattr(conversation_service, "enqueue_agent_resource_collection", enqueue_collection)

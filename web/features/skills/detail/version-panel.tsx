@@ -33,10 +33,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
 
 type VersionFilterValue = 'all' | 'onlyNamed'
@@ -122,7 +122,7 @@ function CurrentDraftItem({
       aria-current={isActive ? 'true' : undefined}
       onClick={onSelect}
       className={cn(
-        'flex w-full items-start gap-1 rounded-lg py-1 pr-[5px] pl-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'flex w-full items-start gap-1 rounded-lg py-1 pr-1.25 pl-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         isActive ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
       )}
     >
@@ -327,7 +327,7 @@ function VersionRow({
       <li className="group relative">
         <div
           className={cn(
-            'relative flex w-full items-start gap-1 rounded-lg py-1 pr-[5px] pl-2 text-left outline-hidden focus-within:ring-2 focus-within:ring-state-accent-solid',
+            'relative flex w-full items-start gap-1 rounded-lg py-1 pr-1.25 pl-2 text-left outline-hidden focus-within:ring-2 focus-within:ring-state-accent-solid',
             selected ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
           )}
         >
@@ -355,7 +355,7 @@ function VersionRow({
                 )}
               </span>
               {version.publish_note && (
-                <span className="block system-xs-regular break-words text-text-secondary">
+                <span className="block system-xs-regular wrap-break-word text-text-secondary">
                   {version.publish_note}
                 </span>
               )}
@@ -377,7 +377,7 @@ function VersionRow({
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[184px]">
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-46">
               <DropdownMenuItem onClick={() => setRestoreOpen(true)}>
                 {t(($) => $['skillManagement.detail.restoreVersion'])}
               </DropdownMenuItem>
@@ -403,7 +403,7 @@ function VersionRow({
         </div>
       </li>
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none p-0 text-left align-middle">
+        <DialogContent className="w-full max-w-120 overflow-hidden! border-none p-0 text-left align-middle">
           <DialogClose
             render={
               <IconButton
@@ -506,6 +506,7 @@ export function VersionPanel({
   const { t } = useTranslation('skill')
   const { t: tWorkflow } = useTranslation('workflow')
   const [filterValue, setFilterValue] = useState<VersionFilterValue>('all')
+  const titleId = useId()
   const filteredVersions = versions.filter((version) => {
     if (filterValue === 'onlyNamed') return !!version.version_name
 
@@ -513,10 +514,10 @@ export function VersionPanel({
   })
 
   return (
-    <aside className="flex w-67 shrink-0 flex-col py-1">
+    <section aria-labelledby={titleId} className="flex w-67 shrink-0 flex-col py-1">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-l-lg bg-components-panel-bg">
         <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
-          <h2 className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
+          <h2 id={titleId} className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
             {t(($) => $['skillManagement.detail.versions'])}
           </h2>
           <VersionFilter value={filterValue} onChange={setFilterValue} />
@@ -574,6 +575,6 @@ export function VersionPanel({
           </div>
         </div>
       </div>
-    </aside>
+    </section>
   )
 }

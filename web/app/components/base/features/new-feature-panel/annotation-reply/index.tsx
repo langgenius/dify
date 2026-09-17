@@ -43,6 +43,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
   )
 
   const {
+    isAnnotationQuotaUnavailable,
     handleEnableAnnotation,
     handleDisableAnnotation,
     isShowAnnotationConfigInit,
@@ -86,7 +87,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
         onChange={(state) => handleSwitch(state)}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
-        disabled={disabled}
+        disabled={disabled || (!annotationReply?.enabled && isAnnotationQuotaUnavailable)}
       >
         <>
           {!annotationReply?.enabled && (

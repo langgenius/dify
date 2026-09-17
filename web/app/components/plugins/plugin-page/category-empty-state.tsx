@@ -55,7 +55,6 @@ const CategoryEmptyState = ({
             components={{
               marketplace: (
                 <a
-                  aria-label={t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
                   className="system-xs-medium text-text-accent hover:underline"
                   href={`#${getCategoryMarketplaceId(category)}`}
                 >

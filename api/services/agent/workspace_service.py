@@ -105,6 +105,39 @@ class AgentWorkspaceService:
         )
 
     @classmethod
+    def resolve_active_binding_for_scope(
+        cls,
+        *,
+        session: Session,
+        scope: WorkspaceOwnerScope,
+        agent_id: str,
+    ) -> AgentWorkspaceBinding | None:
+        """Return the ACTIVE participant for a stable Workspace owner scope."""
+
+        return session.scalar(
+            select(AgentWorkspaceBinding)
+            .join(
+                AgentWorkspace,
+                (AgentWorkspace.tenant_id == AgentWorkspaceBinding.tenant_id)
+                & (AgentWorkspace.id == AgentWorkspaceBinding.workspace_id),
+            )
+            .where(
+                AgentWorkspaceBinding.tenant_id == scope.tenant_id,
+                AgentWorkspaceBinding.app_id == scope.app_id,
+                AgentWorkspaceBinding.agent_id == agent_id,
+                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+                AgentWorkspace.tenant_id == scope.tenant_id,
+                AgentWorkspace.app_id == scope.app_id,
+                AgentWorkspace.owner_type == scope.owner_type,
+                AgentWorkspace.owner_id == scope.owner_id,
+                AgentWorkspace.owner_scope_key == scope.owner_scope_key,
+                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
+            )
+            .order_by(AgentWorkspaceBinding.created_at.desc())
+            .limit(1)
+        )
+
+    @classmethod
     def create_binding(
         cls,
         *,
@@ -283,6 +316,37 @@ class AgentWorkspaceService:
             select(AgentWorkspace).where(
                 AgentWorkspace.tenant_id == tenant_id,
                 AgentWorkspace.app_id == app_id,
+                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
+            )
+        ).all()
+        retired: list[str] = []
+        for workspace in workspaces:
+            workspace_id = cls.retire_workspace(
+                session=session,
+                tenant_id=tenant_id,
+                workspace_id=workspace.id,
+            )
+            if workspace_id is not None:
+                retired.append(workspace_id)
+        return retired
+
+    @classmethod
+    def retire_all_for_conversation(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        conversation_id: str,
+    ) -> list[str]:
+        """Retire all ACTIVE conversation-owned Workspaces for one Chatflow conversation."""
+
+        workspaces = session.scalars(
+            select(AgentWorkspace).where(
+                AgentWorkspace.tenant_id == tenant_id,
+                AgentWorkspace.app_id == app_id,
+                AgentWorkspace.owner_type == AgentWorkspaceOwnerType.CONVERSATION,
+                AgentWorkspace.owner_id == conversation_id,
                 AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
             )
         ).all()

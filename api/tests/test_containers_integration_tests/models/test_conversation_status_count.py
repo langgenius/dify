@@ -1,5 +1,5 @@
 """
-Integration tests for Conversation.status_count and Site.generate_code model properties.
+Integration tests for Conversation.status_count_with_session and Site.generate_code.
 
 Migrated from unit_tests/models/test_app_models.py TestConversationStatusCount and
 test_site_generate_code, replacing db.session.scalars mocks with real PostgreSQL queries.
@@ -18,7 +18,7 @@ from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, Wor
 
 
 class TestConversationStatusCount:
-    """Integration tests for Conversation.status_count property."""
+    """Integration tests for Conversation.status_count_with_session."""
 
     @pytest.fixture(autouse=True)
     def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
@@ -130,7 +130,7 @@ class TestConversationStatusCount:
         app = self._create_app(db_session_with_containers, tenant_id, created_by)
         conversation = self._create_conversation(db_session_with_containers, app)
 
-        result = conversation.status_count
+        result = conversation.status_count_with_session(session=db_session_with_containers)
 
         assert result is None
 
@@ -145,7 +145,7 @@ class TestConversationStatusCount:
         conversation = self._create_conversation(db_session_with_containers, app)
         self._create_message(db_session_with_containers, app, conversation, workflow_run_id=None)
 
-        result = conversation.status_count
+        result = conversation.status_count_with_session(session=db_session_with_containers)
 
         assert result is None
 
@@ -162,7 +162,7 @@ class TestConversationStatusCount:
         )
         self._create_message(db_session_with_containers, app, conversation, workflow_run_id=run.id)
 
-        result = conversation.status_count
+        result = conversation.status_count_with_session(session=db_session_with_containers)
 
         assert result is not None
         assert result["success"] == 1
@@ -183,7 +183,7 @@ class TestConversationStatusCount:
         )
         self._create_message(db_session_with_containers, app, conversation, workflow_run_id=run.id)
 
-        result = conversation.status_count
+        result = conversation.status_count_with_session(session=db_session_with_containers)
 
         assert result is not None
         assert result["success"] == 0
@@ -204,7 +204,7 @@ class TestConversationStatusCount:
         )
         self._create_message(db_session_with_containers, app, conversation, workflow_run_id=run.id)
 
-        result = conversation.status_count
+        result = conversation.status_count_with_session(session=db_session_with_containers)
 
         assert result is not None
         assert result["success"] == 0
@@ -230,7 +230,7 @@ class TestConversationStatusCount:
             run = self._create_workflow_run(db_session_with_containers, app, workflow, status, created_by)
             self._create_message(db_session_with_containers, app, conversation, workflow_run_id=run.id)
 
-        result = conversation.status_count
+        result = conversation.status_count_with_session(session=db_session_with_containers)
 
         assert result is not None
         assert result["success"] == 1
@@ -255,7 +255,7 @@ class TestConversationStatusCount:
         # Message references that run but is in a conversation under app
         self._create_message(db_session_with_containers, app, conversation, workflow_run_id=other_run.id)
 
-        result = conversation.status_count
+        result = conversation.status_count_with_session(session=db_session_with_containers)
 
         # The run should be excluded because app_id filter doesn't match
         assert result is not None

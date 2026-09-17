@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from enums import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
@@ -18,6 +18,7 @@ from tasks.duplicate_document_indexing_task import (
     normal_duplicate_document_indexing_task,  # New normal task
     priority_duplicate_document_indexing_task,  # New priority task
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class TestDuplicateDocumentIndexingTasks:
@@ -45,7 +46,6 @@ class TestDuplicateDocumentIndexingTasks:
             # Setup mock indexing runner
             mock_runner_instance = mock_indexing_runner.return_value  # Setup mock feature service
             mock_features = MagicMock()
-            mock_features.billing.enabled = False
             mock_feature_service.get_features.return_value = mock_features
 
             # Setup mock index processor factory
@@ -214,7 +214,9 @@ class TestDuplicateDocumentIndexingTasks:
         return dataset, documents, segments
 
     def _create_test_dataset_with_billing_features(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, billing_enabled=True
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
     ):
         """
         Helper method to create a test dataset with billing features configured.
@@ -222,7 +224,6 @@ class TestDuplicateDocumentIndexingTasks:
         Args:
             db_session_with_containers: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
-            billing_enabled: Whether billing is enabled
 
         Returns:
             tuple: (dataset, documents) - Created dataset and document instances
@@ -292,11 +293,9 @@ class TestDuplicateDocumentIndexingTasks:
         db_session_with_containers.commit()
 
         # Configure billing features
-        mock_external_service_dependencies["features"].billing.enabled = billing_enabled
-        if billing_enabled:
-            mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.SANDBOX
-            mock_external_service_dependencies["features"].vector_space.limit = 100
-            mock_external_service_dependencies["features"].vector_space.size = 50
+        mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.SANDBOX
+        mock_external_service_dependencies["features"].vector_space.limit = 100
+        mock_external_service_dependencies["features"].vector_space.size = 50
 
         # Refresh dataset to ensure it's properly loaded
         db_session_with_containers.refresh(dataset)
@@ -517,7 +516,8 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data with billing enabled
         dataset, documents = self._create_test_dataset_with_billing_features(
-            db_session_with_containers, mock_external_service_dependencies, billing_enabled=True
+            db_session_with_containers,
+            mock_external_service_dependencies,
         )
 
         # Configure sandbox plan with batch limit
@@ -580,7 +580,8 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data with billing enabled
         dataset, documents = self._create_test_dataset_with_billing_features(
-            db_session_with_containers, mock_external_service_dependencies, billing_enabled=True
+            db_session_with_containers,
+            mock_external_service_dependencies,
         )
 
         # Configure TEAM plan with vector space limit exceeded
@@ -818,7 +819,8 @@ class TestDuplicateDocumentIndexingTasks:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-    def test_duplicate_document_indexing_with_billing_enabled_sandbox_plan(
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    def test_duplicate_document_indexing_with_cloud_sandbox_plan(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test duplicate document indexing with billing enabled and sandbox plan."""
@@ -826,6 +828,7 @@ class TestDuplicateDocumentIndexingTasks:
             db_session_with_containers, mock_external_service_dependencies
         )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_duplicate_document_indexing_with_billing_limit_exceeded(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):

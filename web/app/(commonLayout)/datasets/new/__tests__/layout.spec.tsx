@@ -2,14 +2,14 @@ import type { ReactElement, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 
 const mocks = vi.hoisted(() => ({
-  ensureSystemFeatures: vi.fn(),
+  getSystemFeatures: vi.fn(),
   redirect: vi.fn((_href: string) => {
     throw new Error('NEXT_REDIRECT')
   }),
 }))
 
 vi.mock('@/features/system-features/server', () => ({
-  ensureSystemFeatures: () => mocks.ensureSystemFeatures(),
+  getSystemFeatures: () => mocks.getSystemFeatures(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -25,19 +25,19 @@ async function renderLayout(children: ReactNode) {
 describe('NewKnowledgeLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.ensureSystemFeatures.mockResolvedValue({ knowledge_fs_enabled: true })
+    mocks.getSystemFeatures.mockResolvedValue({ knowledge_fs_enabled: true })
   })
 
   it('renders new knowledge routes when KnowledgeFS is enabled', async () => {
     await renderLayout(<div>New knowledge content</div>)
 
-    expect(mocks.ensureSystemFeatures).toHaveBeenCalledOnce()
+    expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
     expect(screen.getByText('New knowledge content')).toBeInTheDocument()
     expect(mocks.redirect).not.toHaveBeenCalled()
   })
 
   it('redirects to datasets when KnowledgeFS is disabled', async () => {
-    mocks.ensureSystemFeatures.mockResolvedValue({ knowledge_fs_enabled: false })
+    mocks.getSystemFeatures.mockResolvedValue({ knowledge_fs_enabled: false })
     const { default: Layout } = await import('../layout')
 
     await expect(Layout({ children: <div>New knowledge content</div> })).rejects.toThrow(
@@ -49,7 +49,7 @@ describe('NewKnowledgeLayout', () => {
 
   it('preserves System Features failures', async () => {
     const error = new Error('System Features unavailable')
-    mocks.ensureSystemFeatures.mockRejectedValue(error)
+    mocks.getSystemFeatures.mockRejectedValue(error)
     const { default: Layout } = await import('../layout')
 
     await expect(Layout({ children: <div>New knowledge content</div> })).rejects.toBe(error)

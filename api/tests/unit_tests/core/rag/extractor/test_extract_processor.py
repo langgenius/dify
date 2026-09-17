@@ -152,6 +152,21 @@ class TestExtractProcessorLoaders:
 
         assert text == content
 
+    def test_load_from_url_extracts_pdf_without_upload_file(self, monkeypatch: pytest.MonkeyPatch):
+        response = SimpleNamespace(headers={"Content-Type": "application/pdf"}, content=b"%PDF-1.1 body")
+        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
+        factory = _patch_all_extractors(monkeypatch)
+        apply_config_overrides(monkeypatch, ETL_TYPE="dify")
+
+        text = ExtractProcessor.load_from_url("https://example.com/report", return_text=True)
+
+        assert text == "extracted-by-PdfExtractor"
+        name, args, kwargs = factory.calls[-1]
+        assert name == "PdfExtractor"
+        # no upload_file for URL-loaded files: tenant/user context must be None
+        assert args[1] is None
+        assert args[2] is None
+
 
 class TestExtractProcessorFileRouting:
     @pytest.fixture(autouse=True)

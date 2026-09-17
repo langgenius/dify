@@ -231,13 +231,7 @@ function AppIconPickerContent({
           {t(($) => $['iconPicker.cancel'], { ns: 'app' })}
         </Button>
 
-        <Button
-          variant="primary"
-          className="w-full"
-          disabled={uploading}
-          loading={uploading}
-          onClick={handleSelect}
-        >
+        <Button variant="primary" className="w-full" loading={uploading} onClick={handleSelect}>
           {t(($) => $['iconPicker.ok'], { ns: 'app' })}
         </Button>
       </div>

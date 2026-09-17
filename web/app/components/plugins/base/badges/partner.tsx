@@ -1,3 +1,5 @@
+'use client'
+
 import type { FC } from 'react'
 import PartnerDark from '@/app/components/base/icons/src/public/plugins/PartnerDark'
 import PartnerLight from '@/app/components/base/icons/src/public/plugins/PartnerLight'

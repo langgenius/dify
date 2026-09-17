@@ -1,6 +1,6 @@
 import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { useQuery } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const selectTrialCredits = (creditPool: ModelProviderCreditsResponse) => {
   const modelBillingSource = creditPool.model_billing_source ?? 'legacy_message_credits'

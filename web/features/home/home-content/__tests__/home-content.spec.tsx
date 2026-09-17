@@ -219,7 +219,7 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mockTrackEvent,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     systemFeatures: () => Promise.resolve({}),
   },
@@ -546,6 +546,14 @@ type RenderOptions = {
 const localeInput = { query: { language: 'en-US' } }
 const homeTemplatesQueryKey = ['console', 'explore', 'apps', 'get', localeInput]
 const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput]
+const recommendedAppQueryKey = (appId: string) => [
+  'console',
+  'explore',
+  'apps',
+  'byAppId',
+  'get',
+  { params: { app_id: appId } },
+]
 
 const renderHomeContent = ({
   hasEditPermission = false,
@@ -913,6 +921,8 @@ describe('HomeContent', () => {
     })
 
     it('should keep selected category when clearing search text', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing', 'Translate'],
         allList: [
@@ -927,15 +937,9 @@ describe('HomeContent', () => {
 
       renderHomeContent({ searchParams: { category: 'Writing' } })
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'alp' } })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      await user.type(input, 'alp')
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
@@ -943,7 +947,9 @@ describe('HomeContent', () => {
   })
 
   describe('User Interactions', () => {
-    it('should filter apps by search keywords', async () => {
+    it('should filter local templates immediately as the user types', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [
@@ -953,12 +959,8 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      await user.type(input, 'gam')
 
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
       expect(screen.getByText('Gamma')).toBeInTheDocument()
@@ -1004,6 +1006,36 @@ describe('HomeContent', () => {
           templateId: 'app-1',
         })
       })
+    })
+
+    it('should reuse an invalidated cached template snapshot when creating an app', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockGetRecommendedApp.mockRejectedValue(new Error('should not fetch'))
+      mockHandleImportDSL.mockResolvedValue(undefined)
+      const { queryClient } = renderHomeContent({ hasEditPermission: true })
+      queryClient.setQueryData(recommendedAppQueryKey('app-1'), {
+        export_data: 'cached-yaml',
+        mode: AppModeEnum.CHAT,
+      })
+      await queryClient.invalidateQueries({
+        queryKey: recommendedAppQueryKey('app-1'),
+        exact: true,
+        refetchType: 'none',
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() => expect(mockHandleImportDSL).toHaveBeenCalledTimes(1))
+      expect(mockGetRecommendedApp).not.toHaveBeenCalled()
+      expect(mockHandleImportDSL).toHaveBeenCalledWith(
+        expect.objectContaining({ yaml_content: 'cached-yaml' }),
+        expect.any(Object),
+      )
     })
 
     it('should open create flow from learn dify item card click', async () => {
@@ -1341,6 +1373,8 @@ describe('HomeContent', () => {
 
   describe('Edge Cases', () => {
     it('should reset search results when clear icon is clicked', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [
@@ -1350,17 +1384,11 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      await user.type(input, 'gam')
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Gamma')).toBeInTheDocument()

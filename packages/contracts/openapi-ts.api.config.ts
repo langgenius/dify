@@ -40,7 +40,6 @@ type ApiSpec = {
 }
 
 type ApiJob = {
-  clean?: boolean
   document: SwaggerDocument
   outputPath: string
   plugins?: UserConfig['plugins']
@@ -527,7 +526,6 @@ const writeConsoleRouterContract = (segments: string[]) => {
 
 const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
   return {
-    clean: false,
     document,
     outputPath: 'generated/api/console',
     plugins: [],
@@ -587,7 +585,7 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     file: false,
   },
   output: {
-    ...(job.clean === undefined ? {} : { clean: job.clean }),
+    clean: false,
     entryFile: false,
     fileName: {
       suffix: '.gen',

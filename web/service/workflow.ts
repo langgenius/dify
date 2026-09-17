@@ -13,8 +13,8 @@ import type {
   NodesDefaultConfigsResponse,
   VarInInspect,
 } from '@/types/workflow'
+import { consoleClient } from '@/service/console'
 import { get, post } from './base'
-import { consoleClient } from './client'
 import { getFlowPrefix } from './utils'
 
 export type WorkflowDraftFeaturesPayload = WorkflowFeaturesConfigPayload

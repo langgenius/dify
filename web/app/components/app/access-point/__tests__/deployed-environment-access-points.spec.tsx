@@ -1,4 +1,4 @@
-import type { AccessPoint } from '@/app/components/app/deploy/access-point'
+import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { screen, within } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import { DeployedEnvironmentAccessPoints } from '../deployed-environment-access-points'

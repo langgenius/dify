@@ -80,7 +80,7 @@ class WorkspaceService:
             return EffectiveCreditPool(
                 model_billing_source=model_billing.model_billing_source,
                 tokener_bootstrap_status=tokener_bootstrap_status,
-                plan=subscription_plan if billing_info["enabled"] else None,
+                plan=subscription_plan,
                 next_credit_reset_date=billing_info.get("next_credit_reset_date"),
             )
 
@@ -101,7 +101,7 @@ class WorkspaceService:
             return EffectiveCreditPool(
                 model_billing_source=model_billing.model_billing_source,
                 tokener_bootstrap_status=tokener_bootstrap_status,
-                plan=subscription_plan if billing_info["enabled"] else None,
+                plan=subscription_plan,
                 next_credit_reset_date=billing_info.get("next_credit_reset_date"),
             )
 
@@ -117,7 +117,7 @@ class WorkspaceService:
         return EffectiveCreditPool(
             model_billing_source=model_billing.model_billing_source,
             tokener_bootstrap_status=tokener_bootstrap_status,
-            plan=subscription_plan if billing_info["enabled"] else None,
+            plan=subscription_plan,
             pool_type=effective_pool_type,
             quota_limit=effective_pool.quota_limit,
             quota_used=effective_pool.quota_used,
@@ -187,7 +187,9 @@ class WorkspaceService:
         tenant_info["role"] = tenant_account_join.role
 
         feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
-        tenant_info["plan"] = feature.billing.subscription.plan if feature.billing.enabled else None
+        tenant_info["plan"] = (
+            feature.billing.subscription.plan if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD else None
+        )
         model_billing = ModelBillingProfileService.resolve(tenant.id, session=session)
         tenant_info["model_billing_source"] = model_billing.model_billing_source.value
         tenant_info["tokener_bootstrap_status"] = (
