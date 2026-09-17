@@ -11,14 +11,13 @@ from __future__ import annotations
 import json
 from collections.abc import Generator
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
-from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._hints import attach_stream_hints
@@ -53,7 +52,6 @@ class WorkflowEventsQuery(BaseModel):
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/events")
 class OpenApiWorkflowEventsApi(Resource):
-    @openapi_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @endpoint(
         op="run.events",
         kind=Kind.SSE,
@@ -66,9 +64,10 @@ class OpenApiWorkflowEventsApi(Resource):
             CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
             CheckAppAccess(),
         ),
+        query=WorkflowEventsQuery,
         returns=(200, EventStreamResponse, "SSE event stream"),
     )
-    def get(self, ctx: Context, app_id: str, task_id: str):
+    def get(self, ctx: Context, app_id: str, task_id: str, *, query: WorkflowEventsQuery):
         # The router's session closes as soon as this returns, so everything the SSE
         # body needs is read off `ctx` here and the generators below close over plain
         # values only.
@@ -124,8 +123,8 @@ class OpenApiWorkflowEventsApi(Resource):
             else:
                 generator = WorkflowAppGenerator()
 
-            include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
-            continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
+            include_state_snapshot = query.include_state_snapshot
+            continue_on_pause = query.continue_on_pause
             terminal_events: list[StreamEvent] | None = [] if continue_on_pause else None
 
             def _generate_stream_events():

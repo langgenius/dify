@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from flask import request
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
@@ -10,13 +9,12 @@ import services
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FileTooLargeError,
-    NoFileUploadedError,
-    TooManyFilesError,
     UnsupportedFileTypeError,
 )
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._errors import FilenameNotExists
+from controllers.openapi._models import FileUploadRequest
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -38,7 +36,7 @@ class AppFileUploadApi(Resource):
     @openapi_ns.doc(
         responses={
             201: "File uploaded successfully",
-            400: "Bad request — no file, multiple files, invalid filename, or blocked extension",
+            400: "Bad request — invalid filename or blocked extension",
             401: "Unauthorized — invalid or expired bearer token",
             413: "File too large",
             415: "Unsupported file type",
@@ -55,15 +53,11 @@ class AppFileUploadApi(Resource):
             CheckScope(Scope.APPS_RUN),
             CheckAppAccess(),
         ),
+        body=FileUploadRequest,
         returns=(201, FileResponse, "File uploaded"),
     )
-    def post(self, ctx: Context, app_id: str):
-        if "file" not in request.files:
-            raise NoFileUploadedError()
-        if len(request.files) > 1:
-            raise TooManyFilesError()
-
-        file = request.files["file"]
+    def post(self, ctx: Context, app_id: str, *, body: FileUploadRequest):
+        file = body.file
         if not file.mimetype:
             raise UnsupportedFileTypeError()
         if not file.filename:

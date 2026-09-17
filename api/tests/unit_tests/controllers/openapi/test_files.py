@@ -11,12 +11,18 @@ from controllers.common.errors import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
+from controllers.openapi import bp as openapi_bp
+from controllers.openapi._catalog import build_catalog
+from controllers.openapi._models import FileUploadRequest
+from controllers.openapi._multipart import body_from_request
 from controllers.openapi.files import AppFileUploadApi
 from libs.exception import BaseHTTPException
 from models import Account
 from services.errors.file import BlockedFileExtensionError as ServiceBlockedFileExtensionError
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
+
+UPLOAD_OP = "console_app.file.upload"
 
 
 def _caller() -> Account:
@@ -35,6 +41,13 @@ def _upload_result() -> SimpleNamespace:
     )
 
 
+def _body() -> FileUploadRequest:
+    """What `@accepts` hands the handler: the enclosing request context's multipart
+    body, parsed and validated exactly as the decorator does it.
+    """
+    return FileUploadRequest.model_validate(body_from_request())
+
+
 def _file_service(monkeypatch: pytest.MonkeyPatch) -> Mock:
     from controllers.openapi import files as module
 
@@ -51,11 +64,11 @@ def test_upload_uses_injected_file_service(app: Flask, monkeypatch: pytest.Monke
     with app.test_request_context(
         "/openapi/v1/apps/app-1/files",
         method="POST",
-        data={"file": (BytesIO(b"hello"), "note.txt", "text/plain")},
+        data={"files[file]": (BytesIO(b"hello"), "note.txt", "text/plain")},
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
-        result = api.post.__handler__(api, SimpleNamespace(caller=caller), app_id="app-1")
+        result = api.post.__handler__(api, SimpleNamespace(caller=caller), app_id="app-1", body=_body())
 
     assert result.id == "00000000-0000-0000-0000-000000000001"
     service.upload_file.assert_called_once_with(
@@ -101,12 +114,12 @@ def test_upload_preserves_specific_file_errors(
     with app.test_request_context(
         "/openapi/v1/apps/app-1/files",
         method="POST",
-        data={"file": (BytesIO(b"hello"), "note.txt", "text/plain")},
+        data={"files[file]": (BytesIO(b"hello"), "note.txt", "text/plain")},
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
         with pytest.raises(controller_error) as error_info:
-            api.post.__handler__(api, SimpleNamespace(caller=_caller()), app_id="app-1")
+            api.post.__handler__(api, SimpleNamespace(caller=_caller()), app_id="app-1", body=_body())
 
     assert error_info.value.code == status
     assert error_info.value.error_code == error_code
@@ -122,12 +135,23 @@ def test_upload_maps_other_value_errors_to_bad_request(app: Flask, monkeypatch: 
     with app.test_request_context(
         "/openapi/v1/apps/app-1/files",
         method="POST",
-        data={"file": (BytesIO(b"hello"), "../note.txt", "text/plain")},
+        data={"files[file]": (BytesIO(b"hello"), "../note.txt", "text/plain")},
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
         with pytest.raises(BadRequest) as error_info:
-            api.post.__handler__(api, SimpleNamespace(caller=_caller()), app_id="app-1")
+            api.post.__handler__(api, SimpleNamespace(caller=_caller()), app_id="app-1", body=_body())
 
     assert error_info.value.description == str(service_error)
     assert error_info.value.__cause__ is service_error
+
+
+def test_catalog_binds_the_upload_part_as_a_file() -> None:
+    """The route used to parse `request.files` by hand, so its catalog entry had an
+    empty bind table and no caller could work out what to send.
+    """
+    flask_app = Flask(__name__)
+    flask_app.register_blueprint(openapi_bp)
+    entry = build_catalog(flask_app)["ops"][UPLOAD_OP]
+    assert entry["bind"]["file"] == "file"
+    assert "file" in entry["input"]["required"]
