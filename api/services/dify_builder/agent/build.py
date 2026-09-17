@@ -7,6 +7,7 @@ rather than crashing the advance. build_nodes lives in the same module
 
 import logging
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from core.app.app_config.entities import ModelConfig
@@ -256,6 +257,31 @@ def _generation_error_text(result: dict[str, Any]) -> str:
     return "the generator returned no usable graph"
 
 
+def _diagnostic(**fields: Any) -> dict[str, Any]:
+    """One debug-log breadcrumb, stamped with the server's UTC time.
+
+    ``at`` is the correlation key: pod logs are lost on restart, but the exported
+    debug log keeps this timestamp so the surviving log window can be searched
+    around it (and matched to the same failure the server logged).
+    """
+    return {"at": datetime.now(UTC).isoformat(), **fields}
+
+
+def _generation_diagnostic(result: dict[str, Any], *, attempt: int) -> dict[str, Any]:
+    """Capture one failed generation attempt: the generator's structured errors
+    (``code`` / ``detail`` / ``node_id`` -- e.g. UNRESOLVED_REFERENCE on node2),
+    which is strictly more than the server-side log line carries."""
+    errors = result.get("errors")
+    errors = [e for e in errors if isinstance(e, dict)] if isinstance(errors, list) else []
+    return _diagnostic(
+        source="workflow-generator",
+        attempt=attempt,
+        message=_generation_error_text(result),
+        codes=[str(e.get("code")) for e in errors if e.get("code")],
+        errors=errors,
+    )
+
+
 def build_nodes(
     tenant_id: str,
     model_config: dict[str, Any],
@@ -275,9 +301,11 @@ def build_nodes(
                 current_graph=None,
             )
 
+        diagnostics: list[dict[str, Any]] = []
         result = _generate(base_instruction)
         graph = result.get("graph") or {}
         if result.get("error") or not graph.get("nodes"):
+            diagnostics.append(_generation_diagnostic(result, attempt=1))
             # The generator's own retry only covers invalid-JSON / bad-schema, NOT a
             # structurally-valid graph that fails topology validation (e.g. no 'end'
             # node). Retry ONCE with the specific error fed back as a corrective nudge.
@@ -285,6 +313,7 @@ def build_nodes(
             result = _generate(_terminal_retry_instruction(base_instruction, retry_error))
             graph = result.get("graph") or {}
         if result.get("error") or not graph.get("nodes"):
+            diagnostics.append(_generation_diagnostic(result, attempt=len(diagnostics) + 1))
             error = _generation_error_text(result)
             logger.warning(
                 "Dify Builder: build_nodes produced no graph for tenant %s (%d plan items): error=%s",
@@ -292,7 +321,7 @@ def build_nodes(
                 len(plan_items),
                 error,
             )
-            return BuildNodesResult(intents=[], error=error)
+            return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
         intents = graph_translate.to_intents(graph)
         # Ground node model blocks to the user-SELECTED model (resource confirmation),
         # falling back to the generation/session model when none was selected. The
@@ -305,8 +334,16 @@ def build_nodes(
             reason = rejected[0][1] if rejected else "no applicable node intents"
             error = f"the generated nodes were rejected by validation: {reason}"
             logger.warning("Dify Builder: build_nodes rejected all intents for tenant %s: %s", tenant_id, error)
-            return BuildNodesResult(intents=[], error=error)
-        return BuildNodesResult(intents=applicable)
+            diagnostics.append(
+                _diagnostic(
+                    source="build_nodes",
+                    message=error,
+                    rejected=[{"reason": str(r), "intent": str(i.op)} for i, r in rejected],
+                )
+            )
+            return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
+        # Retries that eventually succeeded still leave their breadcrumbs behind.
+        return BuildNodesResult(intents=applicable, diagnostics=diagnostics)
     except Exception as exc:  # any generation/translation failure -> honest empty build
         logger.exception(
             "Dify Builder: build_nodes generation failed for tenant %s (%d plan items); returning empty build",
@@ -315,7 +352,12 @@ def build_nodes(
         )
         # Surface the exception text (e.g. a provider error like credit_balance_exhausted)
         # so the user sees WHY, not a hardcoded 'couldn't build' message.
-        return BuildNodesResult(intents=[], error=str(exc).strip() or type(exc).__name__)
+        message = str(exc).strip() or type(exc).__name__
+        return BuildNodesResult(
+            intents=[],
+            error=message,
+            diagnostics=[_diagnostic(source="build_nodes", message=message, exception=type(exc).__name__)],
+        )
 
 
 def _ground(intents: list[MutationIntent], mc: ModelConfig, tenant_id: str, plan_items: list[str]) -> None:
