@@ -26,11 +26,11 @@ def test_notion_page_is_marked_bound_from_persisted_document(
     flask_app_with_containers: Flask,
     db_session_with_containers: Session,
 ) -> None:
-    tenant_id = str(uuid4())
+    tenant = Tenant(name="Workspace")
+    tenant_id = tenant.id
     dataset_id = str(uuid4())
     account = Account(name="Test User", email="user@example.com")
     account.id = str(uuid4())
-    tenant = Tenant(id=tenant_id, name="Workspace")
     dataset = Dataset(
         id=dataset_id,
         tenant_id=tenant_id,
