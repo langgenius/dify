@@ -111,7 +111,6 @@ jobs:
         run: vp test --merge-reports --coverage --silent=passed-only
 
       - name: Report coverage
-        if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           directory: web/coverage
@@ -157,7 +156,6 @@ jobs:
           retention-days: 7
 
       - name: Report coverage
-        if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           directory: packages/dify-ui/coverage
