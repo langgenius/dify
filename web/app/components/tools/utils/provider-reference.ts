@@ -16,8 +16,8 @@ export const getProviderReference = (provider: ProviderLike) => {
 }
 
 /**
- * Whether a persisted reference points at this provider. 
- * Use idOrServerIdentifier for backward compatibility. Previous id content could be non-deterministic, 
+ * Whether a persisted reference points at this provider.
+ * Use idOrServerIdentifier for backward compatibility. Previous id content could be non-deterministic,
  * we will support both primary key or server_identifier as reference
  */
 export const matchesProviderReference = (provider: ProviderLike, idOrServerIdentifier?: string) => {

@@ -82,7 +82,7 @@ def test_get_provider_by_server_identifier_not_found(service: MCPToolManageServi
         service.get_provider_by_server_identifier(server_identifier=SERVER_IDENTIFIER, tenant_id=TENANT_ID)
 
 
-def test_persisted_reference_prefers_server_identifier(service: MCPToolManageService, session: Mock) -> None:
+def test_persisted_reference_non_uuid_queries_identifier_only(service: MCPToolManageService, session: Mock) -> None:
     provider = _provider()
     session.scalar.return_value = provider
 
@@ -91,13 +91,28 @@ def test_persisted_reference_prefers_server_identifier(service: MCPToolManageSer
         is provider
     )
 
-    # A single query is enough: the primary-key fallback is never reached.
+    # A non-uuid reference can only be a server identifier, so the primary-key
+    # lookup is never attempted.
     assert session.scalar.call_count == 1
     assert "tool_mcp_providers.server_identifier = " in str(session.scalar.call_args.args[0].whereclause)
 
 
-def test_persisted_reference_falls_back_to_primary_key(service: MCPToolManageService, session: Mock) -> None:
+def test_persisted_reference_uuid_prefers_primary_key(service: MCPToolManageService, session: Mock) -> None:
     """Graphs written before the server-identifier convention still carry the primary key."""
+    provider = _provider()
+    session.scalar.return_value = provider
+
+    assert (
+        service.get_provider_by_persisted_reference(id_or_server_identifier=PROVIDER_UUID, tenant_id=TENANT_ID)
+        is provider
+    )
+
+    assert session.scalar.call_count == 1
+    assert "tool_mcp_providers.id = " in str(session.scalar.call_args.args[0].whereclause)
+
+
+def test_persisted_reference_uuid_falls_back_to_identifier(service: MCPToolManageService, session: Mock) -> None:
+    """A server identifier is free text, so it may itself look like a uuid."""
     provider = _provider()
     session.scalar.side_effect = [None, provider]
 
@@ -107,20 +122,20 @@ def test_persisted_reference_falls_back_to_primary_key(service: MCPToolManageSer
     )
 
     assert session.scalar.call_count == 2
-    assert "tool_mcp_providers.id = " in str(session.scalar.call_args.args[0].whereclause)
+    assert "tool_mcp_providers.server_identifier = " in str(session.scalar.call_args.args[0].whereclause)
 
 
 def test_persisted_reference_not_found(service: MCPToolManageService, session: Mock) -> None:
     session.scalar.return_value = None
 
-    # Neither lookup's own error describes an unresolvable reference, so the
-    # resolver reports "not found" for both shapes.
-    with pytest.raises(ValueError, match=f"MCP tool not found: {SERVER_IDENTIFIER}"):
+    # Never the primary-key lookup's "expected a valid UUID", which would
+    # misdescribe a legitimate reference.
+    with pytest.raises(ValueError, match="MCP tool not found"):
         service.get_provider_by_persisted_reference(id_or_server_identifier=SERVER_IDENTIFIER, tenant_id=TENANT_ID)
 
 
 def test_persisted_reference_uuid_not_found(service: MCPToolManageService, session: Mock) -> None:
     session.scalar.return_value = None
 
-    with pytest.raises(ValueError, match=f"MCP tool not found: {PROVIDER_UUID}"):
+    with pytest.raises(ValueError, match="MCP tool not found"):
         service.get_provider_by_persisted_reference(id_or_server_identifier=PROVIDER_UUID, tenant_id=TENANT_ID)
