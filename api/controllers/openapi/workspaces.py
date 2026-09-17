@@ -32,6 +32,7 @@ from controllers.openapi._models import (
     MemberResponse,
     MemberRoleUpdatePayload,
     WorkspaceDetailResponse,
+    WorkspaceListQuery,
     WorkspaceListResponse,
     WorkspaceSummaryResponse,
 )
@@ -92,12 +93,19 @@ class WorkspacesApi(Resource):
         kind=Kind.LIST,
         summary="List workspaces of the current account",
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
+        query=WorkspaceListQuery,
         returns=(200, WorkspaceListResponse, "Workspace list"),
     )
-    def get(self, ctx: Context):
+    def get(self, ctx: Context, *, query: WorkspaceListQuery):
         rows = TenantService.get_workspaces_for_account(str(ctx.subject.account_id), session=ctx.session)
-
-        return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows)))
+        items = list(starmap(_workspace_summary, rows))
+        start = (query.page - 1) * query.limit
+        return WorkspaceListResponse.build(
+            page=query.page,
+            limit=query.limit,
+            total=len(items),
+            items=items[start : start + query.limit],
+        )
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>")

@@ -71,6 +71,7 @@ from controllers.openapi._models import (
     UsageInfo,
     WorkflowRunData,
     WorkspaceDetailResponse,
+    WorkspaceListQuery,
     WorkspaceListResponse,
     WorkspacePayload,
     WorkspaceSummaryResponse,
@@ -96,6 +97,7 @@ register_schema_models(
     OpenApiFormSubmitPayload,
     PermittedExternalAppsListQuery,
     SessionListQuery,
+    WorkspaceListQuery,
 )
 register_response_schema_models(
     openapi_ns,
