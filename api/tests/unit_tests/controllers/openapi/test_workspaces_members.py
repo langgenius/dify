@@ -295,6 +295,22 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(
 
 
 # ---------------------------------------------------------------------------
+# Workspace list
+# ---------------------------------------------------------------------------
+
+
+def test_workspace_list_is_paginated_envelope(admitted_bearer: AdmittedWorld):
+    res = admitted_bearer.client.get("/openapi/v1/workspaces?page=1&limit=1", headers=admitted_bearer.headers)
+
+    assert res.status_code == 200
+    body = res.get_json()
+    assert {"page", "limit", "total", "has_more", "data"} <= set(body)
+    assert body["page"] == 1
+    assert body["limit"] == 1
+    assert body["data"][0]["id"] == admitted_bearer.workspace_id
+
+
+# ---------------------------------------------------------------------------
 # Members list
 # ---------------------------------------------------------------------------
 
