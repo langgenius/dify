@@ -91,7 +91,7 @@ function OverviewHeader() {
               value={value}
             >
               {value === '24h'
-                ? value
+                ? t(($) => $['overview.twentyFourHours'])
                 : value === '7d'
                   ? t(($) => $['overview.sevenDays'])
                   : t(($) => $['overview.thirtyDays'])}

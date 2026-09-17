@@ -495,7 +495,7 @@ function ActivityDrawer({
     ...rangeLabel,
     '30d': t(($) => $['overview.thirtyDays']),
     '7d': t(($) => $['overview.sevenDays']),
-    '90d': '90d',
+    '90d': t(($) => $['overview.ninetyDays']),
   }
   const operatorLabel =
     operator === 'all'
