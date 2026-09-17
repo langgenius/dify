@@ -1,10 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-from werkzeug.exceptions import NotFound
 
-from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError, QuotaExceededError
-from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.models.document import Document
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
 from services.knowledge.indexing.estimate import StoredSource
@@ -26,6 +23,7 @@ def execution() -> ExecutionFixture:
     ports.backend.extract.return_value = chunks
     ports.backend.transform.return_value = chunks
     ports.backend.count_tokens.return_value = [7, 11]
+    ports.backend.describe_error.side_effect = str
     ports.segments.resume_indexing.return_value = (chunks[1:], 18)
     service = DocumentIndexingService(
         documents=ports.documents,
@@ -116,24 +114,15 @@ def test_missing_document_is_skipped(execution: ExecutionFixture) -> None:
     ports.documents.fail_indexing.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    ("error", "message"),
-    [
-        (ProviderTokenNotInitError(), "Provider Token Not Init"),
-        (ProviderTokenNotInitError("configure an embedding provider"), "configure an embedding provider"),
-        (LLMBadRequestError("invalid model input"), "invalid model input"),
-        (QuotaExceededError(), "Quota Exceeded"),
-        (PluginDaemonClientSideError("plugin unavailable"), "plugin unavailable"),
-        (NotFound("source file missing"), "source file missing"),
-    ],
-)
-def test_indexing_preserves_provider_and_source_error_descriptions(
-    execution: ExecutionFixture, error: Exception, message: str
-) -> None:
+def test_indexing_persists_the_backend_error_description(execution: ExecutionFixture) -> None:
     service, ports, document, _ = execution
+    error = RuntimeError("backend details")
     ports.backend.extract.side_effect = error
+    ports.backend.describe_error.side_effect = None
+    ports.backend.describe_error.return_value = "source file missing"
 
     service.run([document.ref])
 
-    ports.documents.fail_indexing.assert_called_once_with(document.ref, message)
+    ports.backend.describe_error.assert_called_once_with(error)
+    ports.documents.fail_indexing.assert_called_once_with(document.ref, "source file missing")
     ports.documents.complete_indexing.assert_not_called()

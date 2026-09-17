@@ -5,9 +5,19 @@ from typing import cast
 
 from flask import Flask, current_app
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import HTTPException
 from werkzeug.local import LocalProxy
 
+from core.errors.error import (
+    AppInvokeQuotaExceededError,
+    InvokeRateLimitError,
+    LLMError,
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
 from core.model_manager import ModelManager
+from core.plugin.impl.exc import PluginDaemonError
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -47,6 +57,24 @@ class IndexingExecutionAdapter:
         self._documents = documents
         self._segments = segments
         self._sources = sources
+
+    def describe_error(self, error: Exception) -> str:
+        """Preserve provider and extractor descriptions without their transport prefixes."""
+        if isinstance(
+            error,
+            (
+                LLMError,
+                ProviderTokenNotInitError,
+                QuotaExceededError,
+                AppInvokeQuotaExceededError,
+                ModelCurrentlyNotSupportError,
+                InvokeRateLimitError,
+                PluginDaemonError,
+                HTTPException,
+            ),
+        ):
+            return str(error.description)
+        return str(error)
 
     def check_paused(self, ref: DocumentRef) -> None:
         if redis_client.get(f"document_{ref.document_id}_is_paused"):

@@ -7,7 +7,10 @@ import pytest
 from flask import Flask
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import NotFound
 
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError, QuotaExceededError
+from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import Document as IndexDocument
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentSegment
@@ -70,6 +73,44 @@ def test_extract_attaches_document_metadata_and_owns_local_session(backend: Back
         assert adapter.extract(job) == [text]
     sources.resolve_for_indexing.assert_called_once_with(job.source)
     assert text.metadata == {"dataset_id": "dataset-1", "document_id": "document-1"}
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (ProviderTokenNotInitError(), "Provider Token Not Init"),
+        (ProviderTokenNotInitError("configure an embedding provider"), "configure an embedding provider"),
+        (LLMBadRequestError("invalid model input"), "invalid model input"),
+        (QuotaExceededError(), "Quota Exceeded"),
+        (PluginDaemonClientSideError("plugin unavailable"), "plugin unavailable"),
+        (NotFound("source file missing"), "source file missing"),
+        (RuntimeError("index unavailable"), "index unavailable"),
+    ],
+)
+def test_indexing_preserves_provider_and_source_error_descriptions(
+    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], error: Exception, message: str
+) -> None:
+    adapter, documents, segments, sources, job, _ = backend
+    sources.resolve_for_indexing.side_effect = error
+    with sqlite_session_factory.begin() as session:
+        rule = DatasetProcessRule(
+            dataset_id=job.ref.dataset.dataset_id, mode=ProcessRuleMode.AUTOMATIC, rules="{}", created_by="account-1"
+        )
+        session.add(rule)
+        session.flush()
+        document = session.get(Document, job.ref.document_id)
+        assert document is not None
+        document.dataset_process_rule_id = rule.id
+
+    DocumentIndexingService(documents=documents, segments=segments, backend=adapter).run([job.ref])
+
+    sources.resolve_for_indexing.assert_called_once()
+    with sqlite_session_factory() as session:
+        document = session.get(Document, job.ref.document_id)
+        assert document is not None
+        assert document.indexing_status == IndexingStatus.ERROR
+        assert document.error == message
+        assert document.completed_at is None
 
 
 @pytest.mark.parametrize("provider", [None, "embedding-provider"])

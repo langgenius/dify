@@ -6,19 +6,8 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-from werkzeug.exceptions import HTTPException
-
 from core.credit_usage import CreditUsageCreatedBy
-from core.errors.error import (
-    AppInvokeQuotaExceededError,
-    InvokeRateLimitError,
-    LLMError,
-    ModelCurrentlyNotSupportError,
-    ProviderTokenNotInitError,
-    QuotaExceededError,
-)
 from core.model_context import with_credit_usage_created_by
-from core.plugin.impl.exc import PluginDaemonError
 from core.rag.models.document import Document
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
 from services.knowledge.indexing.estimate import StoredSource
@@ -64,6 +53,10 @@ class IndexingSegmentStore(Protocol):
 
 
 class IndexingBackend(Protocol):
+    def describe_error(self, error: Exception) -> str:
+        """Translate backend-specific exceptions into the persisted error message."""
+        ...
+
     def check_paused(self, ref: DocumentRef) -> None: ...
 
     def extract(self, document: IndexingDocument) -> list[Document]: ...
@@ -142,20 +135,4 @@ class DocumentIndexingService:
             logger.info("Document deleted during indexing: %s", ref)
         except Exception as error:
             logger.exception("Document indexing failed: %s", ref)
-            if isinstance(
-                error,
-                (
-                    LLMError,
-                    ProviderTokenNotInitError,
-                    QuotaExceededError,
-                    AppInvokeQuotaExceededError,
-                    ModelCurrentlyNotSupportError,
-                    InvokeRateLimitError,
-                    PluginDaemonError,
-                    HTTPException,
-                ),
-            ):
-                message = str(error.description)
-            else:
-                message = str(error)
-            self._documents.fail_indexing(ref, message)
+            self._documents.fail_indexing(ref, self._backend.describe_error(error))

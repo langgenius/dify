@@ -1,16 +1,25 @@
 """Integration coverage for Notion page bindings backed by persisted documents."""
 
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from flask import Flask
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.datasets.data_source import DataSourceNotionListApi, DataSourceNotionListQuery
-from models import Account
-from models.dataset import Document
+from machinery.context import RequestContext
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
+from services.data_source.credential_gateway import ActorDatasourceCredentialResolver
+from services.data_source.notion_import_adapters import PluginNotionSourceGateway
+from services.data_source.notion_import_application_service import NotionImportApplicationService
+from services.knowledge.dataset_access import DatasetAccessService
 
 
 def test_notion_page_is_marked_bound_from_persisted_document(
@@ -21,6 +30,22 @@ def test_notion_page_is_marked_bound_from_persisted_document(
     dataset_id = str(uuid4())
     account = Account(name="Test User", email="user@example.com")
     account.id = str(uuid4())
+    tenant = Tenant(id=tenant_id, name="Workspace")
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Notion dataset",
+        created_by=account.id,
+        data_source_type=DataSourceType.NOTION_IMPORT,
+    )
+    db_session_with_containers.add_all(
+        [
+            account,
+            tenant,
+            TenantAccountJoin(tenant_id=tenant_id, account_id=account.id, role=TenantAccountRole.OWNER, current=True),
+            dataset,
+        ]
+    )
     document = Document(
         tenant_id=tenant_id,
         dataset_id=dataset_id,
@@ -30,7 +55,7 @@ def test_notion_page_is_marked_bound_from_persisted_document(
         batch=f"batch-{uuid4()}",
         name="Notion Page",
         created_from=DocumentCreatedFrom.WEB,
-        created_by=str(uuid4()),
+        created_by=account.id,
         indexing_status=IndexingStatus.COMPLETED,
         enabled=True,
     )
@@ -62,28 +87,43 @@ def test_notion_page_is_marked_bound_from_persisted_document(
         datasource_provider_type=lambda: None,
     )
 
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    datasets = SQLAlchemyDatasetRepository(session_factory=sessions)
+    credentials = MagicMock(spec=ActorDatasourceCredentialResolver)
+    credentials.resolve.return_value = {"token": "token"}
+    notion_imports = NotionImportApplicationService(
+        dataset_access=DatasetAccessService(
+            datasets=datasets,
+            workspace_roles=WorkspaceMemberQueryRepository(session_factory=sessions),
+            legacy_permissions_enabled=True,
+        ),
+        datasets=datasets,
+        documents=SQLAlchemyDocumentRepository(session_factory=sessions),
+        source=PluginNotionSourceGateway(credentials=credentials, runtime_loader=MagicMock(return_value=runtime)),
+    )
+    context = RequestContext(
+        request_id="notion-binding-test", trace_id=None, account_id=account.id, active_workspace_id=tenant_id
+    )
+
     with (
         flask_app_with_containers.test_request_context(f"/?credential_id=c1&dataset_id={dataset_id}"),
         patch(
-            "controllers.console.datasets.data_source.DatasourceProviderService.get_datasource_credentials",
-            return_value={"token": "token"},
-        ),
-        patch(
-            "controllers.console.datasets.data_source.DatasetService.get_dataset",
-            return_value=MagicMock(data_source_type="notion_import"),
-        ),
-        patch(
-            "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
-            return_value=runtime,
+            "controllers.console.datasets.data_source.application_services",
+            return_value=SimpleNamespace(data_sources=SimpleNamespace(notion_imports=notion_imports)),
         ),
     ):
-        response, status = unwrap(DataSourceNotionListApi().get)(
+        response, status = unwrap(DataSourceNotionListApi.get)(
             DataSourceNotionListApi(),
             DataSourceNotionListQuery(credential_id="c1", dataset_id=dataset_id),
-            db_session_with_containers,
-            tenant_id,
-            account,
+            context,
         )
 
     assert status == 200
     assert response["notion_info"][0]["pages"][0]["is_bound"] is True
+    credentials.resolve.assert_called_once_with(
+        workspace_id=tenant_id,
+        actor_id=account.id,
+        credential_id="c1",
+        provider="notion_datasource",
+        plugin_id="langgenius/notion_datasource",
+    )

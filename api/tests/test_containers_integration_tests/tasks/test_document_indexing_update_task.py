@@ -9,6 +9,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from services.knowledge.resource_scope import DatasetRef
 from tasks.document_indexing_update_task import document_indexing_update_task
 
 
@@ -140,19 +141,16 @@ class TestDocumentIndexingUpdateTask:
         assert clean_call is not None
         args, kwargs = clean_call
         # args[0] is a Dataset instance (from another session), so validate by id.
-        assert getattr(args[0], "id", None) == dataset.id
+        assert args[0].id == dataset.id
         # args[1] should contain our node_ids.
         assert set(args[1]) == set(node_ids)
         assert kwargs.get("with_keywords") is True
         assert kwargs.get("delete_child_chunks") is True
 
-        # Assert indexing runner invoked with the updated document
-        run_call = mock_external_dependencies["runner_instance"].run.call_args
-        assert run_call is not None
-        run_docs = run_call[0][0]
-        assert len(run_docs) == 1
-        first = run_docs[0]
-        assert getattr(first, "id", None) == document.id
+        # Reindexing receives the detached reference with its complete ownership chain.
+        mock_external_dependencies["runner_instance"].run.assert_called_once_with(
+            [DatasetRef(dataset.tenant_id, dataset.id).document(document.id)]
+        )
 
     def test_clean_error_is_logged_and_indexing_continues(
         self, db_session_with_containers: Session, mock_external_dependencies
