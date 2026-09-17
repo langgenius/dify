@@ -91,6 +91,7 @@
   "table.header.updatedTime": "อัพเดทเวลา",
   "table.header.user": "ผู้ใช้ปลายทางหรือบัญชี",
   "table.header.userRate": "อัตราผู้ใช้",
+  "table.unread": "ยังไม่ได้อ่าน",
   "title": "บันทึก",
   "triggerBy.appRun": "เว็บแอป",
   "triggerBy.debugging": "การแก้ไขข้อบกพร่อง",

@@ -91,6 +91,7 @@
   "table.header.updatedTime": "更新时间",
   "table.header.user": "用户或账户",
   "table.header.userRate": "用户反馈",
+  "table.unread": "未读",
   "title": "日志",
   "triggerBy.appRun": "网页应用",
   "triggerBy.debugging": "调试",
