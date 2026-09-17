@@ -60,11 +60,11 @@ export function SourceTypeSelector({
             value={option.value}
             disabled={disabled || disabledValues.includes(option.value)}
             className={cn(
-              'relative flex items-center justify-center gap-1.5 rounded-md system-xs-medium text-text-tertiary outline-hidden',
+              'relative flex cursor-pointer items-center justify-center gap-1.5 rounded-md system-xs-medium text-text-tertiary outline-hidden data-disabled:cursor-not-allowed',
               appearance === 'embedded' ? 'min-h-7 px-2' : 'h-7',
               'hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
               appearance === 'embedded'
-                ? 'data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary data-checked:shadow-xs data-disabled:cursor-not-allowed data-disabled:opacity-60'
+                ? 'data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary data-checked:shadow-xs data-disabled:opacity-60'
                 : 'data-checked:bg-background-default data-checked:text-text-primary data-checked:shadow-xs',
             )}
           >
