@@ -22,6 +22,8 @@ from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetKeyLimitError, DatasetKeyNotFoundError, DatasetListFilter
+from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
+from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -170,6 +172,68 @@ def test_create_update_and_api_status_commit_owned_changes(
         assert row.name == "Renamed"
         assert row.enable_api is True
         assert session.get(Dataset, created["id"]) is not None
+
+
+@pytest.mark.parametrize("entry_point", ["empty", "documents"])
+@pytest.mark.parametrize("rbac_enabled", [False, True])
+def test_created_dataset_does_not_automatically_include_workspace_members(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    entry_point: str,
+    rbac_enabled: bool,
+) -> None:
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=rbac_enabled)
+
+    def save_documents(
+        created_dataset: Dataset, _config: KnowledgeConfig, _account: Account, *, session: Session
+    ) -> tuple[list[Document], str]:
+        row = document(id="created-document", dataset_id=created_dataset.id, data_source_type="upload_file")
+        session.add(row)
+        session.flush()
+        return [row], "batch"
+
+    with (
+        patch.object(rbac_service.RBACService.DatasetAccess, "replace_whitelist") as replace_whitelist,
+        patch(
+            "tasks.initialize_created_app_rbac_access_task.initialize_created_app_rbac_access_task.delay"
+        ) as initialize,
+        patch(
+            "services.knowledge.documents.adapters.DocumentService.save_document_with_dataset_id",
+            side_effect=save_documents,
+        ),
+    ):
+        if entry_point == "empty":
+            result = operations.create_dataset(
+                CONTEXT,
+                {"name": "Created", "description": "desc", "indexing_technique": "economy", "permission": "only_me"},
+            )
+            dataset_id = result["id"]
+        else:
+            result = SQLAlchemyDocumentOperations(session_factory=sqlite_session_factory).initialize_dataset(
+                CONTEXT,
+                {
+                    "indexing_technique": "economy",
+                    "data_source": {
+                        "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file"]}}
+                    },
+                    "process_rule": {"mode": "automatic"},
+                },
+            )
+            dataset_id = result["dataset"]["id"]
+        if rbac_enabled:
+            replace_whitelist.assert_called_once_with(
+                CONTEXT.active_workspace_id,
+                CONTEXT.account_id,
+                dataset_id,
+                rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+            )
+        else:
+            replace_whitelist.assert_not_called()
+        initialize.assert_not_called()
+
+    with sqlite_session_factory() as session:
+        assert session.get(Dataset, dataset_id) is not None
 
 
 def test_partial_members_update_and_clear_are_committed(

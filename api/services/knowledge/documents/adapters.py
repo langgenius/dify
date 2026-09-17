@@ -57,7 +57,6 @@ from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 
 @contextmanager
@@ -398,10 +397,7 @@ class SQLAlchemyDocumentOperations:
                     context.active_workspace_id,
                     context.account_id,
                     dataset_id,
-                    rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
-                )
-                initialize_created_app_rbac_access_task.delay(
-                    context.active_workspace_id, context.account_id, dataset_id=dataset_id
+                    rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
                 )
             return result
 

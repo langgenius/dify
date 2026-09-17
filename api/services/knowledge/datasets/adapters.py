@@ -31,7 +31,6 @@ from services.knowledge.datasets.application import (
     DatasetVisibility,
 )
 from services.knowledge.resource_scope import DatasetRef
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 
 @contextmanager
@@ -214,10 +213,7 @@ class SQLAlchemyDatasetOperations:
                 context.active_workspace_id,
                 context.account_id,
                 dataset_id,
-                rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
-            )
-            initialize_created_app_rbac_access_task.delay(
-                context.active_workspace_id, context.account_id, dataset_id=dataset_id
+                rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
         return result
 

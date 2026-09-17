@@ -22,6 +22,7 @@ from controllers.console.apikey import (
 from controllers.console.datasets.datasets import DatasetApiKeyApi
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
+from libs.login import AccountWithTenant
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.enums import ApiTokenType
@@ -284,6 +285,10 @@ def test_api_key_lists_require_matching_rbac_permission(config_overrides: Callab
         app.test_request_context("/"),
         patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
         patch("controllers.common.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+        patch(
+            "controllers.console.flask_admission.current_account_with_tenant",
+            return_value=AccountWithTenant(account, "tenant-1"),
+        ),
         patch("controllers.common.rbac.locators.agent_binding", return_value=None),
         patch("controllers.common.rbac.locators.PlainApp.owner_id", return_value=None),
         patch("controllers.common.rbac.locators.DatasetId.owner_id", return_value=None),
@@ -324,6 +329,10 @@ def test_api_key_lists_reject_legacy_read_only_members(config_overrides: Callabl
         app.test_request_context("/"),
         patch("libs.login.current_user", current_user),
         patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+        patch(
+            "controllers.console.flask_admission.current_account_with_tenant",
+            return_value=AccountWithTenant(account, "tenant-1"),
+        ),
         patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,
     ):
         for invoke in (
