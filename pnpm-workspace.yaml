@@ -10,6 +10,17 @@ catalogPrune: true
 dedupeDirectDeps: true
 engineStrict: true
 minimumReleaseAge: 0
+minimumReleaseAgeExclude:
+  - vite-plus
+  - '@voidzero-dev/*'
+  - oxlint
+  - '@oxlint/*'
+  - oxlint-tsgolint
+  - '@oxlint-tsgolint/*'
+  - oxfmt
+  - '@oxfmt/*'
+  - vitest
+  - '@vitest/*'
 optimisticRepeatInstall: true
 resolutionMode: time-based
 saveExact: true
@@ -245,9 +256,9 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.2
   vinext: 1.0.0-beta.8
-  vite: npm:@voidzero-dev/vite-plus-core@0.3.1
+  vite: npm:@voidzero-dev/vite-plus-core@0.3.2
   vite-plugin-inspect: 12.0.2
-  vite-plus: 0.3.1
+  vite-plus: 0.3.2
   vitest: 4.1.11
   vitest-browser-react: 2.2.0
   vitest-canvas-mock: 1.1.5
@@ -258,3 +269,6 @@ peerDependencyRules:
   allowAny:
     - vite
     - vitest
+  allowedVersions:
+    vite: '*'
+    vitest: '*'
