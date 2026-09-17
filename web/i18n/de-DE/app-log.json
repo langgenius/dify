@@ -91,6 +91,7 @@
   "table.header.updatedTime": "Aktualisierungszeit",
   "table.header.user": "Endbenutzer oder Konto",
   "table.header.userRate": "Benutzerbewertung",
+  "table.unread": "Ungelesen",
   "title": "Protokolle",
   "triggerBy.appRun": "Webanwendung",
   "triggerBy.debugging": "Fehlerbehebung",
