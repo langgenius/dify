@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
@@ -298,13 +298,30 @@ describe('ConversationList', () => {
 
     await waitFor(() => {
       expect(onUrlUpdate).toHaveBeenCalled()
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'appLog.runDetail.title' })).toBeInTheDocument()
     })
 
     const update = onUrlUpdate.mock.calls.at(-1)![0]
     expect(update.searchParams.get('page')).toBe('2')
     expect(update.searchParams.get('conversation_id')).toBe('conversation-1')
     expect(update.options.history).toBe('push')
+  })
+
+  it('exposes the unread marker only for unread conversations', () => {
+    const unreadLog = createLogs().data[0]
+    renderConversationList({
+      logs: {
+        data: [
+          unreadLog,
+          { ...unreadLog, id: 'conversation-2', name: 'read conversation', read_at: 1710000100 },
+        ],
+      },
+    })
+
+    const unreadRow = screen.getByRole('row', { name: /hello world/ })
+    const readRow = screen.getByRole('row', { name: /read conversation/ })
+    expect(within(unreadRow).getByText('appLog.table.unread')).toBeInTheDocument()
+    expect(within(readRow).queryByText('appLog.table.unread')).not.toBeInTheDocument()
   })
 
   it.each(['keyboard', 'row'])(
@@ -355,6 +372,9 @@ describe('ConversationList', () => {
       searchParams: '?page=2&conversation_id=conversation-1',
     })
 
+    expect(
+      await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' }),
+    ).toBeInTheDocument()
     fireEvent.click(await screen.findByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
 
     expect(mockOnRefresh).toHaveBeenCalledTimes(1)

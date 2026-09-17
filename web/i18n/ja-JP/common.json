@@ -474,6 +474,7 @@
   "operation.fill": "自動入力",
   "operation.format": "フォーマット",
   "operation.imageCopied": "コピーした画像",
+  "operation.imageCopyFailed": "画像をコピーできませんでした。代わりにダウンロードしてください。",
   "operation.imageDownloaded": "画像がダウンロードされました",
   "operation.in": "中",
   "operation.learnMore": "詳細はこちら",

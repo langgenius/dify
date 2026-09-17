@@ -91,6 +91,7 @@
   "table.header.updatedTime": "Timp actualizare",
   "table.header.user": "UTILIZATOR FINAL SAU CONT",
   "table.header.userRate": "Evaluare utilizator",
+  "table.unread": "Necitit",
   "title": "Jurnale",
   "triggerBy.appRun": "Aplicație web",
   "triggerBy.debugging": "Depanare",

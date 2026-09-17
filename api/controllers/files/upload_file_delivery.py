@@ -75,9 +75,9 @@ class ImagePreviewApi(Resource):
     @files_ns.doc(
         responses={
             200: "Image preview returned successfully",
-            422: "Missing or invalid query parameters",
             404: "File not found or signature is invalid",
             415: "Unsupported file type",
+            422: "Missing or invalid query parameters",
         }
     )
     @model_validate(FileSignatureQuery)
@@ -110,8 +110,8 @@ class FilePreviewApi(Resource):
     @files_ns.doc(
         responses={
             200: "File stream returned successfully",
-            422: "Missing or invalid query parameters",
             404: "File not found or signature is invalid",
+            422: "Missing or invalid query parameters",
         }
     )
     @model_validate(FilePreviewQuery)

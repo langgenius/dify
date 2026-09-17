@@ -91,6 +91,7 @@
   "table.header.updatedTime": "Ora di aggiornamento",
   "table.header.user": "UTENTE FINALE O ACCOUNT",
   "table.header.userRate": "Valutazione Utente",
+  "table.unread": "Non letto",
   "title": "Registri",
   "triggerBy.appRun": "WebApp",
   "triggerBy.debugging": "Debugging",

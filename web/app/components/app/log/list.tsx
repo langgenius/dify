@@ -24,6 +24,7 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTitle,
   DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
@@ -450,11 +451,11 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       {/* Panel Header */}
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="shrink-0">
-          <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
+          <DrawerTitle className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
             {isChatMode
               ? t(($) => $['detail.conversationId'], { ns: 'appLog' })
               : t(($) => $['detail.time'], { ns: 'appLog' })}
-          </div>
+          </DrawerTitle>
           {isChatMode && (
             <div className="flex items-center system-2xs-regular-uppercase text-text-secondary">
               <Tooltip>
@@ -695,7 +696,13 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
     }
   }
 
-  if (!conversationDetail) return null
+  if (!conversationDetail) {
+    return (
+      <DrawerTitle className="sr-only">
+        {t(($) => $['runDetail.title'], { ns: 'appLog' })}
+      </DrawerTitle>
+    )
+  }
 
   return (
     <DetailPanel
@@ -750,7 +757,13 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
     }
   }
 
-  if (!conversationDetail) return null
+  if (!conversationDetail) {
+    return (
+      <DrawerTitle className="sr-only">
+        {t(($) => $['runDetail.title'], { ns: 'appLog' })}
+      </DrawerTitle>
+    )
+  }
 
   return (
     <DetailPanel
@@ -983,7 +996,13 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   <td className="h-4">
                     {!log.read_at && (
                       <div className="flex items-center p-3 pr-0.5">
-                        <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
+                        <span
+                          aria-hidden="true"
+                          className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"
+                        ></span>
+                        <span className="sr-only">
+                          {t(($) => $['table.unread'], { ns: 'appLog' })}
+                        </span>
                       </div>
                     )}
                   </td>
