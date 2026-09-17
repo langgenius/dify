@@ -2378,7 +2378,7 @@ class UploadFile(TypeBase):
     # The `created_by` field stores the ID of the entity that created this upload file.
     #
     # If `created_by_role` is `ACCOUNT`, it corresponds to `Account.id`.
-    # Otherwise, it corresponds to `EndUser.id`.
+    # `END_USER` corresponds to `EndUser.id`; `DATASET_API_KEY` corresponds to `ApiToken.id`.
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -2387,13 +2387,13 @@ class UploadFile(TypeBase):
     # When using this model in new code, ensure the following:
     #
     # 1. Set `used` to `true` when the file is utilized.
-    # 2. Assign `used_by` to the corresponding `Account.id` or `EndUser.id` based on the `created_by_role`.
+    # 2. Assign `used_by` to the corresponding creator entity ID based on `created_by_role`.
     # 3. Avoid relying on these fields for logic, as their values may not always be accurate.
     #
     # `used` may indicate whether the file has been utilized by another service.
     used: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
 
-    # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
+    # The `created_by_role` identifies an account, end user, or Dataset API key as the file owner.
     # Its value is derived from the `CreatorUserRole` enumeration.
     created_by_role: Mapped[CreatorUserRole] = mapped_column(
         EnumText(CreatorUserRole, length=255),

@@ -1676,7 +1676,7 @@ export type PluginCategoryInstalledPluginResponse = {
   version: string
 }
 
-export type RbacResourceType = 'agent' | 'app' | 'dataset'
+export type RbacResourceType = 'agent' | 'app' | 'dataset' | 'knowledge_space'
 
 export type AccessPolicyMemberBinding = {
   access_policy_id: string

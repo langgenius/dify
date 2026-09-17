@@ -1,14 +1,8 @@
-"""Pin the in-repository KnowledgeFS contract and validate every Dify product operation.
+"""Verify Dify against checked-in contracts from an exact standalone KnowledgeFS commit.
 
-The lock is intentionally independent of the enclosing Dify commit: it records the staged ``knowledge-fs/`` tree,
-the complete generated OpenAPI document, both explicit product-operation manifests, and the active Capability v2
-profile and deterministic public-key vector. The full OpenAPI hash
-covers request/response schemas, status codes, security, deprecation, and stream metadata. Field-level validation
-cross-checks the Dify product registry, Python Capability issuer, TypeScript request guard, and exported OpenAPI;
-each product operation must be ready or an explicit gap, and KFS-only activation remains explicitly internal.
-
-Contract export reads the working tree only after proving it matches the staged KnowledgeFS index. This keeps the
-OpenAPI bytes and auth manifest aligned with the exact subtree tree ID that will be reviewed and committed.
+CI uses only api/knowledge-fs-contract: no private source checkout, Node runtime, or network
+is needed for --check. Intentional updates export from a clean --knowledge-fs-root checkout,
+record its full commit/tree provenance, and pin every artifact and Dify operation manifest.
 """
 
 from __future__ import annotations
@@ -40,16 +34,18 @@ from dev.knowledge_fs_product_contract import (
 )
 
 WORKSPACE_ROOT = API_ROOT.parent
-KNOWLEDGE_FS_DIRECTORY = "knowledge-fs"
+PIN_RELATIVE_PATH = Path("api/knowledge-fs-contract")
+OPENAPI_FILENAME = "knowledge-fs.openapi.json"
+CAPABILITY_POLICY_FILENAME = "dify-capability-v2-operations.json"
 CAPABILITY_V2_AUTH_MANIFEST_RELATIVE_PATH = Path("contracts/dify-capability-v2-auth-profile.json")
 CAPABILITY_V2_AUTH_TEST_VECTOR_RELATIVE_PATH = Path("contracts/dify-capability-v2-test-vector.json")
-UPSTREAM_PROVENANCE_RELATIVE_PATH = Path("upstream-provenance.json")
+PROVENANCE_FILENAME = "source-provenance.json"
 LOCK_RELATIVE_PATH = Path("api/knowledge-fs-contract.lock.json")
 PRODUCT_OPERATIONS_RELATIVE_PATH = Path("api/knowledge-fs-product-operations.json")
 PRODUCT_OPERATION_GAPS_RELATIVE_PATH = Path("api/knowledge-fs-product-operation-gaps.json")
 OPENAPI_METHODS = ("delete", "get", "head", "options", "patch", "post", "put", "trace")
 PROXY_METHODS = frozenset({"delete", "get", "patch", "post", "put"})
-LOCK_SCHEMA_VERSION = 5
+LOCK_SCHEMA_VERSION = 6
 
 
 class ContractDeclaration(TypedDict):
@@ -70,7 +66,10 @@ class ContractLock(TypedDict):
     """Content-addressed contract inputs that must move together."""
 
     schemaVersion: int
-    subtreeTree: str
+    sourceCommit: str
+    sourceTree: str
+    sourceProvenanceSha256: str
+    capabilityPolicySha256: str
     openapiSha256: str
     capabilityV2AuthManifestSha256: str
     capabilityV2AuthTestVectorSha256: str
@@ -102,182 +101,112 @@ DECLARATION_FIELDS: tuple[DeclarationField, ...] = (
 
 
 def main() -> None:
-    """Update or verify the monorepo pin and validate Dify product declarations."""
+    """Update an exact source pin or verify the self-contained Dify contract boundary."""
     parser = argparse.ArgumentParser()
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--update-lock", action="store_true")
     parser.add_argument("--workspace-root", type=Path, default=WORKSPACE_ROOT)
+    parser.add_argument("--knowledge-fs-root", type=Path, help="Clean standalone source checkout (updates only)")
     args = parser.parse_args()
+    if args.check and args.knowledge_fs_root is not None:
+        parser.error("--check reads pinned artifacts only; --knowledge-fs-root is for --update-lock")
+    if args.update_lock and args.knowledge_fs_root is None:
+        parser.error("--update-lock requires --knowledge-fs-root pointing to a clean committed checkout")
 
     workspace_root = args.workspace_root.resolve()
-    knowledge_fs_root = workspace_root / KNOWLEDGE_FS_DIRECTORY
-    lock_path = workspace_root / LOCK_RELATIVE_PATH
-    capability_v2_auth_manifest_path = knowledge_fs_root / CAPABILITY_V2_AUTH_MANIFEST_RELATIVE_PATH
-    capability_v2_auth_test_vector_path = knowledge_fs_root / CAPABILITY_V2_AUTH_TEST_VECTOR_RELATIVE_PATH
-    product_operations_path = workspace_root / PRODUCT_OPERATIONS_RELATIVE_PATH
-    product_operation_gaps_path = workspace_root / PRODUCT_OPERATION_GAPS_RELATIVE_PATH
-    upstream_provenance_path = knowledge_fs_root / UPSTREAM_PROVENANCE_RELATIVE_PATH
-    ensure_clean_knowledge_fs_worktree(workspace_root)
-    ensure_contract_inputs_exist(
-        knowledge_fs_root=knowledge_fs_root,
-        capability_v2_auth_manifest_path=capability_v2_auth_manifest_path,
-        capability_v2_auth_test_vector_path=capability_v2_auth_test_vector_path,
-        product_operations_path=product_operations_path,
-        product_operation_gaps_path=product_operation_gaps_path,
-        upstream_provenance_path=upstream_provenance_path,
-    )
-
-    subtree_tree = staged_subtree_tree(workspace_root)
-    capability_v2_auth_manifest_content = capability_v2_auth_manifest_path.read_bytes()
-    capability_v2_auth_test_vector_content = capability_v2_auth_test_vector_path.read_bytes()
-    product_operation_manifest_content = product_operations_path.read_bytes()
-    product_operation_gap_manifest_content = product_operation_gaps_path.read_bytes()
-    capability_v2_auth_manifest = load_json_object(capability_v2_auth_manifest_path)
-    validate_capability_v2_auth_manifest(capability_v2_auth_manifest)
-    validate_capability_v2_auth_test_vector(
-        load_json_object(capability_v2_auth_test_vector_path),
-        capability_v2_auth_manifest,
-    )
-    validate_upstream_provenance(load_json_object(upstream_provenance_path))
-    product_manifest = parse_product_operation_manifest(load_json_object(product_operations_path))
-    product_gap_manifest = parse_product_operation_gap_manifest(load_json_object(product_operation_gaps_path))
-    product_runtime_operations = product_operation_runtime_contracts()
-    capability_runtime_operations = capability_operation_runtime_contracts()
-    declarations = console_contract_declarations()
-
-    with tempfile.TemporaryDirectory(prefix="dify-knowledge-fs-contract-") as directory:
-        openapi_path = Path(directory) / "knowledge-fs.openapi.json"
-        capability_policy_path = Path(directory) / "dify-capability-v2-operations.json"
-        subprocess.run(
-            ["pnpm", "openapi:export", "--", "--output", str(openapi_path)],
-            cwd=knowledge_fs_root,
-            check=True,
-        )
-        subprocess.run(
-            ["pnpm", "capability:export", "--", "--output", str(capability_policy_path)],
-            cwd=knowledge_fs_root,
-            check=True,
-        )
-        openapi_content = openapi_path.read_bytes()
-        capability_policy = parse_capability_operation_policy(load_json_object(capability_policy_path))
-
-    document: dict[str, Any] = json.loads(openapi_content)
-    validate_product_operation_contracts(
-        capability_operations=capability_runtime_operations,
-        capability_policy=capability_policy,
-        document=document,
-        gap_manifest=product_gap_manifest,
-        manifest=product_manifest,
-        product_operations=product_runtime_operations,
-    )
-    validate_declarations(document, declarations)
-
-    expected_lock: ContractLock = {
-        "schemaVersion": LOCK_SCHEMA_VERSION,
-        "subtreeTree": subtree_tree,
-        "openapiSha256": sha256(openapi_content),
-        "capabilityV2AuthManifestSha256": sha256(capability_v2_auth_manifest_content),
-        "capabilityV2AuthTestVectorSha256": sha256(capability_v2_auth_test_vector_content),
-        "productOperationManifestSha256": sha256(product_operation_manifest_content),
-        "productOperationGapManifestSha256": sha256(product_operation_gap_manifest_content),
-    }
-
+    pin_root = workspace_root / PIN_RELATIVE_PATH
     if args.update_lock:
-        lock_path.write_text(json.dumps(expected_lock, indent=2) + "\n")
+        with tempfile.TemporaryDirectory(prefix="dify-knowledge-fs-contract-") as directory:
+            exported_root = Path(directory)
+            export_contract(args.knowledge_fs_root.resolve(), exported_root)
+            expected_lock = validate_pinned_contract(workspace_root, exported_root)
+            pin_root.mkdir(parents=True, exist_ok=True)
+            for path in exported_root.iterdir():
+                (pin_root / path.name).write_bytes(path.read_bytes())
+        (workspace_root / LOCK_RELATIVE_PATH).write_text(json.dumps(expected_lock, indent=2) + "\n")
         return
 
-    received_lock = parse_contract_lock(load_json_object(lock_path))
-    lock_fields = (
-        (
-            "capabilityV2AuthManifestSha256",
-            received_lock["capabilityV2AuthManifestSha256"],
-            expected_lock["capabilityV2AuthManifestSha256"],
-        ),
-        (
-            "capabilityV2AuthTestVectorSha256",
-            received_lock["capabilityV2AuthTestVectorSha256"],
-            expected_lock["capabilityV2AuthTestVectorSha256"],
-        ),
-        (
-            "productOperationManifestSha256",
-            received_lock["productOperationManifestSha256"],
-            expected_lock["productOperationManifestSha256"],
-        ),
-        (
-            "productOperationGapManifestSha256",
-            received_lock["productOperationGapManifestSha256"],
-            expected_lock["productOperationGapManifestSha256"],
-        ),
-        ("schemaVersion", received_lock["schemaVersion"], expected_lock["schemaVersion"]),
-        ("subtreeTree", received_lock["subtreeTree"], expected_lock["subtreeTree"]),
-        ("openapiSha256", received_lock["openapiSha256"], expected_lock["openapiSha256"]),
-    )
-    for field, received_value, expected_value in lock_fields:
+    expected_lock = validate_pinned_contract(workspace_root, pin_root)
+    received_lock = parse_contract_lock(load_json_object(workspace_root / LOCK_RELATIVE_PATH))
+    for field, expected_value in expected_lock.items():
+        received_value = dict(received_lock)[field]
         if received_value != expected_value:
             raise RuntimeError(
                 f"KnowledgeFS contract lock field {field} drifted: "
                 f"expected {expected_value!r}, received {received_value!r}. "
-                "Run --update-lock intentionally after reviewing the staged subtree and contract changes."
+                "Run --update-lock --knowledge-fs-root intentionally after reviewing source and contract changes."
             )
 
 
-def ensure_contract_inputs_exist(
-    *,
-    knowledge_fs_root: Path,
-    capability_v2_auth_manifest_path: Path,
-    capability_v2_auth_test_vector_path: Path,
-    product_operations_path: Path,
-    product_operation_gaps_path: Path,
-    upstream_provenance_path: Path,
-) -> None:
-    """Fail with a stable error before invoking package tooling when a contract input is absent."""
-    required_paths = (
-        knowledge_fs_root / "package.json",
-        capability_v2_auth_manifest_path,
-        capability_v2_auth_test_vector_path,
-        product_operations_path,
-        product_operation_gaps_path,
-        upstream_provenance_path,
-    )
-    missing_paths = [path for path in required_paths if not path.is_file()]
-    if missing_paths:
-        missing = ", ".join(str(path) for path in missing_paths)
-        raise RuntimeError(f"KnowledgeFS contract input is missing: {missing}")
-
-
-def ensure_clean_knowledge_fs_worktree(workspace_root: Path) -> None:
-    """Require exported KnowledgeFS files to exactly match the staged index tree.
-
-    Staged changes are expected during intentional lock updates. Unstaged tracked changes and untracked files are
-    rejected because the export process reads the working tree while the tree ID is calculated from the index.
-    """
-    subtree_path = f"{KNOWLEDGE_FS_DIRECTORY}/"
-    unstaged = subprocess.run(
-        ["git", "diff", "--quiet", "--", subtree_path],
-        cwd=workspace_root,
-        check=False,
-    )
-    if unstaged.returncode > 1:
-        raise RuntimeError("git diff failed while validating the staged KnowledgeFS subtree")
-    untracked = run(
-        "git",
-        "ls-files",
-        "--others",
-        "--exclude-standard",
-        "--",
-        subtree_path,
-        cwd=workspace_root,
-    ).strip()
-    if unstaged.returncode != 0 or untracked:
-        raise RuntimeError(
-            "knowledge-fs/ contains unstaged or untracked changes; stage or remove them before contract export"
+def export_contract(knowledge_fs_root: Path, output_root: Path) -> None:
+    """Export only a clean committed source tree so provenance identifies the actual input."""
+    ensure_clean_knowledge_fs_worktree(knowledge_fs_root)
+    provenance = {
+        "schemaVersion": 1,
+        "repository": "https://github.com/langgenius/knowledge-fs",
+        "commit": run("git", "rev-parse", "HEAD", cwd=knowledge_fs_root).strip(),
+        "tree": run("git", "rev-parse", "HEAD^{tree}", cwd=knowledge_fs_root).strip(),
+    }
+    output_root.mkdir(parents=True, exist_ok=True)
+    for command, filename in (("openapi:export", OPENAPI_FILENAME), ("capability:export", CAPABILITY_POLICY_FILENAME)):
+        subprocess.run(
+            ["pnpm", command, "--", "--output", str(output_root / filename)], cwd=knowledge_fs_root, check=True
         )
+    for relative_path in (CAPABILITY_V2_AUTH_MANIFEST_RELATIVE_PATH, CAPABILITY_V2_AUTH_TEST_VECTOR_RELATIVE_PATH):
+        (output_root / relative_path.name).write_bytes((knowledge_fs_root / relative_path).read_bytes())
+    # Detect source changes made while the export subprocesses ran.
+    ensure_clean_knowledge_fs_worktree(knowledge_fs_root)
+    if run("git", "rev-parse", "HEAD", cwd=knowledge_fs_root).strip() != provenance["commit"]:
+        raise RuntimeError("KnowledgeFS source commit changed during contract export")
+    (output_root / PROVENANCE_FILENAME).write_text(json.dumps(provenance, indent=2) + "\n")
 
 
-def staged_subtree_tree(workspace_root: Path) -> str:
-    """Return the Git tree object for the staged ``knowledge-fs/`` subtree."""
-    return run("git", "write-tree", f"--prefix={KNOWLEDGE_FS_DIRECTORY}/", cwd=workspace_root).strip()
+def ensure_clean_knowledge_fs_worktree(knowledge_fs_root: Path) -> None:
+    """Require the standalone checkout's working tree and index to match its commit."""
+    if run("git", "status", "--porcelain", "--untracked-files=all", cwd=knowledge_fs_root).strip():
+        raise RuntimeError("KnowledgeFS source contains staged, unstaged or untracked changes; commit before export")
+
+
+def validate_pinned_contract(workspace_root: Path, pin_root: Path) -> ContractLock:
+    """Validate pinned bytes against executable Python declarations without invoking source tools."""
+    openapi_path = pin_root / OPENAPI_FILENAME
+    policy_path = pin_root / CAPABILITY_POLICY_FILENAME
+    auth_path = pin_root / CAPABILITY_V2_AUTH_MANIFEST_RELATIVE_PATH.name
+    vector_path = pin_root / CAPABILITY_V2_AUTH_TEST_VECTOR_RELATIVE_PATH.name
+    provenance_path = pin_root / PROVENANCE_FILENAME
+    product_path = workspace_root / PRODUCT_OPERATIONS_RELATIVE_PATH
+    gaps_path = workspace_root / PRODUCT_OPERATION_GAPS_RELATIVE_PATH
+    for path in (openapi_path, policy_path, auth_path, vector_path, provenance_path, product_path, gaps_path):
+        if not path.is_file():
+            raise RuntimeError(f"KnowledgeFS pinned contract input is missing: {path}")
+    auth_manifest = load_json_object(auth_path)
+    validate_capability_v2_auth_manifest(auth_manifest)
+    validate_capability_v2_auth_test_vector(load_json_object(vector_path), auth_manifest)
+    provenance = load_json_object(provenance_path)
+    validate_upstream_provenance(provenance)
+    document = load_json_object(openapi_path)
+    validate_product_operation_contracts(
+        capability_operations=capability_operation_runtime_contracts(),
+        capability_policy=parse_capability_operation_policy(load_json_object(policy_path)),
+        document=document,
+        gap_manifest=parse_product_operation_gap_manifest(load_json_object(gaps_path)),
+        manifest=parse_product_operation_manifest(load_json_object(product_path)),
+        product_operations=product_operation_runtime_contracts(),
+    )
+    validate_declarations(document, console_contract_declarations())
+    return {
+        "schemaVersion": LOCK_SCHEMA_VERSION,
+        "sourceCommit": provenance["commit"],
+        "sourceTree": provenance["tree"],
+        "sourceProvenanceSha256": sha256(provenance_path.read_bytes()),
+        "openapiSha256": sha256(openapi_path.read_bytes()),
+        "capabilityPolicySha256": sha256(policy_path.read_bytes()),
+        "capabilityV2AuthManifestSha256": sha256(auth_path.read_bytes()),
+        "capabilityV2AuthTestVectorSha256": sha256(vector_path.read_bytes()),
+        "productOperationManifestSha256": sha256(product_path.read_bytes()),
+        "productOperationGapManifestSha256": sha256(gaps_path.read_bytes()),
+    }
 
 
 def load_json_object(path: Path) -> dict[str, Any]:
@@ -297,7 +226,10 @@ def parse_contract_lock(value: dict[str, Any]) -> ContractLock:
         "productOperationGapManifestSha256",
         "productOperationManifestSha256",
         "schemaVersion",
-        "subtreeTree",
+        "sourceCommit",
+        "sourceTree",
+        "sourceProvenanceSha256",
+        "capabilityPolicySha256",
     }
     if set(value) != expected_fields:
         raise ValueError(f"KnowledgeFS contract lock fields must be exactly {sorted(expected_fields)}")
@@ -309,10 +241,13 @@ def parse_contract_lock(value: dict[str, Any]) -> ContractLock:
         "openapiSha256",
         "productOperationGapManifestSha256",
         "productOperationManifestSha256",
-        "subtreeTree",
+        "sourceCommit",
+        "sourceTree",
+        "sourceProvenanceSha256",
+        "capabilityPolicySha256",
     ):
         field_value = value.get(field)
-        expected_length = 40 if field == "subtreeTree" else 64
+        expected_length = 40 if field in {"sourceCommit", "sourceTree"} else 64
         if (
             not isinstance(field_value, str)
             or len(field_value) != expected_length
@@ -583,24 +518,16 @@ def _is_non_blank(value: object) -> bool:
 
 
 def validate_upstream_provenance(value: dict[str, Any]) -> None:
-    """Validate the imported-source provenance that is itself covered by the subtree tree ID."""
-    expected_fields = {"commit", "release", "repository", "schemaVersion"}
-    if set(value) != expected_fields:
-        raise ValueError(f"KnowledgeFS upstream provenance fields must be exactly {sorted(expected_fields)}")
-    if value.get("schemaVersion") != 1:
-        raise ValueError("KnowledgeFS upstream provenance must use schemaVersion 1")
-    repository = value.get("repository")
-    commit = value.get("commit")
-    if not isinstance(repository, str) or not repository.startswith("https://"):
-        raise ValueError("KnowledgeFS upstream provenance repository must be an HTTPS URL")
-    if (
-        not isinstance(commit, str)
-        or len(commit) != 40
-        or any(character not in "0123456789abcdef" for character in commit)
-    ):
-        raise ValueError("KnowledgeFS upstream provenance commit must be a lowercase full Git SHA")
-    if value.get("release") is not None and not isinstance(value["release"], str):
-        raise ValueError("KnowledgeFS upstream provenance release must be null or a string")
+    """Validate exact standalone source provenance covered by the schema-6 lock."""
+    expected_fields = {"commit", "tree", "repository", "schemaVersion"}
+    if set(value) != expected_fields or value.get("schemaVersion") != 1:
+        raise ValueError("KnowledgeFS source provenance must use schemaVersion 1 with commit, tree and repository")
+    if value.get("repository") != "https://github.com/langgenius/knowledge-fs":
+        raise ValueError("KnowledgeFS source provenance repository does not match the contract owner")
+    for field in ("commit", "tree"):
+        digest = value.get(field)
+        if not isinstance(digest, str) or len(digest) != 40 or any(c not in "0123456789abcdef" for c in digest):
+            raise ValueError(f"KnowledgeFS source provenance {field} must be a lowercase full Git SHA")
 
 
 def validate_declarations(document: dict[str, Any], declarations: tuple[ContractDeclaration, ...]) -> None:

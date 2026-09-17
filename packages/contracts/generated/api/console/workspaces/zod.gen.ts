@@ -1230,7 +1230,7 @@ export const zPluginPermissionResponse = z.object({
  *
  * Resource types understood by access policies.
  */
-export const zRbacResourceType = z.enum(['agent', 'app', 'dataset'])
+export const zRbacResourceType = z.enum(['agent', 'app', 'dataset', 'knowledge_space'])
 
 /**
  * _AccessPolicyCreateRequest

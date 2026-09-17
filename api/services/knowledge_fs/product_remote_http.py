@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 from http import HTTPStatus
 from typing import Literal, cast
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 _ERROR_CONTRACT_HEADER = "X-KnowledgeFS-Error-Contract"
 _ERROR_CONTRACT_VERSION = "2"
-_REJECTED_STATUS_CODES = frozenset({400, 403, 409, 413, 422, 429})
+_REJECTED_STATUS_CODES = frozenset({400, 403, 409, 413, 422, 429, 503, 504})
 _MAX_BATCH_SUMMARIES = 100
 _SSE_RESPONSE_HEADERS = (
     "cache-control",
@@ -332,7 +333,7 @@ class HTTPKnowledgeFSProductRemoteClient:
                 ).encode("utf-8")
             )
         except (TypeError, ValueError) as exc:
-            raise KnowledgeFSProductRemoteError("KnowledgeFS request payload is invalid") from exc
+            raise KnowledgeFSProductRequestRejectedError(status_code=400) from exc
         request_size = len(urlencode(request.query).encode("utf-8"))
         if encoded_payload is not None:
             request_size += len(encoded_payload)
@@ -413,7 +414,7 @@ class HTTPKnowledgeFSProductRemoteClient:
                     json.dumps(payload, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8")
                 )
             except (TypeError, ValueError) as exc:
-                raise KnowledgeFSProductRemoteError("KnowledgeFS request payload is invalid") from exc
+                raise KnowledgeFSProductRequestRejectedError(status_code=400) from exc
         response_limit = min(self._max_response_bytes, max_response_bytes)
         if response_limit <= 0:
             raise KnowledgeFSOperationUnavailableError("KnowledgeFS operation response limit is unavailable")
@@ -454,7 +455,7 @@ class HTTPKnowledgeFSProductRemoteClient:
                 raise KnowledgeFSProductRemoteError("KnowledgeFS request header binding is invalid")
             request_size += len(name.encode("utf-8")) + len(value.encode("utf-8")) + 4
         if request_size > max_request_bytes:
-            raise KnowledgeFSProductRemoteError("KnowledgeFS request exceeds its operation byte limit")
+            raise KnowledgeFSProductRequestRejectedError(status_code=413)
         request_kwargs: dict[str, object] = {
             "headers": headers,
             "params": query,
@@ -513,11 +514,52 @@ class HTTPKnowledgeFSProductRemoteClient:
 
 
 def _request_rejected(response: httpx.Response) -> KnowledgeFSProductRequestRejectedError:
-    status_code = cast(Literal[400, 403, 409, 413, 422, 429], response.status_code)
+    status_code = cast(Literal[400, 403, 409, 413, 422, 429, 503, 504], response.status_code)
     return KnowledgeFSProductRequestRejectedError(
         status_code=status_code,
         failure=_public_failure_from_response(response),
+        violations=_public_violations_from_response(response),
     )
+
+
+def _public_violations_from_response(response: httpx.Response) -> list[dict[str, str | int | float | list[str]]] | None:
+    """Return only bounded constraints, never validation inputs or provider diagnostics."""
+    try:
+        body = response.json()
+        if not isinstance(body, dict):
+            return None
+        violations = body.get("violations")
+        if not isinstance(violations, list):
+            error = body.get("error")
+            violations = error.get("issues") if isinstance(error, dict) else None
+        if not isinstance(violations, list):
+            return None
+        result: list[dict[str, str | int | float | list[str]]] = []
+        for item in violations[:20]:
+            if not isinstance(item, dict):
+                continue
+            if item.get("limit") in {"maxRetrievalSteps", "maxScannedResources", "maxToolCalls", "timeoutMs"}:
+                values = (item.get("estimatedValue"), item.get("limitValue"))
+                if all(
+                    isinstance(value, (int, float))
+                    and not isinstance(value, bool)
+                    and math.isfinite(value)
+                    and value >= 0
+                    for value in values
+                ):
+                    result.append(
+                        {
+                            "limit": item["limit"],
+                            "estimatedValue": cast(int | float, values[0]),
+                            "limitValue": cast(int | float, values[1]),
+                        }
+                    )
+            elif isinstance(item.get("path"), list) and isinstance(item.get("code"), str):
+                if re.fullmatch(r"[a-z_]{1,64}", item["code"]):
+                    result.append({"field": [str(part)[:128] for part in item["path"][:8]], "type": item["code"]})
+        return result or None
+    except (ValueError, TypeError):
+        return None
 
 
 def _public_failure_from_response(response: httpx.Response) -> KnowledgeFSPublicFailureResponse | None:

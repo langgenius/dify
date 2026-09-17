@@ -708,7 +708,7 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
         assert call_fields[field_name] == expected
     if "payload" in call_fields:
         if class_name.__name__ == "KnowledgeFSSpaceSourceApi" and method_name.__name__ == "patch":
-            assert call_fields["payload"] == payload
+            assert call_fields["payload"].model_dump(exclude_none=True) == payload.model_dump(exclude_none=True)
         else:
             assert call_fields["payload"] is payload
     if "members" in call_fields:
@@ -880,14 +880,12 @@ def test_console_source_update_commits_complete_edit_selection(
             "source-1",
         )
 
-    source_payload = facade.update_source.call_args.kwargs["payload"]
+    facade.update_source.assert_not_called()
+    source_payload = commit.call_args.kwargs["source_update"]
     assert source_payload.status == "disabled"
-    assert source_payload.sync_after_update is False
-    assert source_payload.selection is None
-    assert source_payload.sync_policy is None
     import_payload = commit.call_args.kwargs["payload"]
     assert import_payload.kind == expected_import_kind
-    assert commit.call_args.kwargs["idempotency_key"] == "source-edit:source-1:4"
+    assert commit.call_args.kwargs["idempotency_key"] == "source-edit:source-1:3"
     assert updated.sync_workflow is workflow
     assert result is updated
 
@@ -905,7 +903,7 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
     )
     facade.get_source.return_value = source
     facade.get_source_sync_policy.return_value = SimpleNamespace(revision=2)
-    facade.update_source_sync_policy.return_value = SimpleNamespace(revision=3)
+    facade.update_source.return_value = source
     runtime = SimpleNamespace(facade=facade)
     payload = KnowledgeFSSourceUpdatePayload.model_validate(
         {
@@ -929,9 +927,13 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
             "source-1",
         )
 
-    facade.update_source.assert_not_called()
+    facade.update_source.assert_called_once()
     commit.assert_not_called()
-    facade.update_source_sync_policy.assert_called_once()
+    facade.update_source_sync_policy.assert_not_called()
+    command = facade.update_source.call_args.kwargs["payload"]
+    assert command.expected_version == 3
+    assert command.expected_policy_revision == 2
+    assert command.sync_policy.mode == "interval"
     assert result is source
 
 
@@ -1063,7 +1065,8 @@ def test_console_source_update_applies_policy_without_creating_import_work(
     facade.get_source.return_value = source
     facade.get_source_sync_policy.return_value = SimpleNamespace(revision=2)
     policy = SimpleNamespace(revision=3)
-    facade.update_source_sync_policy.return_value = policy
+    source.sync_policy = policy
+    facade.update_source.return_value = source
     runtime = SimpleNamespace(facade=facade)
     payload = KnowledgeFSSourceUpdatePayload.model_validate(
         {"syncPolicy": {"customIntervalSeconds": 7200, "enabled": True, "mode": "custom"}}
@@ -1084,12 +1087,13 @@ def test_console_source_update_applies_policy_without_creating_import_work(
             "source-1",
         )
 
-    facade.update_source.assert_not_called()
+    facade.update_source.assert_called_once()
     commit.assert_not_called()
-    policy_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
-    assert policy_payload.expected_revision == 2
-    assert policy_payload.expected_source_version == 5
-    assert policy_payload.custom_interval_seconds == 7200
+    facade.update_source_sync_policy.assert_not_called()
+    policy_payload = facade.update_source.call_args.kwargs["payload"]
+    assert policy_payload.expected_policy_revision == 2
+    assert policy_payload.expected_version == 5
+    assert policy_payload.sync_policy.custom_interval_seconds == 7200
     assert source.sync_policy is policy
     assert result is source
 
@@ -1360,7 +1364,7 @@ _SERVICE_DELEGATION_CASES = (
         service_resources.KnowledgeFSServiceSourceCrawlApi,
         service_resources.KnowledgeFSServiceSourceCrawlApi.post,
         ("space-1", "source-1"),
-        "crawlSource",
+        "previewSourceCrawl",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
@@ -1374,7 +1378,7 @@ _SERVICE_DELEGATION_CASES = (
         service_resources.KnowledgeFSServiceSourcePageImportApi,
         service_resources.KnowledgeFSServiceSourcePageImportApi.post,
         ("space-1", "source-1"),
-        "importSourcePages",
+        "importSourceWorkflow",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
@@ -1388,7 +1392,7 @@ _SERVICE_DELEGATION_CASES = (
         service_resources.KnowledgeFSServiceSourceFileImportApi,
         service_resources.KnowledgeFSServiceSourceFileImportApi.post,
         ("space-1", "source-1"),
-        "importSourceFiles",
+        "importSourceWorkflow",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
@@ -1477,9 +1481,21 @@ def test_service_resources_bind_route_identifiers_to_one_declared_operation(
     monkeypatch.setattr(service_resources, "_idempotency_key", lambda: "idempotency-1")
     monkeypatch.setattr(service_resources, "_query_pairs", lambda _: (("normalized", "true"),))
     monkeypatch.setattr(service_resources, "dump_response", dump_response)
+    monkeypatch.setattr(service_resources, "durable_page_import", lambda value: value)
+    monkeypatch.setattr(service_resources, "durable_file_import", lambda value: value)
+    monkeypatch.setattr(
+        service_resources,
+        "_deletion_accepted",
+        lambda _space, raw: dump_response(service_resources.KnowledgeFSDurableDeletionAcceptedResponse, raw),
+    )
+    monkeypatch.setattr(
+        service_resources,
+        "_bulk_deletion_accepted",
+        lambda _space, raw: dump_response(service_resources.KnowledgeFSDurableDeletionAcceptedResponse, raw),
+    )
     app = Flask(__name__)
 
-    with app.test_request_context("/", method="POST"):
+    with app.test_request_context("/", method="POST", headers={"Idempotency-Key": "idempotency-1"}):
         _invoke(class_name, method_name, *route_args)
 
     execute.assert_called_once()
@@ -1545,7 +1561,10 @@ def test_service_credential_routes_validate_profile_before_facade_delegation(
     operation_id: str,
     cursor: str | None,
 ) -> None:
-    facade = SimpleNamespace(execute_service=MagicMock(return_value=_RAW_RESULT))
+    facade = SimpleNamespace(
+        execute_service=MagicMock(return_value=_RAW_RESULT),
+        update_service_settings=MagicMock(return_value=SimpleNamespace(migration=None)),
+    )
     runtime = SimpleNamespace(facade=facade)
     profile = object()
     validate_profile = MagicMock(return_value=profile)
@@ -1560,10 +1579,14 @@ def test_service_credential_routes_validate_profile_before_facade_delegation(
         _invoke(class_name, method_name, "space-1")
 
     validate_profile.assert_called_once_with(runtime, operation_id=operation_id, control_space_id="space-1")
+    if operation_id == "updateSettings":
+        assert facade.update_service_settings.call_args.kwargs["profile"] is profile
+        facade.execute_service.assert_not_called()
+        return
     assert facade.execute_service.call_args.kwargs["profile"] is profile
     assert facade.execute_service.call_args.kwargs["operation_id"] == operation_id
     if "query" in facade.execute_service.call_args.kwargs:
-        expected_query = (("cursor", cursor),) if cursor else ()
+        expected_query = (("limit", "50"),) + ((("cursor", cursor),) if cursor else ())
         assert facade.execute_service.call_args.kwargs["query"] == expected_query
 
 
@@ -1581,6 +1604,7 @@ def test_deprecated_buffered_routes_fail_closed(class_name: type[console_resourc
 def test_console_stream_capabilities_bind_the_authorized_resource(monkeypatch: pytest.MonkeyPatch) -> None:
     issued = SimpleNamespace(
         token="capability-token",
+        trace_id="trace-1",
         expires_at=datetime(2026, 7, 21, tzinfo=UTC),
         knowledge_space_id="knowledge-space-1",
     )
@@ -1640,6 +1664,7 @@ def test_console_stream_capabilities_bind_the_authorized_resource(monkeypatch: p
 def test_service_query_admission_binds_profile_space_and_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     issued = SimpleNamespace(
         token="capability-token",
+        trace_id="trace-1",
         expires_at=datetime(2026, 7, 21, tzinfo=UTC),
         knowledge_space_id="knowledge-space-1",
     )

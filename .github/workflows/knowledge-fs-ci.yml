@@ -20,8 +20,6 @@ concurrency:
 
 env:
   CI: true
-  DIFY_KNOWLEDGE_FS_API_IMAGE_NAME: >-
-    ${{ vars.DIFY_KNOWLEDGE_FS_API_IMAGE_NAME || 'langgenius/dify-knowledge-fs-api' }}
 
 jobs:
   check-changes:
@@ -42,12 +40,8 @@ jobs:
         with:
           filters: |
             knowledge-fs:
-              - 'knowledge-fs/**'
-              - 'knowledge-fs/packages/api/src/dify-capability-v2.ts'
-              - 'knowledge-fs/packages/api/src/knowledge-space-routes.ts'
-              - 'knowledge-fs/packages/api/src/upload-session-routes.ts'
-              - 'knowledge-fs/scripts/export-capability-v2-operations.mjs'
-              - 'knowledge-fs/scripts/export-openapi.mjs'
+              - 'api/knowledge-fs-contract/**'
+              - 'api/Dockerfile'
               - 'api/dev/generate_knowledge_fs_contract.py'
               - 'api/dev/knowledge_fs_product_contract.py'
               - 'api/knowledge-fs-contract.lock.json'
@@ -72,6 +66,8 @@ jobs:
               - 'api/extensions/ext_celery.py'
               - 'api/extensions/ext_commands.py'
               - 'api/models/__init__.py'
+              - 'api/models/enums.py'
+              - 'api/models/model.py'
               - 'api/services/account_service.py'
               - 'api/services/agent_tool_inner_service.py'
               - 'api/services/enterprise/rbac_service.py'
@@ -111,58 +107,9 @@ jobs:
               - 'docs/design/knowledge-fs*'
               - '.github/dependabot.yml'
               - '.github/workflows/deploy-knowledge.yml'
+              - '.github/workflows/deploy-dev.yml'
+              - '.github/scripts/knowledge-deploy-*'
               - '.github/workflows/knowledge-fs-ci.yml'
-
-  build:
-    name: Build KnowledgeFS API production image
-    needs:
-      - check-changes
-      - quality
-    if: >-
-      (needs.check-changes.outputs.knowledge-fs == 'true' || github.event_name == 'workflow_dispatch') &&
-      needs.quality.result == 'success'
-    runs-on: depot-ubuntu-24.04-4
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: false
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-
-      - name: Login to Docker Hub
-        if: >-
-          github.event_name == 'workflow_dispatch' ||
-          (github.event_name == 'push' &&
-          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/konwledge'))
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract KnowledgeFS image metadata
-        id: meta
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
-        with:
-          images: ${{ env.DIFY_KNOWLEDGE_FS_API_IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=ref,event=branch
-            type=sha,format=long
-
-      - name: Build KnowledgeFS API image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: ./knowledge-fs
-          file: ./knowledge-fs/apps/api/Dockerfile
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64
-          push: >-
-            ${{ github.event_name == 'workflow_dispatch' ||
-            (github.event_name == 'push' &&
-            (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/konwledge')) }}
-          tags: ${{ steps.meta.outputs.tags }}
 
   quality:
     name: Run KnowledgeFS quality and contract gates
@@ -172,7 +119,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ./knowledge-fs
+        working-directory: .
     steps:
       - name: Checkout code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -180,42 +127,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
-        with:
-          package_json_file: knowledge-fs/package.json
-          run_install: false
-
-      - name: Setup Node
+      - name: Setup Node for deployment gate regression tests
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: knowledge-fs/pnpm-lock.yaml
+          node-version: '22'
 
-      - name: Install KnowledgeFS dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install PDF metadata inspector
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends poppler-utils
-          pdfinfo -v
-
-      - name: Scan KnowledgeFS secrets
-        run: pnpm security:secrets
-
-      - name: Audit KnowledgeFS production dependencies
-        run: pnpm security:dependencies
-
-      - name: Run KnowledgeFS checks
-        run: pnpm check
-
-      - name: Build KnowledgeFS
-        run: pnpm build
-
-      - name: Lint KnowledgeFS
-        run: pnpm lint:backend
+      - name: Test deployment revision gates
+        run: node --test .github/scripts/knowledge-deploy-gates.test.cjs
 
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
@@ -234,11 +152,10 @@ jobs:
         working-directory: .
         run: uv sync --project api --locked --dev
 
-      - name: Test dedicated parser sandbox
-        working-directory: .
-        env:
-          PYTHONPATH: knowledge-fs/services/unstructured-sandbox
-        run: uv run --project api python -m unittest discover -s knowledge-fs/services/unstructured-sandbox/tests -t knowledge-fs/services/unstructured-sandbox -v
+      # The standalone KnowledgeFS repository owns TypeScript, parser, image and deployment gates.
+      # This repository verifies its immutable published contract and all Dify integration code.
+      - name: Verify pinned KnowledgeFS contract
+        run: uv run --project api python api/dev/generate_knowledge_fs_contract.py --check
 
       - name: Collect Dify KnowledgeFS gate targets
         working-directory: .
@@ -284,6 +201,8 @@ jobs:
             api/extensions/ext_celery.py
             api/extensions/ext_commands.py
             api/models/__init__.py
+            api/models/enums.py
+            api/models/model.py
             api/services/account_service.py
             api/services/agent_tool_inner_service.py
             api/services/enterprise/rbac_service.py
@@ -510,7 +429,6 @@ jobs:
     if: ${{ always() }}
     needs:
       - check-changes
-      - build
       - quality
       - skip
     runs-on: depot-ubuntu-24.04-4
@@ -518,18 +436,17 @@ jobs:
       - name: Finalize KnowledgeFS CI status
         env:
           EVENT_NAME: ${{ github.event_name }}
-          BUILD_RESULT: ${{ needs.build.result }}
           KNOWLEDGE_FS_CHANGED: ${{ needs.check-changes.outputs.knowledge-fs }}
           QUALITY_RESULT: ${{ needs.quality.result }}
           SKIP_RESULT: ${{ needs.skip.result }}
         run: |
           if [[ "$EVENT_NAME" == 'workflow_dispatch' || "$KNOWLEDGE_FS_CHANGED" == 'true' ]]; then
-            if [[ "$BUILD_RESULT" == 'success' && "$QUALITY_RESULT" == 'success' ]]; then
-              echo "KnowledgeFS build and checks ran successfully."
+            if [[ "$QUALITY_RESULT" == 'success' ]]; then
+              echo "Dify KnowledgeFS contract and integration checks ran successfully."
               exit 0
             fi
 
-            echo "KnowledgeFS build or checks failed: build=$BUILD_RESULT quality=$QUALITY_RESULT" >&2
+            echo "Dify KnowledgeFS integration checks failed: quality=$QUALITY_RESULT" >&2
             exit 1
           fi
 

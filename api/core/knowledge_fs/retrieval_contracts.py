@@ -67,6 +67,9 @@ KnowledgeFSPublicErrorCode = Literal[
     "EXECUTION_ATTEMPTS_EXHAUSTED",
     "KNOWLEDGE_FS_ACCESS_DENIED",
     "KNOWLEDGE_FS_CONFLICT",
+    "LOGICAL_DOCUMENT_CAS_CONFLICT",
+    "DURABLE_DELETION_IDEMPOTENCY_CONFLICT",
+    "SOURCE_VERSION_CONFLICT",
     "KNOWLEDGE_FS_INTERNAL_ERROR",
     "KNOWLEDGE_FS_INVALID_REQUEST",
     "KNOWLEDGE_FS_NOT_FOUND",
@@ -183,6 +186,8 @@ class KnowledgeFSPublicFailureResponse(ResponseModel):
     _SAFE_PARAMETER_KEYS: ClassVar[frozenset[str]] = frozenset(
         {
             "attempt",
+            "currentRowVersion",
+            "expectedRowVersion",
             "documentCount",
             "fileSizeBytes",
             "limit",

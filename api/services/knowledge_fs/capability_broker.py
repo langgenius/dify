@@ -36,7 +36,10 @@ from services.knowledge_fs.product_operations import (
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.product_service import KnowledgeFSProductService
-from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
+from services.knowledge_fs.service_api_authorization import (
+    KnowledgeFSServiceApiProfile,
+    KnowledgeFSServiceApiScopeError,
+)
 from services.knowledge_fs_capability import (
     KNOWLEDGE_FS_CAPABILITY_OPERATIONS,
     CapabilityAuthzRevision,
@@ -242,7 +245,7 @@ class KnowledgeFSCapabilityBroker:
                 or space.state is not KnowledgeFSControlSpaceState.ACTIVE
                 or space.knowledge_space_id is None
             ):
-                raise KnowledgeFSOperationUnavailableError("KnowledgeFS Service API access is no longer authorized")
+                raise KnowledgeFSServiceApiScopeError("KnowledgeFS Service API access is no longer authorized")
             knowledge_space_id = space.knowledge_space_id
             request = _issue_request(
                 capability_operation_id=capability_operation_id,
@@ -455,7 +458,7 @@ def _load_service_authorization(
         )
     ).one_or_none()
     if row is None:
-        raise KnowledgeFSOperationUnavailableError("KnowledgeFS Service API access is no longer authorized")
+        raise KnowledgeFSServiceApiScopeError("KnowledgeFS Service API access is no longer authorized")
     return row._t
 
 

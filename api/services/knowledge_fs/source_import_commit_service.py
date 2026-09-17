@@ -12,6 +12,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSCrawlPreviewSelectionPayload,
     KnowledgeFSOnlineDocumentWorkflowImportPayload,
     KnowledgeFSOnlineDriveWorkflowImportPayload,
+    KnowledgeFSSourceEditSyncPolicyPayload,
+    KnowledgeFSSourceImportConfigurationPayload,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSourceWorkflowResponse,
@@ -38,11 +40,19 @@ def commit_source_import(
     source_id: str,
     payload: KnowledgeFSAsyncSourceImport,
     idempotency_key: str,
+    source_update: KnowledgeFSSourceImportConfigurationPayload | None = None,
 ) -> KnowledgeFSSourceWorkflowResponse:
     """Start an import and transfer reconciliation ownership to the backend."""
 
+    desired_sync_policy = (
+        KnowledgeFSSourceEditSyncPolicyPayload.model_validate(payload.sync_policy.model_dump(by_alias=True))
+        if source_update is not None
+        else None
+    )
     preview_workflow_id: str | None = None
     if isinstance(payload, KnowledgeFSAsyncCrawlPreviewImportPayload):
+        if source_update is not None:
+            raise ValueError("Atomic source edits require crawl-import or workflow-imports")
         preview_workflow_id = payload.preview_workflow_id
         preview_workflow = facade.get_source_workflow(
             tenant_id=tenant_id,
@@ -69,6 +79,8 @@ def commit_source_import(
             payload=KnowledgeFSCrawlImportPayload(
                 sourceUrls=payload.source_urls,
                 replaceExistingSelection=True,
+                sourceUpdate=source_update,
+                desiredSyncPolicy=desired_sync_policy,
             ),
             idempotency_key=idempotency_key,
         )
@@ -82,6 +94,8 @@ def commit_source_import(
                 KnowledgeFSOnlineDocumentWorkflowImportPayload(
                     kind="online-document-import",
                     items=payload.items,
+                    sourceUpdate=source_update,
+                    desiredSyncPolicy=desired_sync_policy,
                 )
             ),
             idempotency_key=idempotency_key,
@@ -96,6 +110,8 @@ def commit_source_import(
                 KnowledgeFSOnlineDriveWorkflowImportPayload(
                     kind="online-drive-import",
                     items=payload.items,
+                    sourceUpdate=source_update,
+                    desiredSyncPolicy=desired_sync_policy,
                 )
             ),
             idempotency_key=idempotency_key,
@@ -105,30 +121,31 @@ def commit_source_import(
 
     if import_workflow.source_id != source_id:
         raise RuntimeError("KnowledgeFS import workflow returned a different Source")
-    source = facade.get_source(
-        tenant_id=tenant_id,
-        account_id=account_id,
-        control_space_id=control_space_id,
-        source_id=source_id,
-    )
-    pending_import = {
-        "kind": payload.kind,
-        **({"previewWorkflowId": preview_workflow_id} if preview_workflow_id is not None else {}),
-        "workflowId": import_workflow.id,
-        "syncPolicy": payload.sync_policy.model_dump(mode="json", by_alias=True),
-    }
-    if source.metadata.get(_PENDING_IMPORT_KEY) != pending_import or source.status != "syncing":
-        facade.update_source(
+    if source_update is None:
+        source = facade.get_source(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
-            source_id=source.id,
-            payload=KnowledgeFSSourceUpdatePayload(
-                expectedVersion=source.version,
-                metadata={"preview": False, _PENDING_IMPORT_KEY: pending_import},
-                status="syncing",
-            ),
+            source_id=source_id,
         )
+        pending_import = {
+            "kind": payload.kind,
+            **({"previewWorkflowId": preview_workflow_id} if preview_workflow_id is not None else {}),
+            "workflowId": import_workflow.id,
+            "syncPolicy": payload.sync_policy.model_dump(mode="json", by_alias=True),
+        }
+        if source.metadata.get(_PENDING_IMPORT_KEY) != pending_import or source.status != "syncing":
+            facade.update_source(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                source_id=source.id,
+                payload=KnowledgeFSSourceUpdatePayload(
+                    expectedVersion=source.version,
+                    metadata={"preview": False, _PENDING_IMPORT_KEY: pending_import},
+                    status="syncing",
+                ),
+            )
 
     from tasks.knowledge_fs_source_import_tasks import finalize_source_import
 

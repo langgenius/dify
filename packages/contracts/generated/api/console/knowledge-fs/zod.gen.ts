@@ -11,23 +11,6 @@ export const zKnowledgeFsInitialSourcePreviewJobCreateResponse = z.object({
 })
 
 /**
- * KnowledgeFSBulkJobResponse
- */
-export const zKnowledgeFsBulkJobResponse = z.object({
-  canceled_items: z.int().gte(0),
-  completed_items: z.int().gte(0),
-  created_at: z.iso.datetime(),
-  failed_item_ids: z.array(z.string()),
-  failed_items: z.int().gte(0),
-  id: z.string(),
-  knowledge_space_id: z.string(),
-  status: z.enum(['canceled', 'completed', 'failed', 'running']),
-  total_items: z.int().gte(0),
-  type: z.enum(['document_delete', 'document_reindex', 'document_upload']),
-  updated_at: z.iso.datetime(),
-})
-
-/**
  * KnowledgeFSResolvedDocumentReferenceResponse
  */
 export const zKnowledgeFsResolvedDocumentReferenceResponse = z.object({
@@ -47,7 +30,7 @@ export const zKnowledgeFsDocumentStagedUploadPayload = z.object({
  */
 export const zKnowledgeFsDocumentReindexPayload = z.object({
   all: z.boolean().nullish(),
-  documentIds: z.array(z.string()).min(1).max(1000).nullish(),
+  documentIds: z.array(z.string()).min(1).max(100).nullish(),
 })
 
 /**
@@ -195,37 +178,6 @@ export const zKnowledgeFsGoldenQuestionEvidenceMatchPayload = z.object({
   minimum_similarity: z.number().gte(0).lte(1).optional().default(0.7),
   node_ids: z.array(z.string()).max(50).optional(),
   top_k: z.int().gte(1).lte(10).optional().default(5),
-})
-
-/**
- * KnowledgeFSDocumentCompilationJobResponse
- */
-export const zKnowledgeFsDocumentCompilationJobResponse = z.object({
-  base_head_revision: z.int().gte(0).nullish(),
-  candidate_fingerprint: z.string().nullish(),
-  candidate_publication_id: z.string().nullish(),
-  completed_at: z.number().nullish(),
-  created_at: z.number(),
-  document_asset_id: z.string(),
-  error: z.string().nullish(),
-  execution_attempts: z.int().gte(0).nullish(),
-  id: z.string(),
-  knowledge_space_id: z.string(),
-  max_execution_attempts: z.int().gte(1).nullish(),
-  run_state: z.string().nullish(),
-  stage: z.enum([
-    'canceled',
-    'failed',
-    'nodes_generated',
-    'outline_built',
-    'parsed',
-    'projection_built',
-    'published',
-    'queued',
-    'smoke_eval_passed',
-  ]),
-  updated_at: z.number(),
-  version: z.int().gte(1),
 })
 
 /**
@@ -633,6 +585,7 @@ export const zKnowledgeFsQueryAdmissionResponse = z.object({
   operation_id: z.literal('createQuery'),
   request: zKnowledgeFsAdmittedQueryRequest,
   token: z.string(),
+  trace_id: z.string(),
   url: z.string(),
 })
 
@@ -923,6 +876,7 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     'DOCUMENT_PARSER_UNAVAILABLE',
     'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
     'DOCUMENT_PDF_RENDER_FAILED',
+    'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
     'EMBEDDING_DIMENSION_INVALID',
     'EMBEDDING_DIMENSION_UNSUPPORTED',
     'EXECUTION_ATTEMPTS_EXHAUSTED',
@@ -939,6 +893,7 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
     'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED',
     'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT',
+    'LOGICAL_DOCUMENT_CAS_CONFLICT',
     'MODEL_CAPABILITY_MISMATCH',
     'MODEL_CONFIGURATION_STALE',
     'MODEL_CREDENTIAL_INVALID',
@@ -996,6 +951,7 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     'SOURCE_SECRET_REF_CONFLICT',
     'SOURCE_SYNC_FAILED',
     'SOURCE_SYNC_SELECTION_MISMATCH',
+    'SOURCE_VERSION_CONFLICT',
     'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
     'SOURCE_WEBSITE_CRAWL_FAILED',
     'SOURCE_WORKFLOW_CONTENT_MISSING',
@@ -1022,6 +978,38 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     .max(128)
     .regex(/^[A-Za-z0-9._:-]{1,128}$/)
     .nullish(),
+})
+
+/**
+ * KnowledgeFSDocumentCompilationJobResponse
+ */
+export const zKnowledgeFsDocumentCompilationJobResponse = z.object({
+  base_head_revision: z.int().gte(0).nullish(),
+  candidate_fingerprint: z.string().nullish(),
+  candidate_publication_id: z.string().nullish(),
+  completed_at: z.number().nullish(),
+  created_at: z.number(),
+  document_asset_id: z.string(),
+  error: z.string().nullish(),
+  execution_attempts: z.int().gte(0).nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  max_execution_attempts: z.int().gte(1).nullish(),
+  run_state: z.string().nullish(),
+  stage: z.enum([
+    'canceled',
+    'failed',
+    'nodes_generated',
+    'outline_built',
+    'parsed',
+    'projection_built',
+    'published',
+    'queued',
+    'smoke_eval_passed',
+  ]),
+  updated_at: z.number(),
+  version: z.int().gte(1),
 })
 
 /**
@@ -1053,6 +1041,7 @@ export const zKnowledgeFsSourceWorkflowResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
       'EXECUTION_ATTEMPTS_EXHAUSTED',
@@ -1069,6 +1058,7 @@ export const zKnowledgeFsSourceWorkflowResponse = z.object({
       'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
       'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED',
       'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT',
+      'LOGICAL_DOCUMENT_CAS_CONFLICT',
       'MODEL_CAPABILITY_MISMATCH',
       'MODEL_CONFIGURATION_STALE',
       'MODEL_CREDENTIAL_INVALID',
@@ -1126,6 +1116,7 @@ export const zKnowledgeFsSourceWorkflowResponse = z.object({
       'SOURCE_SECRET_REF_CONFLICT',
       'SOURCE_SYNC_FAILED',
       'SOURCE_SYNC_SELECTION_MISMATCH',
+      'SOURCE_VERSION_CONFLICT',
       'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
       'SOURCE_WEBSITE_CRAWL_FAILED',
       'SOURCE_WORKFLOW_CONTENT_MISSING',
@@ -1195,6 +1186,7 @@ export const zKnowledgeFsSourceCredentialTestResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
       'EXECUTION_ATTEMPTS_EXHAUSTED',
@@ -1211,6 +1203,7 @@ export const zKnowledgeFsSourceCredentialTestResponse = z.object({
       'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
       'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED',
       'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT',
+      'LOGICAL_DOCUMENT_CAS_CONFLICT',
       'MODEL_CAPABILITY_MISMATCH',
       'MODEL_CONFIGURATION_STALE',
       'MODEL_CREDENTIAL_INVALID',
@@ -1268,6 +1261,7 @@ export const zKnowledgeFsSourceCredentialTestResponse = z.object({
       'SOURCE_SECRET_REF_CONFLICT',
       'SOURCE_SYNC_FAILED',
       'SOURCE_SYNC_SELECTION_MISMATCH',
+      'SOURCE_VERSION_CONFLICT',
       'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
       'SOURCE_WEBSITE_CRAWL_FAILED',
       'SOURCE_WORKFLOW_CONTENT_MISSING',
@@ -1344,6 +1338,36 @@ export const zKnowledgeFsBackgroundTaskListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSBulkJobFailureResponse
+ */
+export const zKnowledgeFsBulkJobFailureResponse = z.object({
+  document_id: z.string(),
+  document_title: z.string().nullish(),
+  error_code: z.string(),
+  error_message: z.string(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  job_id: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSBulkJobResponse
+ */
+export const zKnowledgeFsBulkJobResponse = z.object({
+  canceled_items: z.int().gte(0),
+  completed_items: z.int().gte(0),
+  created_at: z.iso.datetime(),
+  failed_item_ids: z.array(z.string()),
+  failed_items: z.int().gte(0),
+  failures: z.array(zKnowledgeFsBulkJobFailureResponse).optional(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  status: z.enum(['canceled', 'completed', 'failed', 'running']),
+  total_items: z.int().gte(0),
+  type: z.enum(['document_delete', 'document_reindex', 'document_upload']),
+  updated_at: z.iso.datetime(),
+})
+
+/**
  * KnowledgeFSDocumentStagedUploadAcceptedResponse
  */
 export const zKnowledgeFsDocumentStagedUploadAcceptedResponse = z.object({
@@ -1365,7 +1389,7 @@ export const zKnowledgeFsBulkDocumentDeleteItemPayload = z.object({
  * KnowledgeFSBulkDocumentDeletePayload
  */
 export const zKnowledgeFsBulkDocumentDeletePayload = z.object({
-  documents: z.array(zKnowledgeFsBulkDocumentDeleteItemPayload).min(1).max(1000),
+  documents: z.array(zKnowledgeFsBulkDocumentDeleteItemPayload).min(1).max(100),
 })
 
 /**
@@ -1377,7 +1401,7 @@ export const zKnowledgeFsDocumentReindexItemResponse = z.object({
   compilation_job: z.record(z.string(), z.unknown()).nullish(),
   document_id: z.string().nullish(),
   error: z.string().nullish(),
-  status: z.enum(['disabled', 'failed', 'not_found', 'queued']),
+  status: z.enum(['disabled', 'failed', 'not_found', 'pending', 'queued']),
   status_url: z.string().nullish(),
 })
 
@@ -1985,11 +2009,27 @@ export const zKnowledgeFsCrawlImportPagePayload = z.object({
 })
 
 /**
+ * KnowledgeFSSourceImportConfigurationPayload
+ */
+export const zKnowledgeFsSourceImportConfigurationPayload = z.object({
+  expectedVersion: z.int().gte(1),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string().min(1).max(200).nullish(),
+  providerParameters: z
+    .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
+    .nullish(),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+  uri: z.string().min(1).max(4096).nullish(),
+})
+
+/**
  * KnowledgeFSCrawlImportPayload
  */
 export const zKnowledgeFsCrawlImportPayload = z.object({
+  desiredSyncPolicy: zKnowledgeFsSourceEditSyncPolicyPayload.nullish(),
   pages: z.array(zKnowledgeFsCrawlImportPagePayload).min(1).max(200).nullish(),
   replaceExistingSelection: z.boolean().optional().default(false),
+  sourceUpdate: zKnowledgeFsSourceImportConfigurationPayload.nullish(),
   sourceUrls: z.array(z.string()).min(1).max(200),
 })
 
@@ -2037,6 +2077,7 @@ export const zKnowledgeFsSourceImportFailureResponse = z.object({
     'DOCUMENT_PARSER_UNAVAILABLE',
     'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
     'DOCUMENT_PDF_RENDER_FAILED',
+    'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
     'EMBEDDING_DIMENSION_INVALID',
     'EMBEDDING_DIMENSION_UNSUPPORTED',
     'EXECUTION_ATTEMPTS_EXHAUSTED',
@@ -2053,6 +2094,7 @@ export const zKnowledgeFsSourceImportFailureResponse = z.object({
     'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
     'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED',
     'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT',
+    'LOGICAL_DOCUMENT_CAS_CONFLICT',
     'MODEL_CAPABILITY_MISMATCH',
     'MODEL_CONFIGURATION_STALE',
     'MODEL_CREDENTIAL_INVALID',
@@ -2110,6 +2152,7 @@ export const zKnowledgeFsSourceImportFailureResponse = z.object({
     'SOURCE_SECRET_REF_CONFLICT',
     'SOURCE_SYNC_FAILED',
     'SOURCE_SYNC_SELECTION_MISMATCH',
+    'SOURCE_VERSION_CONFLICT',
     'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
     'SOURCE_WEBSITE_CRAWL_FAILED',
     'SOURCE_WORKFLOW_CONTENT_MISSING',
@@ -2398,8 +2441,10 @@ export const zKnowledgeFsSourceEditOnlineDocumentSelectionPayload = z.object({
  * KnowledgeFSOnlineDocumentWorkflowImportPayload
  */
 export const zKnowledgeFsOnlineDocumentWorkflowImportPayload = z.object({
+  desiredSyncPolicy: zKnowledgeFsSourceEditSyncPolicyPayload.nullish(),
   items: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
   kind: z.literal('online-document-import'),
+  sourceUpdate: zKnowledgeFsSourceImportConfigurationPayload.nullish(),
 })
 
 /**
@@ -2468,8 +2513,10 @@ export const zKnowledgeFsSourceUpdatePayload = z.object({
  * KnowledgeFSOnlineDriveWorkflowImportPayload
  */
 export const zKnowledgeFsOnlineDriveWorkflowImportPayload = z.object({
+  desiredSyncPolicy: zKnowledgeFsSourceEditSyncPolicyPayload.nullish(),
   items: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
   kind: z.literal('online-drive-import'),
+  sourceUpdate: zKnowledgeFsSourceImportConfigurationPayload.nullish(),
 })
 
 /**
@@ -2651,10 +2698,24 @@ export const zKnowledgeFsBulkDeletionAcceptedItemResponse = z.object({
 })
 
 /**
+ * KnowledgeFSBulkDeletionResultResponse
+ */
+export const zKnowledgeFsBulkDeletionResultResponse = z.object({
+  document_id: z.string(),
+  error: zKnowledgeFsDurableDeletionErrorResponse.nullish(),
+  job: zKnowledgeFsDurableDeletionJobResponse.nullish(),
+  status: z.enum(['accepted', 'pending', 'rejected']),
+  status_url: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSBulkDeletionAcceptedResponse
  */
 export const zKnowledgeFsBulkDeletionAcceptedResponse = z.object({
+  batch_id: z.string().nullish(),
   items: z.array(zKnowledgeFsBulkDeletionAcceptedItemResponse),
+  results: z.array(zKnowledgeFsBulkDeletionResultResponse).optional(),
+  status_url: z.string().nullish(),
   total: z.int().gte(1),
 })
 
@@ -3472,6 +3533,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsPath = z.object({
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsQuery = z.object({
   cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
 })
 
 /**
@@ -3618,6 +3680,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisions
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsQuery = z.object({
   cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
 })
 
 /**
@@ -3636,6 +3699,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisions
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksQuery =
   z.object({
     cursor: z.string().min(1).max(1000).optional(),
+    limit: z.int().gte(1).lte(100).optional().default(50),
     query: z.string().min(1).max(512).optional(),
   })
 
@@ -3799,6 +3863,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath = z.objec
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.object({
   cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
 })
 
 /**
@@ -4250,6 +4315,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksPath = z.object({
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksQuery = z.object({
   cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
 })
 
 /**
@@ -4759,6 +4825,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTracesPath = z.object({
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesQuery = z.object({
   cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
   source: z.enum(['agent', 'mcp', 'retrieval_test', 'service_api', 'workflow']).optional(),
 })
 

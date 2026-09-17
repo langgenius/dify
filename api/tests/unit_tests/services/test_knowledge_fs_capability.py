@@ -30,7 +30,7 @@ from services.knowledge_fs_capability import (
 )
 
 _CAPABILITY_V2_VECTOR_PATH = (
-    Path(__file__).resolve().parents[4] / "knowledge-fs" / "contracts" / "dify-capability-v2-test-vector.json"
+    Path(__file__).resolve().parents[3] / "knowledge-fs-contract" / "dify-capability-v2-test-vector.json"
 )
 
 # This key signs only the deterministic cross-language contract vector. Production contract files

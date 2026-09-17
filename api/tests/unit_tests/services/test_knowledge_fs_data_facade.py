@@ -58,6 +58,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteSSEResponse,
 )
 from services.knowledge_fs.query_images import KnowledgeFSQueryImagePreview
+from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from tests.unit_tests.services.knowledge_fs_fakes import UnexpectedCapabilityIssuer
 
 
@@ -2771,3 +2772,48 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
     if operation_id == "importSourceWorkflow":
         assert delegated.call_args.kwargs["path_parameters"] == (("sourceId", "source-1"),)
         assert delegated.call_args.kwargs["headers"] == (("Idempotency-Key", "import-source-once"),)
+
+
+def test_service_settings_migration_preserves_service_identity_on_every_operation() -> None:
+    profile = KnowledgeFSServiceApiProfile(
+        tenant_id="tenant-1",
+        control_space_id="control-1",
+        api_token_id="api-token-1",
+        principal_id="api-token-1",
+        knowledge_space_id="space-1",
+        knowledge_space_revision=9,
+        membership_epoch=1,
+        space_acl_epoch=1,
+        external_access_epoch=1,
+        content_policy_revision=1,
+    )
+    remote = ActiveSettingsRemote()
+    broker = MagicMock()
+    broker.issue_service.side_effect = lambda **kwargs: KnowledgeFSIssuedProductCapability(
+        token="service-capability",
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        operation_id=kwargs["operation_id"],
+        knowledge_space_id="space-1",
+        knowledge_space_revision=9,
+        trace_id="trace-1",
+    )
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)
+    result = facade.update_service_settings(
+        profile=profile,
+        payload=KnowledgeFSSettingsPayload(
+            expected_revision=9,
+            embedding=KnowledgeFSProfileModelSelection(model="embed-v2", plugin_id="plugin-2", provider="provider-2"),
+        ),
+    )
+    assert result.migration is not None
+    assert result.migration.run_state == "queued"
+    assert [call.kwargs["operation_id"] for call in broker.issue_service.call_args_list] == [
+        "getSettings",
+        "updateEmbeddingProfile",
+    ]
+    assert all(call.kwargs["profile"] is profile for call in broker.issue_service.call_args_list)
+    broker.issue_interactive.assert_not_called()
+    assert [request.path for request in remote.requests] == [
+        "/knowledge-spaces/space-1/product-settings",
+        "/knowledge-spaces/space-1/embedding-profile",
+    ]

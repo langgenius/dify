@@ -186,6 +186,7 @@ export type KnowledgeFsBulkJobResponse = {
   created_at: string
   failed_item_ids: Array<string>
   failed_items: number
+  failures?: Array<KnowledgeFsBulkJobFailureResponse>
   id: string
   knowledge_space_id: string
   status: 'canceled' | 'completed' | 'failed' | 'running'
@@ -217,7 +218,10 @@ export type KnowledgeFsBulkDocumentDeletePayload = {
 }
 
 export type KnowledgeFsBulkDeletionAcceptedResponse = {
+  batch_id?: string | null
   items: Array<KnowledgeFsBulkDeletionAcceptedItemResponse>
+  results?: Array<KnowledgeFsBulkDeletionResultResponse>
+  status_url?: string | null
   total: number
 }
 
@@ -425,6 +429,7 @@ export type KnowledgeFsDocumentCompilationJobResponse = {
   document_asset_id: string
   error?: string | null
   execution_attempts?: number | null
+  failure?: KnowledgeFsPublicFailureResponse | null
   id: string
   knowledge_space_id: string
   max_execution_attempts?: number | null
@@ -647,6 +652,7 @@ export type KnowledgeFsQueryAdmissionResponse = {
   operation_id: 'createQuery'
   request: KnowledgeFsAdmittedQueryRequest
   token: string
+  trace_id: string
   url: string
 }
 
@@ -841,6 +847,7 @@ export type KnowledgeFsSourceWorkflowResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
     | 'EXECUTION_ATTEMPTS_EXHAUSTED'
@@ -857,6 +864,7 @@ export type KnowledgeFsSourceWorkflowResponse = {
     | 'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS'
     | 'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED'
     | 'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT'
+    | 'LOGICAL_DOCUMENT_CAS_CONFLICT'
     | 'MODEL_CAPABILITY_MISMATCH'
     | 'MODEL_CONFIGURATION_STALE'
     | 'MODEL_CREDENTIAL_INVALID'
@@ -914,6 +922,7 @@ export type KnowledgeFsSourceWorkflowResponse = {
     | 'SOURCE_SECRET_REF_CONFLICT'
     | 'SOURCE_SYNC_FAILED'
     | 'SOURCE_SYNC_SELECTION_MISMATCH'
+    | 'SOURCE_VERSION_CONFLICT'
     | 'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID'
     | 'SOURCE_WEBSITE_CRAWL_FAILED'
     | 'SOURCE_WORKFLOW_CONTENT_MISSING'
@@ -1032,8 +1041,10 @@ export type KnowledgeFsAsyncSourceImportPayload =
     } & KnowledgeFsAsyncOnlineDriveImportPayload)
 
 export type KnowledgeFsCrawlImportPayload = {
+  desiredSyncPolicy?: KnowledgeFsSourceEditSyncPolicyPayload | null
   pages?: Array<KnowledgeFsCrawlImportPagePayload> | null
   replaceExistingSelection?: boolean
+  sourceUpdate?: KnowledgeFsSourceImportConfigurationPayload | null
   sourceUrls: Array<string>
 }
 
@@ -1097,6 +1108,7 @@ export type KnowledgeFsSourceCredentialTestResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
     | 'EXECUTION_ATTEMPTS_EXHAUSTED'
@@ -1113,6 +1125,7 @@ export type KnowledgeFsSourceCredentialTestResponse = {
     | 'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS'
     | 'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED'
     | 'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT'
+    | 'LOGICAL_DOCUMENT_CAS_CONFLICT'
     | 'MODEL_CAPABILITY_MISMATCH'
     | 'MODEL_CONFIGURATION_STALE'
     | 'MODEL_CREDENTIAL_INVALID'
@@ -1170,6 +1183,7 @@ export type KnowledgeFsSourceCredentialTestResponse = {
     | 'SOURCE_SECRET_REF_CONFLICT'
     | 'SOURCE_SYNC_FAILED'
     | 'SOURCE_SYNC_SELECTION_MISMATCH'
+    | 'SOURCE_VERSION_CONFLICT'
     | 'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID'
     | 'SOURCE_WEBSITE_CRAWL_FAILED'
     | 'SOURCE_WORKFLOW_CONTENT_MISSING'
@@ -1484,6 +1498,7 @@ export type KnowledgeFsPublicFailureResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
     | 'EXECUTION_ATTEMPTS_EXHAUSTED'
@@ -1500,6 +1515,7 @@ export type KnowledgeFsPublicFailureResponse = {
     | 'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS'
     | 'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED'
     | 'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT'
+    | 'LOGICAL_DOCUMENT_CAS_CONFLICT'
     | 'MODEL_CAPABILITY_MISMATCH'
     | 'MODEL_CONFIGURATION_STALE'
     | 'MODEL_CREDENTIAL_INVALID'
@@ -1557,6 +1573,7 @@ export type KnowledgeFsPublicFailureResponse = {
     | 'SOURCE_SECRET_REF_CONFLICT'
     | 'SOURCE_SYNC_FAILED'
     | 'SOURCE_SYNC_SELECTION_MISMATCH'
+    | 'SOURCE_VERSION_CONFLICT'
     | 'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID'
     | 'SOURCE_WEBSITE_CRAWL_FAILED'
     | 'SOURCE_WORKFLOW_CONTENT_MISSING'
@@ -1580,6 +1597,15 @@ export type KnowledgeFsBackgroundTaskFailureResponse = {
   error_code: string
   error_message: string
   failure: KnowledgeFsPublicFailureResponse
+  job_id?: string | null
+}
+
+export type KnowledgeFsBulkJobFailureResponse = {
+  document_id: string
+  document_title?: string | null
+  error_code: string
+  error_message: string
+  failure?: KnowledgeFsPublicFailureResponse | null
   job_id?: string | null
 }
 
@@ -1613,6 +1639,14 @@ export type KnowledgeFsBulkDeletionAcceptedItemResponse = {
   status_url: string
 }
 
+export type KnowledgeFsBulkDeletionResultResponse = {
+  document_id: string
+  error?: KnowledgeFsDurableDeletionErrorResponse | null
+  job?: KnowledgeFsDurableDeletionJobResponse | null
+  status: 'accepted' | 'pending' | 'rejected'
+  status_url?: string | null
+}
+
 export type KnowledgeFsDocumentReindexItemResponse = {
   asset?: KnowledgeFsDocumentResponse | null
   code?: string | null
@@ -1621,7 +1655,7 @@ export type KnowledgeFsDocumentReindexItemResponse = {
   } | null
   document_id?: string | null
   error?: string | null
-  status: 'disabled' | 'failed' | 'not_found' | 'queued'
+  status: 'disabled' | 'failed' | 'not_found' | 'pending' | 'queued'
   status_url?: string | null
 }
 
@@ -2047,6 +2081,19 @@ export type KnowledgeFsCrawlImportPagePayload = {
   title?: string | null
 }
 
+export type KnowledgeFsSourceImportConfigurationPayload = {
+  expectedVersion: number
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  name?: string | null
+  providerParameters?: {
+    [key: string]: boolean | number | string
+  } | null
+  status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+  uri?: string | null
+}
+
 export type KnowledgeFsSourceFileBucketResponse = {
   bucket?: string | null
   continuation_token?: string | null
@@ -2082,6 +2129,7 @@ export type KnowledgeFsSourceImportFailureResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
     | 'EXECUTION_ATTEMPTS_EXHAUSTED'
@@ -2098,6 +2146,7 @@ export type KnowledgeFsSourceImportFailureResponse = {
     | 'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS'
     | 'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED'
     | 'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT'
+    | 'LOGICAL_DOCUMENT_CAS_CONFLICT'
     | 'MODEL_CAPABILITY_MISMATCH'
     | 'MODEL_CONFIGURATION_STALE'
     | 'MODEL_CREDENTIAL_INVALID'
@@ -2155,6 +2204,7 @@ export type KnowledgeFsSourceImportFailureResponse = {
     | 'SOURCE_SECRET_REF_CONFLICT'
     | 'SOURCE_SYNC_FAILED'
     | 'SOURCE_SYNC_SELECTION_MISMATCH'
+    | 'SOURCE_VERSION_CONFLICT'
     | 'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID'
     | 'SOURCE_WEBSITE_CRAWL_FAILED'
     | 'SOURCE_WORKFLOW_CONTENT_MISSING'
@@ -2183,13 +2233,17 @@ export type KnowledgeFsSourceWorkspacePagesResponse = {
 }
 
 export type KnowledgeFsOnlineDocumentWorkflowImportPayload = {
+  desiredSyncPolicy?: KnowledgeFsSourceEditSyncPolicyPayload | null
   items: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
   kind: 'online-document-import'
+  sourceUpdate?: KnowledgeFsSourceImportConfigurationPayload | null
 }
 
 export type KnowledgeFsOnlineDriveWorkflowImportPayload = {
+  desiredSyncPolicy?: KnowledgeFsSourceEditSyncPolicyPayload | null
   items: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
   kind: 'online-drive-import'
+  sourceUpdate?: KnowledgeFsSourceImportConfigurationPayload | null
 }
 
 export type KnowledgeFsSpaceTagResponse = {
@@ -2830,6 +2884,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
   }
   query?: {
     cursor?: string
+    limit?: number
   }
   url: '/knowledge-fs/spaces/{control_space_id}/documents'
 }
@@ -3009,6 +3064,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsDa
   }
   query?: {
     cursor?: string
+    limit?: number
   }
   url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions'
 }
@@ -3030,6 +3086,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsBy
     }
     query?: {
       cursor?: string
+      limit?: number
       query?: string
     }
     url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks'
@@ -3255,6 +3312,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsData = {
   }
   query?: {
     cursor?: string
+    limit?: number
   }
   url: '/knowledge-fs/spaces/{control_space_id}/logical-documents'
 }
@@ -3824,6 +3882,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksData = {
   }
   query?: {
     cursor?: string
+    limit?: number
   }
   url: '/knowledge-fs/spaces/{control_space_id}/research-tasks'
 }
@@ -4486,6 +4545,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesData = {
   }
   query?: {
     cursor?: string
+    limit?: number
     source?: 'agent' | 'mcp' | 'retrieval_test' | 'service_api' | 'workflow'
   }
   url: '/knowledge-fs/spaces/{control_space_id}/traces'

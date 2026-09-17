@@ -1094,6 +1094,39 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/upload-sessions/{id}/abort",
             "upload_session",
         ),
+        "resumeResearchTask": KnowledgeFSCapabilityOperation(
+            "research_tasks.resume", _STANDARD_CALLERS, "POST", "/research-tasks/{id}/resume", "research_task"
+        ),
+        "listSourceWorkflows": KnowledgeFSCapabilityOperation(
+            "source_workflows.list",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/source-workflows",
+            "knowledge_space",
+        ),
+        "getDurableDeletionJob": KnowledgeFSCapabilityOperation(
+            "deletion_jobs.read", _STANDARD_CALLERS, "GET", "/deletion-jobs/{jobId}", "job"
+        ),
+        "retryDurableDeletionJob": KnowledgeFSCapabilityOperation(
+            "deletion_jobs.retry", _STANDARD_CALLERS, "POST", "/deletion-jobs/{jobId}/retry", "job"
+        ),
+        "getDurableDeletionBatch": KnowledgeFSCapabilityOperation(
+            "deletion_batches.read", _STANDARD_CALLERS, "GET", "/deletion-batches/{batchId}", "job"
+        ),
+        "listDocumentProcessingTasks": KnowledgeFSCapabilityOperation(
+            "document_processing_tasks.list",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/documents/{documentId}/processing-tasks",
+            "document",
+        ),
+        "getDocumentProcessingTask": KnowledgeFSCapabilityOperation(
+            "document_processing_tasks.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}",
+            "job",
+        ),
         "cancelResearchTask": KnowledgeFSCapabilityOperation(
             "research_tasks.cancel",
             _STANDARD_CALLERS,

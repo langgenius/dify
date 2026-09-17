@@ -96,6 +96,22 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base query event stream | **text/event-stream**: string<br> |
 
+### [GET] /knowledge-fs/spaces/{control_space_id}/background-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| task_ids | query | Comma-separated document or document_bulk task IDs for an exact lookup | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listBackgroundTasks | **application/json**: [KnowledgeFSBackgroundTaskListResponse](#knowledgefsbackgroundtasklistresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/bulk-jobs/{job_id}
 #### Parameters
 
@@ -110,12 +126,71 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base bulk job | **application/json**: [KnowledgeFSBulkJobResponse](#knowledgefsbulkjobresponse)<br> |
 
+### [GET] /knowledge-fs/spaces/{control_space_id}/deletion-batches/{batch_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| batch_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Deletion batch status | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/deletion-jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getDeletionJob | **application/json**: [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/deletion-jobs/{job_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | retryDeletionJob | **application/json**: [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/document-references/resolve
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| document_asset_id | query |  | Yes | string |
+| document_asset_version | query |  | Yes | integer |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | resolveDocumentReference | **application/json**: [KnowledgeFSResolvedDocumentReferenceResponse](#knowledgefsresolveddocumentreferenceresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
 | control_space_id | path |  | Yes | string |
 
 #### Responses
@@ -148,6 +223,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | No | string |
 | control_space_id | path |  | Yes | string |
 
 #### Request Body
@@ -160,7 +236,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent Knowledge Base document reindex queued | **application/json**: [KnowledgeFSDocumentReindexResponse](#knowledgefsdocumentreindexresponse)<br> |
+| 202 | Agent Knowledge Base document reindex queued | **application/json**: [KnowledgeFSDocumentReindexResponse](#knowledgefsdocumentreindexresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
 #### Parameters
@@ -236,6 +312,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
 | control_space_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 
@@ -251,6 +328,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
 | query | query |  | No | string |
 | control_space_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
@@ -320,6 +398,66 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base compilation job retried | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
 
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listLogicalDocuments | **application/json**: [KnowledgeFSLogicalDocumentListResponse](#knowledgefslogicaldocumentlistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getLogicalDocument | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/processing-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document processing history | **application/json**: [KnowledgeFSDocumentProcessingTaskListResponse](#knowledgefsdocumentprocessingtasklistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/processing-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document processing task | **application/json**: [KnowledgeFSDocumentProcessingTaskResponse](#knowledgefsdocumentprocessingtaskresponse)<br> |
+
 ### [POST] /knowledge-fs/spaces/{control_space_id}/queries/admission
 #### Parameters
 
@@ -339,12 +477,32 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base streaming query admitted through Dify API | **application/json**: [KnowledgeFSQueryAdmissionResponse](#knowledgefsqueryadmissionresponse)<br> |
 
+### [POST] /knowledge-fs/spaces/{control_space_id}/query-images
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Query image uploaded | **application/json**: [KnowledgeFSServiceQueryImageUploadResponse](#knowledgefsservicequeryimageuploadresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
 | control_space_id | path |  | Yes | string |
 
 #### Responses
@@ -358,6 +516,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | No | string |
 | control_space_id | path |  | Yes | string |
 
 #### Request Body
@@ -435,6 +594,20 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research task partial evidence | **application/json**: [KnowledgeFSResearchTaskPartialListResponse](#knowledgefsresearchtaskpartiallistresponse)<br> |
 
+### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/resume
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | resumeResearchTask | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/settings
 #### Parameters
 
@@ -465,7 +638,190 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent Knowledge Base settings updated | **application/json**: [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse)<br> |
+| 200 | Agent Knowledge Base settings updated | **application/json**: [KnowledgeFSSettingsUpdateResponse](#knowledgefssettingsupdateresponse)<br> |
+| 202 | Agent Knowledge Base settings migration accepted | **application/json**: [KnowledgeFSSettingsUpdateResponse](#knowledgefssettingsupdateresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/settings/migrations/{migration_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| migration_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getProfileMigration | **application/json**: [KnowledgeFSProfileMigrationResponse](#knowledgefsprofilemigrationresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-connections
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listSourceConnections | **application/json**: [KnowledgeFSSourceConnectionListResponse](#knowledgefssourceconnectionlistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSServiceSourceConnectionCreatePayload](#knowledgefsservicesourceconnectioncreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | createSourceConnection | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections/{connection_id}/refresh
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceConnectionRefreshPayload](#knowledgefssourceconnectionrefreshpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | refreshSourceConnection | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-providers
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Source providers | **application/json**: [KnowledgeFSSourceProviderListResponse](#knowledgefssourceproviderlistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| sourceId | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listSourceWorkflows | **application/json**: [KnowledgeFSSourceWorkflowListResponse](#knowledgefssourceworkflowlistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceWorkflowCancelPayload](#knowledgefssourceworkflowcancelpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | cancelSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/pages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listCrawlPreviewPages | **application/json**: [KnowledgeFSCrawlPreviewPageListResponse](#knowledgefscrawlpreviewpagelistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | retrySourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/selection
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSCrawlPreviewSelectionPayload](#knowledgefscrawlpreviewselectionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | selectCrawlPreviewPages | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources
 #### Parameters
@@ -473,6 +829,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
 | control_space_id | path |  | Yes | string |
 
 #### Responses
@@ -492,7 +849,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [KnowledgeFSSourceCreatePayload](#knowledgefssourcecreatepayload)<br> |
+|  Yes | **application/json**: [KnowledgeFSServiceSourceCreatePayload](#knowledgefsservicesourcecreatepayload)<br> |
 
 #### Responses
 
@@ -547,7 +904,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [KnowledgeFSSourceUpdatePayload](#knowledgefssourceupdatepayload)<br> |
+|  Yes | **application/json**: [KnowledgeFSServiceSourceUpdatePayload](#knowledgefsservicesourceupdatepayload)<br> |
 
 #### Responses
 
@@ -555,11 +912,15 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source updated | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
 
-### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl~~
+
+***DEPRECATED***
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |
 
@@ -567,7 +928,43 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent Knowledge Base source crawl | **application/json**: [KnowledgeFSSourceCrawlResponse](#knowledgefssourcecrawlresponse)<br> |
+| 202 | Agent Knowledge Base source crawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-import
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSCrawlImportPayload](#knowledgefscrawlimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | importSelectedSourceCrawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | previewSourceCrawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/files
 #### Parameters
@@ -587,11 +984,15 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source files | **application/json**: [KnowledgeFSSourceFilesResponse](#knowledgefssourcefilesresponse)<br> |
 
-### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import~~
+
+***DEPRECATED***
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |
 
@@ -605,13 +1006,17 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent Knowledge Base source pages imported | **application/json**: [KnowledgeFSSourceImportResponse](#knowledgefssourceimportresponse)<br> |
+| 202 | Agent Knowledge Base source pages imported | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
 
-### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import-files
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import-files~~
+
+***DEPRECATED***
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |
 
@@ -625,7 +1030,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent Knowledge Base source files imported | **application/json**: [KnowledgeFSSourceImportResponse](#knowledgefssourceimportresponse)<br> |
+| 202 | Agent Knowledge Base source files imported | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages
 #### Parameters
@@ -643,6 +1048,55 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source pages | **application/json**: [KnowledgeFSSourcePagesResponse](#knowledgefssourcepagesresponse)<br> |
 
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | syncSource | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getSourceSyncPolicy | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceSyncPolicyPayload](#knowledgefssourcesyncpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | updateSourceSyncPolicy | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/test
 #### Parameters
 
@@ -657,12 +1111,34 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source credential test | **application/json**: [KnowledgeFSSourceCredentialTestResponse](#knowledgefssourcecredentialtestresponse)<br> |
 
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/workflow-imports
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceWorkflowImportPayload](#knowledgefssourceworkflowimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | importSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
 | source | query |  | No | string, <br>**Available values:** "agent", "mcp", "retrieval_test", "service_api", "workflow" |
 | control_space_id | path |  | Yes | string |
 
@@ -4281,6 +4757,60 @@ Model class for i18n object.
 | started_at | dateTime |  | Yes |
 | status | string, <br>**Available values:** "error", "ok", "skipped" | *Enum:* `"error"`, `"ok"`, `"skipped"` | Yes |
 
+#### KnowledgeFSBackgroundTaskFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| document_title | string |  | No |
+| error_code | string |  | Yes |
+| error_message | string |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | Yes |
+| job_id | string |  | No |
+
+#### KnowledgeFSBackgroundTaskListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+| task_ids | string | Comma-separated document or document_bulk task IDs for an exact lookup | No |
+
+#### KnowledgeFSBackgroundTaskListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSBackgroundTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| can_cancel | boolean |  | Yes |
+| can_retry | boolean |  | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| document_id | string |  | No |
+| document_revision | integer |  | No |
+| document_title | string |  | No |
+| error_code | string |  | No |
+| error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| failures | [ [KnowledgeFSBackgroundTaskFailureResponse](#knowledgefsbackgroundtaskfailureresponse) ] |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| operation | string, <br>**Available values:** "document_delete", "document_processing", "document_reindex", "document_upload", "source_bulk", "source_crawl_import", "source_crawl_preview", "source_online_document_import", "source_online_drive_import", "source_sync" | *Enum:* `"document_delete"`, `"document_processing"`, `"document_reindex"`, `"document_upload"`, `"source_bulk"`, `"source_crawl_import"`, `"source_crawl_preview"`, `"source_online_document_import"`, `"source_online_drive_import"`, `"source_sync"` | Yes |
+| progress_completed | integer |  | Yes |
+| progress_failed | integer |  | Yes |
+| progress_percent | integer |  | Yes |
+| progress_total | integer |  | Yes |
+| source_id | string |  | No |
+| source_title | string |  | No |
+| state | string, <br>**Available values:** "canceled", "completed", "failed", "queued", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"queued"`, `"running"` | Yes |
+| task_kind | string, <br>**Available values:** "document", "document_bulk", "source" | *Enum:* `"document"`, `"document_bulk"`, `"source"` | Yes |
+| updated_at | dateTime |  | Yes |
+
 #### KnowledgeFSBulkDeletionAcceptedItemResponse
 
 | Name | Type | Description | Required |
@@ -4294,8 +4824,21 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| batch_id | string |  | No |
 | items | [ [KnowledgeFSBulkDeletionAcceptedItemResponse](#knowledgefsbulkdeletionaccepteditemresponse) ] |  | Yes |
+| results | [ [KnowledgeFSBulkDeletionResultResponse](#knowledgefsbulkdeletionresultresponse) ] |  | No |
+| status_url | string |  | No |
 | total | integer |  | Yes |
+
+#### KnowledgeFSBulkDeletionResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| error | [KnowledgeFSDurableDeletionErrorResponse](#knowledgefsdurabledeletionerrorresponse) |  | No |
+| job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | No |
+| status | string, <br>**Available values:** "accepted", "pending", "rejected" | *Enum:* `"accepted"`, `"pending"`, `"rejected"` | Yes |
+| status_url | string |  | No |
 
 #### KnowledgeFSBulkDocumentDeleteItemPayload
 
@@ -4310,6 +4853,17 @@ Model class for i18n object.
 | ---- | ---- | ----------- | -------- |
 | documents | [ [KnowledgeFSBulkDocumentDeleteItemPayload](#knowledgefsbulkdocumentdeleteitempayload) ] |  | Yes |
 
+#### KnowledgeFSBulkJobFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| document_title | string |  | No |
+| error_code | string |  | Yes |
+| error_message | string |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| job_id | string |  | No |
+
 #### KnowledgeFSBulkJobResponse
 
 | Name | Type | Description | Required |
@@ -4319,12 +4873,62 @@ Model class for i18n object.
 | created_at | dateTime |  | Yes |
 | failed_item_ids | [ string ] |  | Yes |
 | failed_items | integer |  | Yes |
+| failures | [ [KnowledgeFSBulkJobFailureResponse](#knowledgefsbulkjobfailureresponse) ] |  | No |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
 | status | string, <br>**Available values:** "canceled", "completed", "failed", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"running"` | Yes |
 | total_items | integer |  | Yes |
 | type | string, <br>**Available values:** "document_delete", "document_reindex", "document_upload" | *Enum:* `"document_delete"`, `"document_reindex"`, `"document_upload"` | Yes |
 | updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSCrawlImportPagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| description | string |  | No |
+| sourceUrl | string |  | Yes |
+| title | string |  | No |
+
+#### KnowledgeFSCrawlImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desiredSyncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| pages | [ [KnowledgeFSCrawlImportPagePayload](#knowledgefscrawlimportpagepayload) ] |  | No |
+| replaceExistingSelection | boolean |  | No |
+| sourceUpdate | [KnowledgeFSSourceImportConfigurationPayload](#knowledgefssourceimportconfigurationpayload) |  | No |
+| sourceUrls | [ string ] |  | Yes |
+
+#### KnowledgeFSCrawlPreviewPageListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSCrawlPreviewPageListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSCrawlPreviewPageResponse](#knowledgefscrawlpreviewpageresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSCrawlPreviewPageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| etag | string |  | No |
+| page_id | string |  | Yes |
+| source_url | string |  | Yes |
+| title | string |  | No |
+
+#### KnowledgeFSCrawlPreviewSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pageIds | [ string ] |  | Yes |
 
 #### KnowledgeFSCrawledPageResponse
 
@@ -4340,12 +4944,14 @@ Model class for i18n object.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
 
 #### KnowledgeFSDocumentChunkListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
 | query | string |  | No |
 
 #### KnowledgeFSDocumentChunkListResponse
@@ -4388,6 +4994,7 @@ Model class for i18n object.
 | document_asset_id | string |  | Yes |
 | error | string |  | No |
 | execution_attempts | integer |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
 | max_execution_attempts | integer |  | No |
@@ -4453,14 +5060,51 @@ Model class for i18n object.
 | updated_at | string |  | No |
 | version | integer |  | Yes |
 
+#### KnowledgeFSDocumentProcessingTaskListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentProcessingTaskResponse](#knowledgefsdocumentprocessingtaskresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentProcessingTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_operations | [ string ] |  | No |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| document_id | string |  | Yes |
+| document_revision | integer |  | Yes |
+| error_code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" |  | No |
+| error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| phase | string |  | No |
+| progress_percent | integer |  | Yes |
+| retry_at | string |  | No |
+| stage | string, <br>**Available values:** "nodes_generated", "outline_built", "parsed", "projection_built", "published", "queued", "smoke_eval_passed" | *Enum:* `"nodes_generated"`, `"outline_built"`, `"parsed"`, `"projection_built"`, `"published"`, `"queued"`, `"smoke_eval_passed"` | Yes |
+| state | string, <br>**Available values:** "canceled", "dispatch_pending", "failed", "queued", "retry_wait", "running", "succeeded", "superseded" | *Enum:* `"canceled"`, `"dispatch_pending"`, `"failed"`, `"queued"`, `"retry_wait"`, `"running"`, `"succeeded"`, `"superseded"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSDocumentReferenceQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_asset_id | string |  | Yes |
+| document_asset_version | integer |  | Yes |
+
 #### KnowledgeFSDocumentReindexItemResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | asset | [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse) |  | No |
+| code | string |  | No |
 | compilation_job | object |  | No |
 | document_id | string |  | No |
-| status | string, <br>**Available values:** "disabled", "not_found", "queued" | *Enum:* `"disabled"`, `"not_found"`, `"queued"` | Yes |
+| error | string |  | No |
+| status | string, <br>**Available values:** "disabled", "failed", "not_found", "pending", "queued" | *Enum:* `"disabled"`, `"failed"`, `"not_found"`, `"pending"`, `"queued"` | Yes |
 | status_url | string |  | No |
 
 #### KnowledgeFSDocumentReindexPayload
@@ -4572,6 +5216,13 @@ Model class for i18n object.
 | revision | integer |  | No |
 | vector_space_id | string |  | No |
 
+#### KnowledgeFSLogicalDocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
 #### KnowledgeFSLogicalDocumentResponse
 
 | Name | Type | Description | Required |
@@ -4584,6 +5235,7 @@ Model class for i18n object.
 | enabled | boolean, <br>**Default:** true |  | No |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
+| latest_task | [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse) |  | No |
 | provider_item_id | string |  | No |
 | row_version | integer |  | Yes |
 | source_id | string |  | No |
@@ -4604,6 +5256,15 @@ Model class for i18n object.
 | type | string |  | Yes |
 | workspaceId | string |  | Yes |
 
+#### KnowledgeFSOnlineDocumentWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desiredSyncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| items | [ [KnowledgeFSOnlineDocumentWorkflowImportItemPayload](#knowledgefsonlinedocumentworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+| sourceUpdate | [KnowledgeFSSourceImportConfigurationPayload](#knowledgefssourceimportconfigurationpayload) |  | No |
+
 #### KnowledgeFSOnlineDriveWorkflowImportItemPayload
 
 | Name | Type | Description | Required |
@@ -4614,6 +5275,15 @@ Model class for i18n object.
 | mimeType | string |  | No |
 | name | string |  | Yes |
 | providerItemId | string |  | Yes |
+
+#### KnowledgeFSOnlineDriveWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desiredSyncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| items | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+| sourceUpdate | [KnowledgeFSSourceImportConfigurationPayload](#knowledgefssourceimportconfigurationpayload) |  | No |
 
 #### KnowledgeFSProductRerankProfile
 
@@ -4640,6 +5310,23 @@ Model class for i18n object.
 | stage | string, <br>**Available values:** "mode-final", "rerank", <br>**Default:** mode-final | *Enum:* `"mode-final"`, `"rerank"` | No |
 | value | number |  | No |
 
+#### KnowledgeFSProfileMigrationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| candidate_publication_fingerprint | string |  | No |
+| changed_kind | string, <br>**Available values:** "embedding", "retrieval" | *Enum:* `"embedding"`, `"retrieval"` | Yes |
+| checkpoint | string, <br>**Available values:** "activated", "candidate-built", "evaluated", "queued" | *Enum:* `"activated"`, `"candidate-built"`, `"evaluated"`, `"queued"` | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| error_code | string |  | No |
+| evaluation_summary | object |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| rebuild_scope | string, <br>**Available values:** "clone-publication", "full-page-index-summary-outline", "full-vector-space" | *Enum:* `"clone-publication"`, `"full-page-index-summary-outline"`, `"full-vector-space"` | Yes |
+| run_state | string, <br>**Available values:** "canceled", "failed", "queued", "running", "succeeded" | *Enum:* `"canceled"`, `"failed"`, `"queued"`, `"running"`, `"succeeded"` | Yes |
+| updated_at | dateTime |  | Yes |
+
 #### KnowledgeFSProfileModelSelection
 
 | Name | Type | Description | Required |
@@ -4654,7 +5341,7 @@ Model class for i18n object.
 | ---- | ---- | ----------- | -------- |
 | action | string, <br>**Available values:** "configure_model", "configure_parser", "configure_source", "contact_admin", "retry", "reupload" |  | No |
 | category | string, <br>**Available values:** "authorization", "canceled", "configuration", "conflict", "dependency", "internal", "not_found", "rate_limit", "timeout", "validation" | *Enum:* `"authorization"`, `"canceled"`, `"configuration"`, `"conflict"`, `"dependency"`, `"internal"`, `"not_found"`, `"rate_limit"`, `"timeout"`, `"validation"` | Yes |
-| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"` | Yes |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_PROFILE_CHANGED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"DURABLE_DELETION_IDEMPOTENCY_CONFLICT"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS"`, `"KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"`, `"LOGICAL_DOCUMENT_CAS_CONFLICT"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_CONTEXT_LIMIT"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_OUTPUT_LIMIT"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_VERSION_CONFLICT"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"` | Yes |
 | message | string |  | Yes |
 | parameters | object |  | No |
 | retryPolicy | string, <br>**Available values:** "after_configuration", "automatic", "manual", "never" | *Enum:* `"after_configuration"`, `"automatic"`, `"manual"`, `"never"` | Yes |
@@ -4669,6 +5356,7 @@ Model class for i18n object.
 | operation_id | string |  | Yes |
 | request | [KnowledgeFSAdmittedQueryRequest](#knowledgefsadmittedqueryrequest) |  | Yes |
 | token | string |  | Yes |
+| trace_id | string |  | Yes |
 | url | string |  | Yes |
 
 #### KnowledgeFSQueryCreatePayload
@@ -4840,6 +5528,13 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | strategy_version | string |  | Yes |
 | top_k | integer |  | Yes |
 
+#### KnowledgeFSResolvedDocumentReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| revision | integer |  | Yes |
+
 #### KnowledgeFSRetrievalSettingsResponse
 
 | Name | Type | Description | Required |
@@ -4850,6 +5545,50 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | revision | integer |  | No |
 | score_threshold | [KnowledgeFSProductScoreThreshold](#knowledgefsproductscorethreshold) |  | Yes |
 | top_k | integer |  | Yes |
+
+#### KnowledgeFSServiceQueryImageUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| byte_size | integer |  | Yes |
+| mime_type | string |  | Yes |
+| upload_file_id | string |  | Yes |
+
+#### KnowledgeFSServiceSourceConnectionCreatePayload
+
+Dify owns datasource secrets; clients supply an opaque binding in configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authKind | string, <br>**Default:** endpoint |  | No |
+| configuration | object |  | No |
+| credentials | object |  | No |
+| name | string |  | Yes |
+| providerId | string |  | Yes |
+
+#### KnowledgeFSServiceSourceCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connectionId | string |  | No |
+| metadata | object |  | No |
+| name | string |  | Yes |
+| permissionScope | [ string ] |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| type | string, <br>**Available values:** "connector", "object-storage", "upload", "web" | *Enum:* `"connector"`, `"object-storage"`, `"upload"`, `"web"` | Yes |
+| uri | string |  | Yes |
+
+#### KnowledgeFSServiceSourceUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | No |
+| metadata | object |  | No |
+| name | string |  | No |
+| providerParameters | object |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| syncAfterUpdate | boolean |  | No |
+| uri | string |  | No |
 
 #### KnowledgeFSSettingsPayload
 
@@ -4871,6 +5610,51 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | issues | [ [KnowledgeFSReadinessIssue](#knowledgefsreadinessissue) ] |  | Yes |
 | retrieval | [KnowledgeFSRetrievalSettingsResponse](#knowledgefsretrievalsettingsresponse) |  | Yes |
 | revision | integer |  | Yes |
+
+#### KnowledgeFSSettingsUpdateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| migration | [KnowledgeFSProfileMigrationResponse](#knowledgefsprofilemigrationresponse) |  | No |
+| settings | [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse) |  | Yes |
+
+#### KnowledgeFSSourceConnectionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSSourceConnectionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSSourceConnectionRefreshPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | Yes |
+
+#### KnowledgeFSSourceConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_kind | string, <br>**Available values:** "api-key", "endpoint", "oauth2" | *Enum:* `"api-key"`, `"endpoint"`, `"oauth2"` | Yes |
+| configuration | object |  | Yes |
+| created_at | dateTime |  | Yes |
+| error_code | string |  | No |
+| expires_at | string |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| name | string |  | Yes |
+| provider_id | string |  | Yes |
+| scopes | [ string ] |  | Yes |
+| status | string, <br>**Available values:** "active", "error", "expired", "provisioning", "revoked" | *Enum:* `"active"`, `"error"`, `"expired"`, `"provisioning"`, `"revoked"` | Yes |
+| updated_at | dateTime |  | Yes |
+| version | integer |  | Yes |
 
 #### KnowledgeFSSourceCrawlResponse
 
@@ -4902,7 +5686,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" |  | No |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" |  | No |
 | error | string |  | No |
 | failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
 | valid | boolean |  | Yes |
@@ -4981,11 +5765,22 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | ---- | ---- | ----------- | -------- |
 | buckets | [ [KnowledgeFSSourceFileBucketResponse](#knowledgefssourcefilebucketresponse) ] |  | Yes |
 
+#### KnowledgeFSSourceImportConfigurationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | Yes |
+| metadata | object |  | No |
+| name | string |  | No |
+| providerParameters | object |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| uri | string |  | No |
+
 #### KnowledgeFSSourceImportFailureResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"` | Yes |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_PROFILE_CHANGED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"DURABLE_DELETION_IDEMPOTENCY_CONFLICT"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS"`, `"KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"`, `"LOGICAL_DOCUMENT_CAS_CONFLICT"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_CONTEXT_LIMIT"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_OUTPUT_LIMIT"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_VERSION_CONFLICT"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"` | Yes |
 | error | string |  | Yes |
 | failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
 | filename | string |  | Yes |
@@ -5067,6 +5862,35 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | next_cursor | string |  | No |
 | workspaces | [ [KnowledgeFSSourceWorkspacePagesResponse](#knowledgefssourceworkspacepagesresponse) ] |  | Yes |
 
+#### KnowledgeFSSourceProviderFieldResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| format | string, <br>**Available values:** "password", "uri" |  | No |
+| name | string |  | Yes |
+| required | boolean |  | Yes |
+| secret | boolean |  | Yes |
+| type | string, <br>**Available values:** "boolean", "integer", "string" | *Enum:* `"boolean"`, `"integer"`, `"string"` | Yes |
+
+#### KnowledgeFSSourceProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceProviderResponse](#knowledgefssourceproviderresponse) ] |  | Yes |
+
+#### KnowledgeFSSourceProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_kinds | [ string, <br>**Available values:** "api-key", "endpoint", "oauth2" ] |  | Yes |
+| available | boolean |  | Yes |
+| capabilities | [ string, <br>**Available values:** "online-document", "online-drive", "website-crawl" ] |  | Yes |
+| configuration | [ [KnowledgeFSSourceProviderFieldResponse](#knowledgefssourceproviderfieldresponse) ] |  | Yes |
+| display_name | string |  | Yes |
+| id | string |  | Yes |
+| unavailable_reason | string |  | No |
+
 #### KnowledgeFSSourceResponse
 
 | Name | Type | Description | Required |
@@ -5087,6 +5911,16 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | updated_at | dateTime |  | Yes |
 | uri | string |  | Yes |
 | version | integer |  | Yes |
+
+#### KnowledgeFSSourceSyncPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customIntervalSeconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| expectedRevision | integer |  | Yes |
+| expectedSourceVersion | integer |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
 
 #### KnowledgeFSSourceSyncPolicyResponse
 
@@ -5118,6 +5952,33 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | syncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
 | uri | string |  | No |
 
+#### KnowledgeFSSourceWorkflowCancelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason | string |  | No |
+
+#### KnowledgeFSSourceWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSSourceWorkflowImportPayload | [KnowledgeFSOnlineDocumentWorkflowImportPayload](#knowledgefsonlinedocumentworkflowimportpayload)<br>[KnowledgeFSOnlineDriveWorkflowImportPayload](#knowledgefsonlinedriveworkflowimportpayload) |  |  |
+
+#### KnowledgeFSSourceWorkflowListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+| sourceId | string |  | No |
+
+#### KnowledgeFSSourceWorkflowListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
 #### KnowledgeFSSourceWorkflowResponse
 
 | Name | Type | Description | Required |
@@ -5132,7 +5993,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | id | string |  | Yes |
 | kind | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
-| last_error_code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" |  | No |
+| last_error_code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" |  | No |
 | max_execution_attempts | integer |  | Yes |
 | progress_completed | integer |  | Yes |
 | progress_failed | integer |  | Yes |

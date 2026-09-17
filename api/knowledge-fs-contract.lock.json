@@ -1,9 +1,12 @@
 {
-  "schemaVersion": 5,
-  "subtreeTree": "5884c6ce77d74dfae04c82962d6321df7c9ade8d",
-  "openapiSha256": "2fd6154c93ee9d565a73284c6d3ba2f65150115c6da03d4bfa545a54637f4fa7",
+  "schemaVersion": 6,
+  "sourceCommit": "efa087f850f1173ce805e8b07ccbf8748fad2eaa",
+  "sourceTree": "d221bc88f1b566e71f267d07f1100d6b8ea80fb5",
+  "sourceProvenanceSha256": "f7eacdcdf658d0a7a844b9c66fcb7e27c1958a23630926174fb3d7af2290cd66",
+  "openapiSha256": "c83009f892833f994d60906ba5281cd8b9e1584d2612de1ac51b513e672512d2",
+  "capabilityPolicySha256": "7237036877eefd3ff5a983fc5f8c93d949c64ffd969c82b54ceefd0e6f9170ed",
   "capabilityV2AuthManifestSha256": "e322a2fa779d1f40b95c54c1021cffecaec77abbd7b34899573dcdf4ff353109",
   "capabilityV2AuthTestVectorSha256": "ae0de37b1ff05c40f905cf17a7b410d8971acacf64db07d5ee3d6fecfa559ce3",
-  "productOperationManifestSha256": "ae73896055eba1e2c6301e876b335d33360f9590c4a4748faf8bf7e9cde82c2e",
+  "productOperationManifestSha256": "03c346e3386179b6dfe0466cfdd44065bfb38c38fc9cb1e306a8165e0b0d3757",
   "productOperationGapManifestSha256": "332c80165bd5cf8e79bc511374dde771a8175510404db603a8067f1a22d36df8"
 }

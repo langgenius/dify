@@ -511,6 +511,7 @@ class KnowledgeFSSpaceListQuery(BaseModel):
 
 
 class KnowledgeFSCursorQuery(BaseModel):
+    limit: int = Field(default=50, ge=1, le=100)
     cursor: str | None = Field(default=None, min_length=1, max_length=1_000)
 
     model_config = ConfigDict(extra="forbid")
@@ -753,6 +754,13 @@ class KnowledgeFSIdempotencyHeader(BaseModel):
     )
 
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("idempotency_key")
+    @classmethod
+    def validate_header_value(cls, value: str) -> str:
+        if value != value.strip() or any(ord(character) < 32 or ord(character) > 126 for character in value):
+            raise ValueError("Idempotency-Key must use ASCII without surrounding whitespace or control characters")
+        return value
 
 
 class KnowledgeFSTechnicalSummary(BaseModel):
@@ -1801,14 +1809,14 @@ class KnowledgeFSBulkDocumentDeleteItemPayload(KnowledgeFSDocumentDeletePayload)
 
 
 class KnowledgeFSBulkDocumentDeletePayload(BaseModel):
-    documents: list[KnowledgeFSBulkDocumentDeleteItemPayload] = Field(min_length=1, max_length=1_000)
+    documents: list[KnowledgeFSBulkDocumentDeleteItemPayload] = Field(min_length=1, max_length=100)
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
 class KnowledgeFSDocumentReindexPayload(BaseModel):
     all: bool | None = None
-    document_ids: list[str] | None = Field(default=None, min_length=1, max_length=1_000, alias="documentIds")
+    document_ids: list[str] | None = Field(default=None, min_length=1, max_length=100, alias="documentIds")
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
@@ -1868,12 +1876,24 @@ class KnowledgeFSBulkDeletionAcceptedItemResponse(ResponseModel):
     status_url: str = Field(validation_alias=AliasChoices("status_url", "statusUrl"))
 
 
+class KnowledgeFSBulkDeletionResultResponse(ResponseModel):
+    document_id: str = Field(validation_alias=AliasChoices("document_id", "documentId"))
+    status: Literal["pending", "accepted", "rejected"]
+    job: KnowledgeFSDurableDeletionJobResponse | None = None
+    status_url: str | None = Field(default=None, validation_alias=AliasChoices("status_url", "statusUrl"))
+    error: KnowledgeFSDurableDeletionErrorResponse | None = None
+
+
 class KnowledgeFSBulkDeletionAcceptedResponse(ResponseModel):
+    batch_id: str | None = Field(default=None, validation_alias=AliasChoices("batch_id", "batchId"))
+    status_url: str | None = Field(default=None, validation_alias=AliasChoices("status_url", "statusUrl"))
+    results: list[KnowledgeFSBulkDeletionResultResponse] = Field(default_factory=list)
     items: list[KnowledgeFSBulkDeletionAcceptedItemResponse]
     total: int = Field(ge=1)
 
 
 class KnowledgeFSDocumentCompilationJobResponse(ResponseModel):
+    failure: KnowledgeFSPublicFailureResponse | None = None
     base_head_revision: int | None = Field(
         default=None, ge=0, validation_alias=AliasChoices("base_head_revision", "baseHeadRevision")
     )
@@ -1911,7 +1931,17 @@ class KnowledgeFSDocumentCompilationJobResponse(ResponseModel):
     version: int = Field(ge=1)
 
 
+class KnowledgeFSBulkJobFailureResponse(ResponseModel):
+    document_id: str = Field(validation_alias=AliasChoices("document_id", "documentId"))
+    document_title: str | None = Field(default=None, validation_alias=AliasChoices("document_title", "documentTitle"))
+    job_id: str | None = Field(default=None, validation_alias=AliasChoices("job_id", "jobId"))
+    error_code: str = Field(validation_alias=AliasChoices("error_code", "errorCode"))
+    error_message: str = Field(validation_alias=AliasChoices("error_message", "errorMessage"))
+    failure: KnowledgeFSPublicFailureResponse | None = None
+
+
 class KnowledgeFSBulkJobResponse(ResponseModel):
+    failures: list[KnowledgeFSBulkJobFailureResponse] = Field(default_factory=list)
     canceled_items: int = Field(ge=0, validation_alias=AliasChoices("canceled_items", "canceledItems"))
     completed_items: int = Field(ge=0, validation_alias=AliasChoices("completed_items", "completedItems"))
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
@@ -1986,7 +2016,7 @@ class KnowledgeFSDocumentReindexItemResponse(ResponseModel):
         default=None, validation_alias=AliasChoices("compilation_job", "compilationJob")
     )
     document_id: str | None = Field(default=None, validation_alias=AliasChoices("document_id", "documentId"))
-    status: Literal["disabled", "not_found", "queued", "failed"]
+    status: Literal["disabled", "not_found", "queued", "failed", "pending"]
     code: str | None = None
     error: str | None = None
     status_url: str | None = Field(default=None, validation_alias=AliasChoices("status_url", "statusUrl"))
@@ -2158,6 +2188,12 @@ class KnowledgeFSSourceUpdatePayload(BaseModel):
         return self
 
 
+class KnowledgeFSAtomicSourceUpdatePayload(KnowledgeFSSourceUpdatePayload):
+    """Internal command carrying policy CAS alongside the source configuration CAS."""
+
+    expected_policy_revision: int | None = Field(default=None, ge=0, alias="expectedPolicyRevision")
+
+
 class KnowledgeFSSourceDeletePayload(BaseModel):
     expected_revision: int = Field(ge=1, alias="expectedRevision")
 
@@ -2225,14 +2261,42 @@ class KnowledgeFSSourceWorkflowResponse(ResponseModel):
         return self
 
 
-class KnowledgeFSOnlineDocumentWorkflowImportPayload(BaseModel):
+class KnowledgeFSSourceImportConfigurationPayload(BaseModel):
+    expected_version: int = Field(ge=1, alias="expectedVersion")
+    metadata: dict[str, object] | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    provider_parameters: dict[str, bool | FiniteFloat | str] | None = Field(
+        default=None,
+        max_length=50,
+        alias="providerParameters",
+    )
+    status: Literal["active", "disabled", "error", "syncing"] | None = None
+    uri: str | None = Field(default=None, min_length=1, max_length=4_096)
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class _KnowledgeFSAtomicSourceImportFields(BaseModel):
+    source_update: KnowledgeFSSourceImportConfigurationPayload | None = Field(default=None, alias="sourceUpdate")
+    desired_sync_policy: KnowledgeFSSourceEditSyncPolicyPayload | None = Field(default=None, alias="desiredSyncPolicy")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+    @model_validator(mode="after")
+    def validate_atomic_fields(self) -> _KnowledgeFSAtomicSourceImportFields:
+        if (self.source_update is None) != (self.desired_sync_policy is None):
+            raise ValueError("sourceUpdate and desiredSyncPolicy must be provided together")
+        return self
+
+
+class KnowledgeFSOnlineDocumentWorkflowImportPayload(_KnowledgeFSAtomicSourceImportFields):
     items: list[KnowledgeFSOnlineDocumentWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
     kind: Literal["online-document-import"]
 
     model_config = ConfigDict(extra="forbid")
 
 
-class KnowledgeFSOnlineDriveWorkflowImportPayload(BaseModel):
+class KnowledgeFSOnlineDriveWorkflowImportPayload(_KnowledgeFSAtomicSourceImportFields):
     items: list[KnowledgeFSOnlineDriveWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
     kind: Literal["online-drive-import"]
 
@@ -2434,7 +2498,7 @@ class KnowledgeFSCrawlImportPagePayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
-class KnowledgeFSCrawlImportPayload(BaseModel):
+class KnowledgeFSCrawlImportPayload(_KnowledgeFSAtomicSourceImportFields):
     source_urls: list[str] = Field(min_length=1, max_length=200, alias="sourceUrls")
     pages: list[KnowledgeFSCrawlImportPagePayload] | None = Field(default=None, min_length=1, max_length=200)
     replace_existing_selection: bool = Field(default=False, alias="replaceExistingSelection")
@@ -2451,6 +2515,8 @@ class KnowledgeFSCrawlImportPayload(BaseModel):
 
     @model_validator(mode="after")
     def validate_pages(self) -> KnowledgeFSCrawlImportPayload:
+        if self.source_update is not None and self.pages is not None:
+            raise ValueError("Atomic source edits require sourceUrls without inline pages")
         if self.pages is not None and [page.source_url for page in self.pages] != self.source_urls:
             raise ValueError("crawl import pages must match source URLs in order")
         return self
@@ -2614,6 +2680,13 @@ class _KnowledgeFSQueryModalities(BaseModel):
         alias="queryImages",
         exclude_if=lambda value: not value,
     )
+
+    @field_validator("query")
+    @classmethod
+    def validate_query_bytes(cls, value: str | None) -> str | None:
+        if value is not None and len(value.encode("utf-8")) > 16_384:
+            raise ValueError("query must not exceed 16384 UTF-8 bytes")
+        return value
 
     @model_validator(mode="after")
     def validate_query_modality(self) -> _KnowledgeFSQueryModalities:
@@ -3495,6 +3568,7 @@ class KnowledgeFSAdmittedQueryRequest(KnowledgeFSQueryCreatePayload):
 
 
 class KnowledgeFSQueryAdmissionResponse(ResponseModel):
+    trace_id: str
     expires_at: datetime
     operation_id: Literal["createQuery"]
     request: KnowledgeFSAdmittedQueryRequest
@@ -3722,3 +3796,109 @@ __all__ = [
     "KnowledgeFSWorkflowFailedRetrievalCapturePayload",
     "KnowledgeFSWorkflowFailedRetrievalCaptureResponse",
 ]
+
+
+class KnowledgeFSServiceSourceCreatePayload(BaseModel):
+    connection_id: str | None = Field(default=None, alias="connectionId")
+    metadata: dict[str, object] = Field(default_factory=dict)
+    name: str = Field(min_length=1, max_length=200)
+    permission_scope: list[str] = Field(default_factory=list, max_length=0, alias="permissionScope")
+    status: Literal["active", "disabled", "error", "syncing"] | None = None
+    type: Literal["connector", "object-storage", "upload", "web"]
+    uri: str = Field(min_length=1, max_length=4_096)
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+    @field_validator("metadata")
+    @classmethod
+    def validate_metadata(cls, value: dict[str, object]) -> dict[str, object]:
+        if "syncPolicy" in value:
+            raise ValueError("Use the source sync-policy endpoint to configure durable scheduling")
+        return value
+
+
+class KnowledgeFSServiceSourceUpdatePayload(BaseModel):
+    expected_version: int | None = Field(default=None, ge=1, alias="expectedVersion")
+    metadata: dict[str, object] | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    provider_parameters: dict[str, bool | FiniteFloat | str] | None = Field(
+        default=None, max_length=50, alias="providerParameters"
+    )
+    sync_after_update: bool | None = Field(default=None, alias="syncAfterUpdate")
+    status: Literal["active", "disabled", "error", "syncing"] | None = None
+    uri: str | None = Field(default=None, min_length=1, max_length=4_096)
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+    @model_validator(mode="after")
+    def validate_update(self) -> KnowledgeFSServiceSourceUpdatePayload:
+        if self.metadata is not None:
+            if "parameters" in self.metadata:
+                raise ValueError("Use providerParameters to update provider parameters")
+            if "syncPolicy" in self.metadata:
+                raise ValueError("Use the source sync-policy endpoint to configure durable scheduling")
+        if self.provider_parameters is not None and any(not key or len(key) > 255 for key in self.provider_parameters):
+            raise ValueError("Provider parameter keys must contain between 1 and 255 characters")
+        if all(value is None for value in (self.metadata, self.name, self.provider_parameters, self.status, self.uri)):
+            raise ValueError("At least one source update is required")
+        return self
+
+
+class KnowledgeFSSourceWorkflowListQuery(KnowledgeFSCursorQuery):
+    source_id: str | None = Field(default=None, min_length=1, max_length=255, alias="sourceId")
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSSourceWorkflowListResponse(ResponseModel):
+    data: list[KnowledgeFSSourceWorkflowResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+
+
+class KnowledgeFSServiceSourceConnectionCreatePayload(BaseModel):
+    """Dify owns datasource secrets; clients supply an opaque binding in configuration."""
+
+    auth_kind: Literal["endpoint"] = Field(default="endpoint", alias="authKind")
+    credentials: dict[str, object] = Field(default_factory=dict, max_length=0)
+    configuration: dict[str, bool | int | str] = Field(default_factory=dict)
+    name: str = Field(min_length=1, max_length=160)
+    provider_id: str = Field(min_length=1, max_length=128, alias="providerId")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSDocumentProcessingTaskResponse(ResponseModel):
+    id: str
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    document_id: str = Field(validation_alias=AliasChoices("document_id", "documentId"))
+    document_revision: int = Field(ge=1, validation_alias=AliasChoices("document_revision", "documentRevision"))
+    state: Literal[
+        "dispatch_pending", "queued", "running", "retry_wait", "succeeded", "failed", "canceled", "superseded"
+    ]
+    stage: Literal[
+        "queued", "parsed", "outline_built", "nodes_generated", "projection_built", "smoke_eval_passed", "published"
+    ]
+    progress_percent: int = Field(ge=0, le=100, validation_alias=AliasChoices("progress_percent", "progressPercent"))
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+    completed_at: datetime | None = Field(default=None, validation_alias=AliasChoices("completed_at", "completedAt"))
+    retry_at: datetime | None = Field(default=None, validation_alias=AliasChoices("retry_at", "retryAt"))
+    failure: KnowledgeFSPublicFailureResponse | None = None
+    error_code: KnowledgeFSPublicErrorCode | None = Field(
+        default=None, validation_alias=AliasChoices("error_code", "errorCode")
+    )
+    error_message: str | None = Field(default=None, validation_alias=AliasChoices("error_message", "errorMessage"))
+    phase: str | None = None
+    active_operations: list[str] | None = Field(
+        default=None, validation_alias=AliasChoices("active_operations", "activeOperations")
+    )
+
+
+class KnowledgeFSDocumentProcessingTaskListResponse(ResponseModel):
+    data: list[KnowledgeFSDocumentProcessingTaskResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+
+
+class KnowledgeFSServiceQueryImageUploadResponse(ResponseModel):
+    upload_file_id: str
+    byte_size: int = Field(ge=1)
+    mime_type: str

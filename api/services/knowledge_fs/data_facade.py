@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, JsonValue, ValidationError
 
 from services.knowledge_fs.buffered_upload_admission import (
     DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION,
@@ -170,6 +170,7 @@ from services.knowledge_fs.query_images import (
     load_query_image_previews,
 )
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
+from services.knowledge_fs.service_query_image_upload import validate_service_query_image_references
 
 _BUFFERED_UPLOAD_CAPABILITY_MIN_REMAINING = timedelta(seconds=15)
 
@@ -606,79 +607,29 @@ class KnowledgeFSDataFacade:
         control_space_id: str,
         payload: KnowledgeFSSettingsPayload,
     ) -> KnowledgeFSSettingsUpdateResponse:
-        current = self.get_settings(
-            tenant_id=tenant_id,
-            account_id=account_id,
-            control_space_id=control_space_id,
-        )
-        has_existing_profile = bool(
-            current.active_profile_revisions.embedding is not None
-            or current.active_profile_revisions.retrieval is not None
-        )
-        if has_existing_profile:
-            if current.revision != payload.expected_revision:
-                raise KnowledgeFSProductRequestRejectedError(
-                    status_code=409,
-                    failure=KnowledgeFSPublicFailureResponse(
-                        code="KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
-                        category="conflict",
-                        message="Knowledge space settings have changed.",
-                        retry_policy="manual",
-                        action="retry",
-                    ),
-                )
-            if payload.embedding is not None and payload.retrieval is not None:
-                raise KnowledgeFSProductRequestRejectedError(status_code=422)
-            if payload.embedding is not None:
-                migration_raw = self._interactive(
-                    tenant_id=tenant_id,
-                    account_id=account_id,
-                    control_space_id=control_space_id,
-                    operation_id="updateEmbeddingProfile",
-                    payload=payload.embedding,
-                )
-            elif payload.retrieval is not None:
-                retrieval_revision = current.active_profile_revisions.retrieval
-                if retrieval_revision is None:
-                    raise KnowledgeFSOperationUnavailableError(
-                        "KnowledgeFS active retrieval profile revision is unavailable"
-                    )
-                migration_raw = self._interactive(
-                    tenant_id=tenant_id,
-                    account_id=account_id,
-                    control_space_id=control_space_id,
-                    operation_id="updateRetrievalProfile",
-                    payload=KnowledgeFSRetrievalProfileUpdatePayload(
-                        expectedRevision=retrieval_revision,
-                        profile=payload.retrieval,
-                    ),
-                )
-            else:
-                raise KnowledgeFSProductRequestRejectedError(status_code=422)
-            if isinstance(migration_raw, dict) and ("runState" in migration_raw or "run_state" in migration_raw):
-                return KnowledgeFSSettingsUpdateResponse(
-                    migration=KnowledgeFSProfileMigrationResponse.model_validate(migration_raw),
-                    settings=current,
-                )
-            if payload.embedding is not None:
-                KnowledgeFSEmbeddingSettingsResponse.model_validate(migration_raw)
-            else:
-                KnowledgeFSRetrievalSettingsResponse.model_validate(migration_raw)
-            refreshed = self.get_settings(
+        def execute(operation_id: str, body: BaseModel | None) -> JsonValue:
+            return self._interactive(
                 tenant_id=tenant_id,
                 account_id=account_id,
                 control_space_id=control_space_id,
+                operation_id=operation_id,
+                payload=body,
             )
-            return KnowledgeFSSettingsUpdateResponse(settings=refreshed)
 
-        raw = self._interactive(
-            tenant_id=tenant_id,
-            account_id=account_id,
-            control_space_id=control_space_id,
-            operation_id="updateSettings",
-            payload=payload,
-        )
-        return KnowledgeFSSettingsUpdateResponse(settings=KnowledgeFSSettingsResponse.model_validate(raw))
+        return _update_managed_settings(payload=payload, execute=execute)
+
+    def update_service_settings(
+        self, *, profile: KnowledgeFSServiceApiProfile, payload: KnowledgeFSSettingsPayload
+    ) -> KnowledgeFSSettingsUpdateResponse:
+        """Reuse profile migration orchestration with the authenticated service principal."""
+
+        def execute(operation_id: str, body: BaseModel | None) -> JsonValue:
+            return self.execute_service(profile=profile, operation_id=operation_id, payload=body)
+
+        try:
+            return _update_managed_settings(payload=payload, execute=execute)
+        except ValidationError as exc:
+            raise KnowledgeFSProductRemoteError("KnowledgeFS returned an invalid settings response") from exc
 
     def get_profile_migration(
         self,
@@ -2527,6 +2478,15 @@ class KnowledgeFSDataFacade:
         headers: tuple[tuple[str, str], ...] = (),
     ) -> JsonValue:
         _assert_json_bff_ready(operation_id)
+        if (
+            operation_id in {"createResearchTask", "planResearchTask"}
+            and isinstance(payload, KnowledgeFSResearchTaskCreatePayload | KnowledgeFSResearchTaskPlanPayload)
+            and payload.query_images
+        ):
+            validate_service_query_image_references(
+                profile=profile,
+                upload_file_ids=[image.upload_file_id for image in payload.query_images],
+            )
         issued = self._broker.issue_service(profile=profile, operation_id=operation_id, resource_id=resource_id)
         return self._execute(
             operation_id=operation_id,
@@ -2725,11 +2685,13 @@ def _path_segment(value: str) -> str:
     normalized = value.strip()
     if (
         not normalized
+        or normalized != value
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
         or len(normalized) > 1_000
         or normalized in {".", ".."}
         or any(character in normalized for character in ("/", "%", "?", "#", "\\"))
     ):
-        raise KnowledgeFSOperationUnavailableError("KnowledgeFS product path parameter is invalid")
+        raise KnowledgeFSProductRequestRejectedError(status_code=400)
     return normalized
 
 
@@ -2789,3 +2751,55 @@ def _trace_list_query(*, cursor: str | None, source: str | None) -> tuple[tuple[
     if source:
         query.append(("source", source))
     return tuple(query)
+
+
+def _update_managed_settings(
+    *,
+    payload: KnowledgeFSSettingsPayload,
+    execute: Callable[[str, BaseModel | None], JsonValue],
+) -> KnowledgeFSSettingsUpdateResponse:
+    """Draft edits and active profile migrations share validation across Console and Service API."""
+    current = KnowledgeFSSettingsResponse.model_validate(execute("getSettings", None))
+    has_existing_profile = (
+        current.active_profile_revisions.embedding is not None or current.active_profile_revisions.retrieval is not None
+    )
+    if not has_existing_profile:
+        return KnowledgeFSSettingsUpdateResponse(
+            settings=KnowledgeFSSettingsResponse.model_validate(execute("updateSettings", payload))
+        )
+    if current.revision != payload.expected_revision:
+        raise KnowledgeFSProductRequestRejectedError(
+            status_code=409,
+            failure=KnowledgeFSPublicFailureResponse(
+                code="KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
+                category="conflict",
+                message="Knowledge space settings have changed.",
+                retry_policy="manual",
+                action="retry",
+            ),
+        )
+    if payload.embedding is not None and payload.retrieval is not None:
+        raise KnowledgeFSProductRequestRejectedError(status_code=422)
+    if payload.embedding is not None:
+        migration_raw = execute("updateEmbeddingProfile", payload.embedding)
+    elif payload.retrieval is not None:
+        revision = current.active_profile_revisions.retrieval
+        if revision is None:
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS active retrieval profile revision is unavailable")
+        migration_raw = execute(
+            "updateRetrievalProfile",
+            KnowledgeFSRetrievalProfileUpdatePayload(expectedRevision=revision, profile=payload.retrieval),
+        )
+    else:
+        raise KnowledgeFSProductRequestRejectedError(status_code=422)
+    if isinstance(migration_raw, dict) and ("runState" in migration_raw or "run_state" in migration_raw):
+        return KnowledgeFSSettingsUpdateResponse(
+            migration=KnowledgeFSProfileMigrationResponse.model_validate(migration_raw), settings=current
+        )
+    if payload.embedding is not None:
+        KnowledgeFSEmbeddingSettingsResponse.model_validate(migration_raw)
+    else:
+        KnowledgeFSRetrievalSettingsResponse.model_validate(migration_raw)
+    return KnowledgeFSSettingsUpdateResponse(
+        settings=KnowledgeFSSettingsResponse.model_validate(execute("getSettings", None))
+    )

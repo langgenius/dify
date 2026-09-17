@@ -27,6 +27,13 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
     }
 
     assert ready_ids == {
+        "getDeletionJob",
+        "retryDeletionJob",
+        "getDeletionBatch",
+        "resumeResearchTask",
+        "listSourceWorkflows",
+        "listDocumentProcessingTasks",
+        "getDocumentProcessingTask",
         "abortUploadSession",
         "batchSpaceSummaries",
         "bulkUpdateLogicalDocumentAvailability",

@@ -496,3 +496,65 @@ def test_retry_or_resume_reconciles_a_concurrently_completed_import_after_confli
 
     assert result is completed
     assert facade.get_source_workflow.call_count == 2
+
+
+@pytest.mark.parametrize(
+    ("selection", "operation"),
+    [
+        ({"kind": "website-crawl-import", "sourceUrls": ["https://example.com/a"]}, "import_selected_source_crawl"),
+        (
+            {
+                "kind": "online-document-import",
+                "items": [
+                    {"pageId": "page-1", "workspaceId": "workspace-1", "providerItemId": "provider-1", "type": "page"}
+                ],
+            },
+            "import_source_workflow",
+        ),
+        (
+            {
+                "kind": "online-drive-import",
+                "items": [{"id": "file-1", "name": "Plan.pdf", "providerItemId": "provider-1"}],
+            },
+            "import_source_workflow",
+        ),
+    ],
+)
+def test_source_edit_admits_configuration_policy_and_workflow_in_one_remote_command(selection, operation) -> None:
+    from services.knowledge_fs.product_dto import KnowledgeFSSourceImportConfigurationPayload
+
+    facade = MagicMock()
+    getattr(facade, operation).return_value = SimpleNamespace(id="import-1", source_id="source-1")
+    payload = KnowledgeFSAsyncSourceImportPayload.model_validate(
+        {
+            **selection,
+            "syncPolicy": {"enabled": True, "mode": "interval"},
+        }
+    ).root
+    source_update = KnowledgeFSSourceImportConfigurationPayload(
+        expectedVersion=3,
+        name="New source title",
+        providerParameters={"limit": 20},
+    )
+    with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay") as delay:
+        workflow = commit_source_import(
+            facade=facade,
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            source_id="source-1",
+            payload=payload,
+            idempotency_key="source-edit:source-1:3",
+            source_update=source_update,
+        )
+    assert workflow.id == "import-1"
+    sent = getattr(facade, operation).call_args.kwargs["payload"].model_dump(by_alias=True, exclude_none=True)
+    assert sent["sourceUpdate"] == {
+        "expectedVersion": 3,
+        "name": "New source title",
+        "providerParameters": {"limit": 20},
+    }
+    assert sent["desiredSyncPolicy"] == {"enabled": True, "mode": "interval"}
+    facade.get_source.assert_not_called()
+    facade.update_source.assert_not_called()
+    delay.assert_called_once()

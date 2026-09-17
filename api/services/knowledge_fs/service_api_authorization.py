@@ -103,7 +103,7 @@ class KnowledgeFSServiceApiAuthorizationService:
             or policy is None
             or not policy.service_api_enabled
         ):
-            raise KnowledgeFSServiceApiAuthorizationError("KnowledgeFS Service API access is not enabled")
+            raise KnowledgeFSServiceApiScopeError("KnowledgeFS Service API access is not enabled")
         return KnowledgeFSServiceApiProfile(
             tenant_id=tenant_id,
             control_space_id=control_space_id,

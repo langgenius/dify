@@ -396,7 +396,7 @@ def test_remote_client_rejects_operation_request_limit_before_io(monkeypatch: py
     monkeypatch.setattr(ssrf_proxy, "make_request", fail_make_request)
     client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
 
-    with pytest.raises(KnowledgeFSProductRemoteError, match="operation byte limit"):
+    with pytest.raises(KnowledgeFSProductRequestRejectedError, match="HTTP 413"):
         client.execute_json(
             KnowledgeFSRemoteJSONRequest(
                 operation_id="listDocuments",
@@ -977,7 +977,7 @@ def test_multipart_remote_logs_bounded_upstream_rejection(
         ({"operation_id": "missingOperation"}, KnowledgeFSOperationUnavailableError, None),
         ({"method": "GET"}, KnowledgeFSOperationUnavailableError, None),
         ({"capability_token": ""}, KnowledgeFSProductRemoteError, None),
-        ({"payload": {"score": float("nan")}}, KnowledgeFSProductRemoteError, None),
+        ({"payload": {"score": float("nan")}}, KnowledgeFSProductRequestRejectedError, 400),
         (
             {"payload": None, "query": (("cursor", "x" * (65 * 1024)),)},
             KnowledgeFSProductRequestRejectedError,
@@ -1260,7 +1260,7 @@ def test_json_remote_preserves_safe_failure_for_upstream_unavailability(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
     client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
 
-    with pytest.raises(KnowledgeFSProductRemoteError) as raised:
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
         client.execute_json(_json_request())
 
     assert raised.value.failure is not None
@@ -1288,7 +1288,7 @@ def test_json_remote_masks_unregistered_upstream_failure_metadata(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
     client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
 
-    with pytest.raises(KnowledgeFSProductRemoteError) as raised:
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
         client.execute_json(_json_request())
 
     assert raised.value.failure is None
@@ -1333,7 +1333,7 @@ def test_remote_rejects_invalid_json_payload_header_and_nonpositive_response_lim
     monkeypatch.setattr(ssrf_proxy, "make_request", pytest.fail)
     client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
 
-    with pytest.raises(KnowledgeFSProductRemoteError, match="payload is invalid"):
+    with pytest.raises(KnowledgeFSProductRequestRejectedError, match="HTTP 400"):
         client.execute_json(_json_request(payload={"score": float("nan")}))
     with pytest.raises(KnowledgeFSProductRemoteError, match="header binding"):
         client.execute_json(_json_request(headers=(("Idempotency-Key", "short"),)))
@@ -1385,3 +1385,57 @@ def test_batch_summary_rejects_unavailable_and_invalid_response_contracts(
 )
 def test_remote_path_matcher_rejects_unbound_or_ambiguous_segments(template: str, path: str, matches: bool) -> None:
     assert product_remote_http._matches_path(template, path) is matches
+
+
+@pytest.mark.parametrize("status", [503, 504])
+def test_preserves_upstream_transient_status(status: int, monkeypatch: pytest.MonkeyPatch) -> None:
+    response = httpx.Response(status, json={"error": "provider-secret"})
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
+        client.execute_json(_json_request())
+    assert raised.value.status_code == status
+    assert "provider-secret" not in str(raised.value)
+
+
+def test_preserves_safe_research_constraints_without_upstream_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = httpx.Response(
+        422,
+        json={
+            "violations": [
+                {"limit": "maxToolCalls", "estimatedValue": 5, "limitValue": 2, "input": "private-query"},
+                {"limit": "private-query", "estimatedValue": 5, "limitValue": 2},
+                {"limit": "timeoutMs", "estimatedValue": "secret", "limitValue": 2},
+            ]
+        },
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
+        client.execute_json(_json_request())
+    assert raised.value.violations == [{"limit": "maxToolCalls", "estimatedValue": 5, "limitValue": 2}]
+
+
+def test_preserves_metadata_compare_and_swap_details(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = httpx.Response(
+        409,
+        json={
+            "failure": {
+                "category": "conflict",
+                "code": "LOGICAL_DOCUMENT_CAS_CONFLICT",
+                "message": "unsafe",
+                "retryPolicy": "manual",
+                "parameters": {"currentRowVersion": 3, "expectedRowVersion": 2},
+            }
+        },
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
+        client.execute_json(_json_request())
+    assert raised.value.failure is not None
+    assert raised.value.failure.code == "LOGICAL_DOCUMENT_CAS_CONFLICT"
+    assert raised.value.failure.parameters == {"currentRowVersion": 3, "expectedRowVersion": 2}

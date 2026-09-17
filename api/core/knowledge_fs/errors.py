@@ -62,11 +62,13 @@ class KnowledgeFSProductRequestRejectedError(RuntimeError):
     def __init__(
         self,
         *,
-        status_code: Literal[400, 403, 409, 413, 422, 429],
+        status_code: Literal[400, 403, 409, 413, 422, 429, 503, 504],
+        violations: list[dict[str, str | int | float | list[str]]] | None = None,
         failure: KnowledgeFSPublicFailureResponse | None = None,
     ) -> None:
         super().__init__(f"KnowledgeFS rejected the product request with HTTP {status_code}")
         self.status_code = status_code
+        self.violations = violations
         self.failure = failure
 
 

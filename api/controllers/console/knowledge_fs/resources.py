@@ -90,6 +90,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSAppBindingPayload,
     KnowledgeFSAppBindingResponse,
     KnowledgeFSAsyncSourceImportPayload,
+    KnowledgeFSAtomicSourceUpdatePayload,
     KnowledgeFSBackgroundTaskListQuery,
     KnowledgeFSBackgroundTaskListResponse,
     KnowledgeFSBackgroundTaskResponse,
@@ -215,6 +216,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceDeleteQuery,
     KnowledgeFSSourceFilesQuery,
     KnowledgeFSSourceFilesResponse,
+    KnowledgeFSSourceImportConfigurationPayload,
     KnowledgeFSSourceImportFilesPayload,
     KnowledgeFSSourceImportPagesPayload,
     KnowledgeFSSourceImportResponse,
@@ -2627,18 +2629,34 @@ class KnowledgeFSSpaceSourceApi(Resource):
                 control_space_id=control_space_id,
                 source_id=source_id,
             )
-            if selection is not None
+            if selection is not None or desired_sync_policy is not None
             else None
         )
         requires_import = current_source is not None and _source_edit_requires_import(current_source, payload)
         source_metadata = payload.metadata
         if requires_import and selection is not None and selection.kind != "website_crawl":
             source_metadata = {**(source_metadata or {}), "__knowledgeFsProviderSelection": None}
-        source_payload = payload.model_copy(
+        expected_policy_revision = None
+        if desired_sync_policy is not None and not requires_import:
+            try:
+                current_policy = facade.get_source_sync_policy(
+                    tenant_id=tenant_id,
+                    account_id=actor_id,
+                    control_space_id=control_space_id,
+                    source_id=source_id,
+                )
+                expected_policy_revision = current_policy.revision
+            except KnowledgeFSProductResourceNotFoundError:
+                expected_policy_revision = 0
+        source_payload = KnowledgeFSAtomicSourceUpdatePayload.model_validate(
+            payload.model_dump(mode="json", by_alias=True, exclude_none=True)
+        ).model_copy(
             update={
                 "metadata": source_metadata,
                 "selection": None,
-                "sync_policy": None,
+                "sync_policy": None if requires_import else desired_sync_policy,
+                "expected_policy_revision": expected_policy_revision,
+                "expected_version": payload.expected_version or (current_source.version if current_source else None),
                 **({"status": "disabled", "sync_after_update": False} if requires_import else {}),
             }
         )
@@ -2648,11 +2666,15 @@ class KnowledgeFSSpaceSourceApi(Resource):
                 source_payload.metadata,
                 source_payload.name,
                 source_payload.provider_parameters,
+                source_payload.sync_policy,
                 source_payload.status,
                 source_payload.uri,
             )
         )
-        if has_source_update:
+        if requires_import:
+            assert current_source is not None
+            result = current_source
+        elif has_source_update:
             result = facade.update_source(
                 tenant_id=tenant_id,
                 account_id=actor_id,
@@ -2689,7 +2711,15 @@ class KnowledgeFSSpaceSourceApi(Resource):
                 control_space_id=control_space_id,
                 source_id=source_id,
                 payload=import_payload,
-                idempotency_key=f"source-edit:{source_id}:{result.version}",
+                idempotency_key=f"source-edit:{source_id}:{source_payload.expected_version}",
+                source_update=KnowledgeFSSourceImportConfigurationPayload.model_validate(
+                    source_payload.model_dump(
+                        mode="json",
+                        by_alias=True,
+                        exclude_none=True,
+                        exclude={"selection", "sync_policy", "sync_after_update", "expected_policy_revision"},
+                    )
+                ),
             )
             result = facade.get_source(
                 tenant_id=tenant_id,
@@ -2698,30 +2728,6 @@ class KnowledgeFSSpaceSourceApi(Resource):
                 source_id=source_id,
             )
             result.sync_workflow = workflow
-        elif desired_sync_policy is not None:
-            try:
-                current_policy = facade.get_source_sync_policy(
-                    tenant_id=tenant_id,
-                    account_id=actor_id,
-                    control_space_id=control_space_id,
-                    source_id=source_id,
-                )
-                expected_revision = current_policy.revision
-            except KnowledgeFSProductResourceNotFoundError:
-                expected_revision = 0
-            result.sync_policy = facade.update_source_sync_policy(
-                tenant_id=tenant_id,
-                account_id=actor_id,
-                control_space_id=control_space_id,
-                source_id=source_id,
-                payload=KnowledgeFSSourceSyncPolicyPayload(
-                    enabled=desired_sync_policy.enabled,
-                    mode=desired_sync_policy.mode,
-                    customIntervalSeconds=desired_sync_policy.custom_interval_seconds,
-                    expectedRevision=expected_revision,
-                    expectedSourceVersion=result.version,
-                ),
-            )
         return dump_response(KnowledgeFSSourceResponse, result)
 
     @console_ns.expect(console_ns.models[KnowledgeFSSourceDeletePayload.__name__])
@@ -3227,6 +3233,7 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
             KnowledgeFSQueryAdmissionResponse,
             KnowledgeFSQueryAdmissionResponse(
                 token=issued.token,
+                trace_id=issued.trace_id,
                 expires_at=issued.expires_at,
                 operation_id="createQuery",
                 request=admitted_request,

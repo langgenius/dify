@@ -97,6 +97,7 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/download",
         "/knowledge-fs/spaces/<string:control_space_id>/sources",
         "/knowledge-fs/spaces/<string:control_space_id>/source-connections",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-providers",
         ("/knowledge-fs/spaces/<string:control_space_id>/source-connections/<string:connection_id>/refresh"),
         "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync",
         "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-preview",
@@ -108,7 +109,6 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/pages",
         "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/selection",
         "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/async-import",
-        "/knowledge-fs/spaces/<string:control_space_id>/source-providers",
         "/knowledge-fs/spaces/<string:control_space_id>/queries",
         "/knowledge-fs/spaces/<string:control_space_id>/research-tasks",
         "/knowledge-fs/spaces/<string:control_space_id>/traces",
@@ -129,6 +129,32 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/.well-known/jwks.json",
     }.issubset(console_urls)
     assert service_urls == {
+        "/knowledge-fs/spaces/<string:control_space_id>/logical-documents",
+        "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>",
+        "/knowledge-fs/spaces/<string:control_space_id>/document-references/resolve",
+        "/knowledge-fs/spaces/<string:control_space_id>/deletion-jobs/<string:job_id>",
+        "/knowledge-fs/spaces/<string:control_space_id>/deletion-jobs/<string:job_id>/retry",
+        "/knowledge-fs/spaces/<string:control_space_id>/deletion-batches/<string:batch_id>",
+        "/knowledge-fs/spaces/<string:control_space_id>/research-tasks/<string:task_id>/resume",
+        "/knowledge-fs/spaces/<string:control_space_id>/background-tasks",
+        "/knowledge-fs/spaces/<string:control_space_id>/settings/migrations/<string:migration_id>",
+        "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync",
+        "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-preview",
+        "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-import",
+        "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/workflow-imports",
+        "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync-policy",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-connections",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-providers",
+        "/knowledge-fs/spaces/<string:control_space_id>/query-images",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-connections/<string:connection_id>/refresh",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/cancel",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/retry",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/pages",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/selection",
+        "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/processing-tasks",
+        "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/processing-tasks/<string:task_id>",
         "/knowledge-fs/spaces/<string:control_space_id>/bulk-jobs/<string:job_id>",
         "/knowledge-fs/spaces/<string:control_space_id>/documents",
         "/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>",
@@ -1381,6 +1407,7 @@ def test_query_stream_capability_issues_exact_space_grant_without_token_in_url(
             calls.append(kwargs)
             return SimpleNamespace(
                 token="query-capability",
+                trace_id="trace-1",
                 expires_at=datetime(2030, 1, 1, tzinfo=UTC),
             )
 
@@ -1423,6 +1450,7 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
             calls.append(kwargs)
             return SimpleNamespace(
                 token="query-capability",
+                trace_id="trace-1",
                 expires_at=datetime(2030, 1, 1, tzinfo=UTC),
                 knowledge_space_id="space-1",
             )
@@ -1441,6 +1469,7 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
         response = post(console_resources.KnowledgeFSSpaceQueryAdmissionApi(), "control-1")
 
     assert response["operation_id"] == "createQuery"
+    assert response["trace_id"] == "trace-1"
     assert response["request"] == {
         "activeDocumentIds": [],
         "activeEntityIds": [],
@@ -1624,6 +1653,7 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
             calls.append(kwargs)
             return SimpleNamespace(
                 token="service-capability",
+                trace_id="trace-1",
                 expires_at=datetime(2030, 1, 1, tzinfo=UTC),
                 knowledge_space_id="space-1",
             )
@@ -1649,6 +1679,7 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
         response = post(service_resources.KnowledgeFSServiceQueryAdmissionApi(), "control-1")
 
     assert response["operation_id"] == "createQuery"
+    assert response["trace_id"] == "trace-1"
     assert response["request"]["knowledgeSpaceId"] == "space-1"
     assert response["url"] == "https://api.dify.test/v1/knowledge-fs/query-stream"
     authorization.authorize.assert_called_once_with(

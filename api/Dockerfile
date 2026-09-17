@@ -1,19 +1,6 @@
-# The same API image can serve HTTP or consume KnowledgeFS Celery queues. Bundle the existing
-# TypeScript engine at build time; workers must not download code or call an API Pod to execute it.
-FROM node:22-bookworm-slim AS knowledge-engine
-ENV PNPM_HOME=/pnpm
-ENV PATH="${PNPM_HOME}:${PATH}"
-WORKDIR /knowledge-fs
-RUN corepack enable
-COPY knowledge-fs/package.json knowledge-fs/pnpm-lock.yaml knowledge-fs/pnpm-workspace.yaml knowledge-fs/turbo.json knowledge-fs/tsconfig.base.json ./
-COPY knowledge-fs/apps/api ./apps/api
-COPY knowledge-fs/packages ./packages
-RUN pnpm install --frozen-lockfile --filter @knowledge/api-app... \
-    && pnpm --filter @knowledge/api-app build:prod
-RUN sharp_runtime_source="$(dirname "$(realpath apps/api/node_modules/sharp)")" \
-    && mkdir -p /engine-node-modules \
-    && cp -LR "${sharp_runtime_source}/." /engine-node-modules/
-
+# KnowledgeFS is released independently. Its release controller atomically mounts the tested
+# engine bundles and native dependencies at /app/knowledge-fs in the dedicated Celery workers.
+# Ordinary Dify API images do not rebuild or download a second copy of the private engine.
 # base image
 FROM python:3.12-slim-bookworm AS base
 
@@ -127,10 +114,6 @@ RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
 
 # Copy source code
 COPY --chown=dify:dify api /app/api/
-COPY --from=knowledge-engine --chown=dify:dify /knowledge-fs/apps/api/dist/celery-worker.mjs /app/knowledge-fs/celery-worker.mjs
-COPY --from=knowledge-engine --chown=dify:dify /knowledge-fs/apps/api/dist/native-parser-worker.mjs /app/knowledge-fs/native-parser-worker.mjs
-COPY --from=knowledge-engine --chown=dify:dify /knowledge-fs/apps/api/dist/image-variant-worker.mjs /app/knowledge-fs/image-variant-worker.mjs
-COPY --from=knowledge-engine --chown=dify:dify /engine-node-modules /app/knowledge-fs/node_modules
 
 # Prepare entrypoint script
 COPY --chown=dify:dify --chmod=755 api/docker/entrypoint.sh /entrypoint.sh

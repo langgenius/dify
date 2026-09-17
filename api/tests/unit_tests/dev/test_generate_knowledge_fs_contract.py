@@ -24,36 +24,21 @@ from dev.knowledge_fs_product_contract import (
 
 def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     workspace = tmp_path / "dify"
-    repository = workspace / "knowledge-fs"
+    repository = tmp_path / "standalone-private-knowledge-fs"
     contracts = repository / "contracts"
     api_root = workspace / "api"
     contracts.mkdir(parents=True)
-    api_root.mkdir()
-    subprocess.run(["git", "init", "--quiet"], cwd=workspace, check=True)
+    api_root.mkdir(parents=True)
+    subprocess.run(["git", "init", "--quiet"], cwd=repository, check=True)
     (repository / "package.json").write_text('{"scripts":{"capability:export":"fixture","openapi:export":"fixture"}}\n')
-    repository_contracts = Path(__file__).resolve().parents[4] / "knowledge-fs" / "contracts"
-    for contract_name in (
-        "dify-capability-v2-auth-profile.json",
-        "dify-capability-v2-test-vector.json",
-    ):
-        (contracts / contract_name).write_bytes((repository_contracts / contract_name).read_bytes())
-    upstream_provenance_path = repository / "upstream-provenance.json"
-    upstream_provenance_path.write_text(
-        json.dumps(
-            {
-                "commit": "dc4072ee302317145612087ce7440851dc329fd0",
-                "release": None,
-                "repository": "https://github.com/langgenius/knowledge-fs",
-                "schemaVersion": 1,
-            }
-        )
-        + "\n"
-    )
-    product_operations_path = api_root / "knowledge-fs-product-operations.json"
-    product_operations_path.write_text(json.dumps(fixture_product_manifest()) + "\n")
-    product_operation_gaps_path = api_root / "knowledge-fs-product-operation-gaps.json"
-    product_operation_gaps_path.write_text(json.dumps(fixture_product_gap_manifest()) + "\n")
-    subprocess.run(["git", "add", "knowledge-fs"], cwd=workspace, check=True)
+    repository_contracts = Path(__file__).resolve().parents[3] / "knowledge-fs-contract"
+    for name in ("dify-capability-v2-auth-profile.json", "dify-capability-v2-test-vector.json"):
+        (contracts / name).write_bytes((repository_contracts / name).read_bytes())
+    product_path = api_root / "knowledge-fs-product-operations.json"
+    product_path.write_text(json.dumps(fixture_product_manifest()) + "\n")
+    gaps_path = api_root / "knowledge-fs-product-operation-gaps.json"
+    gaps_path.write_text(json.dumps(fixture_product_gap_manifest()) + "\n")
+    subprocess.run(["git", "add", "."], cwd=repository, check=True)
     subprocess.run(
         [
             "git",
@@ -62,185 +47,100 @@ def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, m
             "-c",
             "user.name=Contract Test",
             "commit",
-            "--allow-empty",
             "--quiet",
             "-m",
             "fixture",
         ],
-        cwd=workspace,
+        cwd=repository,
         check=True,
     )
-    subtree_tree = subprocess.run(
-        ["git", "write-tree", "--prefix=knowledge-fs/"],
-        cwd=workspace,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-
-    document = complete_contract_document()
-    capability_policy = fixture_capability_policy_document()
+    source_commit = contract_validator.run("git", "rev-parse", "HEAD", cwd=repository).strip()
+    source_tree = contract_validator.run("git", "rev-parse", "HEAD^{tree}", cwd=repository).strip()
     executable_directory = tmp_path / "bin"
     executable_directory.mkdir()
     fake_pnpm = executable_directory / "pnpm"
-    write_fake_pnpm(fake_pnpm, document, capability_policy)
-
-    lock_path = api_root / "knowledge-fs-contract.lock.json"
-    lock_path.write_text(
-        json.dumps(
-            {
-                "capabilityV2AuthManifestSha256": "",
-                "capabilityV2AuthTestVectorSha256": "",
-                "openapiSha256": "",
-                "productOperationGapManifestSha256": "",
-                "productOperationManifestSha256": "",
-                "schemaVersion": 5,
-                "subtreeTree": "",
-            }
-        )
-    )
+    write_fake_pnpm(fake_pnpm, complete_contract_document(), fixture_capability_policy_document())
     monkeypatch.setenv("PATH", f"{executable_directory}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setattr(contract_validator, "product_operation_runtime_contracts", fixture_product_operations)
     monkeypatch.setattr(contract_validator, "capability_operation_runtime_contracts", fixture_capability_operations)
-
     monkeypatch.setattr(
         sys,
         "argv",
-        ["generate_knowledge_fs_contract.py", "--workspace-root", str(workspace), "--update-lock"],
+        ["generate", "--workspace-root", str(workspace), "--update-lock", "--knowledge-fs-root", str(repository)],
     )
     contract_validator.main()
-
+    lock_path = api_root / "knowledge-fs-contract.lock.json"
     updated_lock = json.loads(lock_path.read_text())
-    assert updated_lock["schemaVersion"] == 5
-    assert updated_lock["subtreeTree"] == subtree_tree
-    assert set(updated_lock) == {
-        "capabilityV2AuthManifestSha256",
-        "capabilityV2AuthTestVectorSha256",
-        "openapiSha256",
-        "productOperationGapManifestSha256",
-        "productOperationManifestSha256",
-        "schemaVersion",
-        "subtreeTree",
-    }
-    assert "commit" not in updated_lock
+    assert updated_lock["schemaVersion"] == 6
+    assert updated_lock["sourceCommit"] == source_commit
+    assert updated_lock["sourceTree"] == source_tree
+    contract_validator.parse_contract_lock(updated_lock)
+    pin_root = workspace / contract_validator.PIN_RELATIVE_PATH
+    assert {path.suffix for path in pin_root.iterdir()} == {".json"}
 
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["generate_knowledge_fs_contract.py", "--workspace-root", str(workspace), "--check"],
-    )
+    monkeypatch.setattr(sys, "argv", ["generate", "--workspace-root", str(workspace), "--check"])
+    # A consumer's Dify checkout has neither the private source checkout nor pnpm/git access.
+    repository.rename(tmp_path / "unavailable-source")
+
+    def disallow_subprocess(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("--check must use only pinned artifacts and Python runtime declarations")
+
+    monkeypatch.setattr(subprocess, "run", disallow_subprocess)
     contract_validator.main()
-
-    staged_source = repository / "staged-source.ts"
-    staged_source.write_text("export const staged = true;\n")
-    subprocess.run(["git", "add", "knowledge-fs/staged-source.ts"], cwd=workspace, check=True)
-    staged_tree = subprocess.run(
-        ["git", "write-tree", "--prefix=knowledge-fs/"],
-        cwd=workspace,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["generate_knowledge_fs_contract.py", "--workspace-root", str(workspace), "--update-lock"],
-    )
-    contract_validator.main()
-    assert json.loads(lock_path.read_text())["subtreeTree"] == staged_tree
-
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["generate_knowledge_fs_contract.py", "--workspace-root", str(workspace), "--check"],
-    )
 
     with monkeypatch.context() as registry_drift:
         registry_drift.setattr(
-            contract_validator,
-            "console_contract_declarations",
-            lambda: (
-                declaration(method="DELETE"),
-                declaration(
-                    method="POST",
-                    operation_id="createKnowledgeSpace",
-                    required_scope="knowledge-spaces:write",
-                ),
-            ),
-            raising=False,
+            contract_validator, "console_contract_declarations", lambda: (declaration(method="DELETE"),)
         )
         with pytest.raises(ValueError, match="listKnowledgeSpaces.*method.*expected.*received"):
             contract_validator.main()
 
-    schema_drift = complete_contract_document()
-    schema_drift["components"] = {"schemas": {"KnowledgeSpace": {"type": "object"}}}
-    query_drift = deepcopy(complete_contract_document())
-    openapi_operation(query_drift, "get")["parameters"].append(
-        {"in": "query", "name": "limit", "schema": {"maximum": 200, "type": "integer"}}
-    )
-    body_drift = deepcopy(complete_contract_document())
-    openapi_operation(body_drift, "post")["requestBody"] = {
-        "content": {"application/json": {"schema": {"required": ["name"], "type": "object"}}}
-    }
-    response_drift = deepcopy(complete_contract_document())
-    response_drift_responses = openapi_operation(response_drift, "post")["responses"]
-    response_drift_responses["201"] = response_drift_responses.pop("200")
-    security_drift = deepcopy(complete_contract_document())
-    openapi_operation(security_drift, "get")["security"] = []
-    deprecated_drift = deepcopy(complete_contract_document())
-    openapi_operation(deprecated_drift, "get")["deprecated"] = True
-
-    write_fake_pnpm(fake_pnpm, schema_drift, capability_policy)
-    with pytest.raises(RuntimeError) as drift_error:
-        contract_validator.main()
-    assert str(drift_error.value) == (
-        "KnowledgeFS contract lock field openapiSha256 drifted: "
-        f"expected {contract_validator.sha256(json.dumps(schema_drift).encode())!r}, "
-        f"received {updated_lock['openapiSha256']!r}. "
-        "Run --update-lock intentionally after reviewing the staged subtree and contract changes."
-    )
-
-    for drifted_document in (
-        query_drift,
-        body_drift,
-        response_drift,
-        security_drift,
-        deprecated_drift,
+    # Every artifact is byte-pinned, including policy bindings and exact source provenance.
+    for path, field in (
+        (pin_root / contract_validator.OPENAPI_FILENAME, "openapiSha256"),
+        (pin_root / contract_validator.CAPABILITY_POLICY_FILENAME, "capabilityPolicySha256"),
+        (pin_root / contract_validator.PROVENANCE_FILENAME, "sourceProvenanceSha256"),
+        (pin_root / "dify-capability-v2-auth-profile.json", "capabilityV2AuthManifestSha256"),
+        (pin_root / "dify-capability-v2-test-vector.json", "capabilityV2AuthTestVectorSha256"),
+        (product_path, "productOperationManifestSha256"),
+        (gaps_path, "productOperationGapManifestSha256"),
     ):
-        write_fake_pnpm(fake_pnpm, drifted_document, capability_policy)
+        original = path.read_bytes()
+        path.write_bytes(original + b"\n")
+        with pytest.raises(RuntimeError, match=f"contract lock field {field} drifted"):
+            contract_validator.main()
+        path.write_bytes(original)
+
+    openapi_path = pin_root / contract_validator.OPENAPI_FILENAME
+    original = openapi_path.read_bytes()
+    for change in ("schema", "query", "body", "response", "security", "deprecation"):
+        document = complete_contract_document()
+        if change == "schema":
+            document["components"] = {"schemas": {"KnowledgeSpace": {"type": "object"}}}
+        elif change == "query":
+            openapi_operation(document, "get")["parameters"].append(
+                {"in": "query", "name": "limit", "schema": {"maximum": 200, "type": "integer"}}
+            )
+        elif change == "body":
+            openapi_operation(document, "post")["requestBody"] = {
+                "content": {"application/json": {"schema": {"required": ["name"], "type": "object"}}}
+            }
+        elif change == "response":
+            responses = openapi_operation(document, "post")["responses"]
+            responses["201"] = responses.pop("200")
+        elif change == "security":
+            openapi_operation(document, "get")["security"] = []
+        else:
+            openapi_operation(document, "get")["deprecated"] = True
+        openapi_path.write_text(json.dumps(document))
         with pytest.raises(RuntimeError, match="contract lock field openapiSha256 drifted"):
             contract_validator.main()
-
-    write_fake_pnpm(fake_pnpm, {"paths": {}}, capability_policy)
-    with pytest.raises(ValueError, match="getKnowledgeSpace.*Python issuer.*TypeScript guard.*OpenAPI"):
-        contract_validator.main()
-
-    write_fake_pnpm(fake_pnpm, document, capability_policy)
-    product_manifest_content = product_operations_path.read_text()
-    product_operations_path.write_text(product_manifest_content + "\n")
-    with pytest.raises(RuntimeError, match="contract lock field productOperationManifestSha256 drifted"):
-        contract_validator.main()
-    product_operations_path.write_text(product_manifest_content)
-
-    product_gap_manifest_content = product_operation_gaps_path.read_text()
-    product_operation_gaps_path.write_text(product_gap_manifest_content + "\n")
-    with pytest.raises(RuntimeError, match="contract lock field productOperationGapManifestSha256 drifted"):
-        contract_validator.main()
-    product_operation_gaps_path.write_text(product_gap_manifest_content)
-
-    capability_vector_path = contracts / "dify-capability-v2-test-vector.json"
-    capability_vector_path.write_text(capability_vector_path.read_text() + "\n")
-    subprocess.run(
-        ["git", "add", "knowledge-fs/contracts/dify-capability-v2-test-vector.json"],
-        cwd=workspace,
-        check=True,
-    )
-    with pytest.raises(RuntimeError, match="contract lock field capabilityV2AuthTestVectorSha256 drifted"):
-        contract_validator.main()
+    openapi_path.write_bytes(original)
+    contract_validator.main()
 
 
 def test_capability_v2_contract_rejects_cross_language_security_drift() -> None:
-    contracts = Path(__file__).resolve().parents[4] / "knowledge-fs" / "contracts"
+    contracts = Path(__file__).resolve().parents[3] / "knowledge-fs-contract"
     manifest = json.loads((contracts / "dify-capability-v2-auth-profile.json").read_text())
     vector = json.loads((contracts / "dify-capability-v2-test-vector.json").read_text())
 
@@ -269,7 +169,7 @@ def test_capability_v2_contract_rejects_cross_language_security_drift() -> None:
 
 
 def test_capability_v2_is_the_only_pinned_production_auth_profile() -> None:
-    contracts = Path(__file__).resolve().parents[4] / "knowledge-fs" / "contracts"
+    contracts = Path(__file__).resolve().parents[3] / "knowledge-fs-contract"
     active = json.loads((contracts / "dify-capability-v2-auth-profile.json").read_text())
 
     contract_validator.validate_capability_v2_auth_manifest(active)
@@ -280,14 +180,12 @@ def test_capability_v2_is_the_only_pinned_production_auth_profile() -> None:
     assert not (contracts / "dify-auth-test-vector.json").exists()
 
 
-def test_contract_cli_rejects_unstaged_knowledge_fs_changes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    workspace = tmp_path / "dify"
-    repository = workspace / "knowledge-fs"
-    repository.mkdir(parents=True)
-    subprocess.run(["git", "init", "--quiet"], cwd=workspace, check=True)
-    source = repository / "source.ts"
+@pytest.mark.parametrize("change", ["unstaged", "staged", "untracked"])
+def test_contract_update_rejects_uncommitted_source(tmp_path: Path, change: str) -> None:
+    subprocess.run(["git", "init", "--quiet"], cwd=tmp_path, check=True)
+    source = tmp_path / "source.ts"
     source.write_text("export const value = 1;\n")
-    subprocess.run(["git", "add", "knowledge-fs/source.ts"], cwd=workspace, check=True)
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
     subprocess.run(
         [
             "git",
@@ -300,34 +198,25 @@ def test_contract_cli_rejects_unstaged_knowledge_fs_changes(tmp_path: Path, monk
             "-m",
             "fixture",
         ],
-        cwd=workspace,
+        cwd=tmp_path,
         check=True,
     )
-    source.write_text("export const value = 2;\n")
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["generate_knowledge_fs_contract.py", "--workspace-root", str(workspace), "--check"],
-    )
+    contract_validator.ensure_clean_knowledge_fs_worktree(tmp_path)
+    if change == "untracked":
+        (tmp_path / "untracked.ts").write_text("export const x = true;\n")
+    else:
+        source.write_text("export const value = 2;\n")
+        if change == "staged":
+            subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    with pytest.raises(RuntimeError, match="staged, unstaged or untracked changes"):
+        contract_validator.export_contract(tmp_path, tmp_path / "output")
 
-    with pytest.raises(RuntimeError, match="unstaged or untracked changes"):
-        contract_validator.main()
 
-
-def test_contract_cli_rejects_untracked_knowledge_fs_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    workspace = tmp_path / "dify"
-    repository = workspace / "knowledge-fs"
-    repository.mkdir(parents=True)
-    subprocess.run(["git", "init", "--quiet"], cwd=workspace, check=True)
-    (repository / "untracked.ts").write_text("export const value = 1;\n")
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["generate_knowledge_fs_contract.py", "--workspace-root", str(workspace), "--check"],
-    )
-
-    with pytest.raises(RuntimeError, match="unstaged or untracked changes"):
-        contract_validator.main()
+def test_contract_update_requires_explicit_source_and_check_rejects_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    for arguments in (["--update-lock"], ["--check", "--knowledge-fs-root", "/private/source"]):
+        monkeypatch.setattr(sys, "argv", ["generate", *arguments])
+        with pytest.raises(SystemExit):
+            contract_validator.main()
 
 
 def test_product_operation_manifest_must_cover_ready_and_gap_runtime_registry() -> None:

@@ -10,6 +10,10 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Literal, Protocol, runtime_checkable
+from uuid import UUID
+
+import sqlalchemy as sa
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
@@ -26,12 +30,13 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from models import ToolFile
-from models.enums import CreatorUserRole
-from models.model import UploadFile
+from models.enums import ApiTokenType, CreatorUserRole
+from models.model import ApiToken, UploadFile
 from services.file_service import FileService
 
 QUERY_IMAGE_MAX_BYTES = 10 * 1024 * 1024
 QUERY_IMAGE_MIME_TYPES = frozenset({"image/gif", "image/jpeg", "image/png", "image/webp"})
+DATASET_API_KEY_SUBJECT_PREFIX = "dify-dataset-api-key:"
 WORKFLOW_QUERY_IMAGE_GRANT_TTL_SECONDS = 5 * 60
 _WORKFLOW_QUERY_IMAGE_GRANT_DOMAIN = b"knowledge-fs-workflow-query-image-v1"
 _WORKFLOW_QUERY_IMAGE_GRANT_VERSION = 1
@@ -97,12 +102,13 @@ def validate_query_image_references(
         return []
 
     with session_factory.create_session() as session:
+        _assert_active_service_image_actor(session, tenant_id=tenant_id, account_id=account_id)
         files_by_id = FileService.get_upload_files_by_ids(tenant_id, normalized_ids, session=session)
         result: list[KnowledgeFSQueryImageMetadata] = []
         total_bytes = 0
         for upload_file_id in normalized_ids:
             upload_file = files_by_id.get(upload_file_id)
-            if upload_file is None:
+            if upload_file is None or upload_file.tenant_id != tenant_id:
                 raise KnowledgeFSQueryImageError("QUERY_IMAGE_NOT_FOUND", "Query image was not found")
             _assert_actor_owned(upload_file, account_id=account_id)
             mime_type = _validate_metadata(upload_file)
@@ -116,7 +122,7 @@ def validate_query_image_references(
             )
             if mark_used:
                 upload_file.used = True
-                upload_file.used_by = account_id
+                upload_file.used_by = _image_actor(account_id)[1]
                 upload_file.used_at = naive_utc_now()
 
         if total_bytes > QUERY_IMAGE_MAX_TOTAL_BYTES:
@@ -262,10 +268,11 @@ def load_query_image(
         if not account_id:
             raise KnowledgeFSQueryImageError("QUERY_IMAGE_SUBJECT_INVALID", "Query image subject is invalid")
         with session_factory.create_session() as session:
+            _assert_active_service_image_actor(session, tenant_id=tenant_id, account_id=account_id)
             upload_file = FileService.get_upload_files_by_ids(tenant_id, normalized_ids, session=session).get(
                 upload_file_id
             )
-            if upload_file is None:
+            if upload_file is None or upload_file.tenant_id != tenant_id:
                 raise KnowledgeFSQueryImageError("QUERY_IMAGE_NOT_FOUND", "Query image was not found")
             _assert_actor_owned(upload_file, account_id=account_id)
             record = _QueryImageStorageRecord(
@@ -336,8 +343,36 @@ def _validate_reference_ids(upload_file_ids: Sequence[str]) -> list[str]:
     return normalized
 
 
+def _image_actor(account_id: str) -> tuple[CreatorUserRole, str]:
+    if account_id.startswith(DATASET_API_KEY_SUBJECT_PREFIX):
+        try:
+            token_id = str(UUID(account_id.removeprefix(DATASET_API_KEY_SUBJECT_PREFIX)))
+        except ValueError as error:
+            raise KnowledgeFSQueryImageError("QUERY_IMAGE_NOT_FOUND", "Query image was not found") from error
+        return CreatorUserRole.DATASET_API_KEY, token_id
+    return CreatorUserRole.ACCOUNT, account_id
+
+
+def _assert_active_service_image_actor(session: Session, *, tenant_id: str, account_id: str) -> None:
+    role, actor_id = _image_actor(account_id)
+    if role is not CreatorUserRole.DATASET_API_KEY:
+        return
+    # Dataset credentials are revoked by deleting ApiToken. Recheck at admission and at byte
+    # loading so a previously admitted capability never resurrects a removed credential.
+    token_id = session.scalar(
+        sa.select(ApiToken.id).where(
+            ApiToken.id == actor_id,
+            ApiToken.tenant_id == tenant_id,
+            ApiToken.type == ApiTokenType.DATASET,
+        )
+    )
+    if token_id is None:
+        raise KnowledgeFSQueryImageError("QUERY_IMAGE_NOT_FOUND", "Query image was not found")
+
+
 def _assert_actor_owned(upload_file: UploadFile, *, account_id: str) -> None:
-    if upload_file.created_by_role != CreatorUserRole.ACCOUNT or upload_file.created_by != account_id:
+    role, actor_id = _image_actor(account_id)
+    if upload_file.created_by_role != role or upload_file.created_by != actor_id:
         # Deliberately use the same not-found result as an unknown id to avoid disclosing foreign files.
         raise KnowledgeFSQueryImageError("QUERY_IMAGE_NOT_FOUND", "Query image was not found")
 

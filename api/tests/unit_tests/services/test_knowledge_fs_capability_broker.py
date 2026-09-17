@@ -29,7 +29,10 @@ from services.knowledge_fs.product_operations import KnowledgeFSProductPermissio
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.product_service import AuthorizedKnowledgeFSControlSpace
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandProducer
-from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
+from services.knowledge_fs.service_api_authorization import (
+    KnowledgeFSServiceApiProfile,
+    KnowledgeFSServiceApiScopeError,
+)
 from services.knowledge_fs_capability import CapabilityIssueRequest
 from tests.unit_tests.services.knowledge_fs_fakes import revoke_payload
 
@@ -569,7 +572,7 @@ def test_stale_external_profile_is_revalidated_before_reservation(
     )
 
     if principal_kind == "service":
-        with pytest.raises(KnowledgeFSOperationUnavailableError, match="no longer authorized"):
+        with pytest.raises(KnowledgeFSServiceApiScopeError, match="no longer authorized"):
             broker.issue_service(
                 profile=service_profile,
                 operation_id="createQuery",
@@ -606,7 +609,7 @@ def test_service_issuance_rejects_a_space_disabled_after_authorization(sqlite_se
         issuer=issuer,  # type: ignore[arg-type]
     )
 
-    with pytest.raises(KnowledgeFSOperationUnavailableError, match="no longer authorized"):
+    with pytest.raises(KnowledgeFSServiceApiScopeError, match="no longer authorized"):
         broker.issue_service(
             profile=service_profile,
             operation_id="createQuery",
