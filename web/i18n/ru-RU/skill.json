@@ -227,6 +227,8 @@
   "skillManagement.errors.missingSkillMd": "В этом пакете нет SKILL.md. Добавьте файл и импортируйте его еще раз.",
   "skillManagement.errors.nameConflict": "Навык под названием «{{name}}» уже существует. Переименуйте его в SKILL.md и импортируйте снова.",
   "skillManagement.errors.workspaceLimit": "Ваше рабочее пространство достигло предела в 500 навыков. Удалите навык, чтобы добавить новый.",
+  "skillManagement.exportDialog.description": "Будет экспортирован текущий сохранённый черновик навыка. Если в редакторе есть несохранённые изменения, сохраните их перед экспортом.",
+  "skillManagement.exportDialog.title": "Экспорт текущего сохранённого черновика",
   "skillManagement.import": "Импортировать",
   "skillManagement.importFailed": "Не удалось импортировать навык.",
   "skillManagement.importSuccess": "Skill импортирован.",
