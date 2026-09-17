@@ -90,8 +90,11 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
     return () => {
       abortRef.current?.abort()
       abortRef.current = null
+      // Clearing the request ref prevents its finally block from releasing loading state.
+      setIsBusy(false)
+      setConversationLoading(false)
     }
-  }, [])
+  }, [setConversationLoading, setIsBusy])
 
   const applySessionView = useCallback(
     (nextView: SessionView) => {
@@ -402,6 +405,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
         if (controller.signal.aborted) return latestOutcome
         try {
           const view = await getSession(sessionId, controller.signal)
+          if (controller.signal.aborted) return latestOutcome
           const stateApplied = applySessionView(view)
           const historyApplied = await syncConversation(
             sessionId,
