@@ -244,7 +244,7 @@ function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
           {t(($) => $['overview.recentActivity'])}
         </h2>
-        <Button size="small" variant="secondary" onClick={onOpenAll}>
+        <Button size="small" variant="ghost-accent" onClick={onOpenAll}>
           {t(($) => $['overview.allActivity'])}
         </Button>
       </header>
