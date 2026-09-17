@@ -8,7 +8,6 @@
 **/*.pyc
 **/.mypy_cache
 **/.ruff_cache
-knowledge-fs/
 .git
 .github
 *.md

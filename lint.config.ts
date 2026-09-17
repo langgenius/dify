@@ -152,7 +152,6 @@ export const lintConfig = {
     'dify-agent/**',
     'docker/**',
     'docs/**',
-    'knowledge-fs/**',
     'scripts/**/*',
     '!scripts/check-web-production-unused-after-knip-fix.mjs',
     'sdks/php-client/**',
