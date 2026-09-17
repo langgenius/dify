@@ -91,6 +91,7 @@
   "table.header.updatedTime": "अपडेट का समय",
   "table.header.user": "अंतिम उपयोगकर्ता या खाता",
   "table.header.userRate": "उपयोगकर्ता दर",
+  "table.unread": "अपठित",
   "title": "लॉग्स",
   "triggerBy.appRun": "वेबएप",
   "triggerBy.debugging": "डिबगिंग",

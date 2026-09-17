@@ -466,19 +466,11 @@ class App(Base):
     def site_with_session(self, *, session: Session) -> Site | None:
         return session.scalar(select(Site).where(Site.app_id == self.id))
 
-    @property
-    def app_model_config(self) -> AppModelConfig | None:
-        return self.app_model_config_with_session(session=db.session())
-
     def app_model_config_with_session(self, *, session: Session) -> AppModelConfig | None:
         if self.app_model_config_id:
             return session.scalar(select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id))
 
         return None
-
-    @property
-    def workflow(self) -> Workflow | None:
-        return self.workflow_with_session(session=db.session())
 
     def workflow_with_session(self, *, session: Session) -> Workflow | None:
         if self.workflow_id:
@@ -1191,12 +1183,7 @@ class Conversation(Base):
 
     is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
 
-    @property
-    def inputs(self) -> dict[str, Any]:
-        return self.inputs_with_session(session=db.session())
-
-    @inputs.setter
-    def inputs(self, value: Mapping[str, Any]):
+    def _set_inputs(self, value: Mapping[str, Any]):
         inputs = dict(value)
         for k, v in inputs.items():
             match v:
@@ -1206,6 +1193,9 @@ class Conversation(Base):
                     if all(isinstance(item, File) for item in v):
                         inputs[k] = [item.model_dump() for item in v if isinstance(item, File)]
         self._inputs = inputs
+
+    # Write-only: reading requires a session, use inputs_with_session instead.
+    inputs = property(fset=_set_inputs)
 
     def inputs_with_session(self, *, session: Session) -> dict[str, Any]:
         inputs = self._inputs.copy()
@@ -1249,10 +1239,6 @@ class Conversation(Base):
                         inputs[key] = file_list
 
         return inputs
-
-    @property
-    def model_config(self) -> AppModelConfigDict:
-        return self.model_config_with_session(session=db.session())
 
     def model_config_with_session(self, *, session: Session) -> AppModelConfigDict:
         model_config = cast(AppModelConfigDict, {})
@@ -1436,7 +1422,7 @@ class Conversation(Base):
             "mode": self.mode,
             "name": self.name,
             "summary": self.summary,
-            "inputs": self.inputs,
+            "inputs": self.inputs_with_session(session=db.session()),
             "introduction": self.introduction,
             "system_instruction": self.system_instruction,
             "system_instruction_tokens": self.system_instruction_tokens,
@@ -1512,12 +1498,7 @@ class Message(Base):
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
     app_mode: Mapped[AppMode | None] = mapped_column(EnumText(AppMode, length=255), nullable=True)
 
-    @property
-    def inputs(self) -> dict[str, Any]:
-        return self.inputs_with_session(session=db.session())
-
-    @inputs.setter
-    def inputs(self, value: Mapping[str, Any]):
+    def _set_inputs(self, value: Mapping[str, Any]):
         inputs = dict(value)
         for k, v in inputs.items():
             match v:
@@ -1528,6 +1509,9 @@ class Message(Base):
                     if all(isinstance(item, File) for item in v_list):
                         inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
         self._inputs = inputs
+
+    # Write-only: reading requires a session, use inputs_with_session instead.
+    inputs = property(fset=_set_inputs)
 
     def inputs_with_session(self, *, session: Session) -> dict[str, Any]:
         inputs = self._inputs.copy()
@@ -1807,7 +1791,7 @@ class Message(Base):
             "app_id": self.app_id,
             "conversation_id": self.conversation_id,
             "model_id": self.model_id,
-            "inputs": self.inputs,
+            "inputs": self.inputs_with_session(session=db.session()),
             "query": self.query,
             "total_price": self.total_price,
             "message": self.message,

@@ -474,6 +474,7 @@
   "operation.fill": "Samodejno izpolni",
   "operation.format": "Format",
   "operation.imageCopied": "Kopirana slika",
+  "operation.imageCopyFailed": "Slike ni bilo mogoče kopirati. Namesto tega jo prenesite.",
   "operation.imageDownloaded": "Slika prenesena",
   "operation.in": "v",
   "operation.learnMore": "Izvedi več",

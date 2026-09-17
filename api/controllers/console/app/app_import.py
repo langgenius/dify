@@ -1,3 +1,7 @@
+from typing import BinaryIO, Literal, cast
+from uuid import uuid4
+
+from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -5,23 +9,27 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.rbac import PlainApp, RBACCheck, Workspace
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     cloud_edition_billing_resource_check,
     edit_permission_required,
-    model_validate,
     rbac_permission_required,
     setup_required,
+    validate_request,
     with_current_user,
 )
+from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
 from models.account import Account
-from models.model import App
+from models.model import App, AppMode
+from services.agent.errors import InvalidRosterAgentPackageError
+from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.app_dsl_service import (
     IMPORT_INFO_REDIS_KEY_PREFIX,
     AppDslService,
@@ -49,8 +57,16 @@ class AppImportPayload(BaseModel):
     app_id: str | None = Field(None)
 
 
+class RosterAgentPackageConflictResponse(ResponseModel):
+    code: str
+    message: str
+    status: Literal[409] = 409
+    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
+
+
 register_enum_models(console_ns, ImportStatus)
 register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
+register_response_schema_models(console_ns, RosterAgentPackageConflictResponse)
 
 
 def _current_user_and_tenant_id(current_user: Account | None) -> tuple[Account, str | None]:
@@ -73,19 +89,74 @@ def _current_user_and_tenant_id(current_user: Account | None) -> tuple[Account, 
 
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
-    @console_ns.expect(console_ns.models[AppImportPayload.__name__])
+    @console_ns.doc(
+        params={
+            "payload": {
+                "required": True,
+                "content": {
+                    "application/json": {"schema": {"$ref": "#/definitions/AppImportPayload"}},
+                    "multipart/form-data": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "file": {
+                                    "type": "string",
+                                    "format": "binary",
+                                    "description": "Roster Agent .ifpkg archive",
+                                }
+                            },
+                            "required": ["file"],
+                        }
+                    },
+                },
+            }
+        },
+    )
     @console_ns.response(200, "Import completed", console_ns.models[Import.__name__])
     @console_ns.response(202, "Import pending confirmation", console_ns.models[Import.__name__])
     @console_ns.response(400, "Import failed", console_ns.models[Import.__name__])
+    @console_ns.response(403, "Insufficient import or plugin installation permissions")
+    @console_ns.response(
+        409, "Agent name conflict or missing plugins", console_ns.models[RosterAgentPackageConflictResponse.__name__]
+    )
+    @console_ns.response(413, "Roster Agent package exceeds the size limit")
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()))
     @with_current_user
-    @model_validate(AppImportPayload)
-    def post(self, req_data: AppImportPayload, current_user: Account | None = None):
+    def post(self, current_user: Account):
+        if request.mimetype == "multipart/form-data":
+            return self._import_package(current_user)
+        return self._import_dsl(validate_request(AppImportPayload), current_user)
+
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()))
+    def _import_package(self, current_user: Account):
+        uploaded = request.files.get("file")
+        if uploaded is None or not uploaded.filename:
+            raise InvalidRosterAgentPackageError("Roster Agent package file is required")
+        if not uploaded.filename.lower().endswith(".ifpkg"):
+            raise InvalidRosterAgentPackageError("Roster Agent package file must use the .ifpkg extension")
+        if request.form.get("app_id"):
+            raise InvalidRosterAgentPackageError("Roster Agent package import does not support overwriting an App")
+        account, tenant_id = _current_user_and_tenant_id(current_user)
+        if tenant_id is None:
+            raise Forbidden("Current workspace is required")
+        result = RosterAgentPackageImporter().import_package(
+            source=cast(BinaryIO, uploaded.stream), tenant_id=tenant_id, account=account
+        )
+        return Import(
+            id=str(uuid4()),
+            status=ImportStatus.COMPLETED_WITH_WARNINGS if result.warnings else ImportStatus.COMPLETED,
+            app_id=result.app_id,
+            app_mode=AppMode.AGENT,
+            warnings=result.warnings,
+        ).model_dump(mode="json"), 200
+
+    @cloud_edition_billing_resource_check("apps")
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()))
+    def _import_dsl(self, req_data: AppImportPayload, current_user: Account | None = None):
         current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
 
         # AppDslService performs internal commits for some creation paths, so use a plain

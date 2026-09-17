@@ -91,6 +91,7 @@
   "table.header.updatedTime": "Waktu yang diperbarui",
   "table.header.user": "Pengguna Akhir atau Akun",
   "table.header.userRate": "Tarif Pengguna",
+  "table.unread": "Belum dibaca",
   "title": "Log",
   "triggerBy.appRun": "Aplikasi Web",
   "triggerBy.debugging": "Men-debug",

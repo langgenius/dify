@@ -1,6 +1,8 @@
 import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
   Select,
   SelectContent,
@@ -12,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
@@ -20,7 +22,6 @@ import {
   formatDateForOutput,
   toDayjs,
 } from '@/app/components/base/date-and-time-picker/utils/dayjs'
-import Input from '@/app/components/base/input'
 import { MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS, MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH } from '@/config'
 import { getMarkdownButtonAppearance } from './button-appearance'
 
@@ -96,7 +97,7 @@ type HastElement = {
   children: Array<HastElement | HastText>
 }
 
-type FormValue = string | boolean | Dayjs | undefined
+type FormValue = string | number | boolean | Dayjs | undefined
 type FormValues = Record<string, FormValue>
 type EditState = {
   source: HastElement[]
@@ -161,6 +162,7 @@ function getElementKey(child: HastElement, index: number): string {
 }
 
 const MarkdownForm = ({ node }: { node: HastElement }) => {
+  const formId = useId()
   const typedNode = node
   const { onSend } = useChatContext()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -223,8 +225,9 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
   }, [elementChildren, formValues])
 
   const onSubmit = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
+      e.stopPropagation()
       if (isSubmitting) return
       setIsSubmitting(true)
       try {
@@ -246,21 +249,14 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
   )
 
   return (
-    <form
-      autoComplete="off"
-      className="flex flex-col self-stretch"
-      onSubmit={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-      }}
-    >
+    <form autoComplete="off" className="flex flex-col self-stretch" onSubmit={onSubmit}>
       {elementChildren.map((child, index) => {
         const key = getElementKey(child, index)
         if (child.tagName === SUPPORTED_TAGS.LABEL) {
           return (
             <label
               key={key}
-              htmlFor={getLabelTarget(child)}
+              htmlFor={`${formId}-${getLabelTarget(child)}`}
               className="my-2 system-md-semibold text-text-secondary"
             >
               {getTextContent(child)}
@@ -276,6 +272,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           if (!isSafeName(name)) return null
 
           const type = str(child.properties.type) as SupportedType
+          const controlId = `${formId}-${str(child.properties.id) || name}`
+          const hasExternalLabel = elementChildren.some(
+            (node) =>
+              node.tagName === SUPPORTED_TAGS.LABEL &&
+              getLabelTarget(node) === (str(child.properties.id) || name),
+          )
 
           if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME) {
             return (
@@ -300,14 +302,11 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           }
           if (type === SUPPORTED_TYPES.CHECKBOX) {
             const label = str(child.properties.dataTip || child.properties['data-tip'])
-            const hasExternalLabel = elementChildren.some(
-              (node) => node.tagName === SUPPORTED_TAGS.LABEL && getLabelTarget(node) === name,
-            )
             const checkboxAriaLabel = label || (hasExternalLabel ? undefined : name)
             return (
               <div className="mt-2 flex h-6 items-center space-x-2" key={key}>
                 <Checkbox
-                  id={name}
+                  id={controlId}
                   checked={!!formValues[name]}
                   aria-label={checkboxAriaLabel}
                   onCheckedChange={(checked) => updateValue(name, checked)}
@@ -340,7 +339,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                   if (val != null) updateValue(name, val)
                 }}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger id={controlId} aria-label={hasExternalLabel ? undefined : name}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -366,14 +365,37 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             )
           }
 
+          if (type === SUPPORTED_TYPES.NUMBER) {
+            const value = formValues[name]
+            return (
+              <NumberField
+                key={key}
+                name={name}
+                step="any"
+                value={value == null || value === '' ? null : Number(value)}
+                onValueChange={(value) => updateValue(name, value ?? '')}
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput
+                    id={controlId}
+                    aria-label={hasExternalLabel ? undefined : name}
+                    placeholder={str(child.properties.placeholder)}
+                  />
+                </NumberFieldGroup>
+              </NumberField>
+            )
+          }
+
           return (
             <Input
               key={key}
+              id={controlId}
+              aria-label={hasExternalLabel ? undefined : name}
               type={type}
               name={name}
               placeholder={str(child.properties.placeholder)}
               value={str(formValues[name])}
-              onChange={(e) => updateValue(name, e.target.value)}
+              onValueChange={(value) => updateValue(name, value)}
             />
           )
         }
@@ -381,9 +403,16 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         if (child.tagName === SUPPORTED_TAGS.TEXTAREA) {
           const name = str(child.properties.name)
           if (!isSafeName(name)) return null
+          const controlId = `${formId}-${str(child.properties.id) || name}`
+          const hasExternalLabel = elementChildren.some(
+            (node) =>
+              node.tagName === SUPPORTED_TAGS.LABEL &&
+              getLabelTarget(node) === (str(child.properties.id) || name),
+          )
           return (
             <Textarea
-              aria-label={name}
+              id={controlId}
+              aria-label={hasExternalLabel ? undefined : name}
               key={key}
               name={name}
               placeholder={str(child.properties.placeholder)}
@@ -405,7 +434,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               {...appearance}
               className="mt-4"
               disabled={isSubmitting}
-              onClick={onSubmit}
+              type="submit"
             >
               <span className="text-[13px]">{getTextContent(child)}</span>
             </Button>

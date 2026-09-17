@@ -474,6 +474,7 @@
   "operation.fill": "一键填入",
   "operation.format": "格式化",
   "operation.imageCopied": "图片已复制",
+  "operation.imageCopyFailed": "无法复制图片，请尝试下载图片。",
   "operation.imageDownloaded": "图片已下载",
   "operation.in": "在",
   "operation.learnMore": "了解更多",
