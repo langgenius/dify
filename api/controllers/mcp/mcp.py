@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Union, cast
 
 from flask import Response, request
 from flask_restx import Resource
@@ -15,6 +15,22 @@ from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from libs import helper
 from models.enums import AppMCPServerStatus, EndUserType
 from models.model import App, AppMCPServer, AppMode, EndUser
+from services.app_definition_query_service import (
+    AppDefinitionNotPublishedError,
+    AppDefinitionQueryService,
+    AppDefinitionUnavailableError,
+)
+
+
+def _app_definitions() -> AppDefinitionQueryService:
+    """Resolve the app-definition queries owned by the application-service container.
+
+    Imported here rather than at module scope: the container also imports the human-input
+    and file services, whose native file-type detection this transport never needs.
+    """
+    from extensions.ext_application_services import application_services
+
+    return application_services().app_definitions
 
 
 class MCPRequestError(Exception):
@@ -182,22 +198,40 @@ class MCPAppApi(Resource):
 
     def _get_user_input_form(self, app: App) -> list[VariableEntity]:
         """Get and convert user input form"""
-        # Get raw user input form based on app mode
-        if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            if not app.workflow:
-                raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
-            raw_user_input_form = app.workflow.user_input_form(to_old_structure=True)
-        else:
-            if not app.app_model_config:
-                raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
-            features_dict = app.app_model_config.to_dict()
-            raw_user_input_form = features_dict.get("user_input_form", [])
+        raw_user_input_form = self._get_raw_user_input_form(app)
 
         # Convert to VariableEntity objects
         try:
             return self._convert_user_input_form(raw_user_input_form)
         except ValidationError as e:
             raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid user_input_form: {str(e)}")
+
+    def _get_raw_user_input_form(self, app: App) -> list[dict[str, Any]]:
+        """Read the raw input form from the owner the app type keeps it in.
+
+        An Agent App declares its variables on the Agent Soul, not in the legacy
+        app_model_config row, so it resolves through the app definition — the same reader
+        the service API and the webapp use. Other modes keep their existing sources.
+        """
+        if app.mode == AppMode.AGENT:
+            try:
+                parameters = _app_definitions().get_public_parameters(app.id)
+            except AppDefinitionNotPublishedError:
+                raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is not published") from None
+            except AppDefinitionUnavailableError:
+                raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable") from None
+            return parameters["user_input_form"]
+
+        # Get raw user input form based on app mode
+        if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+            if not app.workflow:
+                raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
+            return cast(list[dict[str, Any]], app.workflow.user_input_form(to_old_structure=True))
+
+        if not app.app_model_config:
+            raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
+        features_dict = app.app_model_config.to_dict()
+        return cast(list[dict[str, Any]], features_dict.get("user_input_form", []))
 
     def _convert_user_input_form(self, raw_form: list[dict[str, Any]]) -> list[VariableEntity]:
         """Convert raw user input form to VariableEntity objects"""

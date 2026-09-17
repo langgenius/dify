@@ -18,6 +18,7 @@ from models.engine import db
 from models.enums import EndUserType
 from models.model import App, AppAnnotationSetting, AppMCPServer, AppModelConfig, EndUser, IconType
 from models.workflow import Workflow, WorkflowType
+from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
 
 
 @pytest.fixture
@@ -81,6 +82,7 @@ def _app(
     *,
     workflow_variables: list[dict[str, object]] | None = None,
     with_model_config: bool = False,
+    legacy_form_variable: str | None = None,
 ) -> App:
     app = App(
         id=_APP_ID,
@@ -119,7 +121,11 @@ def _app(
         app.workflow_id = workflow.id
     if with_model_config:
         config = AppModelConfig(app_id=_APP_ID)
-        config.user_input_form = "[]"
+        config.user_input_form = json.dumps(
+            [{"text-input": {"label": legacy_form_variable, "variable": legacy_form_variable, "required": False}}]
+            if legacy_form_variable
+            else []
+        )
         db.session.add(config)
         db.session.flush()
         app.app_model_config_id = config.id
@@ -729,3 +735,93 @@ class TestMCPProtocolVersionNegotiationApi:
         result = response.get_json()["result"]
         assert "structuredContent" not in result
         assert result["content"][0]["text"] == "test answer"
+
+
+class TestAgentAppInputForm:
+    """Agent Apps declare their app variables on the Agent Soul, not the legacy config row.
+
+    The tool schema has to come from the same owner the service API and the webapp read.
+    Otherwise the declared variables never reach an MCP client, and a required one turns
+    every tools/call into an INVALID_PARAMS error the client has no way to act on.
+    """
+
+    _SOUL_FORM = [{"text-input": {"label": "branch_id", "variable": "branch_id", "required": True}}]
+
+    def _make_api(
+        self,
+        mode: module.AppMode = module.AppMode.AGENT,
+        *,
+        with_model_config: bool = True,
+        legacy_form_variable: str | None = None,
+    ) -> module.MCPAppApi:
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(mode, with_model_config=with_model_config, legacy_form_variable=legacy_form_variable)
+        api = module.MCPAppApi()
+        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+        api._retrieve_end_user = MagicMock(return_value=_end_user())
+        return api
+
+    def _post(self, flask_app: Flask, api: module.MCPAppApi, payload: dict[str, object]) -> Response:
+        fake_payload(payload)
+        post_fn = unwrap(api.post)
+        with flask_app.test_request_context():
+            return post_fn("server-1")
+
+    @staticmethod
+    def _definitions_service(form: list[dict[str, object]]) -> MagicMock:
+        service = MagicMock()
+        service.get_public_parameters.return_value = {"user_input_form": form}
+        return service
+
+    @pytest.mark.parametrize("with_model_config", [True, False])
+    def test_tools_list_advertises_soul_variables(self, app, with_model_config):
+        """The tool schema carries the variables the runtime enforces, with or without a legacy row."""
+        api = self._make_api(
+            with_model_config=with_model_config,
+            legacy_form_variable="legacy_var" if with_model_config else None,
+        )
+        service = self._definitions_service(self._SOUL_FORM)
+
+        with patch.object(module, "_app_definitions", return_value=service):
+            response = self._post(app, api, _tools_list_payload())
+
+        schema = response.get_json()["result"]["tools"][0]["inputSchema"]
+        assert "branch_id" in schema["properties"]
+        assert "branch_id" in schema["required"]
+        # The Soul is the source for an Agent App; a legacy row is not merged in.
+        assert "legacy_var" not in schema["properties"]
+        service.get_public_parameters.assert_called_once_with(_APP_ID)
+
+    def test_tools_list_without_published_agent_reports_error(self, app):
+        """A published tool cannot describe inputs while its Agent has no published version."""
+        api = self._make_api()
+        service = MagicMock()
+        service.get_public_parameters.side_effect = AppDefinitionNotPublishedError()
+
+        with patch.object(module, "_app_definitions", return_value=service):
+            with pytest.raises(module.MCPRequestError) as exc_info:
+                self._post(app, api, _tools_list_payload())
+
+        assert "not published" in str(exc_info.value)
+
+    def test_tools_list_with_unavailable_definition_reports_error(self, app):
+        """A missing definition surfaces as an app-unavailable error, not an empty schema."""
+        api = self._make_api()
+        service = MagicMock()
+        service.get_public_parameters.side_effect = AppDefinitionUnavailableError()
+
+        with patch.object(module, "_app_definitions", return_value=service):
+            with pytest.raises(module.MCPRequestError) as exc_info:
+                self._post(app, api, _tools_list_payload())
+
+        assert "unavailable" in str(exc_info.value)
+
+    def test_chat_mode_keeps_reading_the_legacy_row(self, app):
+        """Only Agent Apps resolve through the app definition; other modes are untouched."""
+        api = self._make_api(module.AppMode.CHAT)
+
+        with patch.object(module, "_app_definitions") as mock_definitions:
+            response = self._post(app, api, _tools_list_payload())
+
+        mock_definitions.assert_not_called()
+        assert response.get_json()["result"]["tools"][0]["name"] == "test_app"
