@@ -1,9 +1,11 @@
 import io
+from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from controllers.console.app import app as app_module
@@ -16,14 +18,16 @@ from services.agent.roster_package_importer import RosterAgentPackageImportResul
 from services.entities.dsl_entities import DslImportWarning
 
 
-def _account():
+def _account() -> Account:
     account = Account(name="Importer", email="importer@example.com")
     account._current_tenant = Tenant(name="Workspace")
     account._current_tenant.id = "tenant-1"
     return account
 
 
-def test_existing_import_route_dispatches_json_without_changing_payload(app, monkeypatch):
+def test_existing_import_route_dispatches_json_without_changing_payload(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     api = import_module.AppImportApi()
     import_dsl = Mock(return_value=({"status": "completed"}, 200))
     monkeypatch.setattr(api, "_import_dsl", import_dsl)
@@ -41,8 +45,8 @@ def test_existing_import_route_dispatches_json_without_changing_payload(app, mon
 
 @pytest.mark.parametrize("has_warning", [False, True])
 def test_existing_import_route_accepts_package_and_preserves_import_response(
-    app, monkeypatch, config_overrides, has_warning
-):
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], has_warning: bool
+) -> None:
     config_overrides(RBAC_ENABLED=False)
     account = _account()
     warnings = (
@@ -72,13 +76,15 @@ def test_existing_import_route_accepts_package_and_preserves_import_response(
 
 
 @pytest.mark.parametrize("denied", [RBACPermission.AGENT_CREATE, RBACPermission.AGENT_IMPORT_EXPORT_DSL])
-def test_package_import_checks_agent_permissions_before_reading_payload(app, monkeypatch, config_overrides, denied):
+def test_package_import_checks_agent_permissions_before_reading_payload(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], denied: RBACPermission
+) -> None:
     config_overrides(RBAC_ENABLED=True)
     account = _account()
     monkeypatch.setattr("controllers.common.wraps.current_account_with_tenant", lambda: (account, "tenant-1"))
     scenes = []
 
-    def check(*_args, **kwargs):
+    def check(*_args, **kwargs: object) -> bool:
         scenes.append(kwargs["scene"])
         return kwargs["scene"] != denied
 
@@ -96,7 +102,7 @@ def test_package_import_checks_agent_permissions_before_reading_payload(app, mon
     importer.assert_not_called()
 
 
-def test_package_import_rejects_overwrite(app, config_overrides):
+def test_package_import_rejects_overwrite(app: Flask, config_overrides: Callable[..., None]) -> None:
     config_overrides(RBAC_ENABLED=False)
     api = import_module.AppImportApi()
     with app.test_request_context(
@@ -109,7 +115,9 @@ def test_package_import_rejects_overwrite(app, config_overrides):
 
 
 @pytest.mark.parametrize("query", [{}, {"format": "ifpkg"}])
-def test_existing_export_route_returns_ifpkg_for_agent(app, monkeypatch, query):
+def test_existing_export_route_returns_ifpkg_for_agent(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, query: dict[str, str]
+) -> None:
     model = App(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     monkeypatch.setattr(App, "bound_agent_id_with_session", lambda _self, **_kwargs: "agent-1")
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=lambda: object()))
@@ -130,7 +138,7 @@ def test_existing_export_route_returns_ifpkg_for_agent(app, monkeypatch, query):
     close.assert_called_once_with()
 
 
-def test_ifpkg_export_rejects_non_agent_apps():
+def test_ifpkg_export_rejects_non_agent_apps() -> None:
     model = App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
     with pytest.raises(BadRequest):
         unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), app_module.AppExportQuery(format="ifpkg"), model)
@@ -140,7 +148,7 @@ def test_ifpkg_export_rejects_non_agent_apps():
     ("mode", "query"),
     [(AppMode.AGENT, {"format": "yaml"}), (AppMode.WORKFLOW, {}), (AppMode.WORKFLOW, {"format": "yaml"})],
 )
-def test_yaml_export_remains_available(monkeypatch, mode, query):
+def test_yaml_export_remains_available(monkeypatch: pytest.MonkeyPatch, mode: AppMode, query: dict[str, str]) -> None:
     model = App(id="app-1", tenant_id="tenant-1", mode=mode)
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=lambda: object()))
     monkeypatch.setattr(app_module.AppDslService, "export_dsl", lambda **_kwargs: "app: {}")
