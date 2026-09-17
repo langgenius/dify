@@ -5,10 +5,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AliasPath, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
-from controllers.openapi._upload import UploadParts
+from controllers.openapi._multipart import FILES_FIELD
+from controllers.openapi._upload import UploadPart, UploadParts
 from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from libs.oauth_bearer import SubjectType
@@ -330,6 +331,19 @@ class AppRunRequest(BaseModel):
             return uuid_value(value)
         except ValueError as exc:
             raise ValueError("conversation_id must be a valid UUID") from exc
+
+
+class FileUploadRequest(BaseModel):
+    """One file, sent as the multipart part ``files[file]``.
+
+    The part is addressed through the ``files`` envelope every multipart body on this
+    surface uses, but the catalog advertises the flat name the caller binds a file to.
+    """
+
+    file: UploadPart = Field(
+        validation_alias=AliasPath(FILES_FIELD, "file"),
+        description="The file to upload; its id can then be used in an app run's file variables",
+    )
 
 
 class DeviceCodeRequest(BaseModel):
