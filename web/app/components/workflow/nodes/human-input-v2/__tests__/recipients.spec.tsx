@@ -1,9 +1,46 @@
+import type {
+  CurrentWorkspaceSummaryResponse,
+  ListContactOptionsResponse,
+  ListContactsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2Recipient } from '../types'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider as JotaiProvider } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { useState } from 'react'
+import { consoleQuery } from '@/service/client'
 import Recipients from '../components/recipients'
+
+const runtimeApi = vi.hoisted(() => ({
+  summary: vi.fn<() => Promise<CurrentWorkspaceSummaryResponse>>(),
+  contacts:
+    vi.fn<
+      (input: {
+        query: { group: 'workspace'; page: number; limit: number }
+      }) => Promise<ListContactsResponse>
+    >(),
+  options: vi.fn<() => Promise<ListContactOptionsResponse>>(),
+}))
+
+vi.mock('@/service/client', async () => {
+  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+  return {
+    consoleQuery: createTanstackQueryUtils({
+      workspaces: {
+        current: {
+          summary: { get: runtimeApi.summary },
+          humanInput: {
+            contacts: { get: runtimeApi.contacts },
+            contactOptions: { get: runtimeApi.options },
+          },
+        },
+      },
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   __esModule: true,
@@ -65,6 +102,106 @@ const Harness = ({
 }
 
 describe('Human Input v2 Recipients', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    runtimeApi.contacts.mockResolvedValue({ data: [], total: 7, page: 1, limit: 1 })
+    runtimeApi.options.mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 })
+  })
+
+  it.each(['owner', 'editor'] as const)(
+    'shows the actual workspace and respects the %s permission boundary for its contact count',
+    async (role) => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+      })
+      queryClient.setQueryData(consoleQuery.workspaces.current.summary.get.queryKey(), {
+        id: 'workspace-current',
+        name: 'Actual workspace',
+        role,
+        plan: null,
+        credits: null,
+      } satisfies CurrentWorkspaceSummaryResponse)
+      const store = createStore()
+      store.set(queryClientAtom, queryClient)
+      render(
+        <JotaiProvider store={store}>
+          <QueryClientProvider client={queryClient}>
+            <Recipients nodeId="runtime-node" value={[]} onChange={vi.fn()} readonly={false} />
+          </QueryClientProvider>
+        </JotaiProvider>,
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+      )
+      const workspaceOption = await screen.findByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.allWorkspaceContacts',
+      })
+      expect(workspaceOption).toHaveTextContent('Actual workspace')
+      if (role === 'owner') {
+        expect(await within(workspaceOption).findByText('7')).toBeInTheDocument()
+        expect(runtimeApi.contacts.mock.calls[0]?.[0]).toEqual({
+          query: { group: 'workspace', page: 1, limit: 1 },
+        })
+      } else {
+        expect(runtimeApi.contacts).not.toHaveBeenCalled()
+        expect(within(workspaceOption).queryByText('7')).not.toBeInTheDocument()
+      }
+    },
+  )
+
+  it('discloses the full selected contact on hover and keyboard activation without changing readonly recipients', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    render(
+      <Harness
+        initial={[{ type: 'contact', contact_id: contact.id }]}
+        readonly
+        observe={observe}
+      />,
+    )
+
+    const trigger = await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+    await user.hover(trigger)
+    const preview = await screen.findByRole('dialog', { name: contact.name })
+    expect(within(preview).getByText(contact.email)).toBeInTheDocument()
+    expect(
+      within(preview).getByText('workflow.nodes.humanInputV2.recipients.contactSource.workspace'),
+    ).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: contact.name })).not.toBeInTheDocument(),
+    )
+
+    act(() => trigger.focus())
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog', { name: contact.name })).toBeInTheDocument()
+    expect(observe).not.toHaveBeenCalled()
+  })
+
+  it('previews a contact without selecting it and preserves the picker selection action', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    render(<Harness observe={observe} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    const row = await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+    await user.hover(row)
+    expect(await screen.findByRole('dialog', { name: contact.name })).toHaveTextContent(
+      contact.email,
+    )
+    expect(observe).not.toHaveBeenCalled()
+
+    await user.click(row)
+    expect(observe).toHaveBeenLastCalledWith([{ type: 'contact', contact_id: contact.id }])
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: contact.name })).not.toBeInTheDocument(),
+    )
+  })
+
   it('loads later contact pages without losing already loaded recipients', async () => {
     const user = userEvent.setup()
     const searchPage = vi
@@ -250,7 +387,9 @@ describe('Human Input v2 Recipients', () => {
     )
 
     await waitFor(() =>
-      expect(screen.getAllByText('Evan Zhang · evan@example.com')).toHaveLength(2),
+      expect(screen.getAllByRole('button', { name: 'Evan Zhang · evan@example.com' })).toHaveLength(
+        2,
+      ),
     )
     expect(optionProvider.resolve).toHaveBeenCalledOnce()
     expect(optionProvider.resolve).toHaveBeenCalledWith({ contact_ids: ['contact-evan'] })

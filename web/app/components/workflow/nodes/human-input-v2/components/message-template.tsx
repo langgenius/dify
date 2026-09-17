@@ -5,6 +5,7 @@ import type { HumanInputV2MessageTemplate } from '../types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -20,6 +21,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { getInputVars } from '@/app/components/base/prompt-editor/constants'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
@@ -116,8 +118,10 @@ const MessageTemplate = ({
     ).values(),
   )
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const activeTriggerRef = useRef<HTMLButtonElement | null>(null)
 
-  const restoreFocus = () => requestAnimationFrame(() => triggerRef.current?.focus())
+  const restoreFocus = () =>
+    requestAnimationFrame(() => (activeTriggerRef.current ?? triggerRef.current)?.focus())
   const close = () => {
     if (pendingRef.current) return
     setOpen(false)
@@ -125,10 +129,11 @@ const MessageTemplate = ({
     setErrors({ subject: false, body: false })
     restoreFocus()
   }
-  const handleOpen = () => {
+  const handleOpen = (test = false, trigger = triggerRef.current) => {
+    activeTriggerRef.current = trigger
     setDraft(value)
     setErrors({ subject: false, body: false })
-    setShowTest(false)
+    setShowTest(test)
     setChannel('email')
     setTestInputs({})
     setTestError(undefined)
@@ -258,27 +263,43 @@ const MessageTemplate = ({
   }
 
   return (
-    <section className="px-4 py-2">
-      <button
-        ref={triggerRef}
-        type="button"
-        className="flex h-9 w-full items-center gap-2 rounded-lg border border-components-option-card-option-border bg-background-section px-2 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid"
-        onClick={handleOpen}
-      >
-        <span className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-indigo-solid text-text-primary-on-surface">
-          <span className="i-ri-mail-settings-line size-3.5" aria-hidden />
+    <section className="px-4">
+      <div className="flex h-9 w-full items-center gap-2 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-2 shadow-xs">
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-md border border-divider-regular bg-components-icon-bg-midnight-solid bg-linear-to-br from-components-avatar-bg-mask-stop-0 to-components-avatar-bg-mask-stop-100 text-text-primary-on-surface">
+          <span className="i-ri-mail-send-fill size-3.5" aria-hidden />
         </span>
-        <span className="min-w-0 grow">
-          <span className="block system-xs-medium text-text-secondary">
+        <div className="flex min-w-0 grow items-center gap-1">
+          <button
+            ref={triggerRef}
+            type="button"
+            className="min-w-0 truncate rounded-sm border-0 bg-transparent p-0 text-left system-sm-medium text-text-secondary focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+            onClick={() => handleOpen()}
+          >
             {t(($) => $['nodes.humanInputV2.template.title'], { ns: 'workflow' })}
-          </span>
-          <span className="block truncate system-2xs-regular text-text-tertiary">
-            {value.subject ||
-              t(($) => $['nodes.humanInputV2.template.notConfigured'], { ns: 'workflow' })}
-          </span>
-        </span>
-        <span className="i-ri-settings-3-line size-4 text-text-tertiary" aria-hidden />
-      </button>
+          </button>
+          <Infotip
+            aria-label={t(($) => $['nodes.humanInputV2.template.description'], { ns: 'workflow' })}
+          >
+            {t(($) => $['nodes.humanInputV2.template.description'], { ns: 'workflow' })}
+          </Infotip>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {canTest && (
+            <IconButton
+              aria-label={t(($) => $['nodes.humanInputV2.template.test'], { ns: 'workflow' })}
+              onClick={(event) => handleOpen(true, event.currentTarget)}
+            >
+              <span className="i-ri-send-plane-2-line size-4" aria-hidden />
+            </IconButton>
+          )}
+          <IconButton
+            aria-label={t(($) => $['common.configure'], { ns: 'workflow' })}
+            onClick={(event) => handleOpen(false, event.currentTarget)}
+          >
+            <span className="i-ri-equalizer-2-line size-4" aria-hidden />
+          </IconButton>
+        </div>
+      </div>
 
       <Dialog
         open={open}
@@ -286,29 +307,38 @@ const MessageTemplate = ({
           if (!nextOpen) close()
         }}
       >
-        <DialogContent className="w-[calc(100vw-2rem)]! max-w-[720px]! overflow-hidden! p-0!">
+        <DialogContent className="w-[calc(100vw-2rem)]! max-w-[720px]! overflow-hidden! border-0! p-0! inset-ring-[0.5px] inset-ring-components-panel-border">
           <form
             onSubmit={(event) => {
               event.preventDefault()
               save()
             }}
           >
-            <header className="flex h-[78px] items-center border-b border-divider-subtle px-6">
-              <div>
-                <DialogTitle className="system-xl-semibold text-text-primary">
+            <header className="relative flex h-[78px] items-start pt-6 pr-14 pb-3 pl-6">
+              <div className="space-y-1">
+                <DialogTitle className="text-[18px] leading-[1.2] font-semibold text-text-primary">
                   {t(($) => $['nodes.humanInputV2.template.title'], { ns: 'workflow' })}
                 </DialogTitle>
                 <p className="system-xs-regular text-text-tertiary">
                   {t(($) => $['nodes.humanInputV2.template.description'], { ns: 'workflow' })}
                 </p>
               </div>
+              <IconButton
+                size="lg"
+                className="absolute top-5 right-5"
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                disabled={pending}
+                onClick={close}
+              >
+                <span className="i-ri-close-line size-4.5" aria-hidden />
+              </IconButton>
             </header>
-            <div className="max-h-[60vh] min-h-[260px] space-y-4 overflow-y-auto px-6 py-4">
+            <div className="max-h-[60vh] min-h-[260px] space-y-5 overflow-y-auto px-6 py-3">
               <div>
-                <div className="mb-1 flex items-center justify-between">
+                <div className="mb-1 flex h-6 items-center justify-between">
                   <label
                     htmlFor={`${nodeId}-message-subject`}
-                    className="system-xs-medium text-text-secondary"
+                    className="system-sm-medium text-text-secondary"
                   >
                     {t(($) => $['nodes.humanInputV2.template.subject'], { ns: 'workflow' })}
                   </label>
@@ -363,20 +393,22 @@ const MessageTemplate = ({
               >
                 <div
                   id={`${nodeId}-message-body-label`}
-                  className="mb-1 system-xs-medium text-text-secondary"
+                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
                 >
                   {t(($) => $['nodes.humanInputV2.template.body'], { ns: 'workflow' })}
                 </div>
-                <MailBodyInput
-                  readOnly={readonly || pending}
-                  value={draft.body}
-                  nodesOutputVars={availableVars}
-                  availableNodes={availableNodes}
-                  onChange={(body) => {
-                    resetTestResult()
-                    setDraft((current) => ({ ...current, body }))
-                  }}
-                />
+                <div className="[&>div>[contenteditable]]:min-h-[118px]">
+                  <MailBodyInput
+                    readOnly={readonly || pending}
+                    value={draft.body}
+                    nodesOutputVars={availableVars}
+                    availableNodes={availableNodes}
+                    onChange={(body) => {
+                      resetTestResult()
+                      setDraft((current) => ({ ...current, body }))
+                    }}
+                  />
+                </div>
                 {errors.body && (
                   <div
                     id={`${nodeId}-message-body-error`}
@@ -491,7 +523,7 @@ const MessageTemplate = ({
                 </section>
               )}
             </div>
-            <footer className="flex h-[76px] items-center justify-end gap-2 border-t border-divider-subtle px-6">
+            <footer className="flex h-[76px] items-center justify-end gap-2 px-6 pt-5 pb-6">
               {canTest && (
                 <Button
                   className="mr-auto"
@@ -499,14 +531,20 @@ const MessageTemplate = ({
                   aria-expanded={showTest}
                   onClick={() => setShowTest(!showTest)}
                 >
+                  <span className="i-ri-send-plane-2-line size-4" aria-hidden />
                   {t(($) => $['nodes.humanInputV2.template.test'], { ns: 'workflow' })}
                 </Button>
               )}
-              <Button onClick={close} disabled={pending}>
+              <Button className="min-w-18" onClick={close} disabled={pending}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               {!readonly && (
-                <Button type="submit" variant="primary" disabled={submitted || pending}>
+                <Button
+                  className="min-w-18"
+                  type="submit"
+                  variant="primary"
+                  disabled={submitted || pending}
+                >
                   {t(($) => $['operation.save'], { ns: 'common' })}
                 </Button>
               )}

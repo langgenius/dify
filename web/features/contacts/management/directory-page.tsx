@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react'
 import type { ContactTypeFilter, ContactView } from './types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -12,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Input } from '@langgenius/dify-ui/input'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import {
   parseAsInteger,
   parseAsString,
@@ -22,11 +21,12 @@ import {
 } from 'nuqs'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
 import UserCommunityIcon from './assets/user-community.svg'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
 import { useContactsFeatureContext, useContactsManagementRepository } from './composition-context'
-import { ContactDetailsPanel } from './contact-details-panel'
+import { ContactAvatar, ContactDetailsPanel } from './contact-details-panel'
 import { ExternalContactDialog } from './external-contact-dialog'
 import {
   useContactCounts,
@@ -69,7 +69,7 @@ function ContactRow({
 }) {
   const { i18n, t } = useTranslation('contacts')
   return (
-    <tr className="h-12 border-b border-divider-subtle hover:bg-state-base-hover">
+    <tr className="h-12 shadow-[inset_0_-1px_0_0_var(--color-divider-subtle)] hover:bg-state-base-hover">
       {selectionEnabled && (
         <td className="w-8 px-2 py-2 text-center">
           <Checkbox
@@ -85,12 +85,12 @@ function ContactRow({
           ref={registerTrigger}
           type="button"
           aria-label={t(($) => $['directory.openDetails'], { name: contact.name })}
-          className="flex w-full min-w-64 items-center gap-2.5 px-2 py-2 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
+          className="flex h-12 w-full min-w-64 items-center gap-2.5 py-1 pr-2 pl-3 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
           onClick={onOpen}
         >
-          <Avatar avatar={contact.avatar_url || null} name={contact.name} size="md" />
-          <span className="min-w-0">
-            <span className="block truncate system-sm-medium text-text-secondary">
+          <ContactAvatar avatar={contact.avatar_url || null} name={contact.name} size="md" />
+          <span className="min-w-0 py-0.5">
+            <span className="block truncate system-md-medium text-text-secondary">
               {contact.name}
             </span>
             <span className="block truncate system-xs-regular text-text-tertiary">
@@ -103,10 +103,10 @@ function ContactRow({
         <ContactTypeLabel type={contact.type} />
       </td>
       <td className="px-3 py-2">
-        <span className="flex items-center gap-1.5 text-text-tertiary">
+        <span className="flex items-center gap-2 text-text-tertiary">
           <span
             aria-label={t(($) => $['directory.channel.email'])}
-            className="flex size-6 items-center justify-center rounded-md border border-divider-subtle bg-components-panel-on-panel-item-bg shadow-xs"
+            className="flex size-6 items-center justify-center rounded-md border border-divider-regular bg-components-panel-on-panel-item-bg backdrop-blur-[4px]"
           >
             <ContactChannelIcon provider="email" />
           </span>
@@ -114,7 +114,7 @@ function ContactRow({
             <span
               key={binding.id}
               aria-label={getContactChannelLabel(binding.provider)}
-              className="flex size-6 items-center justify-center rounded-md border border-divider-subtle bg-components-panel-on-panel-item-bg shadow-xs"
+              className="flex size-6 items-center justify-center rounded-md border border-divider-regular bg-components-panel-on-panel-item-bg backdrop-blur-[4px]"
             >
               <ContactChannelIcon provider={binding.provider} />
             </span>
@@ -143,7 +143,7 @@ function DirectoryState({
 }) {
   return (
     <div className="flex min-h-full flex-col items-center justify-center px-6 py-16 text-center">
-      <span className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular">
+      <span className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg backdrop-blur-[6px]">
         {iconSrc ? (
           <img alt="" aria-hidden className="size-6" src={iconSrc} />
         ) : (
@@ -151,8 +151,8 @@ function DirectoryState({
         )}
       </span>
       <h2 className="mt-3 system-md-semibold text-text-secondary">{title}</h2>
-      <p className="mt-1 max-w-md system-sm-regular text-text-tertiary">{description}</p>
-      {action && <div className="mt-4">{action}</div>}
+      <p className="mt-1 max-w-120 system-sm-regular text-text-tertiary">{description}</p>
+      {action && <div className="mt-3">{action}</div>}
     </div>
   )
 }
@@ -311,53 +311,54 @@ export function ContactsDirectoryPage() {
   return (
     <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
       <header className="shrink-0 px-4 pt-4 pb-2 sm:px-8">
-        <div className="flex items-center gap-2">
-          <h1 className="title-xl-semi-bold text-text-primary">{t(($) => $['directory.title'])}</h1>
+        <div className="flex h-6 items-center gap-2">
+          <h1 className="title-2xl-semi-bold text-text-primary">
+            {t(($) => $['directory.title'])}
+          </h1>
           <a
             href="#contacts-help"
-            className="ml-auto system-xs-regular text-text-tertiary hover:text-text-secondary hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="ml-auto inline-flex items-center gap-0.5 system-xs-regular text-text-tertiary hover:text-text-secondary hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             {t(($) => $['directory.learnMore'])}
+            <span aria-hidden className="i-ri-external-link-line size-3" />
           </a>
         </div>
-        <div className="mt-3.5 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
-          <div
-            role="group"
+        <div className="mt-3.5 flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center">
+          <SegmentedControl
             aria-label={t(($) => $['directory.filters'])}
-            className="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-background-default-subtle p-1"
+            className="max-w-full shrink-0 self-start overflow-x-auto"
+            value={kind}
+            onValueChange={updateKind}
           >
-            {filters.map((filter) => (
-              <button
+            {filters.map((filter, index) => (
+              <SegmentedControlItem
                 key={filter}
-                type="button"
                 aria-label={t(($) => $[`filter.${filter}`])}
-                aria-pressed={kind === filter}
+                value={filter}
                 className={cn(
-                  'h-7 rounded-md px-3 system-xs-medium whitespace-nowrap text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                  kind === filter && 'bg-components-panel-bg text-text-secondary shadow-xs',
+                  'gap-1 border-0 px-2.5 data-checked:text-text-primary data-checked:inset-ring-[0.5px] data-checked:inset-ring-components-segmented-control-item-active-border',
+                  index < filters.length - 1 &&
+                    kind !== filter &&
+                    kind !== filters[index + 1] &&
+                    'after:absolute after:inset-y-1.75 after:right-0 after:w-px after:bg-divider-regular',
                 )}
-                onClick={() => updateKind(filter)}
               >
                 <span>{t(($) => $[`filter.${filter}`])}</span>
                 {filter !== 'all' && (
-                  <span className="ml-1 text-text-quaternary">{contactCounts[filter] ?? '—'}</span>
+                  <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1 system-2xs-medium-uppercase text-text-tertiary inset-ring-1 inset-ring-divider-deep">
+                    {contactCounts[filter] ?? '—'}
+                  </span>
                 )}
-              </button>
+              </SegmentedControlItem>
             ))}
-          </div>
-          <div className="relative min-w-0 flex-1 lg:max-w-50">
-            <span
-              aria-hidden
-              className="absolute top-1/2 left-3 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary"
-            />
-            <Input
-              aria-label={t(($) => $['directory.search'])}
-              className="w-full pl-9"
-              placeholder={t(($) => $['directory.search'])}
-              value={search}
-              onChange={(event) => updateSearch(event.target.value)}
-            />
-          </div>
+          </SegmentedControl>
+          <SearchInput
+            aria-label={t(($) => $['directory.search'])}
+            className="h-8 min-w-0 lg:w-50 lg:shrink-0"
+            placeholder={t(($) => $['directory.search'])}
+            value={search}
+            onValueChange={updateSearch}
+          />
           {context.permissions.canManageContacts && (
             <div className="flex shrink-0 lg:ml-auto">
               {context.deployment === 'ee' && repository.supportsPlatformImport !== false ? (
@@ -399,7 +400,7 @@ export function ContactsDirectoryPage() {
           </p>
         )}
       </header>
-      <div className="flex min-h-0 flex-1 gap-1 overflow-hidden px-4 pb-1 sm:px-8">
+      <div className="flex min-h-0 flex-1 gap-1 overflow-hidden px-4 pt-1 pb-1 sm:px-8">
         <div className="min-w-0 flex-1 overflow-auto rounded-xl bg-components-panel-bg">
           {directoryQuery.isPending && (
             <div
@@ -466,7 +467,7 @@ export function ContactsDirectoryPage() {
               />
             )}
           {directoryQuery.contacts.length > 0 && (
-            <div className="min-h-full overflow-hidden rounded-xl bg-components-panel-bg">
+            <div className="min-h-full overflow-hidden rounded-xl bg-components-panel-bg px-1 pt-1.5">
               <table className="w-full min-w-180 border-collapse">
                 <colgroup>
                   {context.permissions.canManageContacts && <col className="w-8" />}
@@ -475,10 +476,10 @@ export function ContactsDirectoryPage() {
                   <col className="w-40" />
                   <col className="w-40" />
                 </colgroup>
-                <thead className="text-left system-xs-medium text-text-tertiary">
-                  <tr>
+                <thead className="text-left system-xs-medium-uppercase text-text-tertiary">
+                  <tr className="h-7">
                     {context.permissions.canManageContacts && (
-                      <th scope="col" className="w-8 px-2 py-2 text-center">
+                      <th scope="col" className="w-8 px-2 text-center">
                         <Checkbox
                           aria-label={t(($) => $['directory.selectAll'])}
                           checked={allRemovableSelected}
@@ -488,16 +489,16 @@ export function ContactsDirectoryPage() {
                         />
                       </th>
                     )}
-                    <th scope="col" className="px-2 py-2">
+                    <th scope="col" className="pr-2 pl-3">
                       {t(($) => $['directory.column.name'])}
                     </th>
-                    <th scope="col" className="px-3 py-2">
+                    <th scope="col" className="px-3">
                       {t(($) => $['directory.column.type'])}
                     </th>
-                    <th scope="col" className="px-3 py-2">
+                    <th scope="col" className="px-3">
                       {t(($) => $['directory.column.channels'])}
                     </th>
-                    <th scope="col" className="px-3 py-2">
+                    <th scope="col" className="px-3">
                       {t(($) => $['directory.column.joined'])}
                     </th>
                   </tr>

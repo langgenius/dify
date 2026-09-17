@@ -20,28 +20,30 @@ export const HumanInputV2Panel = ({ id, data }: NodePanelProps<HumanInputV2NodeT
 
   return (
     <div className="py-2">
-      <Recipients
-        nodeId={id}
-        value={config.inputs.recipients_spec}
-        onChange={config.handleRecipientsChange}
-        readonly={config.readOnly}
-      />
-      <div className="px-4 py-2">
-        <Divider className="my-0! h-px! bg-divider-subtle!" />
+      <div className="space-y-1 pb-2">
+        <Recipients
+          nodeId={id}
+          value={config.inputs.recipients_spec}
+          onChange={config.handleRecipientsChange}
+          readonly={config.readOnly}
+        />
+        <div className="px-4 py-2">
+          <Divider className="my-0! h-px! bg-divider-subtle!" />
+        </div>
+        <MessageTemplate
+          nodeId={id}
+          value={config.inputs.message_template}
+          onChange={config.handleMessageTemplateChange}
+          readonly={config.readOnly}
+          availableVars={availableVars}
+          availableNodes={availableNodesWithParent}
+        />
+        <DebugMode
+          value={config.inputs.debug_mode}
+          onChange={config.handleDebugModeChange}
+          readonly={config.readOnly}
+        />
       </div>
-      <MessageTemplate
-        nodeId={id}
-        value={config.inputs.message_template}
-        onChange={config.handleMessageTemplateChange}
-        readonly={config.readOnly}
-        availableVars={availableVars}
-        availableNodes={availableNodesWithParent}
-      />
-      <DebugMode
-        value={config.inputs.debug_mode}
-        onChange={config.handleDebugModeChange}
-        readonly={config.readOnly}
-      />
       <div className="px-4 py-2">
         <Divider className="my-0! h-px! bg-divider-subtle!" />
       </div>

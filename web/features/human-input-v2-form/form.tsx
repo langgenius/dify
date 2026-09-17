@@ -86,17 +86,30 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
   }
 
   if (state.phase === 'terminal' || state.phase === 'form-error') {
+    const isResolvedRequest = state.error === 'form-expired' || state.error === 'already-submitted'
+
     return (
       <FormStatusCard
-        iconClassName="i-ri-error-warning-fill text-text-destructive"
-        title={errorCopy(state.error)}
+        iconClassName={
+          isResolvedRequest
+            ? 'i-ri-information-2-fill text-text-accent'
+            : 'i-ri-error-warning-fill text-text-destructive'
+        }
+        title={
+          isResolvedRequest
+            ? t(($) => $['humanInput.sorry'], { ns: 'share' })
+            : errorCopy(state.error)
+        }
         subtitle={
-          state.phase === 'form-error' ? (
+          isResolvedRequest ? (
+            errorCopy(state.error)
+          ) : state.phase === 'form-error' ? (
             <Button size="small" onClick={session.retryForm}>
               {t(($) => $['humanInputV2.retry'], { ns: 'share' })}
             </Button>
           ) : undefined
         }
+        submissionID={isResolvedRequest ? token : undefined}
         {...getBrandingOptions(state.definition)}
       />
     )

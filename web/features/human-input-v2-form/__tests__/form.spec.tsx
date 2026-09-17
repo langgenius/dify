@@ -168,6 +168,10 @@ describe('HumanInputV2Form', () => {
       render(<HumanInputV2Form token="form-token" transport={transport} />)
 
       expect(await screen.findByText(copy)).toBeInTheDocument()
+      if (formState === 'expired' || formState === 'submitted') {
+        expect(screen.getByText('share.humanInput.sorry')).toBeInTheDocument()
+        expect(screen.getByText('form-token')).toBeInTheDocument()
+      }
       expect(requestAccess).not.toHaveBeenCalled()
       expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
     },

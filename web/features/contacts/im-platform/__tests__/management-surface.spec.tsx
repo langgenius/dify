@@ -220,13 +220,13 @@ describe('Contacts IM platform binding flows', () => {
     expect(secret).toHaveAccessibleDescription('contacts.imPlatform.bindingDialog.required')
   })
 
-  it('uses the Figma-sized dialog and restores focus to the provider trigger', async () => {
+  it('opens the dialog and restores focus to the provider trigger', async () => {
     const user = userEvent.setup()
     renderSurface()
     const trigger = await screen.findByRole('button', { name: /Slack.*connect/i })
     await user.click(trigger)
 
-    expect(screen.getByRole('dialog')).toHaveClass('w-[520px]')
+    expect(screen.getByRole('dialog')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => expect(trigger).toHaveFocus())
   })

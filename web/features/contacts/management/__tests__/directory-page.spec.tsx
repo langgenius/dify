@@ -2,11 +2,13 @@ import type { ReactNode } from 'react'
 import type { ContactsMockScenarioDefinition } from '../mock/scenarios'
 import type { ContactsManagementRepository } from '../repository'
 import type { ContactIMIdentity, ContactView } from '../types'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { ContactsManagementMockProvider, ContactsManagementProvider } from '../composition'
+import { ContactAvatar } from '../contact-details-panel'
 import { ContactsDirectoryPage } from '../directory-page'
 import { createContactsMockRepository } from '../mock/repository'
 import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
@@ -62,6 +64,47 @@ async function findLoadedDetails(content: string) {
 }
 
 describe('ContactsDirectoryPage', () => {
+  it('keeps contact initials hidden while loading without changing shared avatar fallback behavior', async () => {
+    const OriginalImage = window.Image
+    const images: HTMLImageElement[] = []
+    window.Image = class extends OriginalImage {
+      constructor() {
+        super()
+        Object.defineProperties(this, {
+          complete: { value: false },
+          src: { value: '', writable: true },
+        })
+        images.push(this)
+      }
+    }
+
+    try {
+      const { rerender } = render(
+        <>
+          <ContactAvatar name="Alice" avatar="https://example.com/contact-avatar.png" />
+          <Avatar name="Shared" avatar="https://example.com/shared-avatar.png" />
+        </>,
+      )
+      await waitFor(() => expect(images).toHaveLength(2))
+      expect(screen.queryByText('A')).not.toBeInTheDocument()
+      expect(screen.getByText('S')).toBeInTheDocument()
+
+      act(() => images[0]!.dispatchEvent(new Event('error')))
+      expect(await screen.findByText('A')).toBeInTheDocument()
+
+      rerender(<ContactAvatar name="Alice" avatar="https://example.com/new-avatar.png" />)
+      await waitFor(() => expect(images).toHaveLength(3))
+      expect(screen.queryByText('A')).not.toBeInTheDocument()
+      act(() => images[2]!.dispatchEvent(new Event('load')))
+      expect(await screen.findByRole('img', { name: 'Alice' })).toBeInTheDocument()
+
+      rerender(<ContactAvatar name="Alice" avatar={null} />)
+      expect(screen.getByText('A')).toBeInTheDocument()
+    } finally {
+      window.Image = OriginalImage
+    }
+  })
+
   it('renders API timestamps expressed in Unix seconds', async () => {
     const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
     const firstContact = scenario.contacts[0]!
@@ -157,7 +200,7 @@ describe('ContactsDirectoryPage', () => {
       createContactsMockScenario(ContactsMockScenario.CeMixed),
       '?contact_kind=external&contact_search=Courtney',
     )
-    const search = screen.getByRole('textbox', { name: 'contacts.directory.search' })
+    const search = screen.getByRole('searchbox', { name: 'contacts.directory.search' })
     const row = await screen.findByRole('button', { name: /Courtney Henry/ })
     await user.click(row)
     const details = await screen.findByRole('complementary', { name: 'contacts.details.title' })
@@ -165,8 +208,8 @@ describe('ContactsDirectoryPage', () => {
 
     await waitFor(() => expect(row).toHaveFocus())
     expect(search).toHaveValue('Courtney')
-    expect(screen.getByRole('button', { name: 'contacts.filter.external' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('radio', { name: 'contacts.filter.external' })).toHaveAttribute(
+      'aria-checked',
       'true',
     )
   })
@@ -229,11 +272,11 @@ describe('ContactsDirectoryPage', () => {
 
     const details = await findLoadedDetails('Leslie Alexander')
     expect(within(details).getByText('Leslie Alexander')).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'contacts.directory.search' })).toHaveValue(
+    expect(screen.getByRole('searchbox', { name: 'contacts.directory.search' })).toHaveValue(
       'Courtney',
     )
-    expect(screen.getByRole('button', { name: 'contacts.filter.external' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('radio', { name: 'contacts.filter.external' })).toHaveAttribute(
+      'aria-checked',
       'true',
     )
   })
@@ -265,12 +308,12 @@ describe('ContactsDirectoryPage', () => {
     )
     await screen.findByText('Ralph Edwards')
 
-    await user.click(screen.getByRole('button', { name: 'contacts.filter.external' }))
+    await user.click(screen.getByRole('radio', { name: 'contacts.filter.external' }))
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
     await waitFor(() => expect(screen.queryByText('Ralph Edwards')).not.toBeInTheDocument())
     expect(screen.getByText('Courtney Henry')).toBeInTheDocument()
 
-    await user.type(screen.getByRole('textbox', { name: 'contacts.directory.search' }), 'missing')
+    await user.type(screen.getByRole('searchbox', { name: 'contacts.directory.search' }), 'missing')
     expect(await screen.findByText('contacts.directory.noResultsTitle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'contacts.action.clearFilters' }))
     expect(await screen.findByText('Ralph Edwards')).toBeInTheDocument()

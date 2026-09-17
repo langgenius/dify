@@ -1,8 +1,9 @@
 'use client'
 
 import type { ContactView } from './types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogClose,
@@ -33,6 +34,14 @@ type ExternalContactDialogProps = {
   contact?: Pick<ContactView, 'avatar_url' | 'email' | 'id' | 'name'>
 }
 
+// Original artwork exported from Figma node 1303:66983.
+const defaultAvatarPeople =
+  'data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjcyIiBoZWlnaHQ9IjExNi41NzEiIHZpZXdCb3g9IjAgMCA3MiAxMTYuNTcxIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZyBpZD0iUGVvcGxlIj4KPGNpcmNsZSBpZD0iSGVhZCIgY3g9IjM2IiBjeT0iMTguODU3MSIgcj0iMTguODU3MSIgZmlsbD0idXJsKCNwYWludDBfcmFkaWFsXzBfMTkxNykiLz4KPGNpcmNsZSBpZD0iQm9keSIgY3g9IjM2IiBjeT0iODAuNTcxNCIgcj0iMzYiIGZpbGw9InVybCgjcGFpbnQxX3JhZGlhbF8wXzE5MTcpIi8+CjwvZz4KPGRlZnM+CjxyYWRpYWxHcmFkaWVudCBpZD0icGFpbnQwX3JhZGlhbF8wXzE5MTciIGN4PSIwIiBjeT0iMCIgcj0iMSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIGdyYWRpZW50VHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjcuNDI4NiA3LjcxNDI4KSByb3RhdGUoNTQuNjM3NSkgc2NhbGUoMzIuNTgyNykiPgo8c3RvcCBzdG9wLWNvbG9yPSJ3aGl0ZSIgc3RvcC1vcGFjaXR5PSIwLjkiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSJ3aGl0ZSIgc3RvcC1vcGFjaXR5PSIwLjMiLz4KPC9yYWRpYWxHcmFkaWVudD4KPHJhZGlhbEdyYWRpZW50IGlkPSJwYWludDFfcmFkaWFsXzBfMTkxNyIgY3g9IjAiIGN5PSIwIiByPSIxIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgZ3JhZGllbnRUcmFuc2Zvcm09InRyYW5zbGF0ZSgyNC44NTcxIDU1LjcxNDMpIHJvdGF0ZSg2Mi4xNTI0KSBzY2FsZSg1MS4zNzg1KSI+CjxzdG9wIHN0b3AtY29sb3I9IndoaXRlIiBzdG9wLW9wYWNpdHk9IjAuNyIvPgo8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IndoaXRlIiBzdG9wLW9wYWNpdHk9IjAuMyIvPgo8L3JhZGlhbEdyYWRpZW50Pgo8L2RlZnM+Cjwvc3ZnPgo='
+const avatarInnerRing =
+  'data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjEyNCIgaGVpZ2h0PSIxMjQiIHZpZXdCb3g9IjAgMCAxMjQgMTI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8Y2lyY2xlIGlkPSJFbGxpcHNlIDEiIG9wYWNpdHk9IjAuNiIgY3g9IjYyIiBjeT0iNjIiIHI9IjYxLjUiIHN0cm9rZT0iIzEwMTgyOCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDQiLz4KPC9zdmc+Cg=='
+const avatarOuterRing =
+  'data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjE1NiIgaGVpZ2h0PSIxNTYiIHZpZXdCb3g9IjAgMCAxNTYgMTU2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8Y2lyY2xlIGlkPSJFbGxpcHNlIDIiIG9wYWNpdHk9IjAuNCIgY3g9Ijc4IiBjeT0iNzgiIHI9Ijc3LjUiIHN0cm9rZT0iIzEwMTgyOCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDQiLz4KPC9zdmc+Cg=='
+
 const emptyDraft: ExternalContactDraft = { displayName: '', email: '' }
 function isValidEmail(value: string) {
   const parts = value.split('@')
@@ -45,6 +54,34 @@ function isValidEmail(value: string) {
     domain.includes('.') &&
     !domain.startsWith('.') &&
     !domain.endsWith('.'),
+  )
+}
+
+function ContactAvatar({
+  avatar,
+  className,
+  name,
+}: {
+  avatar: string | null
+  className?: string
+  name: string
+}) {
+  return (
+    <AvatarRoot
+      className={cn(
+        'size-24 border-2 border-components-panel-bg bg-components-avatar-default-avatar-bg',
+        className,
+      )}
+    >
+      {avatar && <AvatarImage src={avatar} alt={name} />}
+      <AvatarFallback className="relative overflow-hidden rounded-full border-[0.5px] border-divider-regular bg-linear-to-br from-components-avatar-bg-mask-stop-0/50 to-components-avatar-bg-mask-stop-100/50 backdrop-blur-xs">
+        <img
+          alt=""
+          src={defaultAvatarPeople}
+          className="absolute top-[21.43%] left-1/8 h-[121.43%] w-3/4 max-w-none"
+        />
+      </AvatarFallback>
+    </AvatarRoot>
   )
 }
 
@@ -72,6 +109,7 @@ export function ExternalContactDialog({
   const resetMutation = createExternalContact.reset
   const pending = createExternalContact.isPending || updateExternalContact.isPending
   const busy = pending || uploadAvatar.isPending
+  const avatarUrl = uploadedAvatar?.url ?? contact?.avatar_url ?? null
 
   useEffect(() => {
     return () => {
@@ -189,50 +227,57 @@ export function ExternalContactDialog({
       onOpenChange={(nextOpen) => !nextOpen && closeDialog()}
       disablePointerDismissal={busy}
     >
-      <DialogContent className="w-120 max-w-[calc(100vw-2rem)] p-0!">
+      <DialogContent className="w-104 max-w-[calc(100vw-2rem)] border-0 p-0 ring-[0.5px] ring-components-panel-border">
         <DialogClose
           render={
             <IconButton
               aria-label={t(($) => $['action.close'])}
-              className="absolute top-6 right-6"
+              className="absolute top-5 right-5"
               disabled={busy}
               size="lg"
             >
-              <span aria-hidden className="i-ri-close-line size-4" />
+              <span aria-hidden className="i-ri-close-line size-4.5" />
             </IconButton>
           }
         />
-        <div className="px-6 pt-6 pb-4">
+        <div className="h-14.5 pt-6 pr-14 pb-3 pl-6">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $[contact ? 'external.editTitle' : 'external.title'])}
           </DialogTitle>
-          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+          <DialogDescription className="sr-only">
             {t(($) => $[contact ? 'external.editDescription' : 'external.description'])}
           </DialogDescription>
         </div>
-        <Form<ExternalContactDraft> onFormSubmit={handleSubmit} className="px-6 pb-6">
-          <div className="mb-5 flex flex-col items-center gap-3 rounded-xl bg-linear-to-br from-background-default-subtle to-background-section-burn py-5">
+        <Form<ExternalContactDraft> onFormSubmit={handleSubmit}>
+          <div className="relative flex flex-col items-center gap-2 px-4 pt-10 pb-2">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-6 top-1 h-25 overflow-hidden rounded-lg"
+            >
+              <ContactAvatar
+                avatar={avatarUrl}
+                name=""
+                className="absolute -top-33 left-0 size-108 opacity-20 blur-[80px]"
+              />
+              <img alt="" src={avatarInnerRing} className="absolute top-5.5 left-38.5 size-31" />
+              <img alt="" src={avatarOuterRing} className="absolute top-1.5 left-34.5 size-39" />
+            </div>
             <button
               type="button"
               aria-label={t(($) => $['avatar.editAction'], { ns: 'common' })}
               aria-describedby={avatarError ? 'external-avatar-error' : undefined}
-              className="relative rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-components-input-border-hover disabled:cursor-wait"
+              className="relative size-24 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-components-input-border-hover disabled:cursor-wait"
               disabled={busy}
               onClick={() => avatarInputRef.current?.click()}
             >
-              <Avatar
-                avatar={uploadedAvatar?.url ?? contact?.avatar_url ?? null}
-                className="ring-4 ring-components-panel-bg"
-                name={draft.displayName || t(($) => $['external.avatarFallback'])}
-                size="3xl"
-              />
-              <span className="absolute right-0 bottom-0 flex size-7 items-center justify-center rounded-full bg-components-panel-bg shadow-sm">
+              <ContactAvatar avatar={avatarUrl} name={draft.displayName} />
+              <span className="absolute right-0 bottom-0 flex size-8 items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs backdrop-blur-[5px]">
                 <span
                   aria-hidden
                   className={
                     uploadAvatar.isPending
                       ? 'i-ri-loader-4-line size-4 animate-spin'
-                      : 'i-ri-camera-line size-4'
+                      : 'i-ri-edit-line size-4'
                   }
                 />
               </span>
@@ -270,7 +315,7 @@ export function ExternalContactDialog({
               </Button>
             )}
           </div>
-          <div className="space-y-4">
+          <div className="space-y-4 px-6 py-3">
             <Field name="displayName" invalid={fieldError === 'name_required'}>
               <FieldLabel>{t(($) => $['external.name'])}</FieldLabel>
               <Input
@@ -278,6 +323,7 @@ export function ExternalContactDialog({
                   fieldError === 'name_required' ? 'external-name-error' : undefined
                 }
                 autoComplete="name"
+                placeholder={t(($) => $['external.namePlaceholder'])}
                 disabled={busy}
                 required
                 value={draft.displayName}
@@ -306,6 +352,7 @@ export function ExternalContactDialog({
                   fieldError?.startsWith('email') ? 'external-email-error' : undefined
                 }
                 autoComplete="email"
+                placeholder={t(($) => $['external.email'])}
                 disabled={busy}
                 required
                 type="email"
@@ -332,17 +379,18 @@ export function ExternalContactDialog({
           {resultErrorMessage && (
             <div
               role="alert"
-              className="mt-4 rounded-lg bg-state-destructive-hover p-3 system-sm-regular text-text-destructive"
+              className="mx-6 mt-4 rounded-lg bg-state-destructive-hover p-3 system-sm-regular text-text-destructive"
             >
               {resultErrorMessage}
             </div>
           )}
-          <div className="mt-6 flex justify-end gap-2">
-            <Button disabled={busy} onClick={closeDialog}>
+          <div className="flex justify-end gap-2 px-6 pt-5 pb-6">
+            <Button className="min-w-18" disabled={busy} onClick={closeDialog}>
               {t(($) => $['action.cancel'])}
             </Button>
             <Button
               type="submit"
+              className="min-w-18"
               variant="primary"
               loading={pending}
               disabled={uploadAvatar.isPending || Boolean(avatarError)}

@@ -16,6 +16,7 @@ import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
+import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -59,6 +60,7 @@ export default function AccountSetting({
   onTabChangeAction,
 }: IAccountSettingProps) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -102,8 +104,8 @@ export default function AccountSetting({
       key: ACCOUNT_SETTING_TAB.IM_PLATFORM,
       name: t(($) => $['imPlatform.title'], { ns: 'contacts' }),
       description: t(($) => $['imPlatform.description'], { ns: 'contacts' }),
-      icon: <span className={cn('i-ri-base-station-line', iconClassName)} />,
-      activeIcon: <span className={cn('i-ri-base-station-fill', iconClassName)} />,
+      icon: <span className={cn('i-ri-chat-ai-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-chat-ai-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
@@ -147,6 +149,7 @@ export default function AccountSetting({
     },
   ]
   const activeItem = settingItems.find((item) => item.key === activeMenu)
+  const isChannelsPage = activeMenu === ACCOUNT_SETTING_TAB.IM_PLATFORM
 
   const visibleSettingItems: GroupItem[] = (() => {
     const visibleTabs: AccountSettingTab[] = []
@@ -250,13 +253,34 @@ export default function AccountSetting({
                   <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
                     {activeItem?.title ?? activeItem?.name}
                     {activeItem?.description && (
-                      <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
-                        {activeItem?.description}
+                      <div
+                        className={cn(
+                          'wrap-break-word whitespace-normal text-text-tertiary',
+                          isChannelsPage ? 'mt-0.5 system-xs-regular' : 'mt-1 system-sm-regular',
+                        )}
+                      >
+                        {activeItem.description}
+                        {isChannelsPage && (
+                          <a
+                            href={docLink('/use-dify/nodes/human-input')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-0.5 inline-flex items-center text-text-accent focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                          >
+                            {t(($) => $['imPlatform.learnMore'], { ns: 'contacts' })}
+                            <span aria-hidden className="i-ri-external-link-line size-3" />
+                          </a>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
-                <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
+                <div
+                  className={cn(
+                    'max-w-full min-w-0 px-4 sm:px-8',
+                    isChannelsPage ? 'pt-4' : 'pt-6',
+                  )}
+                >
                   {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
                   {activeMenu === ACCOUNT_SETTING_TAB.IM_PLATFORM && (
                     <ContactsImPlatformAccountSettingPage

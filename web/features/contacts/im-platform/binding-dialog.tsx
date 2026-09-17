@@ -168,22 +168,22 @@ export function ContactImBindingDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={isPending}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-104 flex-col overflow-hidden! p-0!">
         <DialogClose
           render={
             <IconButton
               aria-label={tCommon(($) => $['operation.close'])}
-              className="absolute top-6 right-6"
+              className="absolute top-5 right-5"
               disabled={isPending}
               size="lg"
             >
-              <span aria-hidden className="i-ri-close-line size-4" />
+              <span aria-hidden className="i-ri-close-line size-4.5" />
             </IconButton>
           }
         />
-        <div className="shrink-0 px-6 pt-6 pb-3">
+        <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
-          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+          <DialogDescription className="sr-only">
             {t(($) => $['imPlatform.bindingDialog.description'])}
           </DialogDescription>
         </div>
@@ -224,7 +224,7 @@ export function ContactImBindingDialog({
           className="flex min-h-0 flex-1 flex-col"
           onFormSubmit={handleSave}
         >
-          <div className="space-y-4 overflow-y-auto px-6 py-2">
+          <div className="space-y-4 overflow-y-auto px-6 py-3">
             {isCurrentProvider && provider.requiresFreshCredentials && (
               <p className="system-sm-regular text-text-tertiary">
                 {t(($) => $['imPlatform.bindingDialog.freshCredentials'])}
@@ -284,7 +284,7 @@ export function ContactImBindingDialog({
           </div>
           <div className="mt-auto flex shrink-0 items-center justify-between gap-3 px-6 pt-5 pb-6">
             <Button
-              disabled={isPending}
+              disabled={saveCredentials.isPending}
               loading={testConnection.isPending}
               onClick={handleTestConnection}
             >
@@ -293,13 +293,14 @@ export function ContactImBindingDialog({
                 : t(($) => $['imPlatform.action.testConnection'])}
             </Button>
             <div className="flex gap-2">
-              <Button disabled={isPending} onClick={closeDialog}>
+              <Button className="min-w-18" disabled={isPending} onClick={closeDialog}>
                 {tCommon(($) => $['operation.cancel'])}
               </Button>
               <Button
                 type="submit"
+                className="min-w-18"
                 variant="primary"
-                disabled={isPending}
+                disabled={testConnection.isPending}
                 loading={saveCredentials.isPending}
               >
                 {saveCredentials.isPending

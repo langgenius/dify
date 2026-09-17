@@ -1,7 +1,9 @@
 'use client'
 
 import type { ContactImSafeReason, ContactImSyncResult } from './types'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogClose,
@@ -10,9 +12,14 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { useState } from 'react'
+import {
+  SegmentedControl,
+  SegmentedControlDivider,
+  SegmentedControlItem,
+} from '@langgenius/dify-ui/segmented-control'
+import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ContactChannelIcon } from '../management/channel-icon'
 import { useContactImSyncItems, useContactImSyncRun } from './hooks'
 import {
   ContactImSyncStatus,
@@ -29,15 +36,15 @@ const results = [
 ]
 
 const resultToneClassNames = {
-  [SyncResult.Added]: 'bg-state-success-hover text-text-success',
-  [SyncResult.NotMatched]: 'bg-state-warning-hover text-text-warning',
-  [SyncResult.Removed]: 'bg-state-destructive-hover text-text-destructive',
-  [SyncResult.CreatedBinding]: 'bg-state-accent-hover text-text-accent',
-  [SyncResult.Failed]: 'bg-state-destructive-hover text-text-destructive',
-  [SyncResult.Matched]: 'bg-state-success-hover text-text-success',
-  [SyncResult.Skipped]: 'bg-background-default-subtle text-text-tertiary',
-  [SyncResult.Unmatched]: 'bg-state-warning-hover text-text-warning',
-  [SyncResult.UpdatedBinding]: 'bg-state-accent-hover text-text-accent',
+  [SyncResult.Added]: 'border-text-accent text-text-accent',
+  [SyncResult.NotMatched]: 'border-divider-deep text-text-tertiary',
+  [SyncResult.Removed]: 'border-text-warning text-text-warning',
+  [SyncResult.CreatedBinding]: 'border-text-accent text-text-accent',
+  [SyncResult.Failed]: 'border-text-destructive text-text-destructive',
+  [SyncResult.Matched]: 'border-divider-deep text-text-tertiary',
+  [SyncResult.Skipped]: 'border-divider-deep text-text-tertiary',
+  [SyncResult.Unmatched]: 'border-divider-deep text-text-tertiary',
+  [SyncResult.UpdatedBinding]: 'border-text-accent text-text-accent',
 } satisfies Record<ContactImSyncResult, string>
 
 export function ContactImSyncDetailsDialog({
@@ -105,28 +112,37 @@ export function ContactImSyncDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[760px] max-h-[calc(100dvh-2rem)] w-[840px] flex-col overflow-hidden! p-0!">
+      <DialogContent className="flex h-180 max-h-[calc(100dvh-2rem)] w-[693px] flex-col overflow-hidden! p-0!">
         <DialogClose
           render={
             <IconButton
               aria-label={tCommon(($) => $['operation.close'])}
-              className="absolute top-6 right-6"
+              className="absolute top-5 right-5"
               size="lg"
             >
-              <span aria-hidden className="i-ri-close-line size-4" />
+              <span aria-hidden className="i-ri-close-line size-4.5" />
             </IconButton>
           }
         />
-        <div className="shrink-0 px-6 pt-6 pb-4">
+        <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['imPlatform.details.title'])}
           </DialogTitle>
-          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
             {run
-              ? t(($) => $['imPlatform.details.latestMetadata'], {
-                  date: formatDate(run.completedAt ?? run.startedAt),
-                  status: statusLabels[run.status],
-                })
+              ? run.status === ContactImSyncStatus.Success
+                ? run.startedBy
+                  ? t(($) => $['imPlatform.sync.lastSynced'], {
+                      date: formatDate(run.completedAt ?? run.startedAt),
+                      user: run.startedBy,
+                    })
+                  : t(($) => $['imPlatform.sync.latestSynced'], {
+                      date: formatDate(run.completedAt ?? run.startedAt),
+                    })
+                : t(($) => $['imPlatform.details.latestMetadata'], {
+                    date: formatDate(run.completedAt ?? run.startedAt),
+                    status: statusLabels[run.status],
+                  })
               : t(($) => $['imPlatform.details.description'])}
           </DialogDescription>
           {(run?.errorMessage || run?.safeError) && (
@@ -159,7 +175,7 @@ export function ContactImSyncDetailsDialog({
           />
         ) : (
           <>
-            <div className="shrink-0 overflow-x-auto border-y border-divider-subtle px-6 py-3">
+            <div className="shrink-0 overflow-x-auto px-6 py-1">
               <SegmentedControl
                 aria-label={t(($) => $['imPlatform.details.filters'])}
                 value={resultFilter}
@@ -168,54 +184,90 @@ export function ContactImSyncDetailsDialog({
                   if (result) setResultFilter(result)
                 }}
               >
-                {results.map((result) => (
-                  <SegmentedControlItem key={result} value={result}>
-                    {resultLabels[result]} {run.counts[result] ?? 0}
-                  </SegmentedControlItem>
+                {results.map((result, index) => (
+                  <Fragment key={result}>
+                    {index > 0 && (
+                      <SegmentedControlDivider
+                        className={cn(
+                          '-mx-px',
+                          (resultFilter === result || resultFilter === results[index - 1]) &&
+                            'invisible',
+                        )}
+                      />
+                    )}
+                    <SegmentedControlItem
+                      className="gap-1 px-2.5 data-checked:text-text-primary"
+                      value={result}
+                    >
+                      {resultLabels[result]}{' '}
+                      <span
+                        className={cn(
+                          'min-w-4 rounded-[5px] border px-0.75 text-center text-[10px] leading-3 font-medium',
+                          resultToneClassNames[result],
+                        )}
+                      >
+                        {run.counts[result] ?? 0}
+                      </span>
+                    </SegmentedControlItem>
+                  </Fragment>
                 ))}
               </SegmentedControl>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
-              <table className="w-full min-w-[752px] table-fixed border-collapse text-left">
-                <thead className="sticky top-0 z-10 bg-components-panel-bg">
-                  <tr className="border-b border-divider-subtle">
-                    <th className="w-1/2 px-3 py-2 system-xs-medium-uppercase text-text-tertiary">
+            <div className="min-h-0 flex-1 overflow-auto px-6 pt-2 pb-6">
+              <table className="w-full table-fixed border-collapse text-left">
+                <thead className="sticky top-0 z-10 bg-background-section-burn">
+                  <tr>
+                    <th className="w-1/2 rounded-l-lg px-3 py-1.5 system-xs-medium-uppercase text-text-tertiary">
                       {t(($) => $['imPlatform.details.column.contact'])}
                     </th>
-                    <th className="w-1/2 px-3 py-2 system-xs-medium-uppercase text-text-tertiary">
+                    <th className="w-1/2 rounded-r-lg px-3 py-1.5 system-xs-medium-uppercase text-text-tertiary">
                       {t(($) => $['imPlatform.details.column.platform'])}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id} className="border-b border-divider-subtle align-top">
-                      <td className="px-3 py-3">
-                        <div className="system-sm-medium text-text-primary">
-                          {item.matchedContact?.name ?? missing}
-                        </div>
-                        <div className="mt-0.5 system-xs-regular text-text-tertiary">
-                          {item.matchedContact?.email ?? missing}
+                    <tr key={item.id} className="h-12 border-b border-divider-subtle">
+                      <td className="px-3 py-1.5">
+                        <div className="flex items-center gap-2.5">
+                          {item.matchedContact && (
+                            <Avatar
+                              avatar={item.matchedContact.avatarUrl ?? null}
+                              name={item.matchedContact.name}
+                              size="md"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <div className="truncate system-md-regular text-text-secondary">
+                              {item.matchedContact?.name ?? missing}
+                            </div>
+                            {item.matchedContact?.email && (
+                              <div className="truncate system-xs-regular text-text-tertiary">
+                                {item.matchedContact.email}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate system-sm-medium text-text-primary">
-                              {item.platformIdentity.displayName ?? missing}
-                            </div>
-                            <div className="mt-0.5 truncate system-xs-regular text-text-tertiary">
-                              {item.platformIdentity.email ?? missing}
-                            </div>
-                            <div className="mt-0.5 truncate system-xs-regular text-text-tertiary">
-                              {item.platformIdentity.platformUserId ?? missing}
-                            </div>
-                          </div>
+                      <td className="px-3 py-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span
-                            className={`shrink-0 rounded-md px-2 py-1 system-xs-medium ${resultToneClassNames[item.result]}`}
+                            className={cn(
+                              'inline-flex max-w-full items-center gap-1 rounded-md border py-0.75 pr-2 pl-1 system-sm-regular',
+                              resultToneClassNames[item.result],
+                              item.result === SyncResult.Added && 'text-text-secondary',
+                            )}
                           >
-                            {resultLabels[item.result]}
+                            {run.provider && (
+                              <ContactChannelIcon className="size-4" provider={run.provider} />
+                            )}
+                            <span className="truncate">
+                              {item.platformIdentity.displayName ??
+                                item.platformIdentity.email ??
+                                item.platformIdentity.platformUserId ??
+                                missing}
+                            </span>
                           </span>
                         </div>
                         {(item.reason || item.safeReason) && (

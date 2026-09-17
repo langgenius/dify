@@ -106,20 +106,17 @@ const HumanInputV2NodeContent = ({
         <div className="px-2.5">
           <div
             className={cn(
-              'flex min-h-8 items-center gap-1.5 rounded-lg px-2 py-1 system-xs-regular',
-              summary.state === 'empty' && 'bg-state-warning-hover text-text-warning-secondary',
+              'flex min-h-6 items-center gap-1 rounded-md px-1.5 py-1 system-xs-regular',
+              summary.state === 'empty' &&
+                'bg-state-warning-hover px-2 text-text-warning ring-[0.5px] ring-state-warning-active',
               summary.state === 'invalid' &&
                 'bg-state-destructive-hover text-text-destructive-secondary',
               (summary.state === 'configured' || summary.state === 'overflow') &&
                 'bg-workflow-block-parma-bg text-text-secondary',
             )}
           >
-            {summary.state === 'empty' || summary.state === 'invalid' ? (
+            {summary.state === 'invalid' && (
               <span className="i-ri-alert-line size-4 shrink-0" aria-hidden />
-            ) : summary.hasInitiator && data.recipients_spec.length === 1 ? (
-              <span className="i-ri-user-line size-4 shrink-0" aria-hidden />
-            ) : (
-              <span className="i-ri-group-line size-4 shrink-0" aria-hidden />
             )}
             <span className="truncate">{summaryLabel}</span>
           </div>

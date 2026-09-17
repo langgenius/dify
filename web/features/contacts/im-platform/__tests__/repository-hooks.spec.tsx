@@ -251,6 +251,38 @@ const createSyncClient = (run = createApiRun()) => ({
 })
 
 describe('Contact IM server synchronization', () => {
+  it('preserves the sync provider and contact avatar needed by the results dialog', async () => {
+    const client = createSyncClient({ ...createApiRun('succeeded'), provider: 'ding_talk' })
+    client.imSyncRuns.latest.results.get.mockResolvedValue({
+      data: [
+        {
+          id: 'added-contact',
+          result: {
+            type: 'added',
+            contact: {
+              id: 'contact-1',
+              name: 'Contact 1',
+              created_at: 1_700_000_000,
+              avatar_url: 'https://example.com/avatar.png',
+            },
+            entry: { provider_user_id: 'member-1', display_name: 'Member 1' },
+          },
+        },
+      ],
+      page: 1,
+      limit: 20,
+      total: 1,
+    })
+    const repository = createContactImSyncApi(organization.workspaceId, client)
+
+    await expect(repository.getSyncRun('server-run')).resolves.toMatchObject({
+      provider: 'dingtalk',
+    })
+    await expect(repository.getSyncItems({ runId: 'server-run' })).resolves.toMatchObject({
+      items: [{ matchedContact: { avatarUrl: 'https://example.com/avatar.png' } }],
+    })
+  })
+
   it('posts to the generated sync endpoint and preserves a queued run with no invented start time', async () => {
     const client = createSyncClient()
     const repository = createContactImSyncApi(organization.workspaceId, client)

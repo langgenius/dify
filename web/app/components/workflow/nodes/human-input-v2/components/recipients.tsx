@@ -1,18 +1,28 @@
 'use client'
 
+import type { ReactElement } from 'react'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2RecipientType } from '../recipient-utils'
 import type { HumanInputV2Recipient } from '../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
+import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType } from '@/app/components/workflow/types'
+import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { ContactChannelIcon } from '@/features/contacts/management/channel-icon'
+import { consoleQuery } from '@/service/client'
 import { useContactRecipientOptionProvider } from '../contact-provider'
 import {
   addRecipient,
@@ -30,6 +40,7 @@ type RecipientsProps = {
   onChange: (value: HumanInputV2Recipient[]) => void
   readonly: boolean
   provider?: ContactRecipientOptionProvider
+  workspace?: { name: string; contactCount?: number }
 }
 
 const getOptionLabel = (option: ContactRecipientOption) =>
@@ -57,12 +68,65 @@ const cloneRecipient = (recipient: HumanInputV2Recipient): HumanInputV2Recipient
   return { ...recipient }
 }
 
+function RecipientContactPreview({
+  contact,
+  children,
+}: {
+  contact: ContactRecipientOption
+  children: ReactElement
+}) {
+  const { t } = useTranslation()
+  return (
+    <Popover>
+      <PopoverTrigger render={children} openOnHover delay={300} closeDelay={150} />
+      <PopoverContent
+        placement="left-start"
+        sideOffset={4}
+        className="flex w-60 flex-col gap-2 bg-components-tooltip-bg p-4 backdrop-blur-[5px]"
+      >
+        <div
+          aria-hidden="true"
+          className="size-10 shrink-0 rounded-full border-2 border-components-panel-bg"
+        >
+          <Avatar
+            avatar={contact.avatar ?? null}
+            name={contact.name}
+            size="xl"
+            className="size-full inset-ring-[0.5px] inset-ring-divider-regular"
+          />
+        </div>
+        <div className="flex w-full flex-col gap-px">
+          <div className="flex items-start gap-1">
+            <PopoverTitle className="min-w-0 system-md-medium wrap-anywhere text-text-primary">
+              {contact.name}
+            </PopoverTitle>
+            <span className="mt-0.5 shrink-0 rounded-[5px] bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary inset-ring-1 inset-ring-divider-deep">
+              {t(($) => $[`nodes.humanInputV2.recipients.contactSource.${contact.source}`], {
+                ns: 'workflow',
+              })}
+            </span>
+          </div>
+          {contact.email && (
+            <p className="system-xs-regular wrap-anywhere text-text-tertiary">{contact.email}</p>
+          )}
+        </div>
+        {contact.email && (
+          <div className="flex size-5 items-center justify-center rounded-[5px] border border-divider-regular bg-components-panel-on-panel-item-bg">
+            <ContactChannelIcon provider="email" className="size-3.5" />
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 const RecipientsContent = ({
   nodeId,
   value,
   onChange,
   readonly,
   provider,
+  workspace,
 }: RecipientsProps & { provider: ContactRecipientOptionProvider }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -252,7 +316,10 @@ const RecipientsContent = ({
 
   const getRecipientLabel = (recipient: HumanInputV2Recipient) => {
     if (recipient.type === 'all_workspace_contacts')
-      return t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContacts'], { ns: 'workflow' })
+      return (
+        workspace?.name ||
+        t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContacts'], { ns: 'workflow' })
+      )
     if (recipient.type === 'initiator')
       return t(($) => $['nodes.humanInputV2.recipients.initiator'], { ns: 'workflow' })
     if (recipient.type === 'contact')
@@ -264,7 +331,7 @@ const RecipientsContent = ({
   }
 
   return (
-    <section className="px-4 py-2" aria-labelledby={`${nodeId}-recipients-label`}>
+    <section className="px-4 pt-2" aria-labelledby={`${nodeId}-recipients-label`}>
       <div className="mb-1 flex h-6 items-center gap-0.5">
         <h3
           id={`${nodeId}-recipients-label`}
@@ -279,13 +346,15 @@ const RecipientsContent = ({
 
       <div
         className={cn(
-          'min-h-20 rounded-lg border border-components-input-border-active bg-components-input-bg-normal p-2',
+          'min-h-20 rounded-lg bg-components-input-bg-normal focus-within:ring-1 focus-within:ring-components-input-border-active',
           readonly && 'opacity-70',
         )}
       >
         {!!value.length && (
-          <div className="mb-2 flex flex-wrap gap-1" aria-live="polite">
+          <div className="flex flex-wrap gap-1 px-2 pt-2 pb-0.5" aria-live="polite">
             {recipientRows.map(({ recipient, index, key }) => {
+              const contact =
+                recipient.type === 'contact' ? resolvedMap.get(recipient.contact_id) : undefined
               const invalid =
                 !!getRecipientValidationError(recipient) ||
                 (hasDuplicateRecipients(value) &&
@@ -297,11 +366,78 @@ const RecipientsContent = ({
                 <div
                   key={key}
                   className={cn(
-                    'flex min-h-5 max-w-full items-center gap-1 rounded-md bg-components-badge-bg-dimm px-1.5 py-0.5 system-xs-medium text-text-secondary',
+                    'flex h-5 max-w-full items-center gap-1 rounded-full bg-components-badge-white-to-dark p-0.5 system-xs-regular text-text-primary shadow-xs inset-ring-[0.5px] inset-ring-components-panel-border-subtle',
+                    (recipient.type === 'initiator' ||
+                      recipient.type === 'all_workspace_contacts') &&
+                      'bg-util-colors-indigo-indigo-100 font-medium text-util-colors-indigo-indigo-700 inset-ring-util-colors-indigo-indigo-200',
+                    recipient.type === 'dynamic_email' &&
+                      'rounded-[5px] bg-util-colors-blue-blue-50 text-text-accent',
                     invalid && 'bg-state-destructive-hover text-text-destructive',
                   )}
                 >
-                  <span className="max-w-[260px] truncate">{getRecipientLabel(recipient)}</span>
+                  {recipient.type === 'dynamic_email' && (
+                    <span
+                      className="i-custom-vender-line-others-global-variable size-3.5 text-text-accent"
+                      aria-hidden
+                    />
+                  )}
+                  {recipient.type === 'onetime_email' && (
+                    <Avatar
+                      avatar={null}
+                      name={recipient.email}
+                      size="xxs"
+                      className="[&>span]:text-[10px]"
+                    />
+                  )}
+                  {(recipient.type === 'initiator' ||
+                    recipient.type === 'all_workspace_contacts') && (
+                    <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-util-colors-indigo-indigo-500 text-text-primary-on-surface">
+                      {recipient.type === 'all_workspace_contacts' && workspace?.name ? (
+                        <WorkspaceAvatar
+                          name={workspace.name}
+                          size="xs"
+                          className="size-4 rounded-full"
+                        />
+                      ) : (
+                        <span
+                          className={cn(
+                            'size-3',
+                            recipient.type === 'initiator'
+                              ? 'i-ri-user-follow-line'
+                              : 'i-ri-group-line',
+                          )}
+                          aria-hidden
+                        />
+                      )}
+                    </span>
+                  )}
+                  {contact ? (
+                    <RecipientContactPreview contact={contact}>
+                      <button
+                        type="button"
+                        aria-label={getOptionLabel(contact)}
+                        className="flex min-w-0 items-center gap-1 rounded-full border-0 bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+                      >
+                        <span aria-hidden="true" className="flex shrink-0">
+                          <Avatar
+                            avatar={contact.avatar ?? null}
+                            name={contact.name}
+                            size="xxs"
+                            className="[&>span]:text-[10px]"
+                          />
+                        </span>
+                        <span className="max-w-[260px] truncate px-0.5">{contact.name}</span>
+                      </button>
+                    </RecipientContactPreview>
+                  ) : (
+                    <span className="max-w-[260px] truncate px-0.5">
+                      {getRecipientLabel(recipient)}
+                    </span>
+                  )}
+                  {recipient.type === 'all_workspace_contacts' &&
+                    workspace?.contactCount !== undefined && (
+                      <span className="pr-1 text-text-tertiary">{workspace.contactCount}</span>
+                    )}
                   {!readonly && (
                     <>
                       <button
@@ -341,7 +477,7 @@ const RecipientsContent = ({
           </div>
         )}
         {!readonly && (
-          <div className="flex items-center gap-1">
+          <div className="flex min-h-11 items-start gap-1 px-3 pt-2 pb-2">
             <Input
               aria-label={t(($) => $['nodes.humanInputV2.recipients.emailLabel'], {
                 ns: 'workflow',
@@ -362,7 +498,7 @@ const RecipientsContent = ({
               })}
               aria-invalid={emailError}
               aria-describedby={emailError ? `${nodeId}-recipient-email-error` : undefined}
-              className="min-w-0 grow border-0 bg-transparent"
+              className="h-5 min-w-0 grow rounded-none border-0 bg-transparent p-0 shadow-none hover:bg-transparent focus:bg-transparent focus:shadow-none"
             />
             {!!emailDraft && (
               <Button size="small" onClick={addOneTimeEmail}>
@@ -375,7 +511,7 @@ const RecipientsContent = ({
           <div
             id={`${nodeId}-recipient-email-error`}
             role="alert"
-            className="mt-1 system-xs-regular text-text-destructive"
+            className="px-3 pb-1 system-xs-regular text-text-destructive"
           >
             {t(($) => $['nodes.humanInputV2.recipients.emailInvalidOrDuplicate'], {
               ns: 'workflow',
@@ -383,8 +519,268 @@ const RecipientsContent = ({
           </div>
         )}
         {!value.length && readonly && (
-          <div className="system-xs-regular text-text-tertiary">
+          <div className="px-3 py-2 system-xs-regular text-text-tertiary">
             {t(($) => $['nodes.humanInputV2.recipients.empty'], { ns: 'workflow' })}
+          </div>
+        )}
+        {!readonly && (
+          <div className="flex min-h-9 items-center gap-1 py-1.5 pr-2.5 pl-1.5">
+            <Popover open={open} onOpenChange={handleOpenChange}>
+              <PopoverTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    className="gap-1 pr-1.5 pl-1.25 text-text-tertiary"
+                  >
+                    <span className="i-ri-account-circle-line size-3.5" aria-hidden />
+                    {t(($) => $['nodes.humanInputV2.recipients.addContact'], { ns: 'workflow' })}
+                  </Button>
+                }
+              />
+              <PopoverContent
+                placement="bottom-start"
+                sideOffset={4}
+                className="w-80 bg-components-panel-bg-blur p-0 backdrop-blur-[5px]"
+              >
+                <div className="px-2 pt-2 pb-1">
+                  <InputGroup className="h-8">
+                    <InputGroupAddon className="ps-1.75 pe-1.25">
+                      <span
+                        className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                        aria-hidden
+                      />
+                    </InputGroupAddon>
+                    <InputGroupInput
+                      aria-label={t(($) => $['nodes.humanInputV2.recipients.search'], {
+                        ns: 'workflow',
+                      })}
+                      value={query}
+                      onChange={(event) => {
+                        setQuery(event.target.value)
+                        void loadOptions(event.target.value)
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'ArrowDown') {
+                          event.preventDefault()
+                          firstOptionRef.current?.focus()
+                        }
+                        if (event.key === 'Enter') {
+                          const option = visibleOptions.find(
+                            (option) => !selectedKeys.has(`contact:${option.id}`),
+                          )
+                          if (option) add({ type: 'contact', contact_id: option.id })
+                        }
+                        if (event.key === 'Escape') setOpen(false)
+                      }}
+                      placeholder={t(($) => $['nodes.humanInputV2.recipients.searchPlaceholder'], {
+                        ns: 'workflow',
+                      })}
+                    />
+                  </InputGroup>
+                </div>
+                <div
+                  className="flex gap-0.5 overflow-x-auto px-2 py-1"
+                  role="tablist"
+                  aria-label={t(($) => $['nodes.humanInputV2.recipients.contactSourceLabel'], {
+                    ns: 'workflow',
+                  })}
+                >
+                  {contactSourceFilters.map((filter) => (
+                    <button
+                      key={filter}
+                      type="button"
+                      role="tab"
+                      aria-selected={sourceFilter === filter}
+                      className={cn(
+                        'shrink-0 rounded-md border-0 bg-transparent px-2 py-1 system-xs-medium text-text-tertiary focus-visible:ring-1 focus-visible:ring-state-accent-solid',
+                        sourceFilter === filter && 'bg-state-base-hover-alt text-text-primary',
+                      )}
+                      onClick={() => setSourceFilter(filter)}
+                    >
+                      {t(($) => $[`nodes.humanInputV2.recipients.contactSource.${filter}`], {
+                        ns: 'workflow',
+                      })}
+                    </button>
+                  ))}
+                </div>
+                <div className="max-h-84 overflow-y-auto p-1" aria-live="polite">
+                  {loading && (
+                    <div role="status" className="p-3 system-xs-regular text-text-tertiary">
+                      {t(($) => $['nodes.humanInputV2.recipients.loading'], { ns: 'workflow' })}
+                    </div>
+                  )}
+                  {!loading && loadError && (
+                    <div role="alert" className="p-3 system-xs-regular text-text-destructive">
+                      {t(($) => $['nodes.humanInputV2.recipients.loadError'], { ns: 'workflow' })}
+                    </div>
+                  )}
+                  {!loading && !loadError && !visibleOptions.length && !hasMore && (
+                    <div className="p-3 system-xs-regular text-text-tertiary">
+                      {t(($) => $['nodes.humanInputV2.recipients.noResults'], { ns: 'workflow' })}
+                    </div>
+                  )}
+                  {!loading &&
+                    visibleOptions.map((option, index) => {
+                      const added = selectedKeys.has(`contact:${option.id}`)
+                      return (
+                        <RecipientContactPreview key={option.id} contact={option}>
+                          <button
+                            aria-label={getOptionLabel(option)}
+                            ref={index === 0 ? firstOptionRef : undefined}
+                            type="button"
+                            disabled={added}
+                            className="flex min-h-10 w-full items-center gap-2 rounded-lg border-0 bg-transparent py-1 pr-3 pl-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+                            onClick={() => add({ type: 'contact', contact_id: option.id })}
+                          >
+                            <Avatar
+                              avatar={option.avatar ?? null}
+                              name={option.name}
+                              size="sm"
+                              className={cn(
+                                'inset-ring-[0.5px] inset-ring-divider-regular [&>span]:text-[13px] [&>span]:font-semibold',
+                                added && 'opacity-50',
+                              )}
+                            />
+                            <span className={cn('min-w-0 grow', added && 'opacity-50')}>
+                              <span className="block truncate system-sm-medium text-text-secondary">
+                                {option.name}
+                              </span>
+                              <span className="block truncate system-xs-regular text-text-tertiary">
+                                {option.email}
+                              </span>
+                            </span>
+                            {added && (
+                              <span className="system-xs-regular text-text-tertiary">
+                                {t(($) => $['nodes.humanInputV2.recipients.added'], {
+                                  ns: 'workflow',
+                                })}
+                              </span>
+                            )}
+                          </button>
+                        </RecipientContactPreview>
+                      )
+                    })}
+                  {hasMore && !loading && (
+                    <Button
+                      size="small"
+                      loading={loadingMore}
+                      disabled={loadingMore}
+                      onClick={loadMore}
+                    >
+                      {t(($) => $['common.loadMore'], { ns: 'workflow' })}
+                    </Button>
+                  )}
+                  <div className="my-1 h-px bg-divider-subtle" />
+                  <button
+                    type="button"
+                    aria-label={t(($) => $['nodes.humanInputV2.recipients.initiator'], {
+                      ns: 'workflow',
+                    })}
+                    disabled={selectedKeys.has('initiator')}
+                    className="flex min-h-10 w-full items-center gap-2 rounded-lg border-0 bg-transparent py-1 pr-3 pl-2 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:opacity-50"
+                    onClick={() => add({ type: 'initiator' })}
+                  >
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-util-colors-indigo-indigo-500 text-text-primary-on-surface">
+                      <span className="i-ri-user-follow-line size-4" aria-hidden />
+                    </span>
+                    <span className="min-w-0 grow">
+                      <span className="block system-sm-medium text-util-colors-indigo-indigo-700">
+                        {t(($) => $['nodes.humanInputV2.recipients.initiator'], { ns: 'workflow' })}
+                      </span>
+                      <span className="block system-xs-regular text-text-tertiary">
+                        {t(($) => $['nodes.humanInputV2.recipients.initiatorDescription'], {
+                          ns: 'workflow',
+                        })}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContacts'], {
+                      ns: 'workflow',
+                    })}
+                    disabled={selectedKeys.has('all_workspace_contacts')}
+                    className="flex min-h-10 w-full items-center gap-2 rounded-lg border-0 bg-transparent py-1 pr-3 pl-2 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:opacity-50"
+                    onClick={() => add({ type: 'all_workspace_contacts' })}
+                  >
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-util-colors-indigo-indigo-500 text-text-primary-on-surface">
+                      {workspace?.name ? (
+                        <WorkspaceAvatar name={workspace.name} size="sm" className="rounded-full" />
+                      ) : (
+                        <span className="i-ri-group-line size-4" aria-hidden />
+                      )}
+                    </span>
+                    <span className="min-w-0 grow">
+                      <span className="block system-sm-medium text-util-colors-indigo-indigo-700">
+                        {workspace?.name ||
+                          t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContacts'], {
+                            ns: 'workflow',
+                          })}
+                        {workspace?.contactCount !== undefined && (
+                          <span className="ml-0.5 inline-flex min-w-4 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1 py-0.5 align-middle system-2xs-medium-uppercase text-text-tertiary inset-ring-1 inset-ring-divider-deep">
+                            {workspace.contactCount}
+                          </span>
+                        )}
+                      </span>
+                      <span className="block system-xs-regular text-text-tertiary">
+                        {t(
+                          ($) => $['nodes.humanInputV2.recipients.allWorkspaceContactsDescription'],
+                          { ns: 'workflow' },
+                        )}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <VarReferencePicker
+              nodeId={nodeId}
+              readonly={readonly}
+              value={[]}
+              isShowNodeName
+              filterVar={(variable: Var) =>
+                [VarType.string, VarType.secret].includes(variable.type)
+              }
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="small"
+                  className="gap-1 pr-1.5 pl-1.25 text-text-tertiary"
+                >
+                  <span
+                    className="i-custom-vender-line-others-global-variable size-3.5"
+                    aria-hidden
+                  />
+                  {t(($) => $['nodes.humanInputV2.recipients.insertVariable'], { ns: 'workflow' })}
+                </Button>
+              }
+              onChange={(selector) => {
+                if (!Array.isArray(selector)) return
+                const next = addRecipient(value, {
+                  type: 'dynamic_email',
+                  selector: selector as ValueSelector,
+                })
+                if (next !== value) onChange(next)
+              }}
+            />
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              <IconButton
+                aria-label={t(($) => $['nodes.humanInputV2.recipients.addRecipient'], {
+                  ns: 'workflow',
+                })}
+                size="md"
+                onClick={() => openEditor()}
+              >
+                <span className="i-ri-add-line size-3.5" aria-hidden />
+              </IconButton>
+              <Infotip
+                aria-label={t(($) => $['nodes.humanInputV2.recipients.help'], { ns: 'workflow' })}
+              >
+                {t(($) => $['nodes.humanInputV2.recipients.help'], { ns: 'workflow' })}
+              </Infotip>
+            </div>
           </div>
         )}
       </div>
@@ -616,193 +1012,33 @@ const RecipientsContent = ({
           </div>
         </div>
       )}
-
-      {!readonly && (
-        <div className="mt-1 flex items-center gap-1">
-          <Button variant="ghost" size="small" onClick={() => openEditor()}>
-            <span className="i-ri-add-line size-3.5" aria-hidden />
-            {t(($) => $['nodes.humanInputV2.recipients.addRecipient'], { ns: 'workflow' })}
-          </Button>
-          <Popover open={open} onOpenChange={handleOpenChange}>
-            <PopoverTrigger
-              render={
-                <Button variant="ghost" size="small">
-                  <span className="i-ri-contacts-line size-3.5" aria-hidden />
-                  {t(($) => $['nodes.humanInputV2.recipients.addContact'], { ns: 'workflow' })}
-                </Button>
-              }
-            />
-            <PopoverContent placement="bottom-start" sideOffset={4} className="w-80! p-1!">
-              <Input
-                aria-label={t(($) => $['nodes.humanInputV2.recipients.search'], { ns: 'workflow' })}
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value)
-                  void loadOptions(event.target.value)
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'ArrowDown') {
-                    event.preventDefault()
-                    firstOptionRef.current?.focus()
-                  }
-                  if (event.key === 'Enter') {
-                    const option = visibleOptions.find(
-                      (option) => !selectedKeys.has(`contact:${option.id}`),
-                    )
-                    if (option) add({ type: 'contact', contact_id: option.id })
-                  }
-                  if (event.key === 'Escape') setOpen(false)
-                }}
-                placeholder={t(($) => $['nodes.humanInputV2.recipients.searchPlaceholder'], {
-                  ns: 'workflow',
-                })}
-              />
-              <div
-                className="mt-1 flex gap-0.5 overflow-x-auto"
-                role="tablist"
-                aria-label={t(($) => $['nodes.humanInputV2.recipients.contactSourceLabel'], {
-                  ns: 'workflow',
-                })}
-              >
-                {contactSourceFilters.map((filter) => (
-                  <button
-                    key={filter}
-                    type="button"
-                    role="tab"
-                    aria-selected={sourceFilter === filter}
-                    className={cn(
-                      'shrink-0 rounded-md border-0 bg-transparent px-2 py-1 system-xs-medium text-text-tertiary focus-visible:ring-1 focus-visible:ring-state-accent-solid',
-                      sourceFilter === filter && 'bg-state-accent-active text-text-accent',
-                    )}
-                    onClick={() => setSourceFilter(filter)}
-                  >
-                    {t(($) => $[`nodes.humanInputV2.recipients.contactSource.${filter}`], {
-                      ns: 'workflow',
-                    })}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-1 max-h-64 overflow-y-auto" aria-live="polite">
-                {loading && (
-                  <div role="status" className="p-3 system-xs-regular text-text-tertiary">
-                    {t(($) => $['nodes.humanInputV2.recipients.loading'], { ns: 'workflow' })}
-                  </div>
-                )}
-                {!loading && loadError && (
-                  <div role="alert" className="p-3 system-xs-regular text-text-destructive">
-                    {t(($) => $['nodes.humanInputV2.recipients.loadError'], { ns: 'workflow' })}
-                  </div>
-                )}
-                {!loading && !loadError && !visibleOptions.length && !hasMore && (
-                  <div className="p-3 system-xs-regular text-text-tertiary">
-                    {t(($) => $['nodes.humanInputV2.recipients.noResults'], { ns: 'workflow' })}
-                  </div>
-                )}
-                {!loading &&
-                  visibleOptions.map((option, index) => {
-                    const added = selectedKeys.has(`contact:${option.id}`)
-                    return (
-                      <button
-                        key={option.id}
-                        ref={index === 0 ? firstOptionRef : undefined}
-                        type="button"
-                        disabled={added}
-                        className="flex w-full items-center gap-2 rounded-lg border-0 bg-transparent px-2 py-1.5 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover disabled:opacity-50"
-                        onClick={() => add({ type: 'contact', contact_id: option.id })}
-                      >
-                        <span className="flex size-6 items-center justify-center rounded-full bg-components-icon-bg-blue-solid text-text-primary-on-surface">
-                          {option.name.slice(0, 1)}
-                        </span>
-                        <span className="min-w-0 grow">
-                          <span className="block truncate system-xs-medium text-text-secondary">
-                            {option.name}
-                          </span>
-                          <span className="block truncate system-xs-regular text-text-tertiary">
-                            {option.email}
-                          </span>
-                        </span>
-                        {added && (
-                          <span className="system-xs-regular text-text-tertiary">
-                            {t(($) => $['nodes.humanInputV2.recipients.added'], { ns: 'workflow' })}
-                          </span>
-                        )}
-                      </button>
-                    )
-                  })}
-                {hasMore && !loading && (
-                  <Button
-                    size="small"
-                    loading={loadingMore}
-                    disabled={loadingMore}
-                    onClick={loadMore}
-                  >
-                    {t(($) => $['common.loadMore'], { ns: 'workflow' })}
-                  </Button>
-                )}
-                <div className="my-1 h-px bg-divider-subtle" />
-                <button
-                  type="button"
-                  disabled={selectedKeys.has('all_workspace_contacts')}
-                  className="flex w-full items-center gap-2 rounded-lg border-0 bg-transparent px-2 py-2 text-left hover:bg-state-base-hover disabled:opacity-50"
-                  onClick={() => add({ type: 'all_workspace_contacts' })}
-                >
-                  <span className="i-ri-group-line size-5 text-text-secondary" aria-hidden />
-                  <span className="system-xs-medium text-text-secondary">
-                    {t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContacts'], {
-                      ns: 'workflow',
-                    })}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  disabled={selectedKeys.has('initiator')}
-                  className="flex w-full items-center gap-2 rounded-lg border-0 bg-transparent px-2 py-2 text-left hover:bg-state-base-hover disabled:opacity-50"
-                  onClick={() => add({ type: 'initiator' })}
-                >
-                  <span className="i-ri-user-line size-5 text-text-secondary" aria-hidden />
-                  <span className="system-xs-medium text-text-secondary">
-                    {t(($) => $['nodes.humanInputV2.recipients.initiator'], { ns: 'workflow' })}
-                  </span>
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <VarReferencePicker
-            nodeId={nodeId}
-            readonly={readonly}
-            value={[]}
-            isShowNodeName
-            filterVar={(variable: Var) => [VarType.string, VarType.secret].includes(variable.type)}
-            trigger={
-              <Button variant="ghost" size="small">
-                <span className="i-ri-add-line size-3.5" aria-hidden />
-                {t(($) => $['nodes.humanInputV2.recipients.insertVariable'], { ns: 'workflow' })}
-              </Button>
-            }
-            onChange={(selector) => {
-              if (!Array.isArray(selector)) return
-              const next = addRecipient(value, {
-                type: 'dynamic_email',
-                selector: selector as ValueSelector,
-              })
-              if (next !== value) onChange(next)
-            }}
-          />
-        </div>
-      )}
     </section>
   )
 }
 
 const RuntimeRecipients = (props: RecipientsProps) => {
   const { provider, workspaceId } = useContactRecipientOptionProvider()
+  const workspace = useAtomValue(currentWorkspaceAtom)
+  const canManageContacts = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const input = { query: { group: 'workspace' as const, page: 1, limit: 1 } }
+  const contactsQuery = consoleQuery.workspaces.current.humanInput.contacts.get
+  const count = useQuery({
+    ...contactsQuery.queryOptions({
+      input,
+      queryKey: [...contactsQuery.queryKey({ input }), { workspaceId }],
+      context: { silent: true },
+    }),
+    enabled: Boolean(workspaceId) && canManageContacts,
+    select: (response) => response.total,
+    retry: false,
+  })
   return (
     <RecipientsContent
       key={workspaceId}
       {...props}
       readonly={props.readonly || !workspaceId}
       provider={provider}
+      workspace={{ name: workspace.name, contactCount: canManageContacts ? count.data : undefined }}
     />
   )
 }

@@ -118,7 +118,7 @@ export function PlatformContactPickerDialog({
       onOpenChange={(nextOpen) => !nextOpen && closeDialog()}
       disablePointerDismissal={addPlatformContacts.isPending}
     >
-      <DialogContent className="flex h-[336px] max-h-[calc(100dvh-2rem)] w-[346px] flex-col overflow-hidden! rounded-xl! p-0!">
+      <DialogContent className="flex h-[336px] max-h-[calc(100dvh-2rem)] w-[346px] flex-col overflow-hidden! rounded-xl! border-0 bg-components-panel-bg-blur p-0! shadow-lg inset-ring-[0.5px] inset-ring-components-panel-border backdrop-blur-[5px]">
         <DialogClose
           render={
             <IconButton
@@ -131,31 +131,31 @@ export function PlatformContactPickerDialog({
             </IconButton>
           }
         />
-        <div className="shrink-0 bg-components-panel-bg-blur px-2 pt-2 pb-1 backdrop-blur-sm">
+        <div className="shrink-0 bg-components-panel-bg-blur">
           <DialogTitle className="sr-only">{t(($) => $['platformPicker.title'])}</DialogTitle>
           <DialogDescription className="sr-only">
             {t(($) => $['platformPicker.description'])}
           </DialogDescription>
-          <div>
+          <div className="px-2 pt-2 pb-1">
             <SearchInput
               aria-label={t(($) => $['platformPicker.search'])}
-              className="h-8 border-0 bg-background-default-subtle shadow-none"
+              className="h-8 bg-components-input-bg-normal shadow-none"
               disabled={addPlatformContacts.isPending || !canImport}
               placeholder={t(($) => $['platformPicker.search'])}
               value={search}
               onValueChange={setSearch}
             />
           </div>
-          <div className="flex h-8 items-center px-1 system-xs-regular text-text-tertiary">
+          <div className="flex h-7 items-center px-3 system-xs-regular text-text-tertiary">
             {t(($) => $['platformPicker.allMembers'])}
           </div>
           {repository.supportsExternalContactUpgrade === false && (
-            <p className="px-1 pb-2 system-xs-regular text-text-tertiary">
+            <p className="px-3 pb-2 system-xs-regular text-text-tertiary">
               {t(($) => $['platformPicker.noExternalUpgrade'])}
             </p>
           )}
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto bg-components-panel-bg px-1 pb-1">
+        <div className="min-h-0 flex-1 overflow-y-auto p-1">
           {!canImport && (
             <p role="alert" className="p-3 system-sm-regular">
               {t(($) => $['platformPicker.addForbidden'])}
@@ -204,7 +204,7 @@ export function PlatformContactPickerDialog({
                 <label
                   key={contact.id}
                   htmlFor={`platform-contact-${contact.id}`}
-                  className="flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 focus-within:ring-2 focus-within:ring-state-accent-solid hover:bg-state-base-hover"
+                  className="group flex h-8 cursor-pointer items-center gap-2 rounded-lg py-1 pr-3 pl-2 focus-within:ring-2 focus-within:ring-state-accent-solid hover:bg-state-base-hover"
                 >
                   <Checkbox
                     id={`platform-contact-${contact.id}`}
@@ -216,11 +216,16 @@ export function PlatformContactPickerDialog({
                     disabled={addPlatformContacts.isPending}
                     onCheckedChange={(checked) => toggleContact(contact.id, checked)}
                   />
-                  <Avatar avatar={contact.avatar_url} name={contact.name} size="sm" />
-                  <span className="truncate system-sm-regular text-text-secondary">
+                  <Avatar
+                    avatar={contact.avatar_url}
+                    className="inset-ring-[0.5px] inset-ring-divider-regular [&>span]:text-[13px] [&>span]:font-semibold"
+                    name={contact.name}
+                    size="sm"
+                  />
+                  <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
                     {contact.name}
                   </span>
-                  <span className="ml-auto truncate system-xs-regular text-text-quaternary">
+                  <span className="max-w-[55%] shrink-0 truncate system-xs-regular text-text-quaternary group-hover:text-text-tertiary">
                     {contact.email}
                   </span>
                   {selected && (

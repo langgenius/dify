@@ -3,32 +3,28 @@
 import type { ContactImIntegrationView, ContactImSyncRunView } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useContactImActiveSync, useStartContactImSync } from './hooks'
-import {
-  ContactImConnectionStatus,
-  ContactImSafeReason,
-  ContactImSyncResult,
-  ContactImSyncStatus,
-} from './types'
+import { ContactImConnectionStatus, ContactImSafeReason, ContactImSyncStatus } from './types'
 
 const isActiveRun = (run: ContactImSyncRunView | null | undefined) =>
   run?.status === ContactImSyncStatus.Queued || run?.status === ContactImSyncStatus.Running
 
 export function ContactImDirectorySyncSection({
-  formatDate,
   integration,
   onViewDetails,
 }: {
-  formatDate: (value: string) => string
   integration: ContactImIntegrationView
   onViewDetails: (runId: string) => void
 }) {
   const { t } = useTranslation('contacts')
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const activeSyncQuery = useContactImActiveSync()
   const startSync = useStartContactImSync()
   const currentRun = activeSyncQuery.data
   const displayedRun = currentRun ?? integration.lastSync
   const displayedRunDate = displayedRun?.completedAt ?? displayedRun?.startedAt
+  const displayedRunIsActive = isActiveRun(displayedRun)
   const syncIsActive = isActiveRun(currentRun)
   const canStart =
     integration.canManage &&
@@ -36,7 +32,7 @@ export function ContactImDirectorySyncSection({
     integration.capabilities.directorySync
   const isSyncing = startSync.isPending || syncIsActive
   const buttonDisabled =
-    activeSyncQuery.isPending || activeSyncQuery.isError || !canStart || isSyncing
+    activeSyncQuery.isPending || activeSyncQuery.isError || !canStart || syncIsActive
   const disabledReason = !integration.canManage
     ? t(($) => $['imPlatform.sync.noPermission'])
     : integration.status !== ContactImConnectionStatus.Connected
@@ -50,17 +46,6 @@ export function ContactImDirectorySyncSection({
     [ContactImSyncStatus.Queued]: t(($) => $['imPlatform.sync.status.queued']),
     [ContactImSyncStatus.Running]: t(($) => $['imPlatform.sync.status.running']),
     [ContactImSyncStatus.Success]: t(($) => $['imPlatform.sync.status.success']),
-  }
-  const countLabels = {
-    [ContactImSyncResult.Added]: t(($) => $['imPlatform.sync.count.added']),
-    [ContactImSyncResult.NotMatched]: t(($) => $['imPlatform.sync.count.not_matched']),
-    [ContactImSyncResult.Removed]: t(($) => $['imPlatform.sync.count.removed']),
-    [ContactImSyncResult.CreatedBinding]: t(($) => $['imPlatform.sync.count.created_binding']),
-    [ContactImSyncResult.Failed]: t(($) => $['imPlatform.sync.count.failed']),
-    [ContactImSyncResult.Matched]: t(($) => $['imPlatform.sync.count.matched']),
-    [ContactImSyncResult.Skipped]: t(($) => $['imPlatform.sync.count.skipped']),
-    [ContactImSyncResult.Unmatched]: t(($) => $['imPlatform.sync.count.unmatched']),
-    [ContactImSyncResult.UpdatedBinding]: t(($) => $['imPlatform.sync.count.updated_binding']),
   }
   const safeErrorLabels = {
     [ContactImSafeReason.ContactUpdateFailed]: t(
@@ -79,15 +64,42 @@ export function ContactImDirectorySyncSection({
   }
 
   return (
-    <div className="mt-5 rounded-xl border border-divider-subtle bg-components-panel-bg p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="system-sm-semibold text-text-primary">
-            {t(($) => $['imPlatform.sync.title'])}
-          </div>
-          <div className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $['imPlatform.sync.description'])}
-          </div>
+    <div className="mt-2 rounded-xl bg-background-section-burn px-4 py-3">
+      <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary">
+          <span aria-hidden className="i-ri-loop-left-line size-3 shrink-0" />
+          {displayedRun ? (
+            displayedRunIsActive ? (
+              <span aria-live="polite">{statusLabels[displayedRun.status]}</span>
+            ) : (
+              <>
+                <span>
+                  {t(($) => $['imPlatform.sync.latestSynced'], {
+                    date: displayedRunDate
+                      ? formatTimeFromNow(new Date(displayedRunDate).getTime())
+                      : t(($) => $['imPlatform.details.missing']),
+                  })}
+                </span>
+                <span aria-hidden className="flex shrink-0 px-1">
+                  <span className="h-3 w-px bg-divider-regular" />
+                </span>
+                <Button
+                  className="h-auto shrink-0 rounded-none px-0 font-normal hover:bg-transparent hover:underline"
+                  onClick={() => onViewDetails(displayedRun.id)}
+                  size="small"
+                  variant="ghost-accent"
+                >
+                  {t(($) => $['imPlatform.action.viewDetails'])}
+                </Button>
+              </>
+            )
+          ) : (
+            <span>
+              {activeSyncQuery.isPending
+                ? t(($) => $['imPlatform.sync.loading'])
+                : t(($) => $['imPlatform.sync.noRuns'])}
+            </span>
+          )}
         </div>
         <Button
           aria-label={
@@ -98,9 +110,10 @@ export function ContactImDirectorySyncSection({
           disabled={buttonDisabled}
           loading={startSync.isPending}
           onClick={() => {
-            if (buttonDisabled) return
+            if (buttonDisabled || startSync.isPending) return
             startSync.mutate()
           }}
+          size="small"
         >
           {isSyncing
             ? t(($) => $['imPlatform.action.syncing'])
@@ -109,73 +122,39 @@ export function ContactImDirectorySyncSection({
       </div>
 
       {disabledReason && (
-        <div className="mt-3 rounded-lg bg-background-default-subtle px-3 py-2 system-xs-regular text-text-tertiary">
-          {disabledReason}
-        </div>
+        <div className="mt-2 system-xs-regular text-text-tertiary">{disabledReason}</div>
       )}
 
       {(activeSyncQuery.isError || startSync.isError) && (
-        <div role="alert" className="mt-3 system-xs-regular text-text-destructive">
+        <div role="alert" className="mt-2 system-xs-regular text-text-destructive">
           {t(($) => $['imPlatform.sync.startFailed'])}
           {activeSyncQuery.isError && (
-            <Button className="ml-3" onClick={() => activeSyncQuery.refetch()}>
+            <Button className="ml-3" onClick={() => activeSyncQuery.refetch()} size="small">
               {t(($) => $['imPlatform.action.retry'])}
             </Button>
           )}
         </div>
       )}
 
-      {displayedRun ? (
-        <div className="mt-4 border-t border-divider-subtle pt-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div aria-live="polite" className="system-sm-medium text-text-primary">
-                {statusLabels[displayedRun.status]}
-              </div>
-              <div className="mt-1 system-xs-regular text-text-tertiary">
-                {t(($) => $['imPlatform.sync.latestSynced'], {
-                  date: displayedRunDate
-                    ? formatDate(displayedRunDate)
-                    : t(($) => $['imPlatform.details.missing']),
-                })}
-              </div>
-            </div>
-            {!isActiveRun(displayedRun) && (
-              <Button onClick={() => onViewDetails(displayedRun.id)}>
-                {t(($) => $['imPlatform.action.viewDetails'])}
-              </Button>
-            )}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {[
-              ContactImSyncResult.Added,
-              ContactImSyncResult.NotMatched,
-              ContactImSyncResult.Failed,
-              ContactImSyncResult.Removed,
-              ContactImSyncResult.Skipped,
-            ].map((result) => (
-              <div
-                key={result}
-                className="rounded-lg border border-divider-subtle bg-background-default-subtle px-2 py-1 system-xs-regular text-text-secondary"
-              >
-                {countLabels[result]}{' '}
-                <span className="font-semibold">{displayedRun.counts[result] ?? 0}</span>
-              </div>
-            ))}
+      {displayedRun && !displayedRunIsActive && (
+        <>
+          <div
+            aria-live="polite"
+            className={
+              displayedRun.status === ContactImSyncStatus.Success
+                ? 'sr-only'
+                : 'mt-2 system-xs-medium text-text-destructive'
+            }
+          >
+            {statusLabels[displayedRun.status]}
           </div>
           {(displayedRun.errorMessage || displayedRun.safeError) && (
-            <div className="mt-3 system-xs-regular text-text-destructive">
+            <div className="mt-2 system-xs-regular text-text-destructive">
               {displayedRun.errorMessage ??
                 (displayedRun.safeError ? safeErrorLabels[displayedRun.safeError] : null)}
             </div>
           )}
-        </div>
-      ) : (
-        <div className="mt-4 border-t border-divider-subtle pt-4 system-xs-regular text-text-tertiary">
-          {activeSyncQuery.isPending
-            ? t(($) => $['imPlatform.sync.loading'])
-            : t(($) => $['imPlatform.sync.noRuns'])}
-        </div>
+        </>
       )}
     </div>
   )

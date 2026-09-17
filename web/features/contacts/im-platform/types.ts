@@ -180,6 +180,7 @@ export type ContactImSyncRunView = {
   counts: ContactImSyncCounts
   durationMs: number | null
   id: string
+  provider?: ContactImProvider
   safeError: ContactImSafeReason | null
   startedAt: string | null
   startedBy: string | null
@@ -213,6 +214,7 @@ export type ContactImPlatformIdentityView = {
 }
 
 export type ContactImMatchedContactView = {
+  avatarUrl?: string | null
   email: string | null
   id: string
   name: string

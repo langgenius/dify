@@ -47,6 +47,16 @@ export type ContactImPlatformRepository = {
   testConnection: (command: TestContactImConnectionCommand) => Promise<ContactImIntegrationView>
 }
 
+const apiProviderNames = {
+  ding_talk: 'dingtalk',
+  resend: 'email',
+  feishu: 'feishu',
+  lark: 'lark',
+  ms_teams: 'ms_teams',
+  slack: 'slack',
+  we_com: 'we_com',
+} as const
+
 const toContactImSyncRunView = (run: ImSyncRun): ContactImSyncRunView => ({
   completedAt: run.finished_at == null ? null : new Date(run.finished_at * 1000).toISOString(),
   counts: run.result_counts,
@@ -56,6 +66,7 @@ const toContactImSyncRunView = (run: ImSyncRun): ContactImSyncRunView => ({
       : (run.finished_at - run.started_at) * 1000,
   errorMessage: run.error_message ?? null,
   id: run.id,
+  provider: apiProviderNames[run.provider],
   safeError: null,
   startedAt: run.started_at == null ? null : new Date(run.started_at * 1000).toISOString(),
   startedBy: null,
@@ -73,7 +84,9 @@ const toContactImSyncItemView = ({ id, result }: ImSyncResultItem): ContactImSyn
 
   return {
     id,
-    matchedContact: contact ? { id: contact.id, name: contact.name, email: null } : null,
+    matchedContact: contact
+      ? { id: contact.id, name: contact.name, email: null, avatarUrl: contact.avatar_url }
+      : null,
     platformIdentity: {
       displayName: entry?.display_name ?? null,
       email: entry?.email ?? null,
@@ -152,16 +165,6 @@ export function createContactImSyncApi(
     },
   }
 }
-
-const apiProviderNames = {
-  ding_talk: 'dingtalk',
-  resend: 'email',
-  feishu: 'feishu',
-  lark: 'lark',
-  ms_teams: 'ms_teams',
-  slack: 'slack',
-  we_com: 'we_com',
-} as const
 
 const providerMetadata: Record<
   ContactImProvider,

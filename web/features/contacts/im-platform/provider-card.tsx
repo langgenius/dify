@@ -2,18 +2,9 @@
 
 import type { ContactImProviderDefinition } from './types'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { ContactChannelIcon } from '../management/channel-icon'
 import { ContactImProvider } from './types'
-
-const providerIconClassNames = {
-  [ContactImProvider.DingTalk]: 'i-ri-message-3-line text-util-colors-blue-blue-600',
-  [ContactImProvider.Email]: 'i-ri-mail-send-fill text-text-accent',
-  [ContactImProvider.Feishu]: 'i-ri-flight-takeoff-line text-util-colors-cyan-cyan-600',
-  [ContactImProvider.Lark]: 'i-ri-flight-takeoff-line text-util-colors-cyan-cyan-600',
-  [ContactImProvider.MSTeams]: 'i-ri-microsoft-fill text-util-colors-purple-purple-600',
-  [ContactImProvider.WeCom]: 'i-ri-wechat-work-fill text-util-colors-green-green-600',
-  [ContactImProvider.Slack]: 'i-ri-slack-line text-util-colors-purple-purple-600',
-} satisfies Record<ContactImProviderDefinition['provider'], string>
 
 type ContactImProviderCardBaseProps = {
   description: string
@@ -50,43 +41,43 @@ export function ContactImProviderCard(props: ContactImProviderCardProps) {
     <div
       role="group"
       aria-label={provider.displayName}
-      className="flex min-h-16 items-center gap-3 rounded-[15px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg-hover px-3 py-2"
+      className="flex min-h-16 w-full items-center gap-3 rounded-[15px] bg-third-party-model-bg-default py-3 pr-4 pl-3 inset-ring-[0.5px] inset-ring-components-panel-border"
     >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs">
-        <span
-          aria-hidden="true"
-          className={cn('size-5', providerIconClassNames[provider.provider])}
-        />
+      <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg backdrop-blur-[4px]">
+        {provider.provider === ContactImProvider.Email ? (
+          <span aria-hidden className="i-ri-mail-send-fill size-6 text-text-accent" />
+        ) : (
+          <ContactChannelIcon provider={provider.provider} className="size-8" />
+        )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="system-sm-semibold text-text-primary">{provider.displayName}</div>
+        <div className="system-md-semibold text-text-primary">{provider.displayName}</div>
         <div className="system-xs-regular text-text-tertiary">
           {unavailableReason ?? description}
         </div>
       </div>
       {props.mode === 'configured' ? (
-        <div className="flex shrink-0 items-center gap-1 border-l border-divider-subtle pl-2">
-          <Button
-            aria-label={props.configureAriaLabel}
-            className="size-8 px-0"
-            disabled={props.actionDisabled}
-            variant="tertiary"
-            onClick={props.onConfigure}
-          >
-            <span aria-hidden="true" className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
-          </Button>
-          <Button
-            aria-label={props.deleteAriaLabel}
-            className="group size-8 px-0"
-            disabled={props.actionDisabled}
-            variant="tertiary"
-            onClick={props.onDelete}
-          >
-            <span
-              aria-hidden="true"
-              className="i-ri-delete-bin-line size-4 text-text-tertiary group-hover:text-text-destructive"
-            />
-          </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <span aria-hidden="true" className="ml-1 h-3 w-px bg-divider-regular" />
+          <div className="flex items-center gap-1">
+            <IconButton
+              aria-label={props.configureAriaLabel}
+              disabled={props.actionDisabled}
+              size="lg"
+              onClick={props.onConfigure}
+            >
+              <span aria-hidden="true" className="i-ri-equalizer-2-line size-4" />
+            </IconButton>
+            <IconButton
+              aria-label={props.deleteAriaLabel}
+              disabled={props.actionDisabled}
+              size="md"
+              tone="destructive"
+              onClick={props.onDelete}
+            >
+              <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+            </IconButton>
+          </div>
         </div>
       ) : (
         <Button

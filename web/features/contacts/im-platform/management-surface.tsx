@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ContactImBindingDialog } from './binding-dialog'
@@ -43,7 +44,7 @@ type BindingTarget = {
 }
 
 export function ContactsImPlatformManagementSurface() {
-  const { t, i18n } = useTranslation('contacts')
+  const { t } = useTranslation('contacts')
   const { t: tCommon } = useTranslation('common')
   const organization = useContactsImPlatformOrganization()
   const integrationsQuery = useContactImIntegrations()
@@ -176,12 +177,6 @@ export function ContactsImPlatformManagementSurface() {
       ($) => $['imPlatform.provider.unavailableReason.not_released'],
     ),
   }
-  const formatDate = (value: string) =>
-    new Intl.DateTimeFormat(i18n.language, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(value))
-
   const openProvider = (provider: ContactImProviderDefinition) => {
     if (
       provider.availability !== ContactImProviderAvailability.Available ||
@@ -283,25 +278,28 @@ export function ContactsImPlatformManagementSurface() {
       )}
 
       {syncIntegration && (
-        <ContactImDirectorySyncSection
-          formatDate={formatDate}
-          integration={syncIntegration}
-          onViewDetails={setSyncRunId}
-        />
+        <ContactImDirectorySyncSection integration={syncIntegration} onViewDetails={setSyncRunId} />
       )}
 
       {availableProviders.length > 0 && (
-        <div
+        <Collapsible
+          defaultOpen
           className={
-            configuredProviders.length > 0 ? 'mt-4 border-t border-divider-subtle pt-4' : ''
+            configuredProviders.length > 0
+              ? 'mt-4 pt-4 shadow-[inset_0_1px_0_0_var(--color-divider-subtle)]'
+              : ''
           }
         >
-          <div className="mb-2 system-xs-medium-uppercase text-text-tertiary">
+          <CollapsibleTrigger className="mb-2 min-h-4 justify-start gap-1 rounded-sm px-0 system-sm-medium-uppercase text-text-tertiary hover:not-data-disabled:bg-transparent data-panel-open:text-text-tertiary">
+            <span
+              aria-hidden
+              className="i-ri-arrow-down-s-line size-4 shrink-0 -rotate-90 group-data-panel-open:rotate-0"
+            />
             {configuredProviders.length > 0
               ? t(($) => $['imPlatform.connectMore'])
               : t(($) => $['imPlatform.chooseProvider'])}
-          </div>
-          <div className="space-y-2">
+          </CollapsibleTrigger>
+          <CollapsiblePanel className="space-y-2">
             {availableProviders.map((provider) => {
               const unavailable =
                 provider.availability === ContactImProviderAvailability.Unavailable
@@ -333,8 +331,8 @@ export function ContactsImPlatformManagementSurface() {
                 />
               )
             })}
-          </div>
-        </div>
+          </CollapsiblePanel>
+        </Collapsible>
       )}
 
       {bindingTarget?.provider.provider === ContactImProvider.Email && (

@@ -232,6 +232,34 @@ describe('Human Input v2 Message Template', () => {
     expect(props.onChange).not.toHaveBeenCalled()
   })
 
+  it('opens test settings from the card without sending and discards changes with Close', async () => {
+    const user = userEvent.setup()
+    const requests = setupFetch()
+    const { props } = renderTemplate()
+    const testTrigger = screen.getByRole('button', {
+      name: 'workflow.nodes.humanInputV2.template.test',
+    })
+    await user.click(testTrigger)
+
+    expect(
+      screen.getByRole('combobox', { name: 'workflow.nodes.humanInputV2.template.testChannel' }),
+    ).toBeInTheDocument()
+    expect(requests).toHaveLength(0)
+    expect(mocks.syncDraft).not.toHaveBeenCalled()
+    await user.clear(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'))
+    await user.type(
+      screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'),
+      'Unsaved test subject',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(props.onChange).not.toHaveBeenCalled()
+    await waitFor(() => expect(testTrigger).toHaveFocus())
+    await openTemplate(user)
+    expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toHaveValue(
+      'Original subject',
+    )
+  })
+
   it.each([
     { mode: 'workflow', chat: false, prefix: 'workflows' },
     { mode: 'chatflow', chat: true, prefix: 'advanced-chat/workflows' },
