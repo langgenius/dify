@@ -104,8 +104,7 @@ Intuitive interface for crafting prompts, comparing model performance, and addin
 **4. RAG Pipeline**:
 Extensive RAG capabilities that cover everything from document ingestion to retrieval, with out-of-box support for text extraction from PDFs, PPTs, and other common document formats.
 
-**5. Agent capabilities**:
-You can define agents based on LLM Function Calling or ReAct, and add pre-built or custom tools for the agent. Dify provides 50+ built-in tools for AI agents, such as Google Search, DALL·E, Stable Diffusion and WolframAlpha.
+**5. Agent**: Autonomous agents with a sandbox of their own: they run commands, install software, and handle files to get open-ended tasks done. Describe the agent you want and it builds itself. Give it skills, connect tools from [Dify Marketplace](https://marketplace.dify.ai/?category=tool), MCP servers, or your own APIs, and put it to work as a chat app or as a step in any workflow.
 
 **6. LLMOps**:
 Monitor and analyze application logs and performance over time. You could continuously improve prompts, datasets, and models based on production data and annotations.

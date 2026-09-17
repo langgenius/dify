@@ -449,10 +449,6 @@ class App(Base):
     )
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
 
-    @property
-    def desc_or_prompt(self) -> str:
-        return self.desc_or_prompt_with_session(session=db.session())
-
     def desc_or_prompt_with_session(self, *, session: Session) -> str:
         if self.description:
             return self.description
@@ -470,19 +466,11 @@ class App(Base):
     def site_with_session(self, *, session: Session) -> Site | None:
         return session.scalar(select(Site).where(Site.app_id == self.id))
 
-    @property
-    def app_model_config(self) -> AppModelConfig | None:
-        return self.app_model_config_with_session(session=db.session())
-
     def app_model_config_with_session(self, *, session: Session) -> AppModelConfig | None:
         if self.app_model_config_id:
             return session.scalar(select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id))
 
         return None
-
-    @property
-    def workflow(self) -> Workflow | None:
-        return self.workflow_with_session(session=db.session())
 
     def workflow_with_session(self, *, session: Session) -> Workflow | None:
         if self.workflow_id:
@@ -979,9 +967,8 @@ class RecommendedApp(TypeBase):
         init=False,
     )
 
-    @property
-    def app(self) -> App | None:
-        return db.session.scalar(select(App).where(App.id == self.app_id))
+    def app(self, *, session: Session) -> App | None:
+        return session.scalar(select(App).where(App.id == self.app_id))
 
 
 class InstalledApp(TypeBase):
@@ -1054,13 +1041,11 @@ class AccountTrialAppRecord(TypeBase):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
 
-    @property
-    def app(self) -> App | None:
-        return db.session.scalar(select(App).where(App.id == self.app_id))
+    def app(self, *, session: Session) -> App | None:
+        return session.scalar(select(App).where(App.id == self.app_id))
 
-    @property
-    def user(self) -> Account | None:
-        return db.session.scalar(select(Account).where(Account.id == self.account_id))
+    def user(self, *, session: Session) -> Account | None:
+        return session.scalar(select(Account).where(Account.id == self.account_id))
 
 
 class ExporleBanner(TypeBase):
@@ -2174,11 +2159,11 @@ class AppMCPServer(TypeBase):
     )
 
     @staticmethod
-    def generate_server_code(n: int) -> str:
+    def generate_server_code(n: int, *, session: Session) -> str:
         while True:
             result = generate_string(n)
             while (
-                db.session.scalar(select(func.count(AppMCPServer.id)).where(AppMCPServer.server_code == result)) or 0
+                session.scalar(select(func.count(AppMCPServer.id)).where(AppMCPServer.server_code == result)) or 0
             ) > 0:
                 result = generate_string(n)
 

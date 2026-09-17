@@ -132,6 +132,19 @@ describe('WorkflowChecklist', () => {
     expect(mockHandleNodeSelect).not.toHaveBeenCalled()
   })
 
+  it('should show the tooltip without replacing the warning count in the accessible name', async () => {
+    const user = userEvent.setup()
+    render(<WorkflowChecklist disabled={false} />)
+
+    const trigger = screen.getByRole('button', { name: 'workflow.panel.checklist 2' })
+    await user.hover(trigger)
+
+    expect(await screen.findByText('workflow.panel.checklist', { selector: 'div' })).toBeVisible()
+    expect(trigger).toHaveAccessibleName('workflow.panel.checklist 2')
+    await user.click(trigger)
+    expect(screen.getByTestId('plugin-group')).toBeInTheDocument()
+  })
+
   it('should open the inline agent editor after selecting an inline agent reference warning', async () => {
     const user = userEvent.setup()
     mockChecklistItems[1] = {
