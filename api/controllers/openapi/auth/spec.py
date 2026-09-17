@@ -46,3 +46,10 @@ class EndpointSpec:
     body: type[BaseModel] | None = None
     internal: bool = False
     deprecated: bool = False
+
+    def allows(self, edition: DeploymentEdition) -> bool:
+        """Whether this deployment exposes the route at all. `edition is None`
+        means every edition does. The router turns a `False` into a 404 and the
+        catalog leaves the op out, so both read the gate from here.
+        """
+        return self.edition is None or edition in self.edition

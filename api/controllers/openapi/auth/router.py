@@ -37,7 +37,7 @@ class AuthRouter:
         caller, so this is the one place it is checked. The bearer feature flag
         is the same kind of fact and answers 503 next.
         """
-        if spec.edition is not None and dify_config.DEPLOYMENT_EDITION not in spec.edition:
+        if not spec.allows(dify_config.DEPLOYMENT_EDITION):
             raise NotFound()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             assert_license_valid()

@@ -12,6 +12,7 @@ from controllers.openapi._catalog import (
     _VERBS,
     CATALOG_HEADER,
     CATALOG_PATH,
+    _catalog_path,
     build_catalog,
     catalog_for,
     inline_refs,
@@ -86,6 +87,7 @@ def test_get_and_delete_bind_to_query(app: Flask):
     ops = build_catalog(app)["ops"]
     assert ops["console_app.list"]["bind"]["page"] == "query"
     assert ops["account.sessions.revoke"]["bind"] == {"session_id": "path"}
+    assert ops["run.events"]["bind"]["continue_on_pause"] == "query"
 
 
 def test_catalog_has_no_refs_or_defs(app: Flask):
@@ -167,3 +169,25 @@ def test_catalog_route_is_allowlisted_from_version_gate(app: Flask):
     client = app.test_client()
     res = client.get(CATALOG_PATH, headers={"User-Agent": "difyctl/0.0.1 (x; y; z)"})
     assert res.status_code == 200
+
+
+def test_a_neighbouring_prefix_is_not_stamped(app: Flask):
+    """`/openapi/v1beta` is a different surface; the fingerprint says nothing about it."""
+
+    @app.get("/openapi/v1beta/x")
+    def _beta() -> str:
+        return "ok"
+
+    response = app.test_client().get("/openapi/v1beta/x")
+    assert response.status_code == 200
+    assert CATALOG_HEADER not in response.headers
+
+
+def test_catalog_path_converts_a_plain_placeholder():
+    assert _catalog_path("/openapi/v1/apps/<string:app_id>", arguments={"app_id"}) == "/openapi/v1/apps/{app_id}"
+
+
+def test_catalog_path_refuses_a_converter_it_cannot_read():
+    """A converter carrying arguments would otherwise reach the published path raw."""
+    with pytest.raises(ValueError, match="placeholders"):
+        _catalog_path("/openapi/v1/things/<int(min=1):n>", arguments={"n"})

@@ -14,7 +14,7 @@ import copy
 import hashlib
 import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from enum import StrEnum
 from typing import Any, Final
 
@@ -25,11 +25,13 @@ from configs import dify_config
 from controllers.openapi.auth.spec import EndpointSpec
 
 CATALOG_HEADER: Final = "X-Dify-Catalog"
-CATALOG_PATH: Final = "/openapi/v1/_catalog"
-_PREFIX: Final = "/openapi/v1"
+# Trailing slash: `/openapi/v1beta/x` is a different surface, not this one.
+_PREFIX: Final = "/openapi/v1/"
+CATALOG_PATH: Final = f"{_PREFIX}_catalog"
 _VERBS: Final = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE"})
 _EXT_KEY: Final = "openapi_catalog"
 _PLACEHOLDER_RE: Final = re.compile(r"<(?:\w+:)?(\w+)>")
+_TEMPLATE_RE: Final = re.compile(r"\{(\w+)\}")
 _DEFS: Final = "$defs"
 _REF: Final = "$ref"
 _REF_PREFIX: Final = "#/$defs/"
@@ -96,9 +98,9 @@ def _has_binary_leaf(node: Any) -> bool:
     return any(_has_binary_leaf(value) for value in node.values())
 
 
-def derive_bind(*, method: str, path_params: Sequence[str], schema: Mapping[str, Any]) -> dict[str, str]:
+def derive_bind(*, method: str, path_params: Sequence[str], schema: Mapping[str, Any]) -> dict[str, Bind]:
     default = Bind.QUERY if method.upper() in _QUERY_METHODS else Bind.BODY
-    bind: dict[str, str] = {}
+    bind: dict[str, Bind] = {}
     for name, prop in schema.get("properties", {}).items():
         if name in path_params:
             bind[name] = Bind.PATH
@@ -109,17 +111,19 @@ def derive_bind(*, method: str, path_params: Sequence[str], schema: Mapping[str,
     return bind
 
 
-def _catalog_path(rule: str) -> str:
-    return _PLACEHOLDER_RE.sub(r"{\1}", rule)
+def _catalog_path(rule: str, *, arguments: Collection[str]) -> str:
+    """Werkzeug converters this substitution does not understand (``<int(min=1):n>``)
+    would otherwise leave their raw syntax in the published path.
+    """
+    path = _PLACEHOLDER_RE.sub(r"{\1}", rule)
+    if set(_TEMPLATE_RE.findall(path)) != set(arguments):
+        raise ValueError(f"path placeholders of {rule} do not resolve to its arguments")
+    return path
 
 
 def _spec_of(view: Any) -> EndpointSpec | None:
     spec = getattr(view, "__spec__", None)
     return spec if isinstance(spec, EndpointSpec) else None
-
-
-def _edition_allows(spec: EndpointSpec) -> bool:
-    return spec.edition is None or dify_config.DEPLOYMENT_EDITION in spec.edition
 
 
 def build_catalog(app: Flask) -> dict[str, Any]:
@@ -132,7 +136,7 @@ def build_catalog(app: Flask) -> dict[str, Any]:
             continue
         for verb in sorted((rule.methods or set()) & _VERBS):
             spec = _spec_of(getattr(cls, verb.lower(), None))
-            if spec is None or not _edition_allows(spec):
+            if spec is None or not spec.allows(dify_config.DEPLOYMENT_EDITION):
                 continue
             path_params = sorted(rule.arguments)
             schema = op_input_schema(path_params=path_params, query=spec.query, body=spec.body)
@@ -141,7 +145,7 @@ def build_catalog(app: Flask) -> dict[str, Any]:
             ops[spec.op] = {
                 "summary": spec.summary,
                 "method": verb,
-                "path": _catalog_path(rule.rule),
+                "path": _catalog_path(rule.rule, arguments=rule.arguments),
                 "kind": spec.kind.value,
                 "input": schema,
                 "bind": derive_bind(method=verb, path_params=path_params, schema=schema),
