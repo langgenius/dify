@@ -102,9 +102,7 @@ class MCPToolManageService:
         try:
             uuid.UUID(provider_id)
         except (AttributeError, TypeError, ValueError):
-            # MCPToolProvider.id is a uuid column: comparing it against a server
-            # identifier would fail inside the database driver instead of here.
-            raise ValueError("MCP tool not found")
+            raise ValueError("expected a valid UUID, but got: " + provider_id)
 
         stmt = select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id)
         return self._scalar_one_provider(stmt)
