@@ -2740,6 +2740,31 @@ def test_import_skill_package_accepts_crlf_skill_md() -> None:
     assert skill_md_file["content"].startswith("---\nname: expense-sop\n")
 
 
+@pytest.mark.parametrize("include_empty_directory", [False, True])
+def test_import_skill_package_drops_explicit_wrapper_directory(include_empty_directory: bool) -> None:
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("critical-thinking/", "")
+        archive.writestr("__MACOSX/._critical-thinking", b"\x00")
+        archive.writestr(
+            "critical-thinking/SKILL.md",
+            "---\nname: critical-thinking\ndescription: Critical thinking\n---\n# Critical thinking",
+        )
+        archive.writestr("__MACOSX/critical-thinking/._SKILL.md", b"\x00")
+        if include_empty_directory:
+            archive.writestr("critical-thinking/references/", "")
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillImportPayload(content=package.getvalue(), filename="critical-thinking.zip"),
+    )
+
+    expected_paths = ["SKILL.md", "references"] if include_empty_directory else ["SKILL.md"]
+    assert [item["path"] for item in imported["files"]] == expected_paths
+
+
 def test_import_skill_package_strips_root_alongside_macos_metadata_folder() -> None:
     package = io.BytesIO()
     with zipfile.ZipFile(package, "w") as archive:
