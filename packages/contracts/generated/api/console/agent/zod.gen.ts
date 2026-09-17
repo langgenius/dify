@@ -1199,6 +1199,7 @@ export const zAgentLogMessageItemResponse = z.object({
   from_end_user_id: z.string().nullish(),
   id: z.string(),
   latency: z.number(),
+  message_files: z.array(zMessageFile).optional(),
   message_id: z.string(),
   message_tokens: z.int(),
   query: z.string(),
