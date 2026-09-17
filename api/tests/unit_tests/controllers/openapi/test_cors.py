@@ -16,7 +16,7 @@ from flask_cors import CORS
 from flask_restx import Resource
 
 from configs import dify_config
-from extensions.ext_blueprints import OPENAPI_HEADERS, OPENAPI_MAX_AGE_SECONDS
+from extensions.ext_blueprints import EXPOSED_HEADERS, OPENAPI_HEADERS, OPENAPI_MAX_AGE_SECONDS
 from libs.external_api import ExternalApi
 
 if not hasattr(builtins, "MethodView"):
@@ -41,7 +41,7 @@ def _make_app(allowed_origins: list[str], blueprint_name: str) -> Flask:
         supports_credentials=True,
         allow_headers=list(OPENAPI_HEADERS),
         methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        expose_headers=["X-Version"],
+        expose_headers=list(EXPOSED_HEADERS),
         max_age=OPENAPI_MAX_AGE_SECONDS,
     )
 
@@ -125,3 +125,13 @@ def test_authorization_header_is_in_allow_headers():
 
     allow_headers = response.headers.get("Access-Control-Allow-Headers", "").lower()
     assert "authorization" in allow_headers
+
+
+def test_catalog_fingerprint_header_is_exposed():
+    """X-Dify-Catalog must be readable cross-origin, not just present on the wire."""
+    app = _make_app(["https://app.example.com"], "openapi_t6")
+    client = app.test_client()
+    response = client.get("/openapi/v1/_health", headers={"Origin": "https://app.example.com"})
+
+    expose_headers = response.headers.get("Access-Control-Expose-Headers", "")
+    assert "X-Dify-Catalog" in expose_headers

@@ -1192,10 +1192,10 @@ def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:
 
     expected = {(route.method, _rule_path(route)) for route in ROUTES}
     assert guarded == expected
-    # The remainder is the device-flow and documentation surface. Its size is pinned
-    # rather than enumerated: a list of exemptions rots silently — the one this
+    # The remainder is the device-flow, documentation and catalog surface. Its size is
+    # pinned rather than enumerated: a list of exemptions rots silently — the one this
     # replaced still named `swagger.json`, a route that is not registered at all.
-    assert len(unguarded) == 13
+    assert len(unguarded) == 14
 
 
 @singledispatch
@@ -1252,6 +1252,7 @@ ERROR_DEFAULT_RESPONSE: dict[str, object] = {
 """Exactly what `@returns` registers as `("default", "Error", ErrorBody)`."""
 
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
+    ("get", "/_catalog"): frozenset({"200"}),
     ("get", "/_health"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
