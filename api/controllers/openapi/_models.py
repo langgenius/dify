@@ -13,6 +13,7 @@ from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from libs.oauth_bearer import SubjectType
 from models.model import AppMode
+from services.app_dsl_service import Import
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 200
@@ -53,6 +54,17 @@ class MessageMetadata(BaseModel):
     retriever_resources: list[dict[str, Any]] = []
 
 
+class Hint(BaseModel):
+    """A next step the caller can hand straight to `call <op> --input <input>`."""
+
+    summary: str
+    op: str
+    input: dict[str, Any] = Field(description="Ready-to-send input for `op`; unknown values are null")
+    form: list[dict[str, Any]] | None = Field(
+        default=None, description="Form fields behind `input.inputs`, copied from the pausing event"
+    )
+
+
 class PaginationEnvelope[T](BaseModel):
     """The one shape every paginated list on this surface answers with."""
 
@@ -61,6 +73,7 @@ class PaginationEnvelope[T](BaseModel):
     total: int
     has_more: bool
     data: list[T]
+    hints: list[Hint] = Field(default_factory=list, description="Next steps; one `Next page` entry while `has_more`")
 
     @classmethod
     def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> Self:
@@ -465,6 +478,12 @@ class AppDslExportResponse(BaseModel):
     """Export DSL response."""
 
     data: str = Field(..., description="DSL YAML string")
+
+
+class AppDslImportResponse(Import):
+    """`Import` plus the server-built next step for a pending import."""
+
+    hints: list[Hint] = Field(default_factory=list, description="Next steps; empty when the import finished")
 
 
 class FormSubmitResponse(BaseModel):

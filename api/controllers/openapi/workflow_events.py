@@ -21,6 +21,7 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
+from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -151,7 +152,7 @@ class OpenApiWorkflowEventsApi(Resource):
             event_generator = _generate_stream_events
 
         return Response(
-            event_generator(),
+            attach_stream_hints(event_generator(), app_id=owning_app_id),
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )

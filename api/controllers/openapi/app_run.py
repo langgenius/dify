@@ -25,6 +25,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._files import file_rows_of, materialize_files
+from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -207,7 +208,7 @@ class AppRunApi(Resource):
         )
 
         # response-contract:ignore compact_generate_response
-        return helper.compact_generate_response(stream_obj)
+        return helper.compact_generate_response(attach_stream_hints(stream_obj, app_id=app_model.id))
 
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")

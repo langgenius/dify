@@ -7,7 +7,14 @@ from werkzeug.exceptions import Forbidden
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
-from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
+from controllers.openapi._hints import IMPORT_CONFIRM_OP
+from controllers.openapi._models import (
+    AppDslExportQuery,
+    AppDslExportResponse,
+    AppDslImportPayload,
+    AppDslImportResponse,
+    Hint,
+)
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
@@ -25,6 +32,19 @@ from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+
+
+def _import_response(result: Import, *, workspace_id: str) -> AppDslImportResponse:
+    hints: list[Hint] = []
+    if result.status == ImportStatus.PENDING:
+        hints.append(
+            Hint(
+                summary="Confirm the pending import",
+                op=IMPORT_CONFIRM_OP,
+                input={"workspace_id": workspace_id, "import_id": result.id},
+            )
+        )
+    return AppDslImportResponse(**result.model_dump(), hints=hints)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports")
@@ -54,9 +74,9 @@ class AppDslImportApi(Resource):
         ),
         body=AppDslImportPayload,
         returns=(
-            (200, Import, "Import completed"),
-            (202, Import, "Import pending confirmation"),
-            (400, Import, "Import failed"),
+            (200, AppDslImportResponse, "Import completed"),
+            (202, AppDslImportResponse, "Import pending confirmation"),
+            (400, AppDslImportResponse, "Import failed"),
         ),
     )
     def post(self, ctx: Context, workspace_id: str, *, body: AppDslImportPayload):
@@ -84,13 +104,14 @@ class AppDslImportApi(Resource):
             else:
                 session.commit()
 
+        response = _import_response(result, workspace_id=workspace_id)
         match result.status:
             case ImportStatus.FAILED:
-                return result, 400
+                return response, 400
             case ImportStatus.PENDING:
-                return result, 202
+                return response, 202
             case _:
-                return result, 200
+                return response, 200
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports/<string:import_id>:confirm")
@@ -106,7 +127,7 @@ class AppDslImportConfirmApi(Resource):
     """
 
     @endpoint(
-        op="console_app.dsl.import_confirm",
+        op=IMPORT_CONFIRM_OP,
         kind=Kind.OBJECT,
         summary="Confirm a pending DSL import",
         requirements=(

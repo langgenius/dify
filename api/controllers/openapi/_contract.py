@@ -10,9 +10,9 @@ compose with.
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from functools import wraps
-from typing import Any, cast
+from typing import Any, Final, cast
 
 from flask_restx import abort
 from pydantic import BaseModel, ValidationError
@@ -20,6 +20,8 @@ from pydantic import BaseModel, ValidationError
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody
+from controllers.openapi._hints import next_page_hint
+from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
@@ -28,9 +30,27 @@ from enums import DeploymentEdition
 
 __all__ = ["Kind", "accepts", "endpoint", "returns"]
 
+_INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
 
-def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
-    """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs."""
+
+def _with_next_page_hint(result: Any, *, op: str, path_args: Mapping[str, Any], query: BaseModel | None) -> Any:
+    if not isinstance(result, PaginationEnvelope) or result.hints:
+        return result
+    hint = next_page_hint(op=op, path_args=path_args, query=query, envelope=result)
+    if hint is not None:
+        result.hints = [hint]
+    return result
+
+
+def accepts(
+    *, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None, op: str | None = None
+) -> Callable:
+    """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs.
+
+    When ``op`` is given, a result that comes back as a bare ``PaginationEnvelope`` (no hints
+    of its own) gets a ``Next page`` hint filled in — only this layer knows both the op id and
+    the raw request kwargs the hint needs to echo.
+    """
 
     def decorator(view: Callable) -> Callable:
         @wraps(view)
@@ -47,7 +67,11 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
                     message="Request validation failed",
                     errors=exc.errors(include_url=False, include_input=False, include_context=False),
                 )
-            return view(*args, **kwargs)
+            result = view(*args, **kwargs)
+            if op is None:
+                return result
+            path_args = {name: value for name, value in kwargs.items() if name not in _INJECTED_KWARGS}
+            return _with_next_page_hint(result, op=op, path_args=path_args, query=kwargs.get("query"))
 
         if query is not None:
             openapi_ns.doc(params=query_params_from_model(query))(wrapper)
@@ -153,7 +177,7 @@ def endpoint(
 
         decorated = view
         if query is not None or body is not None:
-            decorated = accepts(query=query, body=body)(decorated)
+            decorated = accepts(query=query, body=body, op=op)(decorated)
         for return_spec in reversed(return_specs):
             decorated = _apply_returns(*return_spec)(decorated)
         decorated = subject_router.guard(spec)(decorated)
