@@ -564,7 +564,12 @@ function SkillReferenceItem({
           }
         />
       </span>
-      <span className="max-w-63 min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+      <span
+        className={cn(
+          'min-w-0 flex-1 truncate system-sm-regular text-text-secondary',
+          !compact && 'max-w-63',
+        )}
+      >
         {workflowName}
       </span>
       <span
