@@ -143,13 +143,11 @@ function CreateFromDSLModal({
   const isPackageImport =
     currentTab === CreateFromDSLModalTab.FROM_FILE &&
     currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
-  // URL content is identified by the server, which enforces the matching quota.
-  const checkAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
   const isAppQuotaUnavailable =
-    checkAppQuota && deploymentEdition === 'CLOUD' && appQuota === undefined
+    !isPackageImport && deploymentEdition === 'CLOUD' && appQuota === undefined
   // A limit of 0 means unlimited.
   const isAppsFull =
-    checkAppQuota &&
+    !isPackageImport &&
     deploymentEdition === 'CLOUD' &&
     appQuota !== undefined &&
     appQuota.limit > 0 &&
