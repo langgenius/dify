@@ -2017,3 +2017,69 @@ describe('consoleQuery apiBasedExtension mutation defaults', () => {
     expect(queryClient.getQueryData(listKey)).toEqual([remainingExtension])
   })
 })
+
+describe('workspace skill deletion cache', () => {
+  it.each([true, false])('refreshes agent bindings after deletion (active: %s)', async (active) => {
+    const consoleQuery = await loadConsoleQuery()
+    const client = new QueryClient({
+      defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+    })
+    const input = { params: { agent_id: 'agent-1' } }
+    const queryKey = consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryKey({ input })
+    const previousBindings = { agent_id: 'agent-1', skill_ids: ['skill-1'], data: [] }
+    const emptyBindings = { agent_id: 'agent-1', skill_ids: [], data: [] }
+    client.setQueryData(queryKey, previousBindings)
+    const queryFn = vi.fn(async () => emptyBindings)
+    const observer = new QueryObserver(client, { queryKey, queryFn })
+    let unsubscribe = active ? observer.subscribe(() => {}) : undefined
+    const onSuccess = vi.fn()
+    const mutation = new MutationObserver(
+      client,
+      consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+        mutationFn: async () => ({ id: 'skill-1', deleted: true }),
+        onSuccess,
+      }),
+    )
+
+    try {
+      await mutation.mutate({
+        params: { skill_id: 'skill-1' },
+        body: { confirmation_name: 'Skill' },
+      })
+      if (!active) unsubscribe = observer.subscribe(() => {})
+      await vi.waitFor(() => expect(observer.getCurrentResult().data).toEqual(emptyBindings))
+      expect(queryFn).toHaveBeenCalledTimes(1)
+      expect(onSuccess).toHaveBeenCalledTimes(1)
+    } finally {
+      unsubscribe?.()
+      client.clear()
+    }
+  })
+
+  it('preserves cached bindings when deletion fails', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const client = new QueryClient()
+    const queryKey = consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryKey({
+      input: { params: { agent_id: 'agent-1' } },
+    })
+    const bindings = { agent_id: 'agent-1', skill_ids: ['skill-1'], data: [] }
+    client.setQueryData(queryKey, bindings)
+    const mutation = new MutationObserver(
+      client,
+      consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+        mutationFn: async () => {
+          throw new Error('Deletion failed')
+        },
+      }),
+    )
+    try {
+      await expect(mutation.mutate({ params: { skill_id: 'skill-1' }, body: {} })).rejects.toThrow(
+        'Deletion failed',
+      )
+      expect(client.getQueryData(queryKey)).toEqual(bindings)
+      expect(client.getQueryState(queryKey)?.isInvalidated).toBe(false)
+    } finally {
+      client.clear()
+    }
+  })
+})

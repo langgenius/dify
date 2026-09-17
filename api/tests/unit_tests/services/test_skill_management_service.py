@@ -1150,6 +1150,80 @@ def test_replace_agent_bindings_rejects_skill_name_conflict_with_agent_config_sk
     assert exc_info.value.details == {"names": ["finance-sop"]}
 
 
+@pytest.mark.parametrize(
+    ("snapshot_has_skill", "draft_has_skill", "debug_has_skill", "expect_conflict"),
+    [
+        (True, False, False, False),
+        (True, False, True, False),
+        (False, True, False, True),
+        (True, True, False, True),
+        (False, None, True, False),
+        (True, None, True, True),
+    ],
+)
+def test_replace_agent_bindings_checks_editable_config(
+    snapshot_has_skill: bool,
+    draft_has_skill: bool | None,
+    debug_has_skill: bool,
+    expect_conflict: bool,
+) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    skill_ref = AgentConfigSkillRefConfig(name="finance-sop", description="Embedded skill.", file_id="tool-file-1")
+    with session_factory.create_session() as session:
+        snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=1,
+            config_snapshot=AgentSoulConfig(config_skills=[skill_ref] if snapshot_has_skill else []),
+            created_by=USER,
+        )
+        session.add(snapshot)
+        session.flush()
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_snapshot_id = snapshot.id
+        if draft_has_skill is not None:
+            session.add(
+                AgentConfigDraft(
+                    tenant_id=TENANT,
+                    agent_id=AGENT,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    account_id=None,
+                    draft_owner_key="",
+                    base_snapshot_id=snapshot.id,
+                    config_snapshot=AgentSoulConfig(config_skills=[skill_ref] if draft_has_skill else []),
+                    created_by=USER,
+                )
+            )
+        if debug_has_skill:
+            session.add(
+                AgentConfigDraft(
+                    tenant_id=TENANT,
+                    agent_id=AGENT,
+                    draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    account_id=USER,
+                    draft_owner_key=USER,
+                    base_snapshot_id=snapshot.id,
+                    config_snapshot=AgentSoulConfig(config_skills=[skill_ref]),
+                    created_by=USER,
+                )
+            )
+        session.commit()
+
+    if expect_conflict:
+        with pytest.raises(SkillManagementServiceError) as exc_info:
+            service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+        assert exc_info.value.code == "agent_skill_name_conflict"
+        assert exc_info.value.details == {"names": ["finance-sop"]}
+    else:
+        result = service.replace_agent_bindings(
+            tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]]
+        )
+        assert result["skill_ids"] == [created["id"]]
+        assert service.list_agent_bindings(tenant_id=TENANT, agent_id=AGENT)["data"][0]["id"] == created["id"]
+
+
 def test_replace_agent_bindings_allows_existing_bound_workspace_skill_name_in_agent_config() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
