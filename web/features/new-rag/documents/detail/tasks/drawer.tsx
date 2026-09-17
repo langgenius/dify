@@ -179,8 +179,10 @@ export function DocumentDetailTasksDrawer({
                   ref={drawerCloseButtonRef}
                   id={DOCUMENT_TASK_DRAWER_CLOSE_ID}
                   aria-label={tCommon(($) => $['operation.close'])}
-                  className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] size-6.5 rounded-md"
-                />
+                  className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))]"
+                >
+                  <span aria-hidden className="i-ri-close-line size-5" />
+                </DrawerCloseButton>
                 <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
                   {t(($) => $.backgroundTasksDescription)}
                 </DrawerDescription>

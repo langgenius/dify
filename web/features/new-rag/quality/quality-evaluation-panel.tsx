@@ -328,11 +328,11 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
         <DialogClose
           render={
             <IconButton
+              size="lg"
               aria-label={t(($) => $['qualityPage.closeDialog'])}
               className="absolute inset-e-6 top-6 z-10"
-              size="sm"
             >
-              <span aria-hidden className="i-ri-close-line size-4" />
+              <span aria-hidden className="i-ri-close-line size-5" />
             </IconButton>
           }
         />
@@ -537,11 +537,11 @@ function RunEvaluationDialogContent({
           <DialogClose
             render={
               <IconButton
+                size="lg"
                 aria-label={t(($) => $['qualityPage.closeDialog'])}
                 className="absolute inset-e-6 top-6"
-                size="sm"
               >
-                <span aria-hidden className="i-ri-close-line size-4" />
+                <span aria-hidden className="i-ri-close-line size-5" />
               </IconButton>
             }
           />

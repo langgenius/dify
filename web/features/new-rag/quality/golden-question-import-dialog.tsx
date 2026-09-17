@@ -118,10 +118,11 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
         <DialogClose
           render={
             <IconButton
+              size="lg"
               aria-label={t(($) => $['qualityPage.closeDialog'])}
-              className="static size-5"
+              className="static"
             >
-              <span aria-hidden className="i-ri-close-line size-4" />
+              <span aria-hidden className="i-ri-close-line size-5" />
             </IconButton>
           }
         />

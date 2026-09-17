@@ -20,6 +20,7 @@ import {
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
@@ -315,16 +316,16 @@ function CreateKnowledgeSession() {
           aria-labelledby={dialogTitleId}
           className="fixed inset-x-3 top-4 bottom-4 grid min-h-0 min-w-0 overflow-hidden xl:grid-cols-2"
         >
-          <Button
+          <IconButton
+            size="lg"
             variant="ghost"
-            size="large"
             aria-label={tCommon(($) => $['operation.close'])}
-            className="absolute top-3 right-3 z-10 size-9 rounded-xl bg-background-section-burn px-0 text-text-tertiary"
+            className="absolute top-3 right-3 z-10 bg-background-section-burn"
             onClick={requestClose}
             disabled={submissionPending}
           >
             <span aria-hidden className="i-ri-close-line size-5" />
-          </Button>
+          </IconButton>
 
           <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle xl:items-end xl:border-r">
             <div className="min-h-6 w-full max-w-180 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />

@@ -331,10 +331,9 @@ export function DocumentMetadataDrawer() {
                 <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                   {t(($) => $['metadata.metadata'], { ns: 'dataset' })}
                 </DrawerTitle>
-                <DrawerCloseButton
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  className="size-6 rounded-md"
-                />
+                <DrawerCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })}>
+                  <span aria-hidden className="i-ri-close-line size-5" />
+                </DrawerCloseButton>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
                 <div className="system-sm-regular text-text-tertiary">

@@ -77,10 +77,11 @@ function LocalTextFilePreview({ file, onClose }: { file: File; onClose: () => vo
           <DialogClose
             render={
               <IconButton
+                size="lg"
                 aria-label={tCommon(($) => $['operation.close'])}
                 className="static shrink-0"
               >
-                <span aria-hidden className="i-ri-close-line size-4" />
+                <span aria-hidden className="i-ri-close-line size-5" />
               </IconButton>
             }
           />

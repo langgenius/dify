@@ -538,7 +538,9 @@ function ActivityDrawer({
                   <DrawerTitle className="system-lg-semibold text-text-primary">
                     {t(($) => $['overview.allActivity'])}
                   </DrawerTitle>
-                  <DrawerCloseButton />
+                  <DrawerCloseButton>
+                    <span aria-hidden className="i-ri-close-line size-5" />
+                  </DrawerCloseButton>
                 </div>
               </header>
               <div className="flex h-9 shrink-0 items-start gap-1 border-b border-divider-subtle px-5">

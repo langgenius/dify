@@ -2,6 +2,7 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -58,15 +59,16 @@ export function KnowledgeFsApiAccessDialog({
                 {tCommon(($) => $['appMenus.apiAccessTip'])}
               </DialogDescription>
             </div>
-            <Button
+            <IconButton
+              size="lg"
               type="button"
               variant="ghost"
               aria-label={tCommon(($) => $['operation.close'])}
-              className="size-8 shrink-0 px-0"
+              className="shrink-0"
               onClick={() => onOpenChange(false)}
             >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </Button>
+              <span aria-hidden className="i-ri-close-line size-5" />
+            </IconButton>
           </header>
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-6">
