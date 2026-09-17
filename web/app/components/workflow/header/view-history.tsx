@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import Chip from '@/app/components/base/chip'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -24,6 +25,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
   const [open, setOpen] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleNodesCancelSelected } = useNodesInteractions()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
@@ -34,7 +36,8 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const shouldFetchHistory = open && !!historyUrl
-  const { data, isLoading } = useWorkflowRunHistory(historyUrl, shouldFetchHistory)
+  const historyParams = statusFilter !== 'all' ? { status: statusFilter } : undefined
+  const { data, isLoading } = useWorkflowRunHistory(historyUrl, historyParams, shouldFetchHistory)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -89,19 +92,35 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
             maxHeight: 'calc(2 / 3 * 100vh)',
           }}
         >
-          <div className="sticky top-0 flex items-center justify-between bg-components-panel-bg px-4 pt-3 text-base font-semibold text-text-primary">
-            <div className="grow">{t(($) => $['common.runHistory'], { ns: 'workflow' })}</div>
-            <button
-              type="button"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="flex size-6 shrink-0 cursor-pointer items-center justify-center"
-              onClick={() => {
-                onClearLogAndMessageModal?.()
-                setOpen(false)
-              }}
-            >
-              <span className="i-ri-close-line size-4 text-text-tertiary" />
-            </button>
+          <div className="sticky top-0 z-10 bg-components-panel-bg px-4 pt-3 pb-2 border-b border-divider-subtle">
+            <div className="flex items-center justify-between text-base font-semibold text-text-primary">
+              <div className="grow">{t(($) => $['common.runHistory'], { ns: 'workflow' })}</div>
+              <button
+                type="button"
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                className="flex size-6 shrink-0 cursor-pointer items-center justify-center"
+                onClick={() => {
+                  onClearLogAndMessageModal?.()
+                  setOpen(false)
+                }}
+              >
+                <span className="i-ri-close-line size-4 text-text-tertiary" />
+              </button>
+            </div>
+            <div className="mt-2">
+              <Chip
+                className="w-full"
+                value={statusFilter}
+                onSelect={(item) => setStatusFilter(item.value as string)}
+                onClear={() => setStatusFilter('all')}
+                items={[
+                  { value: 'all', name: 'All' },
+                  { value: 'succeeded', name: 'Success' },
+                  { value: 'failed', name: 'Fail' },
+                  { value: 'stopped', name: 'Stop' },
+                ]}
+              />
+            </div>
           </div>
           {isLoading && (
             <div className="flex h-10 items-center justify-center">
