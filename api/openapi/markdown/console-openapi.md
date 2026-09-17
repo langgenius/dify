@@ -12127,7 +12127,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Published Skill zip archive |
+| 200 | Draft Skill zip archive |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}/files
 #### Parameters
