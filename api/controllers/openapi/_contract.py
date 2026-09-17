@@ -5,6 +5,12 @@ reference, so the advertised and enforced contracts can't drift.
 ``view.__handler__`` as the one documented test seam. ``returns`` is still used
 bare by the unauthenticated ``index.py`` probes, which have no auth layer to
 compose with.
+
+``endpoint()`` also builds the route's ``EndpointSpec`` (``auth/spec.py``), which
+carries the catalog fields ``op``, ``kind``, ``summary``, ``internal`` and
+``deprecated`` that ``_catalog.py`` reads to describe ``/openapi/v1``. Passing
+``op=`` to ``accepts`` fills the next-page hint on a bare ``PaginationEnvelope``
+result.
 """
 
 from __future__ import annotations
