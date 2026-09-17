@@ -164,7 +164,7 @@ const FixEntry = () => {
 }
 
 const builderModel = { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} }
-const renderFlow = (edgeCount = 0) => {
+const renderFlow = (edgeCount = 0, reactStrictMode = false) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
     data: {
@@ -220,7 +220,7 @@ const renderFlow = (edgeCount = 0) => {
       <FixEntry />
       <DifyBuilderPanel />
     </DifyBuilderProvider>,
-    { features: { dify_builder_enabled: true }, queryClient },
+    { features: { dify_builder_enabled: true }, queryClient, reactStrictMode },
   )
 }
 
@@ -235,6 +235,237 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     mocks.conversation.mockResolvedValue(conversationPage())
     window.sessionStorage.clear()
   })
+
+  it.each([false, true])(
+    'restores waiting Build actions after refresh with StrictMode=%s',
+    async (reactStrictMode) => {
+      const notice: ConversationItem = {
+        seq: 0,
+        at_version: 4,
+        kind: 'notice',
+        payload: { text: 'The workflow is ready on the canvas.' },
+      }
+      const waiting = createSessionView({
+        actions: [
+          { id: 'run_test', kind: 'primary', label: 'Run test' },
+          { id: 'revert', kind: 'destructive', label: 'Revert' },
+        ],
+        conversation_last_seq: 0,
+        entry_mode: 'build',
+        phase: 'modify',
+        run_status: 'waiting_confirmation',
+        state: 'build.execution',
+        version: 4,
+      })
+      mocks.get.mockImplementation(async (_input: unknown, { signal }: { signal: AbortSignal }) => {
+        await Promise.resolve()
+        signal.throwIfAborted()
+        return waiting
+      })
+      mocks.conversation.mockResolvedValue(conversationPage([notice]))
+      mocks.action.mockResolvedValue(
+        streamOf(
+          commandStartedEvent(waiting),
+          stateEvent({
+            ...waiting,
+            actions: [{ id: 'publish_workflow', kind: 'primary', label: 'Publish' }],
+            phase: 'review',
+            state: 'build.review',
+            version: 5,
+          }),
+        ),
+      )
+      window.sessionStorage.setItem(
+        'dify-builder:v1:workspace-1:user-1:app-1:active-session-id',
+        waiting.session_id,
+      )
+      const user = userEvent.setup()
+      renderFlow(1, reactStrictMode)
+
+      expect(await screen.findByText(notice.payload.text)).toBeInTheDocument()
+      const runTest = screen.getByRole('button', { name: 'Run test' })
+      await waitFor(() => expect(runTest).toBeEnabled())
+      expect(screen.getByRole('button', { name: 'Revert' })).toBeEnabled()
+      expect(screen.queryByText('workflow.common.running')).not.toBeInTheDocument()
+      expect(mocks.refreshCanvas).toHaveBeenCalledOnce()
+      expect(mocks.stream).not.toHaveBeenCalled()
+
+      await user.click(runTest)
+
+      const publish = await screen.findByRole('button', { name: 'Publish' })
+      await waitFor(() => expect(publish).toBeEnabled())
+      expect(mocks.action).toHaveBeenCalledWith(
+        {
+          params: { session_id: waiting.session_id },
+          body: {
+            action_id: 'run_test',
+            base_app_revision: 'hash-1',
+            base_version: 4,
+            payload: {},
+          },
+        },
+        { signal: expect.any(AbortSignal) },
+      )
+    },
+  )
+
+  it('ignores a canceled restore response that arrives after the replacement restore', async () => {
+    const waiting = createSessionView({
+      actions: [
+        { id: 'run_test', kind: 'primary', label: 'Run test' },
+        { id: 'revert', kind: 'destructive', label: 'Revert' },
+      ],
+      entry_mode: 'build',
+      phase: 'modify',
+      run_status: 'waiting_confirmation',
+      state: 'build.execution',
+      version: 4,
+    })
+    let finishCanceledRequest!: (view: SessionView) => void
+    mocks.get
+      .mockImplementationOnce(
+        () =>
+          new Promise<SessionView>((resolve) => {
+            finishCanceledRequest = resolve
+          }),
+      )
+      .mockResolvedValue(waiting)
+    const storageKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
+    window.sessionStorage.setItem(storageKey, waiting.session_id)
+    renderFlow(1, true)
+
+    const runTest = await screen.findByRole('button', { name: 'Run test' })
+    await waitFor(() => expect(runTest).toBeEnabled())
+
+    // The lock can settle without changing the durable session version.
+    await act(async () => {
+      finishCanceledRequest({ ...waiting, run_status: 'processing', canvas_read_only: true })
+    })
+
+    expect(runTest).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Revert' })).toBeEnabled()
+    expect(screen.queryByText('workflow.common.running')).not.toBeInTheDocument()
+    expect(window.sessionStorage.getItem(storageKey)).toBe(waiting.session_id)
+    expect(mocks.stream).not.toHaveBeenCalled()
+  })
+
+  it.each([false, true])(
+    'refreshes the canvas after restored history loads with StrictMode=%s',
+    async (reactStrictMode) => {
+      const waiting = createSessionView({
+        actions: [
+          { id: 'run_test', kind: 'primary', label: 'Run test' },
+          { id: 'revert', kind: 'destructive', label: 'Revert' },
+        ],
+        entry_mode: 'build',
+        phase: 'modify',
+        run_status: 'waiting_confirmation',
+        state: 'build.execution',
+        version: 6,
+      })
+      let finishHistory!: (page: ReturnType<typeof conversationPage>) => void
+      mocks.get.mockImplementation(async (_input: unknown, { signal }: { signal: AbortSignal }) => {
+        await Promise.resolve()
+        signal.throwIfAborted()
+        return waiting
+      })
+      mocks.conversation.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finishHistory = resolve
+          }),
+      )
+      window.sessionStorage.setItem(
+        'dify-builder:v1:workspace-1:user-1:app-1:active-session-id',
+        waiting.session_id,
+      )
+      renderFlow(1, reactStrictMode)
+
+      const runTest = await screen.findByRole('button', { name: 'Run test' })
+      expect(runTest).toBeDisabled()
+      expect(mocks.refreshCanvas).not.toHaveBeenCalled()
+
+      await act(async () => finishHistory(conversationPage()))
+
+      await waitFor(() => expect(runTest).toBeEnabled())
+      expect(screen.getByRole('button', { name: 'Revert' })).toBeEnabled()
+      expect(screen.queryByText('workflow.common.running')).not.toBeInTheDocument()
+      expect(mocks.refreshCanvas).toHaveBeenCalledOnce()
+      expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
+    },
+  )
+
+  it.each([false, true])(
+    'reconnects graph generation and unlocks its settled canvas with StrictMode=%s',
+    async (reactStrictMode) => {
+      const processing = createSessionView({
+        canvas_read_only: true,
+        entry_mode: 'build',
+        phase: 'plan',
+        run_status: 'processing',
+        state: 'build.plan_approval',
+        version: 5,
+      })
+      const waiting = createSessionView({
+        actions: [
+          { id: 'run_test', kind: 'primary', label: 'Run test' },
+          { id: 'revert', kind: 'destructive', label: 'Revert' },
+        ],
+        conversation_last_seq: 0,
+        entry_mode: 'build',
+        phase: 'modify',
+        run_status: 'waiting_confirmation',
+        state: 'build.execution',
+        version: 6,
+      })
+      const notice: ConversationItem = {
+        seq: 0,
+        at_version: 6,
+        kind: 'notice',
+        payload: { text: 'The generated workflow is ready.' },
+      }
+      const reconnect = createControlledEventStream()
+      mocks.get.mockImplementation(async (_input: unknown, { signal }: { signal: AbortSignal }) => {
+        await Promise.resolve()
+        signal.throwIfAborted()
+        return processing
+      })
+      mocks.stream.mockResolvedValue(reconnect.iterable)
+      window.sessionStorage.setItem(
+        'dify-builder:v1:workspace-1:user-1:app-1:active-session-id',
+        processing.session_id,
+      )
+      renderFlow(1, reactStrictMode)
+      await waitFor(() => expect(mocks.stream).toHaveBeenCalledOnce())
+      await act(async () => reconnect.push(commandStartedEvent(processing)))
+      expect(getComposer()).toBeDisabled()
+      expect(mocks.refreshCanvas).not.toHaveBeenCalled()
+
+      let finishHistory!: (page: ReturnType<typeof conversationPage>) => void
+      mocks.conversation.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishHistory = resolve
+          }),
+      )
+      await act(async () => reconnect.push(stateEvent(waiting)))
+      const runTest = await screen.findByRole('button', { name: 'Run test' })
+      expect(runTest).toBeDisabled()
+      expect(mocks.refreshCanvas).not.toHaveBeenCalled()
+
+      await act(async () => finishHistory(conversationPage([notice])))
+
+      expect(await screen.findByText(notice.payload.text)).toBeInTheDocument()
+      await waitFor(() => expect(runTest).toBeEnabled())
+      expect(screen.getByRole('button', { name: 'Revert' })).toBeEnabled()
+      expect(getComposer()).toBeEnabled()
+      expect(screen.queryByText('workflow.common.running')).not.toBeInTheDocument()
+      expect(mocks.refreshCanvas).toHaveBeenCalledOnce()
+      expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
+      expect(mocks.create).not.toHaveBeenCalled()
+      expect(mocks.action).not.toHaveBeenCalled()
+    },
+  )
 
   it.each([
     {
