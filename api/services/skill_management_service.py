@@ -500,6 +500,13 @@ class SkillAssistActionResult:
 
 
 @dataclass(frozen=True, slots=True)
+class DraftSkillArchive:
+    filename: str
+    mime_type: str
+    payload: bytes
+
+
+@dataclass(frozen=True, slots=True)
 class PublishedSkillArchive:
     filename: str
     mime_type: str
@@ -2060,7 +2067,7 @@ class SkillManagementService:
             }
 
     def duplicate_skill(self, *, tenant_id: str, user_id: str, skill_id: str) -> dict[str, Any]:
-        """Create a draft-only copy, preferring the latest published snapshot when present."""
+        """Create an unpublished copy of the current saved draft."""
         with self._session_scope() as session:
             source = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._enforce_workspace_skill_limit(session, tenant_id=tenant_id)
@@ -2085,47 +2092,10 @@ class SkillManagementService:
                 skill_id=duplicate.id,
                 tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[source.id]).get(source.id, []),
             )
-            latest_version_id = source.latest_published_version_id
             source_draft_files = list(
                 session.scalars(select(SkillDraftFile).where(SkillDraftFile.skill_id == source.id))
             )
-            copied_draft_files = [self._copy_draft_file(file, skill_id=duplicate_id) for file in source_draft_files]
-            session.commit()
-
-        if latest_version_id is not None:
-            archive = self._load_version_archive(tenant_id=tenant_id, version_id=latest_version_id)
-            with self._session_scope() as session:
-                duplicate = self._require_skill(session, tenant_id=tenant_id, skill_id=duplicate_id)
-                duplicate_identity = (
-                    duplicate.name,
-                    duplicate.display_name,
-                    duplicate.description,
-                    duplicate.name_manually_edited,
-                )
-                files = self._draft_rows_from_archive_bytes(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    skill=duplicate,
-                    archive_bytes=archive,
-                )
-                # Parsing the published SKILL.md synchronizes metadata onto the
-                # supplied ORM object. A duplicate must retain its new identity,
-                # otherwise the reused request session autoflushes the source
-                # name and violates the tenant/name unique constraint.
-                (
-                    duplicate.name,
-                    duplicate.display_name,
-                    duplicate.description,
-                    duplicate.name_manually_edited,
-                ) = duplicate_identity
-        else:
-            files = copied_draft_files
-
-        with self._session_scope() as session:
-            duplicate = self._require_skill(session, tenant_id=tenant_id, skill_id=duplicate_id)
-            if latest_version_id is not None:
-                for file in files:
-                    file.skill_id = duplicate.id
+            files = [self._copy_draft_file(file, skill_id=duplicate_id) for file in source_draft_files]
             for file in files:
                 if file.path == _SKILL_MD and file.content_text is not None:
                     synced_content = self._sync_skill_md_text(duplicate, file.content_text)
@@ -2250,6 +2220,20 @@ class SkillManagementService:
         # Restore only replaces the editable draft. Publishing remains an explicit
         # follow-up action so restoring history cannot unexpectedly activate it.
         return self.get_skill(tenant_id=tenant_id, skill_id=skill_id)
+
+    def export_draft_archive(self, *, tenant_id: str, skill_id: str) -> DraftSkillArchive:
+        """Export the current saved draft without requiring or creating a published version."""
+        with self._session_scope() as session:
+            skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
+            files = list(session.scalars(select(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id)))
+            # Snapshot the loaded rows so archive storage reads happen outside this scope.
+            draft_skill = Skill(
+                tenant_id=tenant_id, name=skill.name, display_name=skill.display_name, description=skill.description
+            )
+            draft_files = [self._copy_draft_file(file, skill_id=skill.id) for file in files]
+            filename = f"{skill.name}.zip"
+        archive_bytes, _ = self._build_archive_from_draft(skill=draft_skill, files=draft_files)
+        return DraftSkillArchive(filename=filename, mime_type="application/zip", payload=archive_bytes)
 
     def pull_published_archive(self, *, tenant_id: str, skill_id: str) -> PublishedSkillArchive:
         with self._session_scope() as session:
@@ -4808,6 +4792,7 @@ class SkillManagementService:
 
 
 __all__ = [
+    "DraftSkillArchive",
     "PublishedSkillArchive",
     "SkillAssistAttachmentPayload",
     "SkillAssistHistoryMessagePayload",
