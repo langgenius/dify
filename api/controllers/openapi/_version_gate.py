@@ -25,7 +25,7 @@ _DIFYCTL_UA_RE = re.compile(r"^difyctl/(\d+\.\d+\.\d+(?:-[\w.]+)?)")
 _PREFIX: Final = "/openapi/v1/"
 
 # Paths a too-old client must still reach to discover that it is outdated.
-_ALLOWLIST: Final = frozenset({"/openapi/v1/_version", "/openapi/v1/_health"})
+_ALLOWLIST: Final = frozenset({"/openapi/v1/_version", "/openapi/v1/_health", "/openapi/v1/_catalog"})
 
 
 def _upgrade_required_response(client_version: str, min_version: str) -> Response:
