@@ -52,7 +52,7 @@ def test_get_provider_by_id_queries_primary_key(service: MCPToolManageService, s
 
 def test_get_provider_by_id_rejects_server_identifier(service: MCPToolManageService, session: Mock) -> None:
     """A server identifier in the provider_id slot must not reach the uuid column."""
-    with pytest.raises(ValueError, match="MCP tool not found"):
+    with pytest.raises(ValueError, match="expected a valid UUID"):
         service.get_provider_by_id(provider_id=SERVER_IDENTIFIER, tenant_id=TENANT_ID)
 
     session.scalar.assert_not_called()
@@ -113,5 +113,14 @@ def test_persisted_reference_falls_back_to_primary_key(service: MCPToolManageSer
 def test_persisted_reference_not_found(service: MCPToolManageService, session: Mock) -> None:
     session.scalar.return_value = None
 
-    with pytest.raises(ValueError, match="MCP tool not found"):
+    # Neither lookup's own error describes an unresolvable reference, so the
+    # resolver reports "not found" for both shapes.
+    with pytest.raises(ValueError, match=f"MCP tool not found: {SERVER_IDENTIFIER}"):
         service.get_provider_by_persisted_reference(id_or_server_identifier=SERVER_IDENTIFIER, tenant_id=TENANT_ID)
+
+
+def test_persisted_reference_uuid_not_found(service: MCPToolManageService, session: Mock) -> None:
+    session.scalar.return_value = None
+
+    with pytest.raises(ValueError, match=f"MCP tool not found: {PROVIDER_UUID}"):
+        service.get_provider_by_persisted_reference(id_or_server_identifier=PROVIDER_UUID, tenant_id=TENANT_ID)
