@@ -96,8 +96,9 @@ def test_template_read_write_scope(operations: SQLAlchemyExternalKnowledgeOperat
                 CONTEXT, "foreign", name="changed", settings={"api_key": "key", "endpoint": "https://example"}
             )
     else:
+        operation = operations.get_template if method == "get_template" else operations.delete_template
         with pytest.raises(ExternalTemplateNotFoundError):
-            getattr(operations, method)("tenant", "foreign")
+            operation("tenant", "foreign")
     assert operations.template_usage("tenant", "foreign") == (False, 0)
 
 

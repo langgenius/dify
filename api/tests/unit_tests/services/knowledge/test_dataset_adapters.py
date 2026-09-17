@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from unittest.mock import patch
 
 import pytest
@@ -152,8 +152,20 @@ def test_wrong_tenant_ref_cannot_read_or_write(operations: SQLAlchemyDatasetOper
     if method == "set_api_enabled":
         args.append(True)
     extra: dict[str, int] = {"page": 1, "limit": 20} if method == "queries" else {}
+    methods: dict[str, Callable[..., object]] = {
+        "get_dataset": operations.get_dataset,
+        "is_in_use": operations.is_in_use,
+        "queries": operations.queries,
+        "related_apps": operations.related_apps,
+        "indexing_status": operations.indexing_status,
+        "error_documents": operations.error_documents,
+        "partial_members": operations.partial_members,
+        "update_dataset": operations.update_dataset,
+        "delete_dataset": operations.delete_dataset,
+        "set_api_enabled": operations.set_api_enabled,
+    }
     with pytest.raises(DatasetNotFoundError):
-        getattr(operations, method)(*args, **extra)
+        methods[method](*args, **extra)
 
 
 def test_create_update_and_api_status_commit_owned_changes(

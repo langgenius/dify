@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
@@ -100,25 +101,29 @@ def test_list_applies_visibility_and_reports_model_availability(
 @pytest.mark.parametrize(
     ("method", "extra"),
     [
-        ("get_dataset", {}),
-        ("update_dataset", {"values": {}}),
-        ("delete_dataset", {}),
-        ("is_in_use", {}),
-        ("queries", {"page": 1, "limit": 20}),
-        ("related_apps", {}),
-        ("indexing_status", {}),
-        ("error_documents", {}),
-        ("partial_members", {}),
-        ("auto_disable_logs", {}),
-        ("set_api_enabled", {"status": "enable"}),
+        (DatasetApplicationService.get_dataset, {}),
+        (DatasetApplicationService.update_dataset, {"values": {}}),
+        (DatasetApplicationService.delete_dataset, {}),
+        (DatasetApplicationService.is_in_use, {}),
+        (DatasetApplicationService.queries, {"page": 1, "limit": 20}),
+        (DatasetApplicationService.related_apps, {}),
+        (DatasetApplicationService.indexing_status, {}),
+        (DatasetApplicationService.error_documents, {}),
+        (DatasetApplicationService.partial_members, {}),
+        (DatasetApplicationService.auto_disable_logs, {}),
+        (DatasetApplicationService.set_api_enabled, {"status": "enable"}),
     ],
 )
 def test_access_denial_precedes_all_owned_operations(
-    service: DatasetApplicationService, access: MagicMock, operations: MagicMock, method: str, extra: dict[str, object]
+    service: DatasetApplicationService,
+    access: MagicMock,
+    operations: MagicMock,
+    method: Callable[..., object],
+    extra: dict[str, object],
 ) -> None:
     access.require_accessible.side_effect = DatasetAccessDeniedError()
     with pytest.raises(DatasetAccessDeniedError):
-        getattr(service, method)(CONTEXT, dataset_id="dataset", **extra)
+        method(service, CONTEXT, dataset_id="dataset", **extra)
     assert operations.mock_calls == []
 
 

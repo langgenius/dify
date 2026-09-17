@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
@@ -32,13 +33,20 @@ def service(operations: MagicMock, access: MagicMock) -> ExternalKnowledgeApplic
 
 
 @pytest.mark.parametrize("settings", [{}, {"endpoint": "https://example"}, {"api_key": "secret"}])
-@pytest.mark.parametrize("method", ["create_template", "update_template"])
+@pytest.mark.parametrize(
+    "method", [ExternalKnowledgeApplicationService.create_template, ExternalKnowledgeApplicationService.update_template]
+)
 def test_template_validation_prevents_io(
-    service: ExternalKnowledgeApplicationService, operations: MagicMock, settings: dict[str, str], method: str
+    service: ExternalKnowledgeApplicationService,
+    operations: MagicMock,
+    settings: dict[str, str],
+    method: Callable[..., object],
 ) -> None:
-    extra: dict[str, str] = {"template_id": "template"} if method == "update_template" else {}
+    extra: dict[str, str] = (
+        {"template_id": "template"} if method is ExternalKnowledgeApplicationService.update_template else {}
+    )
     with pytest.raises(ValueError):
-        getattr(service, method)(CONTEXT, name="API", settings=settings, **extra)
+        method(service, CONTEXT, name="API", settings=settings, **extra)
     assert operations.mock_calls == []
 
 

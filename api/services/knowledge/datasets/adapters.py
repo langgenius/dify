@@ -64,19 +64,16 @@ def _normalize_provider(item: dict[str, Any]) -> dict[str, Any]:
 
 def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[str, Any]:
     result = {
-        name: getattr(document, name)
-        for name in (
-            "id",
-            "indexing_status",
-            "processing_started_at",
-            "parsing_completed_at",
-            "cleaning_completed_at",
-            "splitting_completed_at",
-            "completed_at",
-            "paused_at",
-            "error",
-            "stopped_at",
-        )
+        "id": document.id,
+        "indexing_status": document.indexing_status,
+        "processing_started_at": document.processing_started_at,
+        "parsing_completed_at": document.parsing_completed_at,
+        "cleaning_completed_at": document.cleaning_completed_at,
+        "splitting_completed_at": document.splitting_completed_at,
+        "completed_at": document.completed_at,
+        "paused_at": document.paused_at,
+        "error": document.error,
+        "stopped_at": document.stopped_at,
     }
     if counts is not None:
         result.update(completed_segments=counts[0], total_segments=counts[1])
@@ -296,10 +293,12 @@ class SQLAlchemyDatasetOperations:
             ).all()
             values = [
                 {
-                    **{
-                        key: getattr(app, key)
-                        for key in ("id", "name", "description", "icon_type", "icon", "icon_background")
-                    },
+                    "id": app.id,
+                    "name": app.name,
+                    "description": app.description,
+                    "icon_type": app.icon_type,
+                    "icon": app.icon,
+                    "icon_background": app.icon_background,
                     "mode_compatible_with_agent": app.mode_compatible_with_agent_with_session(session=session),
                 }
                 for app in apps

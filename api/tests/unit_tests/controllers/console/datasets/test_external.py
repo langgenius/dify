@@ -45,14 +45,34 @@ def test_templates_preserve_pagination(external):
 @pytest.mark.parametrize(
     ("resource", "verb", "operation", "payload"),
     [
-        (controller.ExternalApiTemplateListApi, "post", "create_template", True),
-        (controller.ExternalApiTemplateApi, "get", "get_template", False),
-        (controller.ExternalApiTemplateApi, "patch", "update_template", True),
-        (controller.ExternalApiTemplateApi, "delete", "delete_template", False),
+        (
+            controller.ExternalApiTemplateListApi,
+            controller.ExternalApiTemplateListApi.post,
+            lambda service: service.create_template,
+            True,
+        ),
+        (
+            controller.ExternalApiTemplateApi,
+            controller.ExternalApiTemplateApi.get,
+            lambda service: service.get_template,
+            False,
+        ),
+        (
+            controller.ExternalApiTemplateApi,
+            controller.ExternalApiTemplateApi.patch,
+            lambda service: service.update_template,
+            True,
+        ),
+        (
+            controller.ExternalApiTemplateApi,
+            controller.ExternalApiTemplateApi.delete,
+            lambda service: service.delete_template,
+            False,
+        ),
     ],
 )
 def test_template_missing_is_mapped_and_context_forwarded(external, resource, verb, operation, payload):
-    method = getattr(external, operation)
+    method = operation(external)
     method.side_effect = ExternalTemplateNotFoundError("API template not found.")
     args = (
         [
@@ -67,7 +87,7 @@ def test_template_missing_is_mapped_and_context_forwarded(external, resource, ve
     if resource is controller.ExternalApiTemplateApi:
         args.append(ID)
     with pytest.raises(NotFound):
-        unwrap(getattr(resource, verb))(resource(), *args)
+        unwrap(verb)(resource(), *args)
     assert method.call_args.args == (CONTEXT,)
     if resource is controller.ExternalApiTemplateApi:
         assert method.call_args.kwargs["template_id"] == str(ID)

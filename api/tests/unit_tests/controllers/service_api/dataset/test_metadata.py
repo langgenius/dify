@@ -113,8 +113,9 @@ def test_metadata_mutation_translates_missing_resource(method, sqlite_session, m
         }
         if method == "patch":
             arguments["payload"] = MetadataUpdatePayload(name="renamed")
+        endpoint = DatasetMetadataServiceApi.patch if method == "patch" else DatasetMetadataServiceApi.delete
         with pytest.raises(NotFound, match="Metadata not found"):
-            unwrap(getattr(type(resource), method))(resource, **arguments)
+            unwrap(endpoint)(resource, **arguments)
 
 
 class TestDatasetMetadataCreatePost(_UsesSQLiteSession):

@@ -1,7 +1,10 @@
 from unittest.mock import MagicMock
 
 import pytest
+from werkzeug.exceptions import NotFound
 
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError, QuotaExceededError
+from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.models.document import Document
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
 from services.knowledge.indexing.estimate import StoredSource
@@ -39,8 +42,10 @@ def test_completion_waits_for_persisted_segments_and_all_index_writes(execution:
     service, ports, document, chunks = execution
     if start == "parsing":
         service.run([document.ref])
+    elif start == "splitting":
+        service.run_in_splitting_status(document.ref)
     else:
-        getattr(service, f"run_in_{start}_status")(document.ref)
+        service.run_in_indexing_status(document.ref)
     calls = [call[0] for call in ports.mock_calls]
     assert calls.index("backend.load") < calls.index("documents.complete_indexing")
     ports.documents.complete_indexing.assert_called_once_with(document.ref, tokens=18, latency=3)
@@ -59,7 +64,14 @@ def test_completion_waits_for_persisted_segments_and_all_index_writes(execution:
 @pytest.mark.parametrize("stage", ["extract", "transform", "ensure_admission", "count_tokens", "load"])
 def test_failed_phase_records_error_without_completing(execution: ExecutionFixture, stage: str) -> None:
     service, ports, document, _ = execution
-    getattr(ports.backend, stage).side_effect = RuntimeError("index unavailable")
+    operation = {
+        "extract": ports.backend.extract,
+        "transform": ports.backend.transform,
+        "ensure_admission": ports.backend.ensure_admission,
+        "count_tokens": ports.backend.count_tokens,
+        "load": ports.backend.load,
+    }[stage]
+    operation.side_effect = RuntimeError("index unavailable")
     service.run([document.ref])
     ports.documents.complete_indexing.assert_not_called()
     ports.documents.fail_indexing.assert_called_once_with(document.ref, "index unavailable")
@@ -73,7 +85,12 @@ def test_pause_and_deletion_do_not_become_indexing_errors(
     execution: ExecutionFixture, stage: str, error: type[Exception]
 ) -> None:
     service, ports, document, _ = execution
-    getattr(ports.documents, stage).side_effect = error()
+    operation = {
+        "get_indexing_document": ports.documents.get_indexing_document,
+        "mark_splitting": ports.documents.mark_splitting,
+        "complete_indexing": ports.documents.complete_indexing,
+    }[stage]
+    operation.side_effect = error()
     if error is DocumentIsPausedError:
         with pytest.raises(DocumentIsPausedError):
             service.run([document.ref])
@@ -97,3 +114,26 @@ def test_missing_document_is_skipped(execution: ExecutionFixture) -> None:
     service.run([document.ref])
     ports.backend.extract.assert_not_called()
     ports.documents.fail_indexing.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (ProviderTokenNotInitError(), "Provider Token Not Init"),
+        (ProviderTokenNotInitError("configure an embedding provider"), "configure an embedding provider"),
+        (LLMBadRequestError("invalid model input"), "invalid model input"),
+        (QuotaExceededError(), "Quota Exceeded"),
+        (PluginDaemonClientSideError("plugin unavailable"), "plugin unavailable"),
+        (NotFound("source file missing"), "source file missing"),
+    ],
+)
+def test_indexing_preserves_provider_and_source_error_descriptions(
+    execution: ExecutionFixture, error: Exception, message: str
+) -> None:
+    service, ports, document, _ = execution
+    ports.backend.extract.side_effect = error
+
+    service.run([document.ref])
+
+    ports.documents.fail_indexing.assert_called_once_with(document.ref, message)
+    ports.documents.complete_indexing.assert_not_called()

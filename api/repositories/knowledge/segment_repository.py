@@ -664,14 +664,31 @@ def _get_child_chunk(session: Session, segment_ref: SegmentRef, child_chunk_id: 
 
 
 def _segment_data(segment: DocumentSegment, summary: str | None, session: Session) -> SegmentRecord:
-    values = {
-        name: getattr(segment, name)
-        for name in SegmentRecord.model_fields
-        if name not in {"summary", "child_chunks", "attachments", "sign_content"}
-    }
     return SegmentRecord.model_validate(
         {
-            **values,
+            "id": segment.id,
+            "position": segment.position,
+            "document_id": segment.document_id,
+            "content": segment.content,
+            "answer": segment.answer,
+            "word_count": segment.word_count,
+            "tokens": segment.tokens,
+            "keywords": segment.keywords,
+            "index_node_id": segment.index_node_id,
+            "index_node_hash": segment.index_node_hash,
+            "hit_count": segment.hit_count,
+            "enabled": segment.enabled,
+            "disabled_at": segment.disabled_at,
+            "disabled_by": segment.disabled_by,
+            "status": segment.status,
+            "created_by": segment.created_by,
+            "created_at": segment.created_at,
+            "updated_at": segment.updated_at,
+            "updated_by": segment.updated_by,
+            "indexing_at": segment.indexing_at,
+            "completed_at": segment.completed_at,
+            "error": segment.error,
+            "stopped_at": segment.stopped_at,
             "sign_content": sign_segment_content(segment, session=session),
             "summary": summary,
             "child_chunks": get_segment_child_chunks(segment, session=session, include_full_doc=False),

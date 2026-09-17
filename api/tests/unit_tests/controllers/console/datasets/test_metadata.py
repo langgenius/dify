@@ -94,7 +94,8 @@ def test_builtin_toggle_is_dispatched(routes, action):
     dataset_id = str(uuid4())
     response = client.post(f"/console/api/datasets/{dataset_id}/metadata/built-in/{action}")
     assert response.status_code == 204
-    getattr(service, f"{action}_built_in_field").assert_called_once_with(DatasetRef("tenant-1", dataset_id))
+    operation = service.enable_built_in_field if action == "enable" else service.disable_built_in_field
+    operation.assert_called_once_with(DatasetRef("tenant-1", dataset_id))
 
 
 def test_builtin_listing_uses_response_model(routes):

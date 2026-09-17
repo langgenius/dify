@@ -56,7 +56,11 @@ def test_recovery_dispatches_detached_owner_reference(
     if entry is None:
         assert service.mock_calls == []
     else:
-        method = getattr(service, entry)
+        method = {
+            "run": service.run,
+            "run_in_splitting_status": service.run_in_splitting_status,
+            "run_in_indexing_status": service.run_in_indexing_status,
+        }[entry]
         method.assert_called_once()
         (argument,) = method.call_args.args
         ref = argument[0] if entry == "run" else argument

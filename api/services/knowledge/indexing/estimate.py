@@ -308,8 +308,7 @@ class IndexingEstimateApplicationService:
                 only_main_content=source.only_main_content,
                 document_model=document_model,
             )
-        source_type = getattr(source, "source_type", type(source).__name__)
-        raise UnsupportedEstimateSourceError(str(source_type))
+        raise UnsupportedEstimateSourceError(source.source_type)
 
     def _load_process_rule(
         self,

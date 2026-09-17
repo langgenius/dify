@@ -76,21 +76,21 @@ def datasets(monkeypatch):
 @pytest.mark.parametrize(
     ("resource", "operation"),
     [
-        (DatasetApi, "get_dataset"),
-        (DatasetUseCheckApi, "is_in_use"),
-        (DatasetQueryApi, "queries"),
-        (DatasetRelatedAppListApi, "related_apps"),
-        (DatasetIndexingStatusApi, "indexing_status"),
-        (DatasetErrorDocs, "error_documents"),
-        (DatasetPermissionUserListApi, "partial_members"),
-        (DatasetAutoDisableLogApi, "auto_disable_logs"),
+        (DatasetApi, lambda service: service.get_dataset),
+        (DatasetUseCheckApi, lambda service: service.is_in_use),
+        (DatasetQueryApi, lambda service: service.queries),
+        (DatasetRelatedAppListApi, lambda service: service.related_apps),
+        (DatasetIndexingStatusApi, lambda service: service.indexing_status),
+        (DatasetErrorDocs, lambda service: service.error_documents),
+        (DatasetPermissionUserListApi, lambda service: service.partial_members),
+        (DatasetAutoDisableLogApi, lambda service: service.auto_disable_logs),
     ],
 )
 @pytest.mark.parametrize(
     ("error", "http_error"), [(DatasetNotFoundError(), NotFound), (DatasetAccessDeniedError(), Forbidden)]
 )
 def test_scoped_reads_pass_context_and_map_access_errors(app, datasets, resource, operation, error, http_error):
-    method = getattr(datasets, operation)
+    method = operation(datasets)
     method.side_effect = error
     with app.test_request_context("/"), pytest.raises(http_error):
         unwrap(resource.get)(resource(), CONTEXT, DATASET_ID)

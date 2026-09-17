@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import replace
 from typing import Literal
 from unittest.mock import MagicMock, create_autospec
@@ -45,38 +46,65 @@ def service(access: MagicMock, operations: MagicMock) -> DatasetDocumentApplicat
 
 
 @pytest.mark.parametrize(
-    "operation", ["get_document", "delete_document", "pause_document", "recover_document", "sync_website"]
+    "operation",
+    [
+        DatasetDocumentApplicationService.get_document,
+        DatasetDocumentApplicationService.delete_document,
+        DatasetDocumentApplicationService.pause_document,
+        DatasetDocumentApplicationService.recover_document,
+        DatasetDocumentApplicationService.sync_website,
+    ],
 )
 def test_denied_dataset_never_loads_or_mutates_documents(
-    service: DatasetDocumentApplicationService, access: MagicMock, operations: MagicMock, operation: str
+    service: DatasetDocumentApplicationService,
+    access: MagicMock,
+    operations: MagicMock,
+    operation: Callable[..., object],
 ) -> None:
     access.require_accessible.side_effect = DatasetAccessDeniedError()
     with pytest.raises(DatasetAccessDeniedError):
-        getattr(service, operation)(CONTEXT, dataset_id="dataset-1", document_id="document-1")
+        operation(service, CONTEXT, dataset_id="dataset-1", document_id="document-1")
     assert operations.mock_calls == []
 
 
 @pytest.mark.parametrize(
-    "operation", ["get_document", "delete_document", "pause_document", "recover_document", "sync_website"]
+    "operation",
+    [
+        DatasetDocumentApplicationService.get_document,
+        DatasetDocumentApplicationService.delete_document,
+        DatasetDocumentApplicationService.pause_document,
+        DatasetDocumentApplicationService.recover_document,
+        DatasetDocumentApplicationService.sync_website,
+    ],
 )
 def test_missing_document_stops_before_any_side_effect(
-    service: DatasetDocumentApplicationService, access: MagicMock, operations: MagicMock, operation: str
+    service: DatasetDocumentApplicationService,
+    access: MagicMock,
+    operations: MagicMock,
+    operation: Callable[..., object],
 ) -> None:
     operations.get_state.return_value = None
     with pytest.raises(DocumentNotFoundError):
-        getattr(service, operation)(CONTEXT, dataset_id="dataset-1", document_id="document-1")
+        operation(service, CONTEXT, dataset_id="dataset-1", document_id="document-1")
     access.require_accessible.assert_called_once_with(CONTEXT, "dataset-1")
     operations.get_state.assert_called_once_with(DOCUMENT)
     assert len(operations.mock_calls) == 1
 
 
-@pytest.mark.parametrize("operation", ["pause_document", "recover_document", "sync_website"])
+@pytest.mark.parametrize(
+    "operation",
+    [
+        DatasetDocumentApplicationService.pause_document,
+        DatasetDocumentApplicationService.recover_document,
+        DatasetDocumentApplicationService.sync_website,
+    ],
+)
 def test_archived_documents_cannot_be_reprocessed(
-    service: DatasetDocumentApplicationService, operations: MagicMock, operation: str
+    service: DatasetDocumentApplicationService, operations: MagicMock, operation: Callable[..., object]
 ) -> None:
     operations.get_state.return_value = replace(STATE, archived=True)
     with pytest.raises(DocumentArchivedError):
-        getattr(service, operation)(CONTEXT, dataset_id="dataset-1", document_id="document-1")
+        operation(service, CONTEXT, dataset_id="dataset-1", document_id="document-1")
     assert len(operations.mock_calls) == 1
 
 

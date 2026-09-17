@@ -106,17 +106,14 @@ def _state(document: Document) -> DocumentState:
 def _created_response(dataset: Dataset, documents: Sequence[Document], batch: str, session: Session) -> dict[str, Any]:
     return {
         "dataset": {
-            key: getattr(dataset, key)
-            for key in (
-                "id",
-                "name",
-                "description",
-                "permission",
-                "data_source_type",
-                "indexing_technique",
-                "created_by",
-                "created_at",
-            )
+            "id": dataset.id,
+            "name": dataset.name,
+            "description": dataset.description,
+            "permission": dataset.permission,
+            "data_source_type": dataset.data_source_type,
+            "indexing_technique": dataset.indexing_technique,
+            "created_by": dataset.created_by,
+            "created_at": dataset.created_at,
         },
         "documents": load_document_details(documents, session=session),
         "batch": batch,
@@ -125,20 +122,15 @@ def _created_response(dataset: Dataset, documents: Sequence[Document], batch: st
 
 def _indexing_status(document: Document, counts: tuple[int, int]) -> dict[str, Any]:
     return {
-        **{
-            key: getattr(document, key)
-            for key in (
-                "id",
-                "processing_started_at",
-                "parsing_completed_at",
-                "cleaning_completed_at",
-                "splitting_completed_at",
-                "completed_at",
-                "paused_at",
-                "error",
-                "stopped_at",
-            )
-        },
+        "id": document.id,
+        "processing_started_at": document.processing_started_at,
+        "parsing_completed_at": document.parsing_completed_at,
+        "cleaning_completed_at": document.cleaning_completed_at,
+        "splitting_completed_at": document.splitting_completed_at,
+        "completed_at": document.completed_at,
+        "paused_at": document.paused_at,
+        "error": document.error,
+        "stopped_at": document.stopped_at,
         "indexing_status": IndexingStatus.PAUSED if document.is_paused else document.indexing_status,
         **get_vector_space_admission_error_fields(document.error),
         "completed_segments": counts[0],
@@ -232,31 +224,30 @@ class SQLAlchemyDocumentOperations:
             segment_count = get_document_segment_count(document, session=session)
             result.update(
                 {
-                    key: getattr(document, key)
-                    for key in (
-                        "position",
-                        "data_source_type",
-                        "dataset_process_rule_id",
-                        "name",
-                        "created_from",
-                        "created_by",
-                        "tokens",
-                        "indexing_status",
-                        "indexing_latency",
-                        "error",
-                        "enabled",
-                        "disabled_by",
-                        "archived",
-                        "display_status",
-                        "doc_form",
-                        "doc_language",
-                    )
+                    "position": document.position,
+                    "data_source_type": document.data_source_type,
+                    "dataset_process_rule_id": document.dataset_process_rule_id,
+                    "name": document.name,
+                    "created_from": document.created_from,
+                    "created_by": document.created_by,
+                    "tokens": document.tokens,
+                    "indexing_status": document.indexing_status,
+                    "indexing_latency": document.indexing_latency,
+                    "error": document.error,
+                    "enabled": document.enabled,
+                    "disabled_by": document.disabled_by,
+                    "archived": document.archived,
+                    "display_status": document.display_status,
+                    "doc_form": document.doc_form,
+                    "doc_language": document.doc_language,
                 }
             )
             result.update(
                 {
-                    key: int(value.timestamp()) if (value := getattr(document, key)) else None
-                    for key in ("created_at", "completed_at", "updated_at", "disabled_at")
+                    "created_at": int(document.created_at.timestamp()) if document.created_at else None,
+                    "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,
+                    "updated_at": int(document.updated_at.timestamp()) if document.updated_at else None,
+                    "disabled_at": int(document.disabled_at.timestamp()) if document.disabled_at else None,
                 }
             )
             result.update(

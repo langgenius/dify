@@ -83,67 +83,137 @@ def documents(monkeypatch):
 @pytest.mark.parametrize(
     ("resource", "verb", "operation", "kwargs"),
     [
-        (GetProcessRuleApi, "get", "get_process_rule", {}),
-        (DatasetDocumentListApi, "get", "list_documents", {"dataset_id": DS}),
-        (DatasetDocumentListApi, "post", "create_documents", {"dataset_id": DS}),
-        (DatasetDocumentListApi, "delete", "delete_documents", {"dataset_id": DS}),
-        (DatasetInitApi, "post", "initialize_dataset", {}),
-        (DocumentBatchIndexingStatusApi, "get", "get_batch_indexing_status", {"dataset_id": DS, "batch": "batch-1"}),
-        (DocumentIndexingStatusApi, "get", "get_indexing_status", {"dataset_id": DS, "document_id": DOC}),
-        (DocumentApi, "get", "get_document", {"dataset_id": DS, "document_id": DOC}),
-        (DocumentApi, "delete", "delete_document", {"dataset_id": DS, "document_id": DOC}),
-        (DocumentDownloadApi, "get", "get_download_url", {"dataset_id": DS, "document_id": DOC}),
-        (DocumentBatchDownloadZipApi, "post", "build_download_zip", {"dataset_id": DS}),
+        (GetProcessRuleApi, GetProcessRuleApi.get, lambda service: service.get_process_rule, {}),
+        (
+            DatasetDocumentListApi,
+            DatasetDocumentListApi.get,
+            lambda service: service.list_documents,
+            {"dataset_id": DS},
+        ),
+        (
+            DatasetDocumentListApi,
+            DatasetDocumentListApi.post,
+            lambda service: service.create_documents,
+            {"dataset_id": DS},
+        ),
+        (
+            DatasetDocumentListApi,
+            DatasetDocumentListApi.delete,
+            lambda service: service.delete_documents,
+            {"dataset_id": DS},
+        ),
+        (DatasetInitApi, DatasetInitApi.post, lambda service: service.initialize_dataset, {}),
+        (
+            DocumentBatchIndexingStatusApi,
+            DocumentBatchIndexingStatusApi.get,
+            lambda service: service.get_batch_indexing_status,
+            {"dataset_id": DS, "batch": "batch-1"},
+        ),
+        (
+            DocumentIndexingStatusApi,
+            DocumentIndexingStatusApi.get,
+            lambda service: service.get_indexing_status,
+            {"dataset_id": DS, "document_id": DOC},
+        ),
+        (DocumentApi, DocumentApi.get, lambda service: service.get_document, {"dataset_id": DS, "document_id": DOC}),
+        (
+            DocumentApi,
+            DocumentApi.delete,
+            lambda service: service.delete_document,
+            {"dataset_id": DS, "document_id": DOC},
+        ),
+        (
+            DocumentDownloadApi,
+            DocumentDownloadApi.get,
+            lambda service: service.get_download_url,
+            {"dataset_id": DS, "document_id": DOC},
+        ),
+        (
+            DocumentBatchDownloadZipApi,
+            DocumentBatchDownloadZipApi.post,
+            lambda service: service.build_download_zip,
+            {"dataset_id": DS},
+        ),
         (
             DocumentProcessingApi,
-            "patch",
-            "update_processing",
+            DocumentProcessingApi.patch,
+            lambda service: service.update_processing,
             {"dataset_id": DS, "document_id": DOC, "action": "pause"},
         ),
         (
             DocumentMetadataApi,
-            "put",
-            "update_metadata",
+            DocumentMetadataApi.put,
+            lambda service: service.update_metadata,
             {
                 "dataset_id": DS,
                 "document_id": DOC,
                 "req_data": DocumentMetadataUpdatePayload(doc_type="book", doc_metadata={"title": "Book"}),
             },
         ),
-        (DocumentStatusApi, "patch", "change_status", {"dataset_id": DS, "action": "enable"}),
-        (DocumentPauseApi, "patch", "pause_document", {"dataset_id": DS, "document_id": DOC}),
-        (DocumentRecoverApi, "patch", "recover_document", {"dataset_id": DS, "document_id": DOC}),
+        (
+            DocumentStatusApi,
+            DocumentStatusApi.patch,
+            lambda service: service.change_status,
+            {"dataset_id": DS, "action": "enable"},
+        ),
+        (
+            DocumentPauseApi,
+            DocumentPauseApi.patch,
+            lambda service: service.pause_document,
+            {"dataset_id": DS, "document_id": DOC},
+        ),
+        (
+            DocumentRecoverApi,
+            DocumentRecoverApi.patch,
+            lambda service: service.recover_document,
+            {"dataset_id": DS, "document_id": DOC},
+        ),
         (
             DocumentRetryApi,
-            "post",
-            "retry_documents",
+            DocumentRetryApi.post,
+            lambda service: service.retry_documents,
             {"dataset_id": DS, "req_data": DocumentRetryPayload(document_ids=[str(DOC)])},
         ),
         (
             DocumentRenameApi,
-            "post",
-            "rename_document",
+            DocumentRenameApi.post,
+            lambda service: service.rename_document,
             {"dataset_id": DS, "document_id": DOC, "req_data": DocumentRenamePayload(name="New name")},
         ),
-        (WebsiteDocumentSyncApi, "get", "sync_website", {"dataset_id": DS, "document_id": DOC}),
-        (DocumentPipelineExecutionLogApi, "get", "get_execution_log", {"dataset_id": DS, "document_id": DOC}),
+        (
+            WebsiteDocumentSyncApi,
+            WebsiteDocumentSyncApi.get,
+            lambda service: service.sync_website,
+            {"dataset_id": DS, "document_id": DOC},
+        ),
+        (
+            DocumentPipelineExecutionLogApi,
+            DocumentPipelineExecutionLogApi.get,
+            lambda service: service.get_execution_log,
+            {"dataset_id": DS, "document_id": DOC},
+        ),
         (
             DocumentGenerateSummaryApi,
-            "post",
-            "generate_summary",
+            DocumentGenerateSummaryApi.post,
+            lambda service: service.generate_summary,
             {"dataset_id": DS, "req_data": GenerateSummaryPayload(document_list=[str(DOC)])},
         ),
-        (DocumentSummaryStatusApi, "get", "get_summary_status", {"dataset_id": DS, "document_id": DOC}),
+        (
+            DocumentSummaryStatusApi,
+            DocumentSummaryStatusApi.get,
+            lambda service: service.get_summary_status,
+            {"dataset_id": DS, "document_id": DOC},
+        ),
     ],
 )
 def test_endpoints_pass_request_context_and_map_application_errors(app, documents, resource, verb, operation, kwargs):
-    getattr(documents, operation).side_effect = DocumentNotFoundError("Document not found.")
+    operation(documents).side_effect = DocumentNotFoundError("Document not found.")
     with app.test_request_context(
         "/?document_id=" + str(DOC), json={"indexing_technique": "economy", "document_ids": [str(DOC)]}
     ):
         with pytest.raises(NotFound):
-            unwrap(getattr(resource, verb))(resource(), request_context=CONTEXT, **kwargs)
-    called = getattr(documents, operation)
+            unwrap(verb)(resource(), request_context=CONTEXT, **kwargs)
+    called = operation(documents)
     assert called.call_count == 1
     assert called.call_args.args == (CONTEXT,)
     if "dataset_id" in kwargs:
@@ -199,39 +269,49 @@ def test_invalid_metadata_fails_before_application_call(app, documents):
 @pytest.mark.parametrize(
     ("resource", "verb", "kwargs"),
     [
-        (DocumentApi, "delete", {"document_id": DOC}),
-        (DatasetDocumentListApi, "delete", {}),
-        (DocumentPauseApi, "patch", {"document_id": DOC}),
-        (DocumentRecoverApi, "patch", {"document_id": DOC}),
-        (DocumentRetryApi, "post", {"req_data": DocumentRetryPayload(document_ids=[str(DOC)])}),
+        (DocumentApi, DocumentApi.delete, {"document_id": DOC}),
+        (DatasetDocumentListApi, DatasetDocumentListApi.delete, {}),
+        (DocumentPauseApi, DocumentPauseApi.patch, {"document_id": DOC}),
+        (DocumentRecoverApi, DocumentRecoverApi.patch, {"document_id": DOC}),
+        (DocumentRetryApi, DocumentRetryApi.post, {"req_data": DocumentRetryPayload(document_ids=[str(DOC)])}),
     ],
 )
 @pytest.mark.usefixtures("documents")
 def test_no_content_mutations_return_empty_204(app, resource, verb, kwargs):
     with app.test_request_context("/?document_id=" + str(DOC)):
-        result = unwrap(getattr(resource, verb))(resource(), request_context=CONTEXT, dataset_id=DS, **kwargs)
+        result = unwrap(verb)(resource(), request_context=CONTEXT, dataset_id=DS, **kwargs)
     assert result == ("", 204)
 
 
 @pytest.mark.parametrize(
     ("resource", "verb", "operation", "kwargs"),
     [
-        (DocumentProcessingApi, "patch", "update_processing", {"document_id": DOC, "action": "resume"}),
-        (DocumentStatusApi, "patch", "change_status", {"action": "disable"}),
-        (WebsiteDocumentSyncApi, "get", "sync_website", {"document_id": DOC}),
+        (
+            DocumentProcessingApi,
+            DocumentProcessingApi.patch,
+            lambda service: service.update_processing,
+            {"document_id": DOC, "action": "resume"},
+        ),
+        (DocumentStatusApi, DocumentStatusApi.patch, lambda service: service.change_status, {"action": "disable"}),
+        (
+            WebsiteDocumentSyncApi,
+            WebsiteDocumentSyncApi.get,
+            lambda service: service.sync_website,
+            {"document_id": DOC},
+        ),
         (
             DocumentGenerateSummaryApi,
-            "post",
-            "generate_summary",
+            DocumentGenerateSummaryApi.post,
+            lambda service: service.generate_summary,
             {"req_data": GenerateSummaryPayload(document_list=[str(DOC)])},
         ),
     ],
 )
 def test_success_mutations_return_success_response(app, documents, resource, verb, operation, kwargs):
     with app.test_request_context("/?document_id=" + str(DOC)):
-        result = unwrap(getattr(resource, verb))(resource(), request_context=CONTEXT, dataset_id=DS, **kwargs)
+        result = unwrap(verb)(resource(), request_context=CONTEXT, dataset_id=DS, **kwargs)
     assert result == ({"result": "success"}, 200)
-    assert getattr(documents, operation).call_count == 1
+    assert operation(documents).call_count == 1
 
 
 @pytest.mark.parametrize("resource", [DatasetInitApi, DatasetDocumentListApi])
@@ -325,7 +405,8 @@ class TestIndexingEstimateExceptionMapping:
     @staticmethod
     def _registry(method_name: str, error: Exception) -> SimpleNamespace:
         estimates = MagicMock()
-        getattr(estimates, method_name).side_effect = error
+        method = estimates.estimate_document if method_name == "estimate_document" else estimates.estimate_batch
+        method.side_effect = error
         return SimpleNamespace(knowledge=SimpleNamespace(indexing_estimates=estimates))
 
     @pytest.mark.parametrize(
