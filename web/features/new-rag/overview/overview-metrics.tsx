@@ -182,7 +182,7 @@ export function QueryOutcomesChart() {
     return (
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <div className="flex h-6 items-center">
-          <h2 className="system-sm-semibold-uppercase text-text-secondary">
+          <h2 className="system-xl-medium text-text-secondary">
             {t(($) => $['overview.queryOutcomes'])}
           </h2>
         </div>
@@ -196,7 +196,7 @@ export function QueryOutcomesChart() {
     return (
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <div className="flex h-6 items-center">
-          <h2 className="system-sm-semibold-uppercase text-text-secondary">
+          <h2 className="system-xl-medium text-text-secondary">
             {t(($) => $['overview.queryOutcomes'])}
             <Infotip
               aria-label={t(($) => $['overview.answerRateHelp'])}
@@ -220,7 +220,7 @@ export function QueryOutcomesChart() {
   return (
     <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
-        <h2 className="system-sm-semibold-uppercase text-text-secondary">
+        <h2 className="system-xl-medium text-text-secondary">
           {t(($) => $['overview.queryOutcomes'])}
           <Infotip
             aria-label={t(($) => $['overview.answerRateHelp'])}

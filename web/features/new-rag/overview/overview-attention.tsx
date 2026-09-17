@@ -114,7 +114,7 @@ export function AttentionPanel() {
   if (error)
     return (
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
-        <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
+        <h2 className="system-xl-medium text-text-secondary">
           {t(($) => $['overview.needsAttention'])}
         </h2>
         <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
@@ -126,7 +126,7 @@ export function AttentionPanel() {
   if (empty && !loading && !actionableAttention.length && !failedUpload)
     return (
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
-        <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
+        <h2 className="system-xl-medium text-text-secondary">
           {t(($) => $['overview.needsAttention'])}
         </h2>
         <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
@@ -143,7 +143,7 @@ export function AttentionPanel() {
   return (
     <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
       <div className="flex h-6 items-center">
-        <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
+        <h2 className="system-xl-medium text-text-secondary">
           {t(($) => $['overview.needsAttention'])}
         </h2>
       </div>
