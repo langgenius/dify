@@ -1,26 +1,20 @@
 'use client'
 
-import type { KnowledgeFsBackgroundTaskResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { MouseEvent, ReactNode } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useMutation } from '@tanstack/react-query'
-import { useAtomValueRawSync, useSetAtom } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/console'
 import { newKnowledgeAddSourcePath, newKnowledgeDocumentsPath } from '../routes'
 import { useKnowledgeSpacePermission } from '../space/context'
 import {
   overviewEmptyAtom,
-  overviewFailedFirstSourceTaskAtom,
   overviewIndexingSourceNameAtom,
   overviewIndexingTaskAtom,
   overviewKnowledgeSpaceIdAtom,
   overviewShowIndexingAtom,
-  refreshOverviewBackgroundTasksAtom,
 } from './state'
 
 export function OverviewOnboarding() {
@@ -196,66 +190,5 @@ function EmptyKnowledgeOnboarding() {
         </div>
       )}
     </section>
-  )
-}
-
-export function FirstSourceTaskFailureBanner() {
-  const empty = useAtomValueRawSync(overviewEmptyAtom)
-  const failedTask = useAtomValueRawSync(overviewFailedFirstSourceTaskAtom)
-  if (!empty || !failedTask) return null
-  return <FirstSourceTaskFailureSession key={failedTask.id} failedTask={failedTask} />
-}
-
-function FirstSourceTaskFailureSession({
-  failedTask,
-}: {
-  failedTask: KnowledgeFsBackgroundTaskResponse
-}) {
-  const { t } = useTranslation('knowledgeSpace')
-  const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
-  const refreshBackgroundTasks = useSetAtom(refreshOverviewBackgroundTasksAtom)
-  const retryTaskMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(),
-  )
-  const description =
-    failedTask.operation === 'document_upload' || failedTask.operation === 'document_processing'
-      ? t(($) => $.documentUploadFailed)
-      : t(($) => $.addSourceFailed)
-  const retryFailedTask = async () => {
-    if (!failedTask.can_retry || retryTaskMutation.isPending) return
-    try {
-      await retryTaskMutation.mutateAsync({
-        params: {
-          control_space_id: knowledgeSpaceId,
-          task_id: failedTask.id,
-          task_kind: failedTask.task_kind,
-        },
-      })
-      await refreshBackgroundTasks()
-    } catch {
-      // Mutation state keeps the retry feedback visible.
-    }
-  }
-
-  return (
-    <div
-      className="mt-4 flex items-center gap-2.5 overflow-hidden rounded-lg bg-state-destructive-hover px-3.5 py-2.5"
-      role="alert"
-    >
-      <span aria-hidden className="i-ri-error-warning-fill size-4 shrink-0 text-text-destructive" />
-      <p className="min-w-0 flex-1 system-sm-regular text-text-secondary">
-        {retryTaskMutation.isError ? t(($) => $.detailErrorDescription) : description}
-      </p>
-      {failedTask.can_retry && (
-        <Button
-          size="small"
-          variant="secondary"
-          loading={retryTaskMutation.isPending}
-          onClick={() => void retryFailedTask()}
-        >
-          {t(($) => $.retryTask)}
-        </Button>
-      )}
-    </div>
   )
 }

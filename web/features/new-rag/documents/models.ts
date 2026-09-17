@@ -25,6 +25,7 @@ export type LogicalDocumentRevision = {
 } | null
 
 export type LogicalDocument = {
+  latestTask?: DocumentProcessingTask
   active: LogicalDocumentRevision
   activeRevision?: number
   createdAt: string
@@ -170,6 +171,7 @@ export function logicalDocumentFromApi(
   return {
     active: document.active ? revisionFromApi(document.active) : null,
     activeRevision: document.active_revision ?? undefined,
+    latestTask: document.latest_task ? documentTaskFromApi(document.latest_task) : undefined,
     createdAt: document.created_at,
     enabled: document.enabled ?? true,
     id: document.id,

@@ -255,9 +255,6 @@ export const retryOverviewSnapshotsAtom = atom(null, (get) => {
     get(backgroundTasksRefetchAtom)(),
   ])
 })
-export const refreshOverviewBackgroundTasksAtom = atom(null, (get) =>
-  get(backgroundTasksRefetchAtom)(),
-)
 export const reconcileOverviewAfterTasksAtom = atom(null, async (get) => {
   const queryClient = get(queryClientAtom)
   const input = { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } }

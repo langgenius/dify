@@ -2452,6 +2452,13 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             None,
         ),
         (
+            KnowledgeFSDataFacade.list_background_tasks,
+            data_facade_module.KnowledgeFSBackgroundTaskListResponse,
+            "listBackgroundTasks",
+            {"limit": 25, "task_ids": "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42"},
+            None,
+        ),
+        (
             KnowledgeFSDataFacade.list_golden_questions,
             data_facade_module.KnowledgeFSGoldenQuestionListResponse,
             "listGoldenQuestions",
@@ -2723,10 +2730,16 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
     delegated = interactive_child if child_resource_id is not None else interactive
     delegated.assert_called_once()
     assert delegated.call_args.kwargs["operation_id"] == operation_id
+    if operation_id == "listBackgroundTasks":
+        expected_query = (("limit", "25"),)
+        if specific_kwargs.get("cursor"):
+            expected_query += (("cursor", specific_kwargs["cursor"]),)
+        if specific_kwargs.get("task_ids"):
+            expected_query += (("taskIds", specific_kwargs["task_ids"]),)
+        assert delegated.call_args.kwargs["query"] == expected_query
+
     if child_resource_id is not None:
         assert delegated.call_args.kwargs["resource_id"] == child_resource_id
-    if operation_id == "listBackgroundTasks":
-        assert delegated.call_args.kwargs["query"] == (("limit", "25"), ("cursor", "cursor-1"))
     if operation_id == "listDocumentRevisions":
         assert delegated.call_args.kwargs["query"] == (("cursor", "cursor-1"), ("limit", "1"))
     if operation_id in {"listGoldenQuestions", "listQualityBadCases"}:

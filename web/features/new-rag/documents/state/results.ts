@@ -1,14 +1,9 @@
 import { atom } from 'jotai'
 import { selectAtom } from 'jotai/utils'
 import { knowledgeFsTaskFailureMessageKey } from '../../knowledge-fs-task-error'
-import {
-  documentDisplayStatus,
-  newestTaskByDocument,
-  sourceName,
-  taskNeedsAttention,
-} from '../model'
+import { documentDisplayStatus, sourceName, taskNeedsAttention } from '../model'
 import { MAX_AUTO_CURSOR_PAGES } from '../tasks/recovery'
-import { activeTasksAtom, drawerTasksAtom, effectiveTasksAtom } from '../tasks/state'
+import { activeTasksAtom, documentTaskByDocumentAtom, drawerTasksAtom } from '../tasks/state'
 import { documentFilterAtom, documentSearchAtom } from './inputs'
 import {
   baseTasksAtom,
@@ -32,8 +27,8 @@ import {
   tasksQueryHasDataAtom,
   tasksQueryHasNextPageAtom,
   tasksQueryIsFetchNextPageErrorAtom,
-  tasksQueryIsPendingAtom,
 } from './queries'
+import { documentCanWriteAtom } from './runtime'
 
 export const unresolvedTaskDocumentIdsAtom = atom((get) => {
   const documentIds = get(documentIdsAtom)
@@ -55,10 +50,8 @@ export const unresolvedDocumentSourceIdsAtom = atom((get) => {
   )
 })
 
-const taskByDocumentAtom = atom((get) => newestTaskByDocument(get(effectiveTasksAtom)))
-
 export const documentStatusesAtom = atom((get) => {
-  const taskByDocument = get(taskByDocumentAtom)
+  const taskByDocument = get(documentTaskByDocumentAtom)
 
   return new Map(
     get(documentsAtom).map((document) => [
@@ -70,7 +63,7 @@ export const documentStatusesAtom = atom((get) => {
 
 const documentFailureMessageKeysAtom = atom((get) => {
   const statuses = get(documentStatusesAtom)
-  const taskByDocument = get(taskByDocumentAtom)
+  const taskByDocument = get(documentTaskByDocumentAtom)
 
   return new Map(
     get(documentsAtom).flatMap((document) => {
@@ -107,9 +100,7 @@ export const filteredDocumentsAtom = atom((get) => {
   })
 })
 
-export const taskResultsIncompleteAtom = atom(
-  (get) => !get(tasksQueryHasDataAtom) || get(tasksQueryIsPendingAtom),
-)
+export const documentSnapshotPendingAtom = atom((get) => !get(documentsQueryHasDataAtom))
 
 const sourceResultsIncompleteAtom = atom((get) => {
   return Boolean(
@@ -123,7 +114,7 @@ const sourceResultsIncompleteAtom = atom((get) => {
   )
 })
 
-export const filteredResultsIncompleteAtom = atom((get) => {
+const filteredCollectionResultsIncompleteAtom = atom((get) => {
   if (!get(filterActiveAtom)) return false
 
   return Boolean(
@@ -136,6 +127,12 @@ export const filteredResultsIncompleteAtom = atom((get) => {
         get(sourcesQueryIsFetchNextPageErrorAtom))),
   )
 })
+
+export const filteredResultsIncompleteAtom = atom(
+  (get) =>
+    get(filteredCollectionResultsIncompleteAtom) ||
+    (get(filterActiveAtom) && get(documentSnapshotPendingAtom)),
+)
 
 export const documentListPaginationAtom = atom((get) => {
   const filterActive = get(filterActiveAtom)
@@ -167,7 +164,7 @@ export const documentListPaginationAtom = atom((get) => {
 })
 
 const dependencyResultsIncompleteAtom = atom(
-  (get) => get(taskResultsIncompleteAtom) || get(sourceResultsIncompleteAtom),
+  (get) => get(documentSnapshotPendingAtom) || get(sourceResultsIncompleteAtom),
 )
 
 export const createDocumentRowSourceFactsAtom = (documentId: string) => {
@@ -196,19 +193,19 @@ const createDocumentRowFactsAtom = (documentId: string) => {
   return atom((get) => {
     const document = get(documentsByIdAtom).get(documentId)
     const sourceNames = get(sourceNamesAtom)
-    const tasksPending = get(taskResultsIncompleteAtom)
+    const documentSnapshotPending = get(documentSnapshotPendingAtom)
 
     return {
       failureMessageKey: get(documentFailureMessageKeysAtom).get(documentId),
       status: get(documentStatusesAtom).get(documentId) ?? ('queued' as const),
       statusPending: Boolean(
-        tasksPending ||
+        documentSnapshotPending ||
         (get(dependencyResultsIncompleteAtom) &&
           document?.sourceId &&
           !sourceNames.has(document.sourceId)),
       ),
-      task: get(taskByDocumentAtom).get(documentId),
-      tasksPending,
+      task: get(documentTaskByDocumentAtom).get(documentId),
+      documentSnapshotPending,
     }
   })
 }
@@ -231,11 +228,11 @@ export const createDocumentRowStatusFactsAtom = (documentId: string) => {
 export const createDocumentRowActionFactsAtom = (documentId: string) => {
   return selectAtom(
     createDocumentRowFactsAtom(documentId),
-    ({ status, task, tasksPending }) => ({ status, task, tasksPending }),
+    ({ status, task, documentSnapshotPending }) => ({ status, task, documentSnapshotPending }),
     (left, right) =>
       left.status === right.status &&
       left.task === right.task &&
-      left.tasksPending === right.tasksPending,
+      left.documentSnapshotPending === right.documentSnapshotPending,
   )
 }
 
@@ -244,7 +241,9 @@ const documentQueryWarningAtom = atom(
 )
 
 export const taskQueryWarningAtom = atom(
-  (get) => Boolean(get(tasksQueryErrorAtom)) && get(tasksQueryHasDataAtom),
+  (get) =>
+    (Boolean(get(tasksQueryErrorAtom)) && get(tasksQueryHasDataAtom)) ||
+    get(tasksQueryIsFetchNextPageErrorAtom),
 )
 
 export const sourceQueryWarningAtom = atom(
@@ -257,22 +256,44 @@ export const selectionResultsUnavailableAtom = atom((get) => {
   return Boolean(
     get(dependencyResultsIncompleteAtom) ||
     get(documentQueryWarningAtom) ||
-    get(taskQueryWarningAtom) ||
     (get(sourceQueryWarningAtom) && get(unresolvedDocumentSourceIdsAtom).size > 0) ||
     get(filteredResultsIncompleteAtom),
   )
 })
 
-export type ReindexUnavailability =
-  | 'documents'
-  | 'loading'
-  | 'partial'
-  | 'sources'
-  | 'tasks'
-  | undefined
+export const documentResultsUnavailableByIdAtom = atom((get) => {
+  const unloaded = !get(documentsQueryHasDataAtom)
+  const missingSources = get(unresolvedDocumentSourceIdsAtom)
+  const sourcesIncomplete = get(sourceResultsIncompleteAtom)
+  const refreshFailed = get(documentQueryWarningAtom)
+  const filteredCollectionIncomplete = get(filteredCollectionResultsIncompleteAtom)
+  return new Map(
+    get(documentsAtom).map((document) => [
+      document.id,
+      Boolean(
+        unloaded ||
+        refreshFailed ||
+        filteredCollectionIncomplete ||
+        (document.sourceId && missingSources.has(document.sourceId) && sourcesIncomplete),
+      ),
+    ]),
+  )
+})
+
+export const createDocumentRowResultsUnavailableAtom = (documentId: string) =>
+  selectAtom(
+    documentResultsUnavailableByIdAtom,
+    (unavailable) => unavailable.get(documentId) ?? true,
+  )
+
+export const createDocumentRowCanEditAtom = (documentId: string) => {
+  const unavailableAtom = createDocumentRowResultsUnavailableAtom(documentId)
+  return atom((get) => get(documentCanWriteAtom) && !get(unavailableAtom))
+}
+
+export type ReindexUnavailability = 'documents' | 'loading' | 'partial' | 'sources' | undefined
 
 export const reindexUnavailabilityAtom = atom<ReindexUnavailability>((get) => {
-  if (get(tasksQueryErrorAtom) || get(tasksQueryIsFetchNextPageErrorAtom)) return 'tasks'
   if (
     (get(sourcesQueryErrorAtom) || get(sourcesQueryIsFetchNextPageErrorAtom)) &&
     get(unresolvedDocumentSourceIdsAtom).size > 0
@@ -317,5 +338,5 @@ export const documentTableContentFactsAtom = atom((get) => ({
   documents: get(filteredDocumentsAtom),
   resultsIncomplete: get(filteredResultsIncompleteAtom),
   sourcesPending: get(sourceResultsIncompleteAtom),
-  tasksPending: get(taskResultsIncompleteAtom),
+  documentSnapshotPending: get(documentSnapshotPendingAtom),
 }))

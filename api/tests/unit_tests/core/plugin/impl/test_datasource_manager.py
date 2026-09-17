@@ -6,6 +6,7 @@ from core.datasource.entities.datasource_entities import (
     GetOnlineDocumentPageContentRequest,
     OnlineDriveBrowseFilesRequest,
     OnlineDriveDownloadFileRequest,
+    OnlineDriveDownloadMessage,
 )
 from core.plugin.impl.datasource import PluginDatasourceManager
 
@@ -208,7 +209,8 @@ class TestPluginDatasourceManager:
             )
         ) == ["download"]
 
-        assert stream_mock.call_count == 1
+        stream_mock.assert_called_once()
+        assert stream_mock.call_args.args[2] is OnlineDriveDownloadMessage
 
     def test_validate_provider_credentials_returns_true_when_stream_yields_result(self, mocker: MockerFixture):
         manager = PluginDatasourceManager()

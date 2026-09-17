@@ -128,9 +128,8 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
   const retryButtonRef = useRef<HTMLButtonElement>(null)
   const recovery = useAtomValueRawSync(dependencyRecoveryFactsAtom)
   const retry = useSetAtom(retryDocumentDependenciesAtom)
-  const { blocking, retryFetching, sourceBlocking, taskBlocking, warning } = recovery
+  const { blocking, retryFetching, sourceBlocking, warning } = recovery
   const identity = [
-    taskBlocking ? 'tasks-blocking' : '',
     sourceBlocking ? 'sources-blocking' : '',
     recovery.taskWarning ? 'tasks-warning' : '',
     recovery.sourceWarning ? 'sources-warning' : '',
@@ -149,11 +148,8 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
   if (!canRead) return children
 
   const sourceRecovery = recovery.sourceError || recovery.sourceIsFetchNextPageError
-  const description = blocking
-    ? taskBlocking
-      ? t(($) => $.tasksErrorDescription)
-      : t(($) => $.sourcesErrorDescription)
-    : sourceRecovery
+  const description =
+    blocking || sourceRecovery
       ? t(($) => $.sourcesErrorDescription)
       : t(($) => $.tasksErrorDescription)
 
@@ -190,7 +186,7 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
         >
           <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
           <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
-            {taskBlocking ? t(($) => $.tasksErrorDescription) : t(($) => $.sourcesErrorDescription)}
+            {t(($) => $.sourcesErrorDescription)}
           </p>
           <Button
             id={DEPENDENCY_RETRY_BUTTON_ID}

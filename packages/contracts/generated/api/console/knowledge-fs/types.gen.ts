@@ -276,6 +276,7 @@ export type KnowledgeFsLogicalDocumentResponse = {
   enabled?: boolean
   id: string
   knowledge_space_id: string
+  latest_task?: KnowledgeFsBackgroundTaskResponse | null
   provider_item_id?: string | null
   row_version: number
   source_id?: string | null
@@ -1614,11 +1615,13 @@ export type KnowledgeFsBulkDeletionAcceptedItemResponse = {
 
 export type KnowledgeFsDocumentReindexItemResponse = {
   asset?: KnowledgeFsDocumentResponse | null
+  code?: string | null
   compilation_job?: {
     [key: string]: unknown
   } | null
   document_id?: string | null
-  status: 'disabled' | 'not_found' | 'queued'
+  error?: string | null
+  status: 'disabled' | 'failed' | 'not_found' | 'queued'
   status_url?: string | null
 }
 
@@ -2735,6 +2738,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksData = {
   query?: {
     cursor?: string
     limit?: number
+    task_ids?: string
   }
   url: '/knowledge-fs/spaces/{control_space_id}/background-tasks'
 }

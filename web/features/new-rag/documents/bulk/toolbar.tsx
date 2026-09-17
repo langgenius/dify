@@ -14,11 +14,12 @@ import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { documentBulkPendingActionAtom } from '../state/bulk'
-import { reindexUnavailabilityAtom, selectionResultsUnavailableAtom } from '../state/results'
+import { reindexUnavailabilityAtom } from '../state/results'
 import { documentCanDownloadAtom, documentCanWriteAtom } from '../state/runtime'
 import {
   clearDocumentSelectionAtom,
   downloadableDocumentIdsAtom,
+  selectedDocumentResultsUnavailableAtom,
   selectionAvailabilityActionVisibleAtom,
   selectionAvailabilityDisabledAtom,
   selectionAvailabilityTargetEnabledAtom,
@@ -35,22 +36,20 @@ import {
 function BulkReindexAction() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const disabled = useAtomValueRawSync(selectionResultsUnavailableAtom)
+  const disabled = useAtomValueRawSync(selectedDocumentResultsUnavailableAtom)
   const reindexDisabled = useAtomValueRawSync(selectionReindexDisabledAtom)
   const unavailableReason = useAtomValueRawSync(reindexUnavailabilityAtom)
   const { busy, pending, run } = useBulkReindexAction()
   const disabledReason =
-    unavailableReason === 'tasks'
-      ? t(($) => $.tasksErrorDescription)
-      : unavailableReason === 'sources'
-        ? t(($) => $.sourcesErrorDescription)
-        : unavailableReason === 'documents'
-          ? t(($) => $.documentsErrorDescription)
-          : unavailableReason === 'loading'
-            ? tCommon(($) => $.loading)
-            : unavailableReason === 'partial'
-              ? t(($) => $.partialDocumentResults)
-              : undefined
+    unavailableReason === 'sources'
+      ? t(($) => $.sourcesErrorDescription)
+      : unavailableReason === 'documents'
+        ? t(($) => $.documentsErrorDescription)
+        : unavailableReason === 'loading'
+          ? tCommon(($) => $.loading)
+          : unavailableReason === 'partial'
+            ? t(($) => $.partialDocumentResults)
+            : undefined
 
   return (
     <>
@@ -111,7 +110,7 @@ function BulkAvailabilityAction() {
   const actionVisible = useAtomValueRawSync(selectionAvailabilityActionVisibleAtom)
   const actionDisabled = useAtomValueRawSync(selectionAvailabilityDisabledAtom)
   const targetEnabled = useAtomValueRawSync(selectionAvailabilityTargetEnabledAtom)
-  const resultsUnavailable = useAtomValueRawSync(selectionResultsUnavailableAtom)
+  const resultsUnavailable = useAtomValueRawSync(selectedDocumentResultsUnavailableAtom)
   const { busy, pending, run } = useBulkAvailabilityAction()
 
   if (!actionVisible) return null
@@ -132,7 +131,7 @@ function BulkAvailabilityAction() {
 function BulkRemoveAction() {
   const { t: tCommon } = useTranslation('common')
   const [open, setOpen] = useState(false)
-  const resultsUnavailable = useAtomValueRawSync(selectionResultsUnavailableAtom)
+  const resultsUnavailable = useAtomValueRawSync(selectedDocumentResultsUnavailableAtom)
   const { busy, pending, run } = useBulkRemoveAction()
 
   return (

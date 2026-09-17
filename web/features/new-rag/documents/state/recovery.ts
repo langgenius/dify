@@ -24,8 +24,9 @@ import {
   sourcesQueryRefetchAtom,
   taskPermissionDeniedAtom,
   tasksQueryErrorAtom,
-  tasksQueryHasDataAtom,
+  tasksQueryFetchNextPageAtom,
   tasksQueryIsFetchingAtom,
+  tasksQueryIsFetchNextPageErrorAtom,
   tasksQueryRefetchAtom,
 } from './queries'
 import {
@@ -59,27 +60,24 @@ export const dependencyRecoveryFactsAtom = atom((get) => {
   const sourceIsFetchNextPageError = get(sourcesQueryIsFetchNextPageErrorAtom)
   const sourceWarning = get(sourceQueryWarningAtom)
   const taskError = get(tasksQueryErrorAtom)
-  const taskHasData = get(tasksQueryHasDataAtom)
+  const taskIsFetchNextPageError = get(tasksQueryIsFetchNextPageErrorAtom)
   const taskIsFetching = get(tasksQueryIsFetchingAtom)
   const taskWarning = get(taskQueryWarningAtom)
-  const taskBlocking = Boolean(!taskHasData && (taskError || retryRequest.tasks))
   const sourceBlocking = Boolean(!sourceHasData && (sourceError || retryRequest.sources))
-  const blocking = taskBlocking || sourceBlocking
-  const warning = Boolean(
-    (taskError && taskHasData) || (sourceError && sourceHasData) || sourceIsFetchNextPageError,
-  )
+  const blocking = sourceBlocking
+  const warning = taskWarning || sourceWarning
 
   return {
     blocking,
     retryFetching: blocking
-      ? Boolean((taskBlocking && taskIsFetching) || (sourceBlocking && sourceIsFetching))
+      ? sourceIsFetching
       : Boolean((taskWarning && taskIsFetching) || (sourceWarning && sourceIsFetching)),
     sourceBlocking,
     sourceError,
     sourceIsFetchNextPageError,
     sourceWarning,
-    taskBlocking,
     taskError,
+    taskIsFetchNextPageError,
     taskWarning,
     warning,
   }
@@ -90,9 +88,9 @@ export const retryDocumentDependenciesAtom = atom(null, (get, set) => {
   if (recovery.blocking)
     set(documentDependencyRetryRequestAtom, (current) => ({
       sources: current.sources || recovery.sourceBlocking,
-      tasks: current.tasks || recovery.taskBlocking,
     }))
-  if (recovery.taskError || recovery.taskBlocking) void get(tasksQueryRefetchAtom)()
+  if (recovery.taskIsFetchNextPageError) void get(tasksQueryFetchNextPageAtom)()
+  else if (recovery.taskError) void get(tasksQueryRefetchAtom)()
   if (recovery.sourceIsFetchNextPageError) void get(sourcesQueryFetchNextPageAtom)()
   else if (recovery.sourceError || recovery.sourceBlocking) void get(sourcesQueryRefetchAtom)()
 })

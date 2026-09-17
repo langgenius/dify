@@ -68,22 +68,6 @@ function documentDisabled(document: LogicalDocument) {
   return !document.enabled || document.status === 'deleting'
 }
 
-export function newestTaskByDocument(tasks: DocumentProcessingTask[]) {
-  const result = new Map<string, DocumentProcessingTask>()
-  for (const task of tasks) {
-    const current = result.get(task.documentId)
-    if (
-      !current ||
-      task.documentRevision > current.documentRevision ||
-      (task.documentRevision === current.documentRevision &&
-        (taskVersionIsAfter(task.updatedAt, current.updatedAt) ||
-          (task.updatedAt === current.updatedAt && task.id > current.id)))
-    )
-      result.set(task.documentId, task)
-  }
-  return result
-}
-
 export function documentDisplayStatus(
   document: LogicalDocument,
   task?: DocumentProcessingTask,

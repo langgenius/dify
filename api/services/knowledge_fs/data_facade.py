@@ -1407,8 +1407,11 @@ class KnowledgeFSDataFacade:
         control_space_id: str,
         cursor: str | None = None,
         limit: int = 50,
+        task_ids: str | None = None,
     ) -> KnowledgeFSBackgroundTaskListResponse:
         query = (("limit", str(limit)),) + ((("cursor", cursor),) if cursor else ())
+        if task_ids:
+            query += (("taskIds", task_ids),)
         raw = self._interactive(
             tenant_id=tenant_id,
             account_id=account_id,

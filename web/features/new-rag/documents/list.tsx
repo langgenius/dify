@@ -495,9 +495,8 @@ function DocumentsTableHeader() {
 function DocumentsTable() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const { documents, resultsIncomplete, sourcesPending, tasksPending } = useAtomValueRawSync(
-    documentTableContentFactsAtom,
-  )
+  const { documents, resultsIncomplete, sourcesPending, documentSnapshotPending } =
+    useAtomValueRawSync(documentTableContentFactsAtom)
   const renderWindowKey = useAtomValueRawSync(documentRenderWindowIdentityAtom)
   const {
     completingResults,
@@ -548,7 +547,9 @@ function DocumentsTable() {
       <div
         ref={resultsContainerRef}
         aria-labelledby="new-knowledge-documents-title"
-        aria-busy={completingResults || isFetchingNextPage || sourcesPending || tasksPending}
+        aria-busy={
+          completingResults || isFetchingNextPage || sourcesPending || documentSnapshotPending
+        }
         className="mt-3 overflow-x-auto rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         role="region"
         tabIndex={-1}

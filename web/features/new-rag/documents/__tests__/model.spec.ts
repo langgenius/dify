@@ -1,7 +1,6 @@
 import type { DocumentProcessingTask, LogicalDocument } from '../models'
 import {
   documentDisplayStatus,
-  newestTaskByDocument,
   taskCanCancel,
   taskCanRetry,
   taskIsActive,
@@ -51,30 +50,12 @@ const task = (overrides: Partial<DocumentProcessingTask> = {}): DocumentProcessi
 })
 
 describe('new Knowledge document model', () => {
-  it('chooses the highest revision before a more recently updated stale task', () => {
-    const result = newestTaskByDocument([
-      task({ documentRevision: 2, id: 'stale', updatedAt: '2026-07-20T10:10:00Z' }),
-      task({ documentRevision: 3, id: 'current', updatedAt: '2026-07-20T10:01:00Z' }),
-    ])
-
-    expect(result.get('document-1')?.id).toBe('current')
-  })
-
   it('compares task versions without losing sub-millisecond precision', () => {
     expect(taskVersionIsAfter('2026-07-20T10:00:00.123789Z', '2026-07-20T10:00:00.123456Z')).toBe(
       true,
     )
     expect(taskVersionIsAfter('2026-07-20T10:00:00.000001Z', '2026-07-20T10:00:00Z')).toBe(true)
     expect(taskVersionIsAfter('2026-07-20T10:00:00Z', '2026-07-20T10:00:00.000001Z')).toBe(false)
-  })
-
-  it('selects the newest task when versions differ only after milliseconds', () => {
-    const result = newestTaskByDocument([
-      task({ id: 'older', updatedAt: '2026-07-20T10:00:00.123456Z' }),
-      task({ id: 'newer', updatedAt: '2026-07-20T10:00:00.123789Z' }),
-    ])
-
-    expect(result.get('document-1')?.id).toBe('newer')
   })
 
   it.each([

@@ -8,6 +8,7 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveBrowseFilesRequest,
     OnlineDriveBrowseFilesResponse,
     OnlineDriveDownloadFileRequest,
+    OnlineDriveDownloadMessage,
     WebsiteCrawlMessage,
 )
 from core.plugin.entities.plugin_daemon import (
@@ -295,7 +296,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/online_drive_download_file",
-            DatasourceMessage,
+            OnlineDriveDownloadMessage,
             data={
                 "user_id": user_id,
                 "data": {

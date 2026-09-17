@@ -16,7 +16,6 @@ import {
   finishDocumentBulkActionAtom,
 } from '../state/bulk'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
-import { selectionResultsUnavailableAtom } from '../state/results'
 import {
   denyDocumentWriteAtom,
   documentCanDownloadAtom,
@@ -27,6 +26,7 @@ import {
   clearDocumentSelectionAtom,
   downloadableDocumentIdsAtom,
   replaceDocumentSelectionAtom,
+  selectedDocumentResultsUnavailableAtom,
   selectedDocumentsAtom,
   selectionAvailabilityDisabledAtom,
   selectionAvailabilityTargetEnabledAtom,
@@ -76,7 +76,7 @@ function useDocumentInvalidation() {
 export function useBulkReindexAction() {
   const { t } = useTranslation('knowledgeSpace')
   const canWrite = useAtomValue(documentCanWriteAtom)
-  const selectionDisabled = useAtomValue(selectionResultsUnavailableAtom)
+  const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
   const reindexDisabled = useAtomValue(selectionReindexDisabledAtom)
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
@@ -101,21 +101,21 @@ export function useBulkReindexAction() {
       const missingIds = result.items
         .filter((item) => item.status === 'not_found')
         .flatMap((item) => (item.document_id ? [item.document_id] : []))
-      const disabledIds = result.items
-        .filter((item) => item.status === 'disabled')
+      const failedIds = result.items
+        .filter((item) => item.status === 'disabled' || item.status === 'failed')
         .flatMap((item) => (item.document_id ? [item.document_id] : []))
       const queuedCount = result.items.filter((item) => item.status === 'queued').length
-      replaceSelection(queuedCount ? [...missingIds, ...disabledIds] : disabledIds)
+      replaceSelection(queuedCount ? [...missingIds, ...failedIds] : failedIds)
       if (!queuedCount)
         toast.error(
-          disabledIds.length
+          failedIds.length
             ? t(($) => $.documentsReindexFailed)
             : t(($) => $.documentsReindexPartial, {
                 missing: missingIds.length,
                 queued: 0,
               }),
         )
-      else if (disabledIds.length) toast.warning(t(($) => $.documentsReindexFailed))
+      else if (failedIds.length) toast.warning(t(($) => $.documentsReindexFailed))
       else if (missingIds.length)
         toast.warning(
           t(($) => $.documentsReindexPartial, {
@@ -185,7 +185,7 @@ export function useBulkDownloadAction() {
 export function useBulkAvailabilityAction() {
   const { t } = useTranslation('knowledgeSpace')
   const canWrite = useAtomValue(documentCanWriteAtom)
-  const selectionDisabled = useAtomValue(selectionResultsUnavailableAtom)
+  const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
   const selectedDocuments = useAtomValue(selectedDocumentsAtom)
   const availabilityDisabled = useAtomValue(selectionAvailabilityDisabledAtom)
@@ -252,7 +252,7 @@ export function useBulkAvailabilityAction() {
 export function useBulkRemoveAction() {
   const { t } = useTranslation('knowledgeSpace')
   const canWrite = useAtomValue(documentCanWriteAtom)
-  const selectionDisabled = useAtomValue(selectionResultsUnavailableAtom)
+  const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
   const selectedDocuments = useAtomValue(selectedDocumentsAtom)
   const clearSelection = useSetAtom(clearDocumentSelectionAtom)

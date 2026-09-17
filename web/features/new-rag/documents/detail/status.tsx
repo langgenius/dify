@@ -4,15 +4,12 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DOCUMENT_DETAIL_TITLE_ID } from './header'
 import {
-  continueDocumentTaskLookupAtom,
   documentLatestTaskAtom,
   documentPermissionRecoveryBusyAtom,
   documentPermissionRecoveryNeededAtom,
   documentReindexInProgressAtom,
-  documentTaskIsLookingUpAtom,
-  documentTaskLookupExhaustedAtom,
-  documentTasksQueryErrorAtom,
-  retryDocumentTasksAtom,
+  documentTaskSnapshotErrorAtom,
+  retryDocumentTaskSnapshotAtom,
   retryDocumentWritePermissionAtom,
 } from './state/workflow'
 import { useRefreshDocumentWritePermission } from './write-permission'
@@ -24,13 +21,10 @@ function focusDocumentDetailTitle() {
 export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }) {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const isLookingUpTask = useAtomValueRawSync(documentTaskIsLookingUpAtom)
   const latestTask = useAtomValueRawSync(documentLatestTaskAtom)
-  const lookupExhausted = useAtomValueRawSync(documentTaskLookupExhaustedAtom)
   const reindexInProgress = useAtomValueRawSync(documentReindexInProgressAtom)
-  const tasksError = useAtomValueRawSync(documentTasksQueryErrorAtom)
-  const continueLookup = useSetAtom(continueDocumentTaskLookupAtom)
-  const retryTasks = useSetAtom(retryDocumentTasksAtom)
+  const tasksError = useAtomValueRawSync(documentTaskSnapshotErrorAtom)
+  const retryTasks = useSetAtom(retryDocumentTaskSnapshotAtom)
 
   return (
     <>
@@ -69,35 +63,6 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
         >
           <span>{t(($) => $.tasksErrorDescription)}</span>
           <Button onClick={() => void retryTasks()}>{tCommon(($) => $['operation.retry'])}</Button>
-        </div>
-      )}
-
-      {(lookupExhausted || isLookingUpTask) && (
-        <div
-          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
-          role={isLookingUpTask ? 'status' : 'alert'}
-        >
-          {isLookingUpTask ? (
-            <span className="flex items-center gap-2">
-              <span
-                aria-hidden
-                className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none"
-              />
-              {tCommon(($) => $.loading)}
-            </span>
-          ) : (
-            <>
-              <span>{t(($) => $.documentTaskLookupIncomplete)}</span>
-              <Button
-                onClick={() => {
-                  continueLookup()
-                  requestAnimationFrame(focusDocumentDetailTitle)
-                }}
-              >
-                {t(($) => $.continueCheckingTaskStatus)}
-              </Button>
-            </>
-          )}
         </div>
       )}
     </>

@@ -42,7 +42,7 @@ const task = (
 
 describe('KnowledgeFS processing task events', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     vi.useRealTimers()
   })
 
@@ -87,7 +87,7 @@ describe('KnowledgeFS processing task events', () => {
       1,
       {
         params: { control_space_id: 'space/1' },
-        query: { limit: 100 },
+        query: { task_ids: 'task/1' },
       },
       expect.objectContaining({
         context: { silent: true },
@@ -96,10 +96,8 @@ describe('KnowledgeFS processing task events', () => {
     )
   })
 
-  it('continues through cursor pages and stops when the requested task is absent', async () => {
-    listBackgroundTasks
-      .mockResolvedValueOnce({ data: [], next_cursor: 'next-page' })
-      .mockResolvedValueOnce({ data: [], next_cursor: null })
+  it('stops after one exact lookup when the requested task is absent', async () => {
+    listBackgroundTasks.mockResolvedValueOnce({ data: [], next_cursor: null })
 
     const events = streamProcessingTaskEvents({
       documentId: 'document-1',
@@ -109,10 +107,10 @@ describe('KnowledgeFS processing task events', () => {
 
     await expect(events.next()).resolves.toEqual({ done: true, value: undefined })
     expect(listBackgroundTasks).toHaveBeenNthCalledWith(
-      2,
+      1,
       {
         params: { control_space_id: 'space-1' },
-        query: { cursor: 'next-page', limit: 100 },
+        query: { task_ids: 'task-1' },
       },
       expect.objectContaining({
         context: { silent: true },
@@ -121,16 +119,14 @@ describe('KnowledgeFS processing task events', () => {
     )
   })
 
-  it('shares one paginated snapshot across concurrent task observers', async () => {
-    listBackgroundTasks
-      .mockResolvedValueOnce({
-        data: [task('running', { documentId: 'document/2', id: 'task/2' })],
-        next_cursor: 'next-page',
-      })
-      .mockResolvedValueOnce({
-        data: [task('running', { documentId: 'document/1', id: 'task/1' })],
-        next_cursor: null,
-      })
+  it('shares one exact snapshot across concurrent task observers', async () => {
+    listBackgroundTasks.mockResolvedValueOnce({
+      data: [
+        task('running', { documentId: 'document/2', id: 'task/2' }),
+        task('running', { documentId: 'document/1', id: 'task/1' }),
+      ],
+      next_cursor: null,
+    })
     const firstController = new AbortController()
     const secondController = new AbortController()
     const firstEvents = streamProcessingTaskEvents({
@@ -150,7 +146,7 @@ describe('KnowledgeFS processing task events', () => {
 
     expect(first.done).toBe(false)
     expect(second.done).toBe(false)
-    expect(listBackgroundTasks).toHaveBeenCalledTimes(2)
+    expect(listBackgroundTasks).toHaveBeenCalledOnce()
 
     firstController.abort()
     secondController.abort()
