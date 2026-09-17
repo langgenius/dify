@@ -89,24 +89,7 @@ class RosterAgentPackageReader:
     ) -> tuple[RosterAgentPackageManifest, dict[str, AgentAppDsl], dict[str, RosterAgentPackageMember]]:
         try:
             with zipfile.ZipFile(archive_file) as archive:
-                infos = archive.infolist()
-                if not infos:
-                    raise InvalidRosterAgentPackageError("Roster Agent package is empty")
-                if len(infos) > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
-                    raise InvalidRosterAgentPackageError("Roster Agent package has too many members")
-
-                info_by_path: dict[str, zipfile.ZipInfo] = {}
-                casefold_paths: set[str] = set()
-                total_uncompressed = 0
-                for info in infos:
-                    path = self._validate_member_info(info)
-                    if path in info_by_path or path.casefold() in casefold_paths:
-                        raise InvalidRosterAgentPackageError("Roster Agent package contains duplicate member paths")
-                    info_by_path[path] = info
-                    casefold_paths.add(path.casefold())
-                    total_uncompressed += info.file_size
-                if total_uncompressed > dify_config.AGENT_PACKAGE_MAX_BYTES:
-                    raise RosterAgentPackageTooLargeError("Roster Agent package uncompressed size exceeds the limit")
+                info_by_path = self._index_archive(archive)
 
                 manifest_data, manifest_size = self._read_yaml_document(archive, info_by_path, "manifest.yaml")
                 try:
@@ -229,6 +212,27 @@ class RosterAgentPackageReader:
             raise
         except (OSError, zipfile.BadZipFile, EOFError, RuntimeError, ValueError, zlib.error) as exc:
             raise InvalidRosterAgentPackageError("Roster Agent package is not a valid ZIP") from exc
+
+    def _index_archive(self, archive: zipfile.ZipFile) -> dict[str, zipfile.ZipInfo]:
+        infos = archive.infolist()
+        if not infos:
+            raise InvalidRosterAgentPackageError("Roster Agent package is empty")
+        if len(infos) > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
+            raise InvalidRosterAgentPackageError("Roster Agent package has too many members")
+
+        info_by_path: dict[str, zipfile.ZipInfo] = {}
+        casefold_paths: set[str] = set()
+        total_uncompressed = 0
+        for info in infos:
+            path = self._validate_member_info(info)
+            if path in info_by_path or path.casefold() in casefold_paths:
+                raise InvalidRosterAgentPackageError("Roster Agent package contains duplicate member paths")
+            info_by_path[path] = info
+            casefold_paths.add(path.casefold())
+            total_uncompressed += info.file_size
+        if total_uncompressed > dify_config.AGENT_PACKAGE_MAX_BYTES:
+            raise RosterAgentPackageTooLargeError("Roster Agent package uncompressed size exceeds the limit")
+        return info_by_path
 
     @staticmethod
     def _copy_bounded(source: BinaryIO, target: BinaryIO) -> None:

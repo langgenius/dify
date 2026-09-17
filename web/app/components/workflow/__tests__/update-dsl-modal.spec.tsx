@@ -32,9 +32,17 @@ vi.mock('@/app/notifications', () => ({
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-vi.mock('@/service/apps', () => ({
-  importDSL: (payload: unknown) => mockImportDSL(payload),
-  importDSLConfirm: (payload: unknown) => mockImportDSLConfirm(payload),
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: {
+      imports: {
+        post: ({ body }: { body: unknown }) => mockImportDSL(body),
+        byImportId: {
+          confirm: { post: ({ params }: { params: unknown }) => mockImportDSLConfirm(params) },
+        },
+      },
+    },
+  },
 }))
 
 const mockFetchWorkflowDraft = vi.fn()
@@ -114,6 +122,16 @@ describe('UpdateDSLModal', () => {
       </EventEmitterContext.Provider>,
     )
   }
+
+  it('uploads an ifpkg without decoding it as YAML when overwriting a workflow', async () => {
+    mockImportDSL.mockResolvedValue({ status: DSLImportStatus.COMPLETED, app_id: 'app-1' })
+    render(<UpdateDSLModal {...defaultProps} />)
+    const file = new File([new Uint8Array([0x50, 0x4b, 0xff])], 'workflow.IFPKG')
+    fireEvent.change(screen.getByTestId('dsl-file-input'), { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file, app_id: 'app-1' }))
+    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalled())
+  })
 
   it('should keep import disabled until a file is selected', () => {
     renderModal()

@@ -300,6 +300,8 @@ class AppDslService:
                         error="Only workflow or advanced chat apps can be overwritten",
                     )
 
+                self._validate_workflow_overwrite(app, data)
+
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
                 tenant_id = account.current_tenant_id
@@ -434,6 +436,9 @@ class AppDslService:
                         error="App not found",
                     )
 
+            if app is not None:
+                self._validate_workflow_overwrite(app, data)
+
             # Create or update app
             app = self._create_or_update_app(
                 app=app,
@@ -539,6 +544,25 @@ class AppDslService:
         )
         if not allowed:
             raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
+
+    @staticmethod
+    def _validate_workflow_overwrite(app: App, data: dict[str, Any]) -> None:
+        """Apply editor compatibility checks to both YAML and package imports."""
+        app_mode = data.get("app", {}).get("mode")
+        if app.mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT} or app_mode not in {
+            AppMode.WORKFLOW,
+            AppMode.ADVANCED_CHAT,
+        }:
+            raise ValueError("Only workflow or advanced chat DSLs can overwrite workflow Apps")
+        # Package uploads cannot run the editor's YAML node checks before import.
+        invalid_types = (
+            {BuiltinNodeTypes.END, "trigger-webhook", "trigger-schedule", "trigger-plugin"}
+            if app.mode == AppMode.ADVANCED_CHAT
+            else {BuiltinNodeTypes.ANSWER}
+        )
+        nodes = data.get("workflow", {}).get("graph", {}).get("nodes", [])
+        if any(node.get("data", {}).get("type") in invalid_types for node in nodes):
+            raise ValueError("Workflow contains node types incompatible with the target App")
 
     def _create_or_update_app(
         self,

@@ -85,22 +85,6 @@ export const updateAppInfo = ({
   return put<AppDetailResponse>(`apps/${appID}`, { body })
 }
 
-export const exportAppConfig = ({
-  appID,
-  include = false,
-  workflowID,
-}: {
-  appID: string
-  include?: boolean
-  workflowID?: string
-}): Promise<{ data: string }> => {
-  const params = new URLSearchParams({
-    include_secret: include.toString(),
-  })
-  if (workflowID) params.append('workflow_id', workflowID)
-  return get<{ data: string }>(`apps/${appID}/export?${params.toString()}`)
-}
-
 export const importDSL = ({
   mode,
   yaml_content,
