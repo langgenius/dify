@@ -12,14 +12,14 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.source import DataSourceApiKeyAuthBinding
-from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
-from services.auth.data_source_api_key_auth_gateways import (
+from repositories.data_source.api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
+from services.auth.errors import DataSourceApiKeyAuthProviderUnavailableError
+from services.data_source.auth.api_key_gateways import (
     ProviderApiKeyAuthCredentialValidator,
     TenantApiKeyAuthCredentialEncryptor,
 )
-from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
-from services.auth.errors import DataSourceApiKeyAuthProviderUnavailableError
-from services.entities.data_source_api_key_auth_entities import (
+from services.data_source.auth.api_key_service import DataSourceApiKeyAuthService
+from services.data_source.entities.api_key_auth import (
     DataSourceApiKeyAuthBindingCreate,
     DataSourceApiKeyAuthCredentials,
 )
@@ -67,8 +67,8 @@ class TestAuthIntegration:
             encryptor=TenantApiKeyAuthCredentialEncryptor(),
         )
 
-    @patch("services.auth.firecrawl.firecrawl.httpx.post")
-    @patch("services.auth.data_source_api_key_auth_gateways.encrypter.encrypt_token")
+    @patch("services.data_source.auth.firecrawl.firecrawl.httpx.post")
+    @patch("services.data_source.auth.api_key_gateways.encrypter.encrypt_token")
     def test_end_to_end_auth_flow(
         self,
         mock_encrypt,
@@ -96,9 +96,9 @@ class TestAuthIntegration:
         assert len(bindings) == 1
         assert bindings[0].provider == _FIRECRAWL_PROVIDER
 
-    @patch("services.auth.data_source_api_key_auth_gateways.encrypter.encrypt_token")
-    @patch("services.auth.firecrawl.firecrawl.httpx.post")
-    @patch("services.auth.jina.jina._http_client.post")
+    @patch("services.data_source.auth.api_key_gateways.encrypter.encrypt_token")
+    @patch("services.data_source.auth.firecrawl.firecrawl.httpx.post")
+    @patch("services.data_source.auth.jina.jina._http_client.post")
     def test_multi_tenant_isolation(
         self,
         mock_jina_http,
@@ -132,8 +132,8 @@ class TestAuthIntegration:
         assert len(result2) == 1
         assert result2[0].provider == _JINA_PROVIDER
 
-    @patch("services.auth.firecrawl.firecrawl.httpx.post")
-    @patch("services.auth.data_source_api_key_auth_gateways.encrypter.encrypt_token", return_value="encrypted_key")
+    @patch("services.data_source.auth.firecrawl.firecrawl.httpx.post")
+    @patch("services.data_source.auth.api_key_gateways.encrypter.encrypt_token", return_value="encrypted_key")
     def test_concurrent_creation_safety(
         self,
         mock_encrypt,
@@ -168,7 +168,7 @@ class TestAuthIntegration:
         assert len(results) == 5
         assert len(exceptions) == 0
 
-    @patch("services.auth.firecrawl.firecrawl.httpx.post")
+    @patch("services.data_source.auth.firecrawl.firecrawl.httpx.post")
     def test_network_failure_recovery(
         self,
         mock_http,

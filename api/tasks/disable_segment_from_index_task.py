@@ -10,6 +10,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
 from models.enums import SegmentStatus
+from repositories.knowledge.dataset_read_repository import get_segment_dataset, get_segment_document
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +39,13 @@ def disable_segment_from_index_task(segment_id: str):
         indexing_cache_key = f"segment_{segment.id}_indexing"
 
         try:
-            dataset = segment.get_dataset(session=session)
+            dataset = get_segment_dataset(segment, session=session)
 
             if not dataset:
                 logger.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
                 return
 
-            dataset_document = segment.get_document(session=session)
+            dataset_document = get_segment_document(segment, session=session)
 
             if not dataset_document:
                 logger.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
@@ -65,10 +66,10 @@ def disable_segment_from_index_task(segment_id: str):
             session.commit()
 
             # Disable summary index for this segment
-            from services.summary_index_service import SummaryIndexService
+            from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
             try:
-                SummaryIndexService.disable_summaries_for_segments(
+                SummaryIndexAdapter.disable_summaries_for_segments(
                     dataset=dataset,
                     segment_ids=[segment.id],
                     disabled_by=segment.disabled_by,

@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import cast
+from typing import Protocol, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -28,12 +28,21 @@ from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
-from models.dataset import Pipeline
+from models.dataset import Dataset, Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
-from services.dataset_ref_service import DatasetRefService, DocumentRef
 
 logger = logging.getLogger(__name__)
+
+
+class PipelineDocumentStore(Protocol):
+    """Knowledge state required by a pipeline run, with explicit session ownership."""
+
+    def get_pipeline_dataset(self, pipeline: Pipeline, *, session: Session) -> Dataset | None: ...
+
+    def exists(self, *, workspace_id: str, dataset_id: str, document_id: str) -> bool: ...
+
+    def mark_failed(self, *, workspace_id: str, dataset_id: str, document_id: str, error: str) -> None: ...
 
 
 class PipelineRunner(WorkflowBasedAppRunner):
@@ -50,6 +59,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         system_user_id: str,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        documents: PipelineDocumentStore,
         workflow_thread_pool_id: str | None = None,
     ) -> None:
         """
@@ -68,6 +78,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self._sys_user_id = system_user_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._documents = documents
 
     def _get_app_id(self) -> str:
         return self.application_generate_entity.app_config.app_id
@@ -98,7 +109,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             if not pipeline or pipeline.tenant_id != app_config.tenant_id:
                 raise ValueError("Pipeline not found")
 
-            dataset = pipeline.retrieve_dataset(session)
+            dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
             if (
                 not dataset
                 or dataset.tenant_id != pipeline.tenant_id
@@ -108,23 +119,20 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
             document_id = self.application_generate_entity.document_id
             original_document_id = self.application_generate_entity.original_document_id
-            dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-            document_ref = (
-                DatasetRefService.create_document_ref_from_id(
-                    dataset_ref,
-                    document_id,
-                )
-                if document_id
-                else None
-            )
-            if document_ref and DatasetRefService.get_document_by_ref(document_ref, session=session) is None:
+            dataset_workspace_id = dataset.tenant_id
+            dataset_id = dataset.id
+            if document_id and not self._documents.exists(
+                workspace_id=dataset_workspace_id,
+                dataset_id=dataset_id,
+                document_id=document_id,
+            ):
                 raise ValueError("Pipeline document not found")
             if original_document_id and original_document_id != document_id:
-                original_document_ref = DatasetRefService.create_document_ref_from_id(
-                    dataset_ref,
-                    original_document_id,
-                )
-                if DatasetRefService.get_document_by_ref(original_document_ref, session=session) is None:
+                if not self._documents.exists(
+                    workspace_id=dataset_workspace_id,
+                    dataset_id=dataset_id,
+                    document_id=original_document_id,
+                ):
                     raise ValueError("Pipeline original document not found")
 
             workflow = self.get_workflow(session=session, pipeline=pipeline, workflow_id=app_config.workflow_id)
@@ -237,7 +245,12 @@ class PipelineRunner(WorkflowBasedAppRunner):
         generator = workflow_entry.run()
 
         for event in generator:
-            self._update_document_status(event, document_ref)
+            self._update_document_status(
+                event,
+                workspace_id=dataset_workspace_id,
+                dataset_id=dataset_id,
+                document_id=document_id,
+            )
             self._handle_event(workflow_entry, event)
 
     def get_workflow(self, session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
@@ -325,14 +338,21 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         return graph
 
-    def _update_document_status(self, event: GraphEngineEvent, document_ref: DocumentRef | None) -> None:
+    def _update_document_status(
+        self,
+        event: GraphEngineEvent,
+        *,
+        workspace_id: str,
+        dataset_id: str,
+        document_id: str | None,
+    ) -> None:
         """Set an owner-bound document to error after a failed graph run, if it exists."""
-        if not isinstance(event, GraphRunFailedEvent) or document_ref is None:
+        if not isinstance(event, GraphRunFailedEvent) or document_id is None:
             return
 
-        with create_session() as session, session.begin():
-            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
-            if document:
-                document.indexing_status = "error"
-                document.error = event.error or "Unknown error"
-                session.add(document)
+        self._documents.mark_failed(
+            workspace_id=workspace_id,
+            dataset_id=dataset_id,
+            document_id=document_id,
+            error=event.error or "Unknown error",
+        )

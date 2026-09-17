@@ -6,7 +6,7 @@ starts from the production incident shape: the caller has already deleted the
 """
 
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import select
@@ -70,20 +70,10 @@ def mock_storage():
 
 
 @pytest.fixture
-def mock_index_processor_factory():
-    """Mock the vector/index boundary so cleanup behavior is deterministic."""
-    with patch("tasks.clean_document_task.IndexProcessorFactory", autospec=True) as factory_cls:
-        processor = MagicMock()
-        processor.clean.return_value = None
-        factory_instance = MagicMock()
-        factory_instance.init_index_processor.return_value = processor
-        factory_cls.return_value = factory_instance
-
-        yield {
-            "factory_cls": factory_cls,
-            "factory_instance": factory_instance,
-            "processor": processor,
-        }
+def mock_index_cleanup(tenant_id: str):
+    """Keep task resilience tests independent of the external index backend."""
+    with patch("tasks.clean_document_task.clean_document_indexes", return_value=tenant_id) as cleanup:
+        yield cleanup
 
 
 def _document(*, document_id: str, dataset_id: str, tenant_id: str, created_by: str) -> Document:
@@ -212,7 +202,7 @@ class TestVectorCleanupResilience:
         sqlite_session: Session,
         bind_task_sessions: None,
         mock_storage,
-        mock_index_processor_factory,
+        mock_index_cleanup,
     ) -> None:
         """A transient billing failure leaves only the unrelated document's rows."""
         other_document_id, survivor_segment_id = _persist_deleted_document_state(
@@ -222,7 +212,7 @@ class TestVectorCleanupResilience:
             tenant_id=tenant_id,
             target_segment_ids=["seg-1", "seg-2"],
         )
-        mock_index_processor_factory["processor"].clean.side_effect = ValueError(
+        mock_index_cleanup.side_effect = ValueError(
             "Unable to retrieve billing information. Please try again later or contact support."
         )
 
@@ -235,7 +225,7 @@ class TestVectorCleanupResilience:
                 file_id=None,
             )
 
-        mock_index_processor_factory["processor"].clean.assert_called_once()
+        mock_index_cleanup.assert_called_once()
         _assert_relational_cleanup(
             sqlite_session,
             document_id=document_id,
@@ -252,7 +242,7 @@ class TestVectorCleanupResilience:
         sqlite_session: Session,
         bind_task_sessions: None,
         mock_storage,
-        mock_index_processor_factory,
+        mock_index_cleanup,
     ) -> None:
         """The happy path calls the index boundary and completes scoped cleanup."""
         other_document_id, survivor_segment_id = _persist_deleted_document_state(
@@ -271,15 +261,15 @@ class TestVectorCleanupResilience:
                 file_id=None,
             )
 
-        mock_index_processor_factory["processor"].clean.assert_called_once()
-        _, kwargs = mock_index_processor_factory["processor"].clean.call_args
-        cleanup_session = kwargs.pop("session")
-        assert isinstance(cleanup_session, Session)
-        assert cleanup_session.get_bind() is sqlite_session.get_bind()
+        mock_index_cleanup.assert_called_once()
+        _, kwargs = mock_index_cleanup.call_args
+        new_session = kwargs.pop("new_session")
+        with new_session() as cleanup_session:
+            assert cleanup_session.get_bind() is sqlite_session.get_bind()
         assert kwargs == {
-            "with_keywords": True,
-            "delete_child_chunks": True,
-            "delete_summaries": True,
+            "dataset_id": dataset_id,
+            "document_ids": [document_id],
+            "doc_form": "paragraph",
         }
         _assert_relational_cleanup(
             sqlite_session,
@@ -289,7 +279,7 @@ class TestVectorCleanupResilience:
         )
         schedule_refresh.assert_called_once_with(tenant_id)
 
-    def test_no_segments_skips_vector_cleanup(
+    def test_no_index_state_does_not_refresh_billing(
         self,
         document_id: str,
         dataset_id: str,
@@ -297,9 +287,10 @@ class TestVectorCleanupResilience:
         sqlite_session: Session,
         bind_task_sessions: None,
         mock_storage,
-        mock_index_processor_factory,
+        mock_index_cleanup,
     ) -> None:
-        """A target document without segments skips the vector/index boundary."""
+        """Cleanup checks for orphan summaries even when no segments remain."""
+        mock_index_cleanup.return_value = None
         other_document_id, survivor_segment_id = _persist_deleted_document_state(
             sqlite_session,
             document_id=document_id,
@@ -316,7 +307,7 @@ class TestVectorCleanupResilience:
                 file_id=None,
             )
 
-        mock_index_processor_factory["factory_cls"].assert_not_called()
+        mock_index_cleanup.assert_called_once()
         _assert_relational_cleanup(
             sqlite_session,
             document_id=document_id,

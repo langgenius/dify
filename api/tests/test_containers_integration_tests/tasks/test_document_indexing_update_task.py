@@ -17,11 +17,11 @@ class TestDocumentIndexingUpdateTask:
     def mock_external_dependencies(self):
         """Patch external collaborators used by the update task.
         - IndexProcessorFactory.init_index_processor().clean(...)
-        - IndexingRunner.run([...])
+        - build_document_indexing_service.run([...])
         """
         with (
             patch("tasks.document_indexing_update_task.IndexProcessorFactory", autospec=True) as mock_factory,
-            patch("tasks.document_indexing_update_task.IndexingRunner", autospec=True) as mock_runner,
+            patch("tasks.document_indexing_update_task.build_document_indexing_service", autospec=True) as mock_runner,
         ):
             processor_instance = MagicMock()
             mock_factory.return_value.init_index_processor.return_value = processor_instance

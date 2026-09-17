@@ -65,7 +65,6 @@ from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
     from graphon.model_runtime.protocols.runtime import ModelRuntime
-    from models.account import Account
 
 logger = logging.getLogger(__name__)
 
@@ -1126,50 +1125,6 @@ class ProviderManager:
             else:
                 provider_names.append(str(model_provider_id))
         return provider_names
-
-    @staticmethod
-    def get_provider_available_credentials(
-        tenant_id: str,
-        provider_name: str,
-        user: Account | None = None,
-    ) -> list[CredentialConfiguration]:
-        """
-        Get provider all credentials, filtered by visibility.
-
-        :param tenant_id: workspace id
-        :param provider_name: provider name
-        :param user: current user (id + admin flag drive the visibility filter)
-        :return:
-        """
-        from models.credential_permission import CredentialType as CredPermType
-        from services.credential_permission_service import CredentialPermissionService
-
-        with session_factory.create_session() as session:
-            stmt = (
-                select(ProviderCredential)
-                .where(
-                    ProviderCredential.tenant_id == tenant_id,
-                    ProviderCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
-                )
-                .order_by(ProviderCredential.created_at.desc())
-            )
-
-            if user is not None:
-                stmt = CredentialPermissionService.apply_visibility_filter(
-                    stmt,
-                    model_id_column=ProviderCredential.id,
-                    model_user_id_column=ProviderCredential.user_id,
-                    model_visibility_column=ProviderCredential.visibility,
-                    credential_type=CredPermType.PROVIDER_CREDENTIAL,
-                    user=user,
-                )
-
-            available_credentials = session.scalars(stmt).all()
-
-        return [
-            CredentialConfiguration(credential_id=credential.id, credential_name=credential.credential_name)
-            for credential in available_credentials
-        ]
 
     @staticmethod
     def get_provider_model_available_credentials(

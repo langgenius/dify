@@ -8,7 +8,7 @@ from core.entities.model_entities import ModelStatus
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 
 class TestModelProviderService:
@@ -19,10 +19,10 @@ class TestModelProviderService:
         """Mock setup for external service dependencies."""
         with (
             patch(
-                "services.model_provider_service.create_plugin_provider_manager", autospec=True
+                "services.model_provider.service.create_plugin_provider_manager", autospec=True
             ) as mock_provider_manager,
             patch(
-                "services.model_provider_service.create_plugin_model_provider_factory", autospec=True
+                "services.model_provider.service.create_plugin_model_provider_factory", autospec=True
             ) as mock_model_provider_factory,
         ):
             # Setup default mock returns

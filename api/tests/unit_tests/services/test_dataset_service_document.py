@@ -6,13 +6,14 @@ from datetime import datetime
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from core.model_manager import ModelInstance
 from enums import DeploymentEdition
 from models.account import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
-from services.dataset_ref_service import DatasetRefService
+from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.config_override import config_overrides_context
 
 from .dataset_service_test_helpers import (
@@ -41,7 +42,6 @@ from .dataset_service_test_helpers import (
     RetrievalModel,
     Rule,
     Segmentation,
-    SimpleNamespace,
     WebsiteInfo,
     _make_features,
     _make_lock_context,
@@ -253,7 +253,7 @@ class TestDocumentServiceRetrieval:
         sqlite_session.commit()
 
         documents = DocumentService.get_document_by_ids(
-            DatasetRefService.create_dataset_ref(dataset),
+            DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id),
             ["expected", "disabled", "archived", "waiting", "other-dataset", "other-tenant"],
             sqlite_session,
         )
@@ -281,8 +281,8 @@ class TestDocumentServiceMutations:
         sqlite_session.add_all([dataset, document, other_dataset, other_tenant])
         sqlite_session.commit()
 
-        with patch("services.dataset_service.batch_clean_document_task") as clean_task:
-            dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        with patch("services.knowledge.dataset_service.batch_clean_document_task") as clean_task:
+            dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
             DocumentService.delete_documents(
                 dataset_ref,
                 [document.id, other_dataset.id, other_tenant.id],
@@ -305,14 +305,18 @@ class TestDocumentServiceMutations:
             commits += 1
 
         event.listen(sqlite_session, "after_commit", count_commit)
+        dataset = _dataset_row()
         DocumentService.delete_documents(
-            DatasetRefService.create_dataset_ref(_dataset_row()), [], IndexStructureType.PARAGRAPH_INDEX, sqlite_session
+            DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id),
+            [],
+            IndexStructureType.PARAGRAPH_INDEX,
+            sqlite_session,
         )
         event.remove(sqlite_session, "after_commit", count_commit)
         assert commits == 0
 
     def test_rename_document_raises_when_dataset_is_missing(self, sqlite_session: Session):
-        with patch("services.dataset_service.current_user", _account()):
+        with patch("services.knowledge.dataset_service.current_user", _account()):
             with pytest.raises(ValueError, match="Dataset not found"):
                 DocumentService.rename_document("dataset-1", "doc-1", "New Name", sqlite_session)
 
@@ -320,7 +324,7 @@ class TestDocumentServiceMutations:
         dataset = _dataset_row()
         sqlite_session.add(dataset)
         sqlite_session.commit()
-        with patch("services.dataset_service.current_user", _account()):
+        with patch("services.knowledge.dataset_service.current_user", _account()):
             with pytest.raises(ValueError, match="Document not found"):
                 DocumentService.rename_document(dataset.id, "doc-1", "New Name", sqlite_session)
 
@@ -329,7 +333,7 @@ class TestDocumentServiceMutations:
         document = _document_row(tenant_id="tenant-other")
         sqlite_session.add_all([dataset, document])
         sqlite_session.commit()
-        with patch("services.dataset_service.current_user", _account()):
+        with patch("services.knowledge.dataset_service.current_user", _account()):
             with pytest.raises(ValueError, match="No permission"):
                 DocumentService.rename_document(dataset.id, document.id, "New Name", sqlite_session)
 
@@ -362,7 +366,7 @@ class TestDocumentServiceMutations:
             commits += 1
 
         event.listen(sqlite_session, "after_commit", count_commit)
-        with patch("services.dataset_service.current_user", _account()):
+        with patch("services.knowledge.dataset_service.current_user", _account()):
             result = DocumentService.rename_document(dataset.id, document.id, "New Name", sqlite_session)
         event.remove(sqlite_session, "after_commit", count_commit)
 
@@ -382,8 +386,8 @@ class TestDocumentServiceMutations:
         sqlite_session.add(document)
         sqlite_session.commit()
         with (
-            patch("services.dataset_service.redis_client") as redis,
-            patch("services.dataset_service.recover_document_indexing_task") as task,
+            patch("services.knowledge.dataset_service.redis_client") as redis,
+            patch("services.knowledge.dataset_service.recover_document_indexing_task") as task,
         ):
             DocumentService.recover_document(document, sqlite_session)
 
@@ -400,11 +404,11 @@ class TestDocumentServiceMutations:
         sqlite_session.commit()
         retry_flags = _RetryFlagStore({f"document_{document.id}_is_retried": "other-request"})
         with (
-            patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.redis_client", retry_flags),
+            patch("services.knowledge.dataset_service.current_user", _account()),
+            patch("services.knowledge.dataset_service.redis_client", retry_flags),
         ):
             with pytest.raises(ValueError, match="being retried"):
-                DocumentService.retry_document("dataset-1", [document], sqlite_session)
+                DocumentService.retry_document("dataset-1", [document], sqlite_session, actor_id="user-1")
 
     def test_retry_document_leaves_batch_unchanged_when_later_document_is_already_being_retried(
         self, sqlite_session: Session
@@ -417,15 +421,13 @@ class TestDocumentServiceMutations:
         second_retry_key = "document_doc-2_is_retried"
         retry_flags = _RetryFlagStore({second_retry_key: "other-request"})
         with (
-            patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.redis_client", retry_flags),
-            patch("services.dataset_service.retry_document_indexing_task") as retry_task,
+            patch("services.knowledge.dataset_service.current_user", _account()),
+            patch("services.knowledge.dataset_service.redis_client", retry_flags),
+            patch("services.knowledge.dataset_service.retry_document_indexing_task") as retry_task,
         ):
             with pytest.raises(ValueError, match="being retried"):
                 DocumentService.retry_document(
-                    "dataset-1",
-                    [first_document, second_document],
-                    sqlite_session,
+                    "dataset-1", [first_document, second_document], sqlite_session, actor_id="user-1"
                 )
 
         assert first_document.indexing_status == IndexingStatus.ERROR
@@ -449,11 +451,11 @@ class TestDocumentServiceMutations:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.redis_client", retry_flags),
+            patch("services.knowledge.dataset_service.current_user", _account()),
+            patch("services.knowledge.dataset_service.redis_client", retry_flags),
         ):
             with pytest.raises(ValueError, match="being retried"):
-                DocumentService.retry_document("dataset-1", documents, sqlite_session)
+                DocumentService.retry_document("dataset-1", documents, sqlite_session, actor_id="user-1")
 
         assert retry_flags.values[first_retry_key] == "new-owner"
         assert retry_flags.values[second_retry_key] == "other-request"
@@ -469,12 +471,12 @@ class TestDocumentServiceMutations:
 
         event.listen(sqlite_session, "before_commit", fail_commit)
         with (
-            patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.redis_client", retry_flags),
-            patch("services.dataset_service.retry_document_indexing_task") as retry_task,
+            patch("services.knowledge.dataset_service.current_user", _account()),
+            patch("services.knowledge.dataset_service.redis_client", retry_flags),
+            patch("services.knowledge.dataset_service.retry_document_indexing_task") as retry_task,
         ):
             with pytest.raises(RuntimeError, match="database unavailable"):
-                DocumentService.retry_document("dataset-1", [document], sqlite_session)
+                DocumentService.retry_document("dataset-1", [document], sqlite_session, actor_id="user-1")
         event.remove(sqlite_session, "before_commit", fail_commit)
 
         assert retry_flags.values == {}
@@ -489,11 +491,11 @@ class TestDocumentServiceMutations:
         sqlite_session.commit()
         retry_flags = _RetryFlagStore()
         with (
-            patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.redis_client", retry_flags),
-            patch("services.dataset_service.retry_document_indexing_task") as task,
+            patch("services.knowledge.dataset_service.current_user", _account()),
+            patch("services.knowledge.dataset_service.redis_client", retry_flags),
+            patch("services.knowledge.dataset_service.retry_document_indexing_task") as task,
         ):
-            DocumentService.retry_document("dataset-1", documents, sqlite_session)
+            DocumentService.retry_document("dataset-1", documents, sqlite_session, actor_id="user-1")
 
         sqlite_session.expire_all()
         statuses = sqlite_session.scalars(select(Document.indexing_status).order_by(Document.id)).all()
@@ -503,19 +505,25 @@ class TestDocumentServiceMutations:
     def test_sync_website_document_raises_when_sync_flag_exists(self, sqlite_session: Session):
         dataset = _dataset_row()
         document = _document_row()
-        with patch("services.dataset_service.redis_client") as mock_redis:
+        with patch("services.knowledge.dataset_service.redis_client") as mock_redis:
             mock_redis.get.return_value = "1"
 
             with pytest.raises(ValueError, match="being synced"):
                 DocumentService.sync_website_document(dataset, document, sqlite_session)
 
-    def test_sync_website_document_rejects_document_outside_dataset(self, sqlite_session: Session):
+    @pytest.mark.parametrize(
+        ("document_dataset_id", "document_tenant_id"),
+        [("dataset-2", "tenant-1"), ("dataset-1", "tenant-2")],
+    )
+    def test_sync_website_document_rejects_document_outside_dataset(
+        self, document_dataset_id: str, document_tenant_id: str, sqlite_session: Session
+    ):
         dataset = _dataset_row()
-        document = _document_row(dataset_id="dataset-2")
+        document = _document_row(dataset_id=document_dataset_id, tenant_id=document_tenant_id)
 
         with (
             pytest.raises(ValueError, match="Document not found"),
-            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
         ):
             DocumentService.sync_website_document(dataset, document, sqlite_session)
 
@@ -531,8 +539,8 @@ class TestDocumentServiceMutations:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.sync_website_document_indexing_task") as sync_task,
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.sync_website_document_indexing_task") as sync_task,
         ):
             mock_redis.get.return_value = None
 
@@ -554,7 +562,7 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
     def account_context(self):
         account = _account()
 
-        with patch("services.dataset_service.current_user", account):
+        with patch("services.knowledge.dataset_service.current_user", account):
             yield account
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
@@ -584,9 +592,9 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
         first_document = _document_row(name="VeryLongDocumentNameForDataset.txt")
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch(
-                "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
+                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
                 return_value=binding,
             ),
             patch.object(
@@ -648,7 +656,7 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
         first_document = _document_row(name="Doc")
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch.object(
                 DocumentService,
                 "save_document_with_dataset_id",
@@ -682,7 +690,7 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
 
         with (
             patch(
-                "services.dataset_service.FeatureService.get_features",
+                "services.knowledge.dataset_service.FeatureService.get_features",
                 return_value=_make_features(plan=CloudPlan.SANDBOX),
             ),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
@@ -702,7 +710,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
     def account_context(self):
         account = _account()
 
-        with patch("services.dataset_service.current_user", account):
+        with patch("services.knowledge.dataset_service.current_user", account):
             yield account
 
     def test_update_document_with_dataset_id_raises_when_document_is_missing(
@@ -810,8 +818,8 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
 
         with (
             patch.object(DatasetService, "check_dataset_model_setting"),
-            patch("services.dataset_service.naive_utc_now", return_value=updated_at),
-            patch("services.dataset_service.document_indexing_update_task") as update_task,
+            patch("services.knowledge.dataset_service.naive_utc_now", return_value=updated_at),
+            patch("services.knowledge.dataset_service.document_indexing_update_task") as update_task,
         ):
             result = DocumentService.update_document_with_dataset_id(
                 dataset,
@@ -911,8 +919,8 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
 
         with (
             patch.object(DatasetService, "check_dataset_model_setting"),
-            patch("services.dataset_service.naive_utc_now", return_value=datetime(2026, 2, 1)),
-            patch("services.dataset_service.document_indexing_update_task") as update_task,
+            patch("services.knowledge.dataset_service.naive_utc_now", return_value=datetime(2026, 2, 1)),
+            patch("services.knowledge.dataset_service.document_indexing_update_task") as update_task,
         ):
             result = DocumentService.update_document_with_dataset_id(
                 dataset,
@@ -938,13 +946,22 @@ class TestDocumentServiceCreateValidation:
     """Unit tests for document creation validation helpers."""
 
     def test_document_create_args_validate_requires_data_source_or_process_rule(self):
-        knowledge_config = SimpleNamespace(data_source=None, process_rule=None)
+        knowledge_config = KnowledgeConfig(indexing_technique="economy")
 
         with pytest.raises(ValueError, match="Data source or Process rule is required"):
             DocumentService.document_create_args_validate(knowledge_config)
 
     def test_document_create_args_validate_delegates_to_sub_validators(self):
-        knowledge_config = SimpleNamespace(data_source=object(), process_rule=object())
+        knowledge_config = KnowledgeConfig(
+            indexing_technique="economy",
+            data_source=DataSource(
+                info_list=InfoList(
+                    data_source_type="upload_file",
+                    file_info_list=FileInfo(file_ids=["file-1"]),
+                )
+            ),
+            process_rule=ProcessRule(mode="automatic"),
+        )
 
         with (
             patch.object(DocumentService, "data_source_args_validate") as validate_data_source,
@@ -955,39 +972,20 @@ class TestDocumentServiceCreateValidation:
         validate_data_source.assert_called_once_with(knowledge_config)
         validate_process_rule.assert_called_once_with(knowledge_config)
 
-    def test_data_source_args_validate_rejects_invalid_type(self):
-        knowledge_config = SimpleNamespace(
-            data_source=SimpleNamespace(
-                info_list=SimpleNamespace(
-                    data_source_type="bad-source",
-                    file_info_list=None,
-                    notion_info_list=None,
-                    website_info_list=None,
-                )
-            )
-        )
-
-        with pytest.raises(ValueError, match="Data source type is invalid"):
-            DocumentService.data_source_args_validate(knowledge_config)
-
     @pytest.mark.parametrize(
-        ("data_source_type", "field_name", "message"),
+        ("data_source_type", "message"),
         [
-            ("upload_file", "file_info_list", "File source info is required"),
-            ("notion_import", "notion_info_list", "Notion source info is required"),
-            ("website_crawl", "website_info_list", "Website source info is required"),
+            ("upload_file", "File source info is required"),
+            ("notion_import", "Notion source info is required"),
+            ("website_crawl", "Website source info is required"),
         ],
     )
-    def test_data_source_args_validate_requires_source_specific_info(self, data_source_type, field_name, message):
-        info_values = {
-            "data_source_type": data_source_type,
-            "file_info_list": object(),
-            "notion_info_list": object(),
-            "website_info_list": object(),
-        }
-        info_values[field_name] = None
-        info_list = SimpleNamespace(**info_values)
-        knowledge_config = SimpleNamespace(data_source=SimpleNamespace(info_list=info_list))
+    def test_data_source_args_validate_requires_source_specific_info(self, data_source_type, message):
+        info_list = InfoList.model_validate({"data_source_type": data_source_type})
+        knowledge_config = KnowledgeConfig(
+            indexing_technique="economy",
+            data_source=DataSource(info_list=info_list),
+        )
 
         with pytest.raises(ValueError, match=message):
             DocumentService.data_source_args_validate(knowledge_config)
@@ -1080,7 +1078,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         account = _account()
 
         with (
-            patch("services.dataset_service.current_user", account),
+            patch("services.knowledge.dataset_service.current_user", account),
             patch.object(DatasetService, "check_doc_form"),
         ):
             yield account
@@ -1092,7 +1090,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         dataset = _dataset_row()
         knowledge_config = _make_upload_knowledge_config(file_ids=None)
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()):
+        with patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()):
             with pytest.raises(ValueError, match="File source info is required"):
                 DocumentService.save_document_with_dataset_id(
                     dataset,
@@ -1110,7 +1108,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
 
         with (
             patch(
-                "services.dataset_service.FeatureService.get_features",
+                "services.knowledge.dataset_service.FeatureService.get_features",
                 return_value=_make_features(plan=CloudPlan.SANDBOX),
             ),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
@@ -1137,7 +1135,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         knowledge_config = _make_upload_knowledge_config(file_ids=["file-1", "file-2"])
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
         ):
             with pytest.raises(ValueError, match="batch upload limit of 1"):
@@ -1160,7 +1158,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         updated_document.batch = "batch-existing"
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch.object(
                 DocumentService, "update_document_with_dataset_id", return_value=updated_document
             ) as update_document,
@@ -1184,7 +1182,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         dataset = _dataset_row()
         knowledge_config = _make_upload_knowledge_config(data_source=None)
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()):
+        with patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()):
             with pytest.raises(ValueError, match="Data source is required when creating new documents"):
                 DocumentService.save_document_with_dataset_id(
                     dataset,
@@ -1205,7 +1203,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             process_rule=ProcessRule(mode="custom"),
         )
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()):
+        with patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()):
             with pytest.raises(ValueError, match="No process rule found"):
                 DocumentService.save_document_with_dataset_id(
                     dataset,
@@ -1213,46 +1211,6 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                     account_context,
                     session=sqlite_session,
                 )
-
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    def test_save_document_with_dataset_id_rejects_invalid_indexing_technique(
-        self, account_context, unbound_session: Session
-    ):
-        dataset = _dataset_row(indexing_technique=None)
-        knowledge_config = SimpleNamespace(
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
-            original_document_id=None,
-            data_source=None,
-            indexing_technique="broken-technique",
-        )
-
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()):
-            with pytest.raises(ValueError, match="Indexing technique is invalid"):
-                DocumentService.save_document_with_dataset_id(
-                    dataset,
-                    knowledge_config,
-                    account_context,
-                    session=unbound_session,
-                )
-
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    def test_save_document_with_dataset_id_returns_empty_for_invalid_process_rule_mode(
-        self, account_context, unbound_session: Session
-    ):
-        dataset = _dataset_row()
-        knowledge_config = _make_upload_knowledge_config(file_ids=["file-1"])
-        knowledge_config.process_rule = SimpleNamespace(mode="unsupported-mode", rules=None)
-
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()):
-            documents, batch = DocumentService.save_document_with_dataset_id(
-                dataset,
-                knowledge_config,
-                account_context,
-                session=unbound_session,
-            )
-
-        assert documents == []
-        assert batch == ""
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_save_document_with_dataset_id_upload_file_creates_and_reindexes_documents(
@@ -1268,13 +1226,13 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
-            patch("services.dataset_service.DuplicateDocumentIndexingTaskProxy") as duplicate_proxy_cls,
-            patch("services.dataset_service.naive_utc_now", return_value=datetime(2026, 2, 1)),
-            patch("services.dataset_service.time.strftime", return_value="20260101010101"),
-            patch("services.dataset_service.secrets.randbelow", return_value=23),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
+            patch("services.knowledge.dataset_service.DuplicateDocumentIndexingTaskProxy") as duplicate_proxy_cls,
+            patch("services.knowledge.dataset_service.naive_utc_now", return_value=datetime(2026, 2, 1)),
+            patch("services.knowledge.dataset_service.time.strftime", return_value="20260101010101"),
+            patch("services.knowledge.dataset_service.secrets.randbelow", return_value=23),
         ):
             mock_redis.lock.return_value = _make_lock_context()
             documents, batch = DocumentService.save_document_with_dataset_id(
@@ -1345,11 +1303,11 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.clean_notion_document_task") as clean_task,
-            patch("services.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
-            patch("services.dataset_service.uuid.uuid4", return_value="doc-new"),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.clean_notion_document_task") as clean_task,
+            patch("services.knowledge.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
+            patch("services.knowledge.dataset_service.uuid.uuid4", return_value="doc-new"),
         ):
             mock_redis.lock.return_value = _make_lock_context()
             documents, _ = DocumentService.save_document_with_dataset_id(
@@ -1395,9 +1353,9 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             doc_language="English",
         )
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
         ):
             mock_redis.lock.return_value = _make_lock_context()
 
@@ -1453,7 +1411,7 @@ class TestDocumentServiceBatchUpdateStatus:
         sqlite_session.add_all([dataset, document])
         sqlite_session.commit()
 
-        with patch("services.dataset_service.redis_client") as mock_redis:
+        with patch("services.knowledge.dataset_service.redis_client") as mock_redis:
             mock_redis.get.return_value = "1"
 
             with pytest.raises(DocumentIndexingError, match="Busy document is being indexed"):
@@ -1475,7 +1433,7 @@ class TestDocumentServiceBatchUpdateStatus:
 
         event.listen(sqlite_session, "before_commit", fail_commit)
         with (
-            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
         ):
             mock_redis.get.return_value = None
 
@@ -1495,8 +1453,8 @@ class TestDocumentServiceBatchUpdateStatus:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.add_document_to_index_task") as add_task,
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.add_document_to_index_task") as add_task,
         ):
             mock_redis.get.return_value = None
             add_task.delay.side_effect = RuntimeError("task failed")
@@ -1518,7 +1476,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
     def account_context(self):
         account = _account()
 
-        with patch("services.dataset_service.current_user", account):
+        with patch("services.knowledge.dataset_service.current_user", account):
             yield account
 
     def test_get_tenant_documents_count_scopes_state_and_tenant(self, account_context, sqlite_session: Session):
@@ -1568,8 +1526,8 @@ class TestDocumentServiceTenantAndUpdateEdges:
 
         with (
             patch.object(DatasetService, "check_dataset_model_setting"),
-            patch("services.dataset_service.naive_utc_now", return_value=updated_at),
-            patch("services.dataset_service.document_indexing_update_task") as update_task,
+            patch("services.knowledge.dataset_service.naive_utc_now", return_value=updated_at),
+            patch("services.knowledge.dataset_service.document_indexing_update_task") as update_task,
         ):
             result = DocumentService.update_document_with_dataset_id(
                 dataset,
@@ -1691,8 +1649,8 @@ class TestDocumentServiceTenantAndUpdateEdges:
 
         with (
             patch.object(DatasetService, "check_dataset_model_setting"),
-            patch("services.dataset_service.naive_utc_now", return_value=datetime(2026, 2, 1)),
-            patch("services.dataset_service.document_indexing_update_task") as update_task,
+            patch("services.knowledge.dataset_service.naive_utc_now", return_value=datetime(2026, 2, 1)),
+            patch("services.knowledge.dataset_service.document_indexing_update_task") as update_task,
         ):
             result = DocumentService.update_document_with_dataset_id(
                 dataset,
@@ -1724,7 +1682,7 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
     def account_context(self):
         account = _account()
 
-        with patch("services.dataset_service.current_user", account):
+        with patch("services.knowledge.dataset_service.current_user", account):
             yield account
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -1762,7 +1720,7 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
         document = _document_row(name="Doc")
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=features),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=features),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
             patch.object(
                 DocumentService,
@@ -1804,7 +1762,7 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
         )
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
         ):
             with pytest.raises(ValueError, match="batch upload limit of 1"):
@@ -1815,132 +1773,6 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
         check_quota.assert_not_called()
 
 
-class TestDocumentServiceEstimateValidation:
-    """Unit tests for estimate_args_validate branches."""
-
-    def test_estimate_args_validate_rejects_missing_info_list(self):
-        with pytest.raises(ValueError, match="Field required"):
-            DocumentService.estimate_args_validate({})
-
-    def test_estimate_args_validate_sets_empty_rules_for_automatic_mode(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {"mode": "automatic", "rules": {"ignored": True}},
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert args["process_rule"]["rules"] == {}
-
-    def test_estimate_args_validate_rejects_unknown_pre_processing_rule_id(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "custom",
-                "rules": {
-                    "pre_processing_rules": [{"id": "unknown", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 128},
-                },
-            },
-        }
-
-        with pytest.raises(ValueError, match="pre_processing_rules id is invalid"):
-            DocumentService.estimate_args_validate(args)
-
-    def test_estimate_args_validate_deduplicates_rules_for_custom_mode(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "custom",
-                "rules": {
-                    "pre_processing_rules": [
-                        {"id": "remove_stopwords", "enabled": True},
-                        {"id": "remove_stopwords", "enabled": False},
-                    ],
-                    "segmentation": {"separator": "\n", "max_tokens": 128},
-                },
-            },
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert args["process_rule"]["rules"]["pre_processing_rules"] == [{"id": "remove_stopwords", "enabled": False}]
-
-    def test_estimate_args_validate_custom_mode_drops_hierarchical_fields(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "custom",
-                "rules": {
-                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 128},
-                    "parent_mode": "full-doc",
-                    "subchunk_segmentation": {"separator": "###", "max_tokens": 64},
-                },
-            },
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert args["process_rule"]["rules"] == {
-            "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-            "segmentation": {"separator": "\n", "max_tokens": 128},
-        }
-
-    def test_estimate_args_validate_requires_summary_index_provider_name(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "custom",
-                "rules": {
-                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 128},
-                },
-                "summary_index_setting": {"enable": True, "model_name": "summary-model"},
-            },
-        }
-
-        with pytest.raises(ValueError, match="Field required"):
-            DocumentService.estimate_args_validate(args)
-
-    def test_estimate_args_validate_preserves_hierarchical_fields(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "hierarchical",
-                "rules": {
-                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 512},
-                    "parent_mode": "full-doc",
-                    "subchunk_segmentation": {"separator": "###", "max_tokens": 128},
-                },
-            },
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert args["process_rule"]["rules"]["parent_mode"] == "full-doc"
-        assert args["process_rule"]["rules"]["subchunk_segmentation"] == {"separator": "###", "max_tokens": 128}
-
-    def test_estimate_args_validate_hierarchical_defaults_parent_mode_to_paragraph(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "hierarchical",
-                "rules": {
-                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 512},
-                    "subchunk_segmentation": {"separator": "###", "max_tokens": 128},
-                },
-            },
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert args["process_rule"]["rules"]["parent_mode"] == "paragraph"
-        assert args["process_rule"]["rules"]["subchunk_segmentation"] == {"separator": "###", "max_tokens": 128}
-
-
 class TestDocumentServiceSaveDocumentAdditionalBranches:
     """Additional unit tests for dataset bootstrap and process-rule branches."""
 
@@ -1949,7 +1781,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         account = _account()
 
         with (
-            patch("services.dataset_service.current_user", account),
+            patch("services.knowledge.dataset_service.current_user", account),
             patch.object(DatasetService, "check_doc_form"),
         ):
             yield account
@@ -1974,18 +1806,18 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         binding.id = "binding-1"
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
             patch(
-                "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
+                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
                 return_value=binding,
             ) as get_binding,
             patch.object(DocumentService, "update_document_with_dataset_id", return_value=updated_document),
         ):
-            model_manager_cls.for_tenant.return_value.get_default_model_instance.return_value = SimpleNamespace(
-                model_name="default-embedding",
-                provider="default-provider",
-            )
+            default_model = object.__new__(ModelInstance)
+            default_model.model_name = "default-embedding"
+            default_model.provider = "default-provider"
+            model_manager_cls.for_tenant.return_value.get_default_model_instance.return_value = default_model
 
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset,
@@ -2040,10 +1872,10 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         updated_document = _document_row(document_id="doc-1")
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
             patch(
-                "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
+                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
                 return_value=binding,
             ) as get_binding,
             patch.object(DocumentService, "update_document_with_dataset_id", return_value=updated_document),
@@ -2078,11 +1910,11 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
-            patch("services.dataset_service.time.strftime", return_value="20260101010101"),
-            patch("services.dataset_service.secrets.randbelow", return_value=23),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
+            patch("services.knowledge.dataset_service.time.strftime", return_value="20260101010101"),
+            patch("services.knowledge.dataset_service.secrets.randbelow", return_value=23),
         ):
             mock_redis.lock.return_value = _make_lock_context()
             documents, batch = DocumentService.save_document_with_dataset_id(
@@ -2116,11 +1948,11 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.DocumentIndexingTaskProxy"),
-            patch("services.dataset_service.time.strftime", return_value="20260101010101"),
-            patch("services.dataset_service.secrets.randbelow", return_value=23),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.DocumentIndexingTaskProxy"),
+            patch("services.knowledge.dataset_service.time.strftime", return_value="20260101010101"),
+            patch("services.knowledge.dataset_service.secrets.randbelow", return_value=23),
         ):
             mock_redis.lock.return_value = _make_lock_context()
             documents, _ = DocumentService.save_document_with_dataset_id(
@@ -2146,11 +1978,11 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.DocumentIndexingTaskProxy"),
-            patch("services.dataset_service.time.strftime", return_value="20260101010101"),
-            patch("services.dataset_service.secrets.randbelow", return_value=23),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.DocumentIndexingTaskProxy"),
+            patch("services.knowledge.dataset_service.time.strftime", return_value="20260101010101"),
+            patch("services.knowledge.dataset_service.secrets.randbelow", return_value=23),
         ):
             mock_redis.lock.return_value = _make_lock_context()
             documents, _ = DocumentService.save_document_with_dataset_id(
@@ -2175,10 +2007,10 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         sqlite_session.commit()
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.time.strftime", return_value="20260101010101"),
-            patch("services.dataset_service.secrets.randbelow", return_value=23),
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.time.strftime", return_value="20260101010101"),
+            patch("services.knowledge.dataset_service.secrets.randbelow", return_value=23),
         ):
             mock_redis.lock.return_value = _make_lock_context()
             with pytest.raises(FileNotExistsError, match="One or more files not found"):
@@ -2205,8 +2037,8 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         )
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
         ):
             mock_redis.lock.return_value = _make_lock_context()
             with pytest.raises(ValueError, match="No notion info list found"):
@@ -2234,8 +2066,8 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         )
 
         with (
-            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
         ):
             mock_redis.lock.return_value = _make_lock_context()
             with pytest.raises(ValueError, match="No website info list found"):

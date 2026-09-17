@@ -11,6 +11,7 @@ from enums import CloudPlan, DeploymentEdition
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.knowledge.resource_scope import DocumentRef
 from tasks.document_indexing_task import (
     _document_indexing,  # Core function
     _document_indexing_with_tenant_queue,  # Tenant queue wrapper function
@@ -36,7 +37,9 @@ class TestDocumentIndexingTasks:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.document_indexing_task.IndexingRunner", autospec=True) as mock_indexing_runner,
+            patch(
+                "tasks.document_indexing_task.build_document_indexing_service", autospec=True
+            ) as mock_indexing_runner,
             patch("tasks.document_indexing_task.FeatureService", autospec=True) as mock_feature_service,
         ):
             # Setup mock indexing runner
@@ -51,7 +54,7 @@ class TestDocumentIndexingTasks:
                 "features": mock_features,
             }
 
-    def _runner_documents_arg(self, mock_external_service_dependencies) -> list[Document]:
+    def _runner_documents_arg(self, mock_external_service_dependencies) -> list[DocumentRef]:
         """Return the document batch passed to the runner."""
         return mock_external_service_dependencies["indexing_runner_instance"].run.call_args.args[0]
 
@@ -243,7 +246,7 @@ class TestDocumentIndexingTasks:
         This test verifies:
         - Proper dataset retrieval from database
         - Correct document processing and status updates
-        - IndexingRunner integration
+        - build_document_indexing_service integration
         - Database state updates
         """
         # Arrange: Create test data
@@ -350,10 +353,10 @@ class TestDocumentIndexingTasks:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test handling of IndexingRunner exceptions.
+        Test handling of build_document_indexing_service exceptions.
 
         This test verifies:
-        - Exceptions from IndexingRunner are properly caught
+        - Exceptions from build_document_indexing_service are properly caught
         - Task completes without raising exceptions
         - Database session is properly closed
         - Error logging occurs
@@ -364,7 +367,7 @@ class TestDocumentIndexingTasks:
         )
         document_ids = [doc.id for doc in documents]
 
-        # Mock IndexingRunner to raise an exception
+        # Mock build_document_indexing_service to raise an exception
         mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = Exception(
             "Indexing runner failed"
         )
@@ -393,7 +396,7 @@ class TestDocumentIndexingTasks:
         - Documents with different initial states are handled correctly
         - Only valid documents are processed
         - Database state updates are consistent
-        - IndexingRunner receives correct documents
+        - build_document_indexing_service receives correct documents
         """
         # Arrange: Create test data
         dataset, base_documents = self._create_test_dataset_and_documents(
@@ -541,7 +544,7 @@ class TestDocumentIndexingTasks:
         - Processing continues normally outside Cloud
         - No billing validation occurs
         - Documents are processed successfully
-        - IndexingRunner is called correctly
+        - build_document_indexing_service is called correctly
         """
         # Arrange: Create test data with billing disabled
         dataset, documents = self._create_test_dataset_with_billing_features(
@@ -572,7 +575,7 @@ class TestDocumentIndexingTasks:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test handling of DocumentIsPausedError from IndexingRunner.
+        Test handling of DocumentIsPausedError from build_document_indexing_service.
 
         This test verifies:
         - DocumentIsPausedError is properly caught and handled
@@ -586,8 +589,8 @@ class TestDocumentIndexingTasks:
         )
         document_ids = [doc.id for doc in documents]
 
-        # Mock IndexingRunner to raise DocumentIsPausedError
-        from core.indexing_runner import DocumentIsPausedError
+        # Mock build_document_indexing_service to raise DocumentIsPausedError
+        from services.knowledge.indexing.errors import DocumentIsPausedError
 
         mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = DocumentIsPausedError(
             "Document indexing is paused"
@@ -809,7 +812,7 @@ class TestDocumentIndexingTasks:
         tenant_id = dataset.tenant_id
         dataset_id = dataset.id
 
-        # Mock IndexingRunner to raise an exception
+        # Mock build_document_indexing_service to raise an exception
         mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = Exception("Test error")
 
         # Mock the task function

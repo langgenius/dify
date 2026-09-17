@@ -21,6 +21,7 @@ from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from tasks.batch_clean_document_task import batch_clean_document_task
 
 
@@ -257,7 +258,7 @@ class TestBatchCleanDocumentTask:
         batch_clean_document_task(
             document_ids=[document_id],
             dataset_id=dataset.id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
             file_ids=[file_id],
         )
 
@@ -316,7 +317,7 @@ class TestBatchCleanDocumentTask:
         batch_clean_document_task(
             document_ids=[document_id],
             dataset_id=dataset.id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
             file_ids=[],
         )
 
@@ -359,7 +360,7 @@ class TestBatchCleanDocumentTask:
         batch_clean_document_task(
             document_ids=[document_id],
             dataset_id=dataset.id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
             file_ids=[file_id],
         )
 
@@ -457,7 +458,7 @@ class TestBatchCleanDocumentTask:
         batch_clean_document_task(
             document_ids=[document_id],
             dataset_id=dataset.id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
             file_ids=[file_id],
         )
 
@@ -518,7 +519,7 @@ class TestBatchCleanDocumentTask:
         batch_clean_document_task(
             document_ids=document_ids,
             dataset_id=dataset.id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
             file_ids=file_ids,
         )
 
@@ -658,7 +659,7 @@ class TestBatchCleanDocumentTask:
         batch_clean_document_task(
             document_ids=document_ids,
             dataset_id=dataset.id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
             file_ids=file_ids,
         )
 
@@ -754,7 +755,7 @@ class TestBatchCleanDocumentTask:
         batch_clean_document_task(
             document_ids=[document_id],
             dataset_id=dataset.id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
             file_ids=[file_id],
         )
 

@@ -9,8 +9,8 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.account import Account, Tenant, TenantAccountJoin
-from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
+from services.knowledge.dataset_service import DatasetService
 
 
 class TestDatasetServiceCreateRagPipelineDataset:
@@ -53,7 +53,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
         tenant, _ = self._create_tenant_and_account(db_session_with_containers)
 
         mock_user = Mock(id=None)
-        with patch("services.dataset_service.current_user", mock_user):
+        with patch("services.knowledge.dataset_service.current_user", mock_user):
             with pytest.raises(ValueError, match="Current user or current user id not found"):
                 DatasetService.create_empty_rag_pipeline_dataset(
                     tenant_id=tenant.id,

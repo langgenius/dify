@@ -17,14 +17,17 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from extensions.ext_database import db
-from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from fields.dataset_fields import (
+    DatasetDetailResponse,
+)
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.dataset import DatasetPermissionEnum
-from services.dataset_service import DatasetPermissionService, DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
+from services.knowledge.dataset_read_service import load_dataset_detail
+from services.knowledge.dataset_service import DatasetPermissionService, DatasetService
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
@@ -132,4 +135,4 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
             ),
             session=session,
         )
-        return dump_response(DatasetDetailResponse, dataset_detail_response_source(dataset, session=session)), 201
+        return dump_response(DatasetDetailResponse, load_dataset_detail(dataset, session=session)), 201

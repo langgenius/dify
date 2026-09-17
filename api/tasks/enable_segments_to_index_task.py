@@ -14,6 +14,8 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from repositories.knowledge.dataset_read_repository import get_segment_child_chunks
+from repositories.knowledge.segment_read_adapter import get_segment_attachments
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +74,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                 )
 
                 if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                    child_chunks = segment.get_child_chunks(session=session)
+                    child_chunks = get_segment_child_chunks(segment, session=session)
                     if child_chunks:
                         child_documents = []
                         for child_chunk in child_chunks:
@@ -89,7 +91,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                         document.children = child_documents
 
                 if dataset.is_multimodal:
-                    for attachment in segment.get_attachments(session=session):
+                    for attachment in get_segment_attachments(segment, session=session):
                         multimodal_documents.append(
                             AttachmentDocument(
                                 page_content=attachment["name"],
@@ -109,11 +111,11 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
             session.commit()
 
             # Enable summary indexes for these segments
-            from services.summary_index_service import SummaryIndexService
+            from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
             segment_ids_list = [segment.id for segment in segments]
             try:
-                SummaryIndexService.enable_summaries_for_segments(
+                SummaryIndexAdapter.enable_summaries_for_segments(
                     dataset=dataset,
                     segment_ids=segment_ids_list,
                 )

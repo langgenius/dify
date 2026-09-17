@@ -89,7 +89,7 @@ def test_cleanup_is_owner_scoped_and_skips_empty_vector_ids(sqlite_session: Sess
     with (
         patch("tasks.sync_website_document_indexing_task.FeatureService.get_features", return_value=features),
         patch("tasks.sync_website_document_indexing_task.IndexProcessorFactory") as processor_factory,
-        patch("tasks.sync_website_document_indexing_task.IndexingRunner") as indexing_runner,
+        patch("tasks.sync_website_document_indexing_task.build_document_indexing_service") as indexing_runner,
         patch("tasks.sync_website_document_indexing_task.redis_client"),
     ):
         sync_website_document_indexing_task(dataset.id, document.id)

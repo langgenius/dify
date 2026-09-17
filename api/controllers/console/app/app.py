@@ -64,7 +64,8 @@ from services.app_service import (
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import DslImportWarning, ImportStatus
-from services.entities.knowledge_entities.knowledge_entities import (
+from services.errors.account import NoPermissionError
+from services.knowledge.entities.knowledge_entities import (
     DataSource,
     InfoList,
     NotionIcon,
@@ -76,7 +77,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightModel,
     WeightVectorSetting,
 )
-from services.errors.account import NoPermissionError
 from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 

@@ -1,6 +1,10 @@
+from unittest.mock import create_autospec
+
 from pytest_mock import MockerFixture
 
 from core.rag.extractor.jina_reader_extractor import JinaReaderWebExtractor
+from services.data_source.provider_service import DatasourceProviderService
+from services.data_source.website_service import WebsiteService
 
 
 class TestJinaReaderWebExtractor:
@@ -15,7 +19,13 @@ class TestJinaReaderWebExtractor:
             },
         )
 
-        extractor = JinaReaderWebExtractor("https://example.com", "job-1", "tenant-1", mode="crawl")
+        extractor = JinaReaderWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="crawl",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
         docs = extractor.extract()
 
         assert len(docs) == 1
@@ -32,7 +42,13 @@ class TestJinaReaderWebExtractor:
             return_value=None,
         )
 
-        extractor = JinaReaderWebExtractor("https://example.com", "job-1", "tenant-1", mode="crawl")
+        extractor = JinaReaderWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="crawl",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
 
         assert extractor.extract() == []
 
@@ -41,7 +57,13 @@ class TestJinaReaderWebExtractor:
             "core.rag.extractor.jina_reader_extractor.WebsiteService.get_crawl_url_data",
             return_value={"content": "unused"},
         )
-        extractor = JinaReaderWebExtractor("https://example.com", "job-1", "tenant-1", mode="scrape")
+        extractor = JinaReaderWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="scrape",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
 
         assert extractor.extract() == []
         mock_get_crawl.assert_not_called()

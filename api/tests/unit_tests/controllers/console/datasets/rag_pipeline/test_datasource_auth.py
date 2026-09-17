@@ -1,5 +1,7 @@
 import inspect
 from datetime import UTC, datetime
+from importlib import import_module
+from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -28,10 +30,23 @@ from controllers.console.datasets.rag_pipeline.datasource_auth import (
 from core.plugin.impl.oauth import OAuthHandler
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models.account import Account
-from services.datasource_provider_service import DatasourceProviderService
+from services.credentials.query import CredentialQuery
+from services.data_source.credential_gateway import DatasourceProviderCredentialStore
+from services.data_source.provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
 _PROVIDER_ID = "langgenius/notion_datasource/notion"
+
+
+@pytest.fixture(autouse=True)
+def credential_query_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
+    query = MagicMock(spec=CredentialQuery)
+    providers = DatasourceProviderService(credentials=MagicMock(spec=DatasourceProviderCredentialStore))
+    monkeypatch.setattr(
+        import_module("controllers.console.datasets.rag_pipeline.datasource_auth"),
+        "application_services",
+        lambda: SimpleNamespace(credential_queries=query, data_sources=SimpleNamespace(providers=providers)),
+    )
 
 
 def _account() -> Account:
