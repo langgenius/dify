@@ -224,8 +224,12 @@ describe('WorkflowChecklist', () => {
     const { store } = renderChecklist({ disabled: false })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' }))
 
+    expect(screen.getByRole('button', { name: 'workflow.panel.checklist' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
     expect(mockStartChecklistFix).toHaveBeenCalledWith(
       'app-1',
       [
@@ -248,7 +252,7 @@ describe('WorkflowChecklist', () => {
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
 
     expect(
-      screen.queryByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }),
+      screen.queryByRole('button', { name: 'workflow.difyBuilder.fixRun' }),
     ).not.toBeInTheDocument()
   })
 
@@ -257,15 +261,11 @@ describe('WorkflowChecklist', () => {
     const { unmount } = renderChecklist({ disabled: false }, { canEdit: false })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
-    expect(
-      screen.getByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' })).toBeDisabled()
 
     unmount()
     renderChecklist({ disabled: false }, { busy: true })
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
-    expect(
-      screen.getByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' })).toBeDisabled()
   })
 })

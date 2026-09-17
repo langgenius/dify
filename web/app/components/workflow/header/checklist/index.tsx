@@ -167,10 +167,6 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
               {difyBuilderAvailable && fixableChecklistErrors.length > 0 && (
                 <div className="mt-2 border-t border-divider-subtle pt-3">
                   <DifyBuilderEntry
-                    label={t(($) => $['difyBuilder.fixWithAppBuilder'], { ns: 'workflow' })}
-                    description={t(($) => $['difyBuilder.checklistFixScopeDescription'], {
-                      ns: 'workflow',
-                    })}
                     disabled={disabled || !canStartFix}
                     onClick={() => {
                       setOpen(false)

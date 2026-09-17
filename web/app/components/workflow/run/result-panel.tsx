@@ -1,8 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
-import { Button } from '@langgenius/dify-ui/button'
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -12,6 +11,7 @@ import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { hasRetryNode } from '@/app/components/workflow/utils'
+import DifyBuilderEntry from '../dify-builder-entry'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import MetaData from './meta'
 import StatusPanel from './status'
@@ -101,28 +101,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
       </div>
       {status === WorkflowRunningStatus.Failed && workflowRunId && onFixRun && (
         <div className="flex items-start px-4 pb-3">
-          <Button
-            variant="secondary"
-            size="medium"
+          <DifyBuilderEntry
             disabled={fixWithBuilderDisabled}
             onClick={() => onFixRun(workflowRunId)}
-          >
-            <span className="inline-flex items-center gap-1">
-              <Trans
-                i18nKey={($) => $['difyBuilder.fixRun']}
-                ns="workflow"
-                components={{
-                  builder: <span className="inline-flex items-center gap-1 font-semibold" />,
-                  icon: (
-                    <span
-                      aria-hidden="true"
-                      className="i-custom-public-app-builder-builder-mark size-4 shrink-0"
-                    />
-                  ),
-                }}
-              />
-            </span>
-          </Button>
+          />
         </div>
       )}
       <div className="px-4">
