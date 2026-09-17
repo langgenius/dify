@@ -397,7 +397,7 @@ export function WebsiteDatasourceParameterForm({
           onOpenChange={setOptionsOpen}
         >
           <div className="flex h-10 items-center transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
-            <CollapsibleTrigger className="h-full min-w-0 flex-1 justify-start rounded-none px-3 hover:not-data-disabled:bg-transparent">
+            <CollapsibleTrigger className="group flex h-full min-w-0 flex-1 touch-manipulation items-center justify-start gap-2 rounded-none px-3 text-start system-sm-medium text-text-secondary outline-hidden select-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset data-panel-open:text-text-primary">
               <span
                 aria-hidden
                 className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"

@@ -315,7 +315,7 @@ export function AgentKnowledgeRetrievalDialog({ initialBindings, onConfirm, onCl
                 onOpenChange={setAdvancedOpen}
                 className="border-t border-divider-subtle pt-2"
               >
-                <CollapsibleTrigger>
+                <CollapsibleTrigger className="group flex min-h-8 w-full touch-manipulation items-center justify-between gap-2 rounded-lg px-2.5 text-start system-sm-medium text-text-secondary outline-hidden select-none hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary">
                   <span>
                     {t(($) => $['agentDetail.configure.advancedSettings.label'])}{' '}
                     <span className="system-xs-regular text-text-tertiary">
@@ -324,7 +324,7 @@ export function AgentKnowledgeRetrievalDialog({ initialBindings, onConfirm, onCl
                   </span>
                   <span
                     aria-hidden
-                    className="i-ri-arrow-down-s-line size-4 transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none"
+                    className="i-ri-arrow-down-s-line size-4 shrink-0 transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none"
                   />
                 </CollapsibleTrigger>
                 <CollapsiblePanel>
