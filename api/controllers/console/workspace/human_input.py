@@ -526,12 +526,11 @@ class WorkspacePlatformContactsApi(Resource):
     def post(self, session: Session, tenant_id: str, current_user: Account):
         request_body = AddPlatformContactsRequest.model_validate(console_ns.payload or {})
         try:
-            with session.begin():
-                contacts = build_enterprise_contact_management_service(session).add_platform_contacts(
-                    TenantId(tenant_id),
-                    [CandidateId(candidate_id) for candidate_id in request_body.candidate_ids],
-                    AccountId(current_user.id),
-                )
+            contacts = build_enterprise_contact_management_service(session).add_platform_contacts(
+                TenantId(tenant_id),
+                [CandidateId(candidate_id) for candidate_id in request_body.candidate_ids],
+                AccountId(current_user.id),
+            )
         except ContactError as error:
             _raise_contact_error(error)
         return dump_response(AddPlatformContactsResponse, {"data": [_contact_payload(contact) for contact in contacts]})
@@ -550,15 +549,14 @@ class WorkspaceExternalContactsApi(Resource):
     def post(self, session: Session, tenant_id: str):
         request_body = ExternalContactCreateRequest.model_validate(console_ns.payload or {})
         try:
-            with session.begin():
-                contact = _contact_service(session, TenantId(tenant_id)).create_external_contact(
-                    TenantId(tenant_id),
-                    contact_id=ContactId(str(uuidv7())),
-                    name=request_body.name,
-                    email=str(request_body.email),
-                    avatar_file_id=request_body.avatar or None,
-                    now=naive_utc_now(),
-                )
+            contact = _contact_service(session, TenantId(tenant_id)).create_external_contact(
+                TenantId(tenant_id),
+                contact_id=ContactId(str(uuidv7())),
+                name=request_body.name,
+                email=str(request_body.email),
+                avatar_file_id=request_body.avatar or None,
+                now=naive_utc_now(),
+            )
         except ContactError as error:
             _raise_contact_error(error)
         return dump_response(ExternalContactCreateResponse, {"contact": _contact_payload(contact)})
@@ -578,27 +576,26 @@ class WorkspaceExternalContactApi(Resource):
         request_body = ExternalContactUpdateRequest.model_validate(console_ns.payload or {})
         service = _contact_service(session, TenantId(tenant_id))
         try:
-            with session.begin():
-                current = service.get_contact(TenantId(tenant_id), ContactId(contact_id))
-                if current is None or current.contact.type is not ContactType.EXTERNAL:
-                    abort(HTTPStatus.NOT_FOUND, "External Contact not found")
-                assert current is not None
-                current_contact = current.contact
-                if current_contact.email is None:
-                    raise RuntimeError("External Contact is missing its required Email")
-                avatar_file_id = current_contact.avatar_file_id
-                if "avatar" in request_body.model_fields_set:
-                    avatar_file_id = request_body.avatar or None
-                contact = service.update_external_contact(
-                    TenantId(tenant_id),
-                    external_contact=ExternalContact(
-                        id=current_contact.id,
-                        name=request_body.name or current_contact.name,
-                        email=str(request_body.email) if request_body.email is not None else current_contact.email,
-                        avatar_file_id=avatar_file_id,
-                        created_at=current_contact.created_at,
-                    ),
-                )
+            current = service.get_contact(TenantId(tenant_id), ContactId(contact_id))
+            if current is None or current.contact.type is not ContactType.EXTERNAL:
+                abort(HTTPStatus.NOT_FOUND, "External Contact not found")
+            assert current is not None
+            current_contact = current.contact
+            if current_contact.email is None:
+                raise RuntimeError("External Contact is missing its required Email")
+            avatar_file_id = current_contact.avatar_file_id
+            if "avatar" in request_body.model_fields_set:
+                avatar_file_id = request_body.avatar or None
+            contact = service.update_external_contact(
+                TenantId(tenant_id),
+                external_contact=ExternalContact(
+                    id=current_contact.id,
+                    name=request_body.name or current_contact.name,
+                    email=str(request_body.email) if request_body.email is not None else current_contact.email,
+                    avatar_file_id=avatar_file_id,
+                    created_at=current_contact.created_at,
+                ),
+            )
         except ContactError as error:
             _raise_contact_error(error)
         return dump_response(ExternalContactUpdateResponse, {"contact": _contact_payload(contact)})
@@ -617,17 +614,16 @@ class WorkspaceContactsRemoveApi(Resource):
     def post(self, session: Session, tenant_id: str):
         request_body = RemoveContactsRequest.model_validate(console_ns.payload or {})
         try:
-            with session.begin():
-                contact_ids = [ContactId(contact_id) for contact_id in request_body.contact_ids]
-                if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
-                    removed_ids = build_enterprise_contact_management_service(session).remove_contacts(
-                        TenantId(tenant_id),
-                        contact_ids,
-                    )
-                else:
-                    removed_ids = _contact_service(session, TenantId(tenant_id)).remove_contacts(
-                        TenantId(tenant_id), contact_ids
-                    )
+            contact_ids = [ContactId(contact_id) for contact_id in request_body.contact_ids]
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+                removed_ids = build_enterprise_contact_management_service(session).remove_contacts(
+                    TenantId(tenant_id),
+                    contact_ids,
+                )
+            else:
+                removed_ids = _contact_service(session, TenantId(tenant_id)).remove_contacts(
+                    TenantId(tenant_id), contact_ids
+                )
         except ContactError as error:
             _raise_contact_error(error)
         except ValueError as error:
