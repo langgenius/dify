@@ -220,6 +220,18 @@ describe('useNodesReadOnly', () => {
     expect(result.current.nodesReadOnly).toBe(false)
   })
 
+  it('should pause editing until the draft conflict is resolved', () => {
+    const { result, store } = renderWorkflowHook(() => useNodesReadOnly())
+
+    act(() => store.getState().setWorkflowDraftConflict(true))
+    expect(result.current.nodesReadOnly).toBe(true)
+    expect(result.current.getNodesReadOnly()).toBe(true)
+
+    act(() => store.getState().setWorkflowDraftConflict(false))
+    expect(result.current.nodesReadOnly).toBe(false)
+    expect(result.current.getNodesReadOnly()).toBe(false)
+  })
+
   it('should return true when edit permission is denied by HooksStoreContext', () => {
     const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
       hooksStoreProps: {

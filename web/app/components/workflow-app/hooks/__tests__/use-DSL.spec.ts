@@ -1,4 +1,5 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { renderWorkflowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useDSLByCanEdit } from '../use-DSL'
 
@@ -191,6 +192,36 @@ workflow:
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockExportAppConfig).not.toHaveBeenCalled()
     expect(mockEmit).not.toHaveBeenCalled()
+  })
+
+  it('should prevent exporting a draft with an unresolved conflict', async () => {
+    const { result } = renderHook(() => useDSLByCanEdit(true), {
+      initialStoreState: { hasWorkflowDraftConflict: true },
+    })
+
+    await act(async () => {
+      await result.current.exportCheck()
+      await result.current.handleExportDSL()
+    })
+
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockExportAppConfig).not.toHaveBeenCalled()
+  })
+
+  it('should stop an export when saving discovers a conflict', async () => {
+    const { result, store } = renderHook(() => useDSLByCanEdit(true))
+    mockDoSyncWorkflowDraft.mockImplementationOnce(async () => {
+      store.getState().setWorkflowDraftConflict(true)
+      return null
+    })
+
+    await act(async () => {
+      await result.current.handleExportDSL()
+    })
+
+    expect(mockExportAppConfig).not.toHaveBeenCalled()
+    expect(mockDownloadBlob).not.toHaveBeenCalled()
   })
 
   it('should notify when export fails', async () => {

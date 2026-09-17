@@ -103,5 +103,17 @@ describe('Workflow Draft Slice', () => {
       store.getState().flushPendingSync()
       expect(syncFn).toHaveBeenCalledTimes(1)
     })
+
+    it('should cancel a pending autosave when a conflict is detected', () => {
+      const store = createStore()
+      const syncFn = vi.fn()
+
+      store.getState().debouncedSyncWorkflowDraft(syncFn)
+      store.getState().setWorkflowDraftConflict(true)
+      store.getState().flushPendingSync()
+      vi.advanceTimersByTime(5000)
+
+      expect(syncFn).not.toHaveBeenCalled()
+    })
   })
 })

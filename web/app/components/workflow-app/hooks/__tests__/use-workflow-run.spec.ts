@@ -15,6 +15,7 @@ type DebugControllerWindow = Window & {
 }
 
 type WorkflowStoreState = {
+  hasWorkflowDraftConflict?: boolean
   backupDraft?: unknown
   environmentVariables?: unknown
   workflowRunningData?: unknown
@@ -229,6 +230,7 @@ vi.mock('../use-workflow-run-callbacks', async (importOriginal) => {
 })
 
 const createWorkflowStoreState = () => ({
+  hasWorkflowDraftConflict: false,
   backupDraft: undefined,
   environmentVariables: [{ id: 'env-current', value: 'secret' }],
   workflowRunningData: undefined,
@@ -368,6 +370,48 @@ describe('useWorkflowRun', () => {
         getAbortController: expect.any(Function),
       }),
     )
+  })
+
+  it('should not start a run while the draft has an unresolved conflict', async () => {
+    mocks.workflowStoreState.hasWorkflowDraftConflict = true
+    const { result } = renderHook(() => useWorkflowRun())
+
+    await act(async () => {
+      await result.current.handleRun({ inputs: {} })
+    })
+
+    expect(mocks.mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mocks.mockSsePost).not.toHaveBeenCalled()
+    expect(mocks.workflowStoreState.setWorkflowRunningData).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    TriggerType.UserInput,
+    TriggerType.Schedule,
+    TriggerType.Webhook,
+    TriggerType.Plugin,
+    TriggerType.All,
+  ])('should not dispatch a %s run when saving discovers a conflict', async (mode) => {
+    mocks.mockDoSyncWorkflowDraft.mockImplementationOnce(async () => {
+      mocks.workflowStoreState.hasWorkflowDraftConflict = true
+      return null
+    })
+    const { result } = renderHook(() => useWorkflowRun())
+
+    await act(async () => {
+      await result.current.handleRun({}, undefined, {
+        mode,
+        scheduleNodeId: 'schedule-1',
+        webhookNodeId: 'webhook-1',
+        pluginNodeId: 'plugin-1',
+        allNodeIds: ['schedule-1', 'webhook-1', 'plugin-1'],
+      })
+    })
+
+    expect(mocks.mockSsePost).not.toHaveBeenCalled()
+    expect(mocks.mockPost).not.toHaveBeenCalled()
+    expect(mocks.workflowStoreState.setWorkflowRunningData).not.toHaveBeenCalled()
+    expect(mocks.workflowStoreState.setIsListening).not.toHaveBeenCalledWith(true)
   })
 
   it.each([

@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWorkflowComponent as render } from '../../__tests__/workflow-test-env'
 import RunAndHistory from '../run-and-history'
 
 const mockState = vi.hoisted(() => ({
@@ -76,5 +77,15 @@ describe('RunAndHistory', () => {
     render(<RunAndHistory showPreviewButton />)
 
     expect(screen.getByRole('button', { name: 'workflow.common.debugAndPreview' })).toBeDisabled()
+  })
+
+  it('should disable runs and previews while the draft has a conflict', () => {
+    render(<RunAndHistory showRunButton showPreviewButton />, {
+      initialStoreState: { hasWorkflowDraftConflict: true },
+    })
+
+    expect(screen.getByRole('button', { name: 'workflow.common.run' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'workflow.common.debugAndPreview' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'History' })).toBeEnabled()
   })
 })

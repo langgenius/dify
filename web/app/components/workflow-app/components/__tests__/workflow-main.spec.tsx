@@ -99,6 +99,7 @@ const collaborationListeners = vi.hoisted(() => ({
 }))
 
 let capturedContextProps: Record<string, unknown> | null = null
+let hasWorkflowDraftConflict = false
 
 type MockWorkflowWithInnerContextProps = Pick<
   WorkflowProps,
@@ -130,6 +131,7 @@ vi.mock('@/app/components/workflow/store', () => ({
       setCanvasReadOnly: typeof mockSetCanvasReadOnly
       setShowDifyBuilderPanel: typeof mockSetShowDifyBuilderPanel
       showDifyBuilderPanel: boolean
+      hasWorkflowDraftConflict: boolean
     }) => T,
   ) =>
     selector({
@@ -137,9 +139,11 @@ vi.mock('@/app/components/workflow/store', () => ({
       setCanvasReadOnly: mockSetCanvasReadOnly,
       setShowDifyBuilderPanel: mockSetShowDifyBuilderPanel,
       showDifyBuilderPanel: false,
+      hasWorkflowDraftConflict,
     }),
   useWorkflowStore: () => ({
     getState: () => ({
+      hasWorkflowDraftConflict,
       envSecrets: {},
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
@@ -473,6 +477,7 @@ describe('WorkflowMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     capturedContextProps = null
+    hasWorkflowDraftConflict = false
     mockDifyBuilderProvider.callbacks = null
     mockDifyBuilderProvider.identity = null
     collaborationRuntime.startCursorTracking.mockReset()
@@ -766,6 +771,31 @@ describe('WorkflowMain', () => {
       hookFns.doSyncWorkflowDraft.mock.invocationCallOrder[0]!,
     )
   })
+
+  it.each([false, true])(
+    'reports a draft conflict to the requester (already paused: %s)',
+    async (alreadyPaused) => {
+      collaborationRuntime.isEnabled = true
+      hasWorkflowDraftConflict = alreadyPaused
+      hookFns.doSyncWorkflowDraft.mockImplementationOnce(async () => {
+        hasWorkflowDraftConflict = true
+        return null
+      })
+      render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+      const acknowledge = vi.fn()
+
+      collaborationListeners.syncRequest?.({ requestId: 'request-conflict', acknowledge })
+
+      await waitFor(() =>
+        expect(acknowledge).toHaveBeenCalledWith({
+          success: false,
+          error: 'draft_workflow_not_sync',
+        }),
+      )
+      expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(alreadyPaused ? 0 : 1)
+      expect(mockRefreshGraphSynchronously).toHaveBeenCalledTimes(alreadyPaused ? 0 : 1)
+    },
+  )
 
   it('ignores an older environment refresh that resolves after the latest update', async () => {
     collaborationRuntime.isEnabled = true

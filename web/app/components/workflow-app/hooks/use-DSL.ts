@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { exportAppConfig } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -16,6 +17,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
   const [exporting, setExporting] = useState(false)
+  const workflowStore = useWorkflowStore()
 
   const appDetail = useAppStore((s) => s.appDetail)
 
@@ -23,11 +25,12 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     async (include = false, workflowId?: string) => {
       if (!appDetail) return
 
-      if (exporting) return
+      if (exporting || workflowStore.getState().hasWorkflowDraftConflict) return
 
       try {
         setExporting(true)
         await doSyncWorkflowDraft()
+        if (workflowStore.getState().hasWorkflowDraftConflict) return
         const { data } = await exportAppConfig({
           appID: appDetail.id,
           include,
@@ -41,11 +44,11 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         setExporting(false)
       }
     },
-    [appDetail, t, doSyncWorkflowDraft, exporting],
+    [appDetail, t, doSyncWorkflowDraft, exporting, workflowStore],
   )
 
   const exportCheck = useCallback(async () => {
-    if (!appDetail) return
+    if (!appDetail || workflowStore.getState().hasWorkflowDraftConflict) return
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail?.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(
@@ -64,7 +67,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     } catch {
       toast.error(t(($) => $.exportFailed, { ns: 'app' }))
     }
-  }, [appDetail, eventEmitter, handleExportDSL, t])
+  }, [appDetail, eventEmitter, handleExportDSL, t, workflowStore])
 
   return {
     exportCheck,

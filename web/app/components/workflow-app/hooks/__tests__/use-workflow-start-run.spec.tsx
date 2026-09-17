@@ -133,6 +133,21 @@ describe('useWorkflowStartRunByCanEdit', () => {
     expect(mockSetShowInputsPanel).not.toHaveBeenCalled()
   })
 
+  it('should leave the run panel closed when saving discovers a conflict', async () => {
+    mockDoSyncWorkflowDraft.mockImplementationOnce(async () => {
+      workflowStoreState.hasWorkflowDraftConflict = true
+      return null
+    })
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+
+    await act(async () => {
+      await result.current.handleWorkflowStartRunInWorkflow()
+    })
+
+    expect(mockHandleRun).not.toHaveBeenCalled()
+    expect(mockSetShowDebugAndPreviewPanel).not.toHaveBeenCalled()
+  })
+
   it('should open the input panel instead of running immediately when start inputs are required', async () => {
     mockGetNodes.mockReturnValue([
       { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [{ name: 'query' }] } },

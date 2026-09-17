@@ -25,6 +25,7 @@ const useWorkflowStartRunBase = (
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
 
   const handleWorkflowStartRunInWorkflow = useCallback(async () => {
+    if (workflowStore.getState().hasWorkflowDraftConflict) return
     const { workflowRunningData } = workflowStore.getState()
 
     if (workflowRunningData?.result.status === WorkflowRunningStatus.Running) return
@@ -54,6 +55,7 @@ const useWorkflowStartRunBase = (
 
     if (!startVariables.length && !fileSettings?.image?.enabled) {
       await doSyncWorkflowDraft()
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
       handleRun({ inputs: {}, files: [] })
       setShowDebugAndPreviewPanel(true)
       setShowInputsPanel(false)
@@ -72,7 +74,7 @@ const useWorkflowStartRunBase = (
 
   const handleWorkflowTriggerScheduleRunInWorkflow = useCallback(
     async (nodeId?: string) => {
-      if (!nodeId) return
+      if (!nodeId || workflowStore.getState().hasWorkflowDraftConflict) return
 
       const {
         workflowRunningData,
@@ -114,6 +116,7 @@ const useWorkflowStartRunBase = (
       setListeningTriggerIsAll(false)
 
       await doSyncWorkflowDraft()
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
       handleRun({}, undefined, {
         mode: TriggerType.Schedule,
         scheduleNodeId: nodeId,
@@ -126,7 +129,7 @@ const useWorkflowStartRunBase = (
 
   const handleWorkflowTriggerWebhookRunInWorkflow = useCallback(
     async ({ nodeId }: { nodeId: string }) => {
-      if (!nodeId) return
+      if (!nodeId || workflowStore.getState().hasWorkflowDraftConflict) return
 
       const {
         workflowRunningData,
@@ -166,6 +169,7 @@ const useWorkflowStartRunBase = (
       setListeningTriggerIsAll(false)
 
       await doSyncWorkflowDraft()
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
       handleRun({ node_id: nodeId }, undefined, {
         mode: TriggerType.Webhook,
         webhookNodeId: nodeId,
@@ -176,7 +180,7 @@ const useWorkflowStartRunBase = (
 
   const handleWorkflowTriggerPluginRunInWorkflow = useCallback(
     async (nodeId?: string) => {
-      if (!nodeId) return
+      if (!nodeId || workflowStore.getState().hasWorkflowDraftConflict) return
       const {
         workflowRunningData,
         showDebugAndPreviewPanel,
@@ -215,6 +219,7 @@ const useWorkflowStartRunBase = (
       setListeningTriggerIsAll(false)
 
       await doSyncWorkflowDraft()
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
       handleRun({ node_id: nodeId }, undefined, {
         mode: TriggerType.Plugin,
         pluginNodeId: nodeId,
@@ -225,7 +230,7 @@ const useWorkflowStartRunBase = (
 
   const handleWorkflowRunAllTriggersInWorkflow = useCallback(
     async (nodeIds: string[]) => {
-      if (!nodeIds.length) return
+      if (!nodeIds.length || workflowStore.getState().hasWorkflowDraftConflict) return
       const {
         workflowRunningData,
         showDebugAndPreviewPanel,
@@ -250,15 +255,17 @@ const useWorkflowStartRunBase = (
       if (!showDebugAndPreviewPanel) setShowDebugAndPreviewPanel(true)
 
       await doSyncWorkflowDraft()
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
       handleRun({ node_ids: nodeIds }, undefined, {
         mode: TriggerType.All,
         allNodeIds: nodeIds,
       })
     },
-    [store, workflowStore, handleRun, doSyncWorkflowDraft],
+    [workflowStore, handleRun, doSyncWorkflowDraft],
   )
 
   const handleWorkflowStartRunInChatflow = useCallback(async () => {
+    if (workflowStore.getState().hasWorkflowDraftConflict) return
     const {
       showDebugAndPreviewPanel,
       setShowDebugAndPreviewPanel,

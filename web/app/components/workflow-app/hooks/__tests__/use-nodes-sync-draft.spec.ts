@@ -1,6 +1,7 @@
 import type { EnvironmentVariablePatch } from '@/service/workflow'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
@@ -35,6 +36,7 @@ let workflowStoreState: {
   setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
   setDraftUpdatedAt: typeof mockSetDraftUpdatedAt
 }
+let draftStore: ReturnType<typeof createWorkflowStore>
 
 let featuresState: {
   features: {
@@ -54,7 +56,14 @@ vi.mock('reactflow', () => ({
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
-    getState: () => workflowStoreState,
+    getState: () => ({
+      ...workflowStoreState,
+      hasWorkflowDraftConflict: draftStore.getState().hasWorkflowDraftConflict,
+      setWorkflowDraftConflict: (conflicted: boolean) => {
+        draftStore.getState().setWorkflowDraftConflict(conflicted)
+        workflowStoreState.workflowDraftGeneration += 1
+      },
+    }),
   }),
 }))
 
@@ -108,9 +117,10 @@ const renderUseNodesSyncDraft = () =>
     systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
   })
 
-describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => {
+describe('useNodesSyncDraft', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    draftStore = createWorkflowStore({})
     reactFlowState = {
       getNodes: mockGetNodes,
       edges: [],
@@ -154,24 +164,32 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     isCollaborationEnabled = false
   })
 
-  it('should call handleRefreshWorkflowDraft(true) — not updating canvas — on draft_workflow_not_sync', async () => {
+  it('pauses all save entry points after a draft conflict without refreshing the canvas', async () => {
     const error = {
+      status: 409,
       json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
       bodyUsed: false,
     }
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
     const { result } = renderUseNodesSyncDraft()
+    const other = renderUseNodesSyncDraft()
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false)
+      await other.result.current.doSyncWorkflowDraft()
+      await result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true })
+      result.current.syncWorkflowDraftWhenPageClose()
     })
-    await new Promise((r) => setTimeout(r, 0))
 
-    expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledWith(true)
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
   })
 
-  it('should NOT refresh when notRefreshWhenSyncError=true', async () => {
+  it('pauses saves even when the caller disabled automatic refresh', async () => {
     const error = {
+      status: 409,
       json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
       bodyUsed: false,
     }
@@ -180,23 +198,75 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     const { result } = renderUseNodesSyncDraft()
     await act(async () => {
       await result.current.doSyncWorkflowDraft(true)
+      await result.current.doSyncWorkflowDraft()
     })
     await new Promise((r) => setTimeout(r, 0))
 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
   })
 
-  it('should NOT refresh for a different error code', async () => {
-    const error = { json: vi.fn().mockResolvedValue({ code: 'other_error' }), bodyUsed: false }
-    mockSyncWorkflowDraft.mockRejectedValue(error)
+  it('drops queued saves after a conflict and settles both callers', async () => {
+    mockSyncWorkflowDraft.mockRejectedValueOnce(
+      new Response(JSON.stringify({ code: 'draft_workflow_not_sync' }), { status: 409 }),
+    )
+    const first = { onError: vi.fn(), onSettled: vi.fn() }
+    const second = { onError: vi.fn(), onSettled: vi.fn() }
+    const { result } = renderUseNodesSyncDraft()
+
+    await act(async () => {
+      const pending = result.current.doSyncWorkflowDraft(false, first)
+      const queued = result.current.doSyncWorkflowDraft(false, second)
+      expect(await pending).toBeNull()
+      expect(await queued).toBeNull()
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+    expect(first.onError).toHaveBeenCalledOnce()
+    expect(first.onSettled).toHaveBeenCalledOnce()
+    expect(second.onError).not.toHaveBeenCalled()
+    expect(second.onSettled).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    { status: 409, code: 'other_error' },
+    { status: 500, code: 'draft_workflow_not_sync' },
+  ])('does not lock the editor for $status $code', async ({ status, code }) => {
+    mockSyncWorkflowDraft.mockRejectedValueOnce(new Response(JSON.stringify({ code }), { status }))
 
     const { result } = renderUseNodesSyncDraft()
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false)
+      await result.current.doSyncWorkflowDraft()
     })
-    await new Promise((r) => setTimeout(r, 0))
 
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('ignores a conflict response from before the latest draft reload', async () => {
+    let rejectSync!: (error: Response) => void
+    mockSyncWorkflowDraft.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        rejectSync = reject
+      }),
+    )
+    const { result } = renderUseNodesSyncDraft()
+    const pending = result.current.doSyncWorkflowDraft()
+    await vi.waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+    workflowStoreState.workflowDraftGeneration += 1
+    workflowStoreState.syncWorkflowDraftHash = 'reloaded-hash'
+    rejectSync(new Response(JSON.stringify({ code: 'draft_workflow_not_sync' }), { status: 409 }))
+
+    expect(await pending).toBeNull()
+    await result.current.doSyncWorkflowDraft()
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+    expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({ hash: 'reloaded-hash' }),
+      }),
+    )
   })
 
   it('should ignore non-JSON sync errors without throwing an unhandled rejection', async () => {
@@ -770,6 +840,26 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(callbacks.onSuccess).not.toHaveBeenCalled()
     expect(callbacks.onError).toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('pauses follower saves when the selected saver reports a draft conflict', async () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+    mockCollaborationRequestWorkflowSync.mockRejectedValueOnce(new Error('draft_workflow_not_sync'))
+    const { result } = renderUseNodesSyncDraft()
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft()
+      await result.current.doSyncWorkflowDraft()
+      await result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true })
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockCollaborationRequestWorkflowSync).toHaveBeenCalledOnce()
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
   })
 
   it('should force a directed sync request to save locally even before leader status arrives', async () => {

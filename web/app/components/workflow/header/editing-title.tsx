@@ -11,6 +11,7 @@ function EditingTitle() {
   const draftUpdatedAt = useStore((state) => state.draftUpdatedAt)
   const publishedAt = useStore((state) => state.publishedAt)
   const isSyncingWorkflowDraft = useStore((s) => s.isSyncingWorkflowDraft)
+  const hasWorkflowDraftConflict = useStore((s) => s.hasWorkflowDraftConflict)
 
   return (
     <div
@@ -18,7 +19,10 @@ function EditingTitle() {
       aria-label={t(($) => $['common.workflowSaveStatus'], { ns: 'workflow' })}
       className="h-4 system-xs-regular text-text-tertiary"
     >
-      {!!draftUpdatedAt && (
+      {hasWorkflowDraftConflict && (
+        <span>{t(($) => $['draftConflict.unsaved'], { ns: 'workflow' })}</span>
+      )}
+      {!hasWorkflowDraftConflict && !!draftUpdatedAt && (
         <span className="inline-flex items-center gap-1 whitespace-nowrap">
           <span>{t(($) => $['common.autoSaved'], { ns: 'workflow' })}</span>
           <time dateTime={new Date(draftUpdatedAt).toISOString()}>

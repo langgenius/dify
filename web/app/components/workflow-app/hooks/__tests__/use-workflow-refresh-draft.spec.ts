@@ -13,6 +13,7 @@ const mockSetEnvSecrets = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetIsWorkflowDataLoaded = vi.fn()
 const mockCancel = vi.fn()
+const mockCanApplyLocalGraphMutation = vi.fn()
 let draftStore: ReturnType<typeof createWorkflowStore>
 let appStoreState: {
   appDetail: {
@@ -39,6 +40,9 @@ vi.mock('@/app/components/workflow/store', () => ({
       ...workflowStoreState,
       workflowDraftGeneration: draftStore.getState().workflowDraftGeneration,
       invalidateWorkflowDraftSync: draftStore.getState().invalidateWorkflowDraftSync,
+      hasWorkflowDraftConflict: draftStore.getState().hasWorkflowDraftConflict,
+      setWorkflowDraftConflict: draftStore.getState().setWorkflowDraftConflict,
+      setDraftUpdatedAt: draftStore.getState().setDraftUpdatedAt,
     }),
   }),
 }))
@@ -51,6 +55,12 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({ handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas }),
 }))
 
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    canApplyLocalGraphMutation: () => mockCanApplyLocalGraphMutation(),
+  },
+}))
+
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
@@ -58,6 +68,7 @@ vi.mock('@/service/workflow', () => ({
 
 const draftResponse = {
   hash: 'server-hash',
+  updated_at: 1234,
   graph: { nodes: [{ id: 'n1' }], edges: [], viewport: { x: 1, y: 2, zoom: 1 } },
   environment_variables: [],
   conversation_variables: [],
@@ -71,6 +82,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       mockCancel,
     )
     mockHandleUpdateWorkflowCanvas.mockReturnValue(true)
+    mockCanApplyLocalGraphMutation.mockReturnValue(true)
     workflowStoreState = {
       appId: 'app-1',
       isWorkflowDataLoaded: true,
@@ -111,8 +123,6 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
   })
 
   it('should NOT update canvas when notUpdateCanvas=true', async () => {
-    // This is the key change: when called from a 409 error during editing,
-    // canvas must not be overwritten with server state.
     const { result } = renderHook(() => useWorkflowRefreshDraft())
     await act(async () => {
       result.current.handleRefreshWorkflowDraft(true)
@@ -192,7 +202,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     expect(mockSetIsSyncingWorkflowDraft).toHaveBeenLastCalledWith(false)
   })
 
-  it('keeps the old graph baseline during a metadata-only conflict refresh', async () => {
+  it('keeps the old graph baseline during a metadata-only refresh', async () => {
     const { result } = renderHook(() => useWorkflowRefreshDraft())
     await act(async () => {
       result.current.handleRefreshWorkflowDraft(true)
@@ -200,6 +210,63 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
     expect(mockSetEnvironmentVariables).toHaveBeenCalled()
   })
+
+  it('preserves local edits during background refreshes after a conflict', async () => {
+    draftStore.getState().setWorkflowDraftConflict(true)
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    expect(await result.current.handleRefreshWorkflowDraft()).toBe(false)
+    expect(await result.current.handleRefreshWorkflowDraft(true)).toBe(false)
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+  })
+
+  it('resolves a conflict only after a requested full reload applies the graph and hash', async () => {
+    draftStore.getState().setWorkflowDraftConflict(true)
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    await act(async () => {
+      expect(
+        await result.current.handleRefreshWorkflowDraft(false, { resolveConflict: true }),
+      ).toBe(true)
+    })
+    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledOnce()
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
+    expect(draftStore.getState().hasWorkflowDraftConflict).toBe(false)
+    expect(draftStore.getState().draftUpdatedAt).toBe(1_234_000)
+  })
+
+  it('allows explicit conflict recovery while the collaborative graph is reconnecting', async () => {
+    draftStore.getState().setWorkflowDraftConflict(true)
+    mockCanApplyLocalGraphMutation.mockReturnValue(false)
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+
+    expect(await result.current.handleRefreshWorkflowDraft(false, { resolveConflict: true })).toBe(
+      true,
+    )
+
+    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith(
+      expect.objectContaining({ nodes: draftResponse.graph.nodes }),
+      expect.objectContaining({ syncToCollaboration: false }),
+    )
+    expect(draftStore.getState().hasWorkflowDraftConflict).toBe(false)
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
+  })
+
+  it.each(['fetch', 'apply'] as const)(
+    'keeps saving paused when the conflict reload fails to %s',
+    async (failure) => {
+      draftStore.getState().setWorkflowDraftConflict(true)
+      if (failure === 'fetch') mockFetchWorkflowDraft.mockRejectedValue(new Error('offline'))
+      else mockHandleUpdateWorkflowCanvas.mockReturnValue(false)
+      const { result } = renderHook(() => useWorkflowRefreshDraft())
+      await act(async () => {
+        expect(
+          await result.current.handleRefreshWorkflowDraft(false, { resolveConflict: true }),
+        ).toBe(false)
+      })
+      expect(draftStore.getState().hasWorkflowDraftConflict).toBe(true)
+      expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+    },
+  )
 
   it('should cancel pending draft sync, use fallback viewport, and persist masked secrets', async () => {
     workflowStoreState = {

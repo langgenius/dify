@@ -396,6 +396,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
       handleSyncWorkflowDraft(true, true, {
         onError: () => {
+          if (workflowStore.getState().hasWorkflowDraftConflict) return
           toast.error(
             t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
             {
@@ -436,7 +437,9 @@ export const Workflow: FC<WorkflowProps> = memo(
 
       if (document.visibilityState === 'visible') {
         collaborationManager.emitGraphViewState(true)
-        const { isListening, workflowRunningData } = workflowStore.getState()
+        const { isListening, workflowRunningData, hasWorkflowDraftConflict } =
+          workflowStore.getState()
+        if (hasWorkflowDraftConflict) return
         const status = workflowRunningData?.result?.status
         // Avoid resetting UI state when user comes back while a run is active or listening for triggers
         if (isListening || status === WorkflowRunningStatus.Running) return
@@ -459,10 +462,11 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     // Also add beforeunload handler as additional safety net for tab close
     const handleBeforeUnload = useCallback(() => {
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
       if (collaborationManager.canRestoreGraphFromCrdt())
         collaborationManager.refreshGraphSynchronously()
       syncWorkflowDraftWhenPageClose()
-    }, [syncWorkflowDraftWhenPageClose])
+    }, [syncWorkflowDraftWhenPageClose, workflowStore])
 
     // Optimized comment deletion using showConfirm
     const handleCommentDeleteClick = useCallback(

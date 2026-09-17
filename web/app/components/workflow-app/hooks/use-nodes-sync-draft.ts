@@ -26,19 +26,23 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
-import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
 
 const shouldSkipDraftSync = (
   appId: string | undefined,
   isWorkflowDataLoaded: boolean,
   isSyncingWorkflowDraft: boolean,
-) => !appId || !isWorkflowDataLoaded || isSyncingWorkflowDraft || isAppDeletingOrDeleted(appId)
+  hasWorkflowDraftConflict: boolean,
+) =>
+  !appId ||
+  !isWorkflowDataLoaded ||
+  isSyncingWorkflowDraft ||
+  hasWorkflowDraftConflict ||
+  isAppDeletingOrDeleted(appId)
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
-  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const lastLocalSaveRef = useRef<{ appId: string; generation: number; hash: string } | null>(null)
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -73,10 +77,19 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       syncWorkflowDraftHash,
       isWorkflowDataLoaded,
       isSyncingWorkflowDraft,
+      hasWorkflowDraftConflict,
       workflowDraftGeneration,
     } = workflowStore.getState()
 
-    if (!appId || shouldSkipDraftSync(appId, isWorkflowDataLoaded, isSyncingWorkflowDraft))
+    if (
+      !appId ||
+      shouldSkipDraftSync(
+        appId,
+        isWorkflowDataLoaded,
+        isSyncingWorkflowDraft,
+        hasWorkflowDraftConflict,
+      )
+    )
       return null
 
     const features = featuresStore!.getState().features
@@ -154,11 +167,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const performLocalSync = useCallback(
     async (
       baseParams: NonNullable<ReturnType<typeof getPostParams>>,
-      notRefreshWhenSyncError?: boolean,
       callback?: SyncDraftCallback,
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
-      if (getNodesReadOnly()) return null
+      if (getNodesReadOnly()) {
+        callback?.onSettled?.()
+        return null
+      }
       const isCurrent = () => {
         const state = workflowStore.getState()
         return (
@@ -168,6 +183,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
             state.appId,
             state.isWorkflowDataLoaded,
             state.isSyncingWorkflowDraft,
+            state.hasWorkflowDraftConflict,
           )
         )
       }
@@ -228,14 +244,19 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         if (!isCurrent()) return null
 
         const responseError = error as {
+          status?: number
           bodyUsed?: boolean
           json?: () => Promise<{ code?: string }>
         }
         if (responseError.json && !responseError.bodyUsed) {
           try {
             const err = await responseError.json()
-            if (isCurrent() && err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft(true)
+            if (
+              isCurrent() &&
+              responseError.status === 409 &&
+              err.code === 'draft_workflow_not_sync'
+            )
+              workflowStore.getState().setWorkflowDraftConflict(true)
           } catch {
             // Non-JSON upstream errors should not surface as unhandled promise rejections.
           }
@@ -246,20 +267,32 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSettled?.()
       }
     },
-    [workflowStore, getNodesReadOnly, handleRefreshWorkflowDraft, isCollaborationEnabled],
+    [workflowStore, getNodesReadOnly, isCollaborationEnabled],
   )
 
-  const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
+  const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync)
   const doSyncWorkflowDraft = useCallback(
     async (
-      notRefreshWhenSyncError?: boolean,
+      _notRefreshWhenSyncError?: boolean,
       callback?: SyncDraftCallback,
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
-      if (getNodesReadOnly()) return null
-      const { appId, isWorkflowDataLoaded, isSyncingWorkflowDraft, workflowDraftGeneration } =
-        workflowStore.getState()
-      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded, isSyncingWorkflowDraft)) {
+      const {
+        appId,
+        isWorkflowDataLoaded,
+        isSyncingWorkflowDraft,
+        workflowDraftGeneration,
+        hasWorkflowDraftConflict,
+      } = workflowStore.getState()
+      if (
+        getNodesReadOnly() ||
+        shouldSkipDraftSync(
+          appId,
+          isWorkflowDataLoaded,
+          isSyncingWorkflowDraft,
+          hasWorkflowDraftConflict,
+        )
+      ) {
         callback?.onSettled?.()
         return null
       }
@@ -278,7 +311,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           return null
         }
 
-        return doSyncWorkflowDraftLocally(baseParams, notRefreshWhenSyncError, callback, options)
+        return doSyncWorkflowDraftLocally(baseParams, callback, options)
       }
 
       try {
@@ -293,7 +326,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         setDraftUpdatedAt(result.updatedAt)
         callback?.onSuccess?.()
         return result
-      } catch {
+      } catch (error) {
         const state = workflowStore.getState()
         if (
           state.appId === appId &&
@@ -302,9 +335,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
             state.appId,
             state.isWorkflowDataLoaded,
             state.isSyncingWorkflowDraft,
+            state.hasWorkflowDraftConflict,
           )
-        )
+        ) {
+          if (error instanceof Error && error.message === 'draft_workflow_not_sync')
+            state.setWorkflowDraftConflict(true)
           callback?.onError?.()
+        }
         return null
       } finally {
         callback?.onSettled?.()

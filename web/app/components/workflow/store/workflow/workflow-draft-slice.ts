@@ -23,6 +23,8 @@ export type WorkflowDraftSliceShape = {
   setSyncWorkflowDraftHash: (hash: string) => void
   workflowDraftGeneration: number
   invalidateWorkflowDraftSync: () => number
+  hasWorkflowDraftConflict: boolean
+  setWorkflowDraftConflict: (conflicted: boolean) => void
   isSyncingWorkflowDraft: boolean
   setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft: boolean) => void
   isWorkflowDataLoaded: boolean
@@ -45,6 +47,11 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
     syncWorkflowDraftHash: '',
     setSyncWorkflowDraftHash: (syncWorkflowDraftHash) => set(() => ({ syncWorkflowDraftHash })),
     workflowDraftGeneration: 0,
+    hasWorkflowDraftConflict: false,
+    setWorkflowDraftConflict: (hasWorkflowDraftConflict) => {
+      if (hasWorkflowDraftConflict) get().invalidateWorkflowDraftSync()
+      set({ hasWorkflowDraftConflict })
+    },
     invalidateWorkflowDraftSync: () => {
       debouncedFn.cancel()
       const workflowDraftGeneration = get().workflowDraftGeneration + 1

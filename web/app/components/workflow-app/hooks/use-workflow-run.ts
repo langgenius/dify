@@ -191,6 +191,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       callback?: IOtherOptions,
       options?: HandleRunOptions,
     ) => {
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
       const runMode = options?.mode ?? TriggerType.UserInput
       const resolvedParams: WorkflowRunParams = params ?? {}
       const { getNodes, setNodes } = store.getState()
@@ -202,6 +203,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       })
       setNodes(newNodes)
       await doSyncWorkflowDraft()
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
 
       const {
         onWorkflowStarted,
