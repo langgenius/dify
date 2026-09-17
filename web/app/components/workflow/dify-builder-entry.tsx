@@ -1,32 +1,30 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { Trans } from 'react-i18next'
 
 type DifyBuilderEntryProps = {
-  description: string
   disabled?: boolean
-  label: string
   onClick: () => void
 }
 
-const DifyBuilderEntry = ({
-  description,
-  disabled = false,
-  label,
-  onClick,
-}: DifyBuilderEntryProps) => {
+const DifyBuilderEntry = ({ disabled = false, onClick }: DifyBuilderEntryProps) => {
   return (
-    <div className="flex flex-col items-start gap-2">
-      <Button
-        type="button"
-        size="medium"
-        variant="primary"
-        disabled={disabled}
-        className="bg-components-button-debug-bg! px-3! text-components-button-debug-text! inset-ring-components-button-debug-border! hover:bg-components-button-debug-bg-hover! hover:inset-ring-components-button-debug-border-hover! data-disabled:bg-components-button-debug-bg-disabled! data-disabled:text-components-button-debug-text-disabled! data-disabled:inset-ring-components-button-debug-border-disabled!"
-        onClick={onClick}
-      >
-        {label}
-      </Button>
-      <p className="text-left system-xs-regular text-text-tertiary">{description}</p>
-    </div>
+    <Button type="button" variant="secondary" size="medium" disabled={disabled} onClick={onClick}>
+      <span className="inline-flex items-center gap-1">
+        <Trans
+          i18nKey={($) => $['difyBuilder.fixRun']}
+          ns="workflow"
+          components={{
+            builder: <span className="inline-flex items-center gap-1 font-semibold" />,
+            icon: (
+              <span
+                aria-hidden="true"
+                className="i-custom-public-app-builder-builder-mark size-4 shrink-0"
+              />
+            ),
+          }}
+        />
+      </span>
+    </Button>
   )
 }
 
