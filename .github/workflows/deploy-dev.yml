@@ -68,5 +68,7 @@ jobs:
           host: ${{ secrets.SSH_NEW_RAG_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Keep the SSH session alive for Celery's configured warm-shutdown grace.
+          command_timeout: 160m
           script: |
             ${{ vars.SSH_SCRIPT || secrets.SSH_SCRIPT }}

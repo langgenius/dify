@@ -1,8 +1,0 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "types": ["node", "vitest/globals"]
-  },
-  "include": ["src/**/*.ts"]
-}
