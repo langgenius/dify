@@ -73,7 +73,7 @@ catalog:
   '@eslint-react/eslint-plugin': 5.19.1
   '@eslint/markdown': 8.0.3
   '@floating-ui/react': 0.27.20
-  '@formatjs/intl-localematcher': 0.8.14
+  '@formatjs/intl-localematcher': 0.9.0
   '@heroicons/react': 2.2.0
   '@hey-api/openapi-ts': 0.98.2
   '@hono/node-server': 2.1.1
@@ -95,7 +95,7 @@ catalog:
   '@orpc/tanstack-query': 1.15.1
   '@playwright/test': 1.63.0
   '@remixicon/react': 4.9.0
-  '@rgrove/parse-xml': 4.2.3
+  '@rgrove/parse-xml': 5.0.0
   '@sentry/react': 10.75.0
   '@storybook/addon-a11y': 10.6.0
   '@storybook/addon-docs': 10.6.0
@@ -120,7 +120,7 @@ catalog:
   '@tanstack/react-query': 5.103.1
   '@tanstack/react-virtual': 3.14.13
   '@testing-library/dom': 10.4.2
-  '@testing-library/jest-dom': 6.9.1
+  '@testing-library/jest-dom': 7.0.1
   '@testing-library/react': 16.3.3
   '@testing-library/user-event': 14.6.7
   '@tsslint/cli': 3.1.4
@@ -148,7 +148,7 @@ catalog:
   chokidar: 5.0.0
   class-variance-authority: 0.7.1
   cli-table3: 0.6.5
-  cn: 0.2.6
+  cn: 0.3.0
   code-inspector-plugin: 1.6.6
   concurrently: 10.0.5
   copy-to-clipboard: 4.0.2
@@ -158,7 +158,7 @@ catalog:
   dompurify: 3.4.15
   echarts: 6.1.0
   echarts-for-react: 3.0.6
-  elkjs: 0.11.1
+  elkjs: 0.12.0
   embla-carousel-autoplay: 8.6.0
   embla-carousel-fade: 8.6.0
   embla-carousel-react: 8.6.0
@@ -166,24 +166,24 @@ catalog:
   es-toolkit: 1.52.0
   eslint: 10.10.0
   eslint-config-flat-gitignore: 2.4.0
-  eslint-markdown: 0.12.1
+  eslint-markdown: 0.17.0
   eslint-plugin-antfu: 3.2.3
   eslint-plugin-better-tailwindcss: 4.7.0
-  eslint-plugin-command: 3.5.3
-  eslint-plugin-erasable-syntax-only: 0.4.2
-  eslint-plugin-jsdoc: 63.3.3
+  eslint-plugin-command: 4.0.0
+  eslint-plugin-erasable-syntax-only: 0.7.1
+  eslint-plugin-jsdoc: 64.5.2
   eslint-plugin-jsonc: 3.4.2
-  eslint-plugin-markdown-preferences: 0.41.1
+  eslint-plugin-markdown-preferences: 0.42.0
   eslint-plugin-n: 18.3.0
-  eslint-plugin-no-barrel-files: 1.3.1
+  eslint-plugin-no-barrel-files: 2.2.0
   eslint-plugin-perfectionist: 5.11.1
   eslint-plugin-pnpm: 1.9.1
   eslint-plugin-regexp: 3.3.0
   eslint-plugin-storybook: 10.6.0
   eslint-plugin-toml: 1.5.0
-  eslint-plugin-unicorn: 71.1.0
+  eslint-plugin-unicorn: 75.0.0
   eslint-plugin-yml: 3.8.1
-  eventsource-parser: 3.1.1
+  eventsource-parser: 4.1.1
   fast-deep-equal: 3.1.3
   foxact: 0.3.11
   fuse.js: 7.5.0
@@ -212,7 +212,7 @@ catalog:
   mermaid: 11.17.2
   mime: 4.1.0
   mitt: 3.0.1
-  motion: 12.43.0
+  motion: 13.4.0
   negotiator: 1.1.0
   next: 16.3.5
   next-themes: 0.4.6

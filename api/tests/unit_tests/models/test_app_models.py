@@ -33,6 +33,7 @@ from models.model import (
     Site,
     load_annotation_reply_config,
 )
+from models.workflow import Workflow, WorkflowType
 
 
 class TestAppModelValidation:
@@ -122,8 +123,9 @@ class TestAppModelValidation:
         # Assert
         assert {t.value for t in IconType} == {"image", "emoji", "link"}
 
-    def test_app_desc_or_prompt_with_description(self):
-        """Test desc_or_prompt property when description exists."""
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_desc_or_prompt_with_description(self, sqlite_session: Session):
+        """Test desc_or_prompt_with_session when description exists."""
         # Arrange
         app = App(
             tenant_id=str(uuid4()),
@@ -136,7 +138,7 @@ class TestAppModelValidation:
         )
 
         # Act
-        result = app.desc_or_prompt
+        result = app.desc_or_prompt_with_session(session=sqlite_session)
 
         # Assert
         assert result == "App description"
@@ -266,6 +268,110 @@ class TestAppModelValidation:
 
         # Assert
         assert result == AppMode.AGENT_CHAT
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_model_config_with_session_reads_through_the_caller_session(self, sqlite_session: Session):
+        """`app_model_config_with_session` resolves the linked config through the caller's session."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+        model_config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": False}))
+        sqlite_session.add(model_config)
+        sqlite_session.flush()
+        app.app_model_config_id = model_config.id
+        sqlite_session.commit()
+
+        # Act: a session the model never owns, proving the lookup does not reach for a global one
+        with Session(sqlite_session.get_bind(), expire_on_commit=False) as caller_session:
+            result = app.app_model_config_with_session(session=caller_session)
+
+            # Assert
+            assert result is not None
+            assert result.id == model_config.id
+            assert result in caller_session
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_model_config_with_session_returns_none_when_unlinked(self, sqlite_session: Session):
+        """An app without `app_model_config_id` resolves to None without querying."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+
+        # Act / Assert: an unbound session would raise if the guard were dropped
+        with Session(expire_on_commit=False) as unbound_session:
+            assert app.app_model_config_with_session(session=unbound_session) is None
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_workflow_with_session_reads_through_the_caller_session(self, sqlite_session: Session):
+        """`workflow_with_session` resolves the published workflow through the caller's session."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.WORKFLOW,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+        workflow = Workflow(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW,
+            version="1",
+            graph=json.dumps({"nodes": [], "edges": []}),
+            created_by=app.created_by,
+        )
+        workflow._features = "{}"
+        sqlite_session.add(workflow)
+        sqlite_session.flush()
+        app.workflow_id = workflow.id
+        sqlite_session.commit()
+
+        # Act: a session the model never owns, proving the lookup does not reach for a global one
+        with Session(sqlite_session.get_bind(), expire_on_commit=False) as caller_session:
+            result = app.workflow_with_session(session=caller_session)
+
+            # Assert
+            assert result is not None
+            assert result.id == workflow.id
+            assert result in caller_session
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_workflow_with_session_returns_none_when_unpublished(self, sqlite_session: Session):
+        """An app without `workflow_id` resolves to None without querying."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.WORKFLOW,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+
+        # Act / Assert: an unbound session would raise if the guard were dropped
+        with Session(expire_on_commit=False) as unbound_session:
+            assert app.workflow_with_session(session=unbound_session) is None
 
     @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
     def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self, sqlite_session: Session):
@@ -528,8 +634,8 @@ class TestConversationModel:
         assert conversation.from_source == "api"
         assert conversation.from_end_user_id == from_end_user_id
 
-    def test_conversation_with_inputs(self):
-        """Test conversation inputs property."""
+    def test_conversation_with_inputs(self, sqlite_session: Session):
+        """Test conversation inputs round-trip through the session-aware accessor."""
         # Arrange
         inputs = {"query": "Hello", "context": "test"}
         conversation = Conversation(
@@ -543,10 +649,17 @@ class TestConversationModel:
         conversation._inputs = inputs
 
         # Act
-        result = conversation.inputs
+        result = conversation.inputs_with_session(session=sqlite_session)
 
         # Assert
         assert result == inputs
+
+    def test_conversation_inputs_is_write_only(self):
+        """Reading conversation.inputs must fail loudly; reads go through inputs_with_session."""
+        conversation = Conversation(app_id=str(uuid4()), _inputs={})
+
+        with pytest.raises(AttributeError, match="no getter"):
+            _ = conversation.inputs
 
     def test_conversation_inputs_setter(self):
         """Test conversation inputs setter."""
@@ -772,8 +885,8 @@ class TestMessageModel:
         assert message.currency == "USD"
         assert message.from_source == "api"
 
-    def test_message_with_inputs(self):
-        """Test message inputs property."""
+    def test_message_with_inputs(self, sqlite_session: Session):
+        """Test message inputs round-trip through the session-aware accessor."""
         # Arrange
         inputs = {"query": "Hello", "context": "test"}
         message = Message(
@@ -790,10 +903,17 @@ class TestMessageModel:
         )
 
         # Act
-        result = message.inputs
+        result = message.inputs_with_session(session=sqlite_session)
 
         # Assert
         assert result == inputs
+
+    def test_message_inputs_is_write_only(self):
+        """Reading message.inputs must fail loudly; reads go through inputs_with_session."""
+        message = Message(app_id=str(uuid4()), _inputs={})
+
+        with pytest.raises(AttributeError, match="no getter"):
+            _ = message.inputs
 
     def test_message_inputs_setter(self):
         """Test message inputs setter."""

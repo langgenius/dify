@@ -93,7 +93,7 @@ const ForgotPasswordForm = () => {
               <Field
                 name="email"
                 validate={(value) =>
-                  emailSchema.safeParse(value).success
+                  emailSchema.validate(value)
                     ? null
                     : t(($) => $['error.emailInValid'], { ns: 'login' })
                 }
