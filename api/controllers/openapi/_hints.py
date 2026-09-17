@@ -26,6 +26,7 @@ PAGE_FIELD: Final = "page"
 LIMIT_FIELD: Final = "limit"
 
 _DATA_PREFIX: Final = "data: "
+_HINTED_EVENT: Final = StreamEvent.HUMAN_INPUT_REQUIRED.value
 
 
 def next_page_hint(
@@ -68,12 +69,14 @@ def attach_stream_hints(events: Iterable[str], *, app_id: str) -> Generator[str,
     """Yield the source SSE chunks, adding a top-level `hints` list to events that have a next step.
 
     Chunks that are not `data:` JSON, and events without hints, are yielded as the original
-    string so the wire bytes stay identical. Closing this generator closes the source
-    (the run stream is a `RateLimitGenerator` that releases its slot on close).
+    string so the wire bytes stay identical. Only the one event kind that carries a hint is
+    parsed — every other chunk of a long run is passed through on a substring test. Closing
+    this generator closes the source (the run stream is a `RateLimitGenerator` that releases
+    its slot on close).
     """
     try:
         for chunk in events:
-            if not chunk.startswith(_DATA_PREFIX):
+            if not chunk.startswith(_DATA_PREFIX) or _HINTED_EVENT not in chunk:
                 yield chunk
                 continue
             try:

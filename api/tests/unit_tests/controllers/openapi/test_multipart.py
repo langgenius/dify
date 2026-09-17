@@ -51,3 +51,13 @@ def test_multipart_rejects_file_part_outside_files_namespace(app: Flask):
     with app.test_request_context("/x", method="POST", data=data, content_type="multipart/form-data"):
         with pytest.raises(InvalidFilePart, match="file"):
             body_from_request()
+
+
+def test_multipart_rejects_a_text_part_that_claims_the_files_envelope(app: Flask):
+    """`files` is where the file parts land, so a text part of that name used to be
+    silently replaced by them.
+    """
+    data = {"files": '"mine"', "files[doc]": (BytesIO(b"pdf"), "r.pdf", "application/pdf")}
+    with app.test_request_context("/x", method="POST", data=data, content_type="multipart/form-data"):
+        with pytest.raises(InvalidFilePart, match="files"):
+            body_from_request()

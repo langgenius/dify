@@ -17,8 +17,8 @@ from werkzeug.datastructures import FileStorage
 
 from controllers.openapi._errors import InvalidFilePart
 
-FILE_PART_RE: Final = re.compile(r"^files\[(?P<name>[^\]]+)\]$")
 FILES_FIELD: Final = "files"
+FILE_PART_RE: Final = re.compile(rf"^{re.escape(FILES_FIELD)}\[(?P<name>[^\]]+)\]$")
 
 
 def _json_part(name: str, raw: str) -> Any:
@@ -42,6 +42,8 @@ def _file_parts() -> dict[str, FileStorage | list[FileStorage]]:
 def body_from_request() -> dict[str, Any]:
     if request.mimetype != "multipart/form-data":
         return request.get_json(silent=True) or {}
+    if FILES_FIELD in request.form:
+        raise InvalidFilePart(f"{FILES_FIELD}: reserved for the file parts, which are named {FILES_FIELD}[<name>]")
     body: dict[str, Any] = {name: _json_part(name, raw) for name, raw in request.form.items()}
     files = _file_parts()
     if files:
