@@ -344,7 +344,9 @@ describe('BaseField', () => {
     expect(screen.getByDisplayValue('abc')).toHaveAttribute('type', 'password')
   })
 
-  it('should render number input with number type', () => {
+  it('keeps numeric edits, zero and an empty value distinct at the form boundary', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
     renderBaseField({
       formSchema: {
         type: FormTypeEnum.textNumber,
@@ -353,9 +355,22 @@ describe('BaseField', () => {
         required: false,
       },
       defaultValues: { count: 7 },
+      onChange,
     })
 
-    expect(screen.getByDisplayValue('7')).toHaveAttribute('type', 'number')
+    const input = screen.getByRole('textbox', { name: 'Count' })
+    expect(input).toHaveValue('7')
+    await user.clear(input)
+    await user.type(input, '3.5')
+    await user.tab()
+    expect(onChange).toHaveBeenLastCalledWith('count', 3.5)
+    await user.clear(input)
+    await user.type(input, '0')
+    await user.tab()
+    expect(onChange).toHaveBeenLastCalledWith('count', 0)
+    await user.clear(input)
+    await user.tab()
+    expect(onChange).toHaveBeenLastCalledWith('count', null)
   })
 
   it('should render translated object label content', () => {

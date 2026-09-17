@@ -474,6 +474,7 @@
   "operation.fill": "กรอกอัตโนมัติ",
   "operation.format": "รูปแบบ",
   "operation.imageCopied": "ภาพที่คัดลอก",
+  "operation.imageCopyFailed": "ไม่สามารถคัดลอกรูปภาพได้ โปรดดาวน์โหลดรูปภาพแทน",
   "operation.imageDownloaded": "ดาวน์โหลดรูปภาพแล้ว",
   "operation.in": "ใน",
   "operation.learnMore": "ศึกษาเพิ่มเติม",
