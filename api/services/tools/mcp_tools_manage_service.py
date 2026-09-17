@@ -154,11 +154,18 @@ class MCPToolManageService:
             ValueError: If no provider matches the reference
         """
         try:
+            uuid.UUID(id_or_server_identifier)
+        except (AttributeError, TypeError, ValueError):
             return self.get_provider_by_server_identifier(
                 server_identifier=id_or_server_identifier, tenant_id=tenant_id
             )
-        except ValueError:
+
+        try:
             return self.get_provider_by_id(provider_id=id_or_server_identifier, tenant_id=tenant_id)
+        except ValueError:
+            return self.get_provider_by_server_identifier(
+                server_identifier=id_or_server_identifier, tenant_id=tenant_id
+            )
 
     def get_provider_entity_by_persisted_reference(
         self, *, id_or_server_identifier: str, tenant_id: str
