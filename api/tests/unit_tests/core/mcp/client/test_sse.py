@@ -173,6 +173,38 @@ def test_sse_client_error_handling():
                     pass
 
 
+@pytest.mark.parametrize(
+    "transport_error",
+    [
+        httpx.ConnectError("[Errno 111] Connection refused"),
+        httpx.RemoteProtocolError("Server disconnected without sending a response."),
+        httpx.ReadTimeout("timed out"),
+    ],
+    ids=["connect_error", "remote_protocol_error", "read_timeout"],
+)
+def test_sse_client_wraps_transport_errors(transport_error: httpx.RequestError):
+    """Transport failures must surface as MCPConnectionError, not raw httpx errors.
+
+    Callers rely on the MCP error contract: MCPClient only falls back to
+    streamable HTTP on MCPConnectionError/ValueError, and the console API maps
+    those to a 4xx with a readable message instead of a bare 500.
+    """
+    test_url = "http://test.example/sse"
+
+    with (
+        patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client"),
+        patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect,
+    ):
+        mock_sse_connect.side_effect = transport_error
+
+        with pytest.raises(MCPConnectionError) as exc_info:
+            with sse_client(test_url):
+                pass
+
+    # The underlying reason must survive so the user can act on it.
+    assert str(transport_error) in str(exc_info.value)
+
+
 def test_sse_client_timeout_configuration():
     """Test SSE client timeout configuration."""
     test_url = "http://test.example/sse"

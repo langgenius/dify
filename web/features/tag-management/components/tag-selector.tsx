@@ -337,6 +337,7 @@ export const TagSelector = ({
           {...positionerProps}
         >
           <ComboboxPopup
+            onClick={(event) => event.stopPropagation()}
             aria-label={accessibleTriggerLabel}
             {...popupProps}
             className={cn(

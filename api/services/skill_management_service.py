@@ -60,6 +60,7 @@ from models.account import Account
 from models.agent import (
     Agent,
     AgentConfigDraft,
+    AgentConfigDraftType,
     AgentConfigSnapshot,
     AgentKind,
     AgentScope,
@@ -2265,8 +2266,9 @@ class SkillManagementService:
         tenant_id: str,
         agent_id: str,
         include_draft: bool = False,
+        config_snapshot_id: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Return workspace Skills from the Agent draft or active published snapshot."""
+        """Return workspace Skills from the Agent draft or a published snapshot."""
         with self._session_scope() as session:
             binding_model = AgentSkillBinding if include_draft else AgentSkillBindingSnapshot
             conditions = [
@@ -2276,7 +2278,10 @@ class SkillManagementService:
                 Agent.tenant_id == tenant_id,
             ]
             if not include_draft:
-                conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
+                if config_snapshot_id is None:
+                    conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
+                else:
+                    conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == config_snapshot_id)
             rows = list(
                 session.execute(
                     select(binding_model, Skill, SkillVersion)
@@ -2634,36 +2639,35 @@ class SkillManagementService:
                 )
             )
         )
-        configured_names: set[str] = set()
-        snapshot = session.scalar(
-            select(AgentConfigSnapshot).where(
-                AgentConfigSnapshot.tenant_id == tenant_id,
-                AgentConfigSnapshot.agent_id == agent_id,
-                AgentConfigSnapshot.id
-                == select(Agent.active_config_snapshot_id)
-                .where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
-                .scalar_subquery(),
-            )
-        )
-        if snapshot is not None:
-            configured_names.update(
-                skill.name
-                for skill in AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).config_skills
-                if not skill.is_missing
-            )
-        drafts = session.scalars(
+        # Bindings are edited against the normal draft, including unpublished removals.
+        config: AgentConfigDraft | AgentConfigSnapshot | None = session.scalar(
             select(AgentConfigDraft).where(
                 AgentConfigDraft.tenant_id == tenant_id,
                 AgentConfigDraft.agent_id == agent_id,
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                AgentConfigDraft.account_id.is_(None),
             )
         )
-        for draft in drafts:
-            configured_names.update(
-                skill.name
-                for skill in AgentSoulConfig.model_validate(draft.config_snapshot_dict).config_skills
-                if not skill.is_missing
+        if config is None:
+            config = session.scalar(
+                select(AgentConfigSnapshot).where(
+                    AgentConfigSnapshot.tenant_id == tenant_id,
+                    AgentConfigSnapshot.agent_id == agent_id,
+                    AgentConfigSnapshot.id
+                    == select(Agent.active_config_snapshot_id)
+                    .where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
+                    .scalar_subquery(),
+                )
             )
-
+        configured_names = (
+            {
+                skill.name
+                for skill in AgentSoulConfig.model_validate(config.config_snapshot_dict).config_skills
+                if not skill.is_missing
+            }
+            if config is not None
+            else set()
+        )
         conflicts = sorted(set(selected_skill_names) & (configured_names - current_bound_names))
         if conflicts:
             raise SkillManagementServiceError(

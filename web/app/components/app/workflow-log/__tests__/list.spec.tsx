@@ -408,14 +408,16 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      // Click on the start time header to toggle sort
-      const startTimeHeader = screen.getByText('appLog.table.header.startTime')
-      await user.click(startTimeHeader)
-
-      // Arrow should rotate (indicated by class change)
-      // The sort icon should have rotate-180 class for ascending
-      const sortIcon = startTimeHeader.closest('div')?.querySelector('svg')
-      expect(sortIcon)!.toBeInTheDocument()
+      const startTimeHeader = screen.getByRole('columnheader', {
+        name: 'appLog.table.header.startTime',
+      })
+      const sortButton = screen.getByRole('button', { name: 'appLog.table.header.startTime' })
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'descending')
+      sortButton.focus()
+      await user.keyboard('{Enter}')
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'ascending')
+      await user.keyboard(' ')
+      expect(startTimeHeader).toHaveAttribute('aria-sort', 'descending')
     })
 
     it('should render sort arrow icon', () => {

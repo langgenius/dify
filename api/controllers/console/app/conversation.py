@@ -140,7 +140,7 @@ class CompletionConversationApi(Resource):
 
         if end_datetime_utc:
             end_datetime_utc = end_datetime_utc.replace(second=59)
-            query = query.where(Conversation.created_at < end_datetime_utc)
+            query = query.where(Conversation.created_at <= end_datetime_utc)
 
         # FIXME, the type ignore in this file
         if req_data.annotation_status == "annotated":

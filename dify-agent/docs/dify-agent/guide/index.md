@@ -29,6 +29,9 @@ run.
 `ServerSettings` loads environment variables with the `DIFY_AGENT_` prefix. It
 also reads `.env` and `dify-agent/.env` when present.
 
+OpenShell-specific settings are listed in the
+[OpenShell configuration reference](openshell.md#configuration).
+
 | Environment variable | Default | Description |
 | --- | --- | --- |
 | `DIFY_AGENT_REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL. |
@@ -46,7 +49,7 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` | empty | API key sent to the Dify plugin daemon. |
 | `DIFY_AGENT_INNER_API_URL` | `http://localhost:5001` | Dify API service root used when dify-agent calls `/inner/api/...` endpoints. |
 | `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
-| `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, or `e2b` Home Snapshot + Execution Binding backend profile. |
+| `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, `e2b`, or `openshell` Home Snapshot + Execution Binding backend profile. |
 | `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
 | `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
 | `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
@@ -237,6 +240,12 @@ provider `RuntimeError` observed first becomes a tool observation. In contrast,
 run-deadline cancellation propagates through the Shell boundary; only the Dify
 Agent run deadline owns the terminal `agent_run_limit_exceeded` failure.
 
+## OpenShell backend
+
+See the [OpenShell Runtime Backend guide](openshell.md) for its configuration
+reference, runtime image build instructions, gateway and shared-volume setup,
+and deployment validation.
+
 ## Run runtime-backend integration contracts
 
 Run the disposable Local contract from the `dify-agent` directory. The script
@@ -273,9 +282,11 @@ DIFY_AGENT_TEST_E2B_TEMPLATE=difys-default-team/dify-agent-local-sandbox \
   -k e2b -q -rs
 ```
 
+For OpenShell, see [Run the OpenShell integration contract](openshell.md#run-the-openshell-integration-contract).
+
 The Local auth token is optional when shellctl has authentication disabled.
 The E2B contract uses the one-hour `E2B_MAX_ACTIVE_TIMEOUT_SECONDS` RuntimeLease
-limit. This is continuous active test time, not a post-test retention TTL. Both
+limit. This is continuous active test time, not a post-test retention TTL. All
 contracts create unique resources and perform explicit cleanup in `finally`
 blocks.
 

@@ -67,8 +67,8 @@ jobs:
           host: ${{ secrets.SSH_NEW_RAG_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # Celery's warm shutdown can drain an existing long-running document.
-          command_timeout: 160m
+          # Allow the shared deployment lock and Celery warm shutdown to finish.
+          command_timeout: 300m
           script: |
             set -euo pipefail
 

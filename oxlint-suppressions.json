@@ -308,27 +308,11 @@
   "web/app/components/app/configuration/config-var/config-modal/form-fields.tsx": {
     "jsx-a11y/anchor-has-content": {
       "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/app/configuration/config-var/config-modal/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/app/configuration/config-var/config-select/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/config-var/config-string/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/app/configuration/config-var/index.tsx": {
@@ -1850,11 +1834,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/svg-gallery/index.tsx": {
-    "node-js/prefer-global/buffer": {
-      "count": 1
-    }
-  },
   "web/app/components/base/tag-input/index.stories.tsx": {
     "jsx-a11y/label-has-associated-control": {
       "count": 12
@@ -2411,14 +2390,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/hit-testing/components/records.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/hit-testing/components/result-item-external.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -2650,11 +2621,6 @@
   },
   "web/app/components/header/account-setting/model-provider-page/model-selector/popup-item.tsx": {
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
-    "eslint-react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3751,9 +3717,6 @@
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
@@ -4191,11 +4154,6 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-number.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -5139,7 +5097,7 @@
   },
   "web/app/components/workflow/workflow-generator/index.tsx": {
     "dify/require-disable-directive-description": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/workflow/workflow-preview/components/nodes/constants.ts": {

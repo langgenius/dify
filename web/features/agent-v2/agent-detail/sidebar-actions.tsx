@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -67,11 +68,16 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
-          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
-        >
-          <span aria-hidden className="i-ri-more-fill size-4" />
-        </DropdownMenuTrigger>
+          render={
+            <IconButton
+              aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
+              size="md"
+              className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+            >
+              <span aria-hidden className="i-ri-more-fill size-4" />
+            </IconButton>
+          }
+        />
         <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
           {capabilities.canEdit && (
             <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>

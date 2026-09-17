@@ -273,7 +273,7 @@ function BlockSelectorPanels({
           <TabHeaderItem key={tab.key} tab={tab} fallbackDisabledTip={fallbackDisabledTip} />
         ))}
         <TabsIndicator
-          className="sm-no-bottom pointer-events-none absolute left-0 rounded-t-lg bg-components-panel-bg transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
+          className="pointer-events-none absolute left-0 rounded-t-lg bg-components-panel-bg transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
           style={{
             top: 'var(--active-tab-top)',
             translate: 'var(--active-tab-left)',

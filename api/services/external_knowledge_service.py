@@ -33,7 +33,7 @@ class ExternalDatasetService:
     @staticmethod
     def get_external_knowledge_apis(
         page, per_page, tenant_id, search=None, *, session: Session
-    ) -> tuple[list[ExternalKnowledgeApis], int | None]:
+    ) -> tuple[list[ExternalKnowledgeApis], int]:
         query = (
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.tenant_id == tenant_id)
