@@ -196,7 +196,7 @@ export function AccessControlStatusPanel({
                 </span>
                 {excluded && (
                   <span className="min-w-0 flex-1 text-right system-xs-regular text-text-quaternary">
-                    {t(($) => $['studio.accessControl.excluded'], { ns: 'deployments' })}
+                    {t(($) => $['studio.accessControl.notEnabled'], { ns: 'deployments' })}
                   </span>
                 )}
               </div>
