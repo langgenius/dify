@@ -62,6 +62,13 @@ const DifyBuilderProviderContent = ({
 
   return (
     <>
+      <DifyBuilderCanvasLockSync />
+      <DifyBuilderCanvasRefreshSync
+        onFocusCanvas={onFocusCanvas}
+        onRefreshCanvas={onRefreshCanvas}
+      />
+      {children}
+      {/* Mount canvas and panel subscriptions before restoring or starting a session. */}
       <DifyBuilderSessionPersistence
         appId={appId}
         enabled={enabled}
@@ -69,13 +76,6 @@ const DifyBuilderProviderContent = ({
         tenantId={tenantId}
         userId={userId}
       />
-      <DifyBuilderCanvasLockSync />
-      <DifyBuilderCanvasRefreshSync
-        onFocusCanvas={onFocusCanvas}
-        onRefreshCanvas={onRefreshCanvas}
-      />
-      {children}
-      {/* Subscribe the editor to draft updates before consuming the creation prompt. */}
       <DifyBuilderCreationStart
         appId={appId}
         canEdit={canEdit}

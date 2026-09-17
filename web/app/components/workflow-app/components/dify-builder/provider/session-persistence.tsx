@@ -38,10 +38,12 @@ export const DifyBuilderSessionPersistence = ({
 
     persistedSessionIdRef.current = storedSessionId
     restoringRef.current = true
+    let disposed = false
     setActiveSessionId(storedSessionId)
     void restore(storedSessionId)
       .catch(() => undefined)
       .finally(() => {
+        if (disposed) return
         restoringRef.current = false
         const currentSessionId = jotaiStore.get(difyBuilderActiveSessionIdAtom)
         try {
@@ -56,6 +58,11 @@ export const DifyBuilderSessionPersistence = ({
           // Session persistence is optional and must not block Builder recovery.
         }
       })
+    return () => {
+      disposed = true
+      attemptedStorageKeyRef.current = null
+      restoringRef.current = false
+    }
   }, [enabled, jotaiStore, restore, setActiveSessionId, storageKey])
 
   useEffect(() => {
