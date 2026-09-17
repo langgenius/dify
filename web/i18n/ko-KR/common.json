@@ -474,6 +474,7 @@
   "operation.fill": "자동 입력",
   "operation.format": "형식",
   "operation.imageCopied": "복사된 이미지",
+  "operation.imageCopyFailed": "이미지를 복사할 수 없습니다. 대신 다운로드해 주세요.",
   "operation.imageDownloaded": "이미지 다운로드됨",
   "operation.in": "안으로",
   "operation.learnMore": "자세히 알아보기",

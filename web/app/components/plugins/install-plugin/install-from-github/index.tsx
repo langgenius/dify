@@ -185,7 +185,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
           'w-140 overflow-hidden! text-left align-middle',
           cn(
             modalClassName,
-            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
+            'flex max-h-[calc(100dvh-48px)] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
           ),
         )}
       >

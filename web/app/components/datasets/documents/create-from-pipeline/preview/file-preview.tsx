@@ -31,7 +31,7 @@ const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
           <div className="system-2xs-semibold-uppercase text-text-accent">
             {t(($) => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}
           </div>
-          <div className="text-tex-primary title-md-semi-bold">{`${fileName}.${file.extension || ''}`}</div>
+          <div className="title-md-semi-bold">{`${fileName}.${file.extension || ''}`}</div>
           <div className="flex items-center gap-x-1 system-xs-medium text-text-tertiary">
             <DocumentFileIcon
               className="size-3.5 shrink-0"

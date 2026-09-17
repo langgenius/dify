@@ -91,6 +91,7 @@
   "table.header.updatedTime": "Час оновлення",
   "table.header.user": "КІНЦЕВИЙ КОРИСТУВАЧ АБО ОБЛІКОВИЙ ЗАПИС",
   "table.header.userRate": "Рейтинг Користувача",
+  "table.unread": "Непрочитані",
   "title": "Журнали",
   "triggerBy.appRun": "Веб-додаток",
   "triggerBy.debugging": "Налагодження",

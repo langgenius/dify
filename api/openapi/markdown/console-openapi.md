@@ -1502,7 +1502,7 @@ Create a new application
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [AppImportPayload](#appimportpayload)<br> |
+|  Yes | **application/json**: [AppImportPayload](#appimportpayload)<br>**multipart/form-data**: { **"file"**: binary }<br> | **application/json**: [AppImportPayload](#appimportpayload)<br>**multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -1511,6 +1511,9 @@ Create a new application
 | 200 | Import completed | **application/json**: [Import](#import)<br> |
 | 202 | Import pending confirmation | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
+| 403 | Insufficient import or plugin installation permissions |  |
+| 409 | Agent name conflict or missing plugins | **application/json**: [RosterAgentPackageConflictResponse](#rosteragentpackageconflictresponse)<br> |
+| 413 | Roster Agent package exceeds the size limit |  |
 
 ### [GET] /apps/imports/{app_id}/check-dependencies
 #### Parameters
@@ -2670,6 +2673,7 @@ Export application configuration as DSL
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID to export | Yes | string (uuid) |
+| format | query | Export format; defaults to ifpkg for Agent Apps and yaml for other Apps | No | string, <br>**Available values:** "ifpkg", "yaml" |
 | include_secret | query | Include secrets in export | No | boolean |
 | workflow_id | query | Specific workflow ID to export | No | string |
 
@@ -2677,8 +2681,8 @@ Export application configuration as DSL
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | App exported successfully | **application/json**: [AppExportResponse](#appexportresponse)<br> |
-| 403 | Insufficient permissions |  |
+| 200 | App exported successfully | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
+| 403 | Insufficient permissions | **application/zip**: binary<br> |
 
 ### [POST] /apps/{app_id}/feedbacks
 Create or update message feedback (like/dislike)
@@ -15774,6 +15778,7 @@ This class is used to store the schema information of an api based tool.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| format | string, <br>**Available values:** "ifpkg", "yaml" | Export format; defaults to ifpkg for Agent Apps and yaml for other Apps | No |
 | include_secret | boolean | Include secrets in export | No |
 | workflow_id | string | Specific workflow ID to export | No |
 
@@ -21723,6 +21728,15 @@ Resource types understood by access policies.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicyRoleBinding](#accesspolicyrolebinding) ] |  | No |
+
+#### RosterAgentPackageConflictResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | No |
+| message | string |  | Yes |
+| status | integer, <br>**Default:** 409 |  | No |
 
 #### RosterListQuery
 

@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -156,7 +156,7 @@ class TestAppMCPServerController:
 
         assert response == {}
 
-    def test_post_returns_201(self, sqlite_session: Session) -> None:
+    def test_post_returns_201(self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]) -> None:
         api = AppMCPServerController()
         method = unwrap(api.post)
         payload = {"parameters": {"timeout": 30}}
@@ -166,7 +166,7 @@ class TestAppMCPServerController:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.app.mcp_server.db.session", sqlite_session),
+            patch("controllers.console.app.mcp_server.db.session", scoped_session(sqlite_session_factory)),
             patch("controllers.console.app.mcp_server.AppMCPServer.generate_server_code", return_value="server-code"),
         ):
             response, status_code = method(
@@ -257,7 +257,9 @@ class TestAppMCPServerController:
 
 
 class TestAppMCPServerRefreshController:
-    def test_post_refreshes_server_bound_to_app_and_tenant(self, sqlite_session: Session) -> None:
+    def test_post_refreshes_server_bound_to_app_and_tenant(
+        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         api = AppMCPServerRefreshController()
         method = unwrap(api.post)
         server = _server(server_code="old-code")
@@ -270,7 +272,7 @@ class TestAppMCPServerRefreshController:
         sqlite_session.commit()
 
         with (
-            patch("controllers.console.app.mcp_server.db.session", sqlite_session),
+            patch("controllers.console.app.mcp_server.db.session", scoped_session(sqlite_session_factory)),
             patch("controllers.console.app.mcp_server.AppMCPServer.generate_server_code", return_value="new-code"),
         ):
             response = method(api, "tenant-1", app_model=_app())

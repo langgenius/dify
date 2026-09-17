@@ -131,10 +131,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
         {/* Container query, not a viewport breakpoint: three across at/above a
             552px container, stacked one-per-row below (see inputs.tsx FormField). */}
         <div className="flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
-          <DelimiterInput
-            value={segmentIdentifier}
-            onChange={(e) => onSegmentIdentifierChange(e.target.value)}
-          />
+          <DelimiterInput value={segmentIdentifier} onValueChange={onSegmentIdentifierChange} />
           <MaxLengthInput
             unit="characters"
             value={maxChunkLength}
