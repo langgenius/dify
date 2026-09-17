@@ -29,7 +29,7 @@ const MailBodyInput = ({
         'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
         'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
       )}
-      className="min-h-32 caret-text-accent"
+      className="min-h-32"
       editable={!readOnly}
       value={value}
       requestURLBlock={{

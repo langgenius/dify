@@ -105,7 +105,7 @@ const List = ({
               aria-live="polite"
               aria-label={t(($) => $.loading, { ns: 'appApi' })}
             >
-              <RiLoader2Line className="size-4 animate-spin text-text-tertiary motion-reduce:animate-none" />
+              <RiLoader2Line className="size-4 text-text-tertiary" />
             </div>
           )}
           <div ref={anchorRef} className="h-0" />

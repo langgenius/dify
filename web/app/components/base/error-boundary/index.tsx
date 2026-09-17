@@ -121,13 +121,13 @@ class ErrorBoundaryInner extends React.Component<
       return (
         <div
           className={cn(
-            'flex flex-col items-center justify-center rounded-lg border border-state-destructive-border bg-state-destructive-hover-alt p-8',
+            'flex flex-col items-center justify-center rounded-lg border p-8',
             isolate && 'min-h-50',
             className,
           )}
         >
           <div className="mb-4 flex items-center gap-2">
-            <RiAlertLine className="size-8 text-state-destructive-solid" />
+            <RiAlertLine className="size-8" />
             <h2 className="text-xl font-semibold text-text-primary">{customTitle || copy.title}</h2>
           </div>
 
