@@ -148,8 +148,8 @@ class MCPToolManageService:
         """
         Resolve an MCP provider from a reference persisted in a graph or agent config.
 
-        For backward compatibility. Previously, the id returned by the 
-        server is non-deterministic, depending on the query parameter, 
+        For backward compatibility. Previously, the id returned by the
+        server is non-deterministic, depending on the query parameter,
         so we accept both primary key (id) and server identifier for any existing DSLs
 
         Raises:

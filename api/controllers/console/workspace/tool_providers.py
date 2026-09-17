@@ -1588,9 +1588,7 @@ class ToolMCPDetailApi(Resource):
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             provider = service.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
-            return _dump_tool_provider_payload(
-                ToolTransformService.mcp_provider_to_user_provider(provider).to_dict()
-            )
+            return _dump_tool_provider_payload(ToolTransformService.mcp_provider_to_user_provider(provider).to_dict())
 
 
 @console_ns.route("/workspaces/current/tools/mcp")
