@@ -3,6 +3,16 @@ import { createTestWorkflowStore } from '../../__tests__/workflow-test-env'
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => vi.useRealTimers())
 
+it('cancels pending autosave when a conflict is detected', () => {
+  const store = createTestWorkflowStore()
+  const sync = vi.fn()
+  store.getState().debouncedSyncWorkflowDraft(sync)
+  store.getState().setWorkflowDraftConflict(true)
+  store.getState().flushPendingSync()
+  vi.advanceTimersByTime(5000)
+  expect(sync).not.toHaveBeenCalled()
+})
+
 it('syncs only the latest draft after editing has stopped for five seconds', () => {
   const store = createTestWorkflowStore()
   const first = vi.fn()

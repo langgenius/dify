@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { renderWorkflowFlowComponent as renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { fullWorkflowAccessControl } from '../../hooks-store/store'
 import RunAndHistory from '../run-and-history'
 
