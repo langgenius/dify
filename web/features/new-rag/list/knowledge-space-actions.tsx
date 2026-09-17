@@ -18,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -80,43 +81,42 @@ export function KnowledgeSpaceActions({
     <>
       <div
         className={cn(
-          'absolute top-2 right-2 z-5',
-          menuOpen
-            ? 'pointer-events-auto visible'
-            : 'pointer-events-none invisible group-focus-within:pointer-events-auto group-focus-within:visible group-hover:pointer-events-auto group-hover:visible',
+          'pointer-events-none absolute top-0 right-0 z-5 flex h-16 w-30 items-start justify-end bg-linear-65 from-components-card-bg-alt-transparent to-components-card-bg-alt to-75% p-2',
+          menuOpen ? 'visible' : 'invisible group-focus-within:visible group-hover:visible',
         )}
       >
-        <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
-          <DropdownMenuTrigger
-            aria-label={tCommon(($) => $['operation.more'])}
-            className={cn(
-              'inline-flex size-9 cursor-pointer items-center justify-center rounded-[10px] border-[0.5px]',
-              'border-components-actionbar-border bg-components-button-secondary-bg p-0 shadow-lg inset-ring-2 shadow-shadow-shadow-5 inset-ring-components-button-secondary-bg',
-              'transition-colors hover:border-components-actionbar-border hover:bg-state-base-hover',
-              'focus-visible:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-hover focus-visible:outline-hidden',
-              'data-popup-open:bg-state-base-hover',
-            )}
-          >
-            <span aria-hidden className="i-ri-more-fill size-5 text-text-tertiary" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-46.5">
-            {canEdit && (
-              <DropdownMenuItem onClick={openSettings}>
-                <span aria-hidden className="mr-1 i-ri-edit-line size-4 text-text-tertiary" />
-                {tCommon(($) => $['operation.edit'])}
-              </DropdownMenuItem>
-            )}
-            {canDelete && (
-              <>
-                {canEdit && <DropdownMenuSeparator />}
-                <DropdownMenuItem variant="destructive" onClick={openDeleteDialog}>
-                  <span aria-hidden className="mr-1 i-ri-delete-bin-line size-4" />
-                  {tCommon(($) => $['operation.delete'])}
+        <div className="pointer-events-auto flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs">
+          <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger
+              render={
+                <IconButton
+                  aria-label={tCommon(($) => $['operation.more'])}
+                  size="lg"
+                  className="focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover"
+                >
+                  <span aria-hidden className="i-ri-more-fill size-4.5" />
+                </IconButton>
+              }
+            />
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-46.5">
+              {canEdit && (
+                <DropdownMenuItem onClick={openSettings}>
+                  <span aria-hidden className="mr-1 i-ri-edit-line size-4 text-text-tertiary" />
+                  {tCommon(($) => $['operation.edit'])}
                 </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              )}
+              {canDelete && (
+                <>
+                  {canEdit && <DropdownMenuSeparator />}
+                  <DropdownMenuItem variant="destructive" onClick={openDeleteDialog}>
+                    <span aria-hidden className="mr-1 i-ri-delete-bin-line size-4" />
+                    {tCommon(($) => $['operation.delete'])}
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <AlertDialog

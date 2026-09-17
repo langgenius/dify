@@ -38,7 +38,7 @@ export function KnowledgeSpaceCard({
   return (
     <li
       className={cn(
-        'group relative flex h-41.5 flex-col overflow-hidden rounded-xl bg-components-card-bg text-left outline-hidden transition-shadow hover:shadow-md motion-reduce:transition-none',
+        'group relative flex h-41.5 flex-col overflow-hidden rounded-xl bg-components-card-bg text-left outline-hidden transition-[background-color,box-shadow] hover:bg-components-card-bg-alt hover:shadow-md motion-reduce:transition-none',
         highlighted
           ? 'border-2 border-state-accent-solid shadow-[0_0_12px_4px_rgba(21,94,239,0.18)]'
           : 'border-[0.5px] border-components-card-border shadow-xs',
