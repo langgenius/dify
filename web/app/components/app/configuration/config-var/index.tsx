@@ -338,7 +338,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       {hasVar && (
         <div className={cn('mt-1 grid px-3 pb-3')}>
           <ReactSortable
-            className={cn('grid-col-1 grid space-y-1', readonly && 'grid-cols-2 gap-1 space-y-0')}
+            className={cn('grid space-y-1', readonly && 'grid-cols-2 gap-1 space-y-0')}
             list={promptVariablesWithIds}
             setList={handlePromptVariablesReorder}
             disabled={readonly || isSorting}
