@@ -76,7 +76,7 @@ export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps
 
   return (
     <div>
-      <label htmlFor={inputId} className="mb-1 block system-xs-medium text-text-secondary">
+      <label htmlFor={inputId} className="mx-2 mb-1 block system-xs-medium text-text-secondary">
         {t(($) => $['common.nodeDescription'], { ns: 'workflow' })}
       </label>
       <div

@@ -1,8 +1,9 @@
 import type { MouseEvent } from 'react'
+import type { BlockSelectorProps } from '../../../block-selector'
 import type { BlockDefaultValue } from '../../../block-selector/types'
 import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Handle, Position } from 'reactflow'
 import BlockSelector from '../../../block-selector'
@@ -38,6 +39,8 @@ const canAutoOpenStartNodeSelector = (nodeType: BlockEnum, isChatMode: boolean) 
 export const NodeTargetHandle = memo(
   ({ id, data, handleId, handleClassName, nodeSelectorClassName }: NodeHandleProps) => {
     const [open, setOpen] = useState(false)
+    const triggerRef = useRef<HTMLButtonElement>(null)
+    const preserveOutsideFocusRef = useRef(false)
     const { handleNodeAdd } = useNodesInteractions()
     const { getNodesReadOnly } = useNodesReadOnly()
     const connected = data._connectedTargetHandleIds?.includes(handleId)
@@ -47,12 +50,18 @@ export const NodeTargetHandle = memo(
     )
     const isConnectable = !!availablePrevBlocks.length
 
-    const handleOpenChange = useCallback((v: boolean) => {
-      setOpen(v)
-    }, [])
+    const handleOpenChange = useCallback<NonNullable<BlockSelectorProps['onOpenChange']>>(
+      (v, details) => {
+        preserveOutsideFocusRef.current =
+          details?.reason === 'outside-press' || details?.reason === 'focus-out'
+        setOpen(v)
+      },
+      [],
+    )
     const handleHandleClick = useCallback(
       (e: MouseEvent) => {
         e.stopPropagation()
+        preserveOutsideFocusRef.current = false
         if (!connected) setOpen((v) => !v)
       },
       [connected],
@@ -102,6 +111,8 @@ export const NodeTargetHandle = memo(
         >
           {!connected && isConnectable && !getNodesReadOnly() && (
             <BlockSelector
+              triggerRef={triggerRef}
+              finalFocus={() => (preserveOutsideFocusRef.current ? false : triggerRef.current)}
               open={open}
               onOpenChange={handleOpenChange}
               onSelect={handleSelect}
@@ -115,7 +126,7 @@ export const NodeTargetHandle = memo(
               triggerClassName={`
                 absolute -left-1 -top-1 opacity-0 pointer-events-none transition-opacity duration-150
                 ${nodeSelectorClassName}
-                group-hover:opacity-100 focus-visible:opacity-100
+                group-hover:opacity-100 focus:opacity-100
                 ${data.selected && 'opacity-100'}
                 data-popup-open:opacity-100
               `}
@@ -154,6 +165,10 @@ export const NodeSourceHandle = memo(
     const shouldAutoOpen =
       shouldAutoOpenStartNodeSelector && canAutoOpenStartNodeSelector(data.type, isChatMode)
     const [open, setOpen] = useState(() => shouldAutoOpen)
+    const triggerRef = useRef<HTMLButtonElement>(null)
+    const preserveOutsideFocusRef = useRef(false)
+    // Auto-open keeps the previous focus; a pointer click on the handle returns to its button.
+    const openedFromHandleRef = useRef(false)
 
     const connected = data._connectedSourceHandleIds?.includes(handleId)
     // Branch ports can be only 24px apart in canvas coordinates. Keep their
@@ -164,11 +179,18 @@ export const NodeSourceHandle = memo(
       data.type === BlockEnum.QuestionClassifier ||
       data.type === BlockEnum.HumanInput ||
       data.error_strategy === ErrorHandleTypeEnum.failBranch
-    const handleOpenChange = useCallback((v: boolean) => {
-      setOpen(v)
-    }, [])
+    const handleOpenChange = useCallback<NonNullable<BlockSelectorProps['onOpenChange']>>(
+      (v, details) => {
+        preserveOutsideFocusRef.current =
+          details?.reason === 'outside-press' || details?.reason === 'focus-out'
+        setOpen(v)
+      },
+      [],
+    )
     const handleHandleClick = useCallback((e: MouseEvent) => {
       e.stopPropagation()
+      preserveOutsideFocusRef.current = false
+      openedFromHandleRef.current = true
       setOpen((v) => !v)
     }, [])
     const handleSelect = useCallback(
@@ -252,6 +274,11 @@ export const NodeSourceHandle = memo(
         </div>
         {isConnectable && !getNodesReadOnly() && (
           <BlockSelector
+            triggerRef={triggerRef}
+            finalFocus={() => {
+              if (preserveOutsideFocusRef.current) return false
+              return openedFromHandleRef.current ? triggerRef.current : true
+            }}
             open={open}
             onOpenChange={handleOpenChange}
             onSelect={handleSelect}
@@ -262,7 +289,7 @@ export const NodeSourceHandle = memo(
             triggerClassName={`
               absolute -top-1 -left-1 opacity-0 pointer-events-none transition-opacity duration-150
               ${nodeSelectorClassName}
-              group-hover:opacity-100 focus-visible:opacity-100
+              group-hover:opacity-100 focus:opacity-100
               ${data.selected && 'opacity-100'}
               data-popup-open:opacity-100
             `}

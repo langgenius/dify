@@ -229,6 +229,7 @@ it.each([1, 0.5, 0.25])(
     await expect
       .element(screen.getByLabelText('Connection'))
       .toHaveTextContent('source:out → target:in')
+    await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
   },
 )
 

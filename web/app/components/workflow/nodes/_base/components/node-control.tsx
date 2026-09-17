@@ -27,10 +27,11 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
   return (
     <div
       className={cn(
-        'invisible absolute -top-8 right-0 flex h-8 origin-bottom-right pb-1',
-        !pluginInstallLocked && 'group-hover:visible',
-        data.selected && 'visible',
-        'has-data-popup-open:visible',
+        'pointer-events-none absolute -top-8 right-0 flex h-8 origin-bottom-right pb-1 opacity-0',
+        'focus-within:pointer-events-auto focus-within:opacity-100',
+        !pluginInstallLocked && 'group-hover:pointer-events-auto group-hover:opacity-100',
+        data.selected && 'pointer-events-auto opacity-100',
+        'has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100',
       )}
       style={{ scale: 'var(--workflow-control-scale, 1)' }}
     >
