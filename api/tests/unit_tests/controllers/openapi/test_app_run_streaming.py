@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import sys
 import uuid
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from werkzeug.datastructures import FileStorage
 
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.app_run import AppRunApi, AppRunTaskStopApi
+from graphon.file import FileType
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import App, AppMode
@@ -114,3 +117,52 @@ def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monke
 
     assert body == "event: a\n\nevent: b\n\n"
     assert generate_mock.call_args.kwargs["streaming"] is True
+
+
+def test_run_hands_the_generator_the_file_mapping_built_from_the_uploaded_part(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+):
+    """The whole file wiring in one pass: a `files[doc]` part is uploaded, merged
+    into `inputs` as a mapping the core file factory accepts, and a workflow app
+    grows no vision `files` list.
+    """
+    generate_mock = Mock(return_value=iter([]))
+
+    class GenerateService:
+        generate = generate_mock
+
+    monkeypatch.setattr(sys.modules["controllers.openapi.app_run"], "AppGenerateService", GenerateService)
+    files_module = sys.modules["controllers.openapi._files"]
+    monkeypatch.setattr(
+        files_module, "resolve_app_config", lambda _app, **_kwargs: ({}, [{"file": {"variable": "doc"}}])
+    )
+    upload_service = Mock()
+    upload_service.upload_file.side_effect = lambda **kw: SimpleNamespace(
+        id="uf-1", extension="pdf", mime_type=kw["mimetype"]
+    )
+    monkeypatch.setattr(files_module, "application_services", lambda: SimpleNamespace(files=upload_service))
+
+    workflow_app = _make_app()
+    workflow_app.mode = AppMode.WORKFLOW
+    ctx = _SealableContext(
+        app=workflow_app,
+        caller=_make_account(),
+        session=Mock(),
+        subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT),
+    )
+    body = AppRunRequest(
+        inputs={},
+        files={"doc": FileStorage(stream=BytesIO(b"pdf"), filename="r.pdf", content_type="application/pdf")},
+    )
+
+    api = AppRunApi()
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}:run", method="POST"):
+        api.post.__handler__(api, ctx, app_id=_TEST_APP_ID, body=body)
+
+    args = generate_mock.call_args.kwargs["args"]
+    assert args["inputs"]["doc"] == {
+        "transfer_method": "local_file",
+        "upload_file_id": "uf-1",
+        "type": FileType.DOCUMENT,
+    }
+    assert "files" not in args
