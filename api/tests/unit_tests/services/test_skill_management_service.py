@@ -2493,7 +2493,7 @@ def test_apply_draft_file_operation_conflict_includes_current_file_version() -> 
     assert exc_info.value.details["current_file_content"] == skill_md["content"]
 
 
-def test_duplicate_skill_copies_latest_published_content_without_history() -> None:
+def test_duplicate_skill_copies_current_draft_without_history() -> None:
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
@@ -2543,6 +2543,19 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
     )
     service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
 
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[
+                {"path": "SKILL.md", "content": _skill_md(body="# Latest draft body")},
+                {"path": "references", "kind": "directory"},
+                {"path": "references/draft.md", "content": "Draft policy."},
+            ]
+        ),
+    )
+
     with patch("services.skill_management_service.storage.load_once", return_value=captured["archive"]):
         duplicated = service.duplicate_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"])
 
@@ -2551,11 +2564,42 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
     assert duplicated["tags"] == ["Finance"]
     assert duplicated["latest_published_version_id"] is None
     assert "name: finance-sop-copy" in duplicated["files"][0]["content"]
-    assert "# Published body" in duplicated["files"][0]["content"]
+    assert "# Latest draft body" in duplicated["files"][0]["content"]
     references = next(file for file in duplicated["files"] if file["path"] == "references")
     assert references["kind"] == "directory"
-    assert any(file["path"] == "references/policy.md" for file in duplicated["files"])
+    assert any(file["path"] == "references/draft.md" for file in duplicated["files"])
+    assert not any(file["path"] == "references/policy.md" for file in duplicated["files"])
     assert service.list_versions(tenant_id=TENANT, skill_id=duplicated["id"]) == {"data": []}
+
+
+@pytest.mark.parametrize("published", [False, True])
+def test_export_skill_uses_current_draft(published: bool) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    if published:
+        service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[
+                {"path": "SKILL.md", "content": _skill_md(body="# Latest draft body")},
+                {"path": "references", "kind": "directory"},
+                {"path": "references/draft.md", "content": "Draft policy."},
+            ]
+        ),
+    )
+
+    result = service.export_draft_archive(tenant_id=TENANT, skill_id=created["id"])
+
+    assert result.filename == "finance-sop.zip"
+    assert result.mime_type == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(result.payload)) as archive:
+        assert set(archive.namelist()) == {"SKILL.md", "references/", "references/draft.md"}
+        assert "# Latest draft body" in archive.read("SKILL.md").decode()
+        assert archive.read("references/draft.md") == b"Draft policy."
+    assert len(service.list_versions(tenant_id=TENANT, skill_id=created["id"])["data"]) == int(published)
 
 
 def test_duplicate_skill_does_not_copy_agent_references() -> None:

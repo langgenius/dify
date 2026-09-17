@@ -227,6 +227,8 @@
   "skillManagement.errors.missingSkillMd": "แพ็คเกจนี้ไม่มี SKILL.md เพิ่มไฟล์และนำเข้าอีกครั้ง",
   "skillManagement.errors.nameConflict": "มีทักษะชื่อ \"{{name}}\" อยู่แล้ว เปลี่ยนชื่อใน SKILL.md และนำเข้าอีกครั้ง",
   "skillManagement.errors.workspaceLimit": "พื้นที่ทำงานของคุณถึงขีดจำกัด 500 ทักษะแล้ว ลบทักษะเพื่อเพิ่มทักษะใหม่",
+  "skillManagement.exportDialog.description": "การดำเนินการนี้จะส่งออกฉบับร่างของทักษะที่บันทึกไว้ปัจจุบัน หากมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึกในตัวแก้ไข โปรดบันทึกก่อนส่งออก",
+  "skillManagement.exportDialog.title": "ส่งออกฉบับร่างที่บันทึกไว้ปัจจุบัน",
   "skillManagement.import": "นำเข้า",
   "skillManagement.importFailed": "ไม่สามารถนำเข้าทักษะได้",
   "skillManagement.importSuccess": "Skill นำเข้า",
