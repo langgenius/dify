@@ -258,7 +258,6 @@ export default function StepByStepTourMount({
         }
       : undefined
   const visible =
-    systemFeatures.deployment_edition === 'CLOUD' &&
     stepByStepTourFeatureEnabled &&
     enabledForCurrentWorkspace &&
     (hasActiveGuide || !shouldHideOnPathname(pathname))

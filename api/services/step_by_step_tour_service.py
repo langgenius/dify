@@ -64,8 +64,10 @@ class StepByStepTourService:
         return self._to_result(state)
 
     def _is_eligible(self, account_started_at: datetime) -> bool:
-        if not self._enabled or self._rollout_started_at is None:
+        if not self._enabled:
             return False
+        if self._rollout_started_at is None:
+            return True
         return ensure_naive_utc(account_started_at) >= ensure_naive_utc(self._rollout_started_at)
 
     @classmethod

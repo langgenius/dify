@@ -13,3 +13,7 @@ const systemFeaturesAtom = atom((get) => {
 export const deploymentEditionAtom = atom((get) => {
   return get(systemFeaturesAtom).deployment_edition
 })
+
+export const enableStepByStepTourAtom = atom((get) => {
+  return get(systemFeaturesAtom).enable_step_by_step_tour
+})
