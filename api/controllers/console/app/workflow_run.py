@@ -149,9 +149,9 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
     )
-    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @model_validate(WorkflowRunListQuery)
+    @with_session(write=False)
     def get(self, session: Session, req_data: WorkflowRunListQuery, request_context: RequestContext, app_model: App):
         """
         Get advanced chat app workflow run list
@@ -214,9 +214,9 @@ class WorkflowRunListApi(Resource):
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
     )
-    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @model_validate(WorkflowRunListQuery)
+    @with_session(write=False)
     def get(self, session: Session, req_data: WorkflowRunListQuery, request_context: RequestContext, app_model: App):
         """
         Get workflow run list
