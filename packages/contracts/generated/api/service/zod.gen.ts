@@ -1349,8 +1349,8 @@ export const zChatPausedBlockingResponse = z.object({
  * Blocking chat response for a completed message or paused Chatflow.
  */
 export const zChatBlockingResponse = z.discriminatedUnion('event', [
-  zChatMessageBlockingResponse,
-  zChatPausedBlockingResponse,
+  zChatMessageBlockingResponse.extend({ event: z.literal('message') }),
+  zChatPausedBlockingResponse.extend({ event: z.literal('workflow_paused') }),
 ])
 
 export const zJsonValue = z.unknown()
@@ -2525,10 +2525,10 @@ export const zParagraphInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig,
-  zSelectInputConfig,
-  zFileInputConfig,
-  zFileListInputConfig,
+  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
+  zSelectInputConfig.extend({ type: z.literal('select') }),
+  zFileInputConfig.extend({ type: z.literal('file') }),
+  zFileListInputConfig.extend({ type: z.literal('file-list') }),
 ])
 
 /**

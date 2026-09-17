@@ -161,7 +161,7 @@ export const get = oc
     path: '/agent/invite-options',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAgentInviteOptionsQuery.optional() }).optional())
+  .input(z.object({ query: zGetAgentInviteOptionsQuery.optional() }))
   .output(zGetAgentInviteOptionsResponse)
 
 export const inviteOptions = {
@@ -1227,7 +1227,7 @@ export const get31 = oc
     path: '/agent',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAgentQuery.optional() }).optional())
+  .input(z.object({ query: zGetAgentQuery.optional() }))
   .output(zGetAgentResponse)
 
 export const post18 = oc

@@ -295,7 +295,7 @@ export const get = oc
     path: '/conversations',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
+  .input(z.object({ query: zGetConversationsQuery.optional() }))
   .output(zGetConversationsResponse)
 
 export const conversations = {
@@ -576,7 +576,7 @@ export const get3 = oc
     path: '/login/status',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetLoginStatusQuery.optional() }).optional())
+  .input(z.object({ query: zGetLoginStatusQuery.optional() }))
   .output(zGetLoginStatusResponse)
 
 export const status = {
@@ -772,7 +772,7 @@ export const get9 = oc
     path: '/passport',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetPassportQuery.optional() }).optional())
+  .input(z.object({ query: zGetPassportQuery.optional() }))
   .output(zGetPassportResponse)
 
 export const passport = {
@@ -899,7 +899,7 @@ export const get11 = oc
     path: '/saved-messages',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetSavedMessagesQuery.optional() }).optional())
+  .input(z.object({ query: zGetSavedMessagesQuery.optional() }))
   .output(zGetSavedMessagesResponse)
 
 /**
@@ -1004,7 +1004,7 @@ export const get14 = oc
     path: '/webapp/access-mode',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }).optional())
+  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }))
   .output(zGetWebappAccessModeResponse)
 
 export const accessMode = {

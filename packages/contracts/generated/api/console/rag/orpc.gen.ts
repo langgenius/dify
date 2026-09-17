@@ -243,7 +243,7 @@ export const get2 = oc
     path: '/rag/pipeline/templates',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() }).optional())
+  .input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() }))
   .output(zGetRagPipelineTemplatesResponse)
 
 export const templates2 = {
@@ -335,7 +335,7 @@ export const get5 = oc
     path: '/rag/pipelines/recommended-plugins',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetRagPipelinesRecommendedPluginsQuery.optional() }).optional())
+  .input(z.object({ query: zGetRagPipelinesRecommendedPluginsQuery.optional() }))
   .output(zGetRagPipelinesRecommendedPluginsResponse)
 
 export const recommendedPlugins = {

@@ -164,7 +164,15 @@ export type MemberInvitePayload = {
 
 export type MemberInviteResponse = {
   invitation_results: Array<
-    MemberInviteSuccessResponse | MemberInviteAlreadyMemberResponse | MemberInviteFailedResponse
+    | ({
+        status: 'success'
+      } & MemberInviteSuccessResponse)
+    | ({
+        status: 'already_member'
+      } & MemberInviteAlreadyMemberResponse)
+    | ({
+        status: 'failed'
+      } & MemberInviteFailedResponse)
   >
   result: 'success'
   tenant_id: string

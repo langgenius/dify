@@ -139,7 +139,7 @@ export const get3 = oc
     path: '/account/sessions',
     tags: ['openapi'],
   })
-  .input(z.object({ query: zGetAccountSessionsQuery.optional() }).optional())
+  .input(z.object({ query: zGetAccountSessionsQuery.optional() }))
   .output(zGetAccountSessionsResponse)
 
 export const sessions = {
@@ -468,7 +468,7 @@ export const get13 = oc
     path: '/permitted-external-apps',
     tags: ['openapi'],
   })
-  .input(z.object({ query: zGetPermittedExternalAppsQuery.optional() }).optional())
+  .input(z.object({ query: zGetPermittedExternalAppsQuery.optional() }))
   .output(zGetPermittedExternalAppsResponse)
 
 export const permittedExternalApps = {
