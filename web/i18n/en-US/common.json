@@ -474,6 +474,7 @@
   "operation.fill": "Autofill",
   "operation.format": "Format",
   "operation.imageCopied": "Image copied",
+  "operation.imageCopyFailed": "Could not copy the image. Please download it instead.",
   "operation.imageDownloaded": "Image downloaded",
   "operation.in": "in",
   "operation.learnMore": "Learn more",

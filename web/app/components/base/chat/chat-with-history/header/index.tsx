@@ -86,7 +86,7 @@ const Header = () => {
         <div
           className={cn(
             'flex items-center gap-1 transition-all duration-200 ease-in-out',
-            !isSidebarCollapsed && 'user-select-none opacity-0',
+            !isSidebarCollapsed && 'opacity-0',
           )}
         >
           <IconButton

@@ -4,6 +4,7 @@ import type {
   FormOption,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarKindType } from '../../types'
@@ -91,7 +92,23 @@ const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>
 }
 
 describe('FormInputItem', () => {
-  it('should parse number inputs as numbers', () => {
+  it('shows a schema-provided numeric string and prevents edits in readonly mode', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderFormInputItem({
+      readOnly: true,
+      schema: createSchema({ type: FormTypeEnum.textNumber }),
+      value: { field: { type: VarKindType.constant, value: '3.5' } },
+    })
+    const input = screen.getByRole('textbox')
+    expect(input).toHaveValue('3.5')
+    expect(input).toHaveAttribute('readonly')
+    await user.type(input, '9{ArrowUp}')
+    expect(onChange).not.toHaveBeenCalled()
+    expect(input).toHaveValue('3.5')
+  })
+
+  it('should store a numeric constant and clear it without producing NaN', async () => {
+    const user = userEvent.setup()
     const { onChange } = renderFormInputItem({
       schema: createSchema({ type: FormTypeEnum.textNumber }),
       value: {
@@ -102,13 +119,19 @@ describe('FormInputItem', () => {
       },
     })
 
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '3.5' } })
+    const input = screen.getByRole('textbox')
+    await user.clear(input)
+    await user.type(input, '3.5')
 
     expect(onChange).toHaveBeenCalledWith({
       field: {
         type: VarKindType.constant,
         value: 3.5,
       },
+    })
+    await user.clear(input)
+    expect(onChange).toHaveBeenLastCalledWith({
+      field: { type: VarKindType.constant, value: null },
     })
   })
 

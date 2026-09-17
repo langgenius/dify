@@ -474,6 +474,7 @@
   "operation.fill": "Tự động điền",
   "operation.format": "Định dạng",
   "operation.imageCopied": "Hình ảnh sao chép",
+  "operation.imageCopyFailed": "Không thể sao chép hình ảnh. Vui lòng tải ảnh xuống.",
   "operation.imageDownloaded": "Hình ảnh đã được tải xuống",
   "operation.in": "trong",
   "operation.learnMore": "Tìm hiểu thêm",

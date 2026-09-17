@@ -91,6 +91,7 @@
   "table.header.updatedTime": "الوقت المحدث",
   "table.header.user": "المستخدم",
   "table.header.userRate": "معدل المستخدم",
+  "table.unread": "غير مقروء",
   "title": "السجلات",
   "triggerBy.appRun": "تشغيل التطبيق",
   "triggerBy.debugging": "تصحيح الأخطاء",
