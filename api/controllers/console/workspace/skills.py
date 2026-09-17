@@ -493,14 +493,14 @@ class WorkspaceSkillDuplicateApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/export")
 class WorkspaceSkillExportApi(Resource):
-    @console_ns.response(200, "Published Skill zip archive")
+    @console_ns.response(200, "Draft Skill zip archive")
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext, skill_id: str):
         try:
-            result = SkillManagementService(session=session).pull_published_archive(
+            result = SkillManagementService(session=session).export_draft_archive(
                 tenant_id=request_context.active_workspace_id, skill_id=skill_id
             )
             return send_file(
