@@ -295,7 +295,12 @@ export function DatasetScopeDialog({
           <Button variant="secondary" disabled={isCreating} onClick={() => handleOpenChange(false)}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
-          <Button disabled={!canCreate} loading={isCreating} onClick={handleConfirm}>
+          <Button
+            variant="primary"
+            disabled={!canCreate}
+            loading={isCreating}
+            onClick={handleConfirm}
+          >
             {t(($) => $['operation.create'], { ns: 'common' })}
           </Button>
         </div>
