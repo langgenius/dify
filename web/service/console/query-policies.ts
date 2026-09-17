@@ -15,6 +15,20 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
     experimental_defaults: {
       workspaces: {
         current: {
+          skills: {
+            bySkillId: {
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
+                    })
+                  },
+                },
+              },
+            },
+          },
           rbac: {
             accessPolicies: {
               post: {
