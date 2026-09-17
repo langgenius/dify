@@ -453,17 +453,15 @@ describe('CreateFromDSLModal', () => {
     )
   })
 
-  it('imports a ZIP bundle with its binary content preserved', async () => {
+  it('imports a ZIP bundle from the file picker with its binary content preserved', async () => {
     const user = userEvent.setup()
     mockImportDSL.mockResolvedValue({ id: 'bundle-import', status: DSLImportStatus.COMPLETED })
-    render(
-      <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
-        droppedFile={new File([new Uint8Array([80, 75, 3, 4, 0, 255])], 'workflow.ZIP')}
-      />,
-    )
+    render(<CreateFromDSLModal show onClose={vi.fn()} />)
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')
+    if (!input) throw new Error('Missing file picker')
+    await user.upload(input, new File([new Uint8Array([80, 75, 3, 4, 0, 255])], 'workflow.ZIP'))
 
+    expect(screen.getByText('ZIP')).toBeInTheDocument()
     await user.click(getCreateButton())
 
     await waitFor(() =>
@@ -472,6 +470,21 @@ describe('CreateFromDSLModal', () => {
         yaml_content: btoa('PK\u0003\u0004\u0000\u00FF'),
       }),
     )
+  })
+
+  it('keeps ZIP bundle imports subject to the App quota', async () => {
+    const user = userEvent.setup()
+    appCount = 10
+    appLimit = 10
+    render(
+      <CreateFromDSLModal show onClose={vi.fn()} droppedFile={new File(['PK'], 'workflow.zip')} />,
+    )
+
+    expect(screen.getByText('apps-full')).toBeInTheDocument()
+    expect(getCreateButton()).toBeDisabled()
+    await user.click(getCreateButton())
+    triggerHotkey('Mod+Enter')
+    expect(mockImportDSL).not.toHaveBeenCalled()
   })
 
   it('rejects bundle uploads over 10 MB before sending an import', async () => {

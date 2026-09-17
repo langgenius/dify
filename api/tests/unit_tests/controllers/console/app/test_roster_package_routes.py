@@ -1,7 +1,11 @@
+import base64
 import io
+import json
+import zipfile
 from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import BinaryIO
 from unittest.mock import Mock
 from uuid import UUID
 
@@ -18,7 +22,7 @@ from enums import CloudPlan, DeploymentEdition
 from models.account import Account, Tenant
 from models.model import App, AppMode
 from services import app_import_source
-from services.agent.errors import InvalidRosterAgentPackageError
+from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.roster_package_importer import RosterAgentPackageImportResult
 from services.entities.dsl_entities import DslImportWarning
 
@@ -36,6 +40,27 @@ def _account() -> Account:
     account._current_tenant = Tenant(name="Workspace")
     account._current_tenant.id = "tenant-1"
     return account
+
+
+def _bundle_archive() -> bytes:
+    manifest: dict[str, object] = {
+        "kind": "app_bundle",
+        "version": "1",
+        "entrypoint": "app_1",
+        "resources": {"app_1": {"kind": "app", "file": "apps/app_1.yaml", "workflow": {}}},
+        "relationships": [],
+    }
+    document: dict[str, object] = {
+        "kind": "app",
+        "bundle_id": "app_1",
+        "app": {"mode": "workflow"},
+        "workflow": {"graph": {"nodes": []}},
+    }
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.yaml", json.dumps(manifest))
+        archive.writestr("apps/app_1.yaml", json.dumps(document))
+    return output.getvalue()
 
 
 def test_existing_import_route_dispatches_json_without_changing_payload(
@@ -70,9 +95,12 @@ def test_package_url_uses_agent_import(
     config_overrides(RBAC_ENABLED=False)
     importer = Mock()
     fetch = _mock_download(monkeypatch)
-    importer.import_package.return_value = RosterAgentPackageImportResult(
-        app_id="app-1", agent_id="agent-1", warnings=[]
-    )
+
+    def import_package(*, source: BinaryIO, **_kwargs: object) -> RosterAgentPackageImportResult:
+        assert source.read() == b"PK\x00\xff"
+        return RosterAgentPackageImportResult(app_id="app-1", agent_id="agent-1", warnings=[])
+
+    importer.import_package.side_effect = import_package
     monkeypatch.setattr(import_module, "RosterAgentPackageImporter", lambda: importer)
     api = import_module.AppImportApi()
     import_dsl = Mock()
@@ -94,26 +122,40 @@ def test_package_url_uses_agent_import(
 @pytest.mark.parametrize(
     "url", ["https://example.com/app.yaml", "https://example.com/download", "https://example.com/agent.ifpkg"]
 )
-def test_yaml_url_keeps_dsl_import_without_package_retry(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], url: str
+@pytest.mark.parametrize("is_bundle", [False, True])
+def test_dsl_url_keeps_import_options_without_package_retry(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], url: str, is_bundle: bool
 ) -> None:
     config_overrides(RBAC_ENABLED=False)
-    fetch = _mock_download(monkeypatch, b"app: {}")
+    content = _bundle_archive() if is_bundle else b"app: {}"
+    fetch = _mock_download(monkeypatch, content)
     api = import_module.AppImportApi()
     import_dsl = Mock(return_value=({"status": "failed", "error": "Missing app data"}, 400))
     import_package = Mock()
     monkeypatch.setattr(api, "_import_dsl", import_dsl)
     monkeypatch.setattr(api, "_import_package", import_package)
+    account = _account()
+    options = {
+        "app_id": "existing",
+        "name": "Renamed",
+        "description": "Imported app",
+        "icon_type": "emoji",
+        "icon": "robot",
+        "icon_background": "#FFFFFF",
+    }
     with app.test_request_context(
         "/console/api/apps/imports",
         method="POST",
-        json={"mode": "yaml-url", "yaml_url": url, "app_id": "existing", "name": "Renamed"},
+        json={"mode": "yaml-url", "yaml_url": url, **options},
     ):
-        result = unwrap(api.post)(api, _account())
+        result = unwrap(api.post)(api, account)
     assert result[1] == 400
     assert import_dsl.call_args.args[0] == import_module.AppImportPayload(
-        mode="yaml-content", yaml_content="app: {}", app_id="existing", name="Renamed"
+        mode="bundle-content" if is_bundle else "yaml-content",
+        yaml_content=base64.b64encode(content).decode("ascii") if is_bundle else content.decode(),
+        **options,
     )
+    assert import_dsl.call_args.args[1] is account
     fetch.assert_called_once()
     import_package.assert_not_called()
 
@@ -138,9 +180,9 @@ def test_url_without_any_import_permission_does_not_download(
     fetch.assert_not_called()
 
 
-@pytest.mark.parametrize("is_yaml", [False, True])
+@pytest.mark.parametrize("content_kind", ["yaml", "bundle", "ifpkg"])
 def test_url_quota_is_enforced_after_content_detection(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], is_yaml: bool
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], content_kind: str
 ) -> None:
     config_overrides(RBAC_ENABLED=False, DEPLOYMENT_EDITION="CLOUD")
     account = _account()
@@ -148,7 +190,8 @@ def test_url_quota_is_enforced_after_content_detection(
     features = Mock()
     features.apps = SimpleNamespace(size=1, limit=1)
     monkeypatch.setattr("controllers.console.wraps.FeatureService.get_features", lambda *_args, **_kwargs: features)
-    _mock_download(monkeypatch, b"app: {}" if is_yaml else b"PK\x00\xff")
+    content = {"yaml": b"app: {}", "bundle": _bundle_archive(), "ifpkg": b"PK\x00\xff"}[content_kind]
+    fetch = _mock_download(monkeypatch, content)
     importer = Mock()
     importer.import_package.return_value = RosterAgentPackageImportResult(
         app_id="app-1", agent_id="agent-1", warnings=[]
@@ -160,7 +203,7 @@ def test_url_quota_is_enforced_after_content_detection(
         method="POST",
         json={"mode": "yaml-url", "yaml_url": "https://example.com/download"},
     ):
-        if is_yaml:
+        if content_kind != "ifpkg":
             with pytest.raises(Forbidden, match="number of apps"):
                 unwrap(api.post)(api, account)
             importer.import_package.assert_not_called()
@@ -168,6 +211,55 @@ def test_url_quota_is_enforced_after_content_detection(
             data, status = unwrap(api.post)(api, account)
             assert status == 200
             assert data["app_mode"] == "agent"
+    fetch.assert_called_once()
+
+
+def test_bundle_url_requires_app_import_permission(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    account = _account()
+    monkeypatch.setattr("controllers.common.wraps.current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr(
+        "controllers.common.rbac.checks.RBACService.CheckAccess.check",
+        lambda *_args, **kwargs: kwargs["scene"] != RBACPermission.APP_IMPORT_EXPORT_DSL,
+    )
+    fetch = _mock_download(monkeypatch, _bundle_archive())
+    api = import_module.AppImportApi()
+    import_package = Mock()
+    monkeypatch.setattr(api, "_import_package", import_package)
+    with app.test_request_context(
+        "/console/api/apps/imports",
+        method="POST",
+        json={"mode": "yaml-url", "yaml_url": "https://example.com/download"},
+    ):
+        with pytest.raises(Forbidden):
+            unwrap(api.post)(api, account)
+    fetch.assert_called_once()
+    import_package.assert_not_called()
+
+
+def test_oversized_bundle_url_is_rejected_before_import(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(RBAC_ENABLED=False, AGENT_PACKAGE_MAX_BYTES=3)
+    monkeypatch.setattr(app_import_source, "DSL_MAX_SIZE", 3)
+    fetch = _mock_download(monkeypatch, _bundle_archive())
+    api = import_module.AppImportApi()
+    import_dsl, import_package = Mock(), Mock()
+    monkeypatch.setattr(api, "_import_dsl", import_dsl)
+    monkeypatch.setattr(api, "_import_package", import_package)
+    with app.test_request_context(
+        "/console/api/apps/imports",
+        method="POST",
+        json={"mode": "yaml-url", "yaml_url": "https://example.com/download"},
+    ):
+        with pytest.raises(RosterAgentPackageTooLargeError):
+            unwrap(api.post)(api, _account())
+    fetch.assert_called_once()
+    import_dsl.assert_not_called()
+    import_package.assert_not_called()
 
 
 def test_url_rejects_content_that_is_neither_yaml_nor_package(
@@ -272,7 +364,7 @@ def test_package_import_rejects_overwrite(
             unwrap(api.post)(api, _account())
 
 
-@pytest.mark.parametrize("query", [{}, {"format": "ifpkg"}])
+@pytest.mark.parametrize("query", [{}, {"format": "ifpkg"}, {"format": "ifpkg", "include_workflow_tools": "true"}])
 def test_existing_export_route_returns_ifpkg_for_agent(
     app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], query: dict[str, str]
 ) -> None:
@@ -298,6 +390,26 @@ def test_existing_export_route_returns_ifpkg_for_agent(
     export.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1", version_id=None)
     get_plan.assert_not_called()
     close.assert_called_once_with()
+
+
+def test_agent_export_can_explicitly_request_workflow_tool_bundle(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    model = App(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
+    account = _account()
+    session = object()
+    monkeypatch.setattr(app_module, "db", SimpleNamespace(session=lambda: session))
+    monkeypatch.setattr(app_module, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    content = _bundle_archive()
+    export_bundle = Mock(return_value=content)
+    monkeypatch.setattr(app_module.AppDslBundleService, "export_bundle", export_bundle)
+    export_package = Mock()
+    monkeypatch.setattr(app_module, "RosterAgentPackageExporter", export_package)
+    with app.test_request_context("/console/api/apps/app-1/export"):
+        response = unwrap(app_module.AppExportApi.get)(
+            app_module.AppExportApi(), app_module.AppExportQuery(include_workflow_tools=True), model
+        )
+    assert response == {"data": base64.b64encode(content).decode("ascii"), "format": "zip"}
+    export_bundle.assert_called_once_with(app_model=model, account=account, include_secret=False, workflow_id=None)
+    export_package.assert_not_called()
 
 
 def test_ifpkg_export_rejects_non_agent_apps() -> None:
@@ -383,4 +495,4 @@ def test_yaml_export_remains_available(monkeypatch: pytest.MonkeyPatch, mode: Ap
     monkeypatch.setattr(app_module.AppDslService, "export_dsl", lambda **_kwargs: "app: {}")
     assert unwrap(app_module.AppExportApi.get)(
         app_module.AppExportApi(), app_module.AppExportQuery.model_validate(query), model
-    ) == {"data": "app: {}"}
+    ) == {"data": "app: {}", "format": "yaml"}

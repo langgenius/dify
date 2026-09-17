@@ -326,8 +326,6 @@ function CreateFromDSLModal({
                     file={currentFile}
                     updateFile={setCurrentFile}
                     disabled={isImporting}
-                    accept=".yaml,.yml,.zip"
-                    displayName={currentFile?.name.toLowerCase().endsWith('.zip') ? 'ZIP' : 'YAML'}
                   />
                 </TabsPanel>
                 <TabsPanel
