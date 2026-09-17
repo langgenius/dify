@@ -2,13 +2,14 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import s from './style.module.css'
 
 type Props = Readonly<{
   srcs: string[]
+  onPreviewOpenChange?: (open: boolean) => void
 }>
 
 const getWidthStyle = (imgNum: number) => {
@@ -29,9 +30,27 @@ const getWidthStyle = (imgNum: number) => {
   }
 }
 
-const ImageGallery: FC<Props> = ({ srcs }) => {
+const ImageGallery: FC<Props> = ({ srcs, onPreviewOpenChange }) => {
   const { t } = useTranslation('common')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const isPreviewOpen = Boolean(imagePreviewUrl)
+
+  // Synchronize embedding surfaces with the preview's lifetime, including
+  // navigation that unmounts the gallery before the preview is dismissed.
+  useEffect(() => {
+    if (!isPreviewOpen || !onPreviewOpenChange) return
+
+    onPreviewOpenChange(true)
+    const handlePageHide = () => onPreviewOpenChange(false)
+    const handlePageShow = () => onPreviewOpenChange(true)
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('pageshow', handlePageShow)
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('pageshow', handlePageShow)
+      onPreviewOpenChange(false)
+    }
+  }, [isPreviewOpen, onPreviewOpenChange])
 
   const imgNum = srcs.length
   const imgStyle = getWidthStyle(imgNum)

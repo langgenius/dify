@@ -15,23 +15,29 @@ concurrency:
 
 jobs:
   api-unit:
-    name: API Unit Tests
+    name: API Unit Tests (${{ matrix.python-version }}, shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: depot-ubuntu-24.04
     env:
-      COVERAGE_FILE: coverage-unit
+      COVERAGE_FILE: coverage-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
     defaults:
       run:
         shell: bash
     strategy:
+      fail-fast: false
       matrix:
         python-version:
           - '3.12'
+        shardIndex:
+          - 1
+          - 2
+          - 3
+        shardTotal:
+          - 3
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
@@ -53,6 +59,10 @@ jobs:
             -p no:benchmark \
             --timeout "${PYTEST_TIMEOUT:-20}" \
             -n auto \
+            --shard-index "${{ matrix.shardIndex }}" \
+            --shard-total "${{ matrix.shardTotal }}" \
+            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
             api/tests/unit_tests \
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests \
@@ -60,14 +70,19 @@ jobs:
           # Controller tests register Flask routes at import time, so keep them out of xdist.
           uv run --project api pytest \
             --timeout "${PYTEST_TIMEOUT:-20}" \
+            --shard-index "${{ matrix.shardIndex }}" \
+            --shard-total "${{ matrix.shardTotal }}" \
+            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
             --cov-append \
             api/tests/unit_tests/controllers
 
       - name: Upload unit coverage data
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: api-coverage-unit
-          path: coverage-unit
+          name: api-coverage-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+          path: ${{ env.COVERAGE_FILE }}
+          if-no-files-found: error
           retention-days: 1
 
   api-integration:
@@ -98,7 +113,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
@@ -122,6 +136,8 @@ jobs:
             -n auto \
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
+            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/integration_tests/workflow \
             api/tests/integration_tests/tools \
@@ -181,16 +197,19 @@ jobs:
           echo "Merged backend coverage report generated for Codecov project status." >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          unit_coverage="$(find coverage-data -type f -name coverage-unit -print -quit)"
+          mapfile -t unit_coverage < <(find coverage-data -type f -name 'coverage-unit-*' -print | sort)
           mapfile -t integration_coverage < <(find coverage-data -type f -name 'coverage-integration-*' -print | sort)
-          : "${unit_coverage:?coverage-unit artifact not found}"
+          if [[ "${#unit_coverage[@]}" -ne 3 ]]; then
+            echo "expected 3 unit coverage artifacts, found ${#unit_coverage[@]}" >&2
+            exit 1
+          fi
           if [[ "${#integration_coverage[@]}" -ne 4 ]]; then
             echo "expected 4 integration coverage artifacts, found ${#integration_coverage[@]}" >&2
             exit 1
           fi
 
           report_file="$(mktemp)"
-          uv run --project api coverage combine "$unit_coverage" "${integration_coverage[@]}"
+          uv run --project api coverage combine "${unit_coverage[@]}" "${integration_coverage[@]}"
           uv run --project api coverage report --show-missing | tee "$report_file"
           echo "Summary: \`$(tail -n 1 "$report_file")\`" >> "$GITHUB_STEP_SUMMARY"
           {
@@ -205,8 +224,7 @@ jobs:
           uv run --project api coverage xml -o coverage.xml
 
       - name: Report coverage
-        if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml
           disable_search: true

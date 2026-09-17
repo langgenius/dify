@@ -110,7 +110,7 @@ const InstallForm = () => {
             <Field
               name="email"
               validate={(value) =>
-                accountFormSchema.shape.email.safeParse(value).success
+                accountFormSchema.shape.email.validate(value)
                   ? null
                   : t(($) => $['error.emailInValid'], { ns: 'login' })
               }
@@ -130,7 +130,7 @@ const InstallForm = () => {
             <Field
               name="name"
               validate={(value) =>
-                accountFormSchema.shape.name.safeParse(value).success
+                accountFormSchema.shape.name.validate(value)
                   ? null
                   : t(($) => $['error.nameEmpty'], { ns: 'login' })
               }
@@ -149,7 +149,7 @@ const InstallForm = () => {
             <Field
               name="password"
               validate={(value) =>
-                accountFormSchema.shape.password.safeParse(value).success
+                accountFormSchema.shape.password.validate(value)
                   ? null
                   : t(($) => $['error.passwordInvalid'], { ns: 'login' })
               }
