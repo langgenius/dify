@@ -3,7 +3,7 @@
 import re
 from typing import override
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -77,14 +77,41 @@ class HtmlExtractor(BaseExtractor):
         with open(self._file_path, "rb") as fp:
             soup = BeautifulSoup(fp, "html.parser")
 
-        for line_break in soup.find_all("br"):
-            line_break.replace_with("\n")
-
-        # A separator argument to get_text() would also land between inline
-        # elements, turning "Hello <b>world</b>!" into "Hello world !", so the
-        # end of each block is marked instead.
-        for block in soup.find_all(_BLOCK_LEVEL_TAGS):
-            block.append("\n")
-
-        text: str = soup.get_text()
+        text = _flatten(soup)
         return re.sub(r"\n{3,}", "\n\n", text).strip() if text else ""
+
+
+_END_OF_CHILDREN = object()
+
+
+def _flatten(soup: BeautifulSoup) -> str:
+    """The text of ``soup``, with a line break at each ``<br>`` and after each block.
+
+    A separator argument to get_text() would also land between inline elements,
+    turning "Hello <b>world</b>!" into "Hello world !", so only the end of each
+    block gets one. The tree is walked once instead of rewritten: replacing each
+    ``<br>`` in place scans its siblings every time, which is quadratic on a
+    page with thousands of them.
+    """
+    # The strings get_text() joins: script, style and template text stays out
+    # exactly as it does there.
+    wanted = {id(string) for string in soup.strings}
+    parts: list[str] = []
+    children = [iter(soup.contents)]
+    open_tags: list[str | None] = [None]
+    while children:
+        node = next(children[-1], _END_OF_CHILDREN)
+        if node is _END_OF_CHILDREN:
+            children.pop()
+            if open_tags.pop() in _BLOCK_LEVEL_TAGS:
+                parts.append("\n")
+        elif isinstance(node, NavigableString):
+            if id(node) in wanted:
+                parts.append(node)
+        elif isinstance(node, Tag):
+            if node.name == "br":
+                parts.append("\n")
+            else:
+                children.append(iter(node.contents))
+                open_tags.append(node.name)
+    return "".join(parts)
