@@ -27,7 +27,7 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
-from core.tools.utils.text_processing_utils import remove_leading_symbols
+from core.tools.utils.text_processing_utils import remove_leading_symbols, strip_reasoning_blocks
 from core.workflow.file_reference import build_file_reference
 from factories.file_factory import build_from_mapping
 from graphon.file import File, FileTransferMethod, FileType, file_manager
@@ -496,7 +496,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if not isinstance(result, LLMResult):
             raise ValueError("Expected LLMResult when stream=False")
 
-        summary_content = result.message.get_text_content()
+        summary_content = strip_reasoning_blocks(result.message.get_text_content() or "")
         usage = result.usage
 
         return summary_content, usage

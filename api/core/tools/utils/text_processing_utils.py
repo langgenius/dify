@@ -1,5 +1,17 @@
 import re
 
+_CLOSED_REASONING_BLOCK = re.compile(r"<(think|thought)>.*?</\1>", re.IGNORECASE | re.DOTALL)
+_UNCLOSED_REASONING_BLOCK = re.compile(r"<(think|thought)>.*", re.IGNORECASE | re.DOTALL)
+
+
+def strip_reasoning_blocks(text: str) -> str:
+    """Strip closed and unclosed ``<think>`` / ``<thought>`` blocks from LLM text."""
+    if not text:
+        return text
+    text = _CLOSED_REASONING_BLOCK.sub("", text)
+    text = _UNCLOSED_REASONING_BLOCK.sub("", text)
+    return text.strip()
+
 
 def remove_leading_symbols(text: str) -> str:
     """
