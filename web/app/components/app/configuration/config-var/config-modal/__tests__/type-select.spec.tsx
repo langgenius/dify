@@ -13,6 +13,7 @@ describe('TypeSelector', () => {
 
     render(
       <TypeSelector
+        label="Field type"
         value="text-input"
         onSelect={onSelect}
         items={[

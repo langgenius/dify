@@ -24,6 +24,7 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTitle,
   DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
@@ -450,11 +451,11 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       {/* Panel Header */}
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="shrink-0">
-          <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
+          <DrawerTitle className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
             {isChatMode
               ? t(($) => $['detail.conversationId'], { ns: 'appLog' })
               : t(($) => $['detail.time'], { ns: 'appLog' })}
-          </div>
+          </DrawerTitle>
           {isChatMode && (
             <div className="flex items-center system-2xs-regular-uppercase text-text-secondary">
               <Tooltip>
@@ -695,7 +696,13 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
     }
   }
 
-  if (!conversationDetail) return null
+  if (!conversationDetail) {
+    return (
+      <DrawerTitle className="sr-only">
+        {t(($) => $['runDetail.title'], { ns: 'appLog' })}
+      </DrawerTitle>
+    )
+  }
 
   return (
     <DetailPanel
@@ -750,7 +757,13 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
     }
   }
 
-  if (!conversationDetail) return null
+  if (!conversationDetail) {
+    return (
+      <DrawerTitle className="sr-only">
+        {t(($) => $['runDetail.title'], { ns: 'appLog' })}
+      </DrawerTitle>
+    )
+  }
 
   return (
     <DetailPanel
@@ -925,36 +938,36 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
               <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {isChatMode
                   ? t(($) => $['table.header.summary'], { ns: 'appLog' })
                   : t(($) => $['table.header.input'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.endUser'], { ns: 'appLog' })}
-              </td>
+              </th>
               {isChatflow && (
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.status'], { ns: 'appLog' })}
-                </td>
+                </th>
               )}
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {isChatMode
                   ? t(($) => $['table.header.messageCount'], { ns: 'appLog' })
                   : t(($) => $['table.header.output'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.userRate'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.adminRate'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.updatedTime'], { ns: 'appLog' })}
-              </td>
-              <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.time'], { ns: 'appLog' })}
-              </td>
+              </th>
             </tr>
           </thead>
           <tbody className="system-sm-regular text-text-secondary">
@@ -983,7 +996,13 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   <td className="h-4">
                     {!log.read_at && (
                       <div className="flex items-center p-3 pr-0.5">
-                        <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
+                        <span
+                          aria-hidden="true"
+                          className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"
+                        ></span>
+                        <span className="sr-only">
+                          {t(($) => $['table.unread'], { ns: 'appLog' })}
+                        </span>
                       </div>
                     )}
                   </td>

@@ -2,6 +2,7 @@ import type { CSSProperties, FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
@@ -604,21 +605,20 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                 <Tooltip disabled={isSingleRunning}>
                   <TooltipTrigger
                     render={
-                      <button
-                        type="button"
+                      <IconButton
                         aria-label={singleRunActionLabel}
-                        className="mr-1 flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+                        className="mr-1"
                         onClick={() => {
                           if (isSingleRunning) handleStop()
                           else handleSingleRun()
                         }}
                       >
                         {isSingleRunning ? (
-                          <Stop aria-hidden className="size-4 text-text-tertiary" />
+                          <Stop aria-hidden className="size-4" />
                         ) : (
-                          <RiPlayLargeLine aria-hidden className="size-4 text-text-tertiary" />
+                          <RiPlayLargeLine aria-hidden className="size-4" />
                         )}
-                      </button>
+                      </IconButton>
                     }
                   />
                   <TooltipContent className="mr-1">{runThisStepLabel}</TooltipContent>
@@ -627,14 +627,12 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
               <HelpLink nodeType={nodeMetaType} />
               <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
-              <button
-                type="button"
+              <IconButton
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <RiCloseLine aria-hidden className="size-4 text-text-tertiary" />
-              </button>
+                <RiCloseLine aria-hidden className="size-4" />
+              </IconButton>
             </div>
           </div>
           {isStartPlaceholderPanel ? (

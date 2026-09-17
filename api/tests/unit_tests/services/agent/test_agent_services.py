@@ -39,6 +39,8 @@ from models.agent_config_entities import (
 )
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
+from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
+from models.tools import ToolFile
 from models.workflow import Workflow, WorkflowType
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -5550,6 +5552,75 @@ class TestWorkflowAgentDraftBindingSync:
                 session=session,
                 draft_workflow=self._agent_workflow(),
             )
+
+    def test_publish_validation_keeps_workspace_skill_refs_when_config_files_are_present(self, sqlite_session: Session):
+        session = sqlite_session
+        binding = self._agent_binding()
+        agent_soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-4o",
+                },
+                "prompt": {"system_prompt": "Use [§skill:research:Research§] and [§file:guide.md:Guide§]."},
+                "config_files": [
+                    {
+                        "name": "guide.md",
+                        "file_kind": "upload_file",
+                        "file_id": "file-1",
+                    }
+                ],
+            }
+        )
+        agent = self._publish_agent()
+        snapshot = self._snapshot(agent_soul)
+        skill = Skill(
+            id="skill-1",
+            tenant_id="tenant-1",
+            name="research",
+            display_name="Research",
+            latest_published_version_id="skill-version-1",
+        )
+        skill_version = SkillVersion(
+            id="skill-version-1",
+            skill_id="skill-1",
+            version_number=1,
+            manifest=SkillVersionManifest(
+                files=[],
+                name="research",
+                display_name="Research",
+                description="",
+            ),
+            archive_tool_file_id="archive-1",
+            hash_code="hash-1",
+            archive_size=1,
+        )
+        skill_binding = AgentSkillBindingSnapshot(
+            id="skill-binding-1",
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            config_snapshot_id="snapshot-1",
+            skill_id="skill-1",
+            priority=0,
+        )
+        archive_file = ToolFile(
+            user_id="account-1",
+            tenant_id="tenant-1",
+            conversation_id=None,
+            file_key="tools/research.zip",
+            mimetype="application/zip",
+            name="research.zip",
+            size=1,
+        )
+        archive_file.id = "archive-1"
+        session.add_all([binding, agent, snapshot, skill, skill_version, skill_binding, archive_file])
+        session.commit()
+
+        WorkflowAgentPublishService.validate_agent_nodes_for_publish(
+            session=session,
+            draft_workflow=self._agent_workflow(),
+        )
 
     def test_publish_validation_rejects_dangling_agent_soul_config_refs(self, sqlite_session: Session):
         session = sqlite_session

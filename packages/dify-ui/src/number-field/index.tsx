@@ -12,11 +12,12 @@ type NumberFieldProps = BaseNumberField.Root.Props
 
 const numberFieldGroupVariants = cva(
   [
-    'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
+    'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
     textControlCompoundInputFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-invalid:border-components-input-border-destructive data-invalid:bg-components-input-bg-destructive',
+    'data-invalid:has-[input:focus]:border-components-input-border-destructive data-invalid:has-[input:focus]:bg-components-input-bg-destructive',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
     'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal motion-reduce:transition-none',

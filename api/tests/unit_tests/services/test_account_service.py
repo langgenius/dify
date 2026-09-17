@@ -173,8 +173,20 @@ class TestAccountService:
             assert persisted_account.timezone == "America/New_York"
             assert persisted_account.last_login_ip == "203.0.113.10"
 
+    @pytest.mark.parametrize(
+        ("existing_email", "new_email", "normalized_email"),
+        [
+            ("u.ser+existing@gmail.com", "user@googlemail.com", "user@gmail.com"),
+            ("u.ser+existing@outlook.com", "u.ser+new@outlook.com", "u.ser@outlook.com"),
+            ("u.ser+existing@me.com", "u.ser+new@icloud.com", "u.ser@icloud.com"),
+            ("u.ser_name-existing@proton.me", "usernameexisting+new@proton.me", "usernameexisting@proton.me"),
+        ],
+    )
     def test_create_account_rejects_normalized_email_only_when_requested(
         self,
+        existing_email: str,
+        new_email: str,
+        normalized_email: str,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
     ) -> None:
@@ -184,15 +196,15 @@ class TestAccountService:
         sqlite_session.add(
             Account(
                 name="Existing User",
-                email="u.ser+existing@gmail.com",
-                normalized_email="user@gmail.com",
+                email=existing_email,
+                normalized_email=normalized_email,
             )
         )
         sqlite_session.commit()
 
         with pytest.raises(AccountEmailAlreadyInUseError):
             AccountService.create_account(
-                email="user@googlemail.com",
+                email=new_email,
                 name="New User",
                 interface_language="en-US",
                 check_normalized_email=True,
@@ -200,12 +212,12 @@ class TestAccountService:
             )
 
         duplicate = AccountService.create_account(
-            email="user@googlemail.com",
+            email=new_email,
             name="New User",
             interface_language="en-US",
             session=sqlite_session,
         )
-        assert duplicate.normalized_email == "user@gmail.com"
+        assert duplicate.normalized_email == normalized_email
 
     def test_create_account_uses_explicit_timezone(
         self,

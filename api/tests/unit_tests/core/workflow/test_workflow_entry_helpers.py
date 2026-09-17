@@ -193,6 +193,11 @@ class TestWorkflowEntryRun:
             ) as response_stream_filter_cls,
             patch.object(
                 workflow_entry,
+                "HumanInputFormEventFilter",
+                return_value=sentinel.human_input_filter,
+            ),
+            patch.object(
+                workflow_entry,
                 "filter_graph_events",
                 return_value=iter([sentinel.filtered_event]),
             ) as filter_graph_events,
@@ -205,7 +210,7 @@ class TestWorkflowEntryRun:
         filter_graph_events.assert_called_once_with(
             graph_engine.run.return_value,
             context=sentinel.filter_context,
-            filters=[sentinel.response_stream_filter],
+            filters=[sentinel.human_input_filter, sentinel.response_stream_filter],
         )
 
     def test_run_delegates_to_dify_event_iterator(self):

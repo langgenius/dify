@@ -112,7 +112,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
         <>
           <div className="flex h-full flex-col">
             <div className="relative flex h-50 grow pt-14">
-              <div className="bg-default-subtle absolute top-0 left-0 h-14 w-full">
+              <div className="absolute top-0 left-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center gap-2">
                     <div className="system-xl-semibold text-text-primary">

@@ -511,7 +511,7 @@ def _serialize_agent_app_pagination(
             item["hidden_app_backed"] = False
             item["id"] = agent.id
             item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
-            item["permission_keys"] = permission_keys_by_agent_id.get(agent.id, [])
+            item["permission_keys"] = permission_keys_by_agent_id.get(str(agent.id), [])
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
             item["reference_count"] = reference_counts_by_agent_id.get(agent.id, 0)

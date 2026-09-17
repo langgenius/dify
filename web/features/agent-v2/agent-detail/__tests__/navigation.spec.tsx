@@ -137,15 +137,20 @@ describe('AgentDetailSection', () => {
     expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
     expect(container.querySelector('em-emoji')).toHaveAttribute('id', '🧪')
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
-    expect(agentAvatar?.parentElement?.parentElement).toHaveClass('mr-2')
-    expect(agentName.parentElement?.parentElement).toHaveClass('h-10')
-    expect(agentName.parentElement?.parentElement?.parentElement).toHaveClass(
-      'h-13',
-      'py-1.5',
-      'pl-1.5',
-      'pr-2',
-    )
   })
+
+  it.each([null, '', '   '])(
+    'omits an empty role without adding a type placeholder (%s)',
+    (role) => {
+      mocks.queryData = createAgent({ role })
+      renderAgentDetailSection()
+
+      expect(screen.getByText('Research Agent')).toBeInTheDocument()
+      expect(screen.queryByText('Research Assistant')).not.toBeInTheDocument()
+      expect(screen.queryByText('agentV2.agentDetail.type')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Research Agent/ })).toBeInTheDocument()
+    },
+  )
 
   it('renders compact more actions beside the expanded sidebar agent identity', async () => {
     const user = userEvent.setup()

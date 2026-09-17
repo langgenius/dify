@@ -125,7 +125,7 @@ function NormalForm() {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+            <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
@@ -145,7 +145,7 @@ function NormalForm() {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+            <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
@@ -165,7 +165,7 @@ function NormalForm() {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+            <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
@@ -287,7 +287,7 @@ function NormalForm() {
           {allMethodsAreDisabled && (
             <>
               <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-                <div className="shadows-shadow-lg mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+                <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
                   <RiDoorLockLine className="size-5" />
                 </div>
                 <p className="system-sm-medium text-text-primary">
