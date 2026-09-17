@@ -422,9 +422,9 @@ const Debug: FC<IDebug> = ({
     <>
       <Collapsible open={expanded} onOpenChange={setExpanded} render={<div className="shrink-0" />}>
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="system-xl-semibold text-text-primary">
+          <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['inputs.title'], { ns: 'appDebug' })}
-          </div>
+          </h2>
           <div className="flex items-center">
             {debugWithMultipleModel ? (
               <>
