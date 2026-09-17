@@ -40,9 +40,8 @@ from models.agent_config_entities import (
 from models.enums import ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
-from models.workflow import Workflow
 from models.tools import ToolFile
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService

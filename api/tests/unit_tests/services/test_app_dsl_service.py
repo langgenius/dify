@@ -14,7 +14,6 @@ from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
-from models.workflow import Workflow, WorkflowType
 from services.agent.dsl_entities import AgentPackage
 from services.app_dsl_service import AppDslService, Import, PendingData
 from services.enterprise.enterprise_service import EnterpriseService
