@@ -107,7 +107,7 @@ export default function CheckCode() {
         onClick={() => router.back()}
         className="flex h-9 cursor-pointer appearance-none items-center justify-center text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
-        <span className="bg-background-default-dimm inline-block rounded-full p-1">
+        <span className="inline-block rounded-full p-1">
           <RiArrowLeftLine aria-hidden size={12} />
         </span>
         <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>

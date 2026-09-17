@@ -1,4 +1,4 @@
-import type { i18n as I18nInstance, Resource, ResourceLanguage } from 'i18next'
+import type { Resource, ResourceLanguage } from 'i18next'
 import type { Locale } from '.'
 import type { Namespace, NamespaceInFileName } from './resources'
 import { match } from '@formatjs/intl-localematcher'
@@ -9,20 +9,13 @@ import Negotiator from 'negotiator'
 import { cache } from 'react'
 import { initReactI18next } from 'react-i18next/initReactI18next'
 import { cookies, headers } from '@/next/headers'
-import { serverOnlyContext } from '@/utils/server-only-context'
 import { i18n } from '.'
 import { loadI18nResource } from './load-resource'
 import { namespacesInFileName } from './resources'
 import { getInitOptions } from './settings'
 
-const [getLocaleCache, setLocaleCache] = serverOnlyContext<Locale | null>(null)
-const [getI18nInstance, setI18nInstance] = serverOnlyContext<I18nInstance | null>(null)
-
-const getOrCreateI18next = async (lng: Locale) => {
-  let instance = getI18nInstance()
-  if (instance) return instance
-
-  instance = createInstance()
+const getOrCreateI18next = cache(async (lng: Locale) => {
+  const instance = createInstance()
   await instance
     .use(initReactI18next)
     .use(
@@ -34,9 +27,8 @@ const getOrCreateI18next = async (lng: Locale) => {
       ...getInitOptions(),
       lng,
     })
-  setI18nInstance(instance)
   return instance
-}
+})
 
 export async function getTranslation<T extends Namespace>(lng: Locale, ns?: T) {
   const i18nextInstance = await getOrCreateI18next(lng)
@@ -49,10 +41,7 @@ export async function getTranslation<T extends Namespace>(lng: Locale, ns?: T) {
   }
 }
 
-export const getLocaleOnServer = async (): Promise<Locale> => {
-  const cached = getLocaleCache()
-  if (cached) return cached
-
+export const getLocaleOnServer = cache(async (): Promise<Locale> => {
   const locales: string[] = i18n.locales
 
   let languages: string[] | undefined
@@ -77,10 +66,8 @@ export const getLocaleOnServer = async (): Promise<Locale> => {
     languages = [i18n.defaultLocale]
 
   // match locale
-  const matchedLocale = match(languages, locales, i18n.defaultLocale) as Locale
-  setLocaleCache(matchedLocale)
-  return matchedLocale
-}
+  return match(languages, locales, i18n.defaultLocale) as Locale
+})
 
 export const getResources = cache(async (lng: Locale): Promise<Resource> => {
   const messages = {} as ResourceLanguage

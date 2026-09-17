@@ -107,6 +107,16 @@ class TestExtractProcessorLoaders:
             ("https://example.com/no_suffix", {"Content-Type": "application/pdf"}, ".pdf"),
             (
                 "https://example.com/no_suffix",
+                {"Content-Type": "application/pdf; charset=binary"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/no_suffix",
+                {"Content-Type": "text/html; charset=utf-8"},
+                ".html",
+            ),
+            (
+                "https://example.com/no_suffix",
                 {"Content-Disposition": 'attachment; filename="report.md"'},
                 ".md",
             ),
@@ -115,6 +125,7 @@ class TestExtractProcessorLoaders:
                 {"Content-Disposition": 'attachment; filename="report"'},
                 "",
             ),
+            ("https://example.com/no_suffix", {}, ""),
         ],
     )
     def test_load_from_url_builds_temp_file_with_correct_suffix(
@@ -166,6 +177,21 @@ class TestExtractProcessorLoaders:
         # no upload_file for URL-loaded files: tenant/user context must be None
         assert args[1] is None
         assert args[2] is None
+
+    def test_load_from_url_routes_parameterized_content_type(self, monkeypatch: pytest.MonkeyPatch):
+        # Servers commonly append parameters such as "; charset=binary" to
+        # Content-Type; the media type must be parsed before deriving the suffix.
+        response = SimpleNamespace(
+            headers={"Content-Type": "application/pdf; charset=binary"}, content=b"%PDF-1.1 body"
+        )
+        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
+        factory = _patch_all_extractors(monkeypatch)
+        apply_config_overrides(monkeypatch, ETL_TYPE="dify")
+
+        text = ExtractProcessor.load_from_url("https://example.com/report", return_text=True)
+
+        assert text == "extracted-by-PdfExtractor"
+        assert factory.calls[-1][0] == "PdfExtractor"
 
 
 class TestExtractProcessorFileRouting:

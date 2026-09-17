@@ -12,6 +12,8 @@ diagnostics. Run the remaining commands from `packages/dify-ui/`:
 
 This guide owns the Dify UI testing policy and runtime setup. Add tests for observable Dify
 integration behavior or a reproducible regression, not merely because a component or prop exists.
+Check existing stories and tests before adding coverage. Browser execution alone does not justify
+a new case; review incidental visual adjustments in Storybook without adding a permanent test.
 
 The package has two [Vitest projects]. Both run in Playwright Chromium [Browser Mode]; the project
 name identifies the behavior owner, not a different runtime.

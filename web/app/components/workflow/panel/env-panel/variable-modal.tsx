@@ -1,14 +1,17 @@
 import type { EnvironmentVariable, EnvironmentVariableValue } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import { LLMEnvironmentVariableValueField } from '@/app/components/workflow/llm-environment-variable-value-field'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -69,7 +72,11 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
     }
 
     if (nextType === 'number') {
-      if (value === undefined || value === '' || Number.isNaN(Number(value))) setValue('')
+      setValue(
+        value === undefined || value === '' || !Number.isFinite(Number(value))
+          ? undefined
+          : Number(value),
+      )
       return
     }
 
@@ -107,7 +114,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
       id: env ? env.id : uuid4(),
       value_type: type,
       name,
-      value: type === 'number' ? Number(value) : value,
+      value,
       description,
     })
     onClose()
@@ -124,7 +131,11 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
   }, [env, workflowStore])
 
   return (
-    <div
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        handleSave()
+      }}
       className={cn(
         'flex h-full w-90 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl',
       )}
@@ -212,78 +223,79 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
           </div>
         </div>
         {/* name */}
-        <div className="mb-4">
-          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
+        <Field name="name" className="mb-4">
+          <FieldLabel className="system-sm-semibold">
             {t(($) => $['env.modal.name'], { ns: 'workflow' })}
-          </div>
-          <div className="flex">
-            <Input
-              placeholder={t(($) => $['env.modal.namePlaceholder'], { ns: 'workflow' }) || ''}
-              value={name}
-              onChange={handleVarNameChange}
-              onBlur={(e) => checkVariableName(e.target.value)}
-              type="text"
-            />
-          </div>
-        </div>
+          </FieldLabel>
+          <Input
+            placeholder={t(($) => $['env.modal.namePlaceholder'], { ns: 'workflow' }) || ''}
+            value={name}
+            onChange={handleVarNameChange}
+            onBlur={(e) => checkVariableName(e.target.value)}
+            type="text"
+          />
+        </Field>
         {/* value */}
-        <div className="mb-4">
-          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
-            {type === 'llm'
-              ? t(($) => $['modelProvider.model'], { ns: 'common' })
-              : t(($) => $['env.modal.value'], { ns: 'workflow' })}
-          </div>
-          <div className="flex">
-            {type === 'llm' ? (
-              <LLMEnvironmentVariableValueField
-                value={isLLMEnvironmentVariableValue(value) ? value : undefined}
-                requiredMode={originalLLMMode}
-                popupClassName="w-[328px]! max-w-[328px]!"
-                onChange={setValue}
-              />
-            ) : type !== 'number' ? (
-              <textarea
-                className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
-                value={typeof value === 'string' || typeof value === 'number' ? value : ''}
-                placeholder={t(($) => $['env.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
-                onChange={(e) => setValue(e.target.value)}
-              />
-            ) : (
-              <Input
-                placeholder={t(($) => $['env.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
-                value={typeof value === 'string' || typeof value === 'number' ? value : ''}
-                onChange={(e) => setValue(e.target.value)}
-                type="number"
-              />
-            )}
-          </div>
-        </div>
-        {/* description */}
-        <div className="">
-          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
-            {t(($) => $['env.modal.description'], { ns: 'workflow' })}
-          </div>
-          <div className="flex">
-            <textarea
-              className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
-              value={description}
-              placeholder={
-                t(($) => $['env.modal.descriptionPlaceholder'], { ns: 'workflow' }) || ''
-              }
-              onChange={(e) => setDescription(e.target.value)}
+        <Field name="value" className="mb-4">
+          {type === 'llm' ? (
+            <div className="py-1 system-sm-semibold text-text-secondary">
+              {t(($) => $['modelProvider.model'], { ns: 'common' })}
+            </div>
+          ) : (
+            <FieldLabel className="system-sm-semibold">
+              {t(($) => $['env.modal.value'], { ns: 'workflow' })}
+            </FieldLabel>
+          )}
+          {type === 'llm' ? (
+            <LLMEnvironmentVariableValueField
+              value={isLLMEnvironmentVariableValue(value) ? value : undefined}
+              requiredMode={originalLLMMode}
+              popupClassName="w-[328px]! max-w-[328px]!"
+              onChange={setValue}
             />
-          </div>
-        </div>
+          ) : type !== 'number' ? (
+            <Textarea
+              className="h-20 p-2"
+              value={typeof value === 'string' || typeof value === 'number' ? value : ''}
+              placeholder={t(($) => $['env.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
+              onValueChange={(value) => setValue(value)}
+            />
+          ) : (
+            <NumberField
+              step="any"
+              value={typeof value === 'number' ? value : null}
+              onValueChange={(value) => setValue(value ?? undefined)}
+            >
+              <NumberFieldGroup>
+                <NumberFieldInput
+                  placeholder={t(($) => $['env.modal.valuePlaceholder'], { ns: 'workflow' })}
+                />
+              </NumberFieldGroup>
+            </NumberField>
+          )}
+        </Field>
+        {/* description */}
+        <Field name="description">
+          <FieldLabel className="system-sm-semibold">
+            {t(($) => $['env.modal.description'], { ns: 'workflow' })}
+          </FieldLabel>
+          <Textarea
+            className="h-20 p-2"
+            value={description}
+            placeholder={t(($) => $['env.modal.descriptionPlaceholder'], { ns: 'workflow' }) || ''}
+            onValueChange={(value) => setDescription(value)}
+          />
+        </Field>
       </div>
       <div className="flex flex-row-reverse rounded-b-2xl p-4 pt-2">
         <div className="flex gap-2">
           <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-          <Button variant="primary" onClick={handleSave}>
+          <Button variant="primary" type="submit">
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>
       </div>
-    </div>
+    </form>
   )
 }
 
