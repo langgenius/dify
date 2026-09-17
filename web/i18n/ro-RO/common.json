@@ -474,6 +474,7 @@
   "operation.fill": "Completare automată",
   "operation.format": "Format",
   "operation.imageCopied": "Imagine copiată",
+  "operation.imageCopyFailed": "Imaginea nu a putut fi copiată. Descărcați-o în schimb.",
   "operation.imageDownloaded": "Imagine descărcată",
   "operation.in": "în",
   "operation.learnMore": "Află mai multe",

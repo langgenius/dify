@@ -11,7 +11,7 @@ from events.app_event import app_was_deleted, app_was_updated
 from models.account import Account
 from models.agent import Agent, AgentWorkspace
 from models.dataset import AppDatasetJoin
-from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp
+from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp, Site
 from services.app_service import AppService
 
 
@@ -270,6 +270,13 @@ class TestAppModelConfigWasUpdatedSignal:
 
 @pytest.mark.parametrize("sqlite_session", [(App, Account, InstalledApp)], indirect=True)
 class TestCreateInstalledAppWhenAppCreated:
+    def test_skips_when_records_were_initialized_transactionally(self, app_model: App, sqlite_session: Session) -> None:
+        from events.event_handlers.create_installed_app_when_app_created import handle
+
+        handle(app_model, session=sqlite_session, created_records_initialized=True)
+
+        assert sqlite_session.scalar(select(InstalledApp.id).where(InstalledApp.app_id == app_model.id)) is None
+
     def test_skips_existing_installation(self, app_model: App, sqlite_session: Session) -> None:
         from events.event_handlers.create_installed_app_when_app_created import handle
 
@@ -324,3 +331,19 @@ class TestCreateInstalledAppWhenAppCreated:
         assert installed_app.app_id == app_model.id
         assert installed_app.tenant_id == app_model.tenant_id
         assert commits == []
+
+
+@pytest.mark.parametrize("sqlite_session", [(App, Account, Site)], indirect=True)
+def test_create_site_handler_skips_transactionally_initialized_records(
+    app_model: App, account: Account, sqlite_session: Session
+) -> None:
+    from events.event_handlers.create_site_record_when_app_created import handle
+
+    handle(
+        app_model,
+        account=account,
+        session=sqlite_session,
+        created_records_initialized=True,
+    )
+
+    assert sqlite_session.scalar(select(Site.id).where(Site.app_id == app_model.id)) is None

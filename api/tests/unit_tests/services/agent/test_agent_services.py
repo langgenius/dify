@@ -40,6 +40,7 @@ from models.agent_config_entities import (
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
+from models.tools import ToolFile
 from models.workflow import Workflow, WorkflowType
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -5603,7 +5604,17 @@ class TestWorkflowAgentDraftBindingSync:
             skill_id="skill-1",
             priority=0,
         )
-        session.add_all([binding, agent, snapshot, skill, skill_version, skill_binding])
+        archive_file = ToolFile(
+            user_id="account-1",
+            tenant_id="tenant-1",
+            conversation_id=None,
+            file_key="tools/research.zip",
+            mimetype="application/zip",
+            name="research.zip",
+            size=1,
+        )
+        archive_file.id = "archive-1"
+        session.add_all([binding, agent, snapshot, skill, skill_version, skill_binding, archive_file])
         session.commit()
 
         WorkflowAgentPublishService.validate_agent_nodes_for_publish(

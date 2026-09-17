@@ -14,7 +14,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, Concatenate
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -106,9 +106,10 @@ class SnippetWorkflowVariableCollectionApi(Resource):
         console_ns.models[WorkflowDraftVariableListWithoutValueResponse.__name__],
     )
     @_snippet_draft_var_prerequisite
-    def get(self, current_user: Account, snippet: CustomizedSnippet) -> dict[str, Any]:
-        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-
+    @model_validate(WorkflowDraftVariableListQuery)
+    def get(
+        self, args: WorkflowDraftVariableListQuery, current_user: Account, snippet: CustomizedSnippet
+    ) -> dict[str, Any]:
         snippet_service = _snippet_service()
         if snippet_service.get_draft_workflow(snippet=snippet) is None:
             raise DraftWorkflowNotExist()

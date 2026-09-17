@@ -91,6 +91,7 @@
   "table.header.updatedTime": "Heure de mise à jour",
   "table.header.user": "UTILISATEUR FINAL OU COMPTE",
   "table.header.userRate": "Taux utilisateur",
+  "table.unread": "Non lu",
   "title": "Journaux",
   "triggerBy.appRun": "Application Web",
   "triggerBy.debugging": "Débogage",

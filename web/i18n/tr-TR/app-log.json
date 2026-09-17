@@ -91,6 +91,7 @@
   "table.header.updatedTime": "Güncellenme zamanı",
   "table.header.user": "SON KULLANICI VEYA HESAP",
   "table.header.userRate": "Kullanıcı Puanı",
+  "table.unread": "Okunmamış",
   "title": "Günlükler",
   "triggerBy.appRun": "Web Uygulaması",
   "triggerBy.debugging": "Hata ayıklama",

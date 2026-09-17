@@ -3,6 +3,9 @@ import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
@@ -18,9 +21,9 @@ import { useStore } from '@tanstack/react-form'
 import { isValidElement, memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 
@@ -28,8 +31,6 @@ const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
     case FormTypeEnum.secretInput:
       return { type: 'password', autoComplete: 'new-password' }
-    case FormTypeEnum.textNumber:
-      return { type: 'number' }
     default:
       return { type: 'text' }
   }
@@ -85,7 +86,7 @@ const VALIDATE_STATUS_STYLE_MAP: Record<
   },
   [FormItemValidateStatusEnum.Warning]: {
     componentClassName:
-      'border-components-input-border-warning focus:border-components-input-border-warning',
+      'border-components-input-border-warning focus:border-components-input-border-warning has-[input:focus]:border-components-input-border-warning',
     textClassName: 'text-text-warning',
     infoFieldName: 'warnings',
   },
@@ -273,6 +274,17 @@ const BaseField = ({
   const selectPlaceholder = isDynamicSelect ? dynamicPlaceholder : translatedPlaceholder
   const handleSelectChange = isDynamicSelect ? field.handleChange : handleChange
   const selectDisabled = disabled || (isDynamicSelect && isDynamicOptionsLoading)
+  const textInputProps = {
+    id: controlId,
+    name: field.name,
+    ...controlProps,
+    value: stringValue ?? '',
+    onValueChange: handleChange,
+    onBlur: field.handleBlur,
+    disabled,
+    placeholder: translatedPlaceholder,
+    ...getExtraProps(formItemType),
+  }
 
   const content = (
     <>
@@ -301,28 +313,74 @@ const BaseField = ({
           )}
         </div>
         <div className={cn(inputContainerClassName)} data-form-field={field.name}>
-          {[FormTypeEnum.textInput, FormTypeEnum.secretInput, FormTypeEnum.textNumber].includes(
-            formItemType,
-          ) && (
-            <Input
-              id={controlId}
-              name={field.name}
-              {...controlProps}
-              className={cn(
-                inputClassName,
-                VALIDATE_STATUS_STYLE_MAP[validateStatus as FormItemValidateStatusEnum]
-                  ?.componentClassName,
+          {[FormTypeEnum.textInput, FormTypeEnum.secretInput].includes(formItemType) && (
+            <Field
+              className="contents"
+              invalid={validateStatus === FormItemValidateStatusEnum.Error}
+            >
+              {showCopy ? (
+                <InputGroup
+                  className={cn(
+                    inputClassName,
+                    VALIDATE_STATUS_STYLE_MAP[validateStatus as FormItemValidateStatusEnum]
+                      ?.componentClassName,
+                  )}
+                >
+                  <InputGroupInput {...textInputProps} />
+                  <InputGroupAddon align="inline-end" className="pe-0">
+                    <CopyFeedback
+                      content={stringValue ?? ''}
+                      className="size-7 hover:bg-transparent"
+                    />
+                  </InputGroupAddon>
+                </InputGroup>
+              ) : (
+                <Input
+                  {...textInputProps}
+                  className={cn(
+                    inputClassName,
+                    VALIDATE_STATUS_STYLE_MAP[validateStatus as FormItemValidateStatusEnum]
+                      ?.componentClassName,
+                  )}
+                />
               )}
-              value={value || ''}
-              onChange={(e) => {
-                handleChange(e.target.value)
-              }}
-              onBlur={field.handleBlur}
-              disabled={disabled}
-              placeholder={translatedPlaceholder}
-              {...getExtraProps(formItemType)}
-              showCopyIcon={showCopy}
-            />
+            </Field>
+          )}
+          {formItemType === FormTypeEnum.textNumber && (
+            <Field
+              className="contents"
+              invalid={validateStatus === FormItemValidateStatusEnum.Error}
+            >
+              <NumberField
+                name={field.name}
+                step="any"
+                value={value == null || value === '' ? null : Number(value)}
+                disabled={disabled}
+                onValueChange={(value) => handleChange(value)}
+              >
+                <NumberFieldGroup
+                  className={cn(
+                    inputClassName,
+                    validateStatus === FormItemValidateStatusEnum.Warning &&
+                      VALIDATE_STATUS_STYLE_MAP[FormItemValidateStatusEnum.Warning]
+                        .componentClassName,
+                  )}
+                >
+                  <NumberFieldInput
+                    id={controlId}
+                    {...controlProps}
+                    onBlur={field.handleBlur}
+                    placeholder={translatedPlaceholder}
+                  />
+                  {showCopy && (
+                    <CopyFeedback
+                      content={value == null ? '' : String(value)}
+                      className="size-7 shrink-0 hover:bg-transparent"
+                    />
+                  )}
+                </NumberFieldGroup>
+              </NumberField>
+            </Field>
           )}
           {isSelect && (
             <>
@@ -401,7 +459,7 @@ const BaseField = ({
                   >
                     <FieldLabel
                       className={cn(
-                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-components-input-border-active',
+                        'flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-components-input-border-active',
                         value === option.value &&
                           'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
                         disabled && 'cursor-not-allowed opacity-50',

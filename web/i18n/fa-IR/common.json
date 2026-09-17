@@ -474,6 +474,7 @@
   "operation.fill": "پر کردن خودکار",
   "operation.format": "قالب",
   "operation.imageCopied": "تصویر کپی شده",
+  "operation.imageCopyFailed": "تصویر کپی نشد. لطفاً به‌جای آن تصویر را دانلود کنید.",
   "operation.imageDownloaded": "تصویر دانلود شد",
   "operation.in": "در",
   "operation.learnMore": "اطلاعات بیشتر",

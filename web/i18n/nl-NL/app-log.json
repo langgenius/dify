@@ -91,6 +91,7 @@
   "table.header.updatedTime": "Updated time",
   "table.header.user": "END USER OR ACCOUNT",
   "table.header.userRate": "User Rate",
+  "table.unread": "Ongelezen",
   "title": "Logs",
   "triggerBy.appRun": "WebApp",
   "triggerBy.debugging": "Debugging",

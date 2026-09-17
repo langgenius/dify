@@ -474,6 +474,7 @@
   "operation.fill": "Автозаполнение",
   "operation.format": "Формат",
   "operation.imageCopied": "Скопированное изображение",
+  "operation.imageCopyFailed": "Не удалось скопировать изображение. Попробуйте скачать его.",
   "operation.imageDownloaded": "Изображение загружено",
   "operation.in": "в",
   "operation.learnMore": "Узнать больше",
