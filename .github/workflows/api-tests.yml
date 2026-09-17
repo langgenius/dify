@@ -39,7 +39,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
@@ -63,6 +62,8 @@ jobs:
             -n auto \
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
+            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
             api/tests/unit_tests \
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests \
@@ -72,6 +73,8 @@ jobs:
             --timeout "${PYTEST_TIMEOUT:-20}" \
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
+            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
             --cov-append \
             api/tests/unit_tests/controllers
 
@@ -111,7 +114,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
@@ -135,6 +137,8 @@ jobs:
             -n auto \
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
+            -o 'addopts=--cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/integration_tests/workflow \
             api/tests/integration_tests/tools \
