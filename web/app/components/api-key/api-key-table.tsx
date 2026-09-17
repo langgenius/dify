@@ -37,25 +37,25 @@ export function ApiKeyTable({
   }
 
   return (
-    <div className="min-h-0 overflow-auto border-y border-divider-subtle">
-      <table className="w-full table-fixed text-left system-sm-regular text-text-secondary">
+    <div className="min-h-0 max-w-full min-w-0 overflow-auto border-y border-divider-subtle">
+      <table className="w-full min-w-168 table-fixed text-left system-sm-regular text-text-secondary">
         <thead className="sticky top-0 bg-components-panel-bg system-xs-semibold-uppercase text-text-tertiary">
           <tr className="border-b border-divider-regular">
-            <th className="w-64 px-6 py-2" scope="col">
+            <th className="px-6 py-2" scope="col">
               {t(($) => $['apiKeyModal.secretKey'], { ns: 'appApi' })}
             </th>
             {showScope && (
-              <th className="w-40 px-3 py-2" scope="col">
+              <th className="w-28 px-3 py-2" scope="col">
                 {t(($) => $['apiKeyModal.scope'], { ns: 'appApi' })}
               </th>
             )}
-            <th className="w-48 px-3 py-2" scope="col">
+            <th className="w-40 px-3 py-2" scope="col">
               {t(($) => $['apiKeyModal.created'], { ns: 'appApi' })}
             </th>
-            <th className="w-48 px-3 py-2" scope="col">
+            <th className="w-40 px-3 py-2" scope="col">
               {t(($) => $['apiKeyModal.lastUsed'], { ns: 'appApi' })}
             </th>
-            <th className="w-24 px-6 py-2" scope="col">
+            <th className="w-28 px-6 py-2" scope="col">
               <span className="sr-only">{t(($) => $['operation.settings'], { ns: 'common' })}</span>
             </th>
           </tr>
