@@ -60,6 +60,9 @@ class KnowledgeFSProvisionCommandPayload(KnowledgeFSCommandEnvelope):
     slug: str
     model_intent: NotRequired[KnowledgeFSModelSelectionIntentPayload]
     profile_intent: NotRequired[KnowledgeFSRetrievalProfileIntentPayload]
+    # Local authorization snapshot; never sent to the KnowledgeFS data plane.
+    initial_visibility: NotRequired[str]
+    initial_member_account_ids: NotRequired[list[str]]
 
 
 class KnowledgeFSMetadataUpdateCommandPayload(KnowledgeFSCommandEnvelope):

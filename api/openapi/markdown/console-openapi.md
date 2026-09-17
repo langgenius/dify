@@ -23601,6 +23601,13 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | workspace_id | string |  | No |
 | workspace_name | string |  | No |
 
+#### KnowledgeFSSpaceCreateMemberPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | Yes |
+| role | string |  | Yes |
+
 #### KnowledgeFSSpaceCreatePayload
 
 | Name | Type | Description | Required |
@@ -23610,6 +23617,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | icon | string |  | No |
 | idempotency_key | string |  | No |
 | initial_source | [KnowledgeFSInitialWebsiteSourcePayload](#knowledgefsinitialwebsitesourcepayload)<br>[KnowledgeFSInitialOnlineDocumentSourcePayload](#knowledgefsinitialonlinedocumentsourcepayload)<br>[KnowledgeFSInitialOnlineDriveSourcePayload](#knowledgefsinitialonlinedrivesourcepayload) |  | No |
+| members | [ [KnowledgeFSSpaceCreateMemberPayload](#knowledgefsspacecreatememberpayload) ] |  | No |
 | name | string |  | Yes |
 | retrieval | [KnowledgeFSRetrievalProfileIntent](#knowledgefsretrievalprofileintent) |  | No |
 | slug | string |  | Yes |

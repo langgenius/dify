@@ -137,12 +137,105 @@ describe('PermissionSelector', () => {
     expect(screen.getByRole('dialog', { name: /form.permissions/ })).toBeInTheDocument()
   })
 
+  it('freezes an already open member picker when disabled and permits changes after unlocking', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const onMemberSelect = vi.fn()
+    const props = {
+      ...defaultProps,
+      permission: DatasetPermission.partialMembers,
+      value: ['user-1', 'user-2'],
+      onChange,
+      onMemberSelect,
+    }
+    const { rerender } = renderSelector(props)
+    await user.click(screen.getByRole('button', { name: /Current User/ }))
+    const dialog = screen.getByRole('dialog', { name: /form.permissions/ })
+    const member = within(dialog).getByRole('button', { name: /John Doe/ })
+    const onlyMe = within(dialog).getByRole('radio', { name: /permissionsOnlyMe/ })
+    const search = within(dialog).getByRole('searchbox', { name: /operation.search/ })
+
+    rerender(<PermissionSelector {...props} disabled />)
+
+    expect(member).toBeDisabled()
+    expect(onlyMe).toBeDisabled()
+    expect(search).toBeDisabled()
+    await user.click(member)
+    await user.click(onlyMe)
+    await user.type(search, 'Jane')
+    expect(search).toHaveValue('')
+    expect(onMemberSelect).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+
+    rerender(<PermissionSelector {...props} disabled={false} />)
+    await user.click(member)
+    expect(onMemberSelect).toHaveBeenCalledWith(['user-1'])
+    await user.click(onlyMe)
+    expect(onChange).toHaveBeenCalledWith(DatasetPermission.onlyMe)
+  })
+
+  it('allows member selection when only visibility changes are disabled', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const onMemberSelect = vi.fn()
+    renderSelector({
+      permission: DatasetPermission.partialMembers,
+      permissionChangeDisabled: true,
+      value: ['user-1'],
+      onChange,
+      onMemberSelect,
+    })
+    await user.click(screen.getByRole('button', { name: /Current User/ }))
+    const dialog = screen.getByRole('dialog', { name: /form.permissions/ })
+    const onlyMe = within(dialog).getByRole('radio', { name: /permissionsOnlyMe/ })
+    expect(onlyMe).toBeDisabled()
+    await user.click(onlyMe)
+    await user.click(within(dialog).getByRole('button', { name: /John Doe/ }))
+    expect(onChange).not.toHaveBeenCalled()
+    expect(onMemberSelect).toHaveBeenCalledWith(['user-1', 'user-2'])
+  })
+
   it('exposes validation state and its accessible description on the trigger', () => {
     renderSelector({ ariaDescribedBy: 'permission-error', invalid: true })
 
     const trigger = screen.getByRole('button', { name: /permissionsOnlyMe/ })
     expect(trigger).toHaveAttribute('aria-invalid', 'true')
     expect(trigger).toHaveAttribute('aria-describedby', 'permission-error')
+  })
+
+  it('announces the external field label together with the current permission or member names', () => {
+    render(
+      <>
+        <span id="permission-label">Knowledge permission</span>
+        <span id="permission-help">Choose who can read this knowledge.</span>
+      </>,
+    )
+    const props = {
+      ...defaultProps,
+      ariaLabelledBy: 'permission-label',
+      ariaDescribedBy: 'permission-help',
+    }
+    const { rerender } = renderSelector(props)
+    const trigger = screen.getByRole('button', { name: /^Knowledge permission / })
+    expect(trigger).toHaveAccessibleName(
+      'Knowledge permission datasetSettings.form.permissionsOnlyMe',
+    )
+    expect(trigger).toHaveAccessibleDescription('Choose who can read this knowledge.')
+
+    rerender(<PermissionSelector {...props} permission={DatasetPermission.allTeamMembers} />)
+    expect(trigger).toHaveAccessibleName(
+      'Knowledge permission datasetSettings.form.permissionsAllMember',
+    )
+
+    rerender(
+      <PermissionSelector
+        {...props}
+        permission={DatasetPermission.partialMembers}
+        value={['user-1', 'user-2']}
+      />,
+    )
+    expect(trigger).toHaveAccessibleName('Knowledge permission Current User, John Doe')
+    expect(trigger).toHaveAccessibleDescription('Choose who can read this knowledge.')
   })
 
   it.each([

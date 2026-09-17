@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Protocol
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
-from models import TenantAccountJoin
 from models.knowledge_fs import (
     KnowledgeFSAuthorizationRevision,
     KnowledgeFSControlSpace,
@@ -33,30 +31,20 @@ from services.knowledge_fs.revocation_commands import (
     KnowledgeFSRevocationCommandPort,
     KnowledgeFSRevocationCommandProducer,
 )
+from services.knowledge_fs.workspace_members import (
+    KnowledgeFSControlPlaneInvariantError,
+    KnowledgeFSWorkspaceMemberPort,
+    SQLKnowledgeFSWorkspaceMemberPort,
+    validate_member_account_ids,
+)
 
-
-class KnowledgeFSControlPlaneInvariantError(RuntimeError):
-    """Required authorization revision state is absent or inconsistent."""
-
-
-class KnowledgeFSWorkspaceMemberPort(Protocol):
-    def are_active_members(self, *, session: Session, tenant_id: str, account_ids: Sequence[str]) -> bool: ...
-
-
-class SQLKnowledgeFSWorkspaceMemberPort:
-    def are_active_members(self, *, session: Session, tenant_id: str, account_ids: Sequence[str]) -> bool:
-        unique_ids = frozenset(account_ids)
-        if not unique_ids:
-            return True
-        found = frozenset(
-            session.scalars(
-                sa.select(TenantAccountJoin.account_id).where(
-                    TenantAccountJoin.tenant_id == tenant_id,
-                    TenantAccountJoin.account_id.in_(unique_ids),
-                )
-            )
-        )
-        return found == unique_ids
+# Preserve the established import paths for callers of the control-plane service.
+__all__ = [
+    "KnowledgeFSControlPlaneInvariantError",
+    "KnowledgeFSControlPlaneService",
+    "KnowledgeFSWorkspaceMemberPort",
+    "SQLKnowledgeFSWorkspaceMemberPort",
+]
 
 
 class KnowledgeFSControlPlaneService:
@@ -126,8 +114,10 @@ class KnowledgeFSControlPlaneService:
             permission=KnowledgeFSProductPermission.ACCESS_CONFIG,
         )
         desired = {member.account_id: member.role for member in members}
-        if len(desired) != len(members) or authorized.control_space.owner_account_id in desired:
-            raise KnowledgeFSControlPlaneInvariantError("Member bindings must be unique and exclude the owner")
+        validate_member_account_ids(
+            owner_account_id=authorized.control_space.owner_account_id,
+            account_ids=tuple(member.account_id for member in members),
+        )
         with self._session_maker.begin() as session:
             control_space = session.scalar(
                 sa.select(KnowledgeFSControlSpace)

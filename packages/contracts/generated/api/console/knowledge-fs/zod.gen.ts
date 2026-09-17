@@ -695,6 +695,14 @@ export const zKnowledgeFsModelIntent = z.object({
 })
 
 /**
+ * KnowledgeFSSpaceCreateMemberPayload
+ */
+export const zKnowledgeFsSpaceCreateMemberPayload = z.object({
+  account_id: z.string().min(1).max(255),
+  role: z.literal('viewer'),
+})
+
+/**
  * KnowledgeFSControlSpaceVisibility
  */
 export const zKnowledgeFsControlSpaceVisibility = z.enum([
@@ -2576,6 +2584,7 @@ export const zKnowledgeFsSpaceCreatePayload = z.object({
       zKnowledgeFsInitialOnlineDriveSourcePayload.extend({ kind: z.literal('online_drive') }),
     ])
     .nullish(),
+  members: z.array(zKnowledgeFsSpaceCreateMemberPayload).max(1000).optional(),
   name: z.string().min(1).max(40),
   retrieval: zKnowledgeFsRetrievalProfileIntent.nullish(),
   slug: z

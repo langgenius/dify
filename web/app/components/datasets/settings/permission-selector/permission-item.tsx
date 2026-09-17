@@ -33,7 +33,16 @@ const PermissionItem = ({
 
   if (closeOnSelect) {
     return (
-      <PopoverClose render={<RadioItem<DatasetPermission> value={value} />} className={className}>
+      <PopoverClose
+        render={
+          <RadioItem<DatasetPermission>
+            value={value}
+            nativeButton
+            render={<button type="button" />}
+          />
+        }
+        className={className}
+      >
         {content}
       </PopoverClose>
     )

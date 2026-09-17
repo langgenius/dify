@@ -86,6 +86,14 @@ class KnowledgeFSProductApplicationService:
             permission=KnowledgeFSProductPermission.CREATE,
         ):
             raise PermissionError("KnowledgeFS space creation is not allowed")
+        if payload.visibility is not KnowledgeFSControlSpaceVisibility.ONLY_ME and not (
+            self._rbac.workspace_permission_allowed(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                permission=KnowledgeFSProductPermission.ACCESS_CONFIG,
+            )
+        ):
+            raise PermissionError("KnowledgeFS initial access configuration is not allowed")
         idempotency_key = payload.idempotency_key or str(uuid.uuid4())
         operation_id = str(
             uuid.uuid5(uuid.NAMESPACE_URL, f"dify-kfs-provision:{tenant_id}:{account_id}:{idempotency_key}")
@@ -105,15 +113,10 @@ class KnowledgeFSProductApplicationService:
                 profile_intent=(
                     _retrieval_profile_intent(payload.retrieval) if payload.retrieval is not None else None
                 ),
+                visibility=payload.visibility,
+                member_account_ids=tuple(member.account_id for member in payload.members),
             )
         )
-        if payload.visibility is not KnowledgeFSControlSpaceVisibility.ONLY_ME:
-            self._control_plane.update_visibility(
-                tenant_id=tenant_id,
-                actor_account_id=account_id,
-                control_space_id=result.control_space.id,
-                visibility=payload.visibility,
-            )
         if payload.initial_source is not None:
             from tasks.knowledge_fs_initial_source_tasks import import_initial_source
 

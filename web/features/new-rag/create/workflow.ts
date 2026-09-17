@@ -11,16 +11,14 @@ import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from '../
 export const NAME_MAX_LENGTH = KNOWLEDGE_NAME_MAX_LENGTH
 export const DESCRIPTION_MAX_LENGTH = KNOWLEDGE_DESCRIPTION_MAX_LENGTH
 
-export type KnowledgeVisibility = Extract<
-  KnowledgeFsControlSpaceVisibility,
-  'all_team_members' | 'only_me'
->
+export type KnowledgeVisibility = KnowledgeFsControlSpaceVisibility
 
 type CreateKnowledgeValues = {
   existingKnowledge?: KnowledgeFsSpaceCreateResponse
   description: string
   idempotencyKey: string
   initialSource?: NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
+  members?: KnowledgeFsSpaceCreatePayload['members']
   name: string
   onCreated: (knowledgeSpace: KnowledgeFsSpaceCreateResponse) => void
   visibility: KnowledgeVisibility
@@ -200,6 +198,7 @@ export async function createKnowledge(
           description: values.description || undefined,
           idempotency_key: values.idempotencyKey,
           initial_source: values.initialSource,
+          ...(values.visibility === 'partial_members' ? { members: values.members } : {}),
           ...modelConfiguration,
           name: values.name,
           slug: knowledgeSlug(values.name, values.idempotencyKey),

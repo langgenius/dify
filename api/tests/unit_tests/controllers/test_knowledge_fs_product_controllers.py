@@ -20,12 +20,14 @@ from controllers.console import console_ns
 from controllers.console import wraps as console_wraps
 from controllers.console.knowledge_fs import resources as console_resources
 from controllers.console.knowledge_fs.error import (
+    KnowledgeFSConflictHTTPError,
     KnowledgeFSRequestTooLargeHTTPError,
     KnowledgeFSResourceNotFoundHTTPError,
 )
 from controllers.console.wraps import RBACPermission
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
+from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceIntentConflictError
 from services.knowledge_fs.download_service import KnowledgeFSDownloadUnavailableError
 from services.knowledge_fs.object_storage import KnowledgeFSObjectMetadata
 from services.knowledge_fs.product_dto import (
@@ -1715,3 +1717,24 @@ def test_service_api_errors_distinguish_unknown_key_from_out_of_scope_key(
 
     with pytest.raises(expected):
         view()
+
+
+def test_space_create_member_schema_requires_viewer_role() -> None:
+    payload_schema = console_ns.models["KnowledgeFSSpaceCreatePayload"].__schema__
+    member_schema = console_ns.models["KnowledgeFSSpaceCreateMemberPayload"].__schema__
+
+    assert payload_schema["properties"]["members"]["maxItems"] == 1_000
+    assert member_schema["properties"]["role"]["const"] == "viewer"
+    assert set(member_schema["required"]) == {"account_id", "role"}
+    assert member_schema["additionalProperties"] is False
+
+
+def test_space_create_initial_access_idempotency_conflict_returns_409() -> None:
+    @console_resources._knowledge_fs_errors
+    def conflicting_creation() -> None:
+        raise KnowledgeFSControlSpaceIntentConflictError("different initial access")
+
+    with pytest.raises(KnowledgeFSConflictHTTPError) as exc:
+        conflicting_creation()
+
+    assert exc.value.code == 409

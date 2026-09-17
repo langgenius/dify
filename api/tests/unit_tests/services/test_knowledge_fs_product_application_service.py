@@ -11,13 +11,14 @@ from services.knowledge_fs.control_plane_service import KnowledgeFSControlPlaneS
 from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_application_service import KnowledgeFSProductApplicationService
-from services.knowledge_fs.product_authorization import KnowledgeFSProductRBACPort
+from services.knowledge_fs.product_authorization import DifyKnowledgeFSProductRBACPort, KnowledgeFSProductRBACPort
 from services.knowledge_fs.product_dto import KnowledgeFSSpaceCreatePayload, KnowledgeFSSpaceUpdatePayload
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRequestRejectedError,
 )
 from services.knowledge_fs.product_service import KnowledgeFSProductService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class RejectingProduct:
@@ -177,7 +178,7 @@ def test_product_application_create_enforces_workspace_rbac_before_command() -> 
     commands.create_provision_intent.assert_not_called()
 
 
-def test_product_application_create_preserves_model_profile_and_updates_non_private_visibility() -> None:
+def test_product_application_create_preserves_model_profile_and_visibility_in_one_intent() -> None:
     application, product, control_plane, commands, _facade, _rbac = _application()
     payload = _create_payload(
         idempotency_key="create-once",
@@ -206,12 +207,65 @@ def test_product_application_create_preserves_model_profile_and_updates_non_priv
         "stage": "mode-final",
         "value": 0.5,
     }
-    control_plane.update_visibility.assert_called_once_with(
-        tenant_id="tenant-1",
-        actor_account_id="account-1",
-        control_space_id="control-1",
-        visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+    assert intent.visibility is KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS
+    assert intent.member_account_ids == ()
+    control_plane.update_visibility.assert_not_called()
+    control_plane.replace_members.assert_not_called()
+
+
+def test_product_application_create_passes_initial_viewers_in_the_atomic_intent() -> None:
+    application, _product, control_plane, commands, _facade, rbac = _application()
+    payload = _create_payload(
+        visibility="partial_members",
+        members=[{"account_id": "member-1", "role": "viewer"}],
     )
+
+    application.create_space(tenant_id="tenant-1", account_id="account-1", payload=payload)
+
+    intent = commands.create_provision_intent.call_args.args[0]
+    assert intent.visibility is KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS
+    assert intent.member_account_ids == ("member-1",)
+    assert [item.kwargs["permission"].value for item in rbac.workspace_permission_allowed.call_args_list] == [
+        "knowledge_space_create",
+        "knowledge_space_access_config",
+    ]
+    control_plane.update_visibility.assert_not_called()
+    control_plane.replace_members.assert_not_called()
+
+
+@pytest.mark.parametrize("visibility", ["all_team_members", "partial_members"])
+def test_product_application_create_cannot_share_without_access_configuration_permission(visibility: str) -> None:
+    application, _product, _control_plane, commands, _facade, rbac = _application()
+    rbac.workspace_permission_allowed.side_effect = [True, False]
+    payload = _create_payload(
+        visibility=visibility,
+        members=[{"account_id": "member-1", "role": "viewer"}] if visibility == "partial_members" else [],
+    )
+
+    with pytest.raises(PermissionError, match="initial access configuration"):
+        application.create_space(tenant_id="tenant-1", account_id="account-1", payload=payload)
+
+    commands.create_provision_intent.assert_not_called()
+
+
+@pytest.mark.parametrize("visibility", ["all_team_members", "partial_members"])
+def test_product_application_create_shared_space_without_enterprise_rbac(
+    visibility: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+    application, _product, _control_plane, commands, _facade, rbac = _application()
+    rbac.workspace_permission_allowed.side_effect = DifyKnowledgeFSProductRBACPort().workspace_permission_allowed
+    payload = _create_payload(
+        visibility=visibility,
+        members=[{"account_id": "member-1", "role": "viewer"}] if visibility == "partial_members" else [],
+    )
+
+    with patch("services.knowledge_fs.product_authorization.RBACService.CheckAccess.check") as check_access:
+        response = application.create_space(tenant_id="tenant-1", account_id="account-1", payload=payload)
+
+    assert response.control_space_id == "control-1"
+    commands.create_provision_intent.assert_called_once()
+    check_access.assert_not_called()
 
 
 def test_product_application_create_allows_model_setup_after_creation() -> None:

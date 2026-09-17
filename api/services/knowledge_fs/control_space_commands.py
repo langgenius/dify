@@ -18,6 +18,7 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpacePermission,
     KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpaceState,
+    KnowledgeFSControlSpaceVisibility,
     KnowledgeFSDeleteCommandPayload,
     KnowledgeFSExternalAccessPolicy,
     KnowledgeFSLifecycleOperation,
@@ -41,6 +42,12 @@ from services.knowledge_fs.control_space_lifecycle import (
     KnowledgeFSControlSpaceVersionConflictError,
     KnowledgeFSWorkspaceDeletionBlockedError,
 )
+from services.knowledge_fs.workspace_members import (
+    KnowledgeFSControlPlaneInvariantError,
+    KnowledgeFSWorkspaceMemberPort,
+    SQLKnowledgeFSWorkspaceMemberPort,
+    validate_member_account_ids,
+)
 
 
 class KnowledgeFSProvisionIntent(NamedTuple):
@@ -55,6 +62,8 @@ class KnowledgeFSProvisionIntent(NamedTuple):
     description: str | None
     model_intent: KnowledgeFSModelSelectionIntentPayload | None
     profile_intent: KnowledgeFSRetrievalProfileIntentPayload | None
+    visibility: KnowledgeFSControlSpaceVisibility = KnowledgeFSControlSpaceVisibility.ONLY_ME
+    member_account_ids: tuple[str, ...] = ()
 
 
 class KnowledgeFSProvisionIntentResult(NamedTuple):
@@ -83,10 +92,20 @@ def _provision_payload_requires_model_setup(payload: KnowledgeFSProvisionCommand
 class KnowledgeFSControlSpaceCommandService:
     """Write control state and its outbox command in one database transaction."""
 
-    def __init__(self, session_maker: sessionmaker[Session]):
+    def __init__(
+        self,
+        session_maker: sessionmaker[Session],
+        *,
+        members: KnowledgeFSWorkspaceMemberPort | None = None,
+    ):
         self._session_maker = session_maker
+        self._members = members or SQLKnowledgeFSWorkspaceMemberPort()
 
     def create_provision_intent(self, intent: KnowledgeFSProvisionIntent) -> KnowledgeFSProvisionIntentResult:
+        validate_member_account_ids(owner_account_id=intent.owner_account_id, account_ids=intent.member_account_ids)
+        if bool(intent.member_account_ids) != (intent.visibility is KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS):
+            raise KnowledgeFSControlPlaneInvariantError("Initial members must match partial member visibility")
+        member_account_ids = sorted(intent.member_account_ids)
         with self._session_maker.begin() as session:
             control_repository = SQLAlchemyKnowledgeFSControlSpaceRepository(session)
             outbox_repository = SQLAlchemyKnowledgeFSLifecycleOutboxRepository(session)
@@ -106,6 +125,17 @@ class KnowledgeFSControlSpaceCommandService:
                     raise KnowledgeFSControlSpaceIntentConflictError(
                         "KnowledgeFS provisioning key was reused for a different intent"
                     )
+                saved_visibility = command.command_payload.get("initial_visibility")
+                saved_members = command.command_payload.get("initial_member_account_ids", [])
+                # Old commands had no initial access snapshot. Preserve their empty-member
+                # replay contract, without changing current visibility or regranting access.
+                if (saved_visibility is None and member_account_ids) or (
+                    saved_visibility is not None
+                    and (saved_visibility != intent.visibility.value or saved_members != member_account_ids)
+                ):
+                    raise KnowledgeFSControlSpaceIntentConflictError(
+                        "KnowledgeFS provisioning key was reused for different initial access"
+                    )
                 return KnowledgeFSProvisionIntentResult(
                     existing,
                     command,
@@ -114,12 +144,17 @@ class KnowledgeFSControlSpaceCommandService:
                     ),
                 )
 
+            if not self._members.are_active_members(
+                session=session, tenant_id=intent.tenant_id, account_ids=member_account_ids
+            ):
+                raise KnowledgeFSControlPlaneInvariantError("Every KnowledgeFS member must belong to the workspace")
             control_space = control_repository.add(
                 KnowledgeFSControlSpace(
                     tenant_id=intent.tenant_id,
                     owner_account_id=intent.owner_account_id,
                     provisioning_key=intent.provisioning_key,
                     lifecycle_operation_id=intent.operation_id,
+                    visibility=intent.visibility,
                 )
             )
             session.add(
@@ -148,6 +183,16 @@ class KnowledgeFSControlSpaceCommandService:
                     updated_by_account_id=intent.owner_account_id,
                 )
             )
+            for account_id in member_account_ids:
+                session.add(
+                    KnowledgeFSControlSpacePermission(
+                        tenant_id=intent.tenant_id,
+                        control_space_id=control_space.id,
+                        account_id=account_id,
+                        role=KnowledgeFSControlSpacePermissionRole.VIEWER,
+                        granted_by_account_id=intent.owner_account_id,
+                    )
+                )
             payload = KnowledgeFSProvisionCommandPayload(
                 schema_version=1,
                 idempotency_key=intent.idempotency_key,
@@ -157,6 +202,8 @@ class KnowledgeFSControlSpaceCommandService:
                 icon=intent.icon,
                 description=intent.description,
                 slug=intent.slug,
+                initial_visibility=intent.visibility.value,
+                initial_member_account_ids=member_account_ids,
             )
             if intent.model_intent is not None:
                 payload["model_intent"] = KnowledgeFSModelSelectionIntentPayload(**intent.model_intent)

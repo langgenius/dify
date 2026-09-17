@@ -66,6 +66,7 @@ from services.knowledge_fs.buffered_upload_admission import DEFAULT_KNOWLEDGE_FS
 from services.knowledge_fs.control_plane_service import (
     KnowledgeFSControlPlaneInvariantError,
 )
+from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceIntentConflictError
 from services.knowledge_fs.download_service import (
     KnowledgeFSDownloadObjectNotFoundError,
     KnowledgeFSDownloadService,
@@ -460,6 +461,8 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise KnowledgeFSSpaceNotFoundHTTPError() from exc
         except KnowledgeFSOperationUnavailableError as exc:
             raise KnowledgeFSOperationUnavailableHTTPError() from exc
+        except KnowledgeFSControlSpaceIntentConflictError as exc:
+            raise KnowledgeFSConflictHTTPError() from exc
         except KnowledgeFSInitialSourcePreviewJobAlreadyRunningError as exc:
             raise Conflict() from exc
         except KnowledgeFSProductResourceNotFoundError as exc:

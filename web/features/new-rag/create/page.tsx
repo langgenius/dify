@@ -23,15 +23,6 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectLabel,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -60,6 +51,7 @@ import {
 } from '../upload/knowledge-fs-upload'
 import { useKnowledgeFileSizeLimit } from '../upload/use-file-size-limit'
 import { KnowledgeIllustration, StartMode } from './components/dialog-parts'
+import { KnowledgeCreationPermissions } from './permissions'
 import { CreateSourceSetup } from './source-setup'
 import { createSourceSelectionAtom, useCreateInitialSource } from './source-state'
 import { CreateUploadQueue } from './upload-queue'
@@ -98,7 +90,6 @@ function CreateKnowledgeSession() {
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const dialogTitleId = useId()
-  const permissionDescriptionId = useId()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
   const isRbacEnabled = useAtomValue(rbacEnabledAtom)
@@ -109,6 +100,7 @@ function CreateKnowledgeSession() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<KnowledgeVisibility>(defaultVisibility)
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
   const requestedStartMode = normalizeStartMode(searchParams.get('start'))
   const initialStartMode =
     requestedStartMode === 'upload' && !uploadAvailable ? 'empty' : requestedStartMode
@@ -146,6 +138,7 @@ function CreateKnowledgeSession() {
       !validUploads.length ||
       validUploads.some((upload) => upload.stagingFailed || !upload.stagedUploadId))
   const sourceSubmissionBlocked = startMode === 'source' && !initialSource
+  const membersInvalid = visibility === 'partial_members' && selectedMemberIds.length === 0
   const shouldPreservePreviewOnUnmount = useCallback(() => preservePreviewOnUnmountRef.current, [])
 
   const resetUnsubmittedError = () => {
@@ -223,7 +216,8 @@ function CreateKnowledgeSession() {
   }
 
   const handleSubmit = async () => {
-    if (submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked) return
+    if (submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked || membersInvalid)
+      return
 
     if (!normalizedName || nameLengthInvalid || descriptionLengthInvalid) return
 
@@ -238,6 +232,7 @@ function CreateKnowledgeSession() {
         idempotencyKey: idempotencyKeyRef.current,
         initialSource: startMode === 'source' ? initialSource : undefined,
         name: normalizedName,
+        members: selectedMemberIds.map((accountId) => ({ account_id: accountId, role: 'viewer' })),
         onCreated: (knowledgeSpace) => {
           setCreatedKnowledge(knowledgeSpace)
           void queryClient.invalidateQueries({
@@ -405,45 +400,20 @@ function CreateKnowledgeSession() {
                       })}
                     </FieldError>
                   </Field>
-                  <div className="flex flex-col gap-1.5">
-                    <Select
-                      name="permission"
-                      value={visibility}
-                      disabled={submissionLocked || !canConfigureAccess}
-                      onValueChange={(value) => {
-                        if (value) setVisibility(value)
-                      }}
-                    >
-                      <SelectLabel>{t(($) => $.permission)}</SelectLabel>
-                      <SelectTrigger
-                        aria-describedby={!canConfigureAccess ? permissionDescriptionId : undefined}
-                      >
-                        {t(($) =>
-                          visibility === 'all_team_members'
-                            ? $.permissionAllMembers
-                            : $.permissionOnlyMe,
-                        )}
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="only_me">
-                          <SelectItemText>{t(($) => $.permissionOnlyMe)}</SelectItemText>
-                          <SelectItemIndicator />
-                        </SelectItem>
-                        <SelectItem value="all_team_members">
-                          <SelectItemText>{t(($) => $.permissionAllMembers)}</SelectItemText>
-                          <SelectItemIndicator />
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {!canConfigureAccess && (
-                      <p
-                        id={permissionDescriptionId}
-                        className="py-0.5 body-xs-regular text-text-tertiary"
-                      >
-                        {t(($) => $.permissionRestricted)}
-                      </p>
-                    )}
-                  </div>
+                  <KnowledgeCreationPermissions
+                    canConfigureAccess={canConfigureAccess}
+                    disabled={submissionLocked}
+                    selectedMemberIds={selectedMemberIds}
+                    visibility={visibility}
+                    onSelectedMemberIdsChange={(memberIds) => {
+                      setSelectedMemberIds(memberIds)
+                      resetUnsubmittedError()
+                    }}
+                    onVisibilityChange={(value) => {
+                      setVisibility(value)
+                      resetUnsubmittedError()
+                    }}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-3">
@@ -550,7 +520,7 @@ function CreateKnowledgeSession() {
                     type="submit"
                     variant="primary"
                     loading={submissionPending}
-                    disabled={uploadSubmissionBlocked || sourceSubmissionBlocked}
+                    disabled={uploadSubmissionBlocked || sourceSubmissionBlocked || membersInvalid}
                   >
                     {t(($) => $.createTitle)}
                   </Button>

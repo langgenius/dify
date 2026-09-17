@@ -87,6 +87,7 @@ export type KnowledgeFsSpaceCreatePayload = {
         kind: 'online_drive'
       } & KnowledgeFsInitialOnlineDriveSourcePayload)
     | null
+  members?: Array<KnowledgeFsSpaceCreateMemberPayload>
   name: string
   retrieval?: KnowledgeFsRetrievalProfileIntent | null
   slug: string
@@ -1416,6 +1417,11 @@ export type KnowledgeFsInitialOnlineDriveSourcePayload = {
   providerDisplayName?: string | null
   selection: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
   sync_policy?: 'custom' | 'daily' | 'manual'
+}
+
+export type KnowledgeFsSpaceCreateMemberPayload = {
+  account_id: string
+  role: 'viewer'
 }
 
 export type KnowledgeFsRetrievalProfileIntent = {

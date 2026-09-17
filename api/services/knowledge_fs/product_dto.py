@@ -410,12 +410,20 @@ KnowledgeFSInitialSourcePayload = Annotated[
 ]
 
 
+class KnowledgeFSSpaceCreateMemberPayload(BaseModel):
+    account_id: str = Field(min_length=1, max_length=255)
+    role: Literal["viewer"]
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class KnowledgeFSSpaceCreatePayload(BaseModel):
     name: str = Field(min_length=1, max_length=40)
     slug: str = Field(min_length=1, max_length=160, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     icon: KnowledgeFSIconIdentity | None = None
     description: str | None = Field(default=None, max_length=2_000)
     visibility: KnowledgeFSControlSpaceVisibility = KnowledgeFSControlSpaceVisibility.ONLY_ME
+    members: list[KnowledgeFSSpaceCreateMemberPayload] = Field(default_factory=list, max_length=1_000)
     embedding: KnowledgeFSModelIntent | None = None
     retrieval: KnowledgeFSRetrievalProfileIntent | None = None
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
@@ -427,6 +435,13 @@ class KnowledgeFSSpaceCreatePayload(BaseModel):
     def validate_initial_model_configuration(self) -> KnowledgeFSSpaceCreatePayload:
         if self.retrieval is not None and self.embedding is None:
             raise ValueError("Agent Knowledge Base retrieval requires an embedding model")
+        if self.visibility is KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS:
+            if not self.members:
+                raise ValueError("Partial member visibility requires at least one member")
+        elif self.members:
+            raise ValueError("Initial members require partial member visibility")
+        if len({member.account_id for member in self.members}) != len(self.members):
+            raise ValueError("Initial members must be unique")
         return self
 
 

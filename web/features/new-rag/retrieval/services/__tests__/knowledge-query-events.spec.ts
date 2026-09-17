@@ -27,6 +27,7 @@ describe('streamKnowledgeQuery', () => {
         query: 'What is the policy?',
       },
       token: `header.${btoa(JSON.stringify({ trace_id: 'capability-trace-1' }))}.signature`,
+      trace_id: 'capability-trace-1',
       url: 'https://query.example.test/stream',
     }
 

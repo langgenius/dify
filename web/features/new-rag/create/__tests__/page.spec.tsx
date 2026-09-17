@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { CreateKnowledgePage } from '../page'
 
 const serviceMock = vi.hoisted(() => ({
@@ -20,6 +21,7 @@ const serviceMock = vi.hoisted(() => ({
   getSyncPolicy: vi.fn(),
   getWorkflow: vi.fn(),
   listConnections: vi.fn(),
+  listMembers: vi.fn(),
   listProviders: vi.fn(),
   listWorkflowPages: vi.fn(),
   selectWorkflowPages: vi.fn(),
@@ -73,6 +75,31 @@ const systemFeaturesStateMock = vi.hoisted(() => ({
   uploadEnabled: true,
   rbacEnabled: true,
 }))
+
+const permissionQueryKeys = {
+  accountProfile: ['account-profile'],
+  members: ['workspace-members'],
+  systemFeatures: ['system-features'],
+}
+
+const workspaceMembers = [
+  {
+    id: 'account-1',
+    name: 'Owner',
+    email: 'owner@example.com',
+    avatar_url: null,
+    role: 'owner',
+    status: 'active',
+  },
+  {
+    id: 'account-2',
+    name: 'Alice',
+    email: 'alice@example.com',
+    avatar_url: null,
+    role: 'normal',
+    status: 'active',
+  },
+]
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -185,6 +212,33 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    account: {
+      profile: { get: { queryKey: () => permissionQueryKeys.accountProfile } },
+    },
+    systemFeatures: {
+      get: {
+        queryOptions: () => ({
+          queryKey: permissionQueryKeys.systemFeatures,
+          queryFn: () => Promise.resolve(createSystemFeaturesFixture()),
+          staleTime: Infinity,
+        }),
+      },
+    },
+    workspaces: {
+      current: {
+        members: {
+          get: {
+            queryOptions: ({ enabled }: { enabled: boolean }) => ({
+              enabled,
+              queryKey: permissionQueryKeys.members,
+              queryFn: serviceMock.listMembers,
+              retry: false,
+              staleTime: Infinity,
+            }),
+          },
+        },
+      },
+    },
     knowledgeFs: {
       spaces: {
         get: {
@@ -589,7 +643,21 @@ vi.mock('../../upload/knowledge-fs-upload', () => ({
 
 function renderPage(
   queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } }),
+  { preloadMembers = true } = {},
 ) {
+  queryClient.setQueryDefaults(permissionQueryKeys.accountProfile, { staleTime: Infinity })
+  queryClient.setQueryData(permissionQueryKeys.accountProfile, {
+    meta: { currentEnv: null, currentVersion: null },
+    profile: {
+      ...workspaceMembers[0],
+      avatar: '',
+      is_password_set: false,
+      timezone: 'Asia/Shanghai',
+    },
+  })
+  queryClient.setQueryData(permissionQueryKeys.systemFeatures, createSystemFeaturesFixture())
+  if (preloadMembers)
+    queryClient.setQueryData(permissionQueryKeys.members, { accounts: workspaceMembers })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -608,8 +676,8 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
 }
 
 async function choosePermission(user: ReturnType<typeof userEvent.setup>, optionName: string) {
-  await user.click(screen.getByRole('combobox', { name: 'knowledgeSpace.permission' }))
-  await user.click(await screen.findByRole('option', { name: optionName }))
+  await user.click(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ }))
+  await user.click(await screen.findByRole('radio', { name: (name) => name.endsWith(optionName) }))
 }
 
 describe('CreateKnowledgePage', () => {
@@ -623,6 +691,7 @@ describe('CreateKnowledgePage', () => {
     datasourceQueryMock.auth.error = null
     datasourceQueryMock.auth.isPending = false
     serviceMock.create.mockResolvedValue(createdKnowledge)
+    serviceMock.listMembers.mockResolvedValue({ accounts: workspaceMembers })
     serviceMock.startWebsitePreview.mockResolvedValue({ job_id: 'website-preview-1' })
     serviceMock.getWebsitePreview.mockResolvedValue({
       job_id: 'website-preview-1',
@@ -836,7 +905,7 @@ describe('CreateKnowledgePage', () => {
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     renderPage(queryClient)
     await fillRequiredFields(user)
-    await choosePermission(user, 'knowledgeSpace.permissionOnlyMe')
+    await choosePermission(user, 'datasetSettings.form.permissionsOnlyMe')
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
@@ -886,8 +955,8 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     renderPage()
     await fillRequiredFields(user)
-    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.permission' })).toHaveTextContent(
-      'knowledgeSpace.permissionAllMembers',
+    expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toHaveTextContent(
+      'datasetSettings.form.permissionsAllMember',
     )
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
@@ -899,6 +968,68 @@ describe('CreateKnowledgePage', () => {
     })
   })
 
+  it('requires another member and creates partial access in the same request, retaining it on retry', async () => {
+    const user = userEvent.setup()
+    serviceMock.create.mockRejectedValueOnce({ status: 503 })
+    renderPage()
+    await fillRequiredFields(user)
+    await choosePermission(user, 'datasetSettings.form.permissionsInvitedMembers')
+
+    expect(screen.getByText('knowledgeSpace.settings.membersRequired')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: /Alice alice@example.com/ }))
+    expect(screen.getByRole('button', { name: /Alice alice@example.com/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.queryByText('knowledgeSpace.settings.membersRequired')).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
+    expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toBeDisabled()
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        visibility: 'partial_members',
+        members: [{ account_id: 'account-2', role: 'viewer' }],
+      }),
+    })
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
+    expect(serviceMock.create.mock.calls[1]?.[0]).toEqual(serviceMock.create.mock.calls[0]?.[0])
+    expect(routerMock.replace).toHaveBeenCalled()
+  })
+
+  it('does not grant selected members when switching back to private access', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await fillRequiredFields(user)
+    await choosePermission(user, 'datasetSettings.form.permissionsInvitedMembers')
+    await user.click(screen.getByRole('button', { name: /Alice alice@example.com/ }))
+    await user.click(
+      screen.getByRole('radio', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create.mock.calls[0]?.[0].body.visibility).toBe('only_me')
+    expect(serviceMock.create.mock.calls[0]?.[0].body).not.toHaveProperty('members')
+  })
+
+  it('can retry loading members before selecting partial access', async () => {
+    const user = userEvent.setup()
+    serviceMock.listMembers.mockRejectedValueOnce(new Error('members unavailable'))
+    renderPage(undefined, { preloadMembers: false })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    await choosePermission(user, 'datasetSettings.form.permissionsInvitedMembers')
+    expect(screen.getByRole('button', { name: /Alice alice@example.com/ })).toBeInTheDocument()
+  })
+
   it('keeps the legacy private default editable when RBAC is disabled', async () => {
     const user = userEvent.setup()
     permissionStateMock.keys = []
@@ -906,14 +1037,14 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    const permission = screen.getByRole('combobox', {
-      name: 'knowledgeSpace.permission',
+    const permission = screen.getByRole('button', {
+      name: /^knowledgeSpace\.permission/,
     })
     expect(permission).toBeEnabled()
-    expect(permission).toHaveTextContent('knowledgeSpace.permissionOnlyMe')
+    expect(permission).toHaveTextContent('datasetSettings.form.permissionsOnlyMe')
     expect(screen.queryByText('knowledgeSpace.permissionRestricted')).not.toBeInTheDocument()
 
-    await choosePermission(user, 'knowledgeSpace.permissionAllMembers')
+    await choosePermission(user, 'datasetSettings.form.permissionsAllMember')
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
@@ -928,11 +1059,11 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
 
-    const permission = screen.getByRole('combobox', {
-      name: 'knowledgeSpace.permission',
+    const permission = screen.getByRole('button', {
+      name: /^knowledgeSpace\.permission/,
     })
     expect(permission).toBeDisabled()
-    expect(permission).toHaveTextContent('knowledgeSpace.permissionOnlyMe')
+    expect(permission).toHaveTextContent('datasetSettings.form.permissionsOnlyMe')
     expect(permission).toHaveAccessibleDescription('knowledgeSpace.permissionRestricted')
     expect(screen.getByText('knowledgeSpace.permissionRestricted')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
@@ -1117,7 +1248,7 @@ describe('CreateKnowledgePage', () => {
       await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
       expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeSpace.createFailed')
       expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toBeDisabled()
-      expect(screen.getByRole('combobox', { name: 'knowledgeSpace.permission' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toBeDisabled()
       await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
       await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
@@ -1157,7 +1288,7 @@ describe('CreateKnowledgePage', () => {
     })
     const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
     expect(nameInput).toBeDisabled()
-    expect(screen.getByRole('combobox', { name: 'knowledgeSpace.permission' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toBeDisabled()
     await user.type(nameInput, ' changed')
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
@@ -1327,7 +1458,7 @@ describe('CreateKnowledgePage', () => {
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
     await fillRequiredFields(user)
-    await choosePermission(user, 'knowledgeSpace.permissionOnlyMe')
+    await choosePermission(user, 'datasetSettings.form.permissionsOnlyMe')
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
 
     await waitFor(() =>

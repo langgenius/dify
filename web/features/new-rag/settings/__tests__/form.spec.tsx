@@ -2039,7 +2039,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       within(picker).getByRole('radio', {
         name: /datasetSettings\.form\.permissionsOnlyMe/,
       }),
-    ).toHaveAttribute('aria-disabled', 'true')
+    ).toBeDisabled()
     await user.click(within(picker).getByRole('button', { name: /Team Member/ }))
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }))
 
