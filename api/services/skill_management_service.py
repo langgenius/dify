@@ -3819,7 +3819,8 @@ class SkillManagementService:
             return {path: path for path in paths}
         root = next(iter(skill_md_roots))
         prefix = f"{root}/"
-        return {path: path.removeprefix(prefix) for path in paths if path == root or path.startswith(prefix)}
+        # The explicit wrapper directory represents the new root, not a draft item.
+        return {path: path.removeprefix(prefix) for path in paths if path.startswith(prefix)}
 
     def _draft_payload_from_zip(
         self,
