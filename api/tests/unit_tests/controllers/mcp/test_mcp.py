@@ -517,6 +517,72 @@ class TestMCPAppApi:
             post_fn("server-1")
         assert "Invalid user_input_form" in str(exc_info.value)
 
+    @patch.object(module, "application_services")
+    def test_get_user_input_form_agent_mode_uses_public_parameters(self, mock_application_services):
+        """Agent Soul variables come from published public parameters, not app_model_config."""
+        app_definitions = MagicMock()
+        app_definitions.get_public_parameters.return_value = {
+            "user_input_form": [
+                {
+                    "text-input": {
+                        "variable": "branch_id",
+                        "label": "Branch ID",
+                        "required": True,
+                    }
+                }
+            ]
+        }
+        mock_application_services.return_value = types.SimpleNamespace(app_definitions=app_definitions)
+
+        app = _app(module.AppMode.AGENT)
+        api = module.MCPAppApi()
+        result = api._get_user_input_form(app)
+
+        assert len(result) == 1
+        assert result[0].variable == "branch_id"
+        assert result[0].required is True
+        app_definitions.get_public_parameters.assert_called_once_with(_APP_ID)
+
+    @patch.object(module, "application_services")
+    def test_get_user_input_form_agent_mode_unpublished(self, mock_application_services):
+        """Unpublished Agent Apps surface as App is unavailable."""
+        app_definitions = MagicMock()
+        app_definitions.get_public_parameters.side_effect = module.AppDefinitionNotPublishedError()
+        mock_application_services.return_value = types.SimpleNamespace(app_definitions=app_definitions)
+
+        app = _app(module.AppMode.AGENT)
+        api = module.MCPAppApi()
+
+        with pytest.raises(module.MCPRequestError) as exc_info:
+            api._get_user_input_form(app)
+        assert exc_info.value.error_code == module.mcp_types.INVALID_REQUEST
+        assert "App is unavailable" in str(exc_info.value)
+
+    @patch.object(module, "application_services")
+    def test_get_user_input_form_agent_mode_unavailable(self, mock_application_services):
+        """Unavailable Agent Apps surface as App is unavailable."""
+        app_definitions = MagicMock()
+        app_definitions.get_public_parameters.side_effect = module.AppDefinitionUnavailableError()
+        mock_application_services.return_value = types.SimpleNamespace(app_definitions=app_definitions)
+
+        app = _app(module.AppMode.AGENT)
+        api = module.MCPAppApi()
+
+        with pytest.raises(module.MCPRequestError) as exc_info:
+            api._get_user_input_form(app)
+        assert exc_info.value.error_code == module.mcp_types.INVALID_REQUEST
+        assert "App is unavailable" in str(exc_info.value)
+
+    @patch.object(module, "application_services")
+    def test_get_user_input_form_chat_mode_reads_legacy_model_config(self, mock_application_services):
+        """CHAT mode still reads user_input_form from app_model_config."""
+        app = _app(module.AppMode.CHAT, with_model_config=True)
+        api = module.MCPAppApi()
+        result = api._get_user_input_form(app)
+
+        mock_application_services.assert_not_called()
+        assert result == []
+
 
 _UNSUPPORTED_VERSION = "1999-01-01"
 
