@@ -43,6 +43,47 @@ def test_existing_import_route_dispatches_json_without_changing_payload(
     )
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.com/agent.ifpkg",
+        " https://example.com/agent.IFPKG?token=secret#download ",
+    ],
+)
+def test_package_url_uses_agent_import(app, monkeypatch, config_overrides, url):
+    config_overrides(RBAC_ENABLED=False)
+    importer = Mock()
+    importer.import_from_url.return_value = RosterAgentPackageImportResult(
+        app_id="app-1", agent_id="agent-1", warnings=[]
+    )
+    monkeypatch.setattr(import_module, "RosterAgentPackageImporter", lambda: importer)
+    api = import_module.AppImportApi()
+    import_dsl = Mock()
+    monkeypatch.setattr(api, "_import_dsl", import_dsl)
+    account = _account()
+    with app.test_request_context(
+        "/console/api/apps/imports", method="POST", json={"mode": "yaml-url", "yaml_url": url}
+    ):
+        data, status = unwrap(api.post)(api, account)
+    assert status == 200
+    assert data["app_mode"] == "agent"
+    assert data["status"] == "completed"
+    importer.import_from_url.assert_called_once_with(url=url, tenant_id="tenant-1", account=account)
+    import_dsl.assert_not_called()
+
+
+@pytest.mark.parametrize("url", ["https://example.com/app.yaml", "https://example.com/app.yaml?file=agent.ifpkg"])
+def test_yaml_url_keeps_dsl_import(app, monkeypatch, url):
+    api = import_module.AppImportApi()
+    import_dsl = Mock()
+    monkeypatch.setattr(api, "_import_dsl", import_dsl)
+    with app.test_request_context(
+        "/console/api/apps/imports", method="POST", json={"mode": "yaml-url", "yaml_url": url}
+    ):
+        unwrap(api.post)(api, _account())
+    assert import_dsl.call_args.args[0].yaml_url == url
+
+
 @pytest.mark.parametrize("has_warning", [False, True])
 def test_existing_import_route_accepts_package_and_preserves_import_response(
     app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], has_warning: bool
@@ -75,9 +116,14 @@ def test_existing_import_route_accepts_package_and_preserves_import_response(
     assert import_package.call_args.kwargs["tenant_id"] == "tenant-1"
 
 
+@pytest.mark.parametrize("from_url", [False, True])
 @pytest.mark.parametrize("denied", [RBACPermission.AGENT_CREATE, RBACPermission.AGENT_IMPORT_EXPORT_DSL])
 def test_package_import_checks_agent_permissions_before_reading_payload(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], denied: RBACPermission
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    denied: RBACPermission,
+    from_url: bool,
 ) -> None:
     config_overrides(RBAC_ENABLED=True)
     account = _account()
@@ -92,9 +138,12 @@ def test_package_import_checks_agent_permissions_before_reading_payload(
     importer = Mock()
     monkeypatch.setattr(import_module, "RosterAgentPackageImporter", importer)
     api = import_module.AppImportApi()
-    with app.test_request_context(
-        "/console/api/apps/imports", method="POST", data={"file": (io.BytesIO(b"package"), "agent.ifpkg")}
-    ):
+    request_kwargs = (
+        {"json": {"mode": "yaml-url", "yaml_url": "https://example.com/agent.ifpkg"}}
+        if from_url
+        else {"data": {"file": (io.BytesIO(b"package"), "agent.ifpkg")}}
+    )
+    with app.test_request_context("/console/api/apps/imports", method="POST", **request_kwargs):
         with pytest.raises(Forbidden):
             unwrap(api.post)(api, account)
     assert denied in scenes
@@ -102,14 +151,16 @@ def test_package_import_checks_agent_permissions_before_reading_payload(
     importer.assert_not_called()
 
 
-def test_package_import_rejects_overwrite(app: Flask, config_overrides: Callable[..., None]) -> None:
+@pytest.mark.parametrize("from_url", [False, True])
+def test_package_import_rejects_overwrite(app: Flask, config_overrides: Callable[..., None], from_url: bool) -> None:
     config_overrides(RBAC_ENABLED=False)
     api = import_module.AppImportApi()
-    with app.test_request_context(
-        "/console/api/apps/imports",
-        method="POST",
-        data={"app_id": "existing", "file": (io.BytesIO(b"package"), "agent.ifpkg")},
-    ):
+    request_kwargs = (
+        {"json": {"mode": "yaml-url", "yaml_url": "https://example.com/agent.ifpkg", "app_id": "existing"}}
+        if from_url
+        else {"data": {"app_id": "existing", "file": (io.BytesIO(b"package"), "agent.ifpkg")}}
+    )
+    with app.test_request_context("/console/api/apps/imports", method="POST", **request_kwargs):
         with pytest.raises(InvalidRosterAgentPackageError, match="overwriting"):
             unwrap(api.post)(api, _account())
 

@@ -223,6 +223,32 @@ describe('CreateFromDSLModal', () => {
     await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file }))
   })
 
+  it.each([
+    'https://example.com/agent.ifpkg',
+    'https://example.com/agent.IFPKG?token=secret#download',
+  ])('imports package URL %s when the ordinary App quota is full', async (url) => {
+    const user = userEvent.setup()
+    appCount = 10
+    appLimit = 10
+    mockImportDSL.mockResolvedValue({
+      id: 'import',
+      status: 'completed',
+      app_mode: AppModeEnum.AGENT,
+    })
+    render(<CreateFromDSLModal show onClose={vi.fn()} activeTab={CreateFromDSLModalTab.FROM_URL} />)
+    const input = screen.getByRole('textbox', { name: /importFromDSLUrl/ })
+    expect(getCreateButton()).toBeDisabled()
+    await user.type(input, url)
+    expect(screen.queryByText('apps-full')).not.toBeInTheDocument()
+    await user.click(getCreateButton())
+    await waitFor(() =>
+      expect(mockImportDSL).toHaveBeenCalledWith({ mode: 'yaml-url', yaml_url: url }),
+    )
+    await user.clear(input)
+    await user.type(input, 'https://example.com/app.yaml?file=agent.ifpkg')
+    expect(getCreateButton()).toBeDisabled()
+  })
+
   it('should render the file tab and show the dropped file', async () => {
     render(
       <CreateFromDSLModal
