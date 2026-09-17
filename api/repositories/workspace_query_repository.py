@@ -92,28 +92,15 @@ class WorkspaceQueryRepository(
 
     @override
     def list_for_device_flow(self, account_id: str) -> tuple[DeviceWorkspace, ...]:
-        stmt = (
-            select(
-                Tenant.id,
-                Tenant.name,
-                TenantAccountJoin.role,
-                TenantAccountJoin.current,
+        return tuple(
+            DeviceWorkspace(
+                id=workspace.id,
+                name=workspace.name,
+                role=workspace.role,
+                current=workspace.current,
             )
-            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.account_id == account_id)
-            .order_by(Tenant.created_at.asc())
+            for workspace in self.list_account_access_workspaces(account_id)
         )
-        with self._session_factory() as session:
-            rows = session.execute(stmt).all()
-            return tuple(
-                DeviceWorkspace(
-                    id=workspace_id,
-                    name=name,
-                    role=role.value,
-                    current=current,
-                )
-                for workspace_id, name, role, current in rows
-            )
 
     @override
     def has_active_for_account(self, account_id: str) -> bool:
