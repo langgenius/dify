@@ -40,11 +40,13 @@ logger = logging.getLogger(__name__)
 
 
 class SubjectType(StrEnum):
+    RESOURCE_ACCESS = "resource_access"
     ACCOUNT = "account"
     EXTERNAL_SSO = "external_sso"
 
 
 class TokenType(StrEnum):
+    RESOURCE_ACCESS = "resource_access"
     OAUTH_ACCOUNT = "oauth_account"
     OAUTH_EXTERNAL_SSO = "oauth_external_sso"
 

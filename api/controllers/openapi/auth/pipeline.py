@@ -25,6 +25,7 @@ from controllers.openapi.auth.data import (
     RequestContext,
 )
 from controllers.openapi.auth.flow import When
+from controllers.openapi.auth.resource_access import authenticate_resource_token
 from enums import DeploymentEdition
 from libs.oauth_bearer import (
     AuthContext,
@@ -37,6 +38,7 @@ from libs.oauth_bearer import (
 )
 from models.account import TenantAccountRole
 from services.entities.feature_entities import LicenseStatus
+from services.resource_access_token_service import ResourceAccessTokenService
 from services.system_feature_service import SystemFeatureService
 
 
@@ -227,7 +229,11 @@ class PipelineRouter:
         if not token:
             raise Unauthorized("bearer required")
 
-        identity = get_authenticator().authenticate(token)
+        identity = (
+            authenticate_resource_token(token)
+            if ResourceAccessTokenService.is_resource_access_token(token)
+            else get_authenticator().authenticate(token)
+        )
 
         if allowed_token_types is not None and identity.token_type not in allowed_token_types:
             emit_wrong_surface(
