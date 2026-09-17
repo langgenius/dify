@@ -41,10 +41,7 @@ export function SourceTypeSelector({
   return (
     <Fieldset disabled={disabled}>
       <FieldsetLegend
-        className={cn(
-          'py-0 system-xs-medium',
-          appearance === 'embedded' ? 'mb-1.25' : 'mb-1.5 leading-3.75',
-        )}
+        className={cn('py-0 system-sm-medium', appearance === 'embedded' ? 'mb-1.25' : 'mb-1.5')}
       >
         {t(($) => $.sourceTypeLabel)}
       </FieldsetLegend>
@@ -242,7 +239,7 @@ export function SourceProviderSelector({
           appearance === 'embedded' ? 'mb-2' : 'mb-1.5',
         )}
       >
-        <FieldsetLegend className="py-0 system-xs-medium">
+        <FieldsetLegend className="py-0 system-sm-medium">
           {t(($) => $.providerLabel)}
         </FieldsetLegend>
         <Link

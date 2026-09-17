@@ -69,7 +69,7 @@ export function CreateSourceSetup(props: CreateSourceSetupProps) {
       <Fieldset disabled={disabled}>
         <FieldsetLegend className="sr-only">{t(($) => $.providerLabel)}</FieldsetLegend>
         <div className="mb-1.5 flex items-center justify-between gap-3">
-          <span className="system-xs-medium text-text-secondary">{t(($) => $.providerLabel)}</span>
+          <span className="system-sm-medium text-text-secondary">{t(($) => $.providerLabel)}</span>
           <Button
             type="button"
             variant="ghost-accent"
