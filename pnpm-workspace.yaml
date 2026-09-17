@@ -75,7 +75,7 @@ catalog:
   '@floating-ui/react': 0.27.20
   '@formatjs/intl-localematcher': 0.9.0
   '@heroicons/react': 2.2.0
-  '@hey-api/openapi-ts': 0.99.0
+  '@hey-api/openapi-ts': 0.98.2
   '@hono/node-server': 2.1.1
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/ri': 1.2.10

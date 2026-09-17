@@ -207,8 +207,8 @@ catalogs:
       specifier: 2.2.0
       version: 2.2.0
     '@hey-api/openapi-ts':
-      specifier: 0.99.0
-      version: 0.99.0
+      specifier: 0.98.2
+      version: 0.98.2
     '@hono/node-server':
       specifier: 2.1.1
       version: 2.1.1
@@ -1057,7 +1057,7 @@ importers:
         version: link:../tsconfig
       '@hey-api/openapi-ts':
         specifier: 'catalog:'
-        version: 0.99.0(@typescript/typescript6@6.0.2)(magicast@0.5.3)
+        version: 0.98.2(@typescript/typescript6@6.0.2)(magicast@0.5.3)
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.7
@@ -2492,23 +2492,23 @@ packages:
     peerDependencies:
       react: '>= 16 || ^19.0.0-rc'
 
-  '@hey-api/codegen-core@0.9.1':
-    resolution: {integrity: sha512-s97jL1dgTMuiMHv2BZ1X4Tgd99Mf9GOvGdNqNcGwIMmnR+PgYNoraj4Zvp134MKsNCap/m7k0r0vKKnl56pj4w==}
+  '@hey-api/codegen-core@0.9.0':
+    resolution: {integrity: sha512-OK9/R8WuujwgvnrDIPnEiIf6WnfUOi3GaEr6kIngqoI5FUQwYbeDKHE/frTVUl2A76ZQPCrMknHtPx6Gqtwf8Q==}
     engines: {node: '>=22.18.0'}
 
-  '@hey-api/json-schema-ref-parser@1.4.4':
-    resolution: {integrity: sha512-otmd+zCxbYVBIp/mlMTnGkvlNYLkVKgs3VOIq0kSnenhB1+fRwLPQIeSwyWM6E51oXhUedkYjVsVpkVexeuJOA==}
+  '@hey-api/json-schema-ref-parser@1.4.3':
+    resolution: {integrity: sha512-UzGSDzh3QUhrnwl4atnHc2YqDO6KemYVEOwl1Ynowm/tcr0XlpdHOpyWr5UaWIJfiXTXdYRIC9k2Yxm19pcPzQ==}
     engines: {node: '>=22.18.0'}
 
-  '@hey-api/openapi-ts@0.99.0':
-    resolution: {integrity: sha512-SePU/5oEWWkvUBYmvzdYRctseoLuskyhs4ET0RvLIcmzc8yLQoA2R+KtBIQ8bPsoSUB0m4E5SmBnl6aGSA0szQ==}
+  '@hey-api/openapi-ts@0.98.2':
+    resolution: {integrity: sha512-2nVJXH8tpFPGTBOhxyjEd1Jw0hsRqJqeTQW3kltAjVdSU4YWxeu97x5sgNOmsbsfeg6Dqz7Wfzs26walBOuswA==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
       typescript: '>=5.5.3 || >=6.0.0 || 6.0.1-rc'
 
-  '@hey-api/shared@0.5.0':
-    resolution: {integrity: sha512-JN/j4Ebh4cJGYIQ5cwWuqe7GeSUyQoz7oC51WqyhKOcrejK6DKZMDkshc5d1eKTRuRL+rjozuRcoUaZZn2DGPw==}
+  '@hey-api/shared@0.4.8':
+    resolution: {integrity: sha512-29Pg2FB0UW20pplYgcfiQn1hQYpbZ9D2gdDJc7nDK3xh3pvHOTGP0v3R2ueFpFnw9GN1SRhIdhiVuAYWMDimjA==}
     engines: {node: '>=22.18.0'}
 
   '@hey-api/spec-types@0.2.0':
@@ -8697,8 +8697,8 @@ packages:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
     hasBin: true
 
-  semver@7.8.4:
-    resolution: {integrity: sha512-rUCObTnP32Q08R2uuIrt7r9PlEonuTmtuXYcW6s5kjdlj3xbnwe+21yXptAUYcMAABLkYYTtnmzb3w3EDZfueA==}
+  semver@7.8.2:
+    resolution: {integrity: sha512-c8jsqUZm3omBOI66G90z1Dyw5z622G8oLG+omfsHBJf3CWQTlOcwOjvOG6wtiNfW6anKm/eA39LMwMtMez2TiQ==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -10485,7 +10485,7 @@ snapshots:
     dependencies:
       react: 19.3.0
 
-  '@hey-api/codegen-core@0.9.1(magicast@0.5.3)':
+  '@hey-api/codegen-core@0.9.0(magicast@0.5.3)':
     dependencies:
       '@hey-api/types': 0.1.4
       ansi-colors: 4.1.3
@@ -10494,17 +10494,17 @@ snapshots:
     transitivePeerDependencies:
       - magicast
 
-  '@hey-api/json-schema-ref-parser@1.4.4':
+  '@hey-api/json-schema-ref-parser@1.4.3':
     dependencies:
       '@jsdevtools/ono': 7.1.3
       '@types/json-schema': 7.0.15
       js-yaml: 4.2.0
 
-  '@hey-api/openapi-ts@0.99.0(@typescript/typescript6@6.0.2)(magicast@0.5.3)':
+  '@hey-api/openapi-ts@0.98.2(@typescript/typescript6@6.0.2)(magicast@0.5.3)':
     dependencies:
-      '@hey-api/codegen-core': 0.9.1(magicast@0.5.3)
-      '@hey-api/json-schema-ref-parser': 1.4.4
-      '@hey-api/shared': 0.5.0(magicast@0.5.3)
+      '@hey-api/codegen-core': 0.9.0(magicast@0.5.3)
+      '@hey-api/json-schema-ref-parser': 1.4.3
+      '@hey-api/shared': 0.4.8(magicast@0.5.3)
       '@hey-api/spec-types': 0.2.0
       '@hey-api/types': 0.1.4
       '@lukeed/ms': 2.0.2
@@ -10516,16 +10516,16 @@ snapshots:
     transitivePeerDependencies:
       - magicast
 
-  '@hey-api/shared@0.5.0(magicast@0.5.3)':
+  '@hey-api/shared@0.4.8(magicast@0.5.3)':
     dependencies:
-      '@hey-api/codegen-core': 0.9.1(magicast@0.5.3)
-      '@hey-api/json-schema-ref-parser': 1.4.4
+      '@hey-api/codegen-core': 0.9.0(magicast@0.5.3)
+      '@hey-api/json-schema-ref-parser': 1.4.3
       '@hey-api/spec-types': 0.2.0
       '@hey-api/types': 0.1.4
       ansi-colors: 4.1.3
       cross-spawn: 7.0.6
       open: 11.0.0
-      semver: 7.8.4
+      semver: 7.8.2
     transitivePeerDependencies:
       - magicast
 
@@ -16902,7 +16902,7 @@ snapshots:
 
   semver@6.3.1: {}
 
-  semver@7.8.4: {}
+  semver@7.8.2: {}
 
   semver@7.8.5: {}
 
@@ -18109,7 +18109,7 @@ time:
   '@floating-ui/react@0.27.20': '2026-07-11T08:41:33.223Z'
   '@formatjs/intl-localematcher@0.9.0': '2026-09-12T16:07:12.757Z'
   '@heroicons/react@2.2.0': '2024-11-18T15:33:27.317Z'
-  '@hey-api/openapi-ts@0.99.0': '2026-06-22T06:38:34.730Z'
+  '@hey-api/openapi-ts@0.98.2': '2026-06-08T05:37:17.524Z'
   '@hono/node-server@2.1.1': '2026-08-14T01:14:02.732Z'
   '@iconify-json/heroicons@1.2.3': '2025-09-20T05:33:02.364Z'
   '@iconify-json/ri@1.2.10': '2026-02-10T08:41:46.666Z'
