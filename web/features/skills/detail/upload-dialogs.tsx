@@ -37,7 +37,7 @@ function UploadRowShell({
   success?: boolean
 }) {
   return (
-    <div className="flex min-h-[50px] items-center gap-2 rounded-[10px] bg-background-section px-3 py-1.5">
+    <div className="flex min-h-12.5 items-center gap-2 rounded-[10px] bg-background-section px-3 py-1.5">
       <span aria-hidden className={cn('size-5 shrink-0', getUploadIconClass(name))} />
       <div className="min-w-0 flex-1">
         <div className="truncate system-sm-medium text-text-primary">{name}</div>
@@ -169,7 +169,7 @@ export function SkillUploadReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[600px] max-w-[calc(100vw-32px)] overflow-hidden! p-0!">
+      <DialogContent className="w-150 max-w-[calc(100vw-32px)] overflow-hidden! p-0!">
         <DialogClose
           render={
             <IconButton
@@ -210,7 +210,7 @@ export function SkillUploadReviewDialog({
             </section>
           )}
         </div>
-        <footer className="flex h-[76px] items-start justify-end gap-2 px-6 pt-5 pb-6">
+        <footer className="flex h-19 items-start justify-end gap-2 px-6 pt-5 pb-6">
           <DialogClose render={<Button size="large" />}>
             {tCommon(($) => $['operation.cancel'])}
           </DialogClose>
@@ -249,7 +249,7 @@ export function SkillUploadFailuresDialog({
   const retryableItems = failedItems.filter((item) => item.failureKind !== 'conflict')
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onDismiss()}>
-      <DialogContent className="w-[600px] max-w-[calc(100vw-32px)] overflow-hidden! p-0!">
+      <DialogContent className="w-150 max-w-[calc(100vw-32px)] overflow-hidden! p-0!">
         <DialogClose
           render={
             <IconButton
@@ -300,7 +300,7 @@ export function SkillUploadFailuresDialog({
             />
           ))}
         </div>
-        <footer className="flex h-[76px] items-start justify-end gap-2 px-6 pt-5 pb-6">
+        <footer className="flex h-19 items-start justify-end gap-2 px-6 pt-5 pb-6">
           <DialogClose render={<Button size="large" />}>
             {tCommon(($) => $['operation.cancel'])}
           </DialogClose>

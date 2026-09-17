@@ -42,6 +42,7 @@ from controllers.openapi.workspaces import (
     WorkspaceMembersApi,
     WorkspaceSwitchApi,
 )
+from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
@@ -55,6 +56,7 @@ from services.errors.account import (
     NoPermissionError,
     RoleAlreadyAssignedError,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -444,7 +446,6 @@ def test_invite_happy_path_returns_invite_url_and_member_id(
 
 def _features(
     *,
-    billing_enabled: bool = False,
     members_size: int = 0,
     members_limit: int = 0,
     workspace_members_enabled: bool = False,
@@ -452,17 +453,16 @@ def _features(
     workspace_members_limit: int = 0,
 ) -> SimpleNamespace:
     """Build a feature object matching the surface `_check_member_invite_quota`
-    reads: `.billing.enabled`, `.members.{size,limit}`,
+    reads: `.members.{size,limit}`,
     `.workspace_members.{enabled, is_available(N)}`.
 
-    Defaults model CE (both flags off, both caps inert).
+    Defaults leave both quotas unrestricted.
     """
 
     def _is_available(n: int) -> bool:
         return workspace_members_size + n <= workspace_members_limit
 
     return SimpleNamespace(
-        billing=SimpleNamespace(enabled=billing_enabled),
         members=SimpleNamespace(size=members_size, limit=members_limit),
         workspace_members=SimpleNamespace(
             enabled=workspace_members_enabled,
@@ -482,6 +482,7 @@ def _invite_request(app, ws_id: str, acct_id: uuid.UUID):
     )
 
 
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 def test_invite_blocked_by_saas_members_cap(
     app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch, database_session: Session
 ):
@@ -507,7 +508,7 @@ def test_invite_blocked_by_saas_members_cap(
         "FeatureService",
         SimpleNamespace(
             get_features=Mock(
-                return_value=_features(billing_enabled=True, members_size=10, members_limit=10),
+                return_value=_features(members_size=10, members_limit=10),
             ),
         ),
     )
@@ -520,13 +521,13 @@ def test_invite_blocked_by_saas_members_cap(
     invite_mock.assert_not_called()
 
 
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 def test_invite_blocked_by_ee_workspace_members_license(
     app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch, database_session: Session
 ):
     """EE License workspace_members cap → MemberLicenseExceeded (403).
 
-    Note: billing.enabled is False (EE without SaaS billing); only the
-    license cap fires.
+    Enterprise member limits come from the license.
     """
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()

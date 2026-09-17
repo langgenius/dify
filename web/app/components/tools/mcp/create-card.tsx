@@ -49,7 +49,6 @@ export function NewMCPButton({ handleCreate }: Props) {
         data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationMcpAdd}
         onClick={() => setShowModal(true)}
         title={addMCPServerLabel}
-        aria-label={addMCPServerLabel}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
         {addMCPServerLabel}

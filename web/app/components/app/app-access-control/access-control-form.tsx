@@ -46,7 +46,6 @@ export function AccessControlForm({
   const accessControlOptionsLabelId = useId()
   const { t } = useTranslation()
   const confirmDisabled =
-    updatePending ||
     (accessMode === AccessModeValue.PUBLIC && publicAccessDisabled) ||
     (accessMode === AccessModeValue.SPECIFIC_GROUPS_MEMBERS && subjectsStatus !== 'success')
 

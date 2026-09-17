@@ -1,7 +1,5 @@
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NotionPage } from '@/models/common'
 import type {
   ChunkingMode,
@@ -60,7 +58,7 @@ type ValidationParams = {
   overlap: number
   indexType: IndexingType
   embeddingModel: DefaultModel
-  rerankModelList: Model[]
+  rerankModelList: ProviderWithModelsResponse[]
   retrievalConfig: RetrievalConfig
 }
 export const useDocumentCreation = (options: UseDocumentCreationOptions) => {

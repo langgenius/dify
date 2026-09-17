@@ -9,8 +9,8 @@ class RBACResourceScope(StrEnum):
     """
 
     APP = "app"
-    AGENT = "agent"
     DATASET = "dataset"
+    AGENT = "agent"
     WORKSPACE = "workspace"
 
 
@@ -75,7 +75,6 @@ class RBACPermission(StrEnum):
     WORKSPACE_ROLE_MANAGE = "workspace_role_manage"
     API_EXTENSION_MANAGE = "api_extension_manage"
     CUSTOMIZATION_MANAGE = "customization_manage"
-    AGENT_MANAGE = "agent_manage"
     SKILL_VIEW = "skill_view"
     SKILL_EDIT = "skill_edit"
     SKILL_PUBLISH = "skill_publish"
@@ -97,3 +96,25 @@ class RBACPermission(StrEnum):
 
     TOOL_MANAGE = "tool_manage"
     MCP_MANAGE = "mcp_manage"
+
+    @property
+    def scope(self) -> RBACResourceScope:
+        if self in _FUNCTION_SCOPED_RESOURCE_SCENES:
+            return RBACResourceScope.WORKSPACE
+        prefix = self.name.split("_", 1)[0]
+        return _SCENE_PREFIX_SCOPE.get(prefix, RBACResourceScope.WORKSPACE)
+
+
+_SCENE_PREFIX_SCOPE: dict[str, RBACResourceScope] = {
+    "APP": RBACResourceScope.APP,
+    "DATASET": RBACResourceScope.DATASET,
+    "AGENT": RBACResourceScope.AGENT,
+}
+
+_FUNCTION_SCOPED_RESOURCE_SCENES: frozenset[RBACPermission] = frozenset(
+    {
+        RBACPermission.APP_CREATE_AND_MANAGEMENT,
+        RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        RBACPermission.AGENT_CREATE,
+    }
+)

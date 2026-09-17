@@ -19,18 +19,17 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -104,6 +103,12 @@ function CreateFromDSLModal({
   )
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
+      if (
+        source.type === CreateFromDSLModalTab.FROM_FILE &&
+        source.file.name.toLowerCase().endsWith('.ifpkg')
+      )
+        return requestImport({ body: { file: source.file } })
+
       const body =
         source.type === CreateFromDSLModalTab.FROM_FILE
           ? ({
@@ -128,8 +133,25 @@ function CreateFromDSLModal({
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
+  const deploymentEdition = systemFeatures.deployment_edition
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.apps,
+    }),
+  )
+  const isPackageImport =
+    currentTab === CreateFromDSLModalTab.FROM_FILE &&
+    currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
+  const isAppQuotaUnavailable =
+    !isPackageImport && deploymentEdition === 'CLOUD' && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    !isPackageImport &&
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
   const isImporting = importMutation.isPending
   const isConfirming = confirmImportMutation.isPending
 
@@ -190,7 +212,7 @@ function CreateFromDSLModal({
   }
 
   const handleSubmit = async (values: ImportFormValues) => {
-    if (isAppsFull || isImporting) return
+    if (isAppQuotaUnavailable || isAppsFull || isImporting) return
 
     try {
       let source: ImportSource
@@ -236,7 +258,9 @@ function CreateFromDSLModal({
   }
 
   const createDisabled =
-    isAppsFull || (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
+    isAppQuotaUnavailable ||
+    isAppsFull ||
+    (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
 
   useHotkey(CREATE_FROM_DSL_HOTKEY, () => formRef.current?.requestSubmit(), {
     enabled: show && !createDisabled && !isImporting && !pendingImport,
@@ -296,6 +320,8 @@ function CreateFromDSLModal({
                   className="px-6 py-4"
                 >
                   <Uploader
+                    accept=".yaml,.yml,.ifpkg"
+                    displayName={isPackageImport ? 'IFPKG' : 'YAML'}
                     browseButtonRef={browseButtonRef}
                     className="mt-0"
                     file={currentFile}

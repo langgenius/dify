@@ -68,10 +68,12 @@ export const flushMarketplaceSiteFilter = (resultCount: number) => {
 export const trackMarketplaceSiteCardClick = ({
   itemId,
   itemType,
+  itemName,
   section,
 }: {
   itemId: string
   itemType: 'plugin' | 'template'
+  itemName: string
   section: string
 }) => {
   rememberMarketplaceSiteReferrer(itemId, section === 'search' ? 'search' : 'list')
@@ -79,6 +81,7 @@ export const trackMarketplaceSiteCardClick = ({
     click_target: 'card',
     item_id: itemId,
     item_type: itemType,
+    item_name: itemName,
     section,
   })
 }

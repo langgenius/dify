@@ -1,6 +1,6 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import { z } from 'zod'
-import { marketplaceClient } from '@/service/client'
+import { marketplaceClient } from '@/service/marketplace'
 
 // The banner types live in @dify/contracts/marketplace so the standalone
 // marketplace and the embedded console share one definition; this module owns

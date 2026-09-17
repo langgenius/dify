@@ -135,10 +135,9 @@ class NotionExtractor(BaseExtractor):
                         for multi_select in multi_select_list:
                             value.append(multi_select["name"])
                     elif type in {"rich_text", "title"}:
-                        if len(property_value[type]) > 0:
-                            value = property_value[type][0]["plain_text"]
-                        else:
-                            value = ""
+                        # Notion splits formatted text into multiple segments;
+                        # join them all so no part of the value is dropped.
+                        value = "".join(segment.get("plain_text", "") for segment in property_value[type])
                     elif type in {"select", "status"}:
                         if property_value[type]:
                             value = property_value[type]["name"]
@@ -290,6 +289,13 @@ class NotionExtractor(BaseExtractor):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
+    @staticmethod
+    def _get_cell_text(cell: list[dict[str, Any]]) -> str:
+        # A cell is an array of rich text segments (text, mention, equation);
+        # join them so one cell always maps to one Markdown column, keeping
+        # empty cells as empty columns so the column count stays stable.
+        return "".join(segment.get("plain_text") or segment.get("text", {}).get("content", "") for segment in cell)
+
     def _read_table_rows(self, block_id: str) -> str:
         """Read table rows."""
         assert self._notion_access_token is not None, "Notion access token is required"
@@ -316,12 +322,7 @@ class NotionExtractor(BaseExtractor):
             table_header_cell_texts = []
             table_header_cells = data["results"][0]["table_row"]["cells"]
             for table_header_cell in table_header_cells:
-                if table_header_cell:
-                    for table_header_cell_text in table_header_cell:
-                        text = table_header_cell_text["text"]["content"]
-                        table_header_cell_texts.append(text)
-                else:
-                    table_header_cell_texts.append("")
+                table_header_cell_texts.append(self._get_cell_text(table_header_cell))
             # Initialize Markdown table with headers
             markdown_table = "| " + " | ".join(table_header_cell_texts) + " |\n"
             markdown_table += "| " + " | ".join(["---"] * len(table_header_cell_texts)) + " |\n"
@@ -331,11 +332,8 @@ class NotionExtractor(BaseExtractor):
             for i in range(len(results) - 1):
                 column_texts = []
                 table_column_cells = data["results"][i + 1]["table_row"]["cells"]
-                for j in range(len(table_column_cells)):
-                    if table_column_cells[j]:
-                        for table_column_cell_text in table_column_cells[j]:
-                            column_text = table_column_cell_text["text"]["content"]
-                            column_texts.append(column_text)
+                for table_column_cell in table_column_cells:
+                    column_texts.append(self._get_cell_text(table_column_cell))
                 # Add row to Markdown table
                 markdown_table += "| " + " | ".join(column_texts) + " |\n"
             result_lines_arr.append(markdown_table)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
@@ -27,6 +28,7 @@ from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
+from services.enterprise import rbac_service as enterprise_rbac_service
 
 
 def _persist_account(session: Session) -> Account:
@@ -220,6 +222,63 @@ class TestCreateAppTransactionBoundary:
         model_manager.get_default_provider_model_name.assert_called_once_with(
             tenant_id=account.current_tenant_id, model_type=ModelType.LLM
         )
+
+
+class TestCreateAppRBACAccessInitialization:
+    """`create_app` bootstraps RBAC access per app mode: agents get the agent flavour."""
+
+    @staticmethod
+    def _create(session: Session, account: Account, mode: AppMode) -> App:
+        with (
+            patch("services.app_service.app_was_created.send"),
+            patch(
+                "services.app_service.SystemFeatureService.is_webapp_auth_enabled",
+                return_value=False,
+            ),
+        ):
+            return AppService().create_app(
+                account.current_tenant_id,
+                CreateAppParams(name=f"RBAC {mode.value}", mode=mode.value),
+                account,
+                session=session,
+            )
+
+    def test_agent_app_initializes_agent_access_and_skips_the_app_creator_sync(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=True)
+        account = _persist_account(sqlite_session)
+
+        with (
+            patch(
+                "services.rbac_agent_access_service.enterprise_rbac_service.RBACService.AgentAccess.replace_whitelist"
+            ) as replace_whitelist,
+            patch("services.rbac_agent_access_service.initialize_created_app_rbac_access_task.delay") as seed_task,
+            patch(
+                "services.rbac_agent_access_service.enterprise_rbac_service.RBACService.AccessPolicies"
+                ".sync_creator_access_policy_member_bindings"
+            ) as creator_sync,
+            patch(
+                "services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
+            ) as app_creator_sync,
+        ):
+            app = self._create(sqlite_session, account, AppMode.AGENT)
+
+        agent = sqlite_session.scalars(select(Agent).where(Agent.app_id == app.id)).one()
+        replace_whitelist.assert_called_once_with(
+            account.current_tenant_id,
+            account.id,
+            agent.id,
+            enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+        )
+        seed_task.assert_called_once_with(account.current_tenant_id, account.id, agent_id=agent.id)
+        creator_sync.assert_called_once_with(
+            account.current_tenant_id,
+            account.id,
+            resource_type=enterprise_rbac_service.RBACResourceType.AGENT,
+            resource_id=agent.id,
+        )
+        app_creator_sync.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -486,6 +545,32 @@ class TestGetApp:
         is_agent.assert_not_called()
         get_model_config.assert_called_once_with(session=unbound_session)
 
+    def test_masked_agent_config_is_served_through_the_session_accessor(self, unbound_session: Session):
+        """The masked config must be reachable via `app_model_config_with_session`.
+
+        Every response path resolves an `App`'s model config through that accessor
+        (`AppResponseView.app_model_config`), never through a raw attribute, so the
+        masking `get_app` applies has to be observable there.
+        """
+        app = App(mode=AppMode.AGENT_CHAT)
+        app.id = str(uuid4())
+        masked_config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": True, "tools": []}))
+        # A second, unmasked instance: what a fresh lookup would hand back if the
+        # returned app ever fell through to the base accessor.
+        refetched_config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": True, "tools": []}))
+        account = Account(name="Test Account", email="test@example.com")
+        account._current_tenant = Tenant(name="Test Tenant")
+        account._current_tenant.id = "tenant-1"
+
+        with (
+            patch.object(App, "app_model_config_with_session", side_effect=[masked_config, refetched_config]),
+            patch("services.app_service.current_user", account),
+        ):
+            result = AppService().get_app(app, session=unbound_session)
+
+            assert result is not app
+            assert result.app_model_config_with_session(session=unbound_session) is masked_config
+
 
 class TestAgentAppType:
     """S1: new ``AppMode.AGENT`` app type wiring."""
@@ -581,13 +666,15 @@ class TestAgentAppType:
         assert searched_counts.drafts == 1
 
     def test_bound_agent_id_is_none_for_non_agent_app(self):
-        """Non-agent apps short-circuit without touching the DB."""
+        """Non-agent apps short-circuit before the session is used."""
         from models.model import App, AppMode
 
         app = App(
             mode=AppMode.CHAT,
         )
-        assert app.bound_agent_id is None
+        # `agent_app_binding_with_session` returns before touching the session
+        # for a non-agent app, so passing None still exercises that path.
+        assert app.bound_agent_id_with_session(session=None) is None  # type: ignore[arg-type]
 
     def test_update_agent_app_syncs_backing_agent_identity(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)

@@ -2,7 +2,7 @@ import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { Window } from 'happy-dom'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TemplateCard from '../template-card'
 import { TemplateDetailRouteProvider } from '../template-detail-route'
 
@@ -103,7 +103,7 @@ describe('TemplateCard', () => {
     expect(mockPush).toHaveBeenCalledWith('/apps?template-id=template%2Fone')
     expect(screen.getByText('dify')).toBeInTheDocument()
     expect(screen.getByText('1.2k')).toBeInTheDocument()
-    expect(screen.getByLabelText('Verified by a Dify partner')).toBeInTheDocument()
+    expect(screen.getByText('Verified by a Dify partner')).toBeInTheDocument()
   })
 
   it('syncs /templates/{publisher}/{uuid} while the routed detail dialog is open', async () => {

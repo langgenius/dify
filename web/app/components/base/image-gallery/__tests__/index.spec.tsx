@@ -1,6 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import ImageGallery from '..'
+
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    'imageGallery.previewImage': 'Preview image {{index}} of {{total}}',
+  }),
+)
 
 describe('ImageGallery', () => {
   it('notifies the embedding owner while a preview is open, including unmount cleanup', async () => {
@@ -14,14 +21,14 @@ describe('ImageGallery', () => {
     )
 
     expect(onPreviewOpenChange).not.toHaveBeenCalled()
-    await user.click(screen.getByTestId('gallery-image'))
+    await user.click(screen.getByRole('button', { name: 'Preview image 1 of 1' }))
     expect(onPreviewOpenChange).toHaveBeenLastCalledWith(true)
 
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(onPreviewOpenChange).toHaveBeenLastCalledWith(false)
 
-    await user.click(screen.getByTestId('gallery-image'))
+    await user.click(screen.getByRole('button', { name: 'Preview image 1 of 1' }))
     expect(onPreviewOpenChange).toHaveBeenLastCalledWith(true)
     unmount()
     expect(onPreviewOpenChange).toHaveBeenLastCalledWith(false)
@@ -33,7 +40,7 @@ describe('ImageGallery', () => {
       <ImageGallery srcs={['https://example.com/first.png', 'https://example.com/second.png']} />,
     )
 
-    await user.click(screen.getAllByTestId('gallery-image')[1]!)
+    await user.click(screen.getByRole('button', { name: 'Preview image 2 of 2' }))
 
     expect(screen.getByTestId('image-preview-container').querySelector('img')).toHaveAttribute(
       'src',
@@ -55,7 +62,7 @@ describe('ImageGallery', () => {
         onPreviewOpenChange={onPreviewOpenChange}
       />,
     )
-    await user.click(screen.getByTestId('gallery-image'))
+    await user.click(screen.getByRole('button', { name: 'Preview image 1 of 1' }))
 
     fireEvent(window, new Event('pagehide'))
     expect(onPreviewOpenChange).toHaveBeenLastCalledWith(false)

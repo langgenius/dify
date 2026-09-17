@@ -3,7 +3,7 @@
 import type { MarketplaceCollection, SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
@@ -110,6 +110,7 @@ const CollectionSection = ({
 }: CollectionSectionProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
+  const collectionLabelId = useId()
   const sectionRef = useRef<HTMLDivElement>(null)
   const [isMounted, setIsMounted] = useState(!deferMount)
   const pages = useMemo(() => buildCarouselPages(plugins, itemsPerPage), [itemsPerPage, plugins])
@@ -190,6 +191,7 @@ const CollectionSection = ({
           )}
         >
           <div
+            id={collectionLabelId}
             className={cn(
               'title-xl-semi-bold text-text-primary',
               isPartnersCollection && styles.partnerTitle,
@@ -258,7 +260,7 @@ const CollectionSection = ({
       ) : hasMultiplePages ? (
         <Carousel
           pages={carouselPages}
-          ariaLabel={collection.label[getLanguage(locale)]}
+          aria-labelledby={collectionLabelId}
           className="mt-2"
           showNavigation
           showPagination

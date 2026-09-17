@@ -31,7 +31,6 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { useProviderContextSelector } from '@/context/provider-context'
 import {
   agentComposerSkillsAtom,
   removeAgentSkillAtom,
@@ -44,7 +43,7 @@ import {
 } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -175,7 +174,7 @@ function WorkspaceSkillPreview({ skill }: { skill?: SkillResponse }) {
   }
 
   return (
-    <div className="flex max-h-[428px] flex-col gap-2 overflow-y-auto px-3 pt-3 pb-4">
+    <div className="flex max-h-107 flex-col gap-2 overflow-y-auto px-3 pt-3 pb-4">
       <div className="flex min-w-0 flex-col items-start gap-1">
         <WorkspaceSkillIcon />
         <div className="min-w-0 flex-1">
@@ -269,7 +268,7 @@ function WorkspaceSkillSelector({
   )
 
   return (
-    <div ref={selectorRef} className="relative h-[520px] w-[320px]">
+    <div ref={selectorRef} className="relative h-130 w-[320px]">
       <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-[5px]">
         <div className="border-b border-divider-subtle p-2">
           <div className="relative">
@@ -338,7 +337,7 @@ function WorkspaceSkillSelector({
           <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
         </Link>
       </div>
-      <div className="absolute top-[52px] left-[-244px] w-[240px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+      <div className="absolute top-13 -left-61 w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
         <WorkspaceSkillPreview skill={previewSkill} />
       </div>
     </div>
@@ -467,7 +466,11 @@ export function AgentSkills() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentConfigApiContext()
-  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
   const skills = useAtomValue(agentComposerSkillsAtom)
   const upsertAgentSkill = useSetAtom(upsertAgentSkillAtom)
   const removeAgentSkill = useSetAtom(removeAgentSkillAtom)
@@ -487,7 +490,7 @@ export function AgentSkills() {
     })
   const agentSkillBindingsQuery = useQuery({
     ...agentSkillBindingsQueryOptions,
-    enabled: enableSkill,
+    enabled: enableSkill === true,
   })
   const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
@@ -735,7 +738,7 @@ export function AgentSkills() {
                 sideOffset={4}
                 className={
                   addMenuView === 'menu'
-                    ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
+                    ? 'w-70 bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
                     : 'w-[320px] overflow-visible border-none bg-transparent p-0 shadow-none'
                 }
               >

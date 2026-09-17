@@ -20,7 +20,7 @@ import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-pro
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
 import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
@@ -198,7 +198,7 @@ export default function OAuthAuthorize() {
           <div className="flex items-center gap-2.5">
             <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             <div>
-              <div className="system-md-semi-bold text-text-secondary">{userProfile.name}</div>
+              <div className="text-text-secondary">{userProfile.name}</div>
               <div className="system-xs-regular text-text-tertiary">{userProfile.email}</div>
             </div>
           </div>
@@ -246,7 +246,7 @@ export default function OAuthAuthorize() {
               size="large"
               className="w-full"
               onClick={onAuthorize}
-              disabled={!clientId || !redirectUri || isOAuthError || authorizing}
+              disabled={!clientId || !redirectUri || isOAuthError}
               loading={authorizing}
             >
               {t(($) => $.continue, { ns: 'oauth' })}

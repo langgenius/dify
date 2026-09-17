@@ -12,6 +12,7 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { seedFeatures } from '@/test/console/query-data'
 import { AgentOrchestrateAddActionsProvider } from '../../add-actions'
 import { useAgentOrchestrateAddActions } from '../../add-actions-context'
 import { AgentConfigApiContextProvider } from '../../config-context'
@@ -81,9 +82,7 @@ const mocks = vi.hoisted(() => ({
   fileUploadConfig: {
     skill_file_size_limit: 64,
   },
-  providerContext: {
-    enableSkill: true,
-  },
+  skillEnabled: true,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -115,13 +114,9 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: { enableSkill: boolean }) => unknown) =>
-    selector(mocks.providerContext),
-}))
-
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', async (importOriginal) => ({
   consoleQuery: {
+    features: (await importOriginal<typeof import('@/service/console')>()).consoleQuery.features,
     tags: {
       get: {
         queryOptions: mocks.workspaceSkillTagsQueryOptions,
@@ -224,7 +219,9 @@ vi.mock('@/service/client', () => ({
                 queryOptions: mocks.agentSkillBindingsQueryOptions,
               },
               put: {
-                mutationOptions: () => ({ mutationFn: mocks.replaceAgentSkillBindingsMutationFn }),
+                mutationOptions: () => ({
+                  mutationFn: mocks.replaceAgentSkillBindingsMutationFn,
+                }),
               },
             },
           },
@@ -323,41 +320,47 @@ function renderAgentSkills({
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { retry: false },
+      queries: { retry: false, staleTime: Infinity },
       mutations: { retry: false },
     },
   })
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AgentConfigApiContextProvider value={apiContext}>
-        <AgentComposerProvider initialDraft={initialDraft}>
-          <AgentOrchestrateViewingVersionContext value={viewingVersion}>
-            <AgentOrchestrateAddActionsProvider>
-              <AgentOrchestrateReadOnlyContext value={readOnly}>
-                <AgentSkills />
-                <ConfigSnapshotProbe />
-                <PromptSkillAddProbe />
-              </AgentOrchestrateReadOnlyContext>
-            </AgentOrchestrateAddActionsProvider>
-          </AgentOrchestrateViewingVersionContext>
-        </AgentComposerProvider>
-      </AgentConfigApiContextProvider>
-    </QueryClientProvider>,
-  )
+  seedFeatures(queryClient, { enable_skill: mocks.skillEnabled })
+
+  return {
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <AgentConfigApiContextProvider value={apiContext}>
+          <AgentComposerProvider initialDraft={initialDraft}>
+            <AgentOrchestrateViewingVersionContext value={viewingVersion}>
+              <AgentOrchestrateAddActionsProvider>
+                <AgentOrchestrateReadOnlyContext value={readOnly}>
+                  <AgentSkills />
+                  <ConfigSnapshotProbe />
+                  <PromptSkillAddProbe />
+                </AgentOrchestrateReadOnlyContext>
+              </AgentOrchestrateAddActionsProvider>
+            </AgentOrchestrateViewingVersionContext>
+          </AgentComposerProvider>
+        </AgentConfigApiContextProvider>
+      </QueryClientProvider>,
+    ),
+    queryClient,
+  }
 }
 
 describe('AgentSkills', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.providerContext.enableSkill = true
+    mocks.skillEnabled = true
     mocks.fileUploadConfig.skill_file_size_limit = 64
     vi.stubGlobal('fetch', mocks.fetch)
     document.cookie = 'csrf_token=csrf-token; path=/'
-    mocks.fetch.mockResolvedValue(
-      new Response('downloaded skill file', {
-        headers: { 'Content-Type': 'application/octet-stream' },
-      }),
+    mocks.fetch.mockImplementation(
+      async () =>
+        new Response('downloaded skill file', {
+          headers: { 'Content-Type': 'application/octet-stream' },
+        }),
     )
     mocks.agentSkillBindingsKey.mockImplementation((options) => {
       const { input } = options as { input: { params: { agent_id: string } } }
@@ -786,7 +789,7 @@ describe('AgentSkills', () => {
 
   it('should hide workspace skill selection when skill is disabled', async () => {
     const user = userEvent.setup()
-    mocks.providerContext.enableSkill = false
+    mocks.skillEnabled = false
 
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
@@ -1523,7 +1526,17 @@ describe('AgentSkills', () => {
 
   it('should download a whole skill package from the row action', async () => {
     const user = userEvent.setup()
-    renderAgentSkills()
+    const { queryClient } = renderAgentSkills()
+    queryClient.setQueryData(
+      [
+        'download-skill',
+        {
+          params: { agent_id: 'agent-1', name: 'Tender Analyzer' },
+          query: { draft_type: 'draft', version_id: undefined },
+        },
+      ],
+      { url: 'https://example.com/stale.skill' },
+    )
 
     await user.click(
       screen.getByRole('button', {
@@ -1682,7 +1695,30 @@ describe('AgentSkills', () => {
 
   it('should download skill package members from the detail file tree', async () => {
     const user = userEvent.setup()
-    renderAgentSkills()
+    const { queryClient } = renderAgentSkills()
+    const downloadInput = {
+      params: {
+        agent_id: 'agent-1',
+        name: 'Tender Analyzer',
+      },
+      query: {
+        path: 'references/guide.md',
+        draft_type: 'draft',
+        version_id: undefined,
+      },
+    }
+    const staleContentUrl = '/console/api/agent/agent-1/config/skills/stale/files/content'
+    const currentContentUrl =
+      '/console/api/agent/agent-1/config/skills/Tender%20Analyzer/files/content?path=references%2Fguide.md'
+    const staleBlob = new Blob(['stale skill file'])
+    queryClient.setQueryData(['download-skill-file', downloadInput], { url: staleContentUrl })
+    queryClient.setQueryData(['agent-v2', 'skill-file-content', staleContentUrl], staleBlob)
+    queryClient.setQueryData(['agent-v2', 'skill-file-content', currentContentUrl], staleBlob)
+    mocks.fetch.mockResolvedValueOnce(
+      new Response('current skill file', {
+        headers: { 'Content-Type': 'application/octet-stream' },
+      }),
+    )
 
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
     await user.click(await screen.findByText('references'))
@@ -1722,7 +1758,7 @@ describe('AgentSkills', () => {
       fileName: 'guide.md',
     })
     const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
-    await expect(blob.text()).resolves.toBe('downloaded skill file')
+    await expect(blob.text()).resolves.toBe('current skill file')
     expect(mocks.downloadUrl).not.toHaveBeenCalled()
   })
 
@@ -1773,15 +1809,41 @@ describe('AgentSkills', () => {
     const user = userEvent.setup()
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:skill-image')
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    let resolveImageRequest!: (response: Response) => void
+    mocks.fetch.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveImageRequest = resolve
+        }),
+    )
     const view = renderAgentSkills()
+    const currentContentUrl =
+      '/console/api/agent/agent-1/config/skills/Tender%20Analyzer/files/content?path=assets%2Ficon.png'
+    view.queryClient.setQueryData(
+      ['agent-v2', 'skill-file-content', currentContentUrl],
+      new Blob(['stale skill image']),
+    )
 
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
     await user.click(await screen.findByText('assets'))
     await user.click(screen.getByText('icon.png').closest('button')!)
 
+    await waitFor(() => expect(mocks.fetch).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('img', { name: 'icon.png' })).not.toBeInTheDocument()
+    expect(createObjectURL).not.toHaveBeenCalled()
+
+    resolveImageRequest(
+      new Response('current skill image', {
+        headers: { 'Content-Type': 'image/png' },
+      }),
+    )
+
     const image = await screen.findByRole('img', { name: 'icon.png' })
     expect(image).toHaveAttribute('src', 'blob:skill-image')
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
+    await expect((createObjectURL.mock.calls[0]?.[0] as Blob).text()).resolves.toBe(
+      'current skill image',
+    )
 
     await user.click(
       screen.getByRole('button', {

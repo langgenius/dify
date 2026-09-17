@@ -112,7 +112,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
         <>
           <div className="flex h-full flex-col">
             <div className="relative flex h-50 grow pt-14">
-              <div className="bg-default-subtle absolute top-0 left-0 h-14 w-full">
+              <div className="absolute top-0 left-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center gap-2">
                     <div className="system-xl-semibold text-text-primary">
@@ -177,7 +177,6 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 >
                   <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                     <Debug
-                      isAPIKeySet={contextValue.isAPIKeySet}
                       onSetting={onOpenAccountSettings}
                       inputs={contextValue.inputs}
                       modelParameterParams={{
@@ -260,7 +259,6 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                         />
                       </div>
                       <Debug
-                        isAPIKeySet={contextValue.isAPIKeySet}
                         onSetting={onOpenAccountSettings}
                         inputs={contextValue.inputs}
                         modelParameterParams={{

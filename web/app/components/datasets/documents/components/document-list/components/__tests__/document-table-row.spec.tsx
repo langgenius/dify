@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -160,6 +161,26 @@ describe('DocumentTableRow', () => {
   })
 
   describe('Row Navigation', () => {
+    it('provides a keyboard-accessible detail link preserving search parameters', async () => {
+      const user = userEvent.setup()
+      mockSearchParams = 'page=2&status=error'
+      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
+
+      const link = screen.getByRole('link', { name: 'test-document.txt' })
+      expect(link).toHaveAttribute(
+        'href',
+        '/datasets/dataset-1/documents/doc-1?page=2&status=error',
+      )
+      await user.tab()
+      expect(getRowCheckbox()).toHaveFocus()
+      await user.tab()
+      expect(link).toHaveFocus()
+      await user.keyboard('{Control>}')
+      await user.click(link)
+      await user.keyboard('{/Control}')
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
     it('should navigate to document detail on row click', () => {
       render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
 

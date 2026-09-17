@@ -19,7 +19,7 @@ const mockCollections = vi.fn()
 const mockCollectionPlugins = vi.fn()
 const mockSearchAdvanced = vi.fn()
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/marketplace', () => ({
   marketplaceClient: {
     collections: (...args: unknown[]) => mockCollections(...args),
     collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
@@ -170,5 +170,41 @@ describe('HydrateQueryClient', () => {
 
     expect(mockCollections).not.toHaveBeenCalled()
     expect(mockSearchAdvanced).toHaveBeenCalled()
+  })
+
+  it('should keep the catalog shell when collections prefetch fails', async () => {
+    mockCollections.mockRejectedValue(new Error('collections unavailable'))
+    const { HydrateQueryClient } = await import('../hydration-server')
+
+    const element = await HydrateQueryClient({
+      searchParams: Promise.resolve({ category: 'all' }),
+      children: <div>Child</div>,
+    })
+
+    const renderClient = new QueryClient()
+    const { getByText } = render(
+      <QueryClientProvider client={renderClient}>
+        {element as React.ReactElement}
+      </QueryClientProvider>,
+    )
+    expect(getByText('Child')).toBeInTheDocument()
+  })
+
+  it('should keep the catalog shell when plugin search prefetch fails', async () => {
+    mockSearchAdvanced.mockRejectedValue(new Error('search unavailable'))
+    const { HydrateQueryClient } = await import('../hydration-server')
+
+    const element = await HydrateQueryClient({
+      searchParams: Promise.resolve({ category: 'all', q: 'openai' }),
+      children: <div>Child</div>,
+    })
+
+    const renderClient = new QueryClient()
+    const { getByText } = render(
+      <QueryClientProvider client={renderClient}>
+        {element as React.ReactElement}
+      </QueryClientProvider>,
+    )
+    expect(getByText('Child')).toBeInTheDocument()
   })
 })

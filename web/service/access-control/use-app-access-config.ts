@@ -4,7 +4,7 @@ import type {
   UpdateAppUserAccessSettingsRequest,
 } from '@/models/access-control'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { normalizeAppAccessMatrix, normalizeAppUserAccessPolicies } from './normalizers'
 
 const NAME_SPACE = 'app-access-config'

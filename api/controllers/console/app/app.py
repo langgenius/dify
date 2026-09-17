@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Literal
 
+from flask import send_file
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, ValidationInfo, computed_field, field_validator, model_validator
 from sqlalchemy import select
@@ -13,7 +14,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 from configs import dify_config
 from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
-from controllers.common.helpers import FileInfo
+from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -22,11 +23,10 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model, with_session
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_resource_check,
     edit_permission_required,
@@ -39,6 +39,7 @@ from controllers.console.wraps import (
     with_current_user,
     with_current_user_id,
 )
+from core.file.remote_file_metadata import FileInfo
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -47,10 +48,12 @@ from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
-from models.model import IconType
+from models.model import AppMode, IconType
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app_dsl_service import AppDslService
 from services.app_service import (
     AppListParams,
@@ -63,7 +66,7 @@ from services.app_service import (
 )
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.dsl_entities import DslImportWarning, ImportMode, ImportStatus
+from services.entities.dsl_entities import DslImportWarning, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
     DataSource,
     InfoList,
@@ -180,6 +183,9 @@ class CopyAppPayload(BaseModel):
 
 
 class AppExportQuery(BaseModel):
+    format: Literal["yaml", "ifpkg"] | None = Field(
+        default=None, description="Export format; defaults to ifpkg for Agent Apps and yaml for other Apps"
+    )
     include_secret: bool = Field(default=False, description="Include secrets in export")
     workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
 
@@ -691,7 +697,7 @@ class AppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, Workspace()))
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
     @with_current_user
@@ -868,7 +874,7 @@ class AppApi(Resource):
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=None)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
@@ -907,8 +913,9 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_EDIT, PlainApp()), RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp())
+    )
     @with_session
     @get_app_model(mode=None)
     @model_validate(UpdateAppPayload)
@@ -942,8 +949,9 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_DELETE, PlainApp()), RBACCheck(RBACPermission.AGENT_DELETE, AgentBehindApp())
+    )
     @with_session
     @get_app_model
     def delete(self, session: Session, app_model: App):
@@ -967,70 +975,56 @@ class AppCopyApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp()))
     @with_current_user
     @with_current_tenant_id
+    @with_session
     @get_app_model(mode=None)
     @model_validate(CopyAppPayload)
-    def post(self, req_data: CopyAppPayload, current_tenant_id: str, current_user: Account, app_model: App):
+    def post(
+        self,
+        req_data: CopyAppPayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        app_model: App,
+    ):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
 
-        with Session(db.engine, expire_on_commit=False) as session:
-            import_service = AppDslService(session)
-            yaml_content = import_service.export_dsl(app_model=app_model, session=session, include_secret=True)
-            try:
-                result = import_service.import_app(
-                    account=current_user,
-                    import_mode=ImportMode.YAML_CONTENT,
-                    yaml_content=yaml_content,
-                    name=req_data.name,
-                    description=req_data.description,
-                    icon_type=req_data.icon_type,
-                    icon=req_data.icon,
-                    icon_background=req_data.icon_background,
-                )
-            except NoPermissionError as e:
-                raise Forbidden(str(e))
-            if result.status == ImportStatus.FAILED:
-                session.rollback()
-                return dump_response(AppImportResponse, result), 400
-            if result.status == ImportStatus.PENDING:
-                session.rollback()
-                return dump_response(AppImportResponse, result), 202
-            session.commit()
-
-            # Inherit web app permission from original app
-            if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
-                try:
-                    # Get the original app's access mode
-                    original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
-                    access_mode = original_settings.access_mode
-                except Exception:
-                    # If original app has no settings (old app), default to public to match fallback behavior
-                    access_mode = "public"
-
-                # Apply the same access mode to the copied app
-                EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
-
-            stmt = select(App).where(App.id == result.app_id)
-            app = session.scalar(stmt)
-            if not app:
-                raise NotFound("App not found")
-
-            permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-                current_tenant_id,
-                current_user.id,
-                [str(app.id)],
-                session=session,
+        import_service = AppDslService(session)
+        try:
+            result, app = import_service.copy_app(
+                app_model=app_model,
+                account=current_user,
+                tenant_id=current_tenant_id,
+                name=req_data.name,
+                description=req_data.description,
+                icon_type=req_data.icon_type,
+                icon=req_data.icon,
+                icon_background=req_data.icon_background,
             )
-            response_model = AppDetailWithSite.model_validate(
-                app,
-                from_attributes=True,
-                context={"session": session},
-            ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
-            return response_model.model_dump(mode="json"), 201
+        except NoPermissionError as e:
+            raise Forbidden(str(e))
+        if result.status == ImportStatus.FAILED:
+            return dump_response(AppImportResponse, result), 400
+        if result.status == ImportStatus.PENDING:
+            return dump_response(AppImportResponse, result), 202
+        if not app:
+            raise NotFound("App not found")
+
+        permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
+            current_tenant_id,
+            current_user.id,
+            [str(app.id)],
+            session=session,
+        )
+        response_model = AppDetailWithSite.model_validate(
+            app,
+            from_attributes=True,
+            context={"session": session},
+        ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
+        return response_model.model_dump(mode="json"), 201
 
 
 @console_ns.route("/apps/<uuid:app_id>/export")
@@ -1039,18 +1033,41 @@ class AppExportApi(Resource):
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
     @console_ns.doc(params=query_params_from_model(AppExportQuery))
+    @console_ns.doc(
+        produces=["application/json", "application/zip"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/zip"]},
+    )
     @console_ns.response(200, "App exported successfully", console_ns.models[AppExportResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+        RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentBehindApp()),
+    )
     @get_app_model
     @model_validate(AppExportQuery)
     def get(self, req_data: AppExportQuery, app_model: App):
         """Export app"""
+
+        if req_data.format == "ifpkg" or (req_data.format is None and app_model.mode == AppMode.AGENT):
+            if app_model.mode != AppMode.AGENT:
+                raise BadRequest("The ifpkg format is only available for Agent Apps")
+            agent_id = app_model.bound_agent_id_with_session(session=db.session())
+            if agent_id is None:
+                raise NotFound("Agent not found")
+            exported = RosterAgentPackageExporter().export(tenant_id=app_model.tenant_id, agent_id=agent_id)
+            try:
+                archive_response = send_file(
+                    exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
+                )
+            except Exception:
+                exported.close()
+                raise
+            archive_response.call_on_close(exported.close)
+            return archive_response
 
         response = AppExportResponse(
             data=AppDslService.export_dsl(
@@ -1070,8 +1087,10 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+        RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentBehindApp()),
+    )
     @with_current_user_id
     @get_app_model(mode=None)
     def post(self, current_user_id: str, app_model: App):
@@ -1111,8 +1130,9 @@ class AppNameApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_EDIT, PlainApp()), RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp())
+    )
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppNamePayload)
@@ -1139,8 +1159,9 @@ class AppIconApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_EDIT, PlainApp()), RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp())
+    )
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppIconPayload)
@@ -1173,7 +1194,10 @@ class AppSiteStatus(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_RELEASE_AND_VERSION)
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+        RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+    )
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppSiteStatusPayload)
@@ -1200,8 +1224,10 @@ class AppApiStatus(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+        RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+    )
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppApiStatusPayload)
@@ -1230,7 +1256,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @with_session
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model
     def get(self, session: Session, app_model: App):
         """Get app trace"""
@@ -1252,7 +1278,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp()))
     @get_app_model
     @model_validate(AppTracePayload)
     def post(self, req_data: AppTracePayload, app_model: App):

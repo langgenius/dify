@@ -4,7 +4,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.schema import register_schema_model
-from controllers.console.wraps import setup_required
+from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import inner_api_only
 from extensions.ext_application_services import application_services
@@ -27,8 +27,8 @@ class BaseMail(Resource):
     @inner_api_ns.doc("send_inner_mail")
     @inner_api_ns.doc(description="Send internal email")
     @inner_api_ns.expect(inner_api_ns.models[InnerMailPayload.__name__])
-    def post(self):
-        args = InnerMailPayload.model_validate(inner_api_ns.payload or {})
+    @model_validate(InnerMailPayload)
+    def post(self, args: InnerMailPayload):
         application_services().inner_mail.send(
             InnerMailMessage(
                 recipients=tuple(args.to),

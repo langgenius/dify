@@ -14,13 +14,13 @@ import {
 } from '@/app/components/base/amplitude/registration-tracking'
 import { useAmplitudeInitialized } from '@/app/components/base/amplitude/use-amplitude-initialized'
 import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
-import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type AmplitudeProperties = Record<string, string | number | boolean>
 
@@ -106,7 +106,7 @@ function syncZendeskField({
 }) {
   if (deploymentEdition !== 'CLOUD' || !fieldId || !value || value === previousValue) return
 
-  setZendeskConversationFields(
+  zendeskRuntime.setConversationFields(
     [
       {
         id: fieldId,
@@ -133,6 +133,20 @@ function ZendeskConversationSync() {
       deploymentEdition: data.deployment_edition,
     }),
   })
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: systemFeatures.deploymentEdition === 'CLOUD' && Boolean(ZENDESK_FIELD_IDS.PLAN),
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  useEffect(() => {
+    if (systemFeatures.deploymentEdition !== 'CLOUD' || !plan || !ZENDESK_FIELD_IDS.PLAN) return
+    zendeskRuntime.setConversationFields(
+      [{ id: ZENDESK_FIELD_IDS.PLAN, value: `${plan}-plan` }],
+      systemFeatures.deploymentEdition,
+    )
+  }, [plan, systemFeatures.deploymentEdition])
+
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: versionData } = useQuery(
     consoleQuery.version.get.queryOptions({

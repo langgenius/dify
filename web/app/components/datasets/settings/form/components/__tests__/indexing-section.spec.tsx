@@ -1,7 +1,5 @@
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
@@ -222,8 +220,9 @@ describe('IndexingSection', () => {
     model: 'text-embedding-ada-002',
   }
 
-  const mockEmbeddingModelList: Model[] = [
+  const mockEmbeddingModelList: ProviderWithModelsResponse[] = [
     {
+      tenant_id: 'test-workspace',
       provider: 'openai',
       label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
       icon_small: { en_US: '', zh_Hans: '' },

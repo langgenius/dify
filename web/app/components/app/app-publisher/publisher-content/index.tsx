@@ -2,7 +2,7 @@ import type { AppPublisherProps } from '../types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { toDeploymentVersion } from '@/app/components/app/deploy/version'
+import { toDeploymentVersion } from '@/app/components/app/deploy/utils/version'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -33,12 +33,14 @@ import { useWorkflowLaunch } from './use-workflow-launch'
 import { useWorkflowTool } from './use-workflow-tool'
 
 type PublisherContentProps = AppPublisherProps & {
+  canViewAccessPoint: boolean
   open: boolean
   supportsMultiEnvironment: boolean
   onOpenStateChange: (open: boolean) => void
 }
 
 export function PublisherContent({
+  canViewAccessPoint,
   crossAxisOffset = 0,
   debugWithMultipleModel = false,
   disabled = false,
@@ -113,6 +115,7 @@ export function PublisherContent({
   const marketplace = useMarketplacePublish(appDetail?.id)
   const versionInfo = useVersionInfo({
     appId: appDetail?.id,
+    appMode: appDetail?.mode,
     publishedWorkflow: publish.publishedWorkflow,
     onClosePublisher: closePublisher,
   })
@@ -212,6 +215,7 @@ export function PublisherContent({
           actions: {
             appDetail,
             appURL,
+            canViewAccessPoint,
             disabledFunctionButton,
             disabledFunctionTooltip,
             handleOpenRunConfig: workflowLaunch.openDialog,
@@ -236,6 +240,7 @@ export function PublisherContent({
         disabled={disabled}
         environmentPublisher={{
           appId: appDetail?.id,
+          canViewAccessPoint,
           deployment: selectedEnvironmentDeployment,
           environmentId: selectedEnvironmentId,
           environmentName:

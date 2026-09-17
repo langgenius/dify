@@ -826,6 +826,7 @@ describe('HomeTrending', () => {
         click_target: 'recommendation',
         item_id: 'langgenius/dropbox',
         item_type: 'plugin',
+        item_name: 'Dropbox',
       }),
     )
   })
@@ -872,6 +873,7 @@ describe('HomeTrending', () => {
         click_target: 'recommendation',
         item_id: 'tpl-1',
         item_type: 'template',
+        item_name: 'Support Bot',
       }),
     )
   })
@@ -1013,6 +1015,7 @@ describe('HomeTrending', () => {
         click_target: 'recommendation',
         item_id: 'langgenius/dropbox',
         item_type: 'plugin',
+        item_name: 'Dropbox',
       }),
     )
   })

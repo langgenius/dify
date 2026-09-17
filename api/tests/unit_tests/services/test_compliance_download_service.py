@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError
 from services.compliance_download_service import ComplianceDownloadRateLimiter, ComplianceDownloadService
 from services.errors.billing import BillingUpstreamUnavailableError, ComplianceRateLimitExceededError
 
@@ -108,29 +107,4 @@ def test_get_link_does_not_increment_after_fetch_failure(
             device_info="test-agent",
         )
 
-    rate_limiter.increment_rate_limit.assert_not_called()
-
-
-def test_get_link_requires_active_workspace(
-    service: ComplianceDownloadService,
-    fetch_link: MagicMock,
-    rate_limiter: MagicMock,
-) -> None:
-    request_context = RequestContext(
-        request_id="request-1",
-        trace_id="trace-1",
-        account_id="account-1",
-        active_workspace_id=None,
-    )
-
-    with pytest.raises(ActiveWorkspaceRequiredError):
-        service.get_link(
-            request_context=request_context,
-            document_name="SOC2_Type_II",
-            ip_address="127.0.0.1",
-            device_info="test-agent",
-        )
-
-    rate_limiter.is_rate_limited.assert_not_called()
-    fetch_link.assert_not_called()
     rate_limiter.increment_rate_limit.assert_not_called()

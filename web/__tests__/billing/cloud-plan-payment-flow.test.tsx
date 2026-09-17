@@ -30,8 +30,8 @@ vi.mock('@/context/workspace-state', async () => {
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleClient: new Proxy(actual.consoleClient, {
@@ -88,10 +88,9 @@ const renderCloudPlanItem = ({
     <>
       <ToastHost timeout={0} />
       <CloudPlanItem
-        currentPlan={currentPlan}
         plan={plan}
         billingInterval={billingInterval}
-        isEducationDiscountEligible={isEducationDiscountEligible}
+        billing={{ currentPlan, isEducationDiscountEligible }}
       />
     </>,
     { wrapper },

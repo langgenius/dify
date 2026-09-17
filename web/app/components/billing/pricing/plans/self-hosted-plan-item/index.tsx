@@ -104,13 +104,10 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
         <div className="flex grow flex-col justify-end gap-y-2 p-6 pt-0">
           <div className="flex items-center gap-x-1">
             <div className="flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default shadow-xs shadow-shadow-shadow-3">
-              <span aria-hidden className="i-custom-public-billing-azure h-5 w-[21px]" />
+              <span aria-hidden className="i-custom-public-billing-azure h-5 w-5.25" />
             </div>
             <div className="flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default shadow-xs shadow-shadow-shadow-3">
-              <span
-                aria-hidden
-                className="i-custom-public-billing-google-cloud h-[18px] w-[22px]"
-              />
+              <span aria-hidden className="i-custom-public-billing-google-cloud h-4.5 w-5.5" />
             </div>
           </div>
           <span className="system-xs-regular text-text-tertiary">

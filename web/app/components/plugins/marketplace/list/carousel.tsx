@@ -1,6 +1,5 @@
 'use client'
 
-/* oxlint-disable eslint-react/set-state-in-effect */
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import Autoplay from 'embla-carousel-autoplay'
@@ -19,6 +18,7 @@ export type CarouselPage = {
 type CarouselProps = {
   pages: CarouselPage[]
   ariaLabel?: string
+  'aria-labelledby'?: string
   className?: string
   showNavigation?: boolean
   showPagination?: boolean
@@ -126,6 +126,7 @@ const getPageWindowIds = (pages: CarouselPage[], centerIndex: number) => {
 const Carousel = ({
   pages,
   ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
   className,
   showNavigation = true,
   showPagination = true,
@@ -347,6 +348,7 @@ const Carousel = ({
       role="region"
       aria-roledescription="carousel"
       aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
     >
       {showNavigation && (
         <CarouselControls

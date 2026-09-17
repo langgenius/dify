@@ -1,8 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,17 +34,9 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const shouldRenderTurnstile = isTurnstileRequired && Boolean(turnstileSiteKey)
 
   const handleGetEMailVerificationCode = async () => {
+    if (loading) return
     let shouldResetTurnstile = false
     try {
-      if (!email) {
-        toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
-        return
-      }
-
-      if (!emailRegex.test(email)) {
-        toast.error(t(($) => $['error.emailInValid'], { ns: 'login' }))
-        return
-      }
       setLoading(true)
       shouldResetTurnstile = isTurnstileRequired
       const ret = await sendEMailLoginCode(
@@ -78,20 +69,34 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         void handleGetEMailVerificationCode()
       }}
     >
-      <Field name="email" disabled={isInvite} className="mb-2">
-        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
-          {t(($) => $.email, { ns: 'login' })}
-        </FieldLabel>
+      <Field
+        name="email"
+        disabled={isInvite}
+        validate={(value) => {
+          const emailValue = String(value)
+          return !emailValue || emailRegex.test(emailValue)
+            ? null
+            : t(($) => $['error.emailInValid'], { ns: 'login' })
+        }}
+        className={shouldRenderTurnstile ? 'mb-1' : 'mb-4'}
+      >
+        <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
         <Input
           type="email"
           autoComplete="email"
           spellCheck={false}
           disabled={isInvite}
+          required
           value={email}
           placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
           onValueChange={setEmail}
         />
-        {shouldRenderTurnstile && (
+        <FieldError>
+          {t(($) => $[email ? 'error.emailInValid' : 'error.emailEmpty'], { ns: 'login' })}
+        </FieldError>
+      </Field>
+      {shouldRenderTurnstile && (
+        <div className="mb-4">
           <Turnstile
             key={turnstileGeneration}
             action="signin_code"
@@ -104,19 +109,17 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
               setTurnstileToken('')
             }}
           />
-        )}
-        <div className="mt-3">
-          <Button
-            type="submit"
-            loading={loading}
-            disabled={loading || !email || (isTurnstileRequired && !turnstileToken)}
-            variant="primary"
-            className="w-full"
-          >
-            {t(($) => $['signup.verifyMail'], { ns: 'login' })}
-          </Button>
         </div>
-      </Field>
+      )}
+      <Button
+        type="submit"
+        loading={loading}
+        disabled={isTurnstileRequired && !turnstileToken}
+        variant="primary"
+        className="w-full"
+      >
+        {t(($) => $['signup.verifyMail'], { ns: 'login' })}
+      </Button>
     </Form>
   )
 }

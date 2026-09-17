@@ -26,7 +26,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { renderI18nObject } from '@/i18n-config/index'
-import { marketplaceQuery } from '@/service/client'
+import { marketplaceQuery } from '@/service/marketplace'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
 import {
   getPluginDetailLinkInMarketplace,
@@ -368,7 +368,7 @@ export function MarketplaceSearchAutocomplete({
           <AutocompletePositioner anchor={searchRootRef} sideOffset={8}>
             <div
               ref={resultsPanelRef}
-              className="max-h-[min(710px,var(--available-height))] w-(--anchor-width) max-w-(--available-width) overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl outline-hidden backdrop-blur-sm"
+              className="max-h-[min(20rem,var(--available-height))] w-(--anchor-width) max-w-(--available-width) overflow-y-auto overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl outline-hidden backdrop-blur-sm"
               aria-busy={isSearching || undefined}
             >
               <MarketplaceSuggestionList onSelect={openSuggestion} />

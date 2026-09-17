@@ -1,7 +1,7 @@
 import type {
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RetrievalConfig } from '@/types/app'
 import { describe, expect, it } from 'vite-plus/test'
 import {
@@ -27,7 +27,7 @@ const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Retrie
   ...overrides,
 })
 
-const createModelItem = (model: string): ModelItem => ({
+const createModelItem = (model: string): ProviderModelWithStatusEntity => ({
   model,
   label: { en_US: model, zh_Hans: model },
   model_type: ModelTypeEnum.rerank,
@@ -37,8 +37,9 @@ const createModelItem = (model: string): ModelItem => ({
   load_balancing_enabled: false,
 })
 
-const createRerankModelList = (): Model[] => [
+const createRerankModelList = (): ProviderWithModelsResponse[] => [
   {
+    tenant_id: 'test-workspace',
     provider: 'openai',
     icon_small: { en_US: '', zh_Hans: '' },
     label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -46,6 +47,7 @@ const createRerankModelList = (): Model[] => [
     status: ModelStatusEnum.active,
   },
   {
+    tenant_id: 'test-workspace',
     provider: 'cohere',
     icon_small: { en_US: '', zh_Hans: '' },
     label: { en_US: 'Cohere', zh_Hans: 'Cohere' },

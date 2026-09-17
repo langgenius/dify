@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.inner_api.mail import BaseMail, BillingMail, EnterpriseMail, InnerMailPayload
 from controllers.inner_api.wraps import InnerApiUnauthorizedError
@@ -96,15 +96,30 @@ class TestBaseMail:
         services = SimpleNamespace(inner_mail=mail_service)
 
         with (
-            app.test_request_context(),
-            patch("controllers.inner_api.mail.inner_api_ns") as namespace,
+            app.test_request_context(method="POST", json=payload),
             patch("controllers.inner_api.mail.application_services", return_value=services),
         ):
-            namespace.payload = payload
             result = unwrap(resource_type.post)(resource_type())
 
         assert result == ({"message": "success"}, 200)
         mail_service.send.assert_called_once_with(expected)
+
+    @pytest.mark.parametrize("resource_type", [EnterpriseMail, BillingMail])
+    def test_invalid_body_is_rejected_before_the_application_service_runs(
+        self, resource_type: type[BaseMail], app: Flask
+    ) -> None:
+        """`super().post()` relies on the decorator to supply the payload, so this covers it."""
+        mail_service = MagicMock()
+        services = SimpleNamespace(inner_mail=mail_service)
+
+        with (
+            app.test_request_context(method="POST", json={}),
+            patch("controllers.inner_api.mail.application_services", return_value=services),
+            pytest.raises(UnprocessableEntity),
+        ):
+            unwrap(resource_type.post)(resource_type())
+
+        mail_service.send.assert_not_called()
 
 
 def test_disabled_inner_api_returns_not_found_before_setup(app: Flask, config_overrides: Callable[..., None]) -> None:

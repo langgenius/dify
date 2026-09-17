@@ -215,11 +215,7 @@ const MCPList = ({
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                loading={isDeleting}
-                disabled={isDeleting}
-                onClick={handleDeleteConfirm}
-              >
+              <AlertDialogConfirmButton loading={isDeleting} onClick={handleDeleteConfirm}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogActions>

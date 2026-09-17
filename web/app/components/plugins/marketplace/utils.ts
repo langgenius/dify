@@ -8,7 +8,7 @@ import type { ActivePluginType } from './constants'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { MARKETPLACE_API_PREFIX } from '@/config'
-import { marketplaceClient } from '@/service/client'
+import { marketplaceClient } from '@/service/marketplace'
 import { getMarketplaceUrl } from '@/utils/var'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 

@@ -3,6 +3,7 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zGetNotificationQuery,
   zGetNotificationResponse,
   zPostNotificationDismissBody,
   zPostNotificationDismissResponse,
@@ -28,18 +29,19 @@ export const dismiss = {
 }
 
 /**
- * Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
+ * Return the active in-product notification for the current user in the requested language (defaults to English when omitted). Unavailable translations fall back to English, then the first available content. The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
  */
 export const get = oc
   .route({
     description:
-      'Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.',
+      'Return the active in-product notification for the current user in the requested language (defaults to English when omitted). Unavailable translations fall back to English, then the first available content. The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getNotification',
     path: '/notification',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetNotificationQuery.optional() }))
   .output(zGetNotificationResponse)
 
 export const notification = {

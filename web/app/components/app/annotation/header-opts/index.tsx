@@ -95,7 +95,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           />
           {t(($) => $['table.header.bulkExport'], { ns: 'appAnnotation' })}
         </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent placement="left-start" sideOffset={4} className="min-w-[100px]">
+        <DropdownMenuSubContent placement="left-start" sideOffset={4} className="min-w-25">
           <DropdownMenuItem
             disabled={annotationUnavailable}
             onClick={() => {
@@ -190,7 +190,7 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[155px]">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-38.75">
           <OperationsMenu
             list={list}
             onClose={() => setIsOperationsMenuOpen(false)}
