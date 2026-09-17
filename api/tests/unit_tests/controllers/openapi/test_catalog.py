@@ -6,8 +6,10 @@ import pytest
 from flask import Flask
 from pydantic import BaseModel
 
+from configs import dify_config
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import (
+    _VERBS,
     CATALOG_HEADER,
     CATALOG_PATH,
     build_catalog,
@@ -15,6 +17,9 @@ from controllers.openapi._catalog import (
     inline_refs,
     op_input_schema,
 )
+from controllers.openapi.auth.spec import EndpointSpec
+from enums import DeploymentEdition
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -33,6 +38,29 @@ def _nodes(node: object) -> Iterator[dict[str, object]]:
     elif isinstance(node, list):
         for item in node:
             yield from _nodes(item)
+
+
+def _stamped_ops_for_current_edition(app: Flask) -> set[str]:
+    """Every op a route on the url map carries, that the running edition admits.
+
+    Independent of `build_catalog`'s own traversal, so a bug that silently drops or
+    duplicates an op is caught by comparing against this.
+    """
+    ops: set[str] = set()
+    for rule in app.url_map.iter_rules():
+        if not rule.rule.startswith("/openapi/v1"):
+            continue
+        cls = getattr(app.view_functions.get(rule.endpoint), "view_class", None)
+        if cls is None:
+            continue
+        for verb in (rule.methods or set()) & _VERBS:
+            spec = getattr(cls, verb.lower(), None)
+            spec = getattr(spec, "__spec__", None)
+            if not isinstance(spec, EndpointSpec):
+                continue
+            if spec.edition is None or dify_config.DEPLOYMENT_EDITION in spec.edition:
+                ops.add(spec.op)
+    return ops
 
 
 def test_catalog_lists_every_stamped_op_with_full_path(app: Flask):
@@ -74,6 +102,18 @@ def test_catalog_marks_internal_and_excludes_probes_and_oauth(app: Flask):
     paths = {p["path"] for p in doc["ops"].values()}
     assert not any(p.startswith("/openapi/v1/oauth/") for p in paths)
     assert not paths & {"/openapi/v1/_health", "/openapi/v1/_version", "/openapi/v1/_catalog"}
+
+
+def test_catalog_matches_every_stamped_op_for_the_current_edition(app: Flask):
+    assert set(build_catalog(app)["ops"]) == _stamped_ops_for_current_edition(app)
+
+
+def test_edition_gated_op_appears_only_under_its_own_edition(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    op = "console_app.external.list"
+    assert op not in build_catalog(app)["ops"]
+
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    assert op in build_catalog(app)["ops"]
 
 
 def test_inline_refs_resolves_nested_ref_chain():
