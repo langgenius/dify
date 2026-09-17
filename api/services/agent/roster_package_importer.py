@@ -5,21 +5,16 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
-import tempfile
 from dataclasses import dataclass
-from typing import BinaryIO, Protocol, cast
-from urllib.parse import urlsplit, urlunsplit
+from typing import BinaryIO, Protocol
 from uuid import uuid4
 
-import httpx
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
 from constants.model_template import default_app_templates
 from core.db.session_factory import session_factory
-from core.file import remote_fetcher
-from core.tools.errors import ToolSSRFError
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
@@ -86,50 +81,6 @@ class RosterAgentPackageImporter:
         self._reader = RosterAgentPackageReader()
         self._skill_packages = SkillPackageService()
         self._storage = storage_backend
-
-    def import_from_url(self, *, url: str, tenant_id: str, account: Account) -> RosterAgentPackageImportResult:
-        """Download a bounded archive before starting the existing package import transactions."""
-        url = url.strip()
-        try:
-            parsed = urlsplit(url)
-            if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-                raise ValueError("An absolute HTTP(S) URL is required")
-        except ValueError as exc:
-            raise InvalidRosterAgentPackageError("Roster Agent package URL is invalid") from exc
-        if parsed.scheme == "https" and parsed.netloc == "github.com" and "/blob/" in parsed.path:
-            url = urlunsplit(
-                parsed._replace(netloc="raw.githubusercontent.com", path=parsed.path.replace("/blob/", "/", 1))
-            )
-
-        with tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b") as source:
-            try:
-                response = remote_fetcher.make_request(
-                    "GET",
-                    url,
-                    stream_response=True,
-                    follow_redirects=True,
-                    timeout=(10, 10),
-                    headers={"Accept-Encoding": "identity"},
-                )
-                try:
-                    response.raise_for_status()
-                    # Reject HTTP compression so the byte limit also bounds decompression memory.
-                    if response.headers.get("content-encoding", "identity").strip().lower() not in {"", "identity"}:
-                        raise InvalidRosterAgentPackageError("Compressed HTTP package responses are not supported")
-                    size = 0
-                    for chunk in response.iter_bytes(chunk_size=1024 * 1024):
-                        size += len(chunk)
-                        if size > dify_config.AGENT_PACKAGE_MAX_BYTES:
-                            raise RosterAgentPackageTooLargeError(
-                                "Roster Agent package download exceeds the size limit"
-                            )
-                        source.write(chunk)
-                finally:
-                    response.close()
-            except (httpx.HTTPError, httpx.InvalidURL, remote_fetcher.max_retries_exceeded_error, ToolSSRFError) as exc:
-                raise InvalidRosterAgentPackageError("Could not download the Roster Agent package from URL") from exc
-            source.seek(0)
-            return self.import_package(source=cast(BinaryIO, source), tenant_id=tenant_id, account=account)
 
     def import_package(
         self,

@@ -224,6 +224,7 @@ describe('CreateFromDSLModal', () => {
   })
 
   it.each([
+    'https://example.com/download?id=123',
     'https://example.com/agent.ifpkg',
     'https://example.com/agent.IFPKG?token=secret#download',
   ])('imports package URL %s when the ordinary App quota is full', async (url) => {
@@ -237,16 +238,12 @@ describe('CreateFromDSLModal', () => {
     })
     render(<CreateFromDSLModal show onClose={vi.fn()} activeTab={CreateFromDSLModalTab.FROM_URL} />)
     const input = screen.getByRole('textbox', { name: /importFromDSLUrl/ })
-    expect(getCreateButton()).toBeDisabled()
     await user.type(input, url)
     expect(screen.queryByText('apps-full')).not.toBeInTheDocument()
     await user.click(getCreateButton())
     await waitFor(() =>
       expect(mockImportDSL).toHaveBeenCalledWith({ mode: 'yaml-url', yaml_url: url }),
     )
-    await user.clear(input)
-    await user.type(input, 'https://example.com/app.yaml?file=agent.ifpkg')
-    expect(getCreateButton()).toBeDisabled()
   })
 
   it('should render the file tab and show the dropped file', async () => {
@@ -852,7 +849,7 @@ describe('CreateFromDSLModal', () => {
     })
   })
 
-  it('should handle keyboard shortcut and quota guard', async () => {
+  it('should handle keyboard shortcut and defer URL quota checks to the server', async () => {
     const handleClose = vi.fn()
     mockImportDSL.mockResolvedValue({
       id: 'import-shortcut',
@@ -891,9 +888,9 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    expect(screen.getByText('apps-full'))!.toBeInTheDocument()
+    expect(screen.queryByText('apps-full')).not.toBeInTheDocument()
     triggerHotkey('Mod+Enter')
-    expect(mockImportDSL).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mockImportDSL).toHaveBeenCalledTimes(2))
   })
 
   it('should show failure toasts for failed and rejected imports', async () => {

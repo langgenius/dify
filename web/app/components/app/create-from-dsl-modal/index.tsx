@@ -64,17 +64,6 @@ type ImportSource =
 
 const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
-function isPackageUrl(value: string): boolean {
-  try {
-    const url = new URL(value.trim())
-    return (
-      ['http:', 'https:'].includes(url.protocol) && url.pathname.toLowerCase().endsWith('.ifpkg')
-    )
-  } catch {
-    return false
-  }
-}
-
 function getImportedAppMode(mode?: string | null): AppModeEnum | undefined {
   switch (mode) {
     case AppMode.COMPLETION:
@@ -107,7 +96,6 @@ function CreateFromDSLModal({
   const formRef = useRef<HTMLFormElement>(null)
   const browseButtonRef = useRef<HTMLButtonElement>(null)
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
-  const [currentUrl, setCurrentUrl] = useState(dslUrl)
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const { mutateAsync: requestImport } = useMutation(
@@ -153,14 +141,15 @@ function CreateFromDSLModal({
     }),
   )
   const isPackageImport =
-    currentTab === CreateFromDSLModalTab.FROM_FILE
-      ? currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
-      : isPackageUrl(currentUrl)
+    currentTab === CreateFromDSLModalTab.FROM_FILE &&
+    currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
+  // URL content is identified by the server, which enforces the matching quota.
+  const checkAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
   const isAppQuotaUnavailable =
-    !isPackageImport && deploymentEdition === 'CLOUD' && appQuota === undefined
+    checkAppQuota && deploymentEdition === 'CLOUD' && appQuota === undefined
   // A limit of 0 means unlimited.
   const isAppsFull =
-    !isPackageImport &&
+    checkAppQuota &&
     deploymentEdition === 'CLOUD' &&
     appQuota !== undefined &&
     appQuota.limit > 0 &&
@@ -356,8 +345,7 @@ function CreateFromDSLModal({
                       required
                       disabled={isImporting}
                       placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
-                      value={currentUrl}
-                      onChange={(event) => setCurrentUrl(event.target.value)}
+                      defaultValue={dslUrl}
                     />
                     <FieldError />
                   </Field>
