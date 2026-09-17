@@ -3293,6 +3293,29 @@ def test_agent_skill_binding_changes_require_agent_publish_before_runtime_load()
 
     assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT)[0]["name"] == "finance-sop"
 
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        next_snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=2,
+            config_snapshot=AgentSoulConfig(),
+            created_by=USER,
+        )
+        session.add(next_snapshot)
+        session.flush()
+        agent.active_config_snapshot_id = next_snapshot.id
+        session.commit()
+
+    assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT) == []
+    historical_skills = service.list_runtime_agent_skills(
+        tenant_id=TENANT, agent_id=AGENT, config_snapshot_id=snapshot_id
+    )
+    assert [skill["name"] for skill in historical_skills] == ["finance-sop"]
+    draft_skills = service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT, include_draft=True)
+    assert [skill["name"] for skill in draft_skills] == ["finance-sop"]
+
 
 def test_runtime_agent_skill_pull_normalizes_archive_identity_to_published_metadata() -> None:
     archive_buffer = io.BytesIO()
