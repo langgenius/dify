@@ -142,7 +142,7 @@ const data = {
     },
     {
       value: 'sl-SI',
-      name: 'Slovensko (Slovenija)',
+      name: 'Slovenščina (Slovenija)',
       prompt_name: 'Slovensko',
       example: 'Zdravo, Dify!',
       supported: true,

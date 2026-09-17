@@ -239,12 +239,4 @@ export const getCheckboxListValue = (
   return current.filter((item) => allowedValues.has(item))
 }
 
-export const getNumberInputValue = (currentValue: unknown): number | string => {
-  if (typeof currentValue === 'number') return Number.isNaN(currentValue) ? '' : currentValue
-
-  if (typeof currentValue === 'string') return currentValue
-
-  return ''
-}
-
 export const normalizeVariableSelectorValue = (value: ValueSelector | string) => value || ''

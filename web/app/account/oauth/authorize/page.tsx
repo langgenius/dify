@@ -198,7 +198,7 @@ export default function OAuthAuthorize() {
           <div className="flex items-center gap-2.5">
             <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             <div>
-              <div className="system-md-semi-bold text-text-secondary">{userProfile.name}</div>
+              <div className="text-text-secondary">{userProfile.name}</div>
               <div className="system-xs-regular text-text-tertiary">{userProfile.email}</div>
             </div>
           </div>

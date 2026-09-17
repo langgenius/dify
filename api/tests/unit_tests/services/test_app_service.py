@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
@@ -543,6 +544,32 @@ class TestGetApp:
 
         is_agent.assert_not_called()
         get_model_config.assert_called_once_with(session=unbound_session)
+
+    def test_masked_agent_config_is_served_through_the_session_accessor(self, unbound_session: Session):
+        """The masked config must be reachable via `app_model_config_with_session`.
+
+        Every response path resolves an `App`'s model config through that accessor
+        (`AppResponseView.app_model_config`), never through a raw attribute, so the
+        masking `get_app` applies has to be observable there.
+        """
+        app = App(mode=AppMode.AGENT_CHAT)
+        app.id = str(uuid4())
+        masked_config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": True, "tools": []}))
+        # A second, unmasked instance: what a fresh lookup would hand back if the
+        # returned app ever fell through to the base accessor.
+        refetched_config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": True, "tools": []}))
+        account = Account(name="Test Account", email="test@example.com")
+        account._current_tenant = Tenant(name="Test Tenant")
+        account._current_tenant.id = "tenant-1"
+
+        with (
+            patch.object(App, "app_model_config_with_session", side_effect=[masked_config, refetched_config]),
+            patch("services.app_service.current_user", account),
+        ):
+            result = AppService().get_app(app, session=unbound_session)
+
+            assert result is not app
+            assert result.app_model_config_with_session(session=unbound_session) is masked_config
 
 
 class TestAgentAppType:
