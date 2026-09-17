@@ -250,7 +250,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
                   <span className="mr-[4.5px] ml-[2.5px] h-0.75 w-0.75 rounded-sm bg-text-accent-secondary"></span>
-                  <span className="system-2xs-semibold-uupercase">
+                  <span className="system-2xs-semibold-uppercase">
                     {t(($) => $['debug.variableInspect.edited'], { ns: 'workflow' })}
                   </span>
                 </Badge>
