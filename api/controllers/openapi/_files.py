@@ -3,27 +3,33 @@
 This is the whole of file handling on ``/openapi/v1``: the CLI sends bytes under
 ``files[<variable>]`` (or a URL string inside ``inputs``), the openapi layer uploads
 and merges, the app generators receive the same ``inputs`` a hand-written client
-would have built with ``console_app.file.upload``. Core modules are untouched; the
-file factory infers each file's type from the upload, so mappings carry none.
+would have built with ``console_app.file.upload``. Core modules are untouched.
+
+Every mapping carries a ``type``: ``build_from_mapping`` validates ``mapping["type"]
+or FileType.CUSTOM`` against the variable's upload config, and ``custom`` is refused
+by every normally configured file variable. The type is inferred with the core's own
+``standardize_file_type``, from the stored upload row for a local file and from the
+URL path's extension for a remote one.
 """
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any, Final
+from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 import services
 from controllers.common.errors import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
-from controllers.openapi._errors import InvalidFilePart
-from controllers.openapi._input_schema import resolve_app_config
+from controllers.openapi._errors import FilenameNotExists, InvalidFilePart
+from controllers.openapi._input_schema import _CHAT_FAMILY, resolve_app_config
 from extensions.ext_application_services import application_services
-from models.model import App, AppMode
-
-_CHAT_FAMILY: Final = frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT})
+from graphon.file import standardize_file_type
+from models.model import App
 
 MaterializedInputs = tuple[dict[str, Any], list[dict[str, Any]]]
 
@@ -49,11 +55,15 @@ def file_rows_of(app: App, session: Session) -> dict[str, FileRowKind]:
 
 
 def _upload(part: FileStorage, caller: Any) -> dict[str, Any]:
+    if not part.mimetype:
+        raise UnsupportedFileTypeError()
+    if not part.filename:
+        raise FilenameNotExists()
     try:
         uploaded = application_services().files.upload_file(
-            filename=part.filename or "upload",
+            filename=part.filename,
             content=part.stream.read(),
-            mimetype=part.mimetype or "application/octet-stream",
+            mimetype=part.mimetype,
             user=caller,
         )
     except services.errors.file.FileTooLargeError as exc:
@@ -62,11 +72,19 @@ def _upload(part: FileStorage, caller: Any) -> dict[str, Any]:
         raise UnsupportedFileTypeError() from exc
     except services.errors.file.BlockedFileExtensionError as exc:
         raise BlockedFileExtensionError(exc.description) from exc
-    return {"transfer_method": "local_file", "upload_file_id": str(uploaded.id)}
+    return {
+        "transfer_method": "local_file",
+        "upload_file_id": str(uploaded.id),
+        "type": standardize_file_type(extension="." + uploaded.extension, mime_type=uploaded.mime_type),
+    }
 
 
 def _remote(url: str) -> dict[str, Any]:
-    return {"transfer_method": "remote_url", "url": url}
+    return {
+        "transfer_method": "remote_url",
+        "url": url,
+        "type": standardize_file_type(extension=os.path.splitext(urlparse(url).path)[1]),
+    }
 
 
 def _as_list(value: FileStorage | list[FileStorage]) -> list[FileStorage]:
