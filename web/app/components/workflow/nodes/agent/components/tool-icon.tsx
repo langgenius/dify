@@ -6,6 +6,7 @@ import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { Group } from '@/app/components/base/icons/src/vender/other'
+import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -36,7 +37,10 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
       ...(mcpTools || []),
     ]
     return mergedTools.find((toolWithProvider) => {
-      return toolWithProvider.name === providerName || toolWithProvider.id === providerName
+      return (
+        toolWithProvider.name === providerName ||
+        matchesProviderReference(toolWithProvider, providerName)
+      )
     })
   }, [buildInTools, customTools, providerName, workflowTools, mcpTools])
 

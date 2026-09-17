@@ -15,6 +15,10 @@ import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
 import { CollectionType } from '../../../tools/types'
+import {
+  getProviderReference,
+  matchesProviderReference,
+} from '../../../tools/utils/provider-reference'
 import BlockIcon from '../../block-icon'
 import McpToolNotSupportTooltip from '../../nodes/_base/components/mcp-tool-not-support-tooltip'
 import { BlockEnum } from '../../types'
@@ -86,11 +90,11 @@ function Tool({
       return selectedTools.some(
         (selectedTool) =>
           (selectedTool.provider_name === payload.name ||
-            selectedTool.provider_name === payload.id) &&
+            matchesProviderReference(payload, selectedTool.provider_name)) &&
           selectedTool.tool_name === tool.name,
       )
     },
-    [payload.id, payload.name, selectedTools],
+    [payload, selectedTools],
   )
 
   const totalToolsNum = actions.length
@@ -153,7 +157,7 @@ function Tool({
             params[item.name] = ''
           })
           return {
-            provider_id: payload.id,
+            provider_id: getProviderReference(payload),
             provider_type: payload.type,
             provider_name: payload.name,
             provider_show_name: payload.label[language],
@@ -180,7 +184,7 @@ function Tool({
       params[item.name] = ''
     })
     onSelect(BlockEnum.Tool, {
-      provider_id: payload.id,
+      provider_id: getProviderReference(payload),
       provider_type: payload.type,
       provider_name: payload.name,
       provider_show_name: payload.label[language],

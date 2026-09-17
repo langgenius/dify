@@ -5,6 +5,7 @@ import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { Node, ToolWithProvider } from '../types'
 import { useCallback, useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
+import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import useTheme from '@/hooks/use-theme'
 import {
   useAllBuiltInTools,
@@ -99,7 +100,7 @@ const findToolInCollections = (
 
     seen.add(collection)
     const matched = collection.find((toolWithProvider) => {
-      if (canFindTool(toolWithProvider.id, data.provider_id)) return true
+      if (matchesProviderReference(toolWithProvider, data.provider_id)) return true
       if (data.plugin_id && toolWithProvider.plugin_id === data.plugin_id) return true
       return data.provider_name === toolWithProvider.name
     })

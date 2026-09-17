@@ -11,6 +11,7 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { getProviderReference } from '@/app/components/tools/utils/provider-reference'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
@@ -90,7 +91,7 @@ const ToolItem: FC<Props> = ({
           })
         }
         onSelect(BlockEnum.Tool, {
-          provider_id: provider.id,
+          provider_id: getProviderReference(provider),
           provider_type: provider.type,
           provider_name: provider.name,
           provider_show_name: provider.label[language],

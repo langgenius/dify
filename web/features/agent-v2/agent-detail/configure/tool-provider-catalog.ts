@@ -5,6 +5,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
+import { getProviderReference } from '@/app/components/tools/utils/provider-reference'
 import { useGetLanguage } from '@/context/i18n'
 import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
 import {
@@ -54,6 +55,9 @@ export function createAgentToolProviderCatalog({
 
   allProviders.forEach((provider) => {
     providers.set(provider.id, provider)
+    // Redundant for every type except MCP, which the saved config references by
+    // server identifier.
+    providers.set(getProviderReference(provider), provider)
     providers.set(provider.name, provider)
     if (provider.plugin_id) {
       providers.set(provider.plugin_id, provider)

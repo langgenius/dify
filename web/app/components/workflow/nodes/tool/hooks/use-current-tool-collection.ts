@@ -2,13 +2,13 @@ import type { ToolNodeType } from '../types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
+import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { canFindTool } from '@/utils'
 
 const useCurrentToolCollection = (
   providerType: ToolNodeType['provider_type'],
@@ -35,7 +35,7 @@ const useCurrentToolCollection = (
   }, [buildInTools, customTools, mcpTools, providerType, workflowTools])
 
   const currCollection = useMemo(() => {
-    return currentTools.find((item) => canFindTool(item.id, providerId))
+    return currentTools.find((item) => matchesProviderReference(item, providerId))
   }, [currentTools, providerId])
 
   return {

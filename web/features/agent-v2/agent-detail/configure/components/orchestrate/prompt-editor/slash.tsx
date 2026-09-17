@@ -21,6 +21,10 @@ import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
+import {
+  getProviderReference,
+  matchesProviderReference,
+} from '@/app/components/tools/utils/provider-reference'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -549,7 +553,7 @@ function toToolDefaultValue(
   const providerLabel = getLocalizedText(provider.label, language) || provider.name
 
   return {
-    provider_id: provider.id,
+    provider_id: getProviderReference(provider),
     provider_type: parseToolProviderType(provider.type),
     provider_name: provider.name,
     provider_show_name: providerLabel,
@@ -574,7 +578,7 @@ function isToolSelected(selectedTools: ToolValue[], provider: ToolWithProvider, 
   return selectedTools.some(
     (selectedTool) =>
       (selectedTool.provider_name === provider.name ||
-        selectedTool.provider_name === provider.id) &&
+        matchesProviderReference(provider, selectedTool.provider_name)) &&
       selectedTool.tool_name === tool.name,
   )
 }

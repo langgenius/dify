@@ -16,6 +16,7 @@ import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
+import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import {
   ANNOTATION_DEFAULT,
@@ -299,7 +300,7 @@ const normalizeAgentTool = (
   const providerName = getString(tool.provider_name)
   const providerType = normalizeCollectionType(tool.provider_type)
   const toolName = getString(tool.tool_name)
-  const toolInCollectionList = collectionList?.find((c) => providerId === c.id)
+  const toolInCollectionList = collectionList?.find((c) => matchesProviderReference(c, providerId))
 
   return {
     ...tool,

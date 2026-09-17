@@ -14,6 +14,7 @@ import {
   ModelFeatureEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -23,7 +24,6 @@ import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
-import { canFindTool } from '@/utils'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../types'
 
@@ -145,7 +145,7 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
       icons[item.tool_name] = collectionList.find((collection: any) =>
-        canFindTool(collection.id, item.provider_id),
+        matchesProviderReference(collection, item.provider_id),
       )?.icon
     })
     return icons

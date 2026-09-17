@@ -3,6 +3,7 @@ import type { Collection } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs, ModelConfig } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, UserInputFormItem } from '@/types/app'
+import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import { DEFAULT_AGENT_SETTING } from '@/config'
 import { PromptMode } from '@/models/debug'
 import { AgentStrategy, AppModeEnum } from '@/types/app'
@@ -99,8 +100,8 @@ function buildPublishedModelConfig({
             tools: agentModeTools
               .filter((tool) => !tool.dataset)
               .map((tool) => {
-                const toolInCollectionList = collectionList.find(
-                  (collection) => collection.id === tool.provider_id,
+                const toolInCollectionList = collectionList.find((collection) =>
+                  matchesProviderReference(collection, tool.provider_id),
                 )
                 return {
                   ...tool,

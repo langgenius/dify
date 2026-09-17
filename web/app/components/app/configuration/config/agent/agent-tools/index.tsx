@@ -24,6 +24,7 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import { Infotip } from '@/app/components/base/infotip'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
+import { matchesProviderReference } from '@/app/components/tools/utils/provider-reference'
 import {
   addDefaultValue,
   toolParametersToFormSchemas,
@@ -37,7 +38,6 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { canFindTool } from '@/utils'
 import { writeTextToClipboard } from '@/utils/clipboard'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
 import SettingBuiltInTool from './setting-built-in-tool'
@@ -67,7 +67,8 @@ const AgentTools: FC = () => {
   const tools = ((modelConfig?.agentConfig?.tools as AgentTool[]) || []).map((item) => {
     const collection = collectionList.find(
       (collection) =>
-        canFindTool(collection.id, item.provider_id) && collection.type === item.provider_type,
+        matchesProviderReference(collection, item.provider_id) &&
+        collection.type === item.provider_type,
     )
     const icon = collection?.icon
     return {
@@ -80,7 +81,7 @@ const AgentTools: FC = () => {
     const newModelConfig = produce(modelConfig, (draft) => {
       const tool = draft.agentConfig.tools.find(
         (item: any) =>
-          item.provider_id === currentTool?.collection?.id &&
+          item.provider_id === currentTool?.provider_id &&
           item.tool_name === currentTool?.tool_name,
       )
       if (tool) (tool as AgentTool).tool_parameters = value
@@ -94,7 +95,9 @@ const AgentTools: FC = () => {
   const getDeleteToolLabel = (tool: AgentTool) =>
     `${t(($) => $['operation.delete'], { ns: 'common' })} ${tool.tool_label || tool.tool_name}`
   const getToolValue = (tool: ToolDefaultValue) => {
-    const currToolInCollections = collectionList.find((c) => c.id === tool.provider_id)
+    const currToolInCollections = collectionList.find((c) =>
+      matchesProviderReference(c, tool.provider_id),
+    )
     const currToolWithConfigs = currToolInCollections?.tools.find((t) => t.name === tool.tool_name)
     const formSchemas = currToolWithConfigs
       ? toolParametersToFormSchemas(currToolWithConfigs.parameters)

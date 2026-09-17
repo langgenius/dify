@@ -639,7 +639,7 @@ class TestMCPToolManageService:
         # Act: Execute the method under test
 
         service = MCPToolManageService(db_session_with_containers)
-        result = service.list_providers(tenant_id=tenant.id, for_list=True)
+        result = service.list_providers(tenant_id=tenant.id)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -677,7 +677,7 @@ class TestMCPToolManageService:
         # Act: Execute the method under test
 
         service = MCPToolManageService(db_session_with_containers)
-        result = service.list_providers(tenant_id=tenant.id, for_list=False)
+        result = service.list_providers(tenant_id=tenant.id)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -750,8 +750,8 @@ class TestMCPToolManageService:
         # Act: Execute the method under test for both tenants
 
         service = MCPToolManageService(db_session_with_containers)
-        result1 = service.list_providers(tenant_id=tenant1.id, for_list=True)
-        result2 = service.list_providers(tenant_id=tenant2.id, for_list=True)
+        result1 = service.list_providers(tenant_id=tenant1.id)
+        result2 = service.list_providers(tenant_id=tenant2.id)
 
         # Assert: Verify tenant isolation
         assert len(result1) == 1

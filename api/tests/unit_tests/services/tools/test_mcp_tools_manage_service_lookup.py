@@ -80,3 +80,38 @@ def test_get_provider_by_server_identifier_not_found(service: MCPToolManageServi
 
     with pytest.raises(ValueError, match="MCP tool not found"):
         service.get_provider_by_server_identifier(server_identifier=SERVER_IDENTIFIER, tenant_id=TENANT_ID)
+
+
+def test_persisted_reference_prefers_server_identifier(service: MCPToolManageService, session: Mock) -> None:
+    provider = _provider()
+    session.scalar.return_value = provider
+
+    assert (
+        service.get_provider_by_persisted_reference(id_or_server_identifier=SERVER_IDENTIFIER, tenant_id=TENANT_ID)
+        is provider
+    )
+
+    # A single query is enough: the primary-key fallback is never reached.
+    assert session.scalar.call_count == 1
+    assert "tool_mcp_providers.server_identifier = " in str(session.scalar.call_args.args[0].whereclause)
+
+
+def test_persisted_reference_falls_back_to_primary_key(service: MCPToolManageService, session: Mock) -> None:
+    """Graphs written before the server-identifier convention still carry the primary key."""
+    provider = _provider()
+    session.scalar.side_effect = [None, provider]
+
+    assert (
+        service.get_provider_by_persisted_reference(id_or_server_identifier=PROVIDER_UUID, tenant_id=TENANT_ID)
+        is provider
+    )
+
+    assert session.scalar.call_count == 2
+    assert "tool_mcp_providers.id = " in str(session.scalar.call_args.args[0].whereclause)
+
+
+def test_persisted_reference_not_found(service: MCPToolManageService, session: Mock) -> None:
+    session.scalar.return_value = None
+
+    with pytest.raises(ValueError, match="MCP tool not found"):
+        service.get_provider_by_persisted_reference(id_or_server_identifier=SERVER_IDENTIFIER, tenant_id=TENANT_ID)

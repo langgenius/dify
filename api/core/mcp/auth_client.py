@@ -102,8 +102,8 @@ class MCPClientWithAuthRetry(MCPClient):
                 )
 
                 # Retrieve new tokens
-                self.provider_entity = mcp_service.get_provider_entity_by_id(
-                    provider_id=self.provider_entity.id, tenant_id=self.provider_entity.tenant_id
+                self.provider_entity = mcp_service.get_provider_entity_by_server_identifier(
+                    server_identifier=self.provider_entity.server_identifier, tenant_id=self.provider_entity.tenant_id
                 )
 
             # Session is closed here, before we update headers

@@ -144,6 +144,35 @@ class MCPToolManageService:
             server_identifier=server_identifier, tenant_id=tenant_id
         ).to_entity()
 
+    def get_provider_by_persisted_reference(self, *, id_or_server_identifier: str, tenant_id: str) -> MCPToolProvider:
+        """
+        Resolve an MCP provider from a reference persisted in a graph or agent config.
+
+        For backward compatibility. Previously, the id returned by the 
+        server is non-deterministic, depending on the query parameter, 
+        so we accept both primary key (id) and server identifier for any existing DSLs
+
+        Raises:
+            ValueError: If no provider matches the reference
+        """
+        try:
+            return self.get_provider_by_server_identifier(
+                server_identifier=id_or_server_identifier, tenant_id=tenant_id
+            )
+        except ValueError:
+            return self.get_provider_by_id(provider_id=id_or_server_identifier, tenant_id=tenant_id)
+
+    def get_provider_entity_by_persisted_reference(
+        self, *, id_or_server_identifier: str, tenant_id: str
+    ) -> MCPProviderEntity:
+        """Resolve a provider entity from a persisted graph or agent config reference.
+
+        Accepts both meanings — see get_provider_by_persisted_reference.
+        """
+        return self.get_provider_by_persisted_reference(
+            id_or_server_identifier=id_or_server_identifier, tenant_id=tenant_id
+        ).to_entity()
+
     def create_provider(
         self,
         *,
@@ -200,7 +229,7 @@ class MCPToolManageService:
         self._session.add(mcp_tool)
         self._session.flush()
 
-        mcp_providers = ToolTransformService.mcp_provider_to_user_provider(mcp_tool, for_list=True)
+        mcp_providers = ToolTransformService.mcp_provider_to_user_provider(mcp_tool)
         return mcp_providers
 
     def update_provider(
@@ -296,14 +325,11 @@ class MCPToolManageService:
         mcp_tool = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
         self._session.delete(mcp_tool)
 
-    def list_providers(
-        self, *, tenant_id: str, for_list: bool = False, include_sensitive: bool = True
-    ) -> list[ToolProviderApiEntity]:
+    def list_providers(self, *, tenant_id: str, include_sensitive: bool = True) -> list[ToolProviderApiEntity]:
         """List all MCP providers for a tenant.
 
         Args:
             tenant_id: Tenant ID
-            for_list: If True, return provider ID; if False, return server identifier
             include_sensitive: If False, skip expensive decryption operations (default: True for backward compatibility)
         """
         from models.account import Account
@@ -322,7 +348,6 @@ class MCPToolManageService:
         return [
             ToolTransformService.mcp_provider_to_user_provider(
                 provider,
-                for_list=for_list,
                 user_name=user_name_map.get(provider.user_id),
                 include_sensitive=include_sensitive,
             )
