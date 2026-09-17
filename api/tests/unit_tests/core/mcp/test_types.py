@@ -9,10 +9,16 @@ from core.mcp.types import (
     INVALID_PARAMS,
     INVALID_REQUEST,
     LATEST_PROTOCOL_VERSION,
+    META_CLIENT_INFO_KEY,
+    META_PROTOCOL_VERSION_KEY,
+    META_SERVER_INFO_KEY,
     METHOD_NOT_FOUND,
     PARSE_ERROR,
     SERVER_LATEST_PROTOCOL_VERSION,
     SERVER_SUPPORTED_PROTOCOL_VERSIONS,
+    SESSION_BASED_PROTOCOL_VERSIONS,
+    STATELESS_PROTOCOL_VERSION,
+    UNSUPPORTED_PROTOCOL_VERSION,
     Annotations,
     CallToolRequest,
     CallToolRequestParams,
@@ -24,6 +30,8 @@ from core.mcp.types import (
     Completion,
     CompletionArgument,
     CompletionContext,
+    DiscoverRequest,
+    DiscoverResult,
     ErrorData,
     ImageContent,
     Implementation,
@@ -63,7 +71,20 @@ class TestConstants:
         assert LATEST_PROTOCOL_VERSION == "2025-06-18"
         assert SERVER_LATEST_PROTOCOL_VERSION == "2025-06-18"
         assert DEFAULT_NEGOTIATED_VERSION == "2025-03-26"
-        assert sorted(SERVER_SUPPORTED_PROTOCOL_VERSIONS) == ["2024-11-05", "2025-03-26", "2025-06-18"]
+        assert STATELESS_PROTOCOL_VERSION == "2026-07-28"
+        assert sorted(SESSION_BASED_PROTOCOL_VERSIONS) == ["2024-11-05", "2025-03-26", "2025-06-18"]
+        assert sorted(SERVER_SUPPORTED_PROTOCOL_VERSIONS) == [
+            "2024-11-05",
+            "2025-03-26",
+            "2025-06-18",
+            "2026-07-28",
+        ]
+
+    def test_meta_keys(self):
+        """Test the stateless _meta key constants."""
+        assert META_PROTOCOL_VERSION_KEY == "io.modelcontextprotocol/protocolVersion"
+        assert META_CLIENT_INFO_KEY == "io.modelcontextprotocol/clientInfo"
+        assert META_SERVER_INFO_KEY == "io.modelcontextprotocol/serverInfo"
 
     def test_error_codes(self):
         """Test JSON-RPC error code constants."""
@@ -72,6 +93,7 @@ class TestConstants:
         assert METHOD_NOT_FOUND == -32601
         assert INVALID_PARAMS == -32602
         assert INTERNAL_ERROR == -32603
+        assert UNSUPPORTED_PROTOCOL_VERSION == -32022
 
 
 class TestRequestParams:
@@ -494,3 +516,54 @@ class TestValidation:
         dumped = result.model_dump(by_alias=True)
         assert "_meta" in dumped
         assert dumped["_meta"] == {"key": "value"}
+
+
+class TestStatelessCoreTypes:
+    """Tests for the stateless 2026-07-28 additions."""
+
+    def test_result_type_field(self):
+        """resultType round-trips when set and is omitted (None) on legacy results."""
+        result = Result(resultType="complete")
+        assert result.resultType == "complete"
+        assert result.model_dump(by_alias=True, exclude_none=True).get("resultType") == "complete"
+
+        legacy = Result()
+        assert legacy.resultType is None
+        assert "resultType" not in legacy.model_dump(by_alias=True, exclude_none=True)
+
+    def test_capabilities_extensions_field(self):
+        """Both capabilities models accept an extensions map keyed by extension identifier."""
+        extensions = {"io.modelcontextprotocol/tasks": {}}
+        assert ServerCapabilities(tools={}, extensions=extensions).extensions == extensions
+        assert ClientCapabilities(roots={}, extensions=extensions).extensions == extensions
+
+    def test_discover_request_parses_via_client_request_union(self):
+        """A server/discover request validates through the ClientRequest RootModel."""
+        from core.mcp.types import ClientRequest
+
+        payload = {
+            "jsonrpc": "2.0",
+            "id": "discover-1",
+            "method": "server/discover",
+            "params": {"_meta": {META_PROTOCOL_VERSION_KEY: STATELESS_PROTOCOL_VERSION}},
+        }
+        request = ClientRequest.model_validate(payload)
+        assert isinstance(request.root, DiscoverRequest)
+        assert request.root.method == "server/discover"
+
+    def test_discover_result_fields(self):
+        """DiscoverResult carries the schema-required discovery fields."""
+        result = DiscoverResult(
+            supportedVersions=[STATELESS_PROTOCOL_VERSION],
+            capabilities=ServerCapabilities(tools={}),
+            instructions="Test server",
+            ttlMs=3600000,
+            cacheScope="public",
+            _meta={META_SERVER_INFO_KEY: {"name": "Dify", "version": "1.0.0"}},
+        )
+        dumped = result.model_dump(by_alias=True, mode="json", exclude_none=True)
+        assert dumped["supportedVersions"] == ["2026-07-28"]
+        assert "capabilities" in dumped
+        assert dumped["ttlMs"] == 3600000
+        assert dumped["cacheScope"] == "public"
+        assert dumped["_meta"][META_SERVER_INFO_KEY] == {"name": "Dify", "version": "1.0.0"}

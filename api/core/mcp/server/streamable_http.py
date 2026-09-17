@@ -28,14 +28,21 @@ def _supports_structured_output(protocol_version: str) -> bool:
     return protocol_version >= STRUCTURED_OUTPUT_MIN_VERSION
 
 
+def _is_stateless(protocol_version: str) -> bool:
+    """Return True when the negotiated version is the stateless 2026-07-28 core."""
+    return protocol_version == mcp_types.STATELESS_PROTOCOL_VERSION
+
+
 def negotiate_protocol_version(header_value: str | None, is_initialize: bool) -> str | None:
     """Resolve the negotiated protocol version for an incoming MCP request.
 
-    The version is taken from the MCP-Protocol-Version header on post-initialize requests.
-    Returns the version to use for behavior gating, or None when the client sent an explicit
-    but unsupported header (the caller should reply with a JSON-RPC INVALID_REQUEST error).
-    Initialize requests negotiate via the request body, so they always receive
-    DEFAULT_NEGOTIATED_VERSION and their header is never validated or rejected.
+    The version is taken from the MCP-Protocol-Version header on non-initialize requests.
+    Stateless (2026-07-28) clients send it on every request, and the controller falls back
+    to the per-request _meta key when the header is absent. Returns the version to use for
+    behavior gating, or None when the client sent an explicit but unsupported version (the
+    caller should reply with a JSON-RPC error). Initialize requests negotiate via the
+    request body, so they always receive DEFAULT_NEGOTIATED_VERSION and their header is
+    never validated or rejected.
     """
     if is_initialize:
         return mcp_types.DEFAULT_NEGOTIATED_VERSION
@@ -88,6 +95,9 @@ def handle_mcp_request(
 
     def create_success_response(result_data: mcp_types.Result) -> mcp_types.JSONRPCResponse:
         """Create success response with business result data"""
+        if _is_stateless(protocol_version):
+            # Results carry an explicit discriminator under the stateless 2026-07-28 core.
+            result_data.resultType = "complete"
         return mcp_types.JSONRPCResponse(
             jsonrpc="2.0",
             id=request_id,
@@ -117,6 +127,8 @@ def handle_mcp_request(
                 return create_success_response(
                     handle_initialize(mcp_server.description, request_root.params.protocolVersion)
                 )
+            case mcp_types.DiscoverRequest():
+                return create_success_response(handle_server_discover(mcp_server.description))
             case mcp_types.ListToolsRequest():
                 return create_success_response(
                     handle_list_tools(
@@ -133,6 +145,9 @@ def handle_mcp_request(
                     handle_call_tool(session, app, request, user_input_form, end_user, protocol_version)
                 )
             case mcp_types.PingRequest():
+                if _is_stateless(protocol_version):
+                    # ping was removed in the stateless 2026-07-28 core.
+                    return create_error_response(mcp_types.METHOD_NOT_FOUND, "ping was removed in MCP 2026-07-28")
                 return create_success_response(handle_ping())
             case _:
                 return create_error_response(mcp_types.METHOD_NOT_FOUND, f"Method not found: {request_type.__name__}")
@@ -160,10 +175,12 @@ def handle_initialize(description: str, requested_version: str | int) -> mcp_typ
     """Handle initialize request, negotiating the protocol version with the client.
 
     Echoes the client's requested version when the server supports it, otherwise returns the
-    server's latest supported version (per the MCP lifecycle spec).
+    server's latest supported version (per the MCP lifecycle spec). Only session-based
+    versions are eligible: the stateless 2026-07-28 core removed the handshake, so its
+    clients are served per-request and never reach initialize.
     """
     negotiated_version: str = mcp_types.SERVER_LATEST_PROTOCOL_VERSION
-    if isinstance(requested_version, str) and requested_version in mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS:
+    if isinstance(requested_version, str) and requested_version in mcp_types.SESSION_BASED_PROTOCOL_VERSIONS:
         negotiated_version = requested_version
 
     capabilities = mcp_types.ServerCapabilities(
@@ -176,6 +193,23 @@ def handle_initialize(description: str, requested_version: str | int) -> mcp_typ
         serverInfo=mcp_types.Implementation(name="Dify", version=dify_config.project.version),
         instructions=description,
     )
+
+
+def handle_server_discover(description: str) -> mcp_types.DiscoverResult:
+    """Handle server/discover (2026-07-28): advertise supported versions, capabilities, and identity."""
+    capabilities = mcp_types.ServerCapabilities(
+        tools=mcp_types.ToolsCapability(listChanged=False),
+    )
+    result = mcp_types.DiscoverResult(
+        supportedVersions=sorted(mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS),
+        capabilities=capabilities,
+        instructions=description or None,
+        ttlMs=3_600_000,
+        cacheScope="public",
+    )
+    # Server identity travels in _meta under the stateless core (SHOULD include).
+    result.meta = {mcp_types.META_SERVER_INFO_KEY: {"name": "Dify", "version": dify_config.project.version}}
+    return result
 
 
 def handle_list_tools(
@@ -200,7 +234,14 @@ def handle_list_tools(
         inputSchema=cast(dict[str, Any], parameter_schema),
         outputSchema={"type": "object"} if supports_structured else None,
     )
-    return mcp_types.ListToolsResult(tools=[tool])
+    result = mcp_types.ListToolsResult(tools=[tool])
+    if _is_stateless(protocol_version):
+        # 2026-07-28 requires cache hints on list results. A Dify app's tool definition only
+        # changes when the app is republished, and may embed tenant-specific descriptions,
+        # so a short private-cache TTL is the safe choice.
+        result.ttlMs = 300_000
+        result.cacheScope = "private"
+    return result
 
 
 def handle_call_tool(

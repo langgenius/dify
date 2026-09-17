@@ -26,10 +26,21 @@ for reference.
 LATEST_PROTOCOL_VERSION = "2025-06-18"
 # Latest protocol version the Dify MCP server advertises to connecting clients.
 SERVER_LATEST_PROTOCOL_VERSION = "2025-06-18"
+# Protocol versions that still use the initialize/initialized handshake and session semantics.
+SESSION_BASED_PROTOCOL_VERSIONS: frozenset[str] = frozenset({"2024-11-05", "2025-03-26", "2025-06-18"})
+# The stateless 2026-07-28 core removed the handshake: every request carries its protocol
+# version and client identity in _meta instead.
+STATELESS_PROTOCOL_VERSION = "2026-07-28"
 # Protocol versions the Dify MCP server can negotiate down to (e.g. Claude on 2024-11-05).
-SERVER_SUPPORTED_PROTOCOL_VERSIONS: frozenset[str] = frozenset({"2024-11-05", "2025-03-26", "2025-06-18"})
-# Version assumed when a client omits the MCP-Protocol-Version header on post-initialize requests.
+SERVER_SUPPORTED_PROTOCOL_VERSIONS: frozenset[str] = SESSION_BASED_PROTOCOL_VERSIONS | {STATELESS_PROTOCOL_VERSION}
+# Version assumed when a legacy client omits the MCP-Protocol-Version header on post-initialize requests.
 DEFAULT_NEGOTIATED_VERSION = "2025-03-26"
+# _meta keys carrying per-request metadata under the stateless 2026-07-28 core.
+META_PROTOCOL_VERSION_KEY = "io.modelcontextprotocol/protocolVersion"
+META_CLIENT_INFO_KEY = "io.modelcontextprotocol/clientInfo"
+META_SERVER_INFO_KEY = "io.modelcontextprotocol/serverInfo"
+# JSON-RPC error code returned to modern clients that request an unsupported protocol version (2026-07-28).
+UNSUPPORTED_PROTOCOL_VERSION = -32022
 ProgressToken = str | int
 Cursor = str
 Role = Literal["user", "assistant"]
@@ -100,6 +111,11 @@ class Result(BaseModel):
     """
     See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
     for notes on _meta usage.
+    """
+    resultType: str | None = None
+    """
+    Result discriminator required by the stateless 2026-07-28 core ("complete" or
+    "input_required"). Older versions omit the field and clients treat it as "complete".
     """
     model_config = ConfigDict(extra="allow")
 
@@ -244,6 +260,8 @@ class ClientCapabilities(BaseModel):
     """Present if the client supports sampling from an LLM."""
     roots: RootsCapability | None = None
     """Present if the client supports listing roots."""
+    extensions: dict[str, dict[str, Any]] | None = None
+    """Optional MCP extensions the client supports, keyed by extension identifier (2026-07-28)."""
     model_config = ConfigDict(extra="allow")
 
 
@@ -300,6 +318,8 @@ class ServerCapabilities(BaseModel):
     """Present if the server offers any tools to call."""
     completions: CompletionsCapability | None = None
     """Present if the server offers autocompletion suggestions for prompts and resources."""
+    extensions: dict[str, dict[str, Any]] | None = None
+    """Optional MCP extensions the server supports, keyed by extension identifier (2026-07-28)."""
     model_config = ConfigDict(extra="allow")
 
 
@@ -352,6 +372,31 @@ class PingRequest(Request[RequestParams | None, Literal["ping"]]):
 
     method: Literal["ping"] = "ping"
     params: RequestParams | None = None
+
+
+class DiscoverRequest(Request[RequestParams | None, Literal["server/discover"]]):
+    """
+    Sent by a client to ask the server to advertise its supported protocol versions,
+    capabilities, and identity. Introduced in the stateless 2026-07-28 core, where
+    servers MUST implement it in place of the removed initialize handshake.
+    """
+
+    method: Literal["server/discover"] = "server/discover"
+    params: RequestParams | None = None
+
+
+class DiscoverResult(Result):
+    """The server's response to a server/discover request (2026-07-28)."""
+
+    supportedVersions: list[str]
+    """Protocol versions the server can serve; the client picks one for subsequent requests."""
+    capabilities: ServerCapabilities
+    instructions: str | None = None
+    """Instructions describing how to use the server and its features."""
+    ttlMs: int | None = None
+    """How long (in milliseconds) the client MAY cache this response before re-fetching."""
+    cacheScope: str | None = None
+    """Whether shared intermediaries may cache this response ("public" or "private")."""
 
 
 class ProgressNotificationParams(NotificationParams):
@@ -859,6 +904,10 @@ class ListToolsResult(PaginatedResult):
     """The server's response to a tools/list request from the client."""
 
     tools: list[Tool]
+    ttlMs: int | None = None
+    """Cache hint (milliseconds) required by the stateless 2026-07-28 core; omitted on legacy versions."""
+    cacheScope: str | None = None
+    """Whether shared intermediaries may cache this response; omitted on legacy versions."""
 
 
 class CallToolRequestParams(RequestParams):
@@ -1209,6 +1258,7 @@ class ClientRequest(
     RootModel[
         PingRequest
         | InitializeRequest
+        | DiscoverRequest
         | CompleteRequest
         | SetLevelRequest
         | GetPromptRequest
