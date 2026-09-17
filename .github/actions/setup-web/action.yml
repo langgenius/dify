@@ -14,3 +14,7 @@ runs:
         node-manager: false
         cache: true
         run-install: true
+    - name: Use system npm and npx
+      shell: bash
+      # pnpm's Node runtime does not bundle npm/npx, so Vite+ must use the runner's tools.
+      run: vp env off npm
