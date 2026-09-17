@@ -54,5 +54,8 @@
   "humanInput.sorry": "عذراً!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "شكراً!",
+  "ipAccessDenied.description": "لا يمكن الوصول إلى هذا التطبيق إلا من الشبكات المعتمدة.",
+  "ipAccessDenied.ipAddress": "عنوان IP الحالي <ip>{{ip}}</ip> غير موجود في قائمة العناوين المسموح بها.",
+  "ipAccessDenied.title": "الوصول مقيّد",
   "login.backToHome": "العودة إلى الصفحة الرئيسية"
 }

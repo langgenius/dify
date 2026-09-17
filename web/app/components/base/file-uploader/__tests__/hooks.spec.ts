@@ -2,9 +2,20 @@ import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import { act, renderHook } from '@testing-library/react'
+import { captureIpAccessScope, handleIpAccessDenied } from '@/features/webapp-ip-access/state'
 import { useFile, useFileSizeLimit } from '../hooks'
 
 const mockNotify = vi.fn()
+
+const createUploadError = (ipDenied: boolean | 'cancelled') => {
+  if (ipDenied === 'cancelled') return new DOMException('Upload cancelled', 'AbortError')
+  const error = new Error('Upload failed')
+  if (ipDenied) {
+    window.history.replaceState({}, '', '/chat/restricted-app')
+    handleIpAccessDenied(403, { code: 'ip_access_denied' }, captureIpAccessScope(), error)
+  }
+  return error
+}
 const mockNavigationState = vi.hoisted(() => ({
   params: {} as { token?: string },
   pathname: '/chat',
@@ -316,28 +327,33 @@ describe('useFile', () => {
       expect(mockSetFiles).toHaveBeenCalled()
     })
 
-    it('should handle error callback during re-upload', () => {
-      const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
+    it.each([false, true, 'cancelled'] as const)(
+      'finishes failed re-upload and suppresses IP denial or cancellation (%s)',
+      (ipDenied) => {
+        const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
+        mockStoreFiles = [
+          {
+            id: 'file-1',
+            name: 'test.txt',
+            type: 'text/plain',
+            size: 100,
+            progress: -1,
+            transferMethod: 'local_file',
+            supportFileType: 'document',
+            originalFile,
+          },
+        ] as FileEntity[]
 
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleReUploadFile('file-1')
+        const { result } = renderHook(() => useFile(defaultFileConfig))
+        result.current.handleReUploadFile('file-1')
 
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
-      uploadCall.onErrorCallback(new Error('fail'))
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
+        const uploadCall = mockFileUpload.mock.calls[0]![0]
+        uploadCall.onErrorCallback(createUploadError(ipDenied))
+        expect(mockSetFiles).toHaveBeenCalled()
+        if (ipDenied) expect(mockNotify).not.toHaveBeenCalled()
+        else expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      },
+    )
   })
 
   describe('handleLoadFileFromLink', () => {
@@ -464,17 +480,22 @@ describe('useFile', () => {
       expect(mockIsAllowedFileExtension).toHaveBeenCalledWith('remote.txt', 'text/plain', [], [])
     })
 
-    it('should remove file when remote upload fails', async () => {
-      mockUploadRemoteFileInfo.mockRejectedValue(new Error('network error'))
+    it.each([false, true, 'cancelled'] as const)(
+      'removes failed remote uploads and suppresses IP denial or cancellation (%s)',
+      async (ipDenied) => {
+        mockUploadRemoteFileInfo.mockRejectedValue(createUploadError(ipDenied))
 
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      await act(async () => {
-        result.current.handleLoadFileFromLink('https://example.com/file.txt')
-        await vi.waitFor(() => expect(mockNotify).toHaveBeenCalled())
-      })
+        const { result } = renderHook(() => useFile(defaultFileConfig))
+        await act(async () => {
+          result.current.handleLoadFileFromLink('https://example.com/file.txt')
+          await vi.waitFor(() => expect(mockUploadRemoteFileInfo).toHaveBeenCalled())
+        })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
+        expect(mockSetFiles).toHaveBeenCalled()
+        if (ipDenied) expect(mockNotify).not.toHaveBeenCalled()
+        else expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      },
+    )
 
     it('should remove file when size limit is exceeded on remote upload', async () => {
       mockGetSupportFileType.mockReturnValue('image')
@@ -843,17 +864,22 @@ describe('useFile', () => {
       expect(mockFileUpload).not.toHaveBeenCalled()
     })
 
-    it('should handle fileUpload error callback', () => {
-      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
+    it.each([false, true, 'cancelled'] as const)(
+      'finishes failed local upload and suppresses IP denial or cancellation (%s)',
+      (ipDenied) => {
+        const file = new File(['content'], 'test.txt', { type: 'text/plain' })
 
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
+        const { result } = renderHook(() => useFile(defaultFileConfig))
+        result.current.handleLocalFileUpload(file)
 
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
-      uploadCall.onErrorCallback(new Error('upload failed'))
+        const uploadCall = mockFileUpload.mock.calls[0]![0]
+        uploadCall.onErrorCallback(createUploadError(ipDenied))
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
+        expect(mockSetFiles).toHaveBeenCalled()
+        if (ipDenied) expect(mockNotify).not.toHaveBeenCalled()
+        else expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      },
+    )
 
     it('should handle FileReader error event', () => {
       capturedListeners = {}

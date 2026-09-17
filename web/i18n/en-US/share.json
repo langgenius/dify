@@ -54,5 +54,8 @@
   "humanInput.sorry": "Sorry!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Thanks!",
+  "ipAccessDenied.description": "This app can only be accessed from approved networks.",
+  "ipAccessDenied.ipAddress": "Your current IP address <ip>{{ip}}</ip> isn’t on the allowlist.",
+  "ipAccessDenied.title": "Access restricted",
   "login.backToHome": "Back to Home"
 }

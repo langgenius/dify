@@ -54,5 +54,8 @@
   "humanInput.sorry": "Przepraszamy!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Dziękujemy!",
+  "ipAccessDenied.description": "Ta aplikacja jest dostępna tylko z zatwierdzonych sieci.",
+  "ipAccessDenied.ipAddress": "Twój bieżący adres IP <ip>{{ip}}</ip> nie znajduje się na liście dozwolonych adresów.",
+  "ipAccessDenied.title": "Ograniczony dostęp",
   "login.backToHome": "Powrót do strony głównej"
 }

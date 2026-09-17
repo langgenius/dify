@@ -54,5 +54,8 @@
   "humanInput.sorry": "Desculpe!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Obrigado!",
+  "ipAccessDenied.description": "Este aplicativo só pode ser acessado por redes aprovadas.",
+  "ipAccessDenied.ipAddress": "Seu endereço IP atual <ip>{{ip}}</ip> não está na lista de permissões.",
+  "ipAccessDenied.title": "Acesso restrito",
   "login.backToHome": "Voltar para a página inicial"
 }

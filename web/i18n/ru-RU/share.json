@@ -54,5 +54,8 @@
   "humanInput.sorry": "Извините!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Спасибо!",
+  "ipAccessDenied.description": "Это приложение доступно только из одобренных сетей.",
+  "ipAccessDenied.ipAddress": "Ваш текущий IP-адрес <ip>{{ip}}</ip> отсутствует в списке разрешённых адресов.",
+  "ipAccessDenied.title": "Доступ ограничен",
   "login.backToHome": "Назад на главную"
 }

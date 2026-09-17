@@ -54,5 +54,8 @@
   "humanInput.sorry": "抱歉!",
   "humanInput.submissionID": "提交 ID: {{id}}",
   "humanInput.thanks": "谢谢!",
+  "ipAccessDenied.description": "此应用仅允许从已批准的网络访问。",
+  "ipAccessDenied.ipAddress": "您当前的 IP 地址 <ip>{{ip}}</ip> 不在允许列表中。",
+  "ipAccessDenied.title": "访问受限",
   "login.backToHome": "返回首页"
 }

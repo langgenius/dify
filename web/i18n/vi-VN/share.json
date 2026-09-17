@@ -54,5 +54,8 @@
   "humanInput.sorry": "Xin lỗi!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Cảm ơn!",
+  "ipAccessDenied.description": "Chỉ có thể truy cập ứng dụng này từ các mạng đã được phê duyệt.",
+  "ipAccessDenied.ipAddress": "Địa chỉ IP hiện tại của bạn <ip>{{ip}}</ip> không nằm trong danh sách cho phép.",
+  "ipAccessDenied.title": "Quyền truy cập bị hạn chế",
   "login.backToHome": "Trở về Trang Chủ"
 }

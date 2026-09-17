@@ -1,9 +1,20 @@
 import type { ImageFile } from '@/types/app'
 import { act, renderHook } from '@testing-library/react'
+import { captureIpAccessScope, handleIpAccessDenied } from '@/features/webapp-ip-access/state'
 import { TransferMethod } from '@/types/app'
 import { useImageFiles, useLocalFileUploader } from '../hooks'
 
 const mockNotify = vi.fn()
+
+const createUploadError = (ipDenied: boolean | 'cancelled') => {
+  if (ipDenied === 'cancelled') return new DOMException('Upload cancelled', 'AbortError')
+  const error = new Error('Upload failed')
+  if (ipDenied) {
+    window.history.replaceState({}, '', '/chat/restricted-app')
+    handleIpAccessDenied(403, { code: 'ip_access_denied' }, captureIpAccessScope(), error)
+  }
+  return error
+}
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -263,28 +274,32 @@ describe('useImageFiles', () => {
       expect(result.current.files[0]!.progress).toBe(100)
     })
 
-    it('should set progress to -1 and notify on error callback during re-upload', () => {
-      const { result } = renderHook(() => useImageFiles())
-      const file = new File(['test'], 'test.png', { type: 'image/png' })
-      const imageFile = createImageFile({ _id: 'file-1', file, progress: -1 })
+    it.each([false, true, 'cancelled'] as const)(
+      'sets failed re-upload progress and suppresses IP denial or cancellation (%s)',
+      (ipDenied) => {
+        const { result } = renderHook(() => useImageFiles())
+        const file = new File(['test'], 'test.png', { type: 'image/png' })
+        const imageFile = createImageFile({ _id: 'file-1', file, progress: -1 })
 
-      act(() => {
-        result.current.onUpload(imageFile)
-      })
+        act(() => {
+          result.current.onUpload(imageFile)
+        })
 
-      act(() => {
-        result.current.onReUpload('file-1')
-      })
+        act(() => {
+          result.current.onReUpload('file-1')
+        })
 
-      const uploadCall = mockImageUpload.mock.calls[0]![0]
+        const uploadCall = mockImageUpload.mock.calls[0]![0]
 
-      act(() => {
-        uploadCall.onErrorCallback(new Error('Network error'))
-      })
+        act(() => {
+          uploadCall.onErrorCallback(createUploadError(ipDenied))
+        })
 
-      expect(result.current.files[0]!.progress).toBe(-1)
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'Upload error' })
-    })
+        expect(result.current.files[0]!.progress).toBe(-1)
+        if (ipDenied) expect(mockNotify).not.toHaveBeenCalled()
+        else expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'Upload error' })
+      },
+    )
   })
 
   it('should filter out deleted files in returned files', () => {
@@ -437,27 +452,31 @@ describe('useLocalFileUploader', () => {
     )
   })
 
-  it('should notify error and call onUpload with progress -1 on upload failure', async () => {
-    const onUpload = vi.fn()
-    const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
+  it.each([false, true, 'cancelled'] as const)(
+    'sets failed local upload progress and suppresses IP denial or cancellation (%s)',
+    async (ipDenied) => {
+      const onUpload = vi.fn()
+      const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
 
-    const file = new File(['test'], 'test.png', { type: 'image/png' })
+      const file = new File(['test'], 'test.png', { type: 'image/png' })
 
-    act(() => {
-      result.current.handleLocalFileUpload(file)
-    })
+      act(() => {
+        result.current.handleLocalFileUpload(file)
+      })
 
-    await vi.waitFor(() => {
-      expect(mockImageUpload).toHaveBeenCalled()
-    })
+      await vi.waitFor(() => {
+        expect(mockImageUpload).toHaveBeenCalled()
+      })
 
-    const uploadCall = mockImageUpload.mock.calls[0]![0]
+      const uploadCall = mockImageUpload.mock.calls[0]![0]
 
-    act(() => {
-      uploadCall.onErrorCallback(new Error('fail'))
-    })
+      act(() => {
+        uploadCall.onErrorCallback(createUploadError(ipDenied))
+      })
 
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ progress: -1 }))
-  })
+      if (ipDenied) expect(mockNotify).not.toHaveBeenCalled()
+      else expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ progress: -1 }))
+    },
+  )
 })

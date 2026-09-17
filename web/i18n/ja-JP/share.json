@@ -54,5 +54,8 @@
   "humanInput.sorry": "申し訳ございません!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "ありがとうございます!",
+  "ipAccessDenied.description": "このアプリには、承認されたネットワークからのみアクセスできます。",
+  "ipAccessDenied.ipAddress": "現在の IP アドレス <ip>{{ip}}</ip> は許可リストに登録されていません。",
+  "ipAccessDenied.title": "アクセスが制限されています",
   "login.backToHome": "ホームに戻る"
 }

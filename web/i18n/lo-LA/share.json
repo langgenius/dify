@@ -54,5 +54,8 @@
   "humanInput.sorry": "ຂໍອະໄພ!",
   "humanInput.submissionID": "ລະຫັດການສົ່ງ (submission_id): {{id}}",
   "humanInput.thanks": "ຂອບໃຈ!",
+  "ipAccessDenied.description": "ແອັບນີ້ສາມາດເຂົ້າເຖິງໄດ້ຈາກເຄືອຂ່າຍທີ່ອະນຸມັດເທົ່ານັ້ນ.",
+  "ipAccessDenied.ipAddress": "ທີ່ຢູ່ IP ປັດຈຸບັນຂອງທ່ານ <ip>{{ip}}</ip> ບໍ່ຢູ່ໃນລາຍຊື່ທີ່ອະນຸຍາດ.",
+  "ipAccessDenied.title": "ຈຳກັດການເຂົ້າເຖິງ",
   "login.backToHome": "ກັບຄືນສູ່ໜ້າຫຼັກ"
 }

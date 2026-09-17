@@ -54,5 +54,8 @@
   "humanInput.sorry": "Spiacente!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Grazie!",
+  "ipAccessDenied.description": "È possibile accedere a questa app solo da reti approvate.",
+  "ipAccessDenied.ipAddress": "Il tuo indirizzo IP attuale <ip>{{ip}}</ip> non è nell'elenco degli indirizzi consentiti.",
+  "ipAccessDenied.title": "Accesso limitato",
   "login.backToHome": "Torna alla home"
 }

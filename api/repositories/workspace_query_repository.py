@@ -58,6 +58,15 @@ class WorkspaceQueryRepository(
         with self._session_factory() as session:
             return tuple(session.scalars(stmt).all())
 
+    def get_role_for_account(self, *, workspace_id: str, account_id: str) -> str | None:
+        stmt = select(TenantAccountJoin.role).where(
+            TenantAccountJoin.tenant_id == workspace_id,
+            TenantAccountJoin.account_id == account_id,
+        )
+        with self._session_factory() as session:
+            role = session.scalar(stmt)
+            return role.value if role is not None else None
+
     @override
     def list_account_access_workspaces(self, account_id: str) -> tuple[AccountWorkspaceSnapshot, ...]:
         """List every membership for the OpenAPI account identity response.
