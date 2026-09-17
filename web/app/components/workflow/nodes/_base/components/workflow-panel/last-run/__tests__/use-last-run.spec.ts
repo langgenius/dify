@@ -23,6 +23,7 @@ vi.mock('../../../../../../hooks/use-nodes-sync-draft', async (importOriginal) =
 vi.mock('../../../../../../hooks/use-checklist', () => ({
   useWorkflowRunValidation: () => ({
     warningNodes: [],
+    modelProviderValidationStatus: 'success',
   }),
 }))
 

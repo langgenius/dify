@@ -42,6 +42,8 @@ const createMockSingleRunParams = () => ({
 })
 
 const mockLastRunState = {
+  isRunPending: false,
+  isRunReady: true,
   isShowSingleRun: false,
   hideSingleRun: vi.fn(),
   runningStatus: NodeRunningStatus.Succeeded,
@@ -418,6 +420,8 @@ describe('workflow-panel index', () => {
     ]
     mockTriggerPlugins = []
     mockLogsState.showSpecialResultPanel = false
+    mockLastRunState.isRunPending = false
+    mockLastRunState.isRunReady = true
     mockLastRunState.isShowSingleRun = false
     mockLastRunState.tabType = 'settings'
     mockLastRunState.singleRunParams = createMockSingleRunParams()
@@ -673,6 +677,62 @@ describe('workflow-panel index', () => {
     fireEvent.click(screen.getByText('authorized-in-datasource-node'))
 
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+  })
+
+  it('defers a menu run until provider discovery is ready, then runs once', () => {
+    mockLastRunState.isRunPending = true
+    mockLastRunState.isRunReady = false
+    const panel = (
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>
+    )
+    const { rerender } = renderWorkflowComponent(panel, {
+      initialStoreState: { pendingSingleRun: { nodeId: 'node-1', action: 'run' } },
+    })
+
+    expect(mockHandleSingleRun).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'workflow.panel.runThisStep' })).toBeDisabled()
+
+    mockLastRunState.isRunPending = false
+    mockLastRunState.isRunReady = true
+    rerender(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+    )
+
+    expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'workflow.panel.runThisStep' })).toBeEnabled()
+    rerender(panel)
+    expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels a pending menu run on provider discovery failure', () => {
+    mockLastRunState.isRunPending = true
+    mockLastRunState.isRunReady = false
+    const { rerender } = renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      { initialStoreState: { pendingSingleRun: { nodeId: 'node-1', action: 'run' } } },
+    )
+
+    mockLastRunState.isRunPending = false
+    rerender(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+    )
+    expect(mockHandleSingleRun).not.toHaveBeenCalled()
+
+    mockLastRunState.isRunReady = true
+    rerender(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+    )
+    expect(mockHandleSingleRun).not.toHaveBeenCalled()
   })
 
   it('should react to pending single run actions', () => {

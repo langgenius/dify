@@ -294,6 +294,8 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     setRunInputData,
     handleStop,
     handleSingleRun,
+    isRunPending,
+    isRunReady,
     handleRunWithParams,
     getExistVarValuesInForms,
     getFilteredExistVarForms,
@@ -313,11 +315,22 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   useEffect(() => {
     if (!pendingSingleRun || pendingSingleRun.nodeId !== id) return
 
-    if (pendingSingleRun.action === 'run') handleSingleRun()
-    else handleStop()
+    if (pendingSingleRun.action === 'run') {
+      // Keep the menu action until provider discovery can authoritatively validate the node.
+      if (isRunPending) return
+      if (isRunReady) handleSingleRun()
+    } else handleStop()
 
     setPendingSingleRun(undefined)
-  }, [pendingSingleRun, id, handleSingleRun, handleStop, setPendingSingleRun])
+  }, [
+    pendingSingleRun,
+    id,
+    isRunPending,
+    isRunReady,
+    handleSingleRun,
+    handleStop,
+    setPendingSingleRun,
+  ])
 
   const logParams = useLogs()
   const passedLogParams = useMemo(
@@ -607,6 +620,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                       <button
                         type="button"
                         aria-label={singleRunActionLabel}
+                        disabled={!isSingleRunning && !isRunReady}
                         className="mr-1 flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
                         onClick={() => {
                           if (isSingleRunning) handleStop()
@@ -731,7 +745,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
             <LastRun
               appId={appDetail?.id || ''}
               nodeId={id}
-              canSingleRun={isSupportSingleRun}
+              canSingleRun={isSupportSingleRun && isRunReady}
               runningStatus={runningStatus}
               isRunAfterSingleRun={isRunAfterSingleRun}
               updateNodeRunningStatus={updateNodeRunningStatus}

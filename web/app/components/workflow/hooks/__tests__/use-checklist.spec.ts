@@ -86,7 +86,8 @@ const mockNodesMap: Record<
   string,
   { checkValid: CheckValidFn; metaData: { isStart: boolean; isRequired: boolean } }
 > = {}
-let mockModelProviders: Array<{ provider: string }> = []
+let mockModelProviders: Array<{ provider: string }> | undefined = []
+let mockModelProviderRequest: (() => Promise<{ data: Array<{ provider: string }> }>) | undefined
 let mockUsedVars: string[][] = []
 const mockAvailableVarMap: Record<
   string,
@@ -194,6 +195,7 @@ beforeEach(() => {
   Object.keys(mockNodesMap).forEach((k) => delete mockNodesMap[k])
   Object.keys(mockAvailableVarMap).forEach((k) => delete mockAvailableVarMap[k])
   mockModelProviders = []
+  mockModelProviderRequest = undefined
   mockUsedVars = []
   toolServiceState.buildInTools = []
   toolServiceState.customTools = []
@@ -821,6 +823,70 @@ describe('useChecklistBeforePublish', () => {
 // ---------------------------------------------------------------------------
 
 describe('useWorkflowRunValidation', () => {
+  it('waits for provider discovery without reporting an installed model as missing', async () => {
+    let resolveProviders!: (response: { data: Array<{ provider: string }> }) => void
+    const response = new Promise<{ data: Array<{ provider: string }> }>((resolve) => {
+      resolveProviders = resolve
+    })
+    mockModelProviderRequest = () => response
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+    const llmNode = createNode({
+      id: 'llm',
+      data: { type: BlockEnum.LLM, title: 'LLM', model: { provider: 'langgenius/openai/openai' } },
+    })
+    rfState.edges = [
+      createEdge({ source: 'start', target: 'llm' }),
+    ] as unknown as typeof rfState.edges
+    const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
+      initialStoreState: { nodes: [startNode, llmNode] },
+    })
+
+    expect(result.current.isValidationReady).toBe(false)
+    expect(result.current.validateBeforeRun()).toBe(false)
+    expect(result.current.warningNodes.flatMap((node) => node.errorMessages)).not.toContain(
+      'workflow.errorMsg.configureModel',
+    )
+
+    await act(async () => {
+      resolveProviders({ data: [{ provider: 'langgenius/openai/openai' }] })
+    })
+
+    await waitFor(() => expect(result.current.isValidationReady).toBe(true))
+    expect(result.current.validateBeforeRun()).toBe(true)
+  })
+
+  it('does not allow an LLM run when provider discovery fails', async () => {
+    let rejectProviders!: (error: Error) => void
+    const response = new Promise<{ data: Array<{ provider: string }> }>((_resolve, reject) => {
+      rejectProviders = reject
+    })
+    mockModelProviderRequest = () => response
+    const nodes = [
+      createNode({
+        id: 'llm',
+        data: {
+          type: BlockEnum.LLM,
+          title: 'LLM',
+          model: { provider: 'langgenius/openai/openai' },
+        },
+      }),
+    ]
+    const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
+      initialStoreState: { nodes },
+    })
+
+    await act(async () => {
+      rejectProviders(new Error('Provider discovery failed'))
+    })
+    await waitFor(() => expect(result.current.modelProviderValidationStatus).toBe('error'))
+
+    expect(result.current.isValidationReady).toBe(false)
+    expect(result.current.validateBeforeRun()).toBe(false)
+    expect(result.current.warningNodes.flatMap((node) => node.errorMessages)).not.toContain(
+      'workflow.errorMsg.configureModel',
+    )
+  })
+
   it('should return hasValidationErrors false when there are no warnings', () => {
     const { nodes, edges } = buildConnectedGraph()
     rfState.edges = edges as unknown as typeof rfState.edges
@@ -858,8 +924,20 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
     }) => {
-      if (options.queryKey[0].includes('modelProviders') && options.queryKey[0].includes('summary'))
-        return { data: mockModelProviders }
+      if (
+        options.queryKey[0].includes('modelProviders') &&
+        options.queryKey[0].includes('summary')
+      ) {
+        if (mockModelProviderRequest) {
+          return actual.useQuery({
+            ...options,
+            queryFn: mockModelProviderRequest,
+            select: (response) => response.data,
+            retry: false,
+          })
+        }
+        return { data: mockModelProviders, status: 'success' }
+      }
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
       return { data: [] }
     },

@@ -147,8 +147,11 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
     isRunAfterSingleRun,
   })
 
-  const { warningNodes } = useWorkflowRunValidation()
+  const { warningNodes, modelProviderValidationStatus } = useWorkflowRunValidation()
+  const isRunPending = blockType === BlockEnum.LLM && modelProviderValidationStatus === 'pending'
+  const isRunReady = blockType !== BlockEnum.LLM || modelProviderValidationStatus === 'success'
   const blockIfChecklistFailed = useCallback(() => {
+    if (!isRunReady) return true
     const warningForNode = warningNodes.find((item) => item.id === id)
     if (!warningForNode) return false
 
@@ -157,7 +160,7 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
     const message = warningForNode.errorMessages[0] || 'This node has unresolved checklist issues'
     toast.error(message)
     return true
-  }, [warningNodes, id])
+  }, [warningNodes, id, isRunReady])
 
   const {
     hideSingleRun,
@@ -361,6 +364,8 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
 
   return {
     ...oneStepRunRes,
+    isRunPending,
+    isRunReady,
     tabType,
     isRunAfterSingleRun,
     setIsRunAfterSingleRun,

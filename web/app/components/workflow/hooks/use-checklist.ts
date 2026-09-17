@@ -164,7 +164,7 @@ const getDuplicateEndOutputMessages = (
   return nodeMessages
 }
 
-export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?: FlowType }) => {
+const useChecklistState = (nodes: Node[], edges: Edge[], options?: { flowType?: FlowType }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
@@ -186,7 +186,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const appMode = useAppStore.getState().appDetail?.mode
   const shouldCheckStartNode =
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
-  const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
+  const { data: modelProviders, status: modelProvidersStatus } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
       select: (response) => response.data,
     }),
@@ -363,7 +363,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
     const { validNodes } = getValidTreeNodes(filteredNodes, edges)
-    const installedPluginIds = new Set(modelProviders.map((p) => extractPluginId(p.provider)))
+    const installedPluginIds = new Set(modelProviders?.map((p) => extractPluginId(p.provider)))
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
@@ -438,7 +438,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         if (isPluginMissing) {
           errorMessages.push(t(($) => $['nodes.common.pluginNotInstalled'], { ns: 'workflow' }))
         } else {
-          if (node!.data.type === BlockEnum.LLM) {
+          if (node!.data.type === BlockEnum.LLM && modelProviders !== undefined) {
             const llmNodeData = node!.data as LLMNodeType
             const modelProvider = resolveLLMNodeModel(
               llmNodeData.model,
@@ -614,8 +614,15 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     workflowStore.setState({ checklistItems: needWarningNodes })
   }, [needWarningNodes, workflowStore])
 
-  return needWarningNodes
+  return {
+    warningNodes: needWarningNodes,
+    modelProviderValidationStatus:
+      modelProviders !== undefined ? ('success' as const) : modelProvidersStatus,
+  }
 }
+
+export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?: FlowType }) =>
+  useChecklistState(nodes, edges, options).warningNodes
 
 export const useChecklistBeforePublish = () => {
   const { t } = useTranslation()
@@ -946,18 +953,28 @@ export const useWorkflowRunValidation = () => {
   const nodes = useNodes()
   const edges = useEdges<CommonEdgeType>()
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const needWarningNodes = useChecklist(nodes, edges, { flowType })
+  const { warningNodes: needWarningNodes, modelProviderValidationStatus } = useChecklistState(
+    nodes,
+    edges,
+    { flowType },
+  )
+  const isValidationReady =
+    modelProviderValidationStatus === 'success' ||
+    !nodes.some((node) => node.data.type === BlockEnum.LLM)
 
   const validateBeforeRun = useCallback(() => {
+    if (!isValidationReady) return false
     if (needWarningNodes.length > 0) {
       toast.error(t(($) => $['panel.checklistTip'], { ns: 'workflow' }))
       return false
     }
     return true
-  }, [needWarningNodes, t])
+  }, [isValidationReady, needWarningNodes, t])
 
   return {
     validateBeforeRun,
+    isValidationReady,
+    modelProviderValidationStatus,
     hasValidationErrors: needWarningNodes.length > 0,
     warningNodes: needWarningNodes,
   }

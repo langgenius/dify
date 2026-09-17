@@ -31,6 +31,7 @@ let mockWorkflowRunningData:
   | undefined
 let mockIsListening = false
 let mockCanRun = true
+let mockIsValidationReady = true
 let mockDynamicOptions = [{ type: TriggerType.UserInput, nodeId: 'start-node' }]
 
 vi.mock('../../hooks/use-checklist', async (importOriginal) => {
@@ -40,6 +41,7 @@ vi.mock('../../hooks/use-checklist', async (importOriginal) => {
     ...actual,
     useWorkflowRunValidation: () => ({
       warningNodes: mockWarningNodes,
+      isValidationReady: mockIsValidationReady,
     }),
   }
 })
@@ -159,8 +161,30 @@ describe('RunMode', () => {
     mockWorkflowRunningData = undefined
     mockIsListening = false
     mockCanRun = true
+    mockIsValidationReady = true
     hotkeyRegistrations.clear()
     mockDynamicOptions = [{ type: TriggerType.UserInput, nodeId: 'start-node' }]
+  })
+
+  it('disables the run trigger until model provider validation is ready', () => {
+    mockIsValidationReady = false
+    render(<RunMode />)
+
+    expect(screen.getByRole('button', { name: /workflow.common.run/ })).toBeDisabled()
+    expect(screen.queryByTestId('trigger-option')).not.toBeInTheDocument()
+  })
+
+  it('keeps the stop action available while provider validation is unavailable', () => {
+    mockIsValidationReady = false
+    mockWorkflowRunningData = {
+      result: { status: WorkflowRunningStatus.Running },
+      task_id: 'task-1',
+    }
+    render(<RunMode />)
+
+    expect(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+    ).toBeEnabled()
   })
 
   it('should render the run trigger and start the workflow when a valid trigger is selected', () => {

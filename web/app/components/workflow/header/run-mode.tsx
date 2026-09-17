@@ -38,14 +38,14 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
     handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
-  const { warningNodes } = useWorkflowRunValidation()
+  const { warningNodes, isValidationReady } = useWorkflowRunValidation()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const isListening = useStore((s) => s.isListening)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
-  const isRunDisabled = disabled || !canRun
 
   const status = workflowRunningData?.result.status
   const isRunning = status === WorkflowRunningStatus.Running || isListening
+  const isRunDisabled = disabled || !canRun || (!isRunning && !isValidationReady)
 
   const dynamicOptions = useDynamicTestRunOptions()
   const testRunMenuRef = useRef<TestRunMenuRef>(null)
