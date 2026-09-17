@@ -43,6 +43,7 @@ from controllers.openapi._errors import (
     MemberLimitExceeded,
     OpenApiErrorCode,
 )
+from controllers.openapi._hints import NEXT_PAGE_SUMMARY
 from controllers.openapi._models import MemberInvitePayload, MemberListQuery, MemberRoleUpdatePayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller, load_workspace
@@ -308,6 +309,7 @@ def test_workspace_list_is_paginated_envelope(admitted_bearer: AdmittedWorld):
     assert body["page"] == 1
     assert body["limit"] == 1
     assert body["data"][0]["id"] == admitted_bearer.workspace_id
+    assert body["hints"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +370,44 @@ def test_members_list_paginates_with_query_params(database_session: Session):
     assert result.total == 5
     assert result.has_more is True
     assert [d.id for d in result.data] == member_ids[2:4]
+
+
+def test_members_list_next_page_hint_reaches_the_wire(admitted_bearer: AdmittedWorld, database_session: Session):
+    """Through the real HTTP stack, not `__handler__`: the hint is filled by
+    `accepts` composed inside `endpoint()` (`_contract.py`), and calling the
+    bare handler would bypass that composition entirely.
+    """
+    for i in range(4):
+        member_id = str(uuid.uuid4())
+        database_session.add_all(
+            [
+                _account(account_id=member_id, email=f"member{i}@example.com"),
+                TenantAccountJoin(
+                    tenant_id=admitted_bearer.workspace_id,
+                    account_id=member_id,
+                    current=False,
+                    role=TenantAccountRole.NORMAL,
+                ),
+            ]
+        )
+    database_session.commit()
+
+    res = admitted_bearer.client.get(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members?page=1&limit=2",
+        headers=admitted_bearer.headers,
+    )
+
+    assert res.status_code == 200
+    body = res.get_json()
+    assert body["has_more"] is True
+    assert body["hints"] == [
+        {
+            "summary": NEXT_PAGE_SUMMARY,
+            "op": "workspace.members.list",
+            "input": {"workspace_id": admitted_bearer.workspace_id, "page": 2, "limit": 2},
+            "form": None,
+        }
+    ]
 
 
 # ---------------------------------------------------------------------------
