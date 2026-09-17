@@ -588,6 +588,10 @@ class ErrorCard(_Card):
     body: str
     tone: str = "danger"
     node_id: str | None = None
+    # Machine-readable failure breadcrumbs (server timestamp + generator codes /
+    # node ids). Not rendered: it rides along in the item payload so the exported
+    # debug log retains what would otherwise only exist in a pod log.
+    diagnostics: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass

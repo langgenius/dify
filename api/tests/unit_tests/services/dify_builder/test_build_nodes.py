@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from unittest.mock import patch
 
 from services.dify_builder.agent import build, resources
@@ -378,3 +379,66 @@ def test_build_nodes_error_reason_joins_errors_list_when_no_top_level_error():
 
     assert result.intents == []
     assert "top-level value was a list" in result.error
+
+
+def test_build_nodes_records_structured_diagnostics_for_the_debug_export():
+    """Server logs are lost when the api pod restarts, so the generator's own
+    diagnostic ("structural validation failed") must travel back with the result:
+    structured code/detail/node_id plus a server timestamp, so the exported debug
+    log carries it and can be correlated with pod logs."""
+    failing = {
+        "graph": {"nodes": [], "edges": []},
+        "error": "UNRESOLVED_REFERENCE: Reference {#node2.response#} not declared on node 'node2'",
+        "errors": [
+            {
+                "code": "UNRESOLVED_REFERENCE",
+                "detail": "Reference {#node2.response#} not declared on node 'node2'",
+                "node_id": "node2",
+            }
+        ],
+    }
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value=failing,
+        ),
+    ):
+        result = build.build_nodes("t1", {}, ["call the GitHub API and summarize"])
+
+    assert result.intents == []
+    # one diagnostic per generation attempt (initial + the single corrective retry)
+    assert len(result.diagnostics) == 2
+    first = result.diagnostics[0]
+    assert first["source"] == "workflow-generator"
+    # the same text the server logged as the "%s" of "structural validation failed: %s"
+    assert "Reference {#node2.response#} not declared" in first["message"]
+    assert first["codes"] == ["UNRESOLVED_REFERENCE"]
+    assert first["attempt"] == 1
+    assert result.diagnostics[1]["attempt"] == 2
+    # structured detail survives -- code AND the offending node id
+    assert first["errors"][0]["code"] == "UNRESOLVED_REFERENCE"
+    assert first["errors"][0]["node_id"] == "node2"
+    # a server timestamp to locate the corresponding pod-log lines
+    datetime.fromisoformat(first["at"])  # parses -> real ISO-8601
+    assert first["at"].endswith("+00:00")  # UTC, unambiguous across pods
+
+
+def test_build_nodes_records_diagnostic_when_generation_raises():
+    """A provider/runtime failure must also leave a timestamped breadcrumb."""
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            side_effect=RuntimeError("credit_balance_exhausted"),
+        ),
+    ):
+        result = build.build_nodes("t1", {}, ["x"])
+
+    assert result.intents == []
+    assert len(result.diagnostics) == 1
+    d = result.diagnostics[0]
+    assert d["source"] == "build_nodes"
+    assert d["exception"] == "RuntimeError"
+    assert "credit_balance_exhausted" in d["message"]
+    datetime.fromisoformat(d["at"])

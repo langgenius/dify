@@ -395,7 +395,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         )
         error_items = append_card(
             fc,
-            ErrorCard(title="Couldn't build the workflow", body=body),
+            ErrorCard(title="Couldn't build the workflow", body=body, diagnostics=build_result.diagnostics),
         )
         progress.fail_step("build-generate-graph")
         execution = progress.finish(status="error")

@@ -225,6 +225,11 @@ class BuildNodesResult:
 
     intents: list[MutationIntent] = field(default_factory=list)
     error: str = ""
+    # Structured, timestamped breadcrumbs for the exported debug log. Server logs
+    # are lost when the api pod restarts, so each failed generation attempt travels
+    # back here (server UTC ``at``, generator ``code``/``node_id``/``detail``) and is
+    # stamped onto the ErrorCard -> conversation item -> exported trace.
+    diagnostics: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)
