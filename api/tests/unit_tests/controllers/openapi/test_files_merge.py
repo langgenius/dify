@@ -3,12 +3,17 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
+import services.errors.file as file_errors
+from controllers.common.errors import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 from controllers.openapi import _files as module
 from controllers.openapi._errors import InvalidFilePart
 from controllers.openapi._files import FileRowKind, file_rows_of, materialize_files
 from models.model import AppMode
+
+_SESSION = Mock(spec=Session)
 
 
 def _fs(name: str, mimetype: str) -> FileStorage:
@@ -34,13 +39,13 @@ def _app(mode: AppMode, form, monkeypatch: pytest.MonkeyPatch):
 
 
 def _run(app, *, inputs, files):
-    return materialize_files(app=app, caller=None, inputs=inputs, files=files, rows=file_rows_of(app, None))
+    return materialize_files(app=app, caller=None, inputs=inputs, files=files, rows=file_rows_of(app, _SESSION))
 
 
 def test_file_rows_of_reads_both_row_types(monkeypatch: pytest.MonkeyPatch):
     form = _form({"file": {"variable": "doc"}}, {"file-list": {"variable": "pages"}}, {"text-input": {"variable": "q"}})
     app = _app(AppMode.WORKFLOW, form, monkeypatch)
-    assert file_rows_of(app, None) == {"doc": FileRowKind.SINGLE, "pages": FileRowKind.LIST}
+    assert file_rows_of(app, _SESSION) == {"doc": FileRowKind.SINGLE, "pages": FileRowKind.LIST}
 
 
 def test_single_file_variable_gets_local_file_mapping(uploads: Mock, monkeypatch: pytest.MonkeyPatch):
@@ -108,3 +113,22 @@ def test_form_rows_treat_every_part_as_a_single_file(monkeypatch: pytest.MonkeyP
     )
     assert inputs == {"comment": "ok", "attachment": {"transfer_method": "local_file", "upload_file_id": "uf-a.pdf"}}
     assert vision == []
+
+
+@pytest.mark.parametrize(
+    ("service_error", "openapi_error"),
+    [
+        pytest.param(file_errors.FileTooLargeError("100MB"), FileTooLargeError, id="file_too_large"),
+        pytest.param(file_errors.UnsupportedFileTypeError(), UnsupportedFileTypeError, id="unsupported_file_type"),
+        pytest.param(
+            file_errors.BlockedFileExtensionError("exe blocked"), BlockedFileExtensionError, id="blocked_extension"
+        ),
+    ],
+)
+def test_upload_service_errors_translate_to_the_openapi_contract(
+    uploads: Mock, monkeypatch: pytest.MonkeyPatch, service_error: Exception, openapi_error: type[Exception]
+):
+    uploads.upload_file.side_effect = service_error
+    app = _app(AppMode.WORKFLOW, _form({"file": {"variable": "doc"}}), monkeypatch)
+    with pytest.raises(openapi_error):
+        _run(app, inputs={}, files={"doc": _fs("a.pdf", "application/pdf")})

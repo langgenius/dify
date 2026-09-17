@@ -16,6 +16,8 @@ from typing import Any, Final
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
+import services
+from controllers.common.errors import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 from controllers.openapi._errors import InvalidFilePart
 from controllers.openapi._input_schema import resolve_app_config
 from extensions.ext_application_services import application_services
@@ -33,7 +35,7 @@ class FileRowKind(StrEnum):
     LIST = "file-list"
 
 
-def file_rows_of(app: App, session: Session | None) -> dict[str, FileRowKind]:
+def file_rows_of(app: App, session: Session) -> dict[str, FileRowKind]:
     _, form = resolve_app_config(app, session=session)
     rows: dict[str, FileRowKind] = {}
     for row in form:
@@ -47,12 +49,19 @@ def file_rows_of(app: App, session: Session | None) -> dict[str, FileRowKind]:
 
 
 def _upload(part: FileStorage, caller: Any) -> dict[str, Any]:
-    uploaded = application_services().files.upload_file(
-        filename=part.filename or "upload",
-        content=part.stream.read(),
-        mimetype=part.mimetype or "application/octet-stream",
-        user=caller,
-    )
+    try:
+        uploaded = application_services().files.upload_file(
+            filename=part.filename or "upload",
+            content=part.stream.read(),
+            mimetype=part.mimetype or "application/octet-stream",
+            user=caller,
+        )
+    except services.errors.file.FileTooLargeError as exc:
+        raise FileTooLargeError(exc.description) from exc
+    except services.errors.file.UnsupportedFileTypeError as exc:
+        raise UnsupportedFileTypeError() from exc
+    except services.errors.file.BlockedFileExtensionError as exc:
+        raise BlockedFileExtensionError(exc.description) from exc
     return {"transfer_method": "local_file", "upload_file_id": str(uploaded.id)}
 
 
