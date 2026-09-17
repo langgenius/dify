@@ -48,6 +48,15 @@ export const knowledgeSettingsExternalAccessAtom = selectAtom(
   (query) => query.data,
 )
 
+export const knowledgeSettingsHasDataAtom = atom((get) =>
+  Boolean(
+    get(spaceQueryAtom).data &&
+    get(settingsQueryAtom).data &&
+    (!get(knowledgeSettingsCanManageAccessAtom) ||
+      (get(permissionsQueryAtom).data && get(externalAccessQueryAtom).data)),
+  ),
+)
+
 export const knowledgeSettingsIsPendingAtom = atom((get) => {
   const canManageAccess = get(knowledgeSettingsCanManageAccessAtom)
   return (
@@ -76,15 +85,3 @@ export const retryKnowledgeSettingsAtom = atom(null, async (get) => {
     requests.push(get(permissionsQueryAtom).refetch(), get(externalAccessQueryAtom).refetch())
   await Promise.all(requests)
 })
-
-export const invalidateKnowledgeSettingsAtom = atom(
-  null,
-  async (get, _set, requireFresh: boolean = false) => {
-    const settingsRequest = get(settingsQueryAtom).refetch({ throwOnError: requireFresh })
-    const requests: Promise<unknown>[] = [get(spaceQueryAtom).refetch(), settingsRequest]
-    if (get(knowledgeSettingsCanManageAccessAtom))
-      requests.push(get(permissionsQueryAtom).refetch(), get(externalAccessQueryAtom).refetch())
-    await Promise.all(requests)
-    return (await settingsRequest).data
-  },
-)

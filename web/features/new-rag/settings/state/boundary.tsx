@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { ScopeProvider } from 'jotai-scope'
-import { useHydrateAtoms } from 'jotai/utils'
+import { knowledgeSettingsEditSessionAtom } from './draft'
 import { knowledgeSettingsSpaceIdAtom } from './inputs'
 import { knowledgeSettingsScopedAtoms } from './workflow'
 
@@ -13,14 +13,14 @@ export function KnowledgeSettingsStateBoundary({
   children: ReactNode
   knowledgeSpaceId: string
 }) {
-  useHydrateAtoms([[knowledgeSettingsSpaceIdAtom, knowledgeSpaceId]], {
-    dangerouslyForceHydrate: true,
-  })
-
   return (
     <ScopeProvider
       key={knowledgeSpaceId}
-      atoms={knowledgeSettingsScopedAtoms}
+      atoms={[
+        ...knowledgeSettingsScopedAtoms,
+        knowledgeSettingsEditSessionAtom,
+        [knowledgeSettingsSpaceIdAtom, knowledgeSpaceId],
+      ]}
       name="KnowledgeSettingsPage"
     >
       {children}

@@ -1,7 +1,12 @@
 import type {
+  KnowledgeFsExternalAccessPayload,
+  KnowledgeFsMembersReplacePayload,
   KnowledgeFsPermissionResponse,
+  KnowledgeFsProfileMigrationResponse,
+  KnowledgeFsSettingsPayload,
   KnowledgeFsSettingsResponse,
   KnowledgeFsSpaceDetailResponse,
+  KnowledgeFsSpaceUpdatePayload,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ReactNode } from 'react'
 import type { Member } from '@/models/common'
@@ -105,10 +110,10 @@ vi.mock('@/service/console', () => ({
           externalAccess: {
             get: {
               key: () => queryKeys.externalAccess,
-              queryOptions: () => ({
+              queryOptions: (options?: { staleTime?: number }) => ({
                 queryFn: () => Promise.resolve(knowledgeQueryMock.externalAccess),
                 queryKey: queryKeys.externalAccess,
-                staleTime: Infinity,
+                staleTime: options?.staleTime ?? Infinity,
               }),
             },
             put: {
@@ -117,10 +122,10 @@ vi.mock('@/service/console', () => ({
           },
           get: {
             key: () => queryKeys.space,
-            queryOptions: () => ({
+            queryOptions: (options?: { staleTime?: number }) => ({
               queryFn: () => serviceMock.getSpace(),
               queryKey: queryKeys.space,
-              staleTime: Infinity,
+              staleTime: options?.staleTime ?? Infinity,
             }),
           },
           members: {
@@ -134,20 +139,20 @@ vi.mock('@/service/console', () => ({
           permissions: {
             get: {
               key: () => queryKeys.permissions,
-              queryOptions: () => ({
+              queryOptions: (options?: { staleTime?: number }) => ({
                 queryFn: () => Promise.resolve(knowledgeQueryMock.permissions),
                 queryKey: queryKeys.permissions,
-                staleTime: Infinity,
+                staleTime: options?.staleTime ?? Infinity,
               }),
             },
           },
           settings: {
             get: {
               key: () => queryKeys.settings,
-              queryOptions: () => ({
+              queryOptions: (options?: { staleTime?: number }) => ({
                 queryFn: () => Promise.resolve(knowledgeQueryMock.settings),
                 queryKey: queryKeys.settings,
-                staleTime: Infinity,
+                staleTime: options?.staleTime ?? Infinity,
               }),
             },
             migrations: {
@@ -393,15 +398,151 @@ function renderForm({
   }
 }
 
+function acceptSettingsMigration(migration: KnowledgeFsProfileMigrationResponse) {
+  const save = serviceMock.patchSettings.getMockImplementation()!
+  serviceMock.patchSettings.mockImplementationOnce(async (...args) => ({
+    ...(await save(...args)),
+    migration,
+  }))
+}
+
+function expectNoWrites() {
+  expect(serviceMock.patchSpace).not.toHaveBeenCalled()
+  expect(serviceMock.replaceMembers).not.toHaveBeenCalled()
+  expect(serviceMock.patchExternalAccess).not.toHaveBeenCalled()
+  expect(serviceMock.patchSettings).not.toHaveBeenCalled()
+}
+
+async function saveChanges(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }))
+}
+
+const teamMember = {
+  avatar: '',
+  avatar_url: null,
+  email: 'member@example.com',
+  id: 'member-1',
+  name: 'Team Member',
+  role: 'normal',
+  roles: [],
+  status: 'active',
+} satisfies Member
+
+async function editAllSettings(user: ReturnType<typeof userEvent.setup>) {
+  const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+  const description = screen.getByRole('textbox', { name: 'datasetSettings.form.desc' })
+  await user.clear(name)
+  await user.type(name, 'Draft camera specs')
+  expectNoWrites()
+  await user.clear(description)
+  await user.type(description, 'Draft documentation')
+  expectNoWrites()
+  await user.click(screen.getByRole('button', { name: 'datasetSettings.form.nameAndIcon' }))
+  await user.click(screen.getByRole('button', { name: 'Select camera style' }))
+  expectNoWrites()
+  await user.click(screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }))
+  const picker = screen.getByRole('dialog', { name: 'datasetSettings.form.permissions' })
+  await user.click(
+    within(picker).getByRole('radio', { name: 'datasetSettings.form.permissionsInvitedMembers' }),
+  )
+  await user.click(within(picker).getByRole('button', { name: /Team Member/ }))
+  await user.keyboard('{Escape}')
+  expectNoWrites()
+  for (const name of ['knowledgeSpace.apiAgentAccess', 'knowledgeSpace.workflowAccess']) {
+    await user.click(screen.getByRole('switch', { name }))
+    expectNoWrites()
+  }
+  for (const name of [
+    'knowledgeSpace.settings.systemReasoningModelLabel',
+    'common.modelProvider.rerankModel.key',
+  ]) {
+    await user.click(screen.getByRole('button', { name }))
+    expectNoWrites()
+  }
+  await user.click(screen.getByText('knowledgeSpace.settings.retrievalMode.deep'))
+  expectNoWrites()
+  const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
+  await user.clear(topK)
+  await user.type(topK, '8')
+  await user.tab()
+  expectNoWrites()
+  await user.click(screen.getByRole('switch', { name: 'appDebug.datasetConfig.score_threshold' }))
+  const threshold = screen.getByRole('textbox', { name: 'appDebug.datasetConfig.score_threshold' })
+  await user.clear(threshold)
+  await user.type(threshold, '0.72')
+  await user.tab()
+  expectNoWrites()
+  return { name, description, topK, threshold }
+}
+
 describe('KnowledgeSettingsPage workflows', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    membersQueryMock.refetch.mockResolvedValue(undefined)
     serviceMock.deleteSpace.mockResolvedValue(undefined)
-    serviceMock.getSpace.mockResolvedValue(space)
-    serviceMock.patchExternalAccess.mockResolvedValue(externalAccess)
-    serviceMock.patchSettings.mockResolvedValue({ settings })
-    serviceMock.patchSpace.mockResolvedValue(space)
-    serviceMock.replaceMembers.mockResolvedValue({ data: [] })
+    serviceMock.getSpace.mockImplementation(async () => knowledgeQueryMock.space)
+    serviceMock.patchExternalAccess.mockImplementation(
+      async ({ body }: { body: KnowledgeFsExternalAccessPayload }) => {
+        const current = knowledgeQueryMock.externalAccess as typeof externalAccess
+        const saved = { ...current, ...body, revision: current.revision + 1 }
+        knowledgeQueryMock.externalAccess = saved
+        return saved
+      },
+    )
+    serviceMock.patchSettings.mockImplementation(
+      async ({ body }: { body: KnowledgeFsSettingsPayload }) => {
+        const current = knowledgeQueryMock.settings as KnowledgeFsSettingsResponse
+        const saved: KnowledgeFsSettingsResponse = {
+          ...current,
+          embedding: body.embedding
+            ? {
+                model: body.embedding.model,
+                plugin_id: body.embedding.pluginId,
+                provider: body.embedding.provider,
+              }
+            : current.embedding,
+          retrieval: body.retrieval
+            ? {
+                default_mode: body.retrieval.defaultMode,
+                reasoning_model: {
+                  model: body.retrieval.reasoningModel.model,
+                  plugin_id: body.retrieval.reasoningModel.pluginId,
+                  provider: body.retrieval.reasoningModel.provider,
+                },
+                rerank: body.retrieval.rerank,
+                score_threshold: body.retrieval.scoreThreshold,
+                top_k: body.retrieval.topK,
+              }
+            : current.retrieval,
+          revision: current.revision + 1,
+        }
+        knowledgeQueryMock.settings = saved
+        return { settings: saved }
+      },
+    )
+    serviceMock.patchSpace.mockImplementation(
+      async ({ body }: { body: KnowledgeFsSpaceUpdatePayload }) => {
+        const current = knowledgeQueryMock.space as KnowledgeFsSpaceDetailResponse
+        const { visibility, ...basic } = body
+        const saved = {
+          ...current,
+          resource_version: current.resource_version + 1,
+          technical_summary: { ...current.technical_summary, ...basic },
+          visibility: visibility ?? current.visibility,
+        }
+        knowledgeQueryMock.space = saved
+        return saved
+      },
+    )
+    serviceMock.replaceMembers.mockImplementation(
+      async ({ body }: { body: KnowledgeFsMembersReplacePayload }) => {
+        const saved = {
+          data: body.members.map((member) => ({ ...member, revision: 1, status: 'active' })),
+        }
+        knowledgeQueryMock.permissions = saved
+        return saved
+      },
+    )
   })
 
   it('keeps save disabled and shows an inline error when the name is empty', async () => {
@@ -450,7 +591,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
-  it('keeps basic fields locked while refreshing saved server data', async () => {
+  it('keeps fields locked while Cancel refreshes the saved server data', async () => {
     const user = userEvent.setup()
     let finishRefresh!: () => void
     const refreshPromise = new Promise<void>((resolve) => {
@@ -462,7 +603,7 @@ describe('KnowledgeSettingsPage workflows', () => {
         queries: { retry: false },
       },
     })
-    serviceMock.getSpace.mockReturnValueOnce(refreshPromise.then(() => space))
+    serviceMock.getSpace.mockReturnValueOnce(refreshPromise.then(() => knowledgeQueryMock.space))
     renderForm({ queryClient })
 
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
@@ -470,53 +611,16 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.type(nameInput, 'Updated without conflict flash')
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.saveChanges',
+        name: 'common.operation.cancel',
       }),
     )
 
-    await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
+    await waitFor(() => expect(serviceMock.getSpace).toHaveBeenCalledOnce())
     expect(nameInput).toBeDisabled()
     finishRefresh()
     await waitFor(() => expect(nameInput).toBeEnabled())
-  })
-
-  it('keeps access and retrieval controls interactive while basic info is saving', async () => {
-    const user = userEvent.setup()
-    let finishBasicSave!: (value: typeof space) => void
-    serviceMock.patchSpace.mockReturnValueOnce(
-      new Promise((resolve) => {
-        finishBasicSave = resolve
-      }),
-    )
-    renderForm()
-
-    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
-    await user.clear(nameInput)
-    await user.type(nameInput, 'Saving camera specs')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }))
-
-    await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
-    const saveButton = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.saveChanges',
-    })
-    expect(saveButton).toHaveAttribute('aria-disabled', 'true')
-    expect(saveButton).toHaveTextContent('knowledgeSpace.settings.saveChanges')
-    expect(screen.queryByText('common.operation.saving')).not.toBeInTheDocument()
-    const apiAccessSwitch = screen.getByRole('switch', {
-      name: 'knowledgeSpace.apiAgentAccess',
-    })
-    const reasoningSelector = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
-    })
-    expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
-    expect(reasoningSelector).toBeEnabled()
-    await user.click(apiAccessSwitch)
-    await user.click(reasoningSelector)
-
-    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce())
-    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
-    finishBasicSave(space)
-    await waitFor(() => expect(serviceMock.patchSpace).toHaveResolved())
+    expect(nameInput).toHaveValue('Camera Technical Spec')
+    expectNoWrites()
   })
 
   it('uses the 40-character knowledge name limit from the design contract', () => {
@@ -673,6 +777,8 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expectNoWrites()
+    await saveChanges(user)
 
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
@@ -703,6 +809,9 @@ describe('KnowledgeSettingsPage workflows', () => {
         ...settings,
         active_profile_available: false,
         active_profile_revisions: {},
+        embedding: null,
+        retrieval: null,
+        configuration_state: 'setup-required',
         capabilities: {
           deep: false,
           index: false,
@@ -727,6 +836,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
 
     await user.click(apiAccessSwitch)
+    expectNoWrites()
+    await saveChanges(user)
 
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
@@ -746,89 +857,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
     expect(workflowAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
 
-    await user.click(apiAccessSwitch)
-
-    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledTimes(2))
-    expect(serviceMock.patchExternalAccess).toHaveBeenLastCalledWith(
-      {
-        body: {
-          agent_enabled: true,
-          mcp_enabled: true,
-          service_api_enabled: true,
-          workflow_enabled: true,
-        },
-        params: { control_space_id: 'space-1' },
-      },
-      expect.anything(),
-    )
-  })
-
-  it('keeps unrelated form controls interactive while external access is saving', async () => {
-    const user = userEvent.setup()
-    let finishExternalAccessSave!: (value: typeof externalAccess) => void
-    serviceMock.patchExternalAccess.mockReturnValueOnce(
-      new Promise((resolve) => {
-        finishExternalAccessSave = resolve
-      }),
-    )
-    renderForm()
-
-    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
-    await user.clear(nameInput)
-    await user.type(nameInput, 'Unsaved camera notes')
-    await user.click(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }))
-
-    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce())
-    expect(nameInput).toBeEnabled()
-    expect(nameInput).toHaveValue('Unsaved camera notes')
-    expect(screen.getByRole('textbox', { name: 'datasetSettings.form.desc' })).toBeEnabled()
-    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })).toBeEnabled()
-    expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
-    ).toBeEnabled()
-
-    finishExternalAccessSave(externalAccess)
-    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveResolved())
-  })
-
-  it('serializes independent access switches without blocking either control', async () => {
-    const user = userEvent.setup()
-    let finishFirstAccessSave!: (value: typeof externalAccess) => void
-    serviceMock.patchExternalAccess.mockReturnValueOnce(
-      new Promise((resolve) => {
-        finishFirstAccessSave = resolve
-      }),
-    )
-    renderForm()
-
-    const apiAccessSwitch = screen.getByRole('switch', {
-      name: 'knowledgeSpace.apiAgentAccess',
-    })
-    const workflowAccessSwitch = screen.getByRole('switch', {
-      name: 'knowledgeSpace.workflowAccess',
-    })
-    await user.click(apiAccessSwitch)
-
-    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce())
-    expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
-    expect(workflowAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
-    await user.click(workflowAccessSwitch)
-    expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce()
-
-    finishFirstAccessSave(externalAccess)
-    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledTimes(2))
-    expect(serviceMock.patchExternalAccess).toHaveBeenLastCalledWith(
-      {
-        body: {
-          agent_enabled: false,
-          mcp_enabled: true,
-          service_api_enabled: false,
-          workflow_enabled: false,
-        },
-        params: { control_space_id: 'space-1' },
-      },
-      expect.anything(),
-    )
+    expect(serviceMock.patchSettings).not.toHaveBeenCalled()
   })
 
   it('enables Workflow access independently and preserves API and MCP channels', async () => {
@@ -837,6 +866,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       externalAccess: {
         ...externalAccess,
         workflow_enabled: false,
+        service_api_enabled: false,
       },
     })
 
@@ -848,6 +878,8 @@ describe('KnowledgeSettingsPage workflows', () => {
       'knowledgeSpace.settings.workflowAccessDescription',
     )
     await user.click(workflowAccessSwitch)
+    expectNoWrites()
+    await saveChanges(user)
 
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
@@ -855,7 +887,7 @@ describe('KnowledgeSettingsPage workflows', () => {
           body: {
             agent_enabled: true,
             mcp_enabled: true,
-            service_api_enabled: true,
+            service_api_enabled: false,
             workflow_enabled: true,
           },
           params: { control_space_id: 'space-1' },
@@ -880,12 +912,17 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'knowledgeSpace.workflowAccess',
     })
     await user.click(workflowAccessSwitch)
+    expectNoWrites()
+    await saveChanges(user)
 
     await waitFor(() =>
       expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
     )
     expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true')
-    expect(screen.queryByText('knowledgeSpace.settings.saveFailed')).not.toBeInTheDocument()
+    await saveChanges(user)
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledOnce())
+    expect(serviceMock.patchExternalAccess).toHaveBeenCalledTimes(2)
+    expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true')
   })
 
   it('keeps the API access edit and shows an error toast after failure', async () => {
@@ -904,12 +941,16 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
     expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'false')
     await user.click(apiAccessSwitch)
+    expectNoWrites()
+    await saveChanges(user)
 
     await waitFor(() =>
       expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
     )
     expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'true')
-    expect(screen.queryByText('knowledgeSpace.settings.saveFailed')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce()
   })
 
   it('requires the exact knowledge name before deletion', async () => {
@@ -962,7 +1003,6 @@ describe('KnowledgeSettingsPage workflows', () => {
       expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
     )
     expect(nameInput).toHaveValue('Camera specs draft')
-    expect(screen.queryByText('knowledgeSpace.settings.saveFailed')).not.toBeInTheDocument()
     expect(saveButton).toBeEnabled()
 
     await user.click(saveButton)
@@ -981,10 +1021,12 @@ describe('KnowledgeSettingsPage workflows', () => {
       }),
     )
 
+    expectNoWrites()
+    await saveChanges(user)
+
     await waitFor(() =>
       expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
     )
-    expect(screen.queryByText('knowledgeSpace.settings.saveFailed')).not.toBeInTheDocument()
     expect(serviceMock.patchSpace).not.toHaveBeenCalled()
   })
 
@@ -1008,6 +1050,9 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'knowledgeSpace.settings.systemReasoningModelLabel',
     })
     await user.click(selector)
+    expectNoWrites()
+    await saveChanges(user)
+
     await waitFor(() =>
       expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.compilationInProgress'),
     )
@@ -1037,6 +1082,8 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'knowledgeSpace.settings.systemReasoningModelLabel',
     })
     await user.click(selector)
+    expectNoWrites()
+    await saveChanges(user)
     const reload = await screen.findByRole('button', {
       name: 'knowledgeSpace.settings.reloadLatest',
     })
@@ -1055,6 +1102,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(selector).not.toHaveTextContent('openrouter/auto')
     expect(serviceMock.patchSettings).toHaveBeenCalledTimes(1)
     await user.click(selector)
+    await saveChanges(user)
     await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
     expect(serviceMock.patchSettings.mock.calls[1]?.[0].body).toMatchObject({
       expectedRevision: 8,
@@ -1159,6 +1207,9 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(topKInput).toHaveValue('10')
     expect(screen.getByText('knowledgeSpace.settings.topKMinimum')).toBeInTheDocument()
     expect(screen.getByText('knowledgeSpace.settings.scoreRange')).toBeInTheDocument()
+    expectNoWrites()
+    await saveChanges(user)
+
     await waitFor(() =>
       expect(serviceMock.patchSettings).toHaveBeenCalledWith(
         {
@@ -1196,6 +1247,9 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.tab()
 
     expect(thresholdInput).toHaveValue('1')
+    expectNoWrites()
+    await saveChanges(user)
+
     await waitFor(() =>
       expect(serviceMock.patchSettings).toHaveBeenCalledWith(
         {
@@ -1212,7 +1266,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
   })
 
-  it('confirms an embedding migration and then saves it immediately', async () => {
+  it('keeps a confirmed embedding model as a draft until the unified Save', async () => {
     const user = userEvent.setup()
     renderForm()
 
@@ -1224,6 +1278,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     const dialog = await screen.findByRole('alertdialog')
     expect(serviceMock.patchSettings).not.toHaveBeenCalled()
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    expectNoWrites()
+    await saveChanges(user)
 
     await waitFor(() =>
       expect(serviceMock.patchSettings).toHaveBeenCalledWith(
@@ -1295,28 +1351,26 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.clear(thresholdInput)
     await user.type(thresholdInput, '0.72')
     await user.tab()
+    expectNoWrites()
+    await saveChanges(user)
 
     await waitFor(() =>
       expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.permissionRestricted'),
     )
-    expect(screen.queryByText('knowledgeSpace.permissionRestricted')).not.toBeInTheDocument()
     expect(thresholdInput).toHaveValue('0.72')
   })
 
   it('requires a rerank model for a legacy knowledge base and saves it as enabled', async () => {
     const user = userEvent.setup()
-    serviceMock.patchSettings.mockResolvedValueOnce({
-      migration: {
-        changed_kind: 'retrieval',
-        checkpoint: 'queued',
-        created_at: '2026-07-28T00:00:00Z',
-        id: 'migration-rerank-1',
-        knowledge_space_id: 'knowledge-1',
-        rebuild_scope: 'clone-publication',
-        run_state: 'queued',
-        updated_at: '2026-07-28T00:00:00Z',
-      },
-      settings: { ...settings, revision: 6 },
+    acceptSettingsMigration({
+      changed_kind: 'retrieval',
+      checkpoint: 'queued',
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'migration-rerank-1',
+      knowledge_space_id: 'knowledge-1',
+      rebuild_scope: 'clone-publication',
+      run_state: 'queued',
+      updated_at: '2026-07-28T00:00:00Z',
     })
     serviceMock.getMigration.mockResolvedValueOnce({
       changed_kind: 'retrieval',
@@ -1349,6 +1403,8 @@ describe('KnowledgeSettingsPage workflows', () => {
       'knowledgeSpace.settings.rerankModelRequired',
     )
     await user.click(rerankSelector)
+    expectNoWrites()
+    await saveChanges(user)
 
     await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
     expect(serviceMock.patchSettings).toHaveBeenCalledWith(
@@ -1382,260 +1438,6 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'))
   })
 
-  it('saves a reasoning model selection immediately without enabling the basic info save', async () => {
-    const user = userEvent.setup()
-    renderForm()
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.systemReasoningModelLabel',
-      }),
-    )
-
-    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
-    expect(
-      screen.getByRole('button', {
-        name: 'knowledgeSpace.settings.saveChanges',
-      }),
-    ).toBeDisabled()
-  })
-
-  it('serializes rapid model selections and saves the latest draft with the new revision', async () => {
-    const user = userEvent.setup()
-    let resolveFirstSave!: (value: { settings: KnowledgeFsSettingsResponse }) => void
-    const firstSave = new Promise<Parameters<typeof resolveFirstSave>[0]>((resolve) => {
-      resolveFirstSave = resolve
-    })
-    serviceMock.patchSettings
-      .mockReturnValueOnce(firstSave)
-      .mockResolvedValueOnce({ settings: { ...settings, revision: 7 } })
-    renderForm()
-
-    const reasoningSelector = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
-    })
-    const rerankSelector = screen.getByRole('button', {
-      name: 'common.modelProvider.rerankModel.key',
-    })
-    await user.click(reasoningSelector)
-
-    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
-    expect(reasoningSelector).toBeEnabled()
-    expect(rerankSelector).toBeEnabled()
-    expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeEnabled()
-    const apiAccessSwitch = screen.getByRole('switch', {
-      name: 'knowledgeSpace.apiAgentAccess',
-    })
-    expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
-    await user.click(apiAccessSwitch)
-    await waitFor(() =>
-      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
-        {
-          body: {
-            agent_enabled: false,
-            mcp_enabled: true,
-            service_api_enabled: false,
-            workflow_enabled: true,
-          },
-          params: { control_space_id: 'space-1' },
-        },
-        expect.anything(),
-      ),
-    )
-    await user.click(rerankSelector)
-
-    expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
-    expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
-      1,
-      {
-        body: expect.objectContaining({ expectedRevision: 5 }),
-        params: { control_space_id: 'space-1' },
-      },
-      expect.anything(),
-    )
-
-    resolveFirstSave({ settings: { ...settings, revision: 6 } })
-
-    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
-    expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
-      2,
-      {
-        body: {
-          expectedRevision: 6,
-          retrieval: expect.objectContaining({
-            reasoningModel: {
-              model: 'openrouter/auto',
-              pluginId: 'langgenius/openrouter',
-              provider: 'openrouter',
-            },
-            rerank: {
-              enabled: true,
-              model: {
-                model: 'openrouter/auto',
-                pluginId: 'langgenius/openrouter',
-                provider: 'openrouter',
-              },
-            },
-          }),
-        },
-        params: { control_space_id: 'space-1' },
-      },
-      expect.anything(),
-    )
-    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'))
-  })
-
-  it('continues a queued model selection only after its preceding migration succeeds', async () => {
-    let resolveFirstSave!: (value: {
-      migration: {
-        changed_kind: 'retrieval'
-        checkpoint: 'queued'
-        created_at: string
-        id: string
-        knowledge_space_id: string
-        rebuild_scope: 'clone-publication'
-        run_state: 'queued'
-        updated_at: string
-      }
-      settings: KnowledgeFsSettingsResponse
-    }) => void
-    const firstSave = new Promise<Parameters<typeof resolveFirstSave>[0]>((resolve) => {
-      resolveFirstSave = resolve
-    })
-    serviceMock.patchSettings
-      .mockReturnValueOnce(firstSave)
-      .mockResolvedValueOnce({ settings: { ...settings, revision: 7 } })
-    serviceMock.getMigration.mockResolvedValueOnce({
-      changed_kind: 'retrieval',
-      checkpoint: 'activated',
-      created_at: '2026-07-28T00:00:00Z',
-      id: 'migration-serial-1',
-      knowledge_space_id: 'knowledge-1',
-      rebuild_scope: 'clone-publication',
-      run_state: 'succeeded',
-      updated_at: '2026-07-28T00:01:00Z',
-    })
-    renderForm()
-
-    const reasoningSelector = screen.getByRole('button', {
-      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
-    })
-    const rerankSelector = screen.getByRole('button', {
-      name: 'common.modelProvider.rerankModel.key',
-    })
-    await act(async () => {
-      reasoningSelector.click()
-      rerankSelector.click()
-    })
-    expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
-
-    resolveFirstSave({
-      migration: {
-        changed_kind: 'retrieval',
-        checkpoint: 'queued',
-        created_at: '2026-07-28T00:00:00Z',
-        id: 'migration-serial-1',
-        knowledge_space_id: 'knowledge-1',
-        rebuild_scope: 'clone-publication',
-        run_state: 'queued',
-        updated_at: '2026-07-28T00:00:00Z',
-      },
-      settings: { ...settings, revision: 6 },
-    })
-
-    await waitFor(() => expect(serviceMock.getMigration).toHaveBeenCalledOnce())
-    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
-    expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
-      2,
-      {
-        body: expect.objectContaining({ expectedRevision: 6 }),
-        params: { control_space_id: 'space-1' },
-      },
-      expect.anything(),
-    )
-  })
-
-  it('coalesces a delayed retrieval save that arrives while a migration is running', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    try {
-      let resolveMigration!: (value: {
-        changed_kind: 'retrieval'
-        checkpoint: 'activated'
-        created_at: string
-        id: string
-        knowledge_space_id: string
-        rebuild_scope: 'clone-publication'
-        run_state: 'succeeded'
-        updated_at: string
-      }) => void
-      const migrationPromise = new Promise<Parameters<typeof resolveMigration>[0]>((resolve) => {
-        resolveMigration = resolve
-      })
-      serviceMock.patchSettings
-        .mockResolvedValueOnce({
-          migration: {
-            changed_kind: 'retrieval',
-            checkpoint: 'queued',
-            created_at: '2026-07-28T00:00:00Z',
-            id: 'migration-delayed-1',
-            knowledge_space_id: 'knowledge-1',
-            rebuild_scope: 'clone-publication',
-            run_state: 'queued',
-            updated_at: '2026-07-28T00:00:00Z',
-          },
-          settings: { ...settings, revision: 6 },
-        })
-        .mockResolvedValueOnce({ settings: { ...settings, revision: 7 } })
-      serviceMock.getMigration.mockReturnValueOnce(migrationPromise)
-      renderForm()
-
-      await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(
-        screen.getByRole('button', {
-          name: 'knowledgeSpace.settings.systemReasoningModelLabel',
-        }),
-      )
-      expect(screen.queryByText('common.operation.saving')).not.toBeInTheDocument()
-
-      fireEvent.change(
-        screen.getByRole('textbox', {
-          name: 'knowledgeSpace.settings.topKLabel',
-        }),
-        { target: { value: '8' } },
-      )
-      await act(() => vi.advanceTimersByTimeAsync(400))
-      expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
-
-      resolveMigration({
-        changed_kind: 'retrieval',
-        checkpoint: 'activated',
-        created_at: '2026-07-28T00:00:00Z',
-        id: 'migration-delayed-1',
-        knowledge_space_id: 'knowledge-1',
-        rebuild_scope: 'clone-publication',
-        run_state: 'succeeded',
-        updated_at: '2026-07-28T00:01:00Z',
-      })
-
-      await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
-      expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
-        2,
-        {
-          body: {
-            expectedRevision: 6,
-            retrieval: expect.objectContaining({ topK: 8 }),
-          },
-          params: { control_space_id: 'space-1' },
-        },
-        expect.anything(),
-      )
-      await waitFor(() =>
-        expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'),
-      )
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
   it('blocks a stale draft after the server baseline changes and restores the latest value', async () => {
     const user = userEvent.setup()
     const { queryClient } = renderForm()
@@ -1643,18 +1445,14 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.clear(nameInput)
     await user.type(nameInput, 'Version B')
 
-    act(() => {
-      queryClient.setQueryData(queryKeys.space, {
-        ...space,
-        resource_version: space.resource_version + 1,
-        technical_summary: {
-          ...space.technical_summary,
-          name: 'Version C',
-        },
-      })
-    })
+    knowledgeQueryMock.space = {
+      ...space,
+      resource_version: space.resource_version + 1,
+      technical_summary: { ...space.technical_summary, name: 'Version C' },
+    }
+    act(() => queryClient.setQueryData(queryKeys.space, knowledgeQueryMock.space))
     expect(nameInput).toHaveValue('Version B')
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    expect(await screen.findByRole('status')).toHaveTextContent(
       'knowledgeSpace.settings.serverConflict',
     )
     expect(
@@ -1749,6 +1547,9 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(
       screen.queryByText('knowledgeSpace.settings.rerankModelRequired'),
     ).not.toBeInTheDocument()
+
+    expectNoWrites()
+    await saveChanges(user)
 
     await waitFor(() =>
       expect(serviceMock.patchSettings).toHaveBeenCalledWith(
@@ -1860,6 +1661,9 @@ describe('KnowledgeSettingsPage workflows', () => {
       }),
     )
 
+    expectNoWrites()
+    await saveChanges(user)
+
     await waitFor(() => {
       expect(serviceMock.patchSettings).toHaveBeenCalledWith(
         {
@@ -1895,18 +1699,15 @@ describe('KnowledgeSettingsPage workflows', () => {
     const migrationPromise = new Promise<Parameters<typeof resolveMigration>[0]>((resolve) => {
       resolveMigration = resolve
     })
-    serviceMock.patchSettings.mockResolvedValueOnce({
-      migration: {
-        changed_kind: 'retrieval',
-        checkpoint: 'queued',
-        created_at: '2026-07-28T00:00:00Z',
-        id: 'migration-1',
-        knowledge_space_id: 'knowledge-1',
-        rebuild_scope: 'clone-publication',
-        run_state: 'queued',
-        updated_at: '2026-07-28T00:00:00Z',
-      },
-      settings,
+    acceptSettingsMigration({
+      changed_kind: 'retrieval',
+      checkpoint: 'queued',
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'migration-1',
+      knowledge_space_id: 'knowledge-1',
+      rebuild_scope: 'clone-publication',
+      run_state: 'queued',
+      updated_at: '2026-07-28T00:00:00Z',
     })
     serviceMock.getMigration.mockReturnValueOnce(migrationPromise)
     renderForm()
@@ -1917,7 +1718,11 @@ describe('KnowledgeSettingsPage workflows', () => {
       }),
     )
 
-    expect(screen.queryByText('common.operation.saving')).not.toBeInTheDocument()
+    expectNoWrites()
+    await saveChanges(user)
+
+    await waitFor(() => expect(serviceMock.getMigration).toHaveBeenCalledOnce())
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
     expect(toastMock.success).not.toHaveBeenCalled()
 
     resolveMigration({
@@ -1937,18 +1742,15 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('shows an error toast when a durable profile migration fails', async () => {
     const user = userEvent.setup()
-    serviceMock.patchSettings.mockResolvedValueOnce({
-      migration: {
-        changed_kind: 'retrieval',
-        checkpoint: 'evaluated',
-        created_at: '2026-07-28T00:00:00Z',
-        id: 'migration-1',
-        knowledge_space_id: 'knowledge-1',
-        rebuild_scope: 'clone-publication',
-        run_state: 'running',
-        updated_at: '2026-07-28T00:00:30Z',
-      },
-      settings,
+    acceptSettingsMigration({
+      changed_kind: 'retrieval',
+      checkpoint: 'evaluated',
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'migration-1',
+      knowledge_space_id: 'knowledge-1',
+      rebuild_scope: 'clone-publication',
+      run_state: 'running',
+      updated_at: '2026-07-28T00:00:30Z',
     })
     serviceMock.getMigration.mockResolvedValueOnce({
       changed_kind: 'retrieval',
@@ -1969,11 +1771,493 @@ describe('KnowledgeSettingsPage workflows', () => {
       }),
     )
 
+    expectNoWrites()
+    await saveChanges(user)
+
     await waitFor(() =>
       expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
     )
-    expect(screen.queryByText('knowledgeSpace.settings.saveFailed')).not.toBeInTheDocument()
     expect(toastMock.success).not.toHaveBeenCalled()
+  })
+
+  it('keeps every setting in draft and saves each changed resource once from the bottom action', async () => {
+    const user = userEvent.setup()
+    renderForm({ accountProfile: { id: 'owner-1' }, members: [teamMember] })
+    const { name, description, topK, threshold } = await editAllSettings(user)
+    const save = screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' })
+    const cancel = screen.getByRole('button', { name: 'common.operation.cancel' })
+
+    for (const content of [
+      screen.getByRole('heading', { name: 'knowledgeSpace.settings.basicInfo' }),
+      screen.getByRole('heading', { name: 'knowledgeSpace.settings.retrievalTitle' }),
+      screen.getByRole('button', { name: 'common.operation.delete' }),
+      threshold,
+    ]) {
+      expect(content.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
+      expect(content.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
+    }
+    expect(
+      screen.getAllByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+    ).toHaveLength(1)
+    expectNoWrites()
+    await user.click(save)
+
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledOnce())
+    expect(serviceMock.patchSpace).toHaveBeenCalledExactlyOnceWith(
+      {
+        body: {
+          name: 'Draft camera specs',
+          description: 'Draft documentation',
+          icon: 'camera',
+          icon_background: '#FCE7F6',
+          visibility: 'partial_members',
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+    expect(serviceMock.replaceMembers).toHaveBeenCalledExactlyOnceWith(
+      {
+        body: { members: [{ account_id: 'member-1', role: 'viewer' }] },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+    expect(serviceMock.patchExternalAccess).toHaveBeenCalledExactlyOnceWith(
+      {
+        body: {
+          agent_enabled: false,
+          service_api_enabled: false,
+          workflow_enabled: false,
+          mcp_enabled: true,
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+    expect(serviceMock.patchSettings).toHaveBeenCalledExactlyOnceWith(
+      {
+        body: {
+          expectedRevision: 5,
+          retrieval: {
+            defaultMode: 'deep',
+            reasoningModel: {
+              model: 'openrouter/auto',
+              pluginId: 'langgenius/openrouter',
+              provider: 'openrouter',
+            },
+            rerank: {
+              enabled: true,
+              model: {
+                model: 'openrouter/auto',
+                pluginId: 'langgenius/openrouter',
+                provider: 'openrouter',
+              },
+            },
+            scoreThreshold: { enabled: true, stage: 'rerank', value: 0.72 },
+            topK: 8,
+          },
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+    expect(name).toHaveValue('Draft camera specs')
+    expect(description).toHaveValue('Draft documentation')
+    expect(topK).toHaveValue('8')
+    expect(threshold).toHaveValue('0.72')
+    expect(save).toBeDisabled()
+  })
+
+  it('cancels basic, member, access, model and retrieval drafts together without writing', async () => {
+    const user = userEvent.setup()
+    renderForm({ accountProfile: { id: 'owner-1' }, members: [teamMember] })
+    const { name, description, topK, threshold } = await editAllSettings(user)
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.embeddingModelLabel' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog')
+    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
+    expectNoWrites()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(name).toHaveValue('Camera Technical Spec')
+    expect(description).toHaveValue('Product documentation')
+    expect(topK).toHaveValue('3')
+    expect(threshold).toHaveValue('0.5')
+    expect(threshold).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.systemReasoningModelLabel' }),
+    ).toHaveTextContent('gpt-4o')
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.embeddingModelLabel' }),
+    ).toHaveTextContent('text-embedding-3-large')
+    expect(
+      screen.getByRole('button', { name: 'common.modelProvider.rerankModel.key' }),
+    ).toHaveTextContent('rerank-v3')
+    expect(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(
+      screen.getByRole('switch', { name: 'appDebug.datasetConfig.score_threshold' }),
+    ).toHaveAttribute('aria-checked', 'false')
+    expect(
+      screen.getByRole('button', { name: 'datasetSettings.form.nameAndIcon' }),
+    ).toHaveTextContent('📷')
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+    ).toBeDisabled()
+    expectNoWrites()
+  })
+
+  it('locks every section and already-open icon selection until the whole save finishes', async () => {
+    const user = userEvent.setup()
+    let finishSave!: () => void
+    const originalSave = serviceMock.patchSpace.getMockImplementation()!
+    serviceMock.patchSpace.mockImplementationOnce(async (...args) => {
+      await new Promise<void>((resolve) => {
+        finishSave = resolve
+      })
+      return originalSave(...args)
+    })
+    renderForm()
+    const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(name)
+    await user.type(name, 'Saving camera specs')
+    await user.click(screen.getByRole('button', { name: 'datasetSettings.form.nameAndIcon' }))
+    expect(screen.getByRole('button', { name: 'Select camera style' })).toBeInTheDocument()
+    await saveChanges(user)
+    await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
+
+    for (const label of [
+      'datasetSettings.form.name',
+      'datasetSettings.form.desc',
+      'knowledgeSpace.settings.topKLabel',
+      'appDebug.datasetConfig.score_threshold',
+    ])
+      expect(screen.getByRole('textbox', { name: label })).toBeDisabled()
+    for (const label of [
+      'datasetSettings.form.nameAndIcon',
+      'knowledgeSpace.settings.systemReasoningModelLabel',
+      'knowledgeSpace.settings.embeddingModelLabel',
+      'common.modelProvider.rerankModel.key',
+      'common.operation.cancel',
+      'common.operation.delete',
+    ])
+      expect(screen.getByRole('button', { name: label })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
+    ).toBeDisabled()
+    for (const label of [
+      'knowledgeSpace.apiAgentAccess',
+      'knowledgeSpace.workflowAccess',
+      'appDebug.datasetConfig.score_threshold',
+    ])
+      expect(screen.getByRole('switch', { name: label })).toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }))
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.systemReasoningModelLabel' }),
+    )
+    const openIconChoice = screen.queryByRole('button', { name: 'Select camera style' })
+    if (openIconChoice) await user.click(openIconChoice)
+    expect(serviceMock.patchExternalAccess).not.toHaveBeenCalled()
+    expect(serviceMock.patchSettings).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'datasetSettings.form.nameAndIcon' }),
+    ).toHaveTextContent('📷')
+
+    finishSave()
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledOnce())
+    expect(name).toBeEnabled()
+    expect(name).toHaveValue('Saving camera specs')
+    expect(serviceMock.patchSpace).toHaveBeenCalledOnce()
+  })
+
+  it('preserves all local drafts on a retrieval refetch conflict and cancels to the latest snapshot', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderForm()
+    const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
+    const workflow = screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' })
+    await user.clear(name)
+    await user.type(name, 'Local name')
+    await user.click(workflow)
+    await user.clear(topK)
+    await user.type(topK, '8')
+    await user.tab()
+    knowledgeQueryMock.settings = {
+      ...settings,
+      revision: 8,
+      retrieval: { ...settings.retrieval, top_k: 6 },
+    }
+    act(() => queryClient.setQueryData(queryKeys.settings, knowledgeQueryMock.settings))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'knowledgeSpace.settings.serverConflict',
+    )
+    expect(name).toHaveValue('Local name')
+    expect(workflow).toHaveAttribute('aria-checked', 'false')
+    expect(topK).toHaveValue('8')
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+    ).toBeDisabled()
+    expectNoWrites()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(name).toHaveValue('Camera Technical Spec')
+    expect(workflow).toHaveAttribute('aria-checked', 'true')
+    expect(topK).toHaveValue('6')
+    expectNoWrites()
+  })
+
+  it('saves embedding first, waits for activation and uses the fresh revision for the remaining retrieval draft', async () => {
+    const user = userEvent.setup()
+    let finishMigration!: () => void
+    const originalSave = serviceMock.patchSettings.getMockImplementation()!
+    const migration = {
+      changed_kind: 'embedding' as const,
+      checkpoint: 'queued' as const,
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'embedding-migration-1',
+      knowledge_space_id: 'knowledge-1',
+      rebuild_scope: 'full-vector-space' as const,
+      run_state: 'queued' as const,
+      updated_at: '2026-07-28T00:00:00Z',
+    }
+    serviceMock.patchSettings.mockImplementationOnce(async (...args) => ({
+      ...(await originalSave(...args)),
+      migration,
+    }))
+    serviceMock.getMigration.mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => {
+        finishMigration = resolve
+      })
+      knowledgeQueryMock.settings = {
+        ...(knowledgeQueryMock.settings as KnowledgeFsSettingsResponse),
+        revision: 9,
+      }
+      return { ...migration, checkpoint: 'activated', run_state: 'succeeded' }
+    })
+    renderForm()
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.embeddingModelLabel' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog')
+    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
+    expectNoWrites()
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.systemReasoningModelLabel' }),
+    )
+    const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
+    await user.clear(topK)
+    await user.type(topK, '8')
+    await user.tab()
+    expectNoWrites()
+    await saveChanges(user)
+
+    await waitFor(() => expect(serviceMock.getMigration).toHaveBeenCalledOnce())
+    expect(serviceMock.patchSettings).toHaveBeenCalledExactlyOnceWith(
+      {
+        body: {
+          expectedRevision: 5,
+          embedding: {
+            model: 'openrouter/auto',
+            pluginId: 'langgenius/openrouter',
+            provider: 'openrouter',
+          },
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+    expect(topK).toBeDisabled()
+    expect(toastMock.success).not.toHaveBeenCalled()
+    finishMigration()
+
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledOnce())
+    expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2)
+    expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
+      2,
+      {
+        body: {
+          expectedRevision: 9,
+          retrieval: expect.objectContaining({
+            topK: 8,
+            reasoningModel: {
+              model: 'openrouter/auto',
+              pluginId: 'langgenius/openrouter',
+              provider: 'openrouter',
+            },
+          }),
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+    expect(topK).toHaveValue('8')
+    expect(topK).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+    ).toBeDisabled()
+  })
+
+  it('retries only the unsaved resource after a partial save and keeps the desired draft', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchExternalAccess.mockImplementationOnce(async () => {
+      const saved = knowledgeQueryMock.space as KnowledgeFsSpaceDetailResponse
+      knowledgeQueryMock.space = {
+        ...saved,
+        resource_version: saved.resource_version + 1,
+        technical_summary: {
+          ...saved.technical_summary,
+          description: 'Updated by another administrator',
+        },
+      }
+      throw new Error('access temporarily unavailable')
+    })
+    renderForm()
+    const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    const api = screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' })
+    await user.clear(name)
+    await user.type(name, 'Saved before access failure')
+    await user.click(api)
+    expectNoWrites()
+    await saveChanges(user)
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledOnce())
+    expect(serviceMock.patchSpace).toHaveBeenCalledOnce()
+    expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce()
+    expect(name).toHaveValue('Saved before access failure')
+    expect(screen.getByRole('textbox', { name: 'datasetSettings.form.desc' })).toHaveValue(
+      'Updated by another administrator',
+    )
+    expect(api).toHaveAttribute('aria-checked', 'false')
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+    ).toBeEnabled()
+    await saveChanges(user)
+
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledOnce())
+    expect(serviceMock.patchSpace).toHaveBeenCalledOnce()
+    expect(serviceMock.patchExternalAccess).toHaveBeenCalledTimes(2)
+    expect(name).toHaveValue('Saved before access failure')
+    expect(screen.getByRole('textbox', { name: 'datasetSettings.form.desc' })).toHaveValue(
+      'Updated by another administrator',
+    )
+    expect(api).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('retains drafts when Cancel cannot refresh the saved data and discards them after a successful retry', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(name)
+    await user.type(name, 'Keep this draft until refresh succeeds')
+    serviceMock.getSpace.mockRejectedValueOnce(new Error('refresh unavailable'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledOnce())
+    expect(name).toHaveValue('Keep this draft until refresh succeeds')
+    expectNoWrites()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(name).toHaveValue('Camera Technical Spec'))
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+    ).toBeDisabled()
+    expectNoWrites()
+  })
+
+  it('accepts a background refresh without conflict after every edit is restored to its saved value', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderForm()
+    const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    const workflow = screen.getByRole('switch', { name: 'knowledgeSpace.workflowAccess' })
+    const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
+    await user.clear(name)
+    await user.type(name, 'Temporary title')
+    await user.click(workflow)
+    await user.clear(topK)
+    await user.type(topK, '8')
+    await user.tab()
+    await user.clear(name)
+    await user.type(name, 'Camera Technical Spec')
+    await user.click(workflow)
+    await user.clear(topK)
+    await user.type(topK, '3')
+    await user.tab()
+    expectNoWrites()
+
+    act(() => {
+      queryClient.setQueryData(queryKeys.space, {
+        ...space,
+        resource_version: 4,
+        technical_summary: { ...space.technical_summary, name: 'Latest server name' },
+      })
+      queryClient.setQueryData(queryKeys.settings, {
+        ...settings,
+        revision: 6,
+        retrieval: { ...settings.retrieval, top_k: 7 },
+      })
+    })
+    await waitFor(() => expect(name).toHaveValue('Latest server name'))
+    expect(topK).toHaveValue('7')
+    expect(screen.queryByText('knowledgeSpace.settings.serverConflict')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+    ).toBeDisabled()
+    expectNoWrites()
+  })
+
+  it('retries observation of an accepted migration without submitting the settings mutation twice', async () => {
+    const user = userEvent.setup()
+    const migration = {
+      changed_kind: 'retrieval' as const,
+      checkpoint: 'queued' as const,
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'migration-recover-1',
+      knowledge_space_id: 'knowledge-1',
+      rebuild_scope: 'clone-publication' as const,
+      run_state: 'queued' as const,
+      updated_at: '2026-07-28T00:00:00Z',
+    }
+    acceptSettingsMigration(migration)
+    serviceMock.getMigration
+      .mockRejectedValueOnce(new Error('migration poll interrupted'))
+      .mockResolvedValueOnce({ ...migration, checkpoint: 'activated', run_state: 'succeeded' })
+    renderForm()
+    const reasoning = screen.getByRole('button', {
+      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+    })
+    await user.click(reasoning)
+    expectNoWrites()
+    await saveChanges(user)
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledOnce())
+    expect(reasoning).toHaveTextContent('openrouter/auto')
+    expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+    ).toBeEnabled()
+    await saveChanges(user)
+
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledOnce())
+    expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
+    expect(serviceMock.getMigration).toHaveBeenCalledTimes(2)
+    expect(serviceMock.getMigration).toHaveBeenLastCalledWith({
+      params: { control_space_id: 'space-1', migration_id: 'migration-recover-1' },
+    })
+    expect(reasoning).toHaveTextContent('openrouter/auto')
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.settings.saveChanges' }),
+    ).toBeDisabled()
   })
 
   it('fully locks the page for a view-only user', () => {

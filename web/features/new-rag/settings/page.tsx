@@ -8,6 +8,7 @@ import { CapabilityReturnController } from './capability-return-controller'
 import { KnowledgeSettingsForm } from './form'
 import { KnowledgeSettingsStateBoundary } from './state/boundary'
 import {
+  knowledgeSettingsHasDataAtom,
   knowledgeSettingsHasErrorAtom,
   knowledgeSettingsIsPendingAtom,
   knowledgeSettingsSettingsAtom,
@@ -69,6 +70,7 @@ function KnowledgeSettingsContent() {
   const { t: tSettings } = useTranslation('datasetSettings')
   const isPending = useAtomValue(knowledgeSettingsIsPendingAtom)
   const hasError = useAtomValue(knowledgeSettingsHasErrorAtom)
+  const hasData = useAtomValue(knowledgeSettingsHasDataAtom)
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const settings = useAtomValue(knowledgeSettingsSettingsAtom)
   const retry = useSetAtom(retryKnowledgeSettingsAtom)
@@ -97,7 +99,7 @@ function KnowledgeSettingsContent() {
             <Button onClick={() => void retry()}>{tCommon(($) => $['operation.retry'])}</Button>
           </div>
         )}
-        {!isPending && !hasError && space && settings && <KnowledgeSettingsForm />}
+        {hasData && space && settings && <KnowledgeSettingsForm />}
       </div>
     </div>
   )

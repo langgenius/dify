@@ -1,85 +1,29 @@
 'use client'
 
-import type {
-  KnowledgeFsControlSpaceVisibility,
-  KnowledgeFsPermissionResponse,
-  KnowledgeFsSpaceDetailResponse,
-} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { consoleQuery } from '@/service/console'
 import { useMembers } from '@/service/use-common'
-import {
-  DEFAULT_KNOWLEDGE_SPACE_ICON_BACKGROUND,
-  KnowledgeSpaceIcon,
-} from '../components/knowledge-space-icon'
+import { KnowledgeSpaceIcon } from '../components/knowledge-space-icon'
 import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from '../constants'
 import { KnowledgeSettingsMembers } from './members'
 import { SettingsFieldRow } from './settings-field-row'
 import {
-  invalidateKnowledgeSettingsAtom,
-  knowledgeSettingsPermissionsAtom,
-  knowledgeSettingsSpaceAtom,
-} from './state/queries'
-import { setKnowledgeSettingsSavePendingAtom } from './state/workflow'
+  knowledgeSettingsBasicDraftAtom,
+  knowledgeSettingsValidationAtom,
+  updateKnowledgeSettingsBasicDraftAtom,
+} from './state/draft'
+import { knowledgeSettingsSpaceAtom } from './state/queries'
+import { knowledgeSettingsInteractionLockedAtom } from './state/workflow'
 
 const NAME_ERROR_ID = 'knowledge-name-error'
 const DESCRIPTION_ERROR_ID = 'knowledge-description-error'
-type BasicSaveSlice = 'members' | 'space'
-
-type BasicDraft = {
-  description: string
-  icon: string
-  iconBackground: string
-  name: string
-  selectedMemberIds: string[]
-  visibility: KnowledgeFsControlSpaceVisibility
-}
-
-function sortedIds(ids: string[]) {
-  return [...ids].sort().join(':')
-}
-
-function draftFromServer(
-  space: KnowledgeFsSpaceDetailResponse,
-  permissions: KnowledgeFsPermissionResponse[],
-): BasicDraft {
-  return {
-    description: space.technical_summary?.description ?? '',
-    icon: space.technical_summary?.icon ?? '📙',
-    iconBackground:
-      space.technical_summary?.icon_background ?? DEFAULT_KNOWLEDGE_SPACE_ICON_BACKGROUND,
-    name: space.technical_summary?.name ?? '',
-    selectedMemberIds: permissions
-      .filter(
-        (permission) =>
-          permission.status === 'active' && permission.account_id !== space.owner_account_id,
-      )
-      .map((permission) => permission.account_id),
-    visibility: space.visibility,
-  }
-}
-
-function draftsMatch(left: BasicDraft, right: BasicDraft) {
-  return (
-    left.name === right.name &&
-    left.description === right.description &&
-    left.icon === right.icon &&
-    left.iconBackground === right.iconBackground &&
-    left.visibility === right.visibility &&
-    sortedIds(left.selectedMemberIds) === sortedIds(right.selectedMemberIds)
-  )
-}
 
 function BasicInformationSkeleton() {
   const { t } = useTranslation('knowledgeSpace')
@@ -109,27 +53,19 @@ export function BasicInformationSection() {
   const { t: tSettings } = useTranslation('datasetSettings')
   const { t: tWorkflow } = useTranslation('workflow')
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
-  const permissions = useAtomValue(knowledgeSettingsPermissionsAtom)
-  const setSavePending = useSetAtom(setKnowledgeSettingsSavePendingAtom)
-  const invalidateSettings = useSetAtom(invalidateKnowledgeSettingsAtom)
+  const current = useAtomValue(knowledgeSettingsBasicDraftAtom)
+  const updateDraft = useSetAtom(updateKnowledgeSettingsBasicDraftAtom)
+  const interactionLocked = useAtomValue(knowledgeSettingsInteractionLockedAtom)
+  const { nameInvalid, descriptionInvalid, membersInvalid } = useAtomValue(
+    knowledgeSettingsValidationAtom,
+  )
   const membersQuery = useMembers()
-  const [draft, setDraft] = useState<BasicDraft>()
   const [nameTouched, setNameTouched] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
-  const draftRef = useRef<BasicDraft | undefined>(undefined)
-  const draftBaseVersionRef = useRef<string | undefined>(undefined)
-  const completedSaveFingerprintsRef = useRef<Partial<Record<BasicSaveSlice, string>>>({})
-  const spaceMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.patch.mutationOptions(),
-  )
-  const membersMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.members.put.mutationOptions(),
-  )
 
-  if (!space) return null
+  if (!space || !current) return null
   if (membersQuery.isPending) return <BasicInformationSkeleton />
-  if (membersQuery.isError) {
+  if (membersQuery.isError && !membersQuery.data) {
     return (
       <div
         className="flex items-center gap-3 rounded-xl border border-components-panel-border bg-background-section p-4"
@@ -139,179 +75,23 @@ export function BasicInformationSection() {
         <p className="min-w-0 flex-1 system-sm-regular text-text-secondary">
           {tCommon(($) => $['api.actionFailed'])}
         </p>
-        <Button onClick={() => void membersQuery.refetch()}>
+        <Button type="button" onClick={() => void membersQuery.refetch()}>
           {tCommon(($) => $['operation.retry'])}
         </Button>
       </div>
     )
   }
 
-  const serverDraft = draftFromServer(space, permissions)
-  const serverVersion = [
-    space.control_space_id,
-    space.resource_version,
-    permissions
-      .map((permission) => `${permission.account_id}:${permission.revision}`)
-      .sort()
-      .join('|'),
-  ].join(':')
-  const current = draft ?? serverDraft
-  const serverConflict =
-    draft !== undefined &&
-    draftBaseVersionRef.current !== undefined &&
-    draftBaseVersionRef.current !== serverVersion
   const canEdit = space.permission_keys.includes('knowledge_space_edit')
   const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
-  const spaceDirty =
-    current.name !== serverDraft.name ||
-    current.description !== serverDraft.description ||
-    current.icon !== serverDraft.icon ||
-    current.iconBackground !== serverDraft.iconBackground ||
-    current.visibility !== serverDraft.visibility
-  const membersDirty =
-    sortedIds(current.selectedMemberIds) !== sortedIds(serverDraft.selectedMemberIds)
-  const nameInvalid = !current.name.trim()
-  const descriptionInvalid =
-    Array.from(current.description).length > KNOWLEDGE_DESCRIPTION_MAX_LENGTH
-  const membersInvalid =
-    canManageAccess &&
-    current.visibility === 'partial_members' &&
-    current.selectedMemberIds.length === 0
-  const isSaving = spaceMutation.isPending || membersMutation.isPending || isRefreshing
-  const fieldsDisabled = !canEdit || isSaving
-  const authorizedSpaceDirty = canEdit && spaceDirty
-  const authorizedMembersDirty = canManageAccess && membersDirty
-  const authorizedDirty = authorizedSpaceDirty || authorizedMembersDirty
-  const saveDisabled =
-    !authorizedDirty ||
-    (authorizedSpaceDirty && (nameInvalid || descriptionInvalid)) ||
-    membersInvalid ||
-    serverConflict
-
-  const updateDraft = (update: (value: BasicDraft) => BasicDraft) => {
-    const next = update(draftRef.current ?? current)
-    if (draftsMatch(next, serverDraft)) {
-      draftRef.current = undefined
-      draftBaseVersionRef.current = undefined
-      setDraft(undefined)
-      return
-    }
-    draftRef.current = next
-    draftBaseVersionRef.current ??= serverVersion
-    setDraft(next)
-  }
-
-  const resetDraft = () => {
-    draftRef.current = undefined
-    draftBaseVersionRef.current = undefined
-    setDraft(undefined)
-    setNameTouched(false)
-  }
-
-  const showSaveError = (error?: unknown) =>
-    toast.error(
-      error instanceof Response && error.status === 403
-        ? t(($) => $.permissionRestricted)
-        : t(($) => $['settings.saveFailed']),
-    )
-
-  const performSave = async () => {
-    if (saveDisabled || isSaving) return
-    setSavePending({ owner: 'basic', pending: true })
-    try {
-      const saveSlice = async (
-        slice: BasicSaveSlice,
-        payload: unknown,
-        save: () => Promise<unknown>,
-      ) => {
-        const fingerprint = JSON.stringify(payload)
-        if (completedSaveFingerprintsRef.current[slice] === fingerprint) return
-        await save()
-        completedSaveFingerprintsRef.current[slice] = fingerprint
-      }
-
-      if (authorizedSpaceDirty) {
-        const body = {
-          ...(current.description !== serverDraft.description
-            ? { description: current.description }
-            : {}),
-          ...(current.icon !== serverDraft.icon ? { icon: current.icon } : {}),
-          ...(current.iconBackground !== serverDraft.iconBackground
-            ? { icon_background: current.iconBackground }
-            : {}),
-          ...(current.name !== serverDraft.name ? { name: current.name.trim() } : {}),
-          ...(current.visibility !== serverDraft.visibility
-            ? { visibility: current.visibility }
-            : {}),
-        }
-        await saveSlice('space', body, () =>
-          spaceMutation.mutateAsync({
-            body,
-            params: { control_space_id: space.control_space_id },
-          }),
-        )
-      }
-      if (membersDirty && canManageAccess) {
-        const roleByAccountId = new Map(
-          permissions.map((permission) => [permission.account_id, permission.role]),
-        )
-        const body = {
-          members: current.selectedMemberIds.map((accountId) => ({
-            account_id: accountId,
-            role: roleByAccountId.get(accountId) ?? 'viewer',
-          })),
-        }
-        await saveSlice('members', body, () =>
-          membersMutation.mutateAsync({
-            body,
-            params: { control_space_id: space.control_space_id },
-          }),
-        )
-      }
-      completedSaveFingerprintsRef.current = {}
-      toast.success(tCommon(($) => $['api.actionSuccess']))
-      setIsRefreshing(true)
-      draftBaseVersionRef.current = undefined
-      void invalidateSettings().then(
-        () => {
-          draftRef.current = undefined
-          setDraft(undefined)
-          setIsRefreshing(false)
-          setSavePending({ owner: 'basic', pending: false })
-        },
-        () => {
-          setIsRefreshing(false)
-          setSavePending({ owner: 'basic', pending: false })
-        },
-      )
-    } catch (error) {
-      setSavePending({ owner: 'basic', pending: false })
-      showSaveError(error)
-    }
+  const fieldsDisabled = !canEdit || interactionLocked
+  const updateEditableDraft = (patch: Parameters<typeof updateDraft>[0]) => {
+    if (!fieldsDisabled) updateDraft(patch)
   }
 
   return (
     <>
-      {serverConflict && (
-        <div
-          className="mb-3 flex items-center gap-2 rounded-lg border border-text-warning/20 bg-state-warning-hover px-3 py-2"
-          role="alert"
-        >
-          <span aria-hidden className="i-ri-error-warning-line size-4 text-text-warning" />
-          <span className="min-w-0 flex-1 system-xs-regular text-text-warning">
-            {t(($) => $['settings.serverConflict'])}
-          </span>
-        </div>
-      )}
-
-      <Form
-        className="flex flex-col gap-4 overflow-hidden pt-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          setNameTouched(true)
-          void performSave()
-        }}
-      >
+      <section className="flex flex-col gap-4 overflow-hidden pt-2">
         <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
           {t(($) => $['settings.basicInfo'])}
         </h2>
@@ -344,10 +124,9 @@ export function BasicInformationSection() {
                 className={cn(nameTouched && nameInvalid && 'ring-1 ring-text-destructive')}
                 onBlur={() => setNameTouched(true)}
                 onChange={(event) =>
-                  updateDraft((value) => ({
-                    ...value,
+                  updateEditableDraft({
                     name: event.target.value.slice(0, KNOWLEDGE_NAME_MAX_LENGTH),
-                  }))
+                  })
                 }
               />
               {nameTouched && nameInvalid && (
@@ -383,7 +162,7 @@ export function BasicInformationSection() {
                 'min-h-20 resize-none',
                 descriptionInvalid && 'ring-1 ring-text-destructive',
               )}
-              onValueChange={(description) => updateDraft((value) => ({ ...value, description }))}
+              onValueChange={(description) => updateEditableDraft({ description })}
             />
             {descriptionInvalid && (
               <p
@@ -401,50 +180,34 @@ export function BasicInformationSection() {
 
         <SettingsFieldRow label={tSettings(($) => $['form.permissions'])}>
           <KnowledgeSettingsMembers
-            disabled={!canManageAccess || isSaving}
+            disabled={!canManageAccess || interactionLocked}
             hasError={membersInvalid}
             members={membersQuery.data?.accounts ?? []}
             ownerAccountId={space.owner_account_id}
             selectedMemberIds={current.selectedMemberIds}
             visibility={current.visibility}
-            visibilityDisabled={!canEdit || !canManageAccess || isSaving}
+            visibilityDisabled={!canEdit || !canManageAccess || interactionLocked}
             onSelectedMemberIdsChange={(selectedMemberIds) =>
-              updateDraft((value) => ({ ...value, selectedMemberIds }))
+              !interactionLocked && canManageAccess && updateDraft({ selectedMemberIds })
             }
             onVisibilityChange={(visibility) => {
-              if (canEdit && canManageAccess) updateDraft((value) => ({ ...value, visibility }))
+              if (!interactionLocked && canEdit && canManageAccess) updateDraft({ visibility })
             }}
           />
         </SettingsFieldRow>
-
-        {(canEdit || canManageAccess) && (
-          <div className="flex justify-end gap-2 pt-1">
-            <Button
-              type="button"
-              disabled={(!authorizedDirty && !serverConflict) || isSaving}
-              onClick={resetDraft}
-            >
-              {tCommon(($) => $['operation.cancel'])}
-            </Button>
-            <Button type="submit" variant="primary" disabled={saveDisabled} loading={isSaving}>
-              {t(($) => $['settings.saveChanges'])}
-            </Button>
-          </div>
-        )}
-      </Form>
+      </section>
 
       <AppIconPicker
-        open={iconPickerOpen}
+        open={iconPickerOpen && !fieldsDisabled}
         enableImageUpload={false}
         initialEmoji={{ background: current.iconBackground, icon: current.icon }}
         onOpenChange={setIconPickerOpen}
         onSelect={(selection) => {
-          if (selection.type !== 'emoji') return
-          updateDraft((value) => ({
-            ...value,
+          if (selection.type !== 'emoji' || fieldsDisabled) return
+          updateDraft({
             icon: selection.icon,
             iconBackground: selection.background,
-          }))
+          })
         }}
       />
     </>
