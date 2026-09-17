@@ -12,6 +12,7 @@ import { useIsChatMode, useNodesReadOnly } from '../../../hooks/use-workflow'
 import { useStore, useWorkflowStore } from '../../../store'
 import { BlockEnum, NodeRunningStatus } from '../../../types'
 import { getNodeCatalogType } from '../../../utils'
+import { ErrorHandleTypeEnum } from './error-handle/types'
 
 type NodeHandleProps = {
   handleId: string
@@ -155,6 +156,14 @@ export const NodeSourceHandle = memo(
     const [open, setOpen] = useState(() => shouldAutoOpen)
 
     const connected = data._connectedSourceHandleIds?.includes(handleId)
+    // Branch ports can be only 24px apart in canvas coordinates. Keep their
+    // buttons and hit areas in that coordinate space so zooming out cannot make
+    // one branch intercept another's click or connection drag.
+    const hasMultipleSourceHandles =
+      data.type === BlockEnum.IfElse ||
+      data.type === BlockEnum.QuestionClassifier ||
+      data.type === BlockEnum.HumanInput ||
+      data.error_strategy === ErrorHandleTypeEnum.failBranch
     const handleOpenChange = useCallback((v: boolean) => {
       setOpen(v)
     }, [])
@@ -209,7 +218,8 @@ export const NodeSourceHandle = memo(
         position={Position.Right}
         className={cn(
           'group/handle z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
-          'before:absolute before:-inset-1 before:scale-[var(--workflow-control-scale,1)]',
+          'before:absolute before:-inset-1',
+          !hasMultipleSourceHandles && 'before:scale-[var(--workflow-control-scale,1)]',
           'after:absolute after:top-1 after:right-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           data._runningStatus === NodeRunningStatus.Succeeded &&
             'after:bg-workflow-link-line-success-handle',
@@ -257,7 +267,9 @@ export const NodeSourceHandle = memo(
               data-popup-open:opacity-100
             `}
             availableBlocksTypes={availableNextBlocks}
-            triggerStyle={{ scale: 'var(--workflow-control-scale, 1)' }}
+            triggerStyle={{
+              scale: hasMultipleSourceHandles ? '1' : 'var(--workflow-control-scale, 1)',
+            }}
             showStartTab
           />
         )}
