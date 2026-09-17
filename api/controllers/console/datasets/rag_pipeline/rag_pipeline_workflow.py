@@ -201,12 +201,12 @@ class DraftRagPipelineApi(Resource):
     @get_rag_pipeline
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
-    def get(self, pipeline: Pipeline):
+    @with_session(write=False)
+    def get(self, session: Session, pipeline: Pipeline):
         """
         Get draft rag pipeline's workflow
         """
         # fetch draft workflow by app_model
-        session = db.session()
         rag_pipeline_service = RagPipelineService(session)
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
 
@@ -915,7 +915,8 @@ class RagPipelineWorkflowRunListApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def get(self, pipeline: Pipeline):
+    @with_session(write=False)
+    def get(self, session: Session, pipeline: Pipeline):
         """
         Get workflow run list
         """
@@ -930,7 +931,6 @@ class RagPipelineWorkflowRunListApi(Resource):
             "limit": query.limit,
         }
 
-        session = db.session()
         rag_pipeline_service = RagPipelineService(session)
         result = rag_pipeline_service.get_rag_pipeline_paginate_workflow_runs(pipeline=pipeline, args=args)
 
@@ -950,13 +950,13 @@ class RagPipelineWorkflowRunDetailApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def get(self, pipeline: Pipeline, run_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, pipeline: Pipeline, run_id: UUID):
         """
         Get workflow run detail
         """
         run_id_str = str(run_id)
 
-        session = db.session()
         rag_pipeline_service = RagPipelineService(session)
         workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=run_id_str)
         if workflow_run is None:

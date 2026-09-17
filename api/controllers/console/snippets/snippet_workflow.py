@@ -12,6 +12,7 @@ from controllers.common.controller_schemas import WorkflowUpdatePayload
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow import (
@@ -514,7 +515,8 @@ class SnippetWorkflowRunsApi(Resource):
     @login_required
     @account_initialization_required
     @get_snippet
-    def get(self, snippet: CustomizedSnippet):
+    @with_session(write=False)
+    def get(self, session: Session, snippet: CustomizedSnippet):
         """List workflow runs for snippet."""
         query = WorkflowRunQuery.model_validate(
             {
@@ -531,7 +533,7 @@ class SnippetWorkflowRunsApi(Resource):
         result = snippet_service.get_snippet_workflow_runs(snippet=snippet, args=args)
 
         return WorkflowRunPaginationResponse.model_validate(
-            workflow_run_pagination_response_source(result, session=db.session()), from_attributes=True
+            workflow_run_pagination_response_source(result, session=session), from_attributes=True
         ).model_dump(mode="json")
 
 
@@ -548,7 +550,8 @@ class SnippetWorkflowRunDetailApi(Resource):
     @login_required
     @account_initialization_required
     @get_snippet
-    def get(self, snippet: CustomizedSnippet, run_id):
+    @with_session(write=False)
+    def get(self, session: Session, snippet: CustomizedSnippet, run_id):
         """Get workflow run detail for snippet."""
         run_id = str(run_id)
 
@@ -559,7 +562,7 @@ class SnippetWorkflowRunDetailApi(Resource):
             raise NotFound("Workflow run not found")
 
         return WorkflowRunDetailResponse.model_validate(
-            workflow_run_response_source(workflow_run, session=db.session()), from_attributes=True
+            workflow_run_response_source(workflow_run, session=session), from_attributes=True
         ).model_dump(mode="json")
 
 

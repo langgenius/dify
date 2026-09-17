@@ -129,7 +129,7 @@ def test_draft_rag_pipeline_workflow_get_serializes_response_model() -> None:
     api = module.DraftRagPipelineApi()
     handler = unwrap_all(api.get)
 
-    response = handler(api, _pipeline())
+    response = handler(api, db.session(), _pipeline())
 
     assert response["id"] == DEFAULT_WORKFLOW_ID
     assert response["graph"] == {"nodes": [], "edges": []}
