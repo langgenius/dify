@@ -8,6 +8,7 @@ const useHumanInputFormContent = <T extends HumanInputSharedNodeType>(id: string
   const [editorKey, setEditorKey] = useState(0)
   const { inputs, setInputs } = useNodeCrud<T>(id, payload)
   const { handleOutVarRenameChange } = useWorkflow()
+  // Existing Lexical blocks retain callbacks, so edits must read the latest node data.
   const inputsRef = useRef(inputs)
 
   useEffect(() => {
@@ -17,22 +18,22 @@ const useHumanInputFormContent = <T extends HumanInputSharedNodeType>(id: string
   const handleFormContentChange = useCallback(
     (value: string) => {
       setInputs({
-        ...inputs,
+        ...inputsRef.current,
         form_content: value,
       })
     },
-    [inputs, setInputs],
+    [setInputs],
   )
 
   const handleFormInputsChange = useCallback(
     (formInputs: FormInputItem[]) => {
       setInputs({
-        ...inputs,
+        ...inputsRef.current,
         inputs: formInputs,
       })
       setEditorKey((editorKey) => editorKey + 1)
     },
-    [inputs, setInputs],
+    [setInputs],
   )
 
   const handleFormInputItemRename = useCallback(
