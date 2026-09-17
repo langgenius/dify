@@ -259,14 +259,15 @@ class MCPAppApi(Resource):
 
         Requests carry typed params (pydantic models); notifications carry raw dicts.
         """
-        params = getattr(mcp_request.root, "params", None)
+        params = mcp_request.root.params
+        if params is None:
+            return {}
         if isinstance(params, dict):
             meta = params.get("_meta")
             return meta if isinstance(meta, dict) else {}
-        meta = getattr(params, "meta", None)
-        if meta is None:
+        if params.meta is None:
             return {}
-        dumped = meta.model_dump()
+        dumped = params.meta.model_dump()
         return dumped if isinstance(dumped, dict) else {}
 
     def _meta_version(self, mcp_request: mcp_types.ClientRequest | mcp_types.ClientNotification) -> str | None:
