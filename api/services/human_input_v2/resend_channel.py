@@ -1,4 +1,4 @@
-"""Request-scoped Resend test-delivery adapter for Human Input v2."""
+"""Request-scoped Resend delivery adapter for Human Input v2."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ class ResendHTTPClient(Protocol):
 
 
 class ResendProviderGateway:
-    """Perform Resend management I/O without shared SDK credential state."""
+    """Perform Resend delivery I/O without shared SDK credential state."""
 
     def __init__(
         self,
@@ -54,17 +54,39 @@ class ResendProviderGateway:
     def send_test(self, candidate: ResendCandidate) -> None:
         """Verify the candidate through one idempotent Resend test delivery."""
 
+        self._send_message(
+            candidate,
+            to=_TEST_RECIPIENT,
+            subject=_TEST_SUBJECT,
+            html=_TEST_HTML,
+            idempotency_key=f"human-input-channel-test/{self._id_factory()}",
+        )
+
+    def send_message(self, candidate: ResendCandidate, *, to: str, subject: str, html: str) -> None:
+        """Send one rendered notification using only the supplied channel credentials."""
+
+        self._send_message(
+            candidate,
+            to=to,
+            subject=subject,
+            html=html,
+            idempotency_key=f"human-input-message/{self._id_factory()}",
+        )
+
+    def _send_message(
+        self, candidate: ResendCandidate, *, to: str, subject: str, html: str, idempotency_key: str
+    ) -> None:
         sender = f"{candidate.sender_name} <{candidate.sender_email}>"
         body = self._request(
             "/emails",
             candidate.api_key,
             json={
                 "from": sender,
-                "to": [_TEST_RECIPIENT],
-                "subject": _TEST_SUBJECT,
-                "html": _TEST_HTML,
+                "to": [to],
+                "subject": subject,
+                "html": html,
             },
-            idempotency_key=f"human-input-channel-test/{self._id_factory()}",
+            idempotency_key=idempotency_key,
         )
         message_id = body.get("id")
         if not isinstance(message_id, str) or not message_id.strip():

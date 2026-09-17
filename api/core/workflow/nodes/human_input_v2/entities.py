@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Discriminator, Field, field_validator
 
-from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.entities import DebugChannel
 from core.workflow.nodes.human_input.entities import (
     FormInputConfig,
     TimeoutUnit,
@@ -70,19 +70,9 @@ class MessageTemplateConfig(BaseModel):
     body: str
 
 
-class Channel(enum.StrEnum):
-    EMAIL = enum.auto()
-    FEISHU = IMProvider.FEISHU.value
-    SLACK = IMProvider.SLACK.value
-    DING_TALK = IMProvider.DING_TALK.value
-    MS_TEAMS = IMProvider.MS_TEAMS.value
-    WE_COM = IMProvider.WE_COM.value
-    LARK = IMProvider.LARK.value
-
-
 class DebugModeConfig(BaseModel):
     enabled: bool = False
-    channels: Sequence[Channel]
+    channels: Sequence[DebugChannel]
 
 
 HUMAN_INPUT_NODE_TYPE: typing.Final[Literal["human-input"]] = "human-input"

@@ -6,15 +6,15 @@ import base64
 import json
 from typing import Literal
 
-from core.human_input_v2.entities import HumanInputDeliveryChannel
+from core.human_input_v2.entities import ChannelKind
 from core.human_input_v2.shared import EmailProviderId
 from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
 from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 _FORMAT_VERSION = 1
 type _ConfigVersionChannel = Literal[
-    HumanInputDeliveryChannel.EMAIL,
-    HumanInputDeliveryChannel.IM,
+    ChannelKind.EMAIL,
+    ChannelKind.IM,
 ]
 
 
@@ -23,26 +23,26 @@ class InvalidConfigVersionError(ValueError):
 
 
 def encode_email_config_version(snapshot: EmailConfigurationSnapshot) -> str:
-    return _encode(HumanInputDeliveryChannel.EMAIL, snapshot.configuration_id, snapshot.config_version)
+    return _encode(ChannelKind.EMAIL, snapshot.configuration_id, snapshot.config_version)
 
 
 def decode_email_config_version(
     value: str,
     channel_id: EmailProviderId,
 ) -> EmailConfigurationSnapshot:
-    revision = _decode(value, HumanInputDeliveryChannel.EMAIL, channel_id)
+    revision = _decode(value, ChannelKind.EMAIL, channel_id)
     return EmailConfigurationSnapshot(channel_id, revision)
 
 
 def encode_im_config_version(channel_id: IMChannelId, config_version: int) -> str:
-    return _encode(HumanInputDeliveryChannel.IM, channel_id, config_version)
+    return _encode(ChannelKind.IM, channel_id, config_version)
 
 
 def decode_im_config_version(
     value: str,
     channel_id: IMChannelId,
 ) -> int:
-    return _decode(value, HumanInputDeliveryChannel.IM, channel_id)
+    return _decode(value, ChannelKind.IM, channel_id)
 
 
 def _encode(

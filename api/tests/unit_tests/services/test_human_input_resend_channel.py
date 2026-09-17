@@ -117,3 +117,21 @@ def test_transport_failure_is_classified_without_credential_material() -> None:
 
     assert raised.value.code == "provider_timeout"
     assert "re_secret" not in repr(raised.value)
+
+
+def test_send_message_uses_rendered_content_and_selected_channel_credentials() -> None:
+    http_client = FakeHTTPClient(FakeResponse(200, {"id": "email-1"}))
+    gateway = ResendProviderGateway(http_client=http_client, id_factory=lambda: "message-1")
+
+    gateway.send_message(_candidate(), to="editor@example.com", subject="Rendered subject", html="<p>Rendered body</p>")
+
+    assert len(http_client.calls) == 1
+    _, _, kwargs = http_client.calls[0]
+    assert kwargs["json"] == {
+        "from": "Approvals <approvals@example.com>",
+        "to": ["editor@example.com"],
+        "subject": "Rendered subject",
+        "html": "<p>Rendered body</p>",
+    }
+    assert kwargs["headers"]["Idempotency-Key"] == "human-input-message/message-1"
+    assert kwargs["max_retries"] == 0

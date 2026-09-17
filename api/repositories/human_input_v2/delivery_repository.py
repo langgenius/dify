@@ -114,8 +114,9 @@ class DeliveryRepository(Protocol):
         """Create one delivery with generated ID and timestamps.
 
         The caller guarantees recipient existence and tenant/form membership.
-        Each call creates a separate delivery; callers plan endpoint deduplication
-        and reuse persisted deliveries for subsequent send attempts.
+        Each call creates a separate delivery. Different recipients may share an
+        endpoint; that does not suppress creation. Callers reuse persisted
+        deliveries for subsequent send attempts.
         """
         ...
 

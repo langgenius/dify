@@ -21,8 +21,8 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.wraps import with_current_tenant_id, with_current_user
 from core.human_input_v2.entities import (
+    ChannelKind,
     EmailProviderType,
-    HumanInputDeliveryChannel,
     IMProvider,
 )
 from core.human_input_v2.shared import (
@@ -119,7 +119,7 @@ class ChannelSummary(ResponseModel):
     id: ChannelId
     created_at: Timestamp
     updated_at: Timestamp
-    kind: Literal[HumanInputDeliveryChannel.EMAIL, HumanInputDeliveryChannel.IM]
+    kind: Literal[ChannelKind.EMAIL, ChannelKind.IM]
     provider: EmailProviderType | IMProvider = Field(
         description="The provider of the Channel. The concrete provider type depends on the `kind` field."
     )
@@ -240,7 +240,7 @@ def _email_channel_summary_response(view: EmailChannelView) -> ChannelSummary:
         id=view.id,
         created_at=view.created_at,
         updated_at=view.updated_at,
-        kind=HumanInputDeliveryChannel.EMAIL,
+        kind=ChannelKind.EMAIL,
         provider=view.provider,
         status=ChannelStatus.CONFIGURED,
         status_description="",
@@ -256,7 +256,7 @@ def _im_channel_summary_response(view: IMChannelView) -> ChannelSummary:
         id=view.id,
         created_at=view.created_at,
         updated_at=view.updated_at,
-        kind=HumanInputDeliveryChannel.IM,
+        kind=ChannelKind.IM,
         provider=view.provider,
         status=status,
         status_description=status_description,

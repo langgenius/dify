@@ -3792,9 +3792,11 @@ export const zUserActionConfig = z.object({
 })
 
 /**
- * Channel
+ * DebugChannel
+ *
+ * Delivery selection for editor debugging, resolved to current channel configuration.
  */
-export const zChannel = z.enum([
+export const zDebugChannel = z.enum([
   'ding_talk',
   'email',
   'feishu',
@@ -3808,7 +3810,7 @@ export const zChannel = z.enum([
  * DebugModeConfig
  */
 export const zDebugModeConfig = z.object({
-  channels: z.array(zChannel),
+  channels: z.array(zDebugChannel),
   enabled: z.boolean().optional().default(false),
 })
 

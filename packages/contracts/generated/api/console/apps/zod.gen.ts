@@ -1055,9 +1055,11 @@ export const zRecentAppListResponse = z.object({
 })
 
 /**
- * Channel
+ * DebugChannel
+ *
+ * Delivery selection for editor debugging, resolved to current channel configuration.
  */
-export const zChannel = z.enum([
+export const zDebugChannel = z.enum([
   'ding_talk',
   'email',
   'feishu',
@@ -1075,7 +1077,7 @@ export const zJsonValue = z.unknown()
  * Request body for sending one message-template test notification.
  */
 export const zMessageTemplateTestRequest = z.object({
-  channel: zChannel,
+  channel: zDebugChannel,
   inputs: z.record(z.string(), zJsonValue).optional(),
 })
 

@@ -17,6 +17,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 
 from core.human_input import ButtonStyle
+from core.human_input_v2.entities import DebugChannel
 from core.human_input_v2.shared.values import NormalizedEmail
 from core.workflow.nodes.human_input.entities import (
     FormInputConfig,
@@ -31,7 +32,6 @@ from graphon.enums import ErrorStrategy
 from .entities import (
     HUMAN_INPUT_NODE_TYPE,
     AllWorkspaceContacts,
-    Channel,
     DebugModeConfig,
     HumanInputNodeData,
     Initiator,
@@ -533,7 +533,7 @@ def convert_legacy_human_input_node_data(
         message_template=MessageTemplateConfig(subject=subject, body=body),
         debug_mode=DebugModeConfig(
             enabled=email_debug_enabled,
-            channels=(Channel.EMAIL,) if email_debug_enabled else (),
+            channels=(DebugChannel.EMAIL,) if email_debug_enabled else (),
         ),
         form_content=legacy_node_data.form_content,
         inputs=_convert_form_inputs(legacy_node_data.inputs),

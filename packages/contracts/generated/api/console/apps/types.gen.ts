@@ -157,7 +157,7 @@ export type HumanInputFormSubmitResponse = {
 }
 
 export type MessageTemplateTestRequest = {
-  channel: Channel
+  channel: DebugChannel
   inputs?: {
     [key: string]: JsonValue
   }
@@ -1383,7 +1383,14 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type Channel = 'ding_talk' | 'email' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
+export type DebugChannel =
+  | 'ding_talk'
+  | 'email'
+  | 'feishu'
+  | 'lark'
+  | 'ms_teams'
+  | 'slack'
+  | 'we_com'
 
 export type JsonValue = unknown
 

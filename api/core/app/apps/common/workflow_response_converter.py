@@ -46,6 +46,7 @@ from core.app.entities.task_entities import (
     WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
+from core.human_input_v2.resolved_form import FileInput, FileListInput, MarkdownFragment, ParagraphInput, SelectInput
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
@@ -60,7 +61,19 @@ from core.workflow.human_input_policy import (
     enrich_human_input_pause_reasons,
     resolve_human_input_pause_reason_inputs,
 )
+from core.workflow.nodes.human_input.entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormInputConfig,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    StringSource,
+    UserActionConfig,
+)
+from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
@@ -122,6 +135,76 @@ class _NodeSnapshot:
 
 
 class WorkflowResponseConverter:
+    @staticmethod
+    def _human_input_v2_required_data(prepared: PreparedForm, *, node_id: str) -> HumanInputRequiredResponse.Data:
+        """Project Dify-owned form data into the existing HITL wire contract.
+
+        Not yet wired into workflow_pause_to_stream_response. The Dify caller
+        must supply PreparedForm independently of graphon's closed pause union.
+        """
+        form = prepared.form.resolved_form
+        inputs: list[FormInputConfig] = []
+        defaults: dict[str, str] = {}
+        seen: set[str] = set()
+        for part in form.parts:
+            if isinstance(part, MarkdownFragment) or part.output_variable_name in seen:
+                continue
+            name = part.output_variable_name
+            seen.add(name)
+            match part:
+                case ParagraphInput():
+                    default = None
+                    if part.default_value is not None:
+                        default = StringSource(type=ValueSourceType.CONSTANT, value=part.default_value)
+                        defaults[name] = part.default_value
+                    inputs.append(ParagraphInputConfig(output_variable_name=name, default=default))
+                case SelectInput():
+                    inputs.append(
+                        SelectInputConfig(
+                            output_variable_name=name,
+                            option_source=StringListSource(
+                                type=ValueSourceType.CONSTANT,
+                                value=list(part.options),
+                            ),
+                        )
+                    )
+                    if part.default_value is not None:
+                        defaults[name] = part.default_value
+                case FileInput():
+                    inputs.append(
+                        FileInputConfig(
+                            output_variable_name=name,
+                            allowed_file_types=part.allowed_file_types,
+                            allowed_file_extensions=part.allowed_file_extensions,
+                            allowed_file_upload_methods=part.allowed_file_upload_methods,
+                        )
+                    )
+                case FileListInput():
+                    inputs.append(
+                        FileListInputConfig(
+                            output_variable_name=name,
+                            allowed_file_types=part.allowed_file_types,
+                            allowed_file_extensions=part.allowed_file_extensions,
+                            allowed_file_upload_methods=part.allowed_file_upload_methods,
+                            number_limits=part.number_limits,
+                        )
+                    )
+        return HumanInputRequiredResponse.Data(
+            form_id=prepared.form.id,
+            node_id=node_id,
+            node_title=form.title,
+            form_content=form.legacy_form_content,
+            inputs=inputs,
+            actions=[
+                UserActionConfig(id=action.id, title=action.title, button_style=action.button_style)
+                for action in form.actions
+            ],
+            resolved_default_values=defaults,
+            expiration_time=to_utc_timestamp(prepared.form.expiration_time),
+            display_in_ui=prepared.form_token is not None,
+            form_token=prepared.form_token.get_secret_value() if prepared.form_token is not None else None,
+        )
+
     _truncator: BaseTruncator
 
     def __init__(

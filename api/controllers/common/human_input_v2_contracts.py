@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, mod
 from controllers.common.human_input_v2_migration import LegacyHITLv1NodeData
 from core.human_input_v2.entities import (
     ContactId,
+    DebugChannel,
     HumanInputContactType,
     IMBindingId,
     IMBindingScope,
@@ -32,7 +33,6 @@ from core.human_input_v2.entities import (
     OrganizationCandidateId,
 )
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
-from core.workflow.nodes.human_input_v2.entities import Channel
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as HITLv2NodeData
 from fields.base import ResponseModel
 from fields.pagination import PaginationParamsMixin, PaginationResultMixin
@@ -505,7 +505,7 @@ class DeleteIMBindingResponse(ResponseModel):
 class MessageTemplateTestRequest(_RequestModel):
     """Request body for sending one message-template test notification."""
 
-    channel: Channel = Field(description="Target debug delivery channel used for the test send.")
+    channel: DebugChannel = Field(description="Target debug delivery channel used for the test send.")
     inputs: dict[str, JsonValue] = Field(
         default_factory=dict,
         description="Variable values used when rendering the message template preview.",

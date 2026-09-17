@@ -2901,7 +2901,7 @@ export type LegacyUserAction = {
 }
 
 export type DebugModeConfig = {
-  channels: Array<Channel>
+  channels: Array<DebugChannel>
   enabled?: boolean
 }
 
@@ -3203,7 +3203,14 @@ export type LegacyFormInputType = 'paragraph' | 'text_input'
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
-export type Channel = 'ding_talk' | 'email' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
+export type DebugChannel =
+  | 'ding_talk'
+  | 'email'
+  | 'feishu'
+  | 'lark'
+  | 'ms_teams'
+  | 'slack'
+  | 'we_com'
 
 export type DefaultValueType =
   | 'array[file]'
