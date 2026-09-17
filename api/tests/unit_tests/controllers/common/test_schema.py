@@ -111,8 +111,7 @@ def test_register_schema_model_promotes_nested_pydantic_definitions():
     assert set(namespace.models) == {"ParentModel", "ChildModel"}
     assert "$defs" not in namespace.models["ParentModel"].__schema__
     assert (
-        namespace.models["ParentModel"].__schema__["properties"]["child"]["$ref"]
-        == "#/components/schemas/ChildModel"
+        namespace.models["ParentModel"].__schema__["properties"]["child"]["$ref"] == "#/components/schemas/ChildModel"
     )
     assert namespace.models["ChildModel"].__schema__ == parent_schema["$defs"]["ChildModel"]
 
