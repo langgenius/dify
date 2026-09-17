@@ -227,6 +227,8 @@
   "skillManagement.errors.missingSkillMd": "Ce package ne contient pas de SKILL.md. Ajoutez le fichier et importez-le à nouveau.",
   "skillManagement.errors.nameConflict": "Une compétence nommée \"{{name}}\" existe déjà. Renommez-le en SKILL.md et importez-le à nouveau.",
   "skillManagement.errors.workspaceLimit": "Votre espace de travail a atteint la limite de 500 compétences. Supprimez une compétence pour en ajouter une nouvelle.",
+  "skillManagement.exportDialog.description": "Le brouillon actuellement enregistré de votre compétence sera exporté. Si des modifications ne sont pas enregistrées dans l’éditeur, enregistrez-les avant l’exportation.",
+  "skillManagement.exportDialog.title": "Exporter le brouillon actuellement enregistré",
   "skillManagement.import": "Importer",
   "skillManagement.importFailed": "Échec de l'importation de la compétence.",
   "skillManagement.importSuccess": "Skill importé.",
