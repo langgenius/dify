@@ -474,6 +474,7 @@
   "operation.fill": "ऑटोफिल",
   "operation.format": "फॉर्मेट",
   "operation.imageCopied": "कॉपी की गई छवि",
+  "operation.imageCopyFailed": "इमेज कॉपी नहीं हो सकी। कृपया इसे डाउनलोड करें।",
   "operation.imageDownloaded": "छवि डाउनलोड की गई",
   "operation.in": "में",
   "operation.learnMore": "अधिक जानें",
