@@ -1,4 +1,5 @@
 import type {
+  ExternalContactCreateRequest,
   HumanInputContact,
   HumanInputContactType,
   ImBinding,
@@ -73,6 +74,7 @@ export type AvailablePlatformContactsQuery = {
 }
 
 export type CreateExternalContactCommand = {
+  avatar?: ExternalContactCreateRequest['avatar']
   displayName: string
   email: string
 }

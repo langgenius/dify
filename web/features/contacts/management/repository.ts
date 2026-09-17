@@ -253,7 +253,13 @@ export function createContactsApiRepository(
     async createExternalContact(command) {
       try {
         const result = await client.contacts.external.post(
-          { body: { name: command.displayName, email: command.email } },
+          {
+            body: {
+              name: command.displayName,
+              email: command.email,
+              ...(command.avatar !== undefined ? { avatar: command.avatar } : {}),
+            },
+          },
           { context: { silent: true } },
         )
         return { kind: 'created', contactId: result.contact.id }
@@ -266,7 +272,11 @@ export function createContactsApiRepository(
         const result = await client.contacts.external.byContactId.patch(
           {
             params: { contact_id: command.contactId },
-            body: { name: command.displayName, email: command.email },
+            body: {
+              name: command.displayName,
+              email: command.email,
+              ...(command.avatar !== undefined ? { avatar: command.avatar } : {}),
+            },
           },
           { context: { silent: true } },
         )

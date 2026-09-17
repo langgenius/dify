@@ -508,6 +508,7 @@ describe('contacts API repository', () => {
     expect(vi.mocked(contacts.external.post).mock.calls[0]?.[0]).toEqual({
       body: { name: command.displayName, email: command.email },
     })
+    expect(vi.mocked(contacts.external.post).mock.calls[0]?.[0].body).not.toHaveProperty('avatar')
     await expect(
       repository.updateExternalContact({ ...command, contactId: externalContact.id }),
     ).resolves.toEqual({
@@ -517,6 +518,35 @@ describe('contacts API repository', () => {
     expect(vi.mocked(contacts.external.byContactId.patch).mock.calls[0]?.[0]).toEqual({
       body: { name: command.displayName, email: command.email },
       params: { contact_id: externalContact.id },
+    })
+    expect(
+      vi.mocked(contacts.external.byContactId.patch).mock.calls[0]?.[0].body,
+    ).not.toHaveProperty('avatar')
+  })
+
+  it.each([
+    ['uploaded file ID', '00000000-0000-4000-8000-000000000001'],
+    ['empty reset value', ''],
+  ])('forwards the avatar %s when creating or updating a contact', async (_label, avatar) => {
+    const repository = createContactsApiRepository()
+    vi.mocked(contacts.external.post).mockResolvedValueOnce({ contact: externalContact })
+    vi.mocked(contacts.external.byContactId.patch).mockResolvedValueOnce({
+      contact: externalContact,
+    })
+    const command = { displayName: 'API Partner', email: 'partner@example.com', avatar }
+
+    await repository.createExternalContact(command)
+    await repository.updateExternalContact({ ...command, contactId: externalContact.id })
+
+    expect(vi.mocked(contacts.external.post).mock.calls[0]?.[0].body).toEqual({
+      name: command.displayName,
+      email: command.email,
+      avatar,
+    })
+    expect(vi.mocked(contacts.external.byContactId.patch).mock.calls[0]?.[0].body).toEqual({
+      name: command.displayName,
+      email: command.email,
+      avatar,
     })
   })
 

@@ -7,8 +7,15 @@ import { ExternalContactDialog } from '../external-contact-dialog'
 import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
 import { createContactsApiRepository } from '../repository'
 
+const { uploadAvatar } = vi.hoisted(() => ({ uploadAvatar: vi.fn() }))
+
 vi.mock('@/service/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/client')>()),
+  consoleQuery: {
+    files: {
+      upload: { post: { mutationOptions: () => ({ mutationFn: uploadAvatar }) } },
+    },
+  },
   consoleClient: {
     workspaces: {
       current: {
@@ -28,6 +35,7 @@ vi.mock('@/service/client', async (importOriginal) => ({
 describe('ExternalContactDialog pending state', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    uploadAvatar.mockReset()
   })
 
   it.each([
@@ -167,4 +175,98 @@ describe('ExternalContactDialog pending state', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(createContact).toHaveBeenCalledTimes(2)
   })
+
+  it.each(['create', 'edit'] as const)(
+    'uploads an avatar before %s and saves its file ID after retrying a failed upload',
+    async (mode) => {
+      let rejectUpload: ((error: Error) => void) | undefined
+      uploadAvatar.mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectUpload = reject
+          }),
+      )
+      uploadAvatar.mockResolvedValueOnce({ id: 'uploaded-avatar-id' })
+      const savedContact = {
+        id: 'avatar-contact',
+        name: 'Partner',
+        email: 'partner@example.com',
+        avatar_url: 'https://example.com/existing-avatar.png',
+        created_at: 1,
+        type: 'external' as const,
+      }
+      const contactsClient = consoleClient.workspaces.current.humanInput.contacts
+      vi.mocked(contactsClient.external.post).mockResolvedValue({ contact: savedContact })
+      vi.mocked(contactsClient.external.byContactId.patch).mockResolvedValue({
+        contact: savedContact,
+      })
+      const scenario = createContactsMockScenario(ContactsMockScenario.CeMixed)
+      render(
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}
+        >
+          <ContactsManagementProvider
+            context={{
+              deployment: scenario.deployment,
+              permissions: scenario.permissions,
+              workspaceId: scenario.workspaceId,
+            }}
+            repository={createContactsApiRepository()}
+          >
+            <ExternalContactDialog
+              open
+              contact={mode === 'edit' ? savedContact : undefined}
+              onCreated={vi.fn()}
+              onOpenChange={vi.fn()}
+            />
+          </ContactsManagementProvider>
+        </QueryClientProvider>,
+      )
+      const user = userEvent.setup()
+      if (mode === 'create') {
+        await user.type(screen.getByRole('textbox', { name: 'contacts.external.name' }), 'Partner')
+        await user.type(
+          screen.getByRole('textbox', { name: 'contacts.external.email' }),
+          'partner@example.com',
+        )
+      }
+      const input = screen.getByLabelText('common.imageUploader.imageUpload')
+      const file = new File(['avatar'], 'avatar.png', { type: 'image/png' })
+      await user.upload(input, file)
+      expect(uploadAvatar).toHaveBeenCalledWith({ body: { file } }, expect.anything())
+      const save = screen.getByRole('button', {
+        name: `contacts.external.${mode === 'edit' ? 'save' : 'add'}`,
+      })
+      expect(save).toBeDisabled()
+      await act(async () => rejectUpload?.(new Error('Upload failed')))
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'common.imageUploader.uploadFromComputerUploadError',
+      )
+      await user.click(save)
+      expect(contactsClient.external.post).not.toHaveBeenCalled()
+      expect(contactsClient.external.byContactId.patch).not.toHaveBeenCalled()
+
+      await user.upload(input, file)
+      await waitFor(() => expect(save).toBeEnabled())
+      await user.click(save)
+      const expectedBody = {
+        name: 'Partner',
+        email: 'partner@example.com',
+        avatar: 'uploaded-avatar-id',
+      }
+      await waitFor(() => {
+        if (mode === 'create')
+          expect(contactsClient.external.post).toHaveBeenCalledWith(
+            { body: expectedBody },
+            expect.anything(),
+          )
+        else
+          expect(contactsClient.external.byContactId.patch).toHaveBeenCalledWith(
+            { params: { contact_id: savedContact.id }, body: expectedBody },
+            expect.anything(),
+          )
+      })
+      expect(uploadAvatar).toHaveBeenCalledTimes(2)
+    },
+  )
 })
