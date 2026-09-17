@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 import { render } from '@/test/console/render'
 import { AccessControlConfigPanel } from '../config-panel'
 import { createDefaultAccessControlDraft } from '../draft'
@@ -50,7 +51,7 @@ vi.mock('react-i18next', async () => {
 
 function PanelHarness({
   currentIp,
-  initialDraft = createDefaultAccessControlDraft(),
+  initialDraft = createDefaultAccessControlDraft(ACCESS_POINT_ORDER),
   onSave = vi.fn(),
 }: {
   currentIp?: string
@@ -68,6 +69,9 @@ function PanelHarness({
       <PopoverContent>
         <AccessControlConfigPanel
           draft={draft}
+          availableAccessPoints={ACCESS_POINT_ORDER}
+          appIcon={{}}
+          canManagePolicies
           policies={policies}
           currentIp={currentIp}
           onCancel={onCancel}
@@ -156,7 +160,7 @@ describe('AccessControlConfigPanel', () => {
     render(
       <PanelHarness
         initialDraft={{
-          ...createDefaultAccessControlDraft(),
+          ...createDefaultAccessControlDraft(ACCESS_POINT_ORDER),
           selectedPolicyId: 'internal-network',
           enabled: true,
         }}

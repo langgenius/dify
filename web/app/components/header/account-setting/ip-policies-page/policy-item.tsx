@@ -10,6 +10,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,10 +36,11 @@ export const policyActionsColClassName = 'flex w-8 shrink-0 items-center justify
 type PolicyItemProps = {
   group: NetworkAccessGroupResponse
   canMutate: boolean
+  onView: (group: NetworkAccessGroupResponse) => void
   onEdit: (group: NetworkAccessGroupResponse) => void
 }
 
-export function PolicyItem({ group, canMutate, onEdit }: PolicyItemProps) {
+export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps) {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -75,9 +77,16 @@ export function PolicyItem({ group, canMutate, onEdit }: PolicyItemProps) {
 
   return (
     <div className={`${policyRowClassName} border-b border-divider-subtle py-3`}>
-      <p className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
-        {group.name}
-      </p>
+      <div className={policyNameColClassName}>
+        <Button
+          variant="ghost"
+          size="small"
+          className="h-auto max-w-full justify-start p-0 text-text-secondary"
+          onClick={() => onView(group)}
+        >
+          <span className="truncate">{group.name}</span>
+        </Button>
+      </div>
       <p className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}>
         {group.allowed_cidrs.length}
       </p>
@@ -88,49 +97,51 @@ export function PolicyItem({ group, canMutate, onEdit }: PolicyItemProps) {
         {formatTimeFromNow(Date.parse(group.updated_at))}
       </p>
       <div className={policyActionsColClassName}>
-        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-          <DropdownMenuTrigger
-            render={
-              <IconButton
-                size="md"
-                aria-label={t(($) => $['operation.moreActionsFor'], {
-                  ns: 'common',
-                  name: group.name,
-                })}
-                className="data-popup-open:bg-state-base-hover"
+        {canMutate && (
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger
+              render={
+                <IconButton
+                  size="md"
+                  aria-label={t(($) => $['operation.moreActionsFor'], {
+                    ns: 'common',
+                    name: group.name,
+                  })}
+                  className="data-popup-open:bg-state-base-hover"
+                >
+                  <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+                </IconButton>
+              }
+            />
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-35">
+              <DropdownMenuItem
+                disabled={!canMutate}
+                className="system-sm-semibold text-text-secondary"
+                onClick={() => {
+                  if (!canMutate) return
+                  onEdit(group)
+                }}
               >
-                <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-              </IconButton>
-            }
-          />
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-35">
-            <DropdownMenuItem
-              disabled={!canMutate}
-              className="system-sm-semibold text-text-secondary"
-              onClick={() => {
-                if (!canMutate) return
-                onEdit(group)
-              }}
-            >
-              {t(($) => $['operation.edit'], { ns: 'common' })}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              disabled={!canMutate}
-              variant="destructive"
-              className="system-sm-semibold"
-              onClick={() => {
-                if (!canMutate) return
-                setConfirmDelete(true)
-                setMenuOpen(false)
-              }}
-            >
-              {t(($) => $['operation.delete'], { ns: 'common' })}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                {t(($) => $['operation.edit'], { ns: 'common' })}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={!canMutate}
+                variant="destructive"
+                className="system-sm-semibold"
+                onClick={() => {
+                  if (!canMutate) return
+                  setConfirmDelete(true)
+                  setMenuOpen(false)
+                }}
+              >
+                {t(($) => $['operation.delete'], { ns: 'common' })}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+      <AlertDialog open={confirmDelete && canMutate} onOpenChange={setConfirmDelete}>
         <AlertDialogContent backdropProps={{ forceRender: true }} className="w-100">
           <div className="flex flex-col gap-2 p-6 pb-4">
             <AlertDialogTitle className="title-xl-semi-bold text-text-primary">

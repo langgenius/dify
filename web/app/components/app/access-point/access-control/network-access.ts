@@ -65,27 +65,31 @@ export function scopesFromAccessPoints(
   }
 }
 
+export function getAvailableAccessPoints(
+  accessPoints: readonly NetworkAccessPoint[],
+): AccessPoint[] {
+  const available = new Set(accessPoints)
+  return ACCESS_POINT_ORDER.filter((accessPoint) => available.has(toApiAccessPoint(accessPoint)))
+}
+
 export function accessPointsFromScopes(
   scopes: AccessControlDraft['scopes'],
-  availableAccessPoints?: readonly string[],
+  availableAccessPoints: readonly AccessPoint[],
 ): NetworkAccessPoint[] {
-  const allowed = availableAccessPoints ? new Set(availableAccessPoints) : null
-
-  return ACCESS_POINT_ORDER.filter((accessPoint) => {
-    if (!scopes[accessPoint]) return false
-    if (!allowed) return true
-    return allowed.has(toApiAccessPoint(accessPoint))
-  }).map(toApiAccessPoint)
+  return availableAccessPoints.filter((accessPoint) => scopes[accessPoint]).map(toApiAccessPoint)
 }
 
 export function draftFromBinding(
-  binding: AppNetworkAccessGroupBindingResponse | null | undefined,
+  binding: AppNetworkAccessGroupBindingResponse | null,
+  availableAccessPoints: readonly AccessPoint[],
 ): AccessControlDraft {
-  if (!binding?.group_id) return createDefaultAccessControlDraft()
+  if (!binding?.group_id) return createDefaultAccessControlDraft(availableAccessPoints)
 
   return {
     selectedPolicyId: binding.group_id,
     enabled: binding.enabled,
-    scopes: scopesFromAccessPoints(binding.access_points),
+    scopes: scopesFromAccessPoints(
+      accessPointsFromScopes(scopesFromAccessPoints(binding.access_points), availableAccessPoints),
+    ),
   }
 }

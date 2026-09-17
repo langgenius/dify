@@ -54,5 +54,8 @@
   "humanInput.sorry": "Üzgünüz!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Teşekkürler!",
+  "ipAccessDenied.description": "Bu uygulamaya yalnızca onaylanmış ağlardan erişilebilir.",
+  "ipAccessDenied.ipAddress": "Geçerli IP adresiniz <ip>{{ip}}</ip> izin verilenler listesinde değil.",
+  "ipAccessDenied.title": "Erişim kısıtlandı",
   "login.backToHome": "Ana Sayfaya Dön"
 }

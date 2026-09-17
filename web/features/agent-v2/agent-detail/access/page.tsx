@@ -9,7 +9,9 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { AccessControlEntry } from '@/app/components/app/access-point/access-control'
 import { useDocLink } from '@/context/i18n'
+import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { ServiceApiAccessCard } from './components/service-api-access-card'
@@ -32,10 +34,12 @@ export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
       },
     }),
   )
+  const agent = agentQuery.data
+  const capabilities = getAgentACLCapabilities(agent?.permission_keys)
 
   return (
     <AgentDetailSectionSurface label={t(($) => $['agentDetail.sections.access'])}>
-      <header className="h-15.5 shrink-0 px-6 pt-3 pb-2">
+      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 px-6 pt-3 pb-2">
         <div className="min-w-0">
           <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['agentDetail.access.title'])}
@@ -53,6 +57,19 @@ export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
             </a>
           </p>
         </div>
+        {agent?.app_id && !agent.hidden_app_backed && capabilities.canViewAccessPoint && (
+          <AccessControlEntry
+            appId={agent.app_id}
+            appIcon={{
+              iconType:
+                agent.icon_type === 'image' || agent.icon_type === 'link' ? 'image' : 'emoji',
+              icon: agent.icon ?? undefined,
+              background: agent.icon_background,
+              imageUrl: agent.icon_url,
+            }}
+            canEditBinding={capabilities.canManageAccessPoint}
+          />
+        )}
       </header>
 
       <ScrollArea className="min-h-0 flex-1 overflow-hidden">

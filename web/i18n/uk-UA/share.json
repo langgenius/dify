@@ -54,5 +54,8 @@
   "humanInput.sorry": "Вибачте!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Дякуємо!",
+  "ipAccessDenied.description": "Ця програма доступна лише зі схвалених мереж.",
+  "ipAccessDenied.ipAddress": "Вашої поточної IP-адреси <ip>{{ip}}</ip> немає в списку дозволених адрес.",
+  "ipAccessDenied.title": "Доступ обмежено",
   "login.backToHome": "Повернутися на головну"
 }

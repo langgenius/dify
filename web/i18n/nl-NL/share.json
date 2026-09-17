@@ -54,5 +54,8 @@
   "humanInput.sorry": "Sorry!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Thanks!",
+  "ipAccessDenied.description": "Deze app is alleen toegankelijk via goedgekeurde netwerken.",
+  "ipAccessDenied.ipAddress": "Je huidige IP-adres <ip>{{ip}}</ip> staat niet op de lijst met toegestane adressen.",
+  "ipAccessDenied.title": "Toegang beperkt",
   "login.backToHome": "Back to Home"
 }

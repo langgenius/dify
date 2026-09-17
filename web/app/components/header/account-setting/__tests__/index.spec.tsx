@@ -571,19 +571,45 @@ describe('AccountSetting', () => {
       ).toBeInTheDocument()
     })
 
-    it('should hide IP Policies for workspace members', () => {
+    it('opens IP Policies read-only for editors', () => {
       mockConsoleState.current = {
         ...baseConsoleState,
+        currentWorkspace: { ...baseConsoleState.currentWorkspace, role: 'editor' },
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
       }
 
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IP_POLICIES })
 
+      expect(screen.getByRole('button', { name: 'common.settings.ipPolicies' })).toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'common.settings.ipPolicies' }),
+        screen.getByText('deployments.studio.accessControl.emptyPoliciesTitle'),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.settings.ipPolicyAddEntry' }),
       ).not.toBeInTheDocument()
     })
+
+    it.each(['normal', 'dataset_operator'])(
+      'hides IP Policies and rejects direct entry for %s',
+      (role) => {
+        mockConsoleState.current = {
+          ...baseConsoleState,
+          currentWorkspace: { ...baseConsoleState.currentWorkspace, role },
+          isCurrentWorkspaceManager: false,
+          isCurrentWorkspaceOwner: false,
+        }
+
+        renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IP_POLICIES })
+
+        expect(
+          screen.queryByRole('button', { name: 'common.settings.ipPolicies' }),
+        ).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('deployments.studio.accessControl.emptyPoliciesTitle'),
+        ).not.toBeInTheDocument()
+      },
+    )
 
     it('should change active tab when clicking on menu item', () => {
       // Arrange

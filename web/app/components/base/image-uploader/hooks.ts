@@ -2,8 +2,10 @@ import type { ImageFile } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isIpAccessDeniedError } from '@/features/webapp-ip-access/state'
 import { useParams } from '@/next/navigation'
 import { ALLOW_FILE_EXTENSIONS, TransferMethod } from '@/types/app'
+import { isAbortError } from '@/utils/is-abort-error'
 import { getImageUploadErrorMessage, imageUpload } from './utils'
 
 export const useImageFiles = () => {
@@ -103,7 +105,7 @@ export const useImageFiles = () => {
               t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
               t,
             )
-            toast.error(errorMessage)
+            if (!isIpAccessDeniedError(error) && !isAbortError(error)) toast.error(errorMessage)
             const newFiles = [
               ...files.slice(0, index),
               { ...currentImageFile, progress: -1 },
@@ -188,7 +190,7 @@ export const useLocalFileUploader = ({
                   t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
                   t,
                 )
-                toast.error(errorMessage)
+                if (!isIpAccessDeniedError(error) && !isAbortError(error)) toast.error(errorMessage)
                 onUpload({ ...imageFile, progress: -1 })
               },
             },

@@ -7,6 +7,11 @@ import { useCallback, useEffect, useRef } from 'react'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
+import {
+  captureIpAccessScope,
+  hasIpAccessDenied,
+  isIpAccessScopeCurrent,
+} from '@/features/webapp-ip-access/state'
 import { AppSourceType, sendCompletionMessage, sendWorkflowMessage } from '@/service/share'
 import { sleep } from '@/utils'
 import { buildResultRequestData, validateResultRequest } from '../result-request'
@@ -89,6 +94,7 @@ export const useResultSender = ({
       promptConfig,
       visionConfig,
     })
+    const ipAccessScope = appSourceType === AppSourceType.webApp ? captureIpAccessScope() : null
 
     runState.prepareForNewRun()
 
@@ -106,6 +112,17 @@ export const useResultSender = ({
     let isTimeout = false
     let completionChunks: string[] = []
     let tempMessageId = ''
+    const stopInactiveRequest = () => {
+      if (isIpAccessScopeCurrent(ipAccessScope) && !hasIpAccessDenied(ipAccessScope)) return false
+
+      if (!isEnd) {
+        runState.setRespondingFalse()
+        runState.resetRunState()
+        if (!isTimeout) onCompleted(runState.getCompletionRes(), taskId, false)
+        isEnd = true
+      }
+      return true
+    }
 
     void (async () => {
       await sleep(TEXT_GENERATION_TIMEOUT_MS)
@@ -140,6 +157,7 @@ export const useResultSender = ({
       })
 
       void sendWorkflowMessage(data, otherOptions, appSourceType, appId).catch((error) => {
+        if (stopInactiveRequest()) return
         runState.setRespondingFalse()
         runState.resetRunState()
         logRequestError(notify, error)
@@ -159,6 +177,7 @@ export const useResultSender = ({
           runState.setCompletionRes(completionChunks.join(''))
         },
         onCompleted: () => {
+          if (stopInactiveRequest()) return
           if (isTimeout) {
             notify({
               type: 'warning',
@@ -178,6 +197,7 @@ export const useResultSender = ({
           runState.setCompletionRes(completionChunks.join(''))
         },
         onError: () => {
+          if (stopInactiveRequest()) return
           if (isTimeout) {
             notify({
               type: 'warning',

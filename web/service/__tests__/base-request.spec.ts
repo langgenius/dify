@@ -45,7 +45,8 @@ vi.mock('../refresh-token', () => ({
   refreshAccessTokenOrReLogin: mocks.refreshAccessTokenOrReLogin,
 }))
 
-vi.mock('../webapp-address', () => ({
+vi.mock('../webapp-address', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../webapp-address')>()),
   getWebAppPublicApiPath: (_address: unknown, path: string) => path,
   resolveWebAppAddress: mocks.resolveWebAppAddress,
 }))

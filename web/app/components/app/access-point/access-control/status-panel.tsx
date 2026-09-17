@@ -1,6 +1,7 @@
 'use client'
 
 import type { AccessControlDraft, AccessControlPolicy } from './draft'
+import type { AccessControlAppIcon } from './index'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import {
   AlertDialog,
@@ -17,8 +18,6 @@ import { PopoverTitle } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import { splitPolicySummary } from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
 import { getInServiceCoverage } from './chip-status'
@@ -31,6 +30,8 @@ const SCOPE_ICONS: Record<Exclude<AccessPoint, 'webApp'>, string> = {
 
 type AccessControlStatusPanelProps = {
   draft: AccessControlDraft
+  appIcon: AccessControlAppIcon
+  availableAccessPoints: readonly AccessPoint[]
   policies: readonly AccessControlPolicy[]
   enabled: boolean
   onEdit: () => void
@@ -38,7 +39,6 @@ type AccessControlStatusPanelProps = {
   dirty?: boolean
   canSave?: boolean
   readOnly?: boolean
-  onUpgrade?: () => void
   onCancel?: () => void
   onSave?: () => void
   onEnabledChange: (enabled: boolean) => void
@@ -46,6 +46,8 @@ type AccessControlStatusPanelProps = {
 
 export function AccessControlStatusPanel({
   draft,
+  appIcon,
+  availableAccessPoints,
   policies,
   enabled,
   onEdit,
@@ -53,26 +55,24 @@ export function AccessControlStatusPanel({
   dirty = false,
   canSave = false,
   readOnly = false,
-  onUpgrade,
   onCancel,
   onSave,
   onEnabledChange,
 }: AccessControlStatusPanelProps) {
   const { t } = useTranslation()
-  const appInfo = useAppStore((state) => state.appDetail)
   const [confirmPause, setConfirmPause] = useState(false)
   const selectedPolicy = policies.find((policy) => policy.id === draft.selectedPolicyId)
   const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.allowed_cidrs) : undefined
-  const coverage = getInServiceCoverage(draft.scopes)
+  const coverage = getInServiceCoverage(draft.scopes, availableAccessPoints)
   const labels: Record<AccessPoint, string> = {
     webApp: t(($) => $['overview.appInfo.title'], { ns: 'appOverview' }),
     serviceApi: t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' }),
     mcp: t(($) => $['mcp.server.title'], { ns: 'tools' }),
     trigger: t(($) => $['settings.trigger'], { ns: 'common' }),
   }
-  const exposedNames = ACCESS_POINT_ORDER.filter((scope) => draft.scopes[scope]).map(
-    (scope) => labels[scope],
-  )
+  const exposedNames = availableAccessPoints
+    .filter((scope) => draft.scopes[scope])
+    .map((scope) => labels[scope])
   const policyName = selectedPolicy?.name
 
   return (
@@ -86,11 +86,7 @@ export function AccessControlStatusPanel({
               })
             : t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })}
         </PopoverTitle>
-        {readOnly ? (
-          <Button type="button" variant="ghost" size="small" onClick={onUpgrade}>
-            {t(($) => $['studio.accessControl.turnOn'], { ns: 'deployments' })}
-          </Button>
-        ) : (
+        {!readOnly && (
           <Button type="button" variant="ghost" size="small" onClick={onEdit}>
             {t(($) => $['operation.edit'], { ns: 'common' })}
           </Button>
@@ -121,6 +117,7 @@ export function AccessControlStatusPanel({
             disabled={updating || readOnly}
             aria-label={t(($) => $['studio.accessControl.restrictByIp'], { ns: 'deployments' })}
             onCheckedChange={(next) => {
+              if (readOnly || updating) return
               if (next) {
                 onEnabledChange(true)
                 return
@@ -163,7 +160,7 @@ export function AccessControlStatusPanel({
           <p className="system-sm-medium text-text-secondary">
             {t(($) => $['studio.accessControl.applyTo'], { ns: 'deployments' })}
           </p>
-          {ACCESS_POINT_ORDER.map((scope) => {
+          {availableAccessPoints.map((scope) => {
             const excluded = !draft.scopes[scope]
             const label = labels[scope]
 
@@ -173,10 +170,7 @@ export function AccessControlStatusPanel({
                   <AppIcon
                     size="tiny"
                     decorative
-                    iconType={appInfo?.icon_type}
-                    icon={appInfo?.icon}
-                    background={appInfo?.icon_background ?? undefined}
-                    imageUrl={appInfo?.icon_url}
+                    {...appIcon}
                     className="rounded-sm bg-util-colors-orange-orange-100"
                   />
                 ) : (
@@ -245,7 +239,9 @@ export function AccessControlStatusPanel({
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
+              disabled={readOnly || updating}
               onClick={() => {
+                if (readOnly || updating) return
                 onEnabledChange(false)
                 setConfirmPause(false)
               }}

@@ -1,6 +1,5 @@
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
-import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 
 export type AccessControlPolicy = Pick<NetworkAccessGroupResponse, 'id' | 'name' | 'allowed_cidrs'>
 
@@ -10,40 +9,49 @@ export type AccessControlDraft = {
   enabled: boolean
 }
 
-export const createDefaultAccessControlDraft = (): AccessControlDraft => ({
+export const createDefaultAccessControlDraft = (
+  availableAccessPoints: readonly AccessPoint[],
+): AccessControlDraft => ({
   selectedPolicyId: null,
   enabled: true,
   scopes: {
-    webApp: true,
-    serviceApi: true,
-    mcp: true,
-    trigger: true,
+    webApp: availableAccessPoints.includes('webApp'),
+    serviceApi: availableAccessPoints.includes('serviceApi'),
+    mcp: availableAccessPoints.includes('mcp'),
+    trigger: availableAccessPoints.includes('trigger'),
   },
 })
 
-export function isAccessControlDraftEqual(left: AccessControlDraft, right: AccessControlDraft) {
+export function isAccessControlDraftEqual(
+  left: AccessControlDraft,
+  right: AccessControlDraft,
+  availableAccessPoints: readonly AccessPoint[],
+) {
   if (left.selectedPolicyId !== right.selectedPolicyId) return false
   if (left.enabled !== right.enabled) return false
 
-  return ACCESS_POINT_ORDER.every((scope) => left.scopes[scope] === right.scopes[scope])
+  return availableAccessPoints.every((scope) => left.scopes[scope] === right.scopes[scope])
 }
 
-export function hasSelectedAccessPoint(draft: AccessControlDraft) {
-  return ACCESS_POINT_ORDER.some((scope) => draft.scopes[scope])
+export function hasSelectedAccessPoint(
+  draft: AccessControlDraft,
+  availableAccessPoints: readonly AccessPoint[],
+) {
+  return availableAccessPoints.some((scope) => draft.scopes[scope])
 }
 
 export function canSaveAccessControl({
   draft,
   baseline,
-  persistableAccessPoints,
+  availableAccessPoints,
 }: {
   draft: AccessControlDraft
   baseline?: AccessControlDraft
-  persistableAccessPoints?: readonly string[]
+  availableAccessPoints: readonly AccessPoint[]
 }) {
-  if (baseline && isAccessControlDraftEqual(draft, baseline)) return false
+  if (!availableAccessPoints.length) return false
+  if (baseline && isAccessControlDraftEqual(draft, baseline, availableAccessPoints)) return false
   if (!draft.enabled) return Boolean(draft.selectedPolicyId)
   if (!draft.selectedPolicyId) return false
-  if (persistableAccessPoints) return persistableAccessPoints.length > 0
-  return hasSelectedAccessPoint(draft)
+  return hasSelectedAccessPoint(draft, availableAccessPoints)
 }

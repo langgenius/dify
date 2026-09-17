@@ -1,6 +1,7 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import {
   createNetworkAccessGroupFixture,
   seedNetworkAccessGroups,
@@ -14,6 +15,7 @@ const translations = vi.hoisted(() => ({
   'operation.delete': 'Delete',
   'operation.edit': 'Edit',
   'operation.moreActionsFor': 'More actions for {{name}}',
+  'operation.save': 'Save',
   'settings.ipPolicies': 'IP Policies',
   'settings.ipPoliciesDescription':
     'Reusable rules that control which IP addresses or ranges can access your apps',
@@ -51,6 +53,211 @@ vi.mock('react-i18next', async () => {
 })
 
 describe('IpPoliciesPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it.each([true, false])(
+    'lets an editor read the complete policy without management actions (entitled: %s)',
+    async (entitled) => {
+      const user = userEvent.setup()
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, {
+        entitled,
+        groups: [
+          createNetworkAccessGroupFixture({
+            allowed_cidrs: ['203.0.113.42/32', '198.51.100.0/24', '2001:db8::/32'],
+            used_by_count: 1,
+            app_ids: ['app-a'],
+            apps: [
+              {
+                id: 'app-a',
+                name: 'Support Bot',
+                mode: 'chat',
+                icon: null,
+                icon_type: null,
+                icon_background: null,
+              },
+            ],
+          }),
+        ],
+      })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          currentWorkspace: { role: 'editor' },
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
+
+      expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'More actions for Internal Network' }),
+      ).not.toBeInTheDocument()
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Internal Network' })).toHaveFocus()
+      await user.keyboard('{Enter}')
+
+      const dialog = screen.getByRole('dialog', { name: 'Internal Network' })
+      expect(within(dialog).getByText('203.0.113.42/32')).toBeInTheDocument()
+      expect(within(dialog).getByText('198.51.100.0/24')).toBeInTheDocument()
+      expect(within(dialog).getByText('2001:db8::/32')).toBeInTheDocument()
+      expect(within(dialog).getByRole('link', { name: 'Support Bot' })).toBeInTheDocument()
+      expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument()
+      expect(
+        within(dialog).queryByRole('button', { name: /Create|Save|Delete|Add/ }),
+      ).not.toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(globalThis.fetch).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['edit', 'delete'] as const)(
+    'allows an entitled administrator to %s a policy',
+    async (action) => {
+      const user = userEvent.setup()
+      const group = createNetworkAccessGroupFixture({ version: 7 })
+      const requests: Array<{ method: string; url: string; body: unknown }> = []
+      vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+        const request = input instanceof Request ? input : new Request(String(input), init)
+        const body = await request.text()
+        requests.push({
+          method: request.method,
+          url: request.url,
+          body: body ? JSON.parse(body) : null,
+        })
+        return request.method === 'DELETE'
+          ? new Response(null, { status: 204 })
+          : new Response(JSON.stringify({ group, entitled: true }), {
+              headers: { 'content-type': 'application/json' },
+            })
+      })
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, { groups: [group] })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          currentWorkspace: { role: 'admin' },
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
+
+      await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+      await user.click(
+        screen.getByRole('menuitem', { name: action === 'edit' ? 'Edit' : 'Delete' }),
+      )
+      if (action === 'edit') {
+        await user.clear(screen.getByRole('textbox', { name: 'Name' }))
+        await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Office Network')
+        await user.click(screen.getByRole('button', { name: 'Save' }))
+      } else {
+        await user.click(
+          within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }),
+        )
+      }
+
+      await waitFor(() =>
+        expect(requests).toContainEqual(
+          action === 'edit'
+            ? {
+                method: 'PUT',
+                url: 'http://localhost:5001/console/api/workspaces/current/network-access-groups/group-1',
+                body: {
+                  name: 'Office Network',
+                  description: '',
+                  allowed_cidrs: group.allowed_cidrs,
+                  expected_version: 7,
+                },
+              }
+            : {
+                method: 'DELETE',
+                url: 'http://localhost:5001/console/api/workspaces/current/network-access-groups/group-1?expected_version=7',
+                body: null,
+              },
+        ),
+      )
+    },
+  )
+
+  it.each(['create', 'edit', 'delete'] as const)(
+    'stops %s when manager permission is revoked',
+    async (action) => {
+      const user = userEvent.setup()
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, { groups: [createNetworkAccessGroupFixture()] })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          currentWorkspace: { role: 'admin' },
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
+
+      if (action === 'create') {
+        await user.click(screen.getByRole('button', { name: 'Add' }))
+        await user.type(screen.getByRole('textbox', { name: 'Name' }), 'New policy')
+        await user.type(screen.getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
+      } else {
+        await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
+        await user.click(
+          screen.getByRole('menuitem', { name: action === 'edit' ? 'Edit' : 'Delete' }),
+        )
+        if (action === 'edit')
+          await user.type(screen.getByRole('textbox', { name: 'Name' }), ' draft')
+      }
+
+      await act(async () => {
+        seedCurrentWorkspaceQuery(queryClient, { role: 'editor' })
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('button', { name: /^(Create|Save|Delete)$/ }),
+        ).not.toBeInTheDocument()
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      })
+      if (action === 'edit') {
+        expect(screen.getByRole('dialog', { name: 'Internal Network' })).toBeInTheDocument()
+        expect(screen.queryByText('Internal Network draft')).not.toBeInTheDocument()
+      } else {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      }
+      expect(globalThis.fetch).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['normal', 'dataset_operator'] as const)(
+    'does not query or render policies for %s',
+    (role) => {
+      const queryClient = createConsoleQueryClient()
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          currentWorkspace: { role },
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
+
+      expect(screen.queryByRole('heading', { name: 'IP Policies' })).not.toBeInTheDocument()
+      expect(globalThis.fetch).not.toHaveBeenCalled()
+    },
+  )
+
   it('opens the new policy dialog from Add', async () => {
     const user = userEvent.setup()
     const queryClient = createConsoleQueryClient()
@@ -59,7 +266,7 @@ describe('IpPoliciesPage', () => {
       <NuqsTestingAdapter>
         <IpPoliciesPage />
       </NuqsTestingAdapter>,
-      { queryClient },
+      { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
     )
 
     expect(screen.getByText('No IP policies in this workspace yet')).toBeInTheDocument()
@@ -92,7 +299,7 @@ describe('IpPoliciesPage', () => {
       <NuqsTestingAdapter>
         <IpPoliciesPage />
       </NuqsTestingAdapter>,
-      { queryClient },
+      { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
     )
 
     await user.click(screen.getByRole('button', { name: 'Add' }))
@@ -125,7 +332,7 @@ describe('IpPoliciesPage', () => {
       <NuqsTestingAdapter>
         <IpPoliciesPage />
       </NuqsTestingAdapter>,
-      { queryClient },
+      { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
     )
 
     expect(screen.getByText('Internal Network')).toBeInTheDocument()
@@ -174,7 +381,7 @@ describe('IpPoliciesPage', () => {
       <NuqsTestingAdapter>
         <IpPoliciesPage />
       </NuqsTestingAdapter>,
-      { queryClient },
+      { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
     )
 
     await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))
@@ -221,7 +428,7 @@ describe('IpPoliciesPage', () => {
       <NuqsTestingAdapter>
         <IpPoliciesPage />
       </NuqsTestingAdapter>,
-      { queryClient },
+      { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
     )
 
     await user.click(screen.getByRole('button', { name: 'More actions for Internal Network' }))

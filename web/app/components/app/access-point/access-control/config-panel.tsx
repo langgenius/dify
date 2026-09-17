@@ -2,6 +2,8 @@
 
 import type { FormEvent } from 'react'
 import type { AccessControlDraft, AccessControlPolicy } from './draft'
+import type { AccessControlAppIcon } from './index'
+import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -16,7 +18,10 @@ type AccessControlConfigPanelProps = {
   draft: AccessControlDraft
   policies: readonly AccessControlPolicy[]
   currentIp?: string
-  persistableAccessPoints?: readonly string[]
+  availableAccessPoints: readonly AccessPoint[]
+  appIcon: AccessControlAppIcon
+  readOnly?: boolean
+  canManagePolicies: boolean
   baseline?: AccessControlDraft
   showBack?: boolean
   saving?: boolean
@@ -32,7 +37,10 @@ export function AccessControlConfigPanel({
   draft,
   policies,
   currentIp,
-  persistableAccessPoints,
+  availableAccessPoints,
+  appIcon,
+  readOnly = false,
+  canManagePolicies,
   baseline,
   showBack = false,
   saving = false,
@@ -46,10 +54,8 @@ export function AccessControlConfigPanel({
   const { t } = useTranslation()
   const title = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
   const hasSelectedPolicy = Boolean(draft.selectedPolicyId)
-  const hasPersistableSelection = persistableAccessPoints
-    ? persistableAccessPoints.length > 0
-    : hasSelectedAccessPoint(draft)
-  const canSave = canSaveAccessControl({ draft, baseline, persistableAccessPoints })
+  const hasPersistableSelection = hasSelectedAccessPoint(draft, availableAccessPoints)
+  const canSave = !readOnly && canSaveAccessControl({ draft, baseline, availableAccessPoints })
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -90,9 +96,12 @@ export function AccessControlConfigPanel({
             policies={policies}
             selectedPolicyId={draft.selectedPolicyId}
             currentIp={currentIp}
+            readOnly={readOnly}
+            canManagePolicies={canManagePolicies}
             onCreatePolicy={onCreatePolicy}
             onManagePolicies={onManagePolicies}
             onSelectPolicy={(policyId) => {
+              if (readOnly) return
               onDraftChange({ ...draft, selectedPolicyId: policyId })
             }}
           />
@@ -107,7 +116,13 @@ export function AccessControlConfigPanel({
               ? t(($) => $['studio.accessControl.applyToHelpSelected'], { ns: 'deployments' })
               : t(($) => $['studio.accessControl.applyToHelp'], { ns: 'deployments' })}
           </p>
-          <AccessControlScopeList draft={draft} onDraftChange={onDraftChange} />
+          <AccessControlScopeList
+            draft={draft}
+            appIcon={appIcon}
+            availableAccessPoints={availableAccessPoints}
+            readOnly={readOnly}
+            onDraftChange={onDraftChange}
+          />
           {hasSelectedPolicy && draft.enabled && !hasPersistableSelection && (
             <p className="system-xs-regular text-text-warning">
               {t(($) => $['studio.accessControl.selectAccessPoint'], { ns: 'deployments' })}
@@ -119,9 +134,11 @@ export function AccessControlConfigPanel({
           <Button type="button" variant="secondary" onClick={onCancel}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
-          <Button type="submit" variant="primary" disabled={!canSave || saving} loading={saving}>
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
+          {!readOnly && (
+            <Button type="submit" variant="primary" disabled={!canSave || saving} loading={saving}>
+              {t(($) => $['operation.save'], { ns: 'common' })}
+            </Button>
+          )}
         </div>
       </div>
     </form>

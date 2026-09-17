@@ -22,6 +22,7 @@ import {
   isCurrentWorkspaceDatasetOperatorAtom,
   isCurrentWorkspaceManagerAtom,
 } from '@/context/workspace-state'
+import { canReadNetworkAccessAtom } from '@/features/network-access/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
@@ -74,8 +75,7 @@ export default function AccountSetting({
     systemFeatures.deployment_edition === 'CLOUD' && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
-  const canViewIpPolicies =
-    systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
+  const canViewIpPolicies = useAtomValue(canReadNetworkAccessAtom)
   const activeMenu = (() => {
     if (activeTab === ACCOUNT_SETTING_TAB.IP_POLICIES && !canViewIpPolicies)
       return ACCOUNT_SETTING_TAB.MEMBERS

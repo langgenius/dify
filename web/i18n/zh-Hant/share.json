@@ -54,5 +54,8 @@
   "humanInput.sorry": "抱歉!",
   "humanInput.submissionID": "提交 ID: {{id}}",
   "humanInput.thanks": "謝謝!",
+  "ipAccessDenied.description": "此應用程式僅允許從已核准的網路存取。",
+  "ipAccessDenied.ipAddress": "您目前的 IP 位址 <ip>{{ip}}</ip> 不在允許清單中。",
+  "ipAccessDenied.title": "存取受限",
   "login.backToHome": "返回首頁"
 }

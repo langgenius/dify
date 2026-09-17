@@ -54,5 +54,8 @@
   "humanInput.sorry": "क्षमा करें!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "धन्यवाद!",
+  "ipAccessDenied.description": "इस ऐप को केवल स्वीकृत नेटवर्क से ही एक्सेस किया जा सकता है।",
+  "ipAccessDenied.ipAddress": "आपका वर्तमान IP पता <ip>{{ip}}</ip> अनुमति सूची में नहीं है।",
+  "ipAccessDenied.title": "पहुँच प्रतिबंधित है",
   "login.backToHome": "होम पर वापस"
 }
