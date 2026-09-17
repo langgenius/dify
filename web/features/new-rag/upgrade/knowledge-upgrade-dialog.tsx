@@ -100,7 +100,7 @@ export function KnowledgeUpgradeDialog({
               <li>{t(($) => $['upgrade.dialogLinkedApps'])}</li>
               <li>
                 <Trans
-                  i18nKey={($) => $['upgrade.dialogIrreversible']}
+                  i18nKey={($) => $['upgrade.dialogAvailability']}
                   ns="knowledgeSpace"
                   components={{ strong: <strong className="font-medium" /> }}
                 />
