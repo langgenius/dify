@@ -156,7 +156,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                                       })
                                     }
                                     type="text"
-                                    className="!hover:border-transparent !hover:bg-transparent !focus:border-transparent !focus:bg-transparent border-transparent! bg-transparent!"
+                                    className="border-transparent! bg-transparent!"
                                   />
                                 </td>
                               </tr>
@@ -179,7 +179,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                       <div className="system-xs-semibold text-text-tertiary">
                         {t(($) => $['test.testResult'], { ns: 'tools' })}
                       </div>
-                      <div className="bg-[rgb(243, 244, 246)] h-px w-0 grow"></div>
+                      <div className="h-px w-0 grow"></div>
                     </div>
                     <div className="mt-2 h-50 overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-3 py-2 system-xs-regular text-text-secondary">
                       {result || (
