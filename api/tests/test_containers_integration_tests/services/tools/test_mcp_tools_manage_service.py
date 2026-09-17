@@ -152,7 +152,7 @@ class TestMCPToolManageService:
         # Act: Execute the method under test
 
         service = MCPToolManageService(db_session_with_containers)
-        result = service.get_provider(provider_id=mcp_provider.id, tenant_id=tenant.id)
+        result = service.get_provider_by_id(provider_id=mcp_provider.id, tenant_id=tenant.id)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -189,7 +189,7 @@ class TestMCPToolManageService:
 
         service = MCPToolManageService(db_session_with_containers)
         with pytest.raises(ValueError, match="MCP tool not found"):
-            service.get_provider(provider_id=non_existent_id, tenant_id=tenant.id)
+            service.get_provider_by_id(provider_id=non_existent_id, tenant_id=tenant.id)
 
     def test_get_mcp_provider_by_provider_id_tenant_isolation(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -221,7 +221,7 @@ class TestMCPToolManageService:
 
         service = MCPToolManageService(db_session_with_containers)
         with pytest.raises(ValueError, match="MCP tool not found"):
-            service.get_provider(provider_id=mcp_provider1.id, tenant_id=tenant2.id)
+            service.get_provider_by_id(provider_id=mcp_provider1.id, tenant_id=tenant2.id)
 
     def test_get_mcp_provider_by_server_identifier_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -247,7 +247,9 @@ class TestMCPToolManageService:
         # Act: Execute the method under test
 
         service = MCPToolManageService(db_session_with_containers)
-        result = service.get_provider(server_identifier=mcp_provider.server_identifier, tenant_id=tenant.id)
+        result = service.get_provider_by_server_identifier(
+            server_identifier=mcp_provider.server_identifier, tenant_id=tenant.id
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -284,7 +286,7 @@ class TestMCPToolManageService:
 
         service = MCPToolManageService(db_session_with_containers)
         with pytest.raises(ValueError, match="MCP tool not found"):
-            service.get_provider(server_identifier=non_existent_identifier, tenant_id=tenant.id)
+            service.get_provider_by_server_identifier(server_identifier=non_existent_identifier, tenant_id=tenant.id)
 
     def test_get_mcp_provider_by_server_identifier_tenant_isolation(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -316,7 +318,9 @@ class TestMCPToolManageService:
 
         service = MCPToolManageService(db_session_with_containers)
         with pytest.raises(ValueError, match="MCP tool not found"):
-            service.get_provider(server_identifier=mcp_provider1.server_identifier, tenant_id=tenant2.id)
+            service.get_provider_by_server_identifier(
+                server_identifier=mcp_provider1.server_identifier, tenant_id=tenant2.id
+            )
 
     def test_create_mcp_provider_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """

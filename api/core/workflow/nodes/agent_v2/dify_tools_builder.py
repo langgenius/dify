@@ -138,13 +138,21 @@ def _list_provider_tool_names(
 
 
 def _resolve_mcp_provider_id(*, tenant_id: str, provider_id: str) -> str:
-    """Normalize MCP provider ids to the runtime-facing server identifier."""
+    """Normalize MCP provider ids to the runtime-facing server identifier.
+
+    Persisted graphs reference MCP providers by server identifier, but some
+    payloads still carry the provider primary key, so both are accepted here.
+    This is the only place allowed to guess: the service-level lookups are
+    single-meaning.
+    """
     service = MCPToolManageService(session=db.session())
     try:
-        return service.get_provider_entity(provider_id, tenant_id, by_server_id=True).provider_id
+        return service.get_provider_entity_by_server_identifier(
+            server_identifier=provider_id, tenant_id=tenant_id
+        ).server_identifier
     except ValueError:
         try:
-            return service.get_provider_entity(provider_id, tenant_id, by_server_id=False).provider_id
+            return service.get_provider_entity_by_id(provider_id=provider_id, tenant_id=tenant_id).server_identifier
         except ValueError as exc:
             raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from exc
 
