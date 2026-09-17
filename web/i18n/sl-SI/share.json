@@ -54,5 +54,8 @@
   "humanInput.sorry": "Oprostite!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "Hvala!",
+  "ipAccessDenied.description": "Ta aplikacija je dostopna samo iz odobrenih omrežij.",
+  "ipAccessDenied.ipAddress": "Vaš trenutni naslov IP <ip>{{ip}}</ip> ni na seznamu dovoljenih naslovov.",
+  "ipAccessDenied.title": "Dostop omejen",
   "login.backToHome": "Nazaj na začetno stran"
 }

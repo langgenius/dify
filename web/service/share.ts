@@ -6,6 +6,12 @@ import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import {
+  captureIpAccessScope,
+  hasIpAccessDenied,
+  isIpAccessDeniedError,
+  isIpAccessScopeCurrent,
+} from '@/features/webapp-ip-access/state'
+import {
   del as consoleDel,
   get as consoleGet,
   patch as consolePatch,
@@ -522,7 +528,21 @@ const uploadHumanInputFormFile = async (
   formData: FormData,
   onProgress?: (e: ProgressEvent) => void,
 ) => {
-  const uploadToken = await getHumanInputFormUploadToken(formToken)
+  const scope = captureIpAccessScope()
+  const ensureCanUpload = () => {
+    if (!isIpAccessScopeCurrent(scope) || hasIpAccessDenied(scope))
+      throw new DOMException('The form upload is no longer active.', 'AbortError')
+  }
+  ensureCanUpload()
+
+  let uploadToken: string
+  try {
+    uploadToken = await getHumanInputFormUploadToken(formToken)
+  } catch (error) {
+    if (!isIpAccessDeniedError(error)) ensureCanUpload()
+    throw error
+  }
+  ensureCanUpload()
 
   return upload(
     {

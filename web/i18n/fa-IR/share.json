@@ -54,5 +54,8 @@
   "humanInput.sorry": "متأسفیم!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "متشکریم!",
+  "ipAccessDenied.description": "این برنامه فقط از طریق شبکه‌های تأییدشده قابل دسترسی است.",
+  "ipAccessDenied.ipAddress": "نشانی IP فعلی شما <ip>{{ip}}</ip> در فهرست نشانی‌های مجاز نیست.",
+  "ipAccessDenied.title": "دسترسی محدود است",
   "login.backToHome": "بازگشت به خانه"
 }

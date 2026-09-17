@@ -54,5 +54,8 @@
   "humanInput.sorry": "죄송합니다!",
   "humanInput.submissionID": "submission_id: {{id}}",
   "humanInput.thanks": "감사합니다!",
+  "ipAccessDenied.description": "이 앱은 승인된 네트워크에서만 접근할 수 있습니다.",
+  "ipAccessDenied.ipAddress": "현재 IP 주소 <ip>{{ip}}</ip>이(가) 허용 목록에 없습니다.",
+  "ipAccessDenied.title": "접근 제한",
   "login.backToHome": "홈으로 돌아가기"
 }

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import Splash from '../splash'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -15,6 +15,14 @@ const webAppAuthMocks = vi.hoisted(() => ({
 }))
 
 const fetchAccessTokenMock = vi.hoisted(() => vi.fn())
+const ipAccessState = vi.hoisted(() => ({
+  scope: {},
+  isCurrent: true,
+  isDenied: false,
+  deniedError: new Error('IP access denied'),
+}))
+
+const routerMock = { replace: navigationMocks.replace }
 
 const webAppState: {
   shareCode: string | null
@@ -32,8 +40,15 @@ vi.mock('@/context/web-app-context', () => ({
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => navigationMocks.pathname,
-  useRouter: () => ({ replace: navigationMocks.replace }),
+  useRouter: () => routerMock,
   useSearchParams: () => navigationMocks.searchParams,
+}))
+
+vi.mock('@/features/webapp-ip-access/state', () => ({
+  captureIpAccessScope: () => ipAccessState.scope,
+  hasIpAccessDenied: () => ipAccessState.isDenied,
+  isIpAccessScopeCurrent: () => ipAccessState.isCurrent,
+  isIpAccessDeniedError: (error: unknown) => error === ipAccessState.deniedError,
 }))
 
 vi.mock('@/service/share', () => ({
@@ -45,6 +60,10 @@ vi.mock('@/service/webapp-auth', () => webAppAuthMocks)
 describe('Splash', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    fetchAccessTokenMock.mockReset()
+    webAppAuthMocks.webAppLogout.mockResolvedValue(undefined)
+    ipAccessState.isCurrent = true
+    ipAccessState.isDenied = false
     webAppState.shareCode = 'share-app'
     webAppState.webAppAccessMode = 'public'
     webAppState.embeddedUserId = 'embedded-user'
@@ -223,5 +242,174 @@ describe('Splash', () => {
     )
 
     expect(screen.getByRole('button', { name: 'share.login.backToHome' })).toBeInTheDocument()
+  })
+
+  it.each(['login status', 'passport'])(
+    'should stop initialization when %s is denied by IP policy',
+    async (request) => {
+      navigationMocks.searchParams = new URLSearchParams()
+      if (request === 'login status') {
+        webAppAuthMocks.webAppLoginStatus.mockRejectedValue(ipAccessState.deniedError)
+      } else {
+        webAppAuthMocks.webAppLoginStatus.mockResolvedValue({
+          userLoggedIn: true,
+          appLoggedIn: false,
+        })
+        fetchAccessTokenMock.mockRejectedValue(ipAccessState.deniedError)
+      }
+
+      await act(async () => {
+        render(
+          <Splash>
+            <div>share application</div>
+          </Splash>,
+        )
+      })
+
+      expect(webAppAuthMocks.webAppLoginStatus).toHaveBeenCalledTimes(1)
+      expect(webAppAuthMocks.webAppLogout).not.toHaveBeenCalled()
+      expect(webAppAuthMocks.setWebAppPassport).not.toHaveBeenCalled()
+      expect(navigationMocks.replace).not.toHaveBeenCalled()
+      expect(screen.queryByText('share application')).not.toBeInTheDocument()
+      expect(screen.queryByText('share.common.appUnavailable')).not.toBeInTheDocument()
+    },
+  )
+
+  it('should show an unavailable state when login status fails without allowing the app to load', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    webAppAuthMocks.webAppLoginStatus.mockRejectedValue(new Response(null, { status: 503 }))
+
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+
+    expect(await screen.findByText('share.common.appUnknownError')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '503' })).toBeInTheDocument()
+    expect(fetchAccessTokenMock).not.toHaveBeenCalled()
+    expect(webAppAuthMocks.webAppLogout).not.toHaveBeenCalled()
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+    expect(screen.queryByText('share application')).not.toBeInTheDocument()
+  })
+
+  it('should keep authentication and block initialization when the passport policy service is unavailable', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    webAppAuthMocks.webAppLoginStatus.mockResolvedValue({
+      userLoggedIn: true,
+      appLoggedIn: false,
+    })
+    fetchAccessTokenMock.mockRejectedValue(
+      Response.json({ code: 'policy_unavailable' }, { status: 503 }),
+    )
+
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+
+    expect(await screen.findByText('share.common.appUnknownError')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '503' })).toBeInTheDocument()
+    expect(webAppAuthMocks.webAppLogout).not.toHaveBeenCalled()
+    expect(webAppAuthMocks.setWebAppPassport).not.toHaveBeenCalled()
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+    expect(screen.queryByText('share application')).not.toBeInTheDocument()
+  })
+
+  it.each(['IP denial', 'navigation', 'unmount'])(
+    'should ignore login status received after %s',
+    async (interruption) => {
+      navigationMocks.searchParams = new URLSearchParams()
+      let finishLogin!: (value: { userLoggedIn: boolean; appLoggedIn: boolean }) => void
+      webAppAuthMocks.webAppLoginStatus.mockReturnValue(
+        new Promise((resolve) => {
+          finishLogin = resolve
+        }),
+      )
+      const { unmount } = render(
+        <Splash>
+          <div>share application</div>
+        </Splash>,
+      )
+
+      if (interruption === 'IP denial') ipAccessState.isDenied = true
+      else if (interruption === 'navigation') ipAccessState.isCurrent = false
+      else unmount()
+
+      await act(async () => {
+        finishLogin({ userLoggedIn: true, appLoggedIn: false })
+      })
+
+      expect(fetchAccessTokenMock).not.toHaveBeenCalled()
+      expect(webAppAuthMocks.webAppLogout).not.toHaveBeenCalled()
+      expect(navigationMocks.replace).not.toHaveBeenCalled()
+      expect(screen.queryByText('share application')).not.toBeInTheDocument()
+    },
+  )
+
+  it.each(['IP denial', 'navigation', 'unmount'])(
+    'should ignore a passport received after %s',
+    async (interruption) => {
+      navigationMocks.searchParams = new URLSearchParams()
+      webAppAuthMocks.webAppLoginStatus.mockResolvedValue({
+        userLoggedIn: true,
+        appLoggedIn: false,
+      })
+      let finishPassport!: (value: { access_token: string }) => void
+      fetchAccessTokenMock.mockReturnValue(
+        new Promise((resolve) => {
+          finishPassport = resolve
+        }),
+      )
+      const { unmount } = render(
+        <Splash>
+          <div>share application</div>
+        </Splash>,
+      )
+      await waitFor(() => expect(fetchAccessTokenMock).toHaveBeenCalledTimes(1))
+
+      if (interruption === 'IP denial') ipAccessState.isDenied = true
+      else if (interruption === 'navigation') ipAccessState.isCurrent = false
+      else unmount()
+
+      await act(async () => {
+        finishPassport({ access_token: 'late-passport' })
+      })
+
+      expect(webAppAuthMocks.setWebAppPassport).not.toHaveBeenCalled()
+      expect(webAppAuthMocks.webAppLogout).not.toHaveBeenCalled()
+      expect(navigationMocks.replace).not.toHaveBeenCalled()
+      expect(screen.queryByText('share application')).not.toBeInTheDocument()
+    },
+  )
+
+  it('should not sign out after a pending passport fails following IP denial', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    webAppAuthMocks.webAppLoginStatus.mockResolvedValue({
+      userLoggedIn: true,
+      appLoggedIn: false,
+    })
+    let rejectPassport!: (error: Response) => void
+    fetchAccessTokenMock.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectPassport = reject
+      }),
+    )
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+    await waitFor(() => expect(fetchAccessTokenMock).toHaveBeenCalledTimes(1))
+
+    ipAccessState.isDenied = true
+    await act(async () => {
+      rejectPassport(new Response(null, { status: 401 }))
+    })
+
+    expect(webAppAuthMocks.webAppLogout).not.toHaveBeenCalled()
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+    expect(screen.queryByText('share application')).not.toBeInTheDocument()
   })
 })

@@ -1,10 +1,20 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import type { AppSourceType } from '@/service/share'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
+import {
+  captureIpAccessScope,
+  hasIpAccessDenied,
+  isIpAccessDeniedError,
+  isIpAccessScopeCurrent,
+} from '@/features/webapp-ip-access/state'
+import {
+  AppSourceType,
+  stopChatMessageResponding,
+  stopWorkflowMessage,
+  updateFeedback,
+} from '@/service/share'
 
 type Notify = (payload: { type: 'error'; message: string }) => void
 
@@ -97,6 +107,7 @@ export const useResultRunState = ({
   })
   const [controlClearMoreLikeThis, setControlClearMoreLikeThis] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const runGenerationRef = useRef(0)
   const [{ currentTaskId, isStopping }, dispatchRunControl] = useReducer(runControlReducer, {
     currentTaskId: null,
     isStopping: false,
@@ -131,6 +142,7 @@ export const useResultRunState = ({
   const getWorkflowProcessData = useCallback(() => workflowProcessDataRef.current, [])
 
   const resetRunState = useCallback(() => {
+    runGenerationRef.current += 1
     dispatchRunControl({ type: 'reset' })
     abortControllerRef.current = null
     onRunControlChange?.(null)
@@ -165,23 +177,41 @@ export const useResultRunState = ({
   const handleStop = useCallback(async () => {
     if (!currentTaskId || isStopping) return
 
+    const runGeneration = runGenerationRef.current
+    const ipAccessScope = appSourceType === AppSourceType.webApp ? captureIpAccessScope() : null
+    const isCurrentRequest = () =>
+      runGeneration === runGenerationRef.current &&
+      isIpAccessScopeCurrent(ipAccessScope) &&
+      !hasIpAccessDenied(ipAccessScope)
+    if (!isCurrentRequest()) return
+
+    const abortController = abortControllerRef.current
     setIsStopping(true)
     try {
       if (isWorkflow) await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '')
       else await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '')
 
-      abortControllerRef.current?.abort()
+      if (isCurrentRequest()) abortController?.abort()
     } catch (error) {
+      if (!isCurrentRequest() || isIpAccessDeniedError(error)) return
+
       const message = error instanceof Error ? error.message : String(error)
       notify({ type: 'error', message })
     } finally {
-      setIsStopping(false)
+      if (isCurrentRequest()) setIsStopping(false)
     }
   }, [appId, appSourceType, currentTaskId, isStopping, isWorkflow, notify, setIsStopping])
 
   const clearMoreLikeThis = useCallback(() => {
     setControlClearMoreLikeThis(Date.now())
   }, [])
+
+  useEffect(
+    () => () => {
+      runGenerationRef.current += 1
+    },
+    [],
+  )
 
   useEffect(() => {
     const abortCurrentRequest = () => {

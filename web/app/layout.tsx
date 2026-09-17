@@ -13,6 +13,7 @@ import {
   dehydrateSystemFeatures,
   getOptionalSystemFeatures,
 } from '@/features/system-features/server'
+import IpAccessBoundary from '@/features/webapp-ip-access/boundary'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
 import { getApplicationTitle } from '@/utils/document-title'
@@ -85,7 +86,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       <SystemFeaturesBootstrapBoundary>
                         <PartnerStackCookieRecorder />
                         <TooltipProvider delay={300} closeDelay={200}>
-                          {children}
+                          <IpAccessBoundary>{children}</IpAccessBoundary>
                         </TooltipProvider>
                       </SystemFeaturesBootstrapBoundary>
                     </I18nServerProvider>
