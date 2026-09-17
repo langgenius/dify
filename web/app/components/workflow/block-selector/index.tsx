@@ -137,7 +137,7 @@ function BlockSelector({
         <IconButton
           aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
           variant="primary"
-          size="xs"
+          size="md"
           className={cn('z-10 rounded-full', triggerClassName)}
           style={triggerStyle}
         >

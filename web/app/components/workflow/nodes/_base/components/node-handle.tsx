@@ -20,6 +20,9 @@ type NodeHandleProps = {
   showExceptionStatus?: boolean
 } & Pick<Node, 'id' | 'data'>
 
+// React Flow measures the 16px handle box. Enlarge its hit area with ::before
+// and scale the button independently so zoom compensation cannot move edge endpoints.
+
 const canAutoOpenStartNodeSelector = (nodeType: BlockEnum, isChatMode: boolean) => {
   if (isChatMode) return false
 
@@ -77,9 +80,8 @@ export const NodeTargetHandle = memo(
           position={Position.Left}
           className={cn(
             'z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
+            'before:absolute before:-inset-1 before:scale-[var(--workflow-control-scale,1)]',
             'after:absolute after:top-1 after:left-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
-            'transition-all hover:scale-125',
-            open && 'scale-125',
             data._runningStatus === NodeRunningStatus.Succeeded &&
               'after:bg-workflow-link-line-success-handle',
             data._runningStatus === NodeRunningStatus.Failed &&
@@ -106,12 +108,13 @@ export const NodeTargetHandle = memo(
                 nextNodeId: id,
                 nextNodeTargetHandle: handleId,
               }}
+              triggerStyle={{ scale: 'var(--workflow-control-scale, 1)' }}
               placement="left"
               showStartTab
               triggerClassName={`
-                absolute left-0 top-0 opacity-0 pointer-events-none transition-opacity duration-150
+                absolute -left-1 -top-1 opacity-0 pointer-events-none transition-opacity duration-150
                 ${nodeSelectorClassName}
-                group-hover:opacity-100
+                group-hover:opacity-100 focus-visible:opacity-100
                 ${data.selected && 'opacity-100'}
                 data-popup-open:opacity-100
               `}
@@ -206,9 +209,8 @@ export const NodeSourceHandle = memo(
         position={Position.Right}
         className={cn(
           'group/handle z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
+          'before:absolute before:-inset-1 before:scale-[var(--workflow-control-scale,1)]',
           'after:absolute after:top-1 after:right-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
-          'transition-all hover:scale-125',
-          open && 'scale-125',
           data._runningStatus === NodeRunningStatus.Succeeded &&
             'after:bg-workflow-link-line-success-handle',
           data._runningStatus === NodeRunningStatus.Failed &&
@@ -248,13 +250,14 @@ export const NodeSourceHandle = memo(
               prevNodeSourceHandle: handleId,
             }}
             triggerClassName={`
-              absolute top-0 left-0 opacity-0 pointer-events-none transition-opacity duration-150
+              absolute -top-1 -left-1 opacity-0 pointer-events-none transition-opacity duration-150
               ${nodeSelectorClassName}
-              group-hover:opacity-100
+              group-hover:opacity-100 focus-visible:opacity-100
               ${data.selected && 'opacity-100'}
               data-popup-open:opacity-100
             `}
             availableBlocksTypes={availableNextBlocks}
+            triggerStyle={{ scale: 'var(--workflow-control-scale, 1)' }}
             showStartTab
           />
         )}

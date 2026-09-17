@@ -112,7 +112,7 @@ describe('WorkflowChecklist', () => {
     render(<WorkflowChecklist disabled={false} />)
 
     expect(screen.getByText('2')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     expect(screen.getByTestId('plugin-group')).toHaveTextContent('Missing Plugin')
     await user.click(screen.getByTestId('node-group-Broken Node'))
 
@@ -125,7 +125,7 @@ describe('WorkflowChecklist', () => {
     const onItemClick = vi.fn()
     render(<WorkflowChecklist disabled={false} onItemClick={onItemClick} />)
 
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     await user.click(screen.getByTestId('node-group-Broken Node'))
 
     expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'node-1' }))
@@ -142,7 +142,7 @@ describe('WorkflowChecklist', () => {
     }
     render(<WorkflowChecklist disabled={false} />)
 
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     await user.click(screen.getByTestId('node-group-Inline Agent'))
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
