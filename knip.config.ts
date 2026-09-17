@@ -17,6 +17,7 @@ const config: KnipConfig = {
         'plugins/eslint/index.js',
         // Public surface consumed by the standalone Marketplace host.
         // The `!` suffix keeps these entries in `knip --production`.
+        'app/components/plugins/marketplace/detail-dialog/image-preview-message.ts!',
         'app/components/plugins/marketplace/standalone/server.ts!',
         'app/components/plugins/marketplace/standalone/client.ts!',
       ],
