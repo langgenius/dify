@@ -28,7 +28,6 @@
   "bulkDocumentActions": "批量文档操作",
   "cancelAddSource": "取消",
   "cancelDocumentReindex": "取消重新索引",
-  "cardType": "知识空间",
   "characterCount": "字符数",
   "checkReindexStatus": "检查重新索引状态",
   "chunkCount": "分段数",

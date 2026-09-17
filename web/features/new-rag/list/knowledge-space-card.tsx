@@ -60,9 +60,6 @@ export function KnowledgeSpaceCard({
           </div>
           <div className="min-w-0 flex-1 py-px">
             <h2 className="truncate system-md-semibold text-text-secondary">{name}</h2>
-            <div className="mt-0.5 flex min-w-0 items-center gap-1 system-2xs-medium-uppercase text-text-disabled">
-              <span className="truncate">{t(($) => $.cardType)}</span>
-            </div>
           </div>
         </div>
         <p className="relative z-1 line-clamp-2 min-h-8 w-full px-4 py-0.5 body-xs-regular wrap-break-word text-text-tertiary">
@@ -84,9 +81,6 @@ export function KnowledgeSpaceCard({
           <span id={linkedAppsDescriptionId} className="sr-only">
             {t(($) => $['overview.linkedApps'])}: {linkedApps}
           </span>
-        </span>
-        <span aria-hidden className="text-divider-deep">
-          /
         </span>
         <span className="ml-auto min-w-0 truncate text-right">
           {t(($) => $.updated, {

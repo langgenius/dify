@@ -28,7 +28,6 @@
   "bulkDocumentActions": "ການດຳເນີນການກັບເອກະສານເປັນຊຸດ",
   "cancelAddSource": "ຍົກເລີກ",
   "cancelDocumentReindex": "ຍົກເລີກການສ້າງດັດຊະນີໃໝ່",
-  "cardType": "ພື້ນທີ່ຄວາມຮູ້",
   "characterCount": "ຕົວອັກສອນ",
   "checkReindexStatus": "ກວດເບິ່ງສະຖານະການດັດສະນີຄືນໃຫມ່",
   "chunkCount": "ສ່ວນຂໍ້ຄວາມ",

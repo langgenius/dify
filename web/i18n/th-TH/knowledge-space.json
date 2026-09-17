@@ -28,7 +28,6 @@
   "bulkDocumentActions": "การดำเนินการกับเอกสารจำนวนมาก",
   "cancelAddSource": "ยกเลิก",
   "cancelDocumentReindex": "ยกเลิกการทำดัชนีใหม่",
-  "cardType": "พื้นที่ความรู้",
   "characterCount": "อักขระ",
   "checkReindexStatus": "ตรวจสอบสถานะการทำดัชนีใหม่",
   "chunkCount": "ส่วนข้อมูล",

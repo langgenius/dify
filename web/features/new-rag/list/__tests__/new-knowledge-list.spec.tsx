@@ -976,7 +976,6 @@ describe('NewKnowledgeList', () => {
     expect(within(list).getByText('Answers for customer support')).toBeInTheDocument()
     expect(within(list).getByText('knowledgeSpace.noDescription')).toBeInTheDocument()
     expect(within(supportCard).getByTitle('camera')).toBeInTheDocument()
-    expect(within(list).getAllByText('knowledgeSpace.cardType')).toHaveLength(2)
     expect(within(list).getAllByText('knowledgeSpace.tags')).toHaveLength(2)
     expect(within(list).getByText('Customer support, Public docs')).toBeInTheDocument()
     expect(within(supportCardItem!).getByText('12')).toBeInTheDocument()
