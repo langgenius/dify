@@ -7,6 +7,7 @@ from flask import Flask
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import build_catalog
+from controllers.openapi._hints import FORM_SUBMIT_OP, HINTS_FIELD, IMPORT_CONFIRM_OP
 
 MAX_DEPTH = 4
 DESCRIBE_OP = "console_app.describe"
@@ -63,3 +64,11 @@ def test_list_kind_ops_take_page_and_limit(ops):
     for op, e in ops.items():
         if e["kind"] == "list":
             assert {"page", "limit"} <= set(e["input"]["properties"]), op
+
+
+def test_hint_target_ops_exist(ops):
+    assert {IMPORT_CONFIRM_OP, FORM_SUBMIT_OP} <= set(ops)
+
+
+def test_hints_is_reserved_in_inputs(ops):
+    assert [op for op, e in ops.items() if HINTS_FIELD in e["input"]["properties"]] == []

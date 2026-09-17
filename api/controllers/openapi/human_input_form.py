@@ -15,6 +15,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._files import FileRowKind, materialize_files
+from controllers.openapi._hints import FORM_SUBMIT_OP
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse, OpenApiFormSubmitPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import PathParam, load_app
@@ -112,7 +113,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>:submit")
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @endpoint(
-        op="run.form.submit",
+        op=FORM_SUBMIT_OP,
         kind=Kind.OBJECT,
         summary="Submit a human-input form",
         requirements=(
