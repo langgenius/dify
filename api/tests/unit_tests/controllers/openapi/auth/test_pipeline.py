@@ -8,7 +8,7 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.pipeline import AuthPipeline, PipelineRoute, PipelineRouter
 from enums import DeploymentEdition
-from libs.oauth_bearer import Scope, TokenType
+from libs.oauth_bearer import InvalidBearerError, Scope, TokenType
 from tests.unit_tests.config_override import config_overrides_context
 
 
@@ -141,6 +141,24 @@ def test_guard_no_bearer_returns_401(app):
                 pass
 
             with pytest.raises(Unauthorized):
+                view()
+
+
+def test_guard_invalid_bearer_returns_401(app):
+    router = _make_router()
+
+    with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+        ):
+            mock_auth.return_value.authenticate.side_effect = InvalidBearerError("invalid_bearer")
+
+            @router.guard(scope=Scope.FULL)
+            def view(*, auth_data):
+                pass
+
+            with pytest.raises(Unauthorized, match="invalid_bearer"):
                 view()
 
 
