@@ -3,6 +3,7 @@
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +13,10 @@ import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
+import {
+  canManageNetworkAccessPoliciesAtom,
+  canReadNetworkAccessAtom,
+} from '@/features/network-access/permissions'
 import { consoleQuery } from '@/service/console'
 import { IpPolicyDialog } from './policy-dialog'
 import {
@@ -24,7 +29,10 @@ import {
   policyUpdatedColClassName,
 } from './policy-item'
 
-type DialogState = { mode: 'create' } | { mode: 'edit'; group: NetworkAccessGroupResponse } | null
+type DialogState =
+  | { mode: 'create' }
+  | { mode: 'edit' | 'view'; group: NetworkAccessGroupResponse }
+  | null
 
 function IpPoliciesListSkeleton() {
   const { t } = useTranslation()
@@ -51,8 +59,11 @@ function IpPoliciesListSkeleton() {
 export default function IpPoliciesPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const canReadPolicies = useAtomValue(canReadNetworkAccessAtom)
+  const canManagePolicies = useAtomValue(canManageNetworkAccessPoliciesAtom)
   const [_pricing, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const groupsQuery = consoleQuery.workspaces.current.networkAccessGroups.get.queryOptions({
+    enabled: canReadPolicies,
     retry: false,
   })
   const { data, isPending, isError } = useQuery(groupsQuery)
@@ -65,7 +76,8 @@ export default function IpPoliciesPage() {
   const [dialogState, setDialogState] = useState<DialogState>(null)
   const groups = data?.groups ?? []
   const entitled = data?.entitled === true
-  const editingGroup = dialogState?.mode === 'edit' ? dialogState.group : null
+  const canMutate = canManagePolicies && entitled
+  const selectedGroup = dialogState && dialogState.mode !== 'create' ? dialogState.group : null
   const isSaving = createGroup.isPending || updateGroup.isPending
 
   const refreshGroupsAfterConflict = async (groupId?: string) => {
@@ -76,13 +88,15 @@ export default function IpPoliciesPage() {
   }
 
   const handleOpenCreate = () => {
-    if (isError) return
+    if (!canManagePolicies || isPending || isError) return
     if (!entitled) {
       void setPricing('open')
       return
     }
     setDialogState({ mode: 'create' })
   }
+
+  if (!canReadPolicies) return null
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,10 +109,12 @@ export default function IpPoliciesPage() {
             {t(($) => $['settings.ipPoliciesDescription'], { ns: 'common' })}
           </p>
         </div>
-        <Button variant="primary" size="small" onClick={handleOpenCreate}>
-          <span aria-hidden className="i-ri-add-line size-4" />
-          {t(($) => $['settings.ipPolicyAddEntry'], { ns: 'common' })}
-        </Button>
+        {canManagePolicies && (
+          <Button variant="primary" size="small" onClick={handleOpenCreate}>
+            <span aria-hidden className="i-ri-add-line size-4" />
+            {t(($) => $['settings.ipPolicyAddEntry'], { ns: 'common' })}
+          </Button>
+        )}
       </div>
 
       {isPending && <IpPoliciesListSkeleton />}
@@ -139,42 +155,47 @@ export default function IpPoliciesPage() {
             <PolicyItem
               key={group.id}
               group={group}
-              canMutate={entitled}
-              onEdit={(nextGroup) => setDialogState({ mode: 'edit', group: nextGroup })}
+              canMutate={canMutate}
+              onView={(group) => setDialogState({ mode: 'view', group })}
+              onEdit={(group) => {
+                if (!canMutate) return
+                setDialogState({ mode: 'edit', group })
+              }}
             />
           ))}
         </div>
       )}
 
-      {dialogState && (
+      {dialogState && (dialogState.mode !== 'create' || canMutate) && (
         <IpPolicyDialog
-          mode={dialogState.mode}
+          mode={canMutate ? dialogState.mode : 'view'}
           open
-          initialName={editingGroup?.name}
-          initialEntries={editingGroup?.allowed_cidrs}
-          usedByCount={editingGroup?.used_by_count}
-          referencedApps={editingGroup?.apps}
+          initialName={selectedGroup?.name}
+          initialEntries={selectedGroup?.allowed_cidrs}
+          usedByCount={selectedGroup?.used_by_count}
+          referencedApps={selectedGroup?.apps}
           isPending={isSaving}
           onOpenChange={(open) => {
             if (!open) setDialogState(null)
           }}
           onSubmit={(payload) => {
-            if (editingGroup) {
+            if (!canMutate || isSaving || dialogState.mode === 'view') return
+            if (selectedGroup) {
               updateGroup.mutate(
                 {
-                  params: { group_id: editingGroup.id },
+                  params: { group_id: selectedGroup.id },
                   body: {
                     name: payload.name,
-                    description: editingGroup.description ?? '',
+                    description: selectedGroup.description ?? '',
                     allowed_cidrs: payload.allowed_cidrs,
-                    expected_version: editingGroup.version,
+                    expected_version: selectedGroup.version,
                   },
                 },
                 {
                   onSuccess: () => setDialogState(null),
                   onError: (error) => {
                     if (getNetworkAccessErrorStatus(error) !== 409) return
-                    void refreshGroupsAfterConflict(editingGroup.id)
+                    void refreshGroupsAfterConflict(selectedGroup.id)
                   },
                 },
               )
