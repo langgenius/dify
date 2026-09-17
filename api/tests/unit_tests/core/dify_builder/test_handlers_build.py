@@ -284,6 +284,44 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas():
     assert assistant.payload["reply_text"] != "Workflow built on the canvas."  # no false success claim
 
 
+def test_plan_approval_error_card_carries_diagnostics_into_the_item_payload():
+    """Pod logs vanish on restart, so the generator's structured diagnostics must
+    ride in the ErrorCard's item payload -- that payload is what the streamed
+    conversation item (and therefore the exported debug log) preserves."""
+    from core.dify_builder.handlers_build import handle_plan_approval
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = {
+        "nodes": [{"id": "start", "data": {"type": "start", "title": "Old", "variables": []}}],
+        "edges": [],
+    }
+    diag = [
+        {
+            "at": "2026-09-17T20:22:45.123456+00:00",
+            "source": "workflow-generator",
+            "attempt": 1,
+            "message": "Reference {#node2.response#} not declared on node 'node2'",
+            "codes": ["UNRESOLVED_REFERENCE"],
+            "errors": [{"code": "UNRESOLVED_REFERENCE", "detail": "...", "node_id": "node2"}],
+        }
+    ]
+    env.agent.build_nodes = lambda _plan, _rids=None: BuildNodesResult(
+        intents=[], error="Reference {#node2.response#} not declared on node 'node2'", diagnostics=diag
+    )
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
+    fc = DifyBuilderContext(plan_items=["x"])
+
+    res = handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+
+    error = next(i for i in res.items if i.kind == "error")
+    payload_diag = error.payload["diagnostics"]
+    assert payload_diag == diag  # verbatim: server timestamp, codes and node ids all survive
+    assert payload_diag[0]["errors"][0]["node_id"] == "node2"  # the offending node is identifiable
+    assert payload_diag[0]["at"].endswith("+00:00")  # UTC, so pod logs can be searched around it
+
+
 def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build():
     from core.dify_builder.handlers_build import handle_plan_approval
     from core.dify_builder.models import MutationIntent
