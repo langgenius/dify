@@ -508,7 +508,7 @@ class AgentComposerApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
         return dump_response(
             AgentAppComposerResponse,
@@ -550,7 +550,7 @@ class AgentComposerValidateApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     @model_validate(ComposerSavePayload)
     def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, agent_id: UUID):
         AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=str(agent_id))

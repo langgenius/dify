@@ -1648,6 +1648,21 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
     assert cast(dict[str, object], captured["candidates"])["agent_id"] == agent_id
 
 
+def test_agent_composer_get_uses_read_only_session() -> None:
+    assert "@with_session(write=False)\n    def get" in getsource(AgentComposerApi)
+
+
+def test_agent_composer_get_accepts_missing_draft(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _agent_app_composer_response()
+    payload["draft"] = None
+    payload["agent_soul"] = {"prompt": {"system_prompt": "read-only snapshot"}}
+    monkeypatch.setattr(composer_controller.AgentComposerService, "load_agent_composer", lambda **_kwargs: payload)
+    with app.test_request_context():
+        result = unwrap(AgentComposerApi.get)(AgentComposerApi(), MagicMock(), "tenant-1", "agent-1")
+    assert result["draft"] is None
+    assert result["agent_soul"]["prompt"]["system_prompt"] == "read-only snapshot"
+
+
 def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
 ) -> None:
