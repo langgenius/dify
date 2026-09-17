@@ -14,7 +14,7 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Kind, endpoint
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
-from controllers.openapi._files import FileRowKind, materialize_files
+from controllers.openapi._files import form_file_rows, materialize_files
 from controllers.openapi._hints import FORM_SUBMIT_OP
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse, OpenApiFormSubmitPayload
 from controllers.openapi.auth.context import Context
@@ -152,7 +152,7 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             caller=ctx.caller,
             inputs=body.inputs,
             files=body.files,
-            rows=dict.fromkeys(body.files or {}, FileRowKind.SINGLE),
+            rows=form_file_rows(form.get_definition()),
         )
 
         try:

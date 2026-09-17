@@ -14,14 +14,17 @@ import json
 import sys
 import uuid
 from datetime import UTC, datetime
+from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from werkzeug.datastructures import FileStorage
 
-from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
+from controllers.openapi import _files as files_module
+from controllers.openapi._errors import HumanInputFormNotFound, InvalidFilePart, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, OpenApiFormSubmitPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Rank
@@ -30,6 +33,13 @@ from controllers.openapi.human_input_form import (
     CheckFormSurface,
     OpenApiWorkflowHumanInputFormApi,
     OpenApiWorkflowHumanInputFormSubmitApi,
+)
+from core.workflow.nodes.human_input import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormDefinition,
+    FormInputConfig,
+    UserActionConfig,
 )
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
@@ -68,13 +78,42 @@ def _mock_service(monkeypatch: pytest.MonkeyPatch, form) -> Mock:
     return service_mock
 
 
-def _make_form(app_id: str = "app-1", recipient_type=RecipientType.STANDALONE_WEB_APP) -> SimpleNamespace:
+def _definition(*inputs: FormInputConfig) -> FormDefinition:
+    return FormDefinition(
+        form_content="",
+        inputs=list(inputs),
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
+        rendered_content="",
+        expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
+    )
+
+
+def _make_form(
+    app_id: str = "app-1",
+    recipient_type=RecipientType.STANDALONE_WEB_APP,
+    definition: FormDefinition | None = None,
+) -> SimpleNamespace:
+    resolved = definition if definition is not None else _definition()
     return SimpleNamespace(
         app_id=app_id,
         tenant_id="tenant-1",
         recipient_type=recipient_type,
         expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
+        get_definition=lambda: resolved,
     )
+
+
+def _fs(name: str, mimetype: str) -> FileStorage:
+    return FileStorage(stream=BytesIO(b"bytes"), filename=name, content_type=mimetype)
+
+
+def _bind_uploads(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`materialize_files` runs for real; only the upload service is a double."""
+    service = Mock()
+    service.upload_file.side_effect = lambda **kw: SimpleNamespace(
+        id=f"uf-{kw['filename']}", extension=kw["filename"].rsplit(".", 1)[-1], mime_type=kw["mimetype"]
+    )
+    monkeypatch.setattr(files_module, "application_services", lambda: SimpleNamespace(files=service))
 
 
 def _make_account(account_id: str = "acct-1") -> Account:
@@ -176,6 +215,59 @@ class TestOpenApiHumanInputFormPost:
             submission_end_user_id=None,
         )
         assert result == FormSubmitResponse()
+
+    def test_post_file_list_input_takes_several_parts(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        """Rows come from the form definition, so a `file-list` input accepts the
+        repeated parts the run path accepts rather than one part per name.
+        """
+        _bind_uploads(monkeypatch)
+        form = _make_form(definition=_definition(FileListInputConfig(output_variable_name="pages")))
+        service_mock = _mock_service(monkeypatch, form)
+
+        api = OpenApiWorkflowHumanInputFormSubmitApi()
+        with app.test_request_context(
+            "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
+            method="POST",
+        ):
+            api.post.__handler__(
+                api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
+                app_id="app-1",
+                form_token="tok-1",
+                body=OpenApiFormSubmitPayload(
+                    action="approve",
+                    inputs={},
+                    files={"pages": [_fs("1.png", "image/png"), _fs("2.png", "image/png")]},
+                ),
+            )
+
+        form_data = service_mock.submit_form_by_token.call_args.kwargs["form_data"]
+        assert [part["upload_file_id"] for part in form_data["pages"]] == ["uf-1.png", "uf-2.png"]
+
+    def test_post_single_file_input_refuses_two_parts(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        _bind_uploads(monkeypatch)
+        form = _make_form(definition=_definition(FileInputConfig(output_variable_name="doc")))
+        _mock_service(monkeypatch, form)
+
+        api = OpenApiWorkflowHumanInputFormSubmitApi()
+        with app.test_request_context(
+            "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
+            method="POST",
+        ):
+            with pytest.raises(InvalidFilePart) as error_info:
+                api.post.__handler__(
+                    api,
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
+                    app_id="app-1",
+                    form_token="tok-1",
+                    body=OpenApiFormSubmitPayload(
+                        action="approve",
+                        inputs={},
+                        files={"doc": [_fs("a.pdf", "application/pdf"), _fs("b.pdf", "application/pdf")]},
+                    ),
+                )
+
+        assert error_info.value.code == 422
 
     def test_post_end_user_caller_uses_end_user_id(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         service_mock = _mock_service(monkeypatch, _make_form())

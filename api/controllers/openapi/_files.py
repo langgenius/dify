@@ -17,9 +17,10 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any
+from typing import Any, Final
 from urllib.parse import urlparse
 
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
@@ -27,6 +28,7 @@ import services
 from controllers.common.errors import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 from controllers.openapi._errors import FilenameNotExists, InvalidFilePart
 from controllers.openapi._input_schema import _CHAT_FAMILY, resolve_app_config
+from core.workflow.nodes.human_input import FileInputConfig, FileListInputConfig, FormDefinition
 from extensions.ext_application_services import application_services
 from graphon.file import standardize_file_type
 from models.model import App
@@ -52,6 +54,22 @@ def file_rows_of(app: App, session: Session) -> dict[str, FileRowKind]:
             continue
         rows[body["variable"]] = FileRowKind(row_type)
     return rows
+
+
+_FORM_FILE_ROWS: Final[dict[type[BaseModel], FileRowKind]] = {
+    FileInputConfig: FileRowKind.SINGLE,
+    FileListInputConfig: FileRowKind.LIST,
+}
+"""A human-input form declares its file inputs as typed configs rather than as the
+`user_input_form` rows above; this is the same two kinds under the other shape."""
+
+
+def form_file_rows(definition: FormDefinition) -> dict[str, FileRowKind]:
+    return {
+        row.output_variable_name: kind
+        for row in definition.inputs
+        if (kind := _FORM_FILE_ROWS.get(type(row))) is not None
+    }
 
 
 def _upload(part: FileStorage, caller: Any) -> dict[str, Any]:
