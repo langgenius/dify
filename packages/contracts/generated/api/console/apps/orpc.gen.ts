@@ -530,7 +530,7 @@ export const get2 = oc
     summary: 'Return the lightweight app cards needed by the Explore home page',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsRecentQuery.optional() }))
+  .input(z.object({ query: zGetAppsRecentQuery.optional() }).optional())
   .output(zGetAppsRecentResponse)
 
 export const recent = {
@@ -549,7 +549,7 @@ export const get3 = oc
     path: '/apps/starred',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsStarredQuery.optional() }))
+  .input(z.object({ query: zGetAppsStarredQuery.optional() }).optional())
   .output(zGetAppsStarredResponse)
 
 export const starred = {
@@ -4582,7 +4582,7 @@ export const get86 = oc
     summary: 'Get app list',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsQuery.optional() }))
+  .input(z.object({ query: zGetAppsQuery.optional() }).optional())
   .output(zGetAppsResponse)
 
 /**

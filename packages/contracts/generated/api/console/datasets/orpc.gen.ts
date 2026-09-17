@@ -399,7 +399,7 @@ export const get6 = oc
     path: '/datasets/external-knowledge-api',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }).optional())
   .output(zGetDatasetsExternalKnowledgeApiResponse)
 
 /**
@@ -507,7 +507,7 @@ export const get8 = oc
     path: '/datasets/process-rule',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }).optional())
   .output(zGetDatasetsProcessRuleResponse)
 
 export const processRule = {
@@ -1779,7 +1779,7 @@ export const get36 = oc
     path: '/datasets',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsQuery.optional() }).optional())
   .output(zGetDatasetsResponse)
 
 /**

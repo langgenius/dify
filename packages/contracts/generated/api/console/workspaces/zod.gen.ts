@@ -1024,21 +1024,9 @@ export const zMemberInviteFailedResponse = z.object({
 export const zMemberInviteResponse = z.object({
   invitation_results: z.array(
     z.union([
-      z
-        .object({
-          status: z.literal('success'),
-        })
-        .and(zMemberInviteSuccessResponse),
-      z
-        .object({
-          status: z.literal('already_member'),
-        })
-        .and(zMemberInviteAlreadyMemberResponse),
-      z
-        .object({
-          status: z.literal('failed'),
-        })
-        .and(zMemberInviteFailedResponse),
+      zMemberInviteSuccessResponse,
+      zMemberInviteAlreadyMemberResponse,
+      zMemberInviteFailedResponse,
     ]),
   ),
   result: z.literal('success'),

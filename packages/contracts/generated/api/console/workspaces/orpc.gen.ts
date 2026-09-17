@@ -808,7 +808,7 @@ export const get7 = oc
     summary: 'List customized snippets with pagination and search',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentCustomizedSnippetsResponse)
 
 /**
@@ -1692,7 +1692,7 @@ export const get20 = oc
     path: '/workspaces/current/model-providers',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentModelProvidersResponse)
 
 export const modelProviders = {
@@ -1965,7 +1965,7 @@ export const get29 = oc
     path: '/workspaces/current/plugin/list',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentPluginListResponse)
 
 export const list2 = {
@@ -2152,7 +2152,7 @@ export const get35 = oc
     path: '/workspaces/current/plugin/tasks',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentPluginTasksResponse)
 
 export const tasks = {
@@ -3898,7 +3898,7 @@ export const get83 = oc
     path: '/workspaces/current/skills',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentSkillsResponse)
 
 export const post55 = oc
@@ -4504,7 +4504,9 @@ export const get100 = oc
     path: '/workspaces/current/tool-provider/workflow/get',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }))
+  .input(
+    z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }).optional(),
+  )
   .output(zGetWorkspacesCurrentToolProviderWorkflowGetResponse)
 
 export const get101 = {
@@ -4564,7 +4566,7 @@ export const get103 = oc
     path: '/workspaces/current/tool-providers',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentToolProvidersResponse)
 
 export const toolProviders = {
