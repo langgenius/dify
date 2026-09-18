@@ -288,6 +288,65 @@ def test_emit_names_tool_spans_for_gen_ai(monkeypatch: pytest.MonkeyPatch) -> No
     assert "gen_ai.conversation.id" not in attributes
 
 
+def tool_node_span(name: str = "tool_CallChild", **tool_info: object) -> CanonicalSpan:
+    return CanonicalSpan(
+        id="tool-node-1",
+        parent_id=None,
+        name=name,
+        kind=CanonicalSpanKind.TOOL,
+        start_time=datetime(2025, 1, 1),
+        end_time=datetime(2025, 1, 1, 0, 0, 1),
+        status=CanonicalSpanStatus.OK,
+        metadata={"node_type": "tool", "tool_info": tool_info},
+    )
+
+
+def test_emit_marks_a_workflow_tool_as_a_sub_workflow_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    span = emitted(
+        monkeypatch,
+        tool_node_span(provider_type="workflow", provider_id="provider-1", plugin_unique_identifier=None),
+    )
+
+    assert span.attributes["dify.tool.provider_type"] == "workflow"
+    assert span.attributes["dify.tool.provider_id"] == "provider-1"
+    assert "dify.tool.plugin_unique_identifier" not in span.attributes
+    # gen_ai.tool.name carries the node title, not the builder's "<node type>_" span name
+    assert span.attributes["gen_ai.tool.name"] == "CallChild"
+    assert span.name == "tool_CallChild"
+
+
+def test_emit_exposes_the_plugin_behind_a_plugin_tool(monkeypatch: pytest.MonkeyPatch) -> None:
+    span = emitted(
+        monkeypatch,
+        tool_node_span(
+            "tool_Search",
+            provider_type="plugin",
+            provider_id="langgenius/google/google",
+            plugin_unique_identifier="langgenius/google:0.1.0@abc",
+        ),
+    )
+
+    assert span.attributes["dify.tool.provider_type"] == "plugin"
+    assert span.attributes["dify.tool.plugin_unique_identifier"] == "langgenius/google:0.1.0@abc"
+    assert span.attributes["gen_ai.tool.name"] == "Search"
+
+
+def test_emit_names_an_untitled_tool_node_by_its_span_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    span = emitted(monkeypatch, tool_node_span("tool", provider_type="builtin"))
+
+    assert span.attributes["gen_ai.tool.name"] == "tool"
+    assert span.attributes["dify.tool.provider_type"] == "builtin"
+
+
+def test_emit_ignores_tool_info_outside_tool_spans(monkeypatch: pytest.MonkeyPatch) -> None:
+    span = emitted(
+        monkeypatch,
+        run_span("workflow_run-1", "run-1", workflow_run_id="run-1", tool_info={"provider_type": "workflow"}),
+    )
+
+    assert not [key for key in span.attributes if key.startswith("dify.tool.")]
+
+
 def test_emit_marks_error_span(monkeypatch: pytest.MonkeyPatch) -> None:
     adapter, exporter = make_adapter(monkeypatch)
 

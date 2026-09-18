@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+from collections.abc import Mapping
 from typing import Any, override
 from urllib.parse import urlparse, urlunparse
 
@@ -141,13 +142,45 @@ def _run_span_operation(canonical_span: CanonicalSpan) -> str | None:
     return None
 
 
+def _tool_name(canonical_span: CanonicalSpan) -> str:
+    """Name a tool span by the node title; the builder prefixes workflow node spans with the node type."""
+    node_type = canonical_span.metadata.get("node_type")
+    if isinstance(node_type, str) and node_type:
+        prefix = f"{node_type}_"
+        if canonical_span.name.startswith(prefix) and len(canonical_span.name) > len(prefix):
+            return canonical_span.name[len(prefix) :]
+    return canonical_span.name
+
+
+# Tool provider fields, promoted out of the serialized metadata so backends can filter on them.
+# provider_type tells a workflow published as a tool -- a sub-workflow call -- apart from builtin,
+# plugin, API, MCP, app and dataset-retrieval tools.
+_TOOL_INFO_ATTRIBUTES: tuple[tuple[str, str], ...] = (
+    ("provider_type", "dify.tool.provider_type"),
+    ("provider_id", "dify.tool.provider_id"),
+    ("plugin_unique_identifier", "dify.tool.plugin_unique_identifier"),
+)
+
+
+def _tool_attributes(canonical_span: CanonicalSpan) -> dict[str, AttributeValue]:
+    tool_info = canonical_span.metadata.get("tool_info")
+    if canonical_span.kind is not CanonicalSpanKind.TOOL or not isinstance(tool_info, Mapping):
+        return {}
+    attributes: dict[str, AttributeValue] = {}
+    for info_key, attribute_key in _TOOL_INFO_ATTRIBUTES:
+        value = tool_info.get(info_key)
+        if isinstance(value, str) and value:
+            attributes[attribute_key] = value
+    return attributes
+
+
 def _gen_ai_attributes(canonical_span: CanonicalSpan, trace: CanonicalTrace) -> dict[str, AttributeValue]:
     attributes: dict[str, AttributeValue] = {}
     operation_name = _GEN_AI_OPERATION_NAME.get(canonical_span.kind)
     if operation_name:
         attributes["gen_ai.operation.name"] = operation_name
     if canonical_span.kind is CanonicalSpanKind.TOOL and canonical_span.name:
-        attributes["gen_ai.tool.name"] = canonical_span.name
+        attributes["gen_ai.tool.name"] = _tool_name(canonical_span)
     if trace.session_id:
         attributes["gen_ai.conversation.id"] = trace.session_id
     for metadata_key, attribute_key in _GEN_AI_METADATA_ATTRIBUTES:
@@ -309,6 +342,7 @@ class UnifiedOTelAdapter(OTLPUnifiedAdapter[OTelTracingConfig]):
     ) -> dict[str, AttributeValue]:
         attributes = super().attributes(canonical_span, trace, parent)
         attributes.update(_gen_ai_attributes(canonical_span, trace))
+        attributes.update(_tool_attributes(canonical_span))
         if _run_span_operation(canonical_span) is not None:
             # The run id left the span name; keep it searchable as a first-class attribute.
             attributes["dify.workflow.run_id"] = canonical_span.metadata["workflow_run_id"]
