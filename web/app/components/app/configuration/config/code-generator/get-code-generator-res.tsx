@@ -20,10 +20,10 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { generateRule } from '@/service/debug'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
@@ -189,7 +189,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
 
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
-      <Loading />
+      <LoadingPlaceholder />
       <div className="text-[13px] text-text-tertiary">
         {t(($) => $['codegen.loading'], { ns: 'appDebug' })}
       </div>

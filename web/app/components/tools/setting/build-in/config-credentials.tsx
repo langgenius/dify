@@ -20,9 +20,9 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 
@@ -113,7 +113,7 @@ const ConfigCredential: FC<Props> = ({
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
                 {!credentialSchema ? (
-                  <Loading type="app" />
+                  <LoadingPlaceholder className="h-full" />
                 ) : (
                   <>
                     <Form

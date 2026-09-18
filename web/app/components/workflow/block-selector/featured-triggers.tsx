@@ -15,7 +15,7 @@ import {
 } from '@langgenius/dify-ui/preview-card'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
@@ -142,7 +142,7 @@ const FeaturedTriggers = ({
       <CollapsiblePanel>
         {isLoading && (
           <div className="py-3">
-            <Loading type="app" />
+            <LoadingPlaceholder className="h-full" />
           </div>
         )}
 

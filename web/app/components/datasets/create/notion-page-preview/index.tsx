@@ -5,8 +5,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import NotionIcon from '@/app/components/base/notion-icon'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { fetchNotionPagePreview } from '@/service/datasets'
 import s from './index.module.css'
 
@@ -66,7 +66,7 @@ const NotionPagePreview = ({ currentPage, notionCredentialId, hidePreview }: IPr
         </div>
       </div>
       <div className={cn(s.previewContent, 'body-md-regular')}>
-        {loading && <Loading type="area" />}
+        {loading && <LoadingPlaceholder />}
         {!loading && <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>}
       </div>
     </div>

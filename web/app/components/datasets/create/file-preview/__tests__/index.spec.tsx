@@ -1,6 +1,6 @@
 import type { MockedFunction } from 'vite-plus/test'
 import type { CustomFile as File } from '@/models/datasets'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { fetchFilePreview } from '@/service/common'
 import FilePreview from '../index'
 
@@ -45,7 +45,7 @@ const renderFilePreview = (props: Partial<{ file?: File; hidePreview: () => void
 
 // Helper to find the loading spinner element
 const findLoadingSpinner = (container: HTMLElement) => {
-  return container.querySelector('.spin-animation')
+  return within(container).queryByRole('progressbar')
 }
 
 // FilePreview Component Tests
@@ -101,8 +101,6 @@ describe('FilePreview', () => {
       )
 
       const { container } = renderFilePreview()
-
-      // Assert - Loading should be visible initially (using spin-animation class)
       const loadingElement = findLoadingSpinner(container)
       expect(loadingElement)!.toBeInTheDocument()
     })

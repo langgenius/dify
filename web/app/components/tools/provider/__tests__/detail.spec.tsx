@@ -342,7 +342,7 @@ describe('ProviderDetail', () => {
           onRefreshData={mockOnRefreshData}
         />,
       )
-      expect(screen.getByRole('status'))!.toBeInTheDocument()
+      expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('renders tool list after loading for builtIn type', async () => {

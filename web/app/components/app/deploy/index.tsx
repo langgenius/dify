@@ -11,7 +11,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { getEnterpriseDocUrl, useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -160,7 +160,7 @@ export default function AppDeploy() {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  if (!appDetail) return <Loading type="app" />
+  if (!appDetail) return <LoadingPlaceholder className="h-full" />
 
   const { canDeploy, canViewAccessPoint } = getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,

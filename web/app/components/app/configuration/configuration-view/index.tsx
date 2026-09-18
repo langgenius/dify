@@ -34,8 +34,8 @@ import Debug from '@/app/components/app/configuration/debug'
 import Divider from '@/app/components/base/divider'
 import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import Loading from '@/app/components/base/loading'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
@@ -101,7 +101,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   if (showLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }

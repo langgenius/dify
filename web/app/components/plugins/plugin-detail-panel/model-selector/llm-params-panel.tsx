@@ -7,10 +7,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import ParameterItem from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
 import PresetsParameter from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter'
 import { getSupportedPresetConfig } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter-utils'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 
@@ -70,7 +70,7 @@ const LLMParamsPanel = ({
   if (isRulesLoading) {
     return (
       <div className="mt-5">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }

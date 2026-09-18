@@ -18,8 +18,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
-import Loading from '@/app/components/base/loading'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
@@ -248,7 +248,7 @@ const Annotation: FC<Props> = (props) => {
           </div>
         </Filter>
         {isLoading ? (
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List
             list={list}

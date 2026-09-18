@@ -17,7 +17,7 @@ import {
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { LICENSE_LINK } from '@/constants/link'
 import { useLocale } from '@/context/i18n'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
@@ -182,7 +182,7 @@ export default function InviteSettingsPage() {
     router,
   ])
 
-  if (isProfilePending || shouldReturnToSignIn || !checkRes) return <Loading />
+  if (isProfilePending || shouldReturnToSignIn || !checkRes) return <LoadingPlaceholder />
   if (!checkRes.is_valid) {
     return (
       <div className="flex flex-col md:w-100">

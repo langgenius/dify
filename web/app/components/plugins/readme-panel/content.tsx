@@ -3,9 +3,9 @@
 import type { ReactNode } from 'react'
 import type { PluginDetail } from '../types'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { usePluginReadme } from '@/service/use-plugins'
 import DetailHeader from '../plugin-detail-panel/detail-header'
 
@@ -33,7 +33,7 @@ export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelCo
   if (isLoading) {
     readmeContent = (
       <div className="flex h-40 items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   } else if (error) {

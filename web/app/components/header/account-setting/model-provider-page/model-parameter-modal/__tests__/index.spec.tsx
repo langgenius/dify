@@ -337,7 +337,7 @@ describe('ModelParameterModal', () => {
     isRulesPending = true
     render(<ModelParameterModal {...defaultProps} />)
     openSettings()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('should not render parameter loading when model is not configured and parameter rules query is pending but disabled', () => {
@@ -347,7 +347,7 @@ describe('ModelParameterModal', () => {
     render(<ModelParameterModal {...defaultProps} provider="" modelId="" />)
     openSettings()
 
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
   })
 
@@ -428,7 +428,7 @@ describe('ModelParameterModal', () => {
     render(<ModelParameterModal {...defaultProps} />)
     openSettings()
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
   })
 

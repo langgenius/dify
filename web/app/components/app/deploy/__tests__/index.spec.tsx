@@ -1109,7 +1109,7 @@ describe('AppDeploy', () => {
 
     render(<AppDeploy />)
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'common.appMenus.deploy' }),
     ).not.toBeInTheDocument()
@@ -2120,7 +2120,7 @@ describe('AppDeploy', () => {
       { queryClient },
     )
 
-    expect(screen.getByRole('status', { name: /loading/ })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: /loading/ })).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     await waitFor(() => {
       expect(deploymentRequests).toHaveLength(1)

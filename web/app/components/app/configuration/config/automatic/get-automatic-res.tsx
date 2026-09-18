@@ -21,10 +21,10 @@ import * as React from 'react'
 import { useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useAutoGenModel } from '../auto-gen-model-storage'
@@ -190,7 +190,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const renderLoading = (
     <div className="flex min-w-0 flex-col items-center justify-center space-y-3 xl:h-full xl:flex-1">
-      <Loading />
+      <LoadingPlaceholder />
       <div className="text-[13px] text-text-tertiary">
         {t(($) => $['generate.loading'], { ns: 'appDebug' })}
       </div>

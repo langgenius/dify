@@ -15,12 +15,12 @@ import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
@@ -147,7 +147,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   }, [datasetId, router, shouldRedirectToDocuments])
 
   if ((!!datasetId && isLoadingWorkspacePermissionKeys) || shouldRedirectToDocuments)
-    return <Loading type="app" />
+    return <LoadingPlaceholder className="h-full" />
 
   if (fetchingAuthedDataSourceListError)
     return (
@@ -161,7 +161,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-components-panel-bg">
       <TopBar activeIndex={step - 1} datasetId={datasetId} />
       <div className="min-h-0 flex-1">
-        {isLoadingAuthedDataSourceList && <Loading type="app" />}
+        {isLoadingAuthedDataSourceList && <LoadingPlaceholder className="h-full" />}
         {!isLoadingAuthedDataSourceList && (
           <>
             {step === 1 && (

@@ -17,9 +17,9 @@ import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
@@ -183,7 +183,7 @@ const SettingBuiltInTool: FC<Props> = ({
             )}
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-              {isLoading && <Loading type="app" />}
+              {isLoading && <LoadingPlaceholder className="h-full" />}
               {!isLoading && (
                 <>
                   {/* header */}

@@ -12,12 +12,12 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import {
   useInvalidPreImportNotionPages,
   usePreImportNotionPages,
 } from '@/service/knowledge/use-import'
 import Header from '../../datasets/create/website/base/header'
-import Loading from '../loading'
 import NotionConnector from '../notion-connector'
 import WorkspaceSelector from './credential-selector'
 import PageSelector from './page-selector'
@@ -198,7 +198,7 @@ const NotionPageSelector = ({
               className="flex h-74 items-center justify-center"
               data-testid="notion-page-selector-loading"
             >
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           ) : (
             <PageSelector

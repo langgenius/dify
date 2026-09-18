@@ -34,8 +34,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
@@ -377,7 +377,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                 <div className="flex min-h-0 flex-1 flex-col pt-3">
                   {isDetailLoading && (
                     <div className="flex h-50">
-                      <Loading type="app" />
+                      <LoadingPlaceholder className="h-full" />
                     </div>
                   )}
                   {!isDetailLoading && (

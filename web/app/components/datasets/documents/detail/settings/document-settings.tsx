@@ -15,7 +15,6 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -23,6 +22,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { LoadingPlaceholder } from '@/app/components/loading-placeholder'
 import DatasetDetailContext from '@/context/dataset-detail'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
@@ -184,7 +184,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   return (
     <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
       <div className="grow">
-        {!documentDetail && <Loading type="app" />}
+        {!documentDetail && <LoadingPlaceholder className="h-full" />}
         {dataset && documentDetail && (
           <StepTwo
             isAPIKeySet={!!embeddingsDefaultModel}
