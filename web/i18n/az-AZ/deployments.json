@@ -27,7 +27,6 @@
   "list.emptyTitle": "Hələ yerləşdirmə yoxdur",
   "overview.chip.latest": "ən son",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Yerləşdirilir",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Yerləşdirmə uğursuz oldu",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Etibarsız",
   "status.RUNTIME_INSTANCE_STATUS_READY": "İşləyir",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Yerləşdirilməyib",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Versiyadakı dəyər",
   "studio.versionsBehind_one": "{{count}} versiya geridə",
   "studio.versionsBehind_other": "{{count}} versiya geridə",
-  "versions.checkingReleaseContent": "Buraxılışın məzmunu yoxlanılır...",
   "versions.deployTo": "{{name}} mühitinə yerləşdir"
 }

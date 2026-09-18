@@ -83,7 +83,6 @@ type PluralBaseResources = {
     'agentDetail.access.workflow.nodeCount': string
     'agentDetail.configure.buildDraft.changesToApply': string
     'agentDetail.configure.publishImpact.workflowCount': string
-    'skillManagement.detail.uploadFilesFailedStatus': string
   }
   app: {
     'accessControlDialog.groups': string

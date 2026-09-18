@@ -27,7 +27,6 @@
   "list.emptyTitle": "अभी तक कोई डिप्लॉयमेंट नहीं",
   "overview.chip.latest": "नवीनतम",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "डिप्लॉय हो रहा है",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "डिप्लॉय विफल",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "अमान्य",
   "status.RUNTIME_INSTANCE_STATUS_READY": "चल रहा है",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "डिप्लॉय नहीं किया गया",
@@ -87,6 +86,5 @@
   "studio.versionValue": "वर्शन का मान",
   "studio.versionsBehind_one": "{{count}} वर्शन पीछे",
   "studio.versionsBehind_other": "{{count}} वर्शन पीछे",
-  "versions.checkingReleaseContent": "रिलीज़ सामग्री जांची जा रही है...",
   "versions.deployTo": "{{name}} पर डिप्लॉय करें"
 }
