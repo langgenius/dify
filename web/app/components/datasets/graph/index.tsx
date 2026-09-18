@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SearchInput } from '@/app/components/base/search-input'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useRouter } from '@/next/navigation'
@@ -88,7 +88,7 @@ const KnowledgeGraph = ({ datasetId }: KnowledgeGraphProps) => {
     )
   }
 
-  if (isStatsLoading) return <Loading type="app" />
+  if (isStatsLoading) return <LoadingPlaceholder className="h-full" />
 
   if (!hasGraph) {
     return (
@@ -137,7 +137,7 @@ const KnowledgeGraph = ({ datasetId }: KnowledgeGraphProps) => {
           )}
         >
           {isGraphLoading ? (
-            <Loading type="area" />
+            <LoadingPlaceholder className="h-full" />
           ) : entities.length === 0 ? (
             <div className="flex h-full items-center justify-center px-6 text-center system-sm-regular text-text-tertiary">
               {t(($) => $['graph.noMatch'], { ns: 'datasetSettings' })}
