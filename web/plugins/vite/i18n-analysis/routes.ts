@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 export type ModuleDependencies = { static: Set<string>; dynamic: Set<string> }
-export type NamespaceSources = { namespace: string; sources: string[] }
+type NamespaceSources = { namespace: string; sources: string[] }
 export type RouteNamespaceReport = {
   route: string
   page: string
