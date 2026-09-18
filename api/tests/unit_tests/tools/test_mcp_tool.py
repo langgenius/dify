@@ -16,12 +16,14 @@ from core.mcp.types import (
     ImageContent,
     TextContent,
     TextResourceContents,
+    Tool as MCPToolType,
 )
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.mcp_tool.tool import MCPTool
 from graphon.model_runtime.entities.llm_entities import LLMUsage
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 
 @pytest.fixture
@@ -375,3 +377,75 @@ class TestMCPToolUsageExtraction:
             )
             if expected_total:
                 assert usage.total_tokens == expected_total
+
+
+class TestMCPToolNormalization:
+    """Test MCP tool data normalization before persistence (issue #42453)."""
+
+    def test_normalize_tool_without_title_falls_back_to_name(self):
+        """When title is absent, fall back to tool name."""
+        tool = MCPToolType(
+            name="web_search_exa",
+            description="Search the web",
+            inputSchema={"type": "object"},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        assert result["title"] == "web_search_exa"
+        assert result["description"] == "Search the web"
+        assert result["outputSchema"] == {}
+
+    def test_normalize_tool_with_title_preserves_title(self):
+        """When title is provided, keep it."""
+        tool = MCPToolType(
+            name="web_search_exa",
+            title="Web Search",
+            description="Search the web",
+            inputSchema={"type": "object"},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        assert result["title"] == "Web Search"
+
+    def test_normalize_tool_title_falls_back_to_annotations_title(self):
+        """When title is absent but annotations.title exists, use annotations.title."""
+        tool = MCPToolType(
+            name="web_search_exa",
+            description="Search the web",
+            inputSchema={"type": "object"},
+            annotations={"title": "Exa Web Search"},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        assert result["title"] == "Exa Web Search"
+
+    def test_normalize_tool_without_description_gives_empty_string(self):
+        """When description is absent, use empty string."""
+        tool = MCPToolType(
+            name="test_tool",
+            inputSchema={"type": "object"},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        assert result["description"] == ""
+        assert result["title"] == "test_tool"
+
+    def test_normalize_tool_removes_none_meta(self):
+        """None meta field should be removed from output."""
+        tool = MCPToolType(
+            name="test_tool",
+            description="A tool",
+            inputSchema={"type": "object"},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        assert "meta" not in result or result["meta"] is not None
+
+    def test_normalized_tool_no_none_title_in_json(self):
+        """Serialized normalized tool should not contain title: null."""
+        import json
+
+        tool = MCPToolType(
+            name="web_search_exa",
+            description="Search the web for any topic",
+            inputSchema={"type": "object", "properties": {}},
+        )
+        result = MCPToolManageService._normalize_mcp_tool_data(tool)
+        serialized = json.dumps(result)
+        assert '"title": null' not in serialized
+        assert '"title": "web_search_exa"' in serialized
