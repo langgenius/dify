@@ -54,7 +54,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                     session.execute(
                         update(DatasetDocument)
                         .where(DatasetDocument.id.in_(dataset_documents_ids))
-                        .values(indexing_status="indexing")
+                        .values({DatasetDocument.indexing_status: "indexing"})
                     )
                     session.commit()
 
@@ -88,14 +88,14 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                             session.execute(
                                 update(DatasetDocument)
                                 .where(DatasetDocument.id == dataset_document.id)
-                                .values(indexing_status="completed")
+                                .values({DatasetDocument.indexing_status: "completed"})
                             )
                             session.commit()
                         except Exception as e:
                             session.execute(
                                 update(DatasetDocument)
                                 .where(DatasetDocument.id == dataset_document.id)
-                                .values(indexing_status="error", error=str(e))
+                                .values({DatasetDocument.indexing_status: "error", DatasetDocument.error: str(e)})
                             )
                             session.commit()
             elif action == "update":
@@ -114,7 +114,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                     session.execute(
                         update(DatasetDocument)
                         .where(DatasetDocument.id.in_(dataset_documents_ids))
-                        .values(indexing_status="indexing")
+                        .values({DatasetDocument.indexing_status: "indexing"})
                     )
                     session.commit()
 
@@ -189,14 +189,14 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                             session.execute(
                                 update(DatasetDocument)
                                 .where(DatasetDocument.id == dataset_document.id)
-                                .values(indexing_status="completed")
+                                .values({DatasetDocument.indexing_status: "completed"})
                             )
                             session.commit()
                         except Exception as e:
                             session.execute(
                                 update(DatasetDocument)
                                 .where(DatasetDocument.id == dataset_document.id)
-                                .values(indexing_status="error", error=str(e))
+                                .values({DatasetDocument.indexing_status: "error", DatasetDocument.error: str(e)})
                             )
                             session.commit()
                 else:

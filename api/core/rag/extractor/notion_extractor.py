@@ -347,7 +347,7 @@ class NotionExtractor(BaseExtractor):
                 DocumentModel.tenant_id == document_model.tenant_id,
                 DocumentModel.dataset_id == document_model.dataset_id,
             )
-            .values(data_source_info=json.dumps(data_source_info))
+            .values({DocumentModel.data_source_info: json.dumps(data_source_info)})
         )
         db.session.commit()
 

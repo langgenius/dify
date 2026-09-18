@@ -10,6 +10,7 @@ from typing import Literal
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from typing_extensions import TypedDict
 
 from core.tools.signature import (
     bind_file_uri,
@@ -20,6 +21,16 @@ from core.tools.signature import (
     verify_plugin_file_signature,
     verify_tool_file_signature,
 )
+
+
+class _SignedPluginFile(TypedDict, closed=True):
+    filename: str
+    mimetype: str
+    tenant_id: str
+    user_id: str
+    timestamp: str
+    nonce: str
+    sign: str
 
 
 @pytest.fixture(autouse=True)
@@ -213,7 +224,7 @@ def test_plugin_upload_signature_binds_max_size_without_legacy_payload_ambiguity
         max_size=1024,
     )
     query = parse_qs(urlparse(uri).query)
-    signed = {
+    signed: _SignedPluginFile = {
         "filename": "report.pdf",
         "mimetype": "application/pdf",
         "tenant_id": "tenant-id",
@@ -227,7 +238,7 @@ def test_plugin_upload_signature_binds_max_size_without_legacy_payload_ambiguity
     assert verify_plugin_file_signature(**signed, user_from=user_from, max_size=1024) is True
     assert verify_plugin_file_signature(**signed, user_from=user_from, max_size=2048) is False
     assert verify_plugin_file_signature(**signed, user_from=user_from) is False
-    forged = {**signed, "nonce": f"{signed['nonce']}{forged_nonce_suffix}"}
+    forged: _SignedPluginFile = {**signed, "nonce": f"{signed['nonce']}{forged_nonce_suffix}"}
     assert verify_plugin_file_signature(**forged) is False
 
 
@@ -248,7 +259,7 @@ def test_plugin_upload_signature_binds_account_user_from(
     query = parse_qs(urlparse(uri).query)
 
     assert query["user_from"] == ["account"]
-    signed = {
+    signed: _SignedPluginFile = {
         "filename": "report.pdf",
         "mimetype": "application/pdf",
         "tenant_id": "tenant-id",
