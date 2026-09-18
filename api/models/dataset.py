@@ -29,7 +29,6 @@ from libs.uuid_utils import uuidv7
 
 from .account import Account
 from .base import Base, TypeBase
-from .engine import db
 from .enums import (
     CollectionBindingType,
     CreatorUserRole,
