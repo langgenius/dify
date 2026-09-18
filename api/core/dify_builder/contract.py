@@ -168,6 +168,69 @@ class Action:
     canvas_event: str | None = None
 
 
+# The only two buttons an interactive card shows; every real choice is an option
+# inside it. One interaction shape at every gate, not one per state.
+CONFIRM_ACTION_ID = "confirm"
+CANCEL_ACTION_ID = "cancel"
+
+
+@dataclass
+class OptionInput:
+    """Free text an option reveals once selected ("Something else", "Reject with a reason").
+
+    Bounds are declared for the client to enforce; see ``Decision`` for why the
+    server does not reject on them yet.
+    """
+
+    placeholder: str = ""
+    min_length: int = 0
+    max_length: int = 100
+    required: bool = True
+
+
+@dataclass
+class CardOption:
+    """One answer a gate offers, inside the card instead of as a button.
+
+    ``id`` is the former standalone action id, unchanged, so an option resolves
+    to exactly the handler kind its button used to.
+    """
+
+    id: str
+    label: str
+    # The second line under an option. Empty for now: the per-state action table
+    # carries labels only, and writing the copy here is a product decision.
+    description: str = ""
+    # Shown as a DEFAULT badge. Advisory only -- these gates have side effects,
+    # so declining to choose must never apply anything.
+    is_default: bool = False
+    tone: str = "neutral"  # neutral | destructive
+    input: OptionInput | None = None
+    next_state: str | None = None
+    canvas_event: str | None = None
+
+
+@dataclass
+class Decision:
+    """What the current gate asks: card options plus the fixed button pair.
+
+    Replaces the per-state action bar. The client renders ``options`` in the
+    active card, shows only ``confirm`` and ``cancel``, and on confirm posts
+    ``confirm`` with ``{"option_id": ..., "free_text": ...}``. ``cancel`` is
+    presentational -- it dismisses without posting and the gate stays open.
+
+    While ``SessionView.actions`` is still populated, the server accepts the old
+    per-action ids too and does not enforce ``OptionInput`` bounds, so a client
+    posting a bare action id keeps working. Enforcement moves server-side when
+    ``actions`` goes.
+    """
+
+    options: list[CardOption] = field(default_factory=list)
+    confirm: Action | None = None
+    cancel: Action | None = None
+    default_option_id: str = ""
+
+
 @dataclass
 class CheckpointRef:
     """Active restore point on the SessionView (spec §8)."""
@@ -320,7 +383,10 @@ class SessionView:
     conversation_last_seq: int
     entry_mode: EntryMode = EntryMode.FIX
     phase: Phase = Phase.UNDERSTAND
+    # DEPRECATED until the web client reads ``decision``: the same choice, in
+    # the standalone-button shape.
     actions: list[Action] = field(default_factory=list)
+    decision: Decision | None = None
     active_interaction: ActiveInteraction | None = None
     checkpoint: CheckpointRef | None = None
     recovery: RecoveryRef | None = None
