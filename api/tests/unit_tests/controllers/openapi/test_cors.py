@@ -128,7 +128,6 @@ def test_authorization_header_is_in_allow_headers():
 
 
 def test_catalog_fingerprint_header_is_exposed():
-    """X-Dify-Catalog must be readable cross-origin, not just present on the wire."""
     app = _make_app(["https://app.example.com"], "openapi_t6")
     client = app.test_client()
     response = client.get("/openapi/v1/_health", headers={"Origin": "https://app.example.com"})

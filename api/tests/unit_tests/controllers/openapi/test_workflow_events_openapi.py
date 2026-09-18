@@ -266,10 +266,6 @@ class TestOpenApiWorkflowEventsApi:
     def test_continue_on_pause_comes_off_the_declared_query_model(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, continue_on_pause: bool
     ):
-        """The flag used to be read straight off `request.args`, so it never reached
-        the catalog. It now arrives as the validated query model and still decides
-        whether the retrieve loop is given a terminal-event list.
-        """
         module = sys.modules["controllers.openapi.workflow_events"]
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
         generator_mock = Mock()

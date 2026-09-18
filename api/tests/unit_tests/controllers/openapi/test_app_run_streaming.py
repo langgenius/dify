@@ -98,10 +98,6 @@ def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monke
         generate = generate_mock
 
     monkeypatch.setattr(sys.modules["controllers.openapi.app_run"], "AppGenerateService", GenerateService)
-    monkeypatch.setattr(
-        sys.modules["controllers.openapi._files"], "resolve_app_config", lambda _app, **_kwargs: ({}, [])
-    )
-
     ctx = _SealableContext(
         app=_make_app(),
         caller=_make_account(),
@@ -119,40 +115,31 @@ def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monke
     assert generate_mock.call_args.kwargs["streaming"] is True
 
 
-def test_run_hands_the_generator_the_file_mapping_built_from_the_uploaded_part(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-):
-    """The whole file wiring in one pass: a `files[doc]` part is uploaded, merged
-    into `inputs` as a mapping the core file factory accepts, and a workflow app
-    grows no vision `files` list.
-    """
+def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(app: Flask, monkeypatch: pytest.MonkeyPatch):
     generate_mock = Mock(return_value=iter([]))
 
     class GenerateService:
         generate = generate_mock
 
     monkeypatch.setattr(sys.modules["controllers.openapi.app_run"], "AppGenerateService", GenerateService)
-    files_module = sys.modules["controllers.openapi._files"]
-    monkeypatch.setattr(
-        files_module, "resolve_app_config", lambda _app, **_kwargs: ({}, [{"file": {"variable": "doc"}}])
-    )
     upload_service = Mock()
     upload_service.upload_file.side_effect = lambda **kw: SimpleNamespace(
-        id="uf-1", extension="pdf", mime_type=kw["mimetype"]
+        id=f"uf-{kw['filename']}", extension=kw["filename"].rsplit(".", 1)[-1], mime_type=kw["mimetype"]
     )
-    monkeypatch.setattr(files_module, "application_services", lambda: SimpleNamespace(files=upload_service))
-
-    workflow_app = _make_app()
-    workflow_app.mode = AppMode.WORKFLOW
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi._files"], "application_services", lambda: SimpleNamespace(files=upload_service)
+    )
     ctx = _SealableContext(
-        app=workflow_app,
+        app=_make_app(),
         caller=_make_account(),
         session=Mock(),
         subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT),
     )
     body = AppRunRequest(
         inputs={},
+        query="what is this",
         files={"doc": FileStorage(stream=BytesIO(b"pdf"), filename="r.pdf", content_type="application/pdf")},
+        attachments=[FileStorage(stream=BytesIO(b"jpg"), filename="p.jpg", content_type="image/jpeg")],
     )
 
     api = AppRunApi()
@@ -162,7 +149,8 @@ def test_run_hands_the_generator_the_file_mapping_built_from_the_uploaded_part(
     args = generate_mock.call_args.kwargs["args"]
     assert args["inputs"]["doc"] == {
         "transfer_method": "local_file",
-        "upload_file_id": "uf-1",
+        "upload_file_id": "uf-r.pdf",
         "type": FileType.DOCUMENT,
     }
-    assert "files" not in args
+    assert args["files"] == [{"transfer_method": "local_file", "upload_file_id": "uf-p.jpg", "type": FileType.IMAGE}]
+    assert "attachments" not in args

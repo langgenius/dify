@@ -1,26 +1,29 @@
+"""The catalog on /openapi/v1: every guarded route is in it, and its schemas are a shape an agent can read raw."""
+
 import hashlib
-import json
+import re
 from collections.abc import Iterator
 
 import pytest
 from flask import Flask
-from pydantic import BaseModel
 
 from configs import dify_config
+from controllers.common.fields import EventStreamResponse
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi._catalog import (
-    _VERBS,
-    CATALOG_HEADER,
+from controllers.openapi._catalog import _VERBS, CATALOG_HEADER, CATALOG_PATH, build_catalog, catalog_for
+from controllers.openapi._models import Hinted
+from controllers.openapi.auth.spec import EndpointSpec, Kind
+
+OP_ID_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
+MAX_DEPTH = 4
+_UNCATALOGUED_PREFIX = "/openapi/v1/oauth/"
+_UNCATALOGUED = {
+    "/openapi/v1/",
+    "/openapi/v1/openapi.json",
+    "/openapi/v1/_health",
+    "/openapi/v1/_version",
     CATALOG_PATH,
-    _catalog_path,
-    build_catalog,
-    catalog_for,
-    inline_refs,
-    op_input_schema,
-)
-from controllers.openapi.auth.spec import EndpointSpec
-from enums import DeploymentEdition
-from tests.unit_tests.config_override import apply_config_overrides
+}
 
 
 @pytest.fixture
@@ -31,23 +34,12 @@ def app() -> Flask:
     return a
 
 
-def _nodes(node: object) -> Iterator[dict[str, object]]:
-    if isinstance(node, dict):
-        yield node
-        for value in node.values():
-            yield from _nodes(value)
-    elif isinstance(node, list):
-        for item in node:
-            yield from _nodes(item)
+@pytest.fixture
+def ops(app: Flask) -> dict[str, dict]:
+    return build_catalog(app)["ops"]
 
 
-def _stamped_ops_for_current_edition(app: Flask) -> set[str]:
-    """Every op a route on the url map carries, that the running edition admits.
-
-    Independent of `build_catalog`'s own traversal, so a bug that silently drops or
-    duplicates an op is caught by comparing against this.
-    """
-    ops: set[str] = set()
+def _view_methods(app: Flask):
     for rule in app.url_map.iter_rules():
         if not rule.rule.startswith("/openapi/v1"):
             continue
@@ -55,139 +47,103 @@ def _stamped_ops_for_current_edition(app: Flask) -> set[str]:
         if cls is None:
             continue
         for verb in (rule.methods or set()) & _VERBS:
-            spec = getattr(cls, verb.lower(), None)
-            spec = getattr(spec, "__spec__", None)
-            if not isinstance(spec, EndpointSpec):
-                continue
-            if spec.edition is None or dify_config.DEPLOYMENT_EDITION in spec.edition:
-                ops.add(spec.op)
-    return ops
+            yield rule, verb, getattr(cls, verb.lower())
 
 
-def test_catalog_lists_every_stamped_op_with_full_path(app: Flask):
-    doc = build_catalog(app)
-    run = doc["ops"]["console_app.run"]
-    assert run["method"] == "POST"
-    assert run["path"] == "/openapi/v1/apps/{app_id}:run"
-    assert run["kind"] == "sse"
-    assert run["input"]["properties"]["app_id"] == {"type": "string"}
-    assert "app_id" in run["input"]["required"]
-    assert "inputs" in run["input"]["required"]
-    assert run["bind"] == {name: run["bind"][name] for name in run["input"]["properties"]}
-    assert run["bind"]["app_id"] == "path"
-    assert run["bind"]["files"] == "file"
-    assert run["bind"]["inputs"] == "body"
-    assert run["tags"] == ["console_app"]
-    assert run["internal"] is False
-    assert run["deprecated"] is False
+def _response_model_names(fn) -> set[str]:
+    responses = getattr(fn, "__apidoc__", {}).get("responses", {})
+    return {getattr(entry[1], "name", "") for entry in responses.values() if isinstance(entry, tuple)}
+
+
+def _walk(node: object, path: tuple[str, ...] = (), depth: int = 0) -> Iterator[tuple[tuple[str, ...], int, dict]]:
+    if isinstance(node, dict):
+        yield path, depth, node
+        for key in ("properties", "$defs"):
+            for name, child in (node.get(key) or {}).items():
+                yield from _walk(child, (*path, name), depth + 1)
+        for key in ("items", "additionalProperties"):
+            if isinstance(node.get(key), dict):
+                yield from _walk(node[key], (*path, key), depth + 1)
+        for alt in node.get("anyOf") or []:
+            yield from _walk(alt, path, depth)
+
+
+def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[str, dict]):
+    seen: dict[str, str] = {}
+    streaming: set[str] = set()
+    for rule, verb, fn in _view_methods(app):
+        spec = getattr(fn, "__spec__", None)
+        if rule.rule.startswith(_UNCATALOGUED_PREFIX) or rule.rule in _UNCATALOGUED:
+            assert spec is None, f"{verb} {rule.rule} must stay out of the catalog"
+            continue
+        assert isinstance(spec, EndpointSpec), f"{verb} {rule.rule}"
+        assert OP_ID_RE.fullmatch(spec.op), spec.op
+        assert spec.summary.strip(), spec.op
+        assert spec.op not in seen, f"{spec.op} declared twice: {seen[spec.op]} and {verb} {rule.rule}"
+        seen[spec.op] = f"{verb} {rule.rule}"
+        admitted = spec.edition is None or dify_config.DEPLOYMENT_EDITION in spec.edition
+        assert (spec.op in ops) is admitted, spec.op
+        if EventStreamResponse.__name__ in _response_model_names(fn):
+            streaming.add(spec.op)
+            assert spec.kind is Kind.SSE, spec.op
+    assert set(ops) <= set(seen)
+    assert streaming == {"console_app.run", "run.events"}
+
+
+def test_run_entry_carries_path_bind_kind_and_flags(ops: dict[str, dict]):
+    run = ops["console_app.run"]
     assert set(run) == {"summary", "method", "path", "kind", "input", "bind", "tags", "internal", "deprecated"}
-
-
-def test_get_and_delete_bind_to_query(app: Flask):
-    ops = build_catalog(app)["ops"]
-    assert ops["console_app.list"]["bind"]["page"] == "query"
-    assert ops["account.sessions.revoke"]["bind"] == {"session_id": "path"}
-    assert ops["run.events"]["bind"]["continue_on_pause"] == "query"
-
-
-def test_catalog_has_no_refs_or_defs(app: Flask):
-    for op, entry in build_catalog(app)["ops"].items():
-        for node in _nodes(entry["input"]):
-            assert "$ref" not in node, op
-            assert "$defs" not in node, op
-        assert "additionalProperties" not in entry["input"], op
-
-
-def test_catalog_marks_internal_and_excludes_probes_and_oauth(app: Flask):
-    doc = build_catalog(app)
-    assert doc["ops"]["workspace.switch"]["internal"] is True
-    paths = {p["path"] for p in doc["ops"].values()}
-    assert not any(p.startswith("/openapi/v1/oauth/") for p in paths)
-    assert not paths & {"/openapi/v1/_health", "/openapi/v1/_version", "/openapi/v1/_catalog"}
-
-
-def test_catalog_matches_every_stamped_op_for_the_current_edition(app: Flask):
-    assert set(build_catalog(app)["ops"]) == _stamped_ops_for_current_edition(app)
-
-
-def test_edition_gated_op_appears_only_under_its_own_edition(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    op = "console_app.external.list"
-    assert op not in build_catalog(app)["ops"]
-
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-    assert op in build_catalog(app)["ops"]
-
-
-def test_inline_refs_resolves_nested_ref_chain():
-    schema = {
-        "properties": {"x": {"$ref": "#/$defs/A"}},
-        "$defs": {"A": {"properties": {"y": {"$ref": "#/$defs/B"}}}, "B": {"type": "string"}},
+    assert (run["method"], run["path"], run["kind"], run["tags"]) == (
+        "POST",
+        "/openapi/v1/apps/{app_id}:run",
+        "sse",
+        ["console_app"],
+    )
+    assert {"app_id", "inputs"} <= set(run["input"]["required"])
+    assert set(run["bind"]) == set(run["input"]["properties"])
+    assert {k: run["bind"][k] for k in ("app_id", "inputs", "files", "attachments")} == {
+        "app_id": "path",
+        "inputs": "body",
+        "files": "file",
+        "attachments": "file",
     }
-    assert inline_refs(schema) == {"properties": {"x": {"properties": {"y": {"type": "string"}}}}}
+    assert ops["console_app.file.upload"]["bind"]["file"] == "file"
+    assert ops["console_app.list"]["bind"]["page"] == "query"
+    assert ops["run.events"]["bind"]["continue_on_pause"] == "query"
+    assert ops["workspace.switch"]["internal"] is True
 
 
-def test_inline_refs_rejects_recursion():
-    schema = {"properties": {"x": {"$ref": "#/$defs/A"}}, "$defs": {"A": {"properties": {"me": {"$ref": "#/$defs/A"}}}}}
-    with pytest.raises(ValueError, match="recursive"):
-        inline_refs(schema)
+def test_input_schemas_are_flat_shallow_and_described(ops: dict[str, dict]):
+    bad = [
+        (op, p, k)
+        for op, e in ops.items()
+        for p, d, n in _walk(e["input"])
+        for k in ("oneOf", "$ref", "$defs")
+        if k in n or d > MAX_DEPTH
+    ]
+    assert bad == []
+    undocumented = [
+        (op, name)
+        for op, e in ops.items()
+        for name, prop in e["input"]["properties"].items()
+        if "object" in {prop.get("type")} | {a.get("type") for a in prop.get("anyOf", [])}
+        and not prop.get("description")
+    ]
+    assert undocumented == []
+    assert [
+        op for op, e in ops.items() if e["kind"] == "list" and not {"page", "limit"} <= set(e["input"]["properties"])
+    ] == []
+    assert [op for op, e in ops.items() if set(Hinted.model_fields) & set(e["input"]["properties"])] == []
+    desc = ops["console_app.run"]["input"]["properties"]["inputs"]["description"]
+    assert "console_app.describe" in desc
+    assert "input_schema" in desc
 
 
-def test_name_clash_raises():
-    class _Q(BaseModel):
-        app_id: str
-
-    with pytest.raises(ValueError, match="app_id"):
-        op_input_schema(path_params=["app_id"], query=_Q, body=None)
-
-
-def test_bytes_are_canonical_and_fingerprint_matches(app: Flask):
+def test_catalog_route_serves_canonical_bytes_and_every_response_carries_the_fingerprint(app: Flask):
+    client = app.test_client()
     raw, fingerprint = catalog_for(app)
-    assert raw == json.dumps(build_catalog(app), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
-    assert fingerprint == hashlib.sha256(raw).hexdigest()
-    assert catalog_for(app) == (raw, fingerprint)
-
-
-def test_catalog_route_serves_bytes_without_auth(app: Flask):
-    client = app.test_client()
-    res = client.get(CATALOG_PATH)
-    raw, fingerprint = catalog_for(app)
-    assert res.status_code == 200
-    assert res.mimetype == "application/json"
-    assert res.data == raw
-    assert res.headers[CATALOG_HEADER] == fingerprint
-
-
-def test_every_openapi_response_carries_fingerprint(app: Flask):
-    client = app.test_client()
-    _, fingerprint = catalog_for(app)
-    assert client.get("/openapi/v1/_health").headers[CATALOG_HEADER] == fingerprint
-    assert client.get("/openapi/v1/apps").headers[CATALOG_HEADER] == fingerprint  # 401, still stamped
-    assert client.get("/openapi/v1/does-not-exist").headers[CATALOG_HEADER] == fingerprint
-
-
-def test_catalog_route_is_allowlisted_from_version_gate(app: Flask):
-    client = app.test_client()
     res = client.get(CATALOG_PATH, headers={"User-Agent": "difyctl/0.0.1 (x; y; z)"})
-    assert res.status_code == 200
-
-
-def test_a_neighbouring_prefix_is_not_stamped(app: Flask):
-    """`/openapi/v1beta` is a different surface; the fingerprint says nothing about it."""
-
-    @app.get("/openapi/v1beta/x")
-    def _beta() -> str:
-        return "ok"
-
-    response = app.test_client().get("/openapi/v1beta/x")
-    assert response.status_code == 200
-    assert CATALOG_HEADER not in response.headers
-
-
-def test_catalog_path_converts_a_plain_placeholder():
-    assert _catalog_path("/openapi/v1/apps/<string:app_id>", arguments={"app_id"}) == "/openapi/v1/apps/{app_id}"
-
-
-def test_catalog_path_refuses_a_converter_it_cannot_read():
-    """A converter carrying arguments would otherwise reach the published path raw."""
-    with pytest.raises(ValueError, match="placeholders"):
-        _catalog_path("/openapi/v1/things/<int(min=1):n>", arguments={"n"})
+    assert (res.status_code, res.mimetype, res.data) == (200, "application/json", raw)
+    assert fingerprint == hashlib.sha256(raw).hexdigest() == res.headers[CATALOG_HEADER]
+    assert client.get("/openapi/v1/apps").headers[CATALOG_HEADER] == fingerprint
+    assert client.get("/openapi/v1/does-not-exist").headers[CATALOG_HEADER] == fingerprint

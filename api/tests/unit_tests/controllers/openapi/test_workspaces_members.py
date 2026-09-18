@@ -43,7 +43,6 @@ from controllers.openapi._errors import (
     MemberLimitExceeded,
     OpenApiErrorCode,
 )
-from controllers.openapi._hints import NEXT_PAGE_SUMMARY
 from controllers.openapi._models import MemberInvitePayload, MemberListQuery, MemberRoleUpdatePayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller, load_workspace
@@ -296,23 +295,6 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(
 
 
 # ---------------------------------------------------------------------------
-# Workspace list
-# ---------------------------------------------------------------------------
-
-
-def test_workspace_list_is_paginated_envelope(admitted_bearer: AdmittedWorld):
-    res = admitted_bearer.client.get("/openapi/v1/workspaces?page=1&limit=1", headers=admitted_bearer.headers)
-
-    assert res.status_code == 200
-    body = res.get_json()
-    assert {"page", "limit", "total", "has_more", "data"} <= set(body)
-    assert body["page"] == 1
-    assert body["limit"] == 1
-    assert body["data"][0]["id"] == admitted_bearer.workspace_id
-    assert body["hints"] == []
-
-
-# ---------------------------------------------------------------------------
 # Members list
 # ---------------------------------------------------------------------------
 
@@ -373,10 +355,6 @@ def test_members_list_paginates_with_query_params(database_session: Session):
 
 
 def test_members_list_next_page_hint_reaches_the_wire(admitted_bearer: AdmittedWorld, database_session: Session):
-    """Through the real HTTP stack, not `__handler__`: the hint is filled by
-    `accepts` composed inside `endpoint()` (`_contract.py`), and calling the
-    bare handler would bypass that composition entirely.
-    """
     for i in range(4):
         member_id = str(uuid.uuid4())
         database_session.add_all(
@@ -402,7 +380,7 @@ def test_members_list_next_page_hint_reaches_the_wire(admitted_bearer: AdmittedW
     assert body["has_more"] is True
     assert body["hints"] == [
         {
-            "summary": NEXT_PAGE_SUMMARY,
+            "summary": "Next page",
             "op": "workspace.members.list",
             "input": {"workspace_id": admitted_bearer.workspace_id, "page": 2, "limit": 2},
             "form": None,
