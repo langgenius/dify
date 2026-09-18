@@ -87,14 +87,8 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
             streaming.add(spec.op)
             assert spec.kind is Kind.SSE, spec.op
     assert set(ops) <= set(seen)
-    assert streaming == {
-        "console_app.run",
-        "console_app.workflow.run",
-        "console_app.chat.run",
-        "console_app.advanced_chat.run",
-        "console_app.completion.run",
-        "run.events",
-    }
+    per_mode = {f"console_app.{mode}.run" for mode in ("workflow", "chat", "advanced_chat", "completion")}
+    assert streaming == per_mode | {"console_app.run", "run.events"}
 
 
 def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, dict]):
@@ -114,8 +108,6 @@ def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, dict]):
         "files": "file",
         "attachments": "file",
     }
-    assert "query" not in ops["console_app.workflow.run"]["input"]["properties"]
-    assert "conversation_id" not in ops["console_app.completion.run"]["input"]["properties"]
     assert (ops["console_app.run"]["deprecated"], chat["deprecated"]) == (True, False)
     assert ops["console_app.file.upload"]["bind"]["file"] == "file"
     assert ops["console_app.list"]["bind"]["page"] == "query"

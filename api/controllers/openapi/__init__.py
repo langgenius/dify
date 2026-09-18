@@ -95,7 +95,6 @@ register_schema_models(
     AppRunRequest,
     ChatRunPayload,
     CompletionRunPayload,
-    WorkflowRunPayload,
     DeviceCodeRequest,
     DevicePollRequest,
     DeviceLookupQuery,
@@ -107,6 +106,7 @@ register_schema_models(
     OpenApiFormSubmitPayload,
     PermittedExternalAppsListQuery,
     SessionListQuery,
+    WorkflowRunPayload,
     WorkspaceListQuery,
 )
 register_response_schema_models(
