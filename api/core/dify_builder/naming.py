@@ -49,6 +49,7 @@ _HAS_LETTER = re.compile(r"[^\W\d_]")
 # when the prompt had no words, so it speaks the console's language.
 _FALLBACK_STEM: dict[str, str] = {
     "en-US": "New app",
+    "az-AZ": "Yeni tətbiq",
     "zh-Hans": "新应用",
     "zh-Hant": "新應用",
     "pt-BR": "Novo app",
