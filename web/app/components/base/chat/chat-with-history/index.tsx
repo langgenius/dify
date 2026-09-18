@@ -27,6 +27,8 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
   const [showSidePanel, setShowSidePanel] = useState(false)
   const sidebarToggleRef = useRef<HTMLButtonElement>(null)
   const sidePanelHasFocusRef = useRef(false)
+  const sidePanelHoveredRef = useRef(false)
+  const sidePanelBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const previousSidebarCollapsedRef = useRef(isSidebarCollapsed)
 
   useLayoutEffect(() => {
@@ -40,7 +42,9 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
     if (!isSidebarCollapsed || isMobile) {
       setShowSidePanel(false)
       sidePanelHasFocusRef.current = false
+      sidePanelHoveredRef.current = false
     }
+    return () => clearTimeout(sidePanelBlurTimeoutRef.current)
   }, [isSidebarCollapsed, isMobile])
 
   useDocumentTitle(site?.title || 'Chat')
@@ -68,15 +72,27 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
               'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
               showSidePanel ? 'left-0' : '-left-62',
             )}
-            onMouseEnter={() => setShowSidePanel(true)}
+            onMouseEnter={() => {
+              sidePanelHoveredRef.current = true
+              setShowSidePanel(true)
+            }}
             onFocusCapture={() => {
               // React focus events include the sidebar's portalled menus and dialogs.
+              clearTimeout(sidePanelBlurTimeoutRef.current)
               sidePanelHasFocusRef.current = true
             }}
             onBlurCapture={() => {
               sidePanelHasFocusRef.current = false
+              // Native Tab can flush microtasks between blur and focus. Wait until
+              // the focus transition finishes, including moves through portals.
+              clearTimeout(sidePanelBlurTimeoutRef.current)
+              sidePanelBlurTimeoutRef.current = setTimeout(() => {
+                if (!sidePanelHasFocusRef.current && !sidePanelHoveredRef.current)
+                  setShowSidePanel(false)
+              }, 0)
             }}
             onMouseLeave={() => {
+              sidePanelHoveredRef.current = false
               if (!sidePanelHasFocusRef.current) setShowSidePanel(false)
             }}
           >

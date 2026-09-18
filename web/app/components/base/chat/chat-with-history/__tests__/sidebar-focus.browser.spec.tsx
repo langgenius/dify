@@ -101,7 +101,7 @@ it('keeps desktop keyboard focus visible across sidebar states and conversation 
   expect(collapse.element().checkVisibility({ checkOpacity: true })).toBe(true)
 })
 
-it('keeps the floating sidebar available while its portalled conversation menu owns focus', async () => {
+it('keeps the floating sidebar available through its portalled menu and closes after focus leaves', async () => {
   // Pointer leave and Escape cross the real portal boundary; focus must return
   // to a visible, interactive trigger instead of a newly inert offscreen panel.
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -134,4 +134,39 @@ it('keeps the floating sidebar available while its portalled conversation menu o
   await expect
     .element(screen.getByRole('menuitem', { name: 'explore.sidebar.action.pin' }))
     .toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(more).toHaveFocus()
+  await screen.getByRole('button', { name: 'Outside sidebar' }).click()
+  await expect.poll(() => conversation.element().closest('[inert]')).not.toBeNull()
+})
+
+it('closes the floating sidebar when both the pointer and keyboard focus leave it', async () => {
+  // Native pointer leave precedes blur here. Tab between sidebar controls must
+  // keep the panel usable, but moving focus outside must make its actions inert.
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const screen = await render(
+    <QueryClientProvider client={client}>
+      <section aria-label="Chat preview" className="h-150 w-240">
+        <button type="button">Outside sidebar</button>
+        <ChatWithHistory />
+      </section>
+    </QueryClientProvider>,
+  )
+  await screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }).click()
+  await screen.getByRole('region', { name: 'Chat preview' }).hover({ position: { x: 2, y: 150 } })
+  const conversation = screen.getByRole('button', { name: 'Saved conversation' }).last()
+  await conversation.click()
+  await screen.getByRole('button', { name: 'Outside sidebar' }).hover()
+  await expect.element(conversation).toHaveFocus()
+
+  await userEvent.tab()
+  const more = screen.getByRole('button', { name: 'common.operation.more' }).nth(2)
+  await expect.element(more).toHaveFocus()
+  await userEvent.tab({ shift: true })
+  await expect.element(conversation).toHaveFocus()
+
+  const outside = screen.getByRole('button', { name: 'Outside sidebar' })
+  await outside.click()
+  await expect.element(outside).toHaveFocus()
+  await expect.poll(() => conversation.element().closest('[inert]')).not.toBeNull()
 })
