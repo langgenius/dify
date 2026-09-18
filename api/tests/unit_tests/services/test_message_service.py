@@ -915,6 +915,40 @@ class TestMessageServiceSuggestedQuestions:
             model_config=None,
         )
 
+    def test_agent_conversation_memory_gets_soul_features(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+    ) -> None:
+        """Conversation memory is built from the Agent Soul feature projection.
+
+        Regression for the reported 500: Agent App memory had no source for the
+        app's file-upload feature and raised ``AssertionError: Invalid app mode:
+        agent`` while building history.
+        """
+        conversation = factory.create_conversation()
+        conversation.mode = AppMode.AGENT
+        _, memory, _ = self._chat_boundaries(monkeypatch, conversation)
+        roster_service = MagicMock()
+        roster_service.return_value.get_published_agent_soul_for_app.return_value = self._agent_soul()
+        monkeypatch.setattr("services.agent.roster_service.AgentRosterService", roster_service)
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=factory.create_app(mode=AppMode.AGENT),
+            user=factory.create_end_user(),
+            message_id="msg-123",
+            invoke_from=InvokeFrom.SERVICE_API,
+            session=sqlite_session,
+        )
+
+        assert result == ["Q1?"]
+        memory.assert_called_once()
+        assert memory.call_args.kwargs["conversation"] is conversation
+        # Soul-first projection: the Agent default enables file upload, which is
+        # what lets memory resolve file content instead of raising.
+        assert memory.call_args.kwargs["app_features"]["file_upload"]["enabled"] is True
+
     def test_agent_without_binding_uses_published_soul(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1096,6 +1130,7 @@ class TestMessageServiceSuggestedQuestions:
         memory.assert_called_once_with(
             conversation=conversation,
             model_instance=model_manager.get_default_model_instance.return_value,
+            app_features=None,
         )
         llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
             tenant_id="tenant-123",

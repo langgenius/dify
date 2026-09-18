@@ -22,6 +22,7 @@ from graphon.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from models.agent_config_entities import AgentSoulConfig
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import App, AppMode, Conversation, Message, MessageFile
@@ -620,6 +621,148 @@ class TestBuildPromptMessageWithFiles:
         assert isinstance(result, UserPromptMessage)
         assert result.content == "wf text"
         assert database.session.get(Workflow, workflow.id) is workflow
+
+    # ------------------------------------------------------------------
+    # Mode: AGENT (Agent App)
+    # ------------------------------------------------------------------
+
+    def test_agent_mode_uses_injected_features(self):
+        """Agent mode reads file upload from the caller's Agent Soul projection.
+
+        Regression for the reported 500: Agent conversations used to fall
+        through to the invalid-mode branch because ``AppMode.AGENT`` was never
+        handled here.
+        """
+        conv = _make_conversation(AppMode.AGENT)
+        app_features = {
+            "file_upload": {
+                "enabled": True,
+                "allowed_file_upload_methods": ["local_file"],
+                "number_limits": 5,
+                "image": {"enabled": True},
+            }
+        }
+        mem = TokenBufferMemory(
+            conversation=conv,
+            model_instance=_make_model_instance(),
+            app_features=app_features,
+        )
+
+        with patch(
+            "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
+            return_value=None,
+        ) as convert:
+            result = mem._build_prompt_message_with_files(
+                message_files=[],
+                text_content="agent text",
+                message=_make_message(),
+                app_record=_make_app(),
+                is_user_message=True,
+            )
+
+        assert isinstance(result, UserPromptMessage)
+        assert result.content == "agent text"
+        convert.assert_called_once_with(app_features, is_vision=True)
+
+    def test_agent_mode_with_files_uses_injected_features(self):
+        """Agent mode keeps file content when the projection enables uploads."""
+        conv = _make_conversation(AppMode.AGENT)
+        app_features = {"file_upload": {"enabled": True, "allowed_file_upload_methods": ["local_file"]}}
+        mem = TokenBufferMemory(
+            conversation=conv,
+            model_instance=_make_model_instance(),
+            app_features=app_features,
+        )
+
+        mock_file_extra_config = MagicMock()
+        mock_file_extra_config.image_config = None
+        real_image_content = ImagePromptMessageContent(
+            url="http://example.com/img.png", format="png", mime_type="image/png"
+        )
+
+        with (
+            patch(
+                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
+                return_value=mock_file_extra_config,
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
+                return_value=real_image_content,
+            ),
+        ):
+            result = mem._build_prompt_message_with_files(
+                message_files=[_make_message_file()],
+                text_content="agent text",
+                message=_make_message(),
+                app_record=_make_app(),
+                is_user_message=True,
+            )
+
+        assert isinstance(result, UserPromptMessage)
+        assert isinstance(result.content, list)
+
+    def test_agent_mode_without_features_raises(self):
+        """Agent mode must not silently drop files when the projection is missing.
+
+        ``Conversation.mode`` is persisted as the raw string, so the ``AppMode``
+        member has to keep matching it: falling through to the invalid-mode
+        branch would raise ``AssertionError`` instead of this error.
+        """
+        conv = _make_conversation(AppMode.AGENT)
+        conv.mode = AppMode.AGENT.value
+        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
+
+        with pytest.raises(ValueError, match="requires the projected Agent App features"):
+            mem._build_prompt_message_with_files(
+                message_files=[],
+                text_content="agent text",
+                message=_make_message(),
+                app_record=_make_app(),
+                is_user_message=True,
+            )
+
+    def test_agent_mode_accepts_real_soul_projection(self):
+        """The real Agent Soul projection satisfies the AGENT branch contract.
+
+        The tests above hand-build ``app_features`` and patch ``convert``, so a
+        drift between ``merge_agent_app_features`` output and what
+        ``FileUploadConfigManager`` reads would go unnoticed. This one keeps
+        ``convert`` real.
+        """
+        app_features = AgentSoulConfig().app_features.model_dump(mode="json", exclude_none=True)
+        mem = TokenBufferMemory(
+            conversation=_make_conversation(AppMode.AGENT),
+            model_instance=_make_model_instance(),
+            app_features=app_features,
+        )
+
+        with (
+            patch(
+                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
+                return_value=MagicMock(),
+            ) as build,
+            patch(
+                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
+                return_value=TextPromptMessageContent(data="file text"),
+            ),
+        ):
+            result = mem._build_prompt_message_with_files(
+                message_files=[_make_message_file()],
+                text_content="agent text",
+                message=_make_message(),
+                app_record=_make_app(),
+                is_user_message=True,
+            )
+
+        # A projection the config manager cannot read would leave ``file_objs``
+        # empty and collapse the content back to plain text.
+        build.assert_called_once()
+        assert isinstance(result, UserPromptMessage)
+        assert isinstance(result.content, list)
 
     # ------------------------------------------------------------------
     # Invalid mode
