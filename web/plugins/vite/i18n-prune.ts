@@ -43,7 +43,7 @@ export function i18nPrunePlugin(): Plugin[] {
           'This report uses static analysis of the current build module graph and may contain false positives or miss unused keys.',
           'Review actual usage before removing any keys.',
           ...keys.map((key) => `  - ${key}`),
-          'Remove confirmed unused keys from web/i18n/ locale files or restore their application usage.',
+          'Remove confirmed unused keys from web/i18n/locales/ locale files or restore their application usage.',
           ...(protectedNamespaces.size
             ? [
                 `Dynamic keys protect these namespaces: ${[...protectedNamespaces].sort().join(', ')}`,

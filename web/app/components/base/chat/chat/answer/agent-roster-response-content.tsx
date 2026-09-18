@@ -1,12 +1,12 @@
 import type { ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem } from '@/app/components/base/chat/types'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
-import { getPluginLanguage, renderI18nObject } from '@/i18n-config/metadata'
+import { getPluginLanguage, renderI18nObject } from '@/i18n/metadata'
 
 type AgentRosterResponseContentProps = {
   item: ChatItem

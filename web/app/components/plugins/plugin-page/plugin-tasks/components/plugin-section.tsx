@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
-import type { PluginLanguage } from '@/i18n-config/metadata'
+import type { PluginLanguage } from '@/i18n/metadata'
 import {
   ScrollArea,
   ScrollAreaContent,

@@ -47,7 +47,7 @@ import ConfigCredential from '@/app/components/tools/setting/build-in/config-cre
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import { getPluginLanguage } from '@/i18n-config/metadata'
+import { getPluginLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import {
   deleteWorkflowTool,

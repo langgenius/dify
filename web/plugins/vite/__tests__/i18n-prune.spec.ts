@@ -12,8 +12,8 @@ describe('i18n build check', () => {
 
   beforeEach(() => {
     root = realpathSync(mkdtempSync(path.join(tmpdir(), 'dify-i18n-build-')))
-    mkdirSync(path.join(root, 'i18n/en-US'), { recursive: true })
-    localeFile = path.join(root, 'i18n/en-US/app.json')
+    mkdirSync(path.join(root, 'i18n/locales/en-US'), { recursive: true })
+    localeFile = path.join(root, 'i18n/locales/en-US/app.json')
     writeFileSync(
       path.join(root, 'entry.ts'),
       `

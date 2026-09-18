@@ -16,7 +16,7 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { changeLanguage } from '@/i18n-config/client'
+import { changeLanguage } from '@/i18n/client'
 import {
   AppSourceType,
   fetchSavedMessage as doFetchSavedMessage,

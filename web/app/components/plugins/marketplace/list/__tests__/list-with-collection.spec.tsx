@@ -9,8 +9,8 @@ vi.mock('../../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
 }))
 
-vi.mock('@/i18n-config/metadata', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/i18n-config/metadata')>()),
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
   getPluginLanguage: (locale: string) => locale,
 }))
 

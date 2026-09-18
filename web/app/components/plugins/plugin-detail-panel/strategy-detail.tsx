@@ -2,8 +2,8 @@
 
 import type { FC } from 'react'
 import type { StrategyDetail as StrategyDetailType } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config/locale'
-import type { PluginLanguage } from '@/i18n-config/metadata'
+import type { Locale } from '@/i18n/locale'
+import type { PluginLanguage } from '@/i18n/metadata'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,

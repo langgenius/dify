@@ -5,8 +5,8 @@
   "type": "module",
   "imports": {
     "#i18n": {
-      "react-server": "./i18n-config/lib.server.ts",
-      "default": "./i18n-config/lib.client.ts"
+      "react-server": "./i18n/lib.server.ts",
+      "default": "./i18n/lib.client.ts"
     }
   },
   "scripts": {

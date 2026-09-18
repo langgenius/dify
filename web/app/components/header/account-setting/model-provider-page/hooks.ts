@@ -22,7 +22,7 @@ import {
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useModalContextSelector } from '@/context/modal-context'
-import { getModelLanguage } from '@/i18n-config/metadata'
+import { getModelLanguage } from '@/i18n/metadata'
 import { fetchDefaultModal } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys, modelProviderDetailsQueryOptions } from '@/service/use-common'

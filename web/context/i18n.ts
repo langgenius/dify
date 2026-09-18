@@ -1,12 +1,12 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import type { Locale } from '@/i18n-config/locale'
+import type { Locale } from '@/i18n/locale'
 import type { DocLanguage, DocPathWithoutLang, DocsProduct } from '@/types/doc-paths'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useLocale } from '#i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { getDocLanguage } from '@/i18n-config/language'
-import { getPluginLanguage } from '@/i18n-config/metadata'
+import { getDocLanguage } from '@/i18n/language'
+import { getPluginLanguage } from '@/i18n/metadata'
 import { docPathProductAvailability, isProductlessDocPath } from '@/types/doc-paths'
 
 export const useGetLanguage = () => {

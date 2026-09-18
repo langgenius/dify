@@ -56,7 +56,7 @@ function initializer(node: ts.Node): Value | undefined {
 // expressions but never contribute usage merely by existing on disk.
 export function checkTranslationGraph(root: string, modules: ReadonlyMap<string, string>) {
   const catalog = new Map<string, Set<string>>()
-  const directory = path.join(root, 'i18n/en-US')
+  const directory = path.join(root, 'i18n/locales/en-US')
   for (const file of fs
     .readdirSync(directory)
     .filter((file) => file.endsWith('.json'))

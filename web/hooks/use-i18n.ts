@@ -1,5 +1,5 @@
 import { useLocale } from '#i18n'
-import { getModelLanguage, renderI18nObject } from '@/i18n-config/metadata'
+import { getModelLanguage, renderI18nObject } from '@/i18n/metadata'
 
 export const useRenderI18nObject = () => {
   const language = getModelLanguage(useLocale())

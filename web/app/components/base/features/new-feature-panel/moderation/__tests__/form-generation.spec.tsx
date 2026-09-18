@@ -1,4 +1,4 @@
-import type { I18nText } from '@/i18n-config/language'
+import type { I18nText } from '@/i18n/language'
 import type { CodeBasedExtensionForm } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import FormGeneration from '../form-generation'

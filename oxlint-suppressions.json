@@ -5163,7 +5163,7 @@
       "count": 4
     }
   },
-  "web/i18n-config/index.ts": {
+  "web/i18n/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
     }

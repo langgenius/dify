@@ -38,9 +38,12 @@ describe('translation graph analysis', () => {
 
   describe('Usage Analysis', () => {
     it('resolves generic metadata selectors using the namespace at each call site', () => {
-      writeJson('i18n/en-US/app.json', { resetPassword: 'Unused app key' })
-      writeJson('i18n/en-US/login.json', { resetPassword: 'Reset password', unused: 'Unused' })
-      writeJson('i18n/en-US/common.json', { title: 'Title', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/app.json', { resetPassword: 'Unused app key' })
+      writeJson('i18n/locales/en-US/login.json', {
+        resetPassword: 'Reset password',
+        unused: 'Unused',
+      })
+      writeJson('i18n/locales/en-US/common.json', { title: 'Title', unused: 'Unused' })
       writeSource(
         'src/metadata.ts',
         `
@@ -67,8 +70,8 @@ describe('translation graph analysis', () => {
     })
 
     it('keeps possible matches across namespaces when a selector namespace cannot be resolved', () => {
-      writeJson('i18n/en-US/app.json', { title: 'App', unused: 'Unused' })
-      writeJson('i18n/en-US/login.json', { title: 'Login', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/app.json', { title: 'App', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/login.json', { title: 'Login', unused: 'Unused' })
       writeSource(
         'src/metadata.ts',
         `
@@ -87,8 +90,8 @@ describe('translation graph analysis', () => {
     })
 
     it('protects every possible namespace when the namespace is dynamic', () => {
-      writeJson('i18n/en-US/app.json', { used: 'App' })
-      writeJson('i18n/en-US/common.json', { used: 'Common' })
+      writeJson('i18n/locales/en-US/app.json', { used: 'App' })
+      writeJson('i18n/locales/en-US/common.json', { used: 'Common' })
       writeSource(
         'src/dynamic-namespace.ts',
         `
@@ -107,8 +110,8 @@ describe('translation graph analysis', () => {
     })
 
     it('matches dynamically namespaced keys without keeping unrelated keys', () => {
-      writeJson('i18n/en-US/app.json', { used: 'App', unused: 'Unused' })
-      writeJson('i18n/en-US/common.json', { used: 'Common', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/app.json', { used: 'App', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/common.json', { used: 'Common', unused: 'Unused' })
       writeSource(
         'src/dynamic-namespace.ts',
         `
@@ -128,7 +131,7 @@ describe('translation graph analysis', () => {
 
     it('should keep flat keys selected by t and Trans', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'account.changeEmail.title': 'Change email',
         'account.changeEmail.description': 'Description',
         'account.changeEmail.unused': 'Unused',
@@ -165,10 +168,10 @@ describe('translation graph analysis', () => {
 
     it('should use the default namespace for unresolved selectors', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'dynamic.app': 'Dynamic app key',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'unused.common': 'Unused common key',
       })
       writeSource(
@@ -195,7 +198,7 @@ describe('translation graph analysis', () => {
 
     it('should resolve selectors stored in variables', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         members_one: '1 member',
         members_other: '{{count}} members',
         unused: 'Unused',
@@ -224,7 +227,7 @@ describe('translation graph analysis', () => {
 
     it('should resolve finite selector maps with computed keys and optional entries', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         first: 'First',
         second: 'Second',
         unused: 'Unused',
@@ -265,7 +268,7 @@ describe('translation graph analysis', () => {
 
     it('should protect a selector map namespace when any candidate is unresolved', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         hidden: 'Potentially used by the dynamic selector',
         used: 'Used',
       })
@@ -296,7 +299,7 @@ describe('translation graph analysis', () => {
 
     it('should protect known selector properties that dynamic entries can override', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         hidden: 'Potentially used by the dynamic selector',
         used: 'Used',
       })
@@ -336,7 +339,7 @@ describe('translation graph analysis', () => {
 
     it('should resolve statically computed selector map properties', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         unused: 'Unused',
         used: 'Used',
       })
@@ -369,7 +372,7 @@ describe('translation graph analysis', () => {
 
     it('should ignore dotted literals passed to unrelated generic functions', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         used: 'Used',
         unused: 'Unused',
       })
@@ -399,7 +402,7 @@ describe('translation graph analysis', () => {
 
     it('should analyze translation adapter consumers without protecting their namespace', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         used: 'Used',
         unused: 'Unused',
       })
@@ -435,10 +438,10 @@ describe('translation graph analysis', () => {
 
     it('should infer the namespace of a typed destructured translation parameter', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app key',
       })
-      writeJson('i18n/en-US/deployments.json', {
+      writeJson('i18n/locales/en-US/deployments.json', {
         unused: 'Unused deployment key',
         'versions.deployTo': 'Deploy to {{name}}',
       })
@@ -471,11 +474,11 @@ describe('translation graph analysis', () => {
 
     it('should prefer checker namespaces for a translation parameter named t', () => {
       // Arrange
-      writeJson('i18n/en-US/agent-v-2.json', {
+      writeJson('i18n/locales/en-US/agent-v-2.json', {
         'agentDetail.used': 'Used agent key',
         'agentDetail.unused': 'Unused agent key',
       })
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app key',
       })
       writeSource(
@@ -506,12 +509,12 @@ describe('translation graph analysis', () => {
 
     it('should infer branded TFunction namespaces for direct and destructured parameters', () => {
       // Arrange
-      writeJson('i18n/en-US/agent-v-2.json', {
+      writeJson('i18n/locales/en-US/agent-v-2.json', {
         'agentDetail.direct': 'Direct use',
         'agentDetail.destructured': 'Destructured use',
         'agentDetail.unused': 'Unused agent key',
       })
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app key',
       })
       writeSource(
@@ -545,11 +548,11 @@ describe('translation graph analysis', () => {
 
     it('should ignore typed selector forwarding inside an adapter block body', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         unused: 'Unused',
         used: 'Used',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'unused.common': 'Unused common key',
       })
       writeSource(
@@ -590,7 +593,7 @@ describe('translation graph analysis', () => {
 
     it('should ignore a named adapter forwarding its typed selector parameter', () => {
       // Arrange
-      writeJson('i18n/en-US/workflow.json', {
+      writeJson('i18n/locales/en-US/workflow.json', {
         unused: 'Unused',
         used: 'Used',
       })
@@ -632,7 +635,7 @@ describe('translation graph analysis', () => {
 
     it('should resolve a selected field from nested selector map entries', () => {
       // Arrange
-      writeJson('i18n/en-US/plugin.json', {
+      writeJson('i18n/locales/en-US/plugin.json', {
         'source.first': 'First source',
         'source.second': 'Second source',
         unused: 'Unused',
@@ -686,7 +689,7 @@ describe('translation graph analysis', () => {
 
     it('should conservatively protect untyped JavaScript translation adapters', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         hidden: 'Potentially used',
         used: 'Used',
       })
@@ -713,10 +716,10 @@ describe('translation graph analysis', () => {
 
     it('should protect the selected namespace for an open string-key adapter', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/permission-keys.json', {
+      writeJson('i18n/locales/en-US/permission-keys.json', {
         'server.permission': 'Server permission',
       })
       writeSource(
@@ -744,7 +747,7 @@ describe('translation graph analysis', () => {
 
     it('should keep keys matching a dynamic selector pattern', () => {
       // Arrange
-      writeJson('i18n/en-US/plugin.json', {
+      writeJson('i18n/locales/en-US/plugin.json', {
         'voice.language.enUS': 'English',
         'voice.language.zhCN': 'Chinese',
         unrelated: 'Unrelated',
@@ -772,7 +775,7 @@ describe('translation graph analysis', () => {
 
     it('should keep selector keys from a typed union', () => {
       // Arrange
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'status.ready': 'Ready',
         'status.failed': 'Failed',
         'status.unused': 'Unused',
@@ -802,10 +805,10 @@ describe('translation graph analysis', () => {
 
     it('should keep selector keys from secondary namespaces', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'operation.close': 'Close',
         'unused.common': 'Unused common',
       })
@@ -833,10 +836,10 @@ describe('translation graph analysis', () => {
 
     it('should keep property and element access selectors from secondary namespaces', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         close: 'Close',
         confirm: 'Confirm',
         unused: 'Unused',
@@ -867,10 +870,10 @@ describe('translation graph analysis', () => {
 
     it('should only protect the selected namespace for an unresolved selector', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'maybe.used': 'Maybe used',
       })
       writeSource(
@@ -897,13 +900,13 @@ describe('translation graph analysis', () => {
 
     it('should keep literal keys, aliased t functions, ns options, namespace separators, and Trans keys', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'literal.title': 'Title',
         withDefault: 'With default',
         'trans.shared': 'Shared app',
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'operation.close': 'Close',
         'trans.shared': 'Shared common',
         'unused.common': 'Unused common',
@@ -944,7 +947,7 @@ describe('translation graph analysis', () => {
 
     it('should expand resolvable dynamic keys and keep matching prefixes for unresolved dynamic keys', () => {
       // Arrange
-      writeJson('i18n/en-US/plugin.json', {
+      writeJson('i18n/locales/en-US/plugin.json', {
         'notice.fullMessage': 'Full message',
         'notice.reason.bad': 'Bad reason',
         'notice.reason.legacy': 'Legacy reason',
@@ -981,7 +984,7 @@ describe('translation graph analysis', () => {
 
     it('should protect an entire namespace when a dynamic key has no static prefix', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'maybe.used': 'Maybe used',
         'otherwise.unused': 'Otherwise unused',
       })
@@ -1007,7 +1010,7 @@ describe('translation graph analysis', () => {
 
     it('should keep typed key prefixes without protecting the whole namespace', () => {
       // Arrange
-      writeJson('i18n/en-US/app-debug.json', {
+      writeJson('i18n/locales/en-US/app-debug.json', {
         'duplicateError.name': 'Name',
         'duplicateError.value': 'Value',
         'outside.unused': 'Outside',
@@ -1037,7 +1040,7 @@ describe('translation graph analysis', () => {
 
     it('should expand object map values when indexed with a dynamic key', () => {
       // Arrange
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'status.ready': 'Ready',
         'status.failed': 'Failed',
         'status.unused': 'Unused',
@@ -1070,7 +1073,7 @@ describe('translation graph analysis', () => {
 
     it('should treat simple i18n key identity helpers as their literal argument', () => {
       // Arrange
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'mainNav.workspace.searchPlaceholder': 'Search',
         'mainNav.workspace.unused': 'Unused',
       })
@@ -1099,7 +1102,7 @@ describe('translation graph analysis', () => {
 
     it('should keep i18next plural variants when the base key is referenced', () => {
       // Arrange
-      writeJson('i18n/en-US/deployments.json', {
+      writeJson('i18n/locales/en-US/deployments.json', {
         'overview.environments_one': '1 environment',
         'overview.environments_other': '{{count}} environments',
         'overview.unused_one': '1 unused',
@@ -1128,7 +1131,7 @@ describe('translation graph analysis', () => {
 
     it('should infer plural namespaces from typed TFunction parameters', () => {
       // Arrange
-      writeJson('i18n/en-US/deployments.json', {
+      writeJson('i18n/locales/en-US/deployments.json', {
         'overview.chip.behind_one': '1 release behind',
         'overview.chip.behind_other': '{{count}} releases behind',
         'overview.chip.unused_one': '1 unused',
@@ -1156,7 +1159,7 @@ describe('translation graph analysis', () => {
 
     it('should keep literals when conditional i18n key types expand into unions', () => {
       // Arrange
-      writeJson('i18n/en-US/agent-v-2.json', {
+      writeJson('i18n/locales/en-US/agent-v-2.json', {
         'agentDetail.configure.tools.credential.authOne': 'Auth 1',
         'agentDetail.configure.tools.unused': 'Unused',
       })
@@ -1198,7 +1201,7 @@ describe('translation graph analysis', () => {
 
     it('should collect keys from i18next instance t calls', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'gotoAnything.actions.createChatflow': 'Chatflow',
         'gotoAnything.actions.createChatflowDesc': 'Create a chatflow',
         'gotoAnything.actions.unused': 'Unused',
@@ -1229,16 +1232,16 @@ describe('translation graph analysis', () => {
 
     it('should collect keys from imported and parameterized t functions', () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         noAccessPermission: 'No access',
         'typeSelector.chatbot': 'Chatbot',
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/app-api.json', {
+      writeJson('i18n/locales/en-US/app-api.json', {
         pause: 'Pause',
         'unused.api': 'Unused API',
       })
-      writeJson('i18n/en-US/tools.json', {
+      writeJson('i18n/locales/en-US/tools.json', {
         'mcp.server.publishTip': 'Publish first',
         'unused.tools': 'Unused tools',
       })

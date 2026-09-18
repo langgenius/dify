@@ -2,7 +2,7 @@ import type { DocPathMap } from './i18n'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { renderHook } from '@testing-library/react'
 import { useLocale } from '#i18n'
-import { getDocLanguage } from '@/i18n-config/language'
+import { getDocLanguage } from '@/i18n/language'
 import { defaultDocBaseUrl, enterpriseDocBaseUrl, useDocLink } from './i18n'
 
 const mockDeploymentEdition = vi.hoisted(() => ({
@@ -19,7 +19,7 @@ vi.mock('jotai', async (importOriginal) => ({
   useAtomValue: () => mockDeploymentEdition.value,
 }))
 
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   getDocLanguage: vi.fn((locale: string) => {
     const map: Record<string, string> = {
       'zh-Hans': 'zh',
@@ -30,8 +30,8 @@ vi.mock('@/i18n-config/language', () => ({
   }),
 }))
 
-vi.mock('@/i18n-config/metadata', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/i18n-config/metadata')>()),
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
   getPluginLanguage: vi.fn(),
 }))
 

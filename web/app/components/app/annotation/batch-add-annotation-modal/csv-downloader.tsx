@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useCSVDownloader } from 'react-papaparse'
 import { useLocale } from '#i18n'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 const CSV_TEMPLATE_QA_EN = [
   ['question', 'answer'],

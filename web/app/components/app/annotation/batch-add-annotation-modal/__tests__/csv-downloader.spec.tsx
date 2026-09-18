@@ -1,9 +1,9 @@
 import type { Mock } from 'vite-plus/test'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { useLocale } from '#i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
 import CSVDownload from '../csv-downloader'
 
 vi.mock('#i18n', async (importOriginal) => ({

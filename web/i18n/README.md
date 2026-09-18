@@ -1,6 +1,8 @@
 # Internationalization
 
-English JSON files under `web/i18n/en-US/` are the source locale. Other locale directories must keep the same flat keys and placeholders. i18next uses `keySeparator: false`, so dots are part of a key rather than nested-object separators.
+English JSON files under `web/i18n/locales/en-US/` are the source locale. Other locale directories must keep the same flat keys and placeholders. i18next uses `keySeparator: false`, so dots are part of a key rather than nested-object separators.
+
+The module keeps runtime code and bundled translation assets together. `#i18n` remains the conditional client/server entrypoint; `locales/` contains translation JSON only. Per-locale loaders preserve the existing dynamic-import boundaries. This layout is a project ownership convention, not an i18next requirement.
 
 ## Owners
 
@@ -21,7 +23,7 @@ Do not copy the language registry into documentation. Read the current source fi
 ## Add a locale
 
 1. Add the locale metadata to `languages.ts`.
-2. Add a matching `web/i18n/<locale>/` directory with every source namespace.
+2. Add a matching `web/i18n/locales/<locale>/` directory with every source namespace.
 3. Add `locale-resources/<locale>.ts` and the required mappings in `language.ts`.
 4. Keep the backend language and timezone registry in `api/constants/languages.py` aligned when the locale is accepted by backend APIs.
 5. Run the complete i18n check before submitting the change.
@@ -70,6 +72,6 @@ not load Vite plugins.
 
 ## Automated translation
 
-Changes to `web/i18n/en-US/*.json` on `main` trigger the scoped translation workflow. The workflow derives target locales from `languages.ts`, translates only the changed namespaces and keys, verifies them with `i18n:check`, and opens a pull request when translations change.
+Changes to `web/i18n/locales/en-US/*.json` on `main` trigger the scoped translation workflow. The workflow derives target locales from `languages.ts`, translates only the changed namespaces and keys, verifies them with `i18n:check`, and opens a pull request when translations change.
 
 Use the `Translate i18n Files with Claude Code` workflow dispatch for a manual scoped sync. Full mode requires an explicit file list.
