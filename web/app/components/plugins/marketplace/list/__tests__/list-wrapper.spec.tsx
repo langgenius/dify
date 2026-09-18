@@ -77,12 +77,12 @@ describe('ListWrapper', () => {
     expect(screen.getByTestId('sort-dropdown')).toBeInTheDocument()
   })
 
-  it('keeps the status owner mounted through pagination and reports the loaded result count', () => {
+  it('keeps the status owner mounted through pagination and reports the total result count', () => {
     mockMarketplaceData.plugins = [{ plugin_id: 'p1', name: 'Plugin One' } as Plugin]
     mockMarketplaceData.pluginsTotal = 20
     const view = renderListWrapper(<ListWrapper />)
     const status = screen.getByRole('status')
-    expect(status).toHaveTextContent('1 plugins found')
+    expect(status).toHaveTextContent('20 plugins found')
 
     mockMarketplaceData.isFetchingNextPage = true
     view.rerender(<ListWrapper />)
@@ -97,7 +97,7 @@ describe('ListWrapper', () => {
     ]
     view.rerender(<ListWrapper />)
     expect(screen.getByRole('status')).toBe(status)
-    expect(status).toHaveTextContent('2 plugins found')
+    expect(status).toHaveTextContent('20 plugins found')
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
 
     mockMarketplaceData.isRefreshing = true

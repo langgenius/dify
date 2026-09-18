@@ -88,7 +88,7 @@ const ListWrapper = ({
           : isError
             ? t(($) => $['marketplace.loadError'], { ns: 'plugin' })
             : plugins
-              ? t(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: plugins.length })
+              ? t(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: pluginsTotal })
               : null}
       </div>
       <div className="flex w-full grow flex-col">
