@@ -122,7 +122,7 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
   Use our [documentation](https://docs.dify.ai) for further references and more in-depth instructions.
 
 - **[Dify Enterprise](https://dify.ai/dify-enterprise)<br/>**
-  We provide additional enterprise-centric features. [Fill out our Enterprise form](https://share-na2.hsforms.com/14-09ff5HS92Sh4m3f4yrcw40s9fk) to discuss your enterprise needs. <br/>
+  We provide additional enterprise-centric features. Fill out our [Enterprise form](https://share-na2.hsforms.com/14-09ff5HS92Sh4m3f4yrcw40s9fk) to discuss your enterprise needs. <br/>
 
 ## Staying ahead
 
