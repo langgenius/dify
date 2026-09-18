@@ -6,13 +6,14 @@ from collections.abc import Iterator
 
 import pytest
 from flask import Flask
+from flask_restx.model import ModelBase
 
 from configs import dify_config
 from controllers.common.fields import EventStreamResponse
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi._catalog import _VERBS, CATALOG_HEADER, CATALOG_PATH, build_catalog, catalog_for
+from controllers.openapi._catalog import CATALOG_HEADER, CATALOG_PATH, build_catalog, catalog_for, iter_handlers
 from controllers.openapi._models import Hinted
-from controllers.openapi.auth.spec import EndpointSpec, Kind
+from controllers.openapi.auth.spec import EndpointSpec, Kind, spec_of
 
 OP_ID_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
 MAX_DEPTH = 4
@@ -39,20 +40,9 @@ def ops(app: Flask) -> dict[str, dict]:
     return build_catalog(app)["ops"]
 
 
-def _view_methods(app: Flask):
-    for rule in app.url_map.iter_rules():
-        if not rule.rule.startswith("/openapi/v1"):
-            continue
-        cls = getattr(app.view_functions.get(rule.endpoint), "view_class", None)
-        if cls is None:
-            continue
-        for verb in (rule.methods or set()) & _VERBS:
-            yield rule, verb, getattr(cls, verb.lower())
-
-
 def _response_model_names(fn) -> set[str]:
-    responses = getattr(fn, "__apidoc__", {}).get("responses", {})
-    return {getattr(entry[1], "name", "") for entry in responses.values() if isinstance(entry, tuple)}
+    responses = fn.__apidoc__.get("responses", {}) if hasattr(fn, "__apidoc__") else {}
+    return {entry[1].name for entry in responses.values() if isinstance(entry[1], ModelBase)}
 
 
 def _walk(node: object, path: tuple[str, ...] = (), depth: int = 0) -> Iterator[tuple[tuple[str, ...], int, dict]]:
@@ -71,8 +61,8 @@ def _walk(node: object, path: tuple[str, ...] = (), depth: int = 0) -> Iterator[
 def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[str, dict]):
     seen: dict[str, str] = {}
     streaming: set[str] = set()
-    for rule, verb, fn in _view_methods(app):
-        spec = getattr(fn, "__spec__", None)
+    for rule, verb, fn in iter_handlers(app):
+        spec = spec_of(fn)
         if rule.rule.startswith(_UNCATALOGUED_PREFIX) or rule.rule in _UNCATALOGUED:
             assert spec is None, f"{verb} {rule.rule} must stay out of the catalog"
             continue

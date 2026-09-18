@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -53,3 +54,9 @@ class EndpointSpec:
         catalog leaves the op out, so both read the gate from here.
         """
         return self.edition is None or edition in self.edition
+
+
+def spec_of(view: Any) -> EndpointSpec | None:
+    """The spec `@endpoint` attached to `view`, or None for anything else."""
+    spec = view.__spec__ if hasattr(view, "__spec__") else None
+    return spec if isinstance(spec, EndpointSpec) else None
