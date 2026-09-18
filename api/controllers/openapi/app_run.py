@@ -1,13 +1,14 @@
-"""POST /openapi/v1/apps/<app_id>:run — mode-agnostic runner."""
+"""Run routes on /openapi/v1: one per app mode, plus the deprecated mode-agnostic :run."""
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterable, Mapping
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, Final
 
 from flask_restx import Resource
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import (
     BadRequest,
@@ -23,9 +24,19 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
-from controllers.openapi._contract import Kind, endpoint
+from controllers.openapi._contract import Kind, endpoint, op_of
 from controllers.openapi._files import materialize, merge_files
-from controllers.openapi._models import AppRunRequest, TaskStopResponse
+from controllers.openapi._hints import attach_stream_hints
+from controllers.openapi._models import (
+    AdvancedChatRunPayload,
+    AppRunRequest,
+    ChatRunPayload,
+    CompletionRunPayload,
+    Hint,
+    RunPayloadBase,
+    TaskStopResponse,
+    WorkflowRunPayload,
+)
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -49,6 +60,7 @@ from controllers.service_api.app.error import (
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.task_entities import MessageEndStreamResponse, StreamEvent
 from core.errors.error import (
     AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
@@ -107,17 +119,88 @@ def _translate_service_errors() -> Generator[None, None, None]:
         raise InvokeRateLimitHttpError(ex.description)
     except InvokeError as e:
         raise CompletionRequestError(e.description)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("internal server error.")
+        raise InternalServerError()
 
 
-def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool, session: Session):
+_RUN_GUARDS: Final = (
+    CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_RUN),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
+    CheckAppAccess(),
+)
+_STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
+
+
+def _generate(app: App, caller: Any, args: dict[str, Any], session: Session):
     return AppGenerateService.generate(
         session=session,
         app_model=app,
         user=caller,
         args=args,
         invoke_from=InvokeFrom.OPENAPI,
-        streaming=streaming,
+        streaming=True,
     )
+
+
+def _generate_args(caller: Any, payload: RunPayloadBase) -> dict[str, Any]:
+    args = payload.model_dump(exclude={"files", "attachments"}, exclude_none=True)
+    args["inputs"] = merge_files(payload.inputs, payload.files, caller)
+    if payload.attachments:
+        args["files"] = materialize(payload.attachments, caller)
+    return args
+
+
+def _stream(ctx: Context, args: dict[str, Any]):
+    with _translate_service_errors():
+        return _generate(ctx.app, ctx.caller, args, ctx.session)
+
+
+def _require_mode(app: App, *modes: AppMode) -> None:
+    if app.mode not in modes:
+        raise UnprocessableEntity("app_mode_mismatch")
+
+
+def _respond(ctx: Context, stream: Any):
+    app_model = ctx.app
+    emit_app_run(
+        app_id=app_model.id,
+        tenant_id=app_model.tenant_id,
+        caller_kind=ctx.subject.caller_role,
+        mode=str(app_model.mode),
+        surface="apps",
+    )
+    # response-contract:ignore compact_generate_response
+    return helper.compact_generate_response(stream)
+
+
+class _ChatMessageEnd(MessageEndStreamResponse):
+    """The wire shape of a chat run's `message_end`: the core entity plus the ids the converter merges in."""
+
+    conversation_id: str
+
+
+def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generator[str, None, None]:
+    def build(event: Mapping[str, Any]) -> list[Hint]:
+        try:
+            end = _ChatMessageEnd.model_validate(event)
+        except ValidationError:
+            logger.warning("message_end event did not validate; no hints attached, app_id=%s", app_id)
+            return []
+        return [
+            Hint(
+                summary="Reply in this conversation",
+                op=op,
+                input={"app_id": app_id, "conversation_id": end.conversation_id, "query": None, "inputs": {}},
+            )
+        ]
+
+    return attach_stream_hints(events, event=StreamEvent.MESSAGE_END.value, build=build)
 
 
 def _args_with_files(caller: Any, payload: AppRunRequest, *, exclude: set[str]) -> dict[str, Any]:
@@ -133,7 +216,7 @@ def _run_chat(app: App, caller: Any, payload: AppRunRequest, session: Session):
         raise UnprocessableEntity("query_required_for_chat")
     args = _args_with_files(caller, payload, exclude=set())
     with _translate_service_errors():
-        return _generate(app, caller, args, streaming=True, session=session)
+        return _generate(app, caller, args, session)
 
 
 def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Session):
@@ -141,7 +224,7 @@ def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Sess
     args["auto_generate_name"] = False
     args.setdefault("query", "")
     with _translate_service_errors():
-        return _generate(app, caller, args, streaming=True, session=session)
+        return _generate(app, caller, args, session)
 
 
 def _run_workflow(app: App, caller: Any, payload: AppRunRequest, session: Session):
@@ -149,7 +232,7 @@ def _run_workflow(app: App, caller: Any, payload: AppRunRequest, session: Sessio
         raise UnprocessableEntity("query_not_supported_for_workflow")
     args = _args_with_files(caller, payload, exclude={"query", "conversation_id", "auto_generate_name"})
     with _translate_service_errors():
-        return _generate(app, caller, args, streaming=True, session=session)
+        return _generate(app, caller, args, session)
 
 
 _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, Session], Any]] = {
@@ -161,22 +244,81 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, Session], Any]] = {
 }
 
 
+@openapi_ns.route("/apps/<string:app_id>/workflow:run")
+class WorkflowRunApi(Resource):
+    @endpoint(
+        op="console_app.workflow.run",
+        kind=Kind.SSE,
+        summary="Run a workflow app; streams workflow events",
+        requirements=_RUN_GUARDS,
+        body=WorkflowRunPayload,
+        returns=_STREAM_RESULT,
+    )
+    def post(self, ctx: Context, app_id: str, *, body: WorkflowRunPayload):
+        _require_mode(ctx.app, AppMode.WORKFLOW)
+        stream = _stream(ctx, _generate_args(ctx.caller, body))
+        return _respond(ctx, with_form_hints(stream, app_id=ctx.app.id))
+
+
+@openapi_ns.route("/apps/<string:app_id>/chat:run")
+class ChatRunApi(Resource):
+    @endpoint(
+        op="console_app.chat.run",
+        kind=Kind.SSE,
+        summary="Run a chat or agent app; streams message events",
+        requirements=_RUN_GUARDS,
+        body=ChatRunPayload,
+        returns=_STREAM_RESULT,
+    )
+    def post(self, ctx: Context, app_id: str, *, body: ChatRunPayload):
+        _require_mode(ctx.app, AppMode.CHAT, AppMode.AGENT_CHAT)
+        stream = _stream(ctx, _generate_args(ctx.caller, body))
+        return _respond(ctx, with_reply_hints(stream, op=op_of(type(self).post), app_id=ctx.app.id))
+
+
+@openapi_ns.route("/apps/<string:app_id>/advanced-chat:run")
+class AdvancedChatRunApi(Resource):
+    @endpoint(
+        op="console_app.advanced_chat.run",
+        kind=Kind.SSE,
+        summary="Run an advanced-chat (chatflow) app; streams message and workflow events",
+        requirements=_RUN_GUARDS,
+        body=AdvancedChatRunPayload,
+        returns=_STREAM_RESULT,
+    )
+    def post(self, ctx: Context, app_id: str, *, body: AdvancedChatRunPayload):
+        _require_mode(ctx.app, AppMode.ADVANCED_CHAT)
+        stream = with_reply_hints(
+            _stream(ctx, _generate_args(ctx.caller, body)), op=op_of(type(self).post), app_id=ctx.app.id
+        )
+        return _respond(ctx, with_form_hints(stream, app_id=ctx.app.id))
+
+
+@openapi_ns.route("/apps/<string:app_id>/completion:run")
+class CompletionRunApi(Resource):
+    @endpoint(
+        op="console_app.completion.run",
+        kind=Kind.SSE,
+        summary="Run a completion app; streams message events",
+        requirements=_RUN_GUARDS,
+        body=CompletionRunPayload,
+        returns=_STREAM_RESULT,
+    )
+    def post(self, ctx: Context, app_id: str, *, body: CompletionRunPayload):
+        _require_mode(ctx.app, AppMode.COMPLETION)
+        return _respond(ctx, _stream(ctx, _generate_args(ctx.caller, body)))
+
+
 @openapi_ns.route("/apps/<string:app_id>:run")
 class AppRunApi(Resource):
     @endpoint(
         op="console_app.run",
         kind=Kind.SSE,
-        summary="Run an app (chat, agent, completion, advanced-chat or workflow); streams events",
-        requirements=(
-            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
-            CheckAppApiEnabled(),
-            CheckWorkspaceMember(),
-            CheckScope(Scope.APPS_RUN),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
-            CheckAppAccess(),
-        ),
+        summary="Deprecated: use console_app.<mode>.run for the app's mode",
+        requirements=_RUN_GUARDS,
         body=AppRunRequest,
-        returns=(200, EventStreamResponse, "Run result (SSE stream)"),
+        returns=_STREAM_RESULT,
+        deprecated=True,
     )
     def post(self, ctx: Context, app_id: str, *, body: AppRunRequest):
         app_model = ctx.app
@@ -212,14 +354,7 @@ class AppRunTaskStopApi(Resource):
         op="run.stop",
         kind=Kind.OBJECT,
         summary="Stop a running task",
-        requirements=(
-            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
-            CheckAppApiEnabled(),
-            CheckWorkspaceMember(),
-            CheckScope(Scope.APPS_RUN),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
-            CheckAppAccess(),
-        ),
+        requirements=_RUN_GUARDS,
         returns=(200, TaskStopResponse, "Task stopped"),
     )
     def post(self, ctx: Context, app_id: str, task_id: str):

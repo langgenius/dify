@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import uuid
 from io import BytesIO
@@ -10,10 +11,26 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from pydantic import BaseModel, ValidationError
 from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import UnprocessableEntity
 
-from controllers.openapi._models import AppRunRequest, TaskStopResponse
-from controllers.openapi.app_run import AppRunApi, AppRunTaskStopApi
+from controllers.openapi._models import (
+    AdvancedChatRunPayload,
+    AppRunRequest,
+    ChatRunPayload,
+    CompletionRunPayload,
+    TaskStopResponse,
+    WorkflowRunPayload,
+)
+from controllers.openapi.app_run import (
+    AdvancedChatRunApi,
+    AppRunApi,
+    AppRunTaskStopApi,
+    ChatRunApi,
+    CompletionRunApi,
+    WorkflowRunApi,
+)
 from graphon.file import FileType
 from models import Account
 from models.enums import CreatorUserRole
@@ -46,6 +63,33 @@ def test_app_run_request_has_no_response_mode_field():
     assert "response_mode" not in AppRunRequest.model_fields
     req = AppRunRequest.model_validate({"inputs": {}, "response_mode": "blocking"})
     assert not hasattr(req, "response_mode")
+
+
+@pytest.mark.parametrize(
+    ("model", "payload"),
+    [
+        pytest.param(ChatRunPayload, {"inputs": {}, "query": "   "}, id="chat.blank_query"),
+        pytest.param(ChatRunPayload, {"inputs": {}}, id="chat.missing_query"),
+        pytest.param(
+            ChatRunPayload, {"inputs": {}, "query": "hi", "workflow_id": "wf-1"}, id="chat.workflow_id_is_foreign"
+        ),
+        pytest.param(WorkflowRunPayload, {"inputs": {}, "query": "x"}, id="workflow.query_is_foreign"),
+        pytest.param(
+            CompletionRunPayload, {"inputs": {}, "conversation_id": "x"}, id="completion.conversation_is_foreign"
+        ),
+    ],
+)
+def test_per_mode_payloads_reject_what_the_mode_does_not_take(model: type[BaseModel], payload: dict):
+    with pytest.raises(ValidationError):
+        model.model_validate(payload)
+
+
+def test_per_mode_payloads_share_the_base_and_strip_query():
+    chat = ChatRunPayload.model_validate({"inputs": {}, "query": " hi ", "conversation_id": ""})
+    assert (chat.query, chat.conversation_id, chat.auto_generate_name) == ("hi", None, True)
+    assert set(WorkflowRunPayload.model_fields) == {"inputs", "files", "attachments", "workspace_id", "workflow_id"}
+    assert set(AppRunRequest.model_fields) >= set(ChatRunPayload.model_fields) | set(WorkflowRunPayload.model_fields)
+    assert set(AdvancedChatRunPayload.model_fields) == set(ChatRunPayload.model_fields) | {"workflow_id"}
 
 
 def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -154,3 +198,125 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(app: F
     }
     assert args["files"] == [{"transfer_method": "local_file", "upload_file_id": "uf-p.jpg", "type": FileType.IMAGE}]
     assert "attachments" not in args
+
+
+def _generate_stub(monkeypatch: pytest.MonkeyPatch, chunks: list[str]) -> Mock:
+    generate_mock = Mock(return_value=iter(chunks))
+
+    class GenerateService:
+        generate = generate_mock
+
+    monkeypatch.setattr(sys.modules["controllers.openapi.app_run"], "AppGenerateService", GenerateService)
+    return generate_mock
+
+
+def _upload_stub(monkeypatch: pytest.MonkeyPatch) -> None:
+    upload_service = Mock()
+    upload_service.upload_file.side_effect = lambda **kw: SimpleNamespace(
+        id=f"uf-{kw['filename']}", extension=kw["filename"].rsplit(".", 1)[-1], mime_type=kw["mimetype"]
+    )
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi._files"], "application_services", lambda: SimpleNamespace(files=upload_service)
+    )
+
+
+def _ctx(mode: AppMode) -> _SealableContext:
+    app_model = _make_app()
+    app_model.mode = mode
+    return _SealableContext(
+        app=app_model,
+        caller=_make_account(),
+        session=Mock(),
+        subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT),
+    )
+
+
+@pytest.mark.parametrize(
+    ("api", "path", "mode", "body"),
+    [
+        pytest.param(WorkflowRunApi(), "workflow:run", AppMode.WORKFLOW, WorkflowRunPayload(inputs={}), id="workflow"),
+        pytest.param(
+            ChatRunApi(), "chat:run", AppMode.AGENT_CHAT, ChatRunPayload(inputs={}, query="hi"), id="agent_chat_on_chat"
+        ),
+        pytest.param(
+            AdvancedChatRunApi(),
+            "advanced-chat:run",
+            AppMode.ADVANCED_CHAT,
+            AdvancedChatRunPayload(inputs={}, query="hi"),
+            id="advanced_chat",
+        ),
+        pytest.param(
+            CompletionRunApi(), "completion:run", AppMode.COMPLETION, CompletionRunPayload(inputs={}), id="completion"
+        ),
+    ],
+)
+def test_per_mode_routes_stream_after_reading_the_context(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, api, path: str, mode: AppMode, body
+):
+    generate_mock = _generate_stub(monkeypatch, ["event: a\n\n", "event: b\n\n"])
+    ctx = _ctx(mode)
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/{path}", method="POST"):
+        response = api.post.__handler__(api, ctx, app_id=_TEST_APP_ID, body=body)
+        ctx.seal()
+        assert "".join(response.response) == "event: a\n\nevent: b\n\n"
+    assert generate_mock.call_args.kwargs["streaming"] is True
+
+
+def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    generate_mock = _generate_stub(monkeypatch, [])
+    api = ChatRunApi()
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
+        with pytest.raises(UnprocessableEntity, match="app_mode_mismatch"):
+            api.post.__handler__(
+                api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=ChatRunPayload(inputs={}, query="hi")
+            )
+    generate_mock.assert_not_called()
+
+
+def test_completion_route_hands_the_generator_file_mappings(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    generate_mock = _generate_stub(monkeypatch, [])
+    _upload_stub(monkeypatch)
+    body = CompletionRunPayload(
+        inputs={},
+        files={"doc": FileStorage(stream=BytesIO(b"pdf"), filename="r.pdf", content_type="application/pdf")},
+        attachments=[FileStorage(stream=BytesIO(b"jpg"), filename="p.jpg", content_type="image/jpeg")],
+    )
+    api = CompletionRunApi()
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/completion:run", method="POST"):
+        api.post.__handler__(api, _ctx(AppMode.COMPLETION), app_id=_TEST_APP_ID, body=body)
+    args = generate_mock.call_args.kwargs["args"]
+    assert args["inputs"]["doc"] == {
+        "transfer_method": "local_file",
+        "upload_file_id": "uf-r.pdf",
+        "type": FileType.DOCUMENT,
+    }
+    assert args["files"] == [{"transfer_method": "local_file", "upload_file_id": "uf-p.jpg", "type": FileType.IMAGE}]
+    assert args["query"] == ""
+    assert {"attachments", "auto_generate_name"}.isdisjoint(args)
+
+
+def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    message = 'data: {"event": "message", "answer": "hi"}\n\n'
+    end = {
+        "event": "message_end",
+        "conversation_id": "c1",
+        "message_id": "m1",
+        "created_at": 1,
+        "id": "m1",
+        "task_id": "task-1",
+    }
+    _generate_stub(monkeypatch, [message, f"data: {json.dumps(end)}\n\n"])
+    api = ChatRunApi()
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
+        response = api.post.__handler__(
+            api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=ChatRunPayload(inputs={}, query="hi")
+        )
+        chunks = list(response.response)
+    assert chunks[0] == message
+    assert json.loads(chunks[1][len("data: ") :])["hints"] == [
+        {
+            "summary": "Reply in this conversation",
+            "op": "console_app.chat.run",
+            "input": {"app_id": _TEST_APP_ID, "conversation_id": "c1", "query": None, "inputs": {}},
+        }
+    ]

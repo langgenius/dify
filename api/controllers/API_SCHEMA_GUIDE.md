@@ -275,6 +275,9 @@ Every `@endpoint` on `/openapi/v1` declares `op` (dotted lowercase id), `kind`
 `EndpointSpec`. `controllers/openapi/_catalog.py` derives the rest (input schema, bind,
 tags) from the route and its Pydantic models. Files are declared in the body model with
 `UploadPart`; never add a separate files decorator or parse `request.files` in a handler.
+Run ops are per app mode (`console_app.<mode>.run`), each a self-contained route with the exact
+body that mode takes; `POST /apps/{app_id}:run` is the deprecated union and stays until difyctl v2
+is the shipped client.
 Next steps for the caller go in a `hints` field (see `_hints.py`); `hints` is reserved.
 Frozen after release: kind names, bind values, the pagination envelope, and any field the
 CLI's fold table reads from an SSE event. Breaking input changes get a new op id; the old

@@ -213,8 +213,19 @@ def test_payload_models_reject(model: type[BaseModel], payload: dict[str, object
             "/openapi/v1/apps/{app_id}/human-input-forms/tok-1:submit",
             {"inputs": {"field1": "val"}},
         ),
+        (
+            HTTPMethod.POST,
+            "/openapi/v1/apps/{app_id}/workflow:run",
+            {"inputs": {}, "query": "not a workflow field"},
+        ),
     ],
-    ids=["invite.owner", "update_role.owner", "members_list.unknown_query", "human_input_form.missing_action"],
+    ids=[
+        "invite.owner",
+        "update_role.owner",
+        "members_list.unknown_query",
+        "human_input_form.missing_action",
+        "workflow_run.foreign_field",
+    ],
 )
 def test_invalid_request_is_422_on_the_wire(
     admitted_bearer: AdmittedWorld, method: HTTPMethod, path: str, body: dict[str, object] | None
