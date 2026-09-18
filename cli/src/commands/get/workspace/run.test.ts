@@ -89,20 +89,20 @@ describe('runGetWorkspace', () => {
   it('-o json emits a parseable workspaces envelope', async () => {
     const out = await render('json')
     const parsed = JSON.parse(out) as {
-      workspaces: Array<{ id: string; status: string; current: boolean }>
+      data: Array<{ id: string; status: string; current: boolean }>
     }
-    expect(parsed.workspaces).toHaveLength(2)
-    expect(parsed.workspaces.map((w) => w.id).sort()).toEqual([
+    expect(parsed.data).toHaveLength(2)
+    expect(parsed.data.map((w) => w.id).sort()).toEqual([
       '550e8400-e29b-41d4-a716-446655440000',
       '550e8400-e29b-41d4-a716-446655440001',
     ])
-    expect(parsed.workspaces[0]?.status).toBe('normal')
-    expect(parsed.workspaces[0]?.current).toBe(true)
+    expect(parsed.data[0]?.status).toBe('normal')
+    expect(parsed.data[0]?.current).toBe(true)
   })
 
-  it('-o yaml emits "workspaces:" header', async () => {
+  it('-o yaml emits "data:" header', async () => {
     const out = await render('yaml')
-    expect(out).toContain('workspaces:')
+    expect(out).toContain('data:')
     expect(out).toContain('550e8400-e29b-41d4-a716-446655440000')
   })
 
