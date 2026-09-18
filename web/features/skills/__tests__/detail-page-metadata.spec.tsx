@@ -453,11 +453,9 @@ describe('SkillDetailPage metadata', () => {
     expect(renameInput).toHaveValue('Untitled skill')
   })
 
-  it('duplicates and exports the current skill from the sidebar More menu', async () => {
+  it('opens the returned duplicate for inline rename from the sidebar More menu', async () => {
     const user = userEvent.setup()
-    const archive = new Blob(['archive'], { type: 'application/zip' })
-    mocks.duplicateSkillMutationFn.mockResolvedValue({})
-    mocks.fetchSkillArchiveBlob.mockResolvedValue(archive)
+    mocks.duplicateSkillMutationFn.mockResolvedValue(createSkillDetail({ id: 'copied-skill' }))
     renderSkillDetailPage()
 
     const moreButton = await screen.findByRole('button', {
@@ -473,8 +471,41 @@ describe('SkillDetailPage metadata', () => {
       )
     })
     expect(mocks.toastSuccess).toHaveBeenCalledWith('skill.skillManagement.duplicateSuccess')
+    expect(mocks.routerPush).toHaveBeenCalledWith('/skills/copied-skill?rename=true')
+  })
 
-    await user.click(moreButton)
+  it('stays on the original detail when duplication fails', async () => {
+    const user = userEvent.setup()
+    mocks.duplicateSkillMutationFn.mockRejectedValue(new Error('Duplicate failed'))
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Untitled skill"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.duplicate' }))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.duplicateFailed')
+    })
+    expect(mocks.routerPush).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'common.operation.rename' })).toHaveTextContent(
+      'Untitled skill',
+    )
+  })
+
+  it('exports the current skill from the sidebar More menu', async () => {
+    const user = userEvent.setup()
+    const archive = new Blob(['archive'], { type: 'application/zip' })
+    mocks.fetchSkillArchiveBlob.mockResolvedValue(archive)
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Untitled skill"}',
+      }),
+    )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.export' }))
 
     await waitFor(() => {
@@ -484,6 +515,84 @@ describe('SkillDetailPage metadata', () => {
         fileName: 'github-actions-failure-debugging.zip',
       })
     })
+  })
+
+  it('does not start inline rename on an ordinary detail visit', async () => {
+    const { onUrlUpdate } = renderSkillDetailPage()
+
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.rename' }),
+    ).toHaveTextContent('Untitled skill')
+    expect(
+      screen.queryByRole('textbox', { name: 'common.operation.rename' }),
+    ).not.toBeInTheDocument()
+    expect(onUrlUpdate).not.toHaveBeenCalled()
+  })
+
+  it('starts inline rename after the copied detail loads and consumes the request once', async () => {
+    const user = userEvent.setup()
+    let resolveDetail: (detail: SkillDetailResponse) => void = () => {}
+    const detailPromise = new Promise<SkillDetailResponse>((resolve) => {
+      resolveDetail = resolve
+    })
+    mocks.skillDetailQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-detail', options],
+      queryFn: () => detailPromise,
+    }))
+    const { onUrlUpdate, queryClient } = renderSkillDetailPage({
+      searchParams: '?rename=true&source=list',
+      strict: true,
+    })
+
+    expect(
+      screen.queryByRole('textbox', { name: 'common.operation.rename' }),
+    ).not.toBeInTheDocument()
+    expect(onUrlUpdate).not.toHaveBeenCalled()
+    await act(async () => resolveDetail(createSkillDetail()))
+
+    const renameInput = await screen.findByRole('textbox', { name: 'common.operation.rename' })
+    expect(renameInput).toHaveFocus()
+    expect(renameInput).toHaveValue('Untitled skill')
+    expect(renameInput).toHaveProperty('selectionStart', 0)
+    expect(renameInput).toHaveProperty('selectionEnd', 'Untitled skill'.length)
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has('rename')).toBe(false)
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('source')).toBe('list')
+
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('button', { name: 'common.operation.rename' })).toBeInTheDocument()
+    await act(async () => queryClient.invalidateQueries())
+    expect(
+      screen.queryByRole('textbox', { name: 'common.operation.rename' }),
+    ).not.toBeInTheDocument()
+    expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('saves the automatically activated name editor without activating it again', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate, queryClient } = renderSkillDetailPage({ searchParams: '?rename=true' })
+    const renameInput = await screen.findByRole('textbox', { name: 'common.operation.rename' })
+
+    await user.clear(renameInput)
+    await user.type(renameInput, 'Renamed duplicate{Enter}')
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'common.operation.rename' })).toHaveTextContent(
+        'Renamed duplicate',
+      )
+    })
+    expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ display_name: 'Renamed duplicate' }),
+      }),
+      expect.anything(),
+    )
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has('rename')).toBe(false)
+    await act(async () => queryClient.invalidateQueries())
+    expect(
+      screen.queryByRole('textbox', { name: 'common.operation.rename' }),
+    ).not.toBeInTheDocument()
   })
 
   it('requires the display name before deleting a referenced skill from the sidebar', async () => {

@@ -421,6 +421,7 @@ function SkillCard({
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
+  const router = useRouter()
   const nameId = useId()
   const descriptionId = useId()
   const draftStatusId = useId()
@@ -456,9 +457,10 @@ function SkillCard({
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (copiedSkill) => {
           toast.success(t(($) => $['skillManagement.duplicateSuccess']))
           invalidateSkillListQueries(queryClient)
+          router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
         onError: () => {
           toast.error(t(($) => $['skillManagement.duplicateFailed']))

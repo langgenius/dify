@@ -1051,7 +1051,7 @@ describe('SkillsPage', () => {
     )
   })
 
-  it('duplicates a skill from the card action menu', async () => {
+  it('opens the returned duplicate for inline rename from the card action menu', async () => {
     const user = userEvent.setup()
     renderSkillsPage()
 
@@ -1073,6 +1073,25 @@ describe('SkillsPage', () => {
       )
     })
     expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.duplicateSuccess')
+    expect(mocks.push).toHaveBeenCalledWith('/skills/duplicated-skill?rename=true')
+  })
+
+  it('stays on the skill list when duplication fails', async () => {
+    const user = userEvent.setup()
+    mocks.duplicateSkillMutationFn.mockRejectedValue(new Error('Duplicate failed'))
+    renderSkillsPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    await user.click(await screen.findByText('common.operation.duplicate'))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.duplicateFailed')
+    })
+    expect(mocks.push).not.toHaveBeenCalled()
   })
 
   it('exports a published skill from the card action menu', async () => {
