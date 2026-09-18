@@ -1172,7 +1172,15 @@ class DifyBuilderService:
         app_revision_conflicted = bool(
             fc.last_snapshot_hash and current_app_revision and fc.last_snapshot_hash != current_app_revision
         )
-        if action.kind not in {"message", "update_model"}:
+        # A testdata submit carries run inputs, never graph edits, so neither
+        # revision gate below applies: a draft that moved while the user was
+        # typing changes nothing about the values they typed. This gate is also
+        # the one place a human types for tens of seconds -- long enough for the
+        # editor's own autosave to land right after Builder wrote the canvas,
+        # which used to refuse the submit and leave the form frozen behind a
+        # recovery prompt.
+        revision_exempt = action.kind == "provide_testdata"
+        if not revision_exempt and action.kind not in {"message", "update_model"}:
             if current_app_revision and not action.base_app_revision:
                 raise BadRequestError("base_app_revision is required")
             if action.base_app_revision and action.base_app_revision != current_app_revision:
@@ -1180,6 +1188,7 @@ class DifyBuilderService:
         if (
             app_revision_conflicted
             and not fc.recovery_class
+            and not revision_exempt
             and action.kind not in {"check_recovery", "recovery_restart", "resume"}
         ):
             raise ConflictError(f"draft changed outside Builder for app {s.app_id}")
