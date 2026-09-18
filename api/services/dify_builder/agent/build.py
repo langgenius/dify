@@ -135,24 +135,27 @@ def discover_resources(
     catalog = {r.id: ("knowledge", r) for r in inv.datasets}
     catalog.update({r.id: ("plugin", r) for r in inv.tools})
     catalog.update({r.id: ("model", r) for r in inv.models})
-    if not catalog:
+    if not catalog or model is None:
         return []
-    chosen_ids = list(catalog.keys())
-    if model is not None:
-        system = (
-            "You are a Dify workflow resource recommender. From the AVAILABLE resources, pick the "
-            "ids relevant to the plan. Use ONLY listed ids. Reply with ONLY JSON: "
-            '{"resource_ids": ["<id>", ...]}.'
-        )
-        listing = "\n".join(f"- {rid} ({kind}): {ref.label}" for rid, (kind, ref) in catalog.items())
-        user = f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
-        try:
-            data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
-            picked = [rid for rid in (data.get("resource_ids") or []) if rid in catalog]
-            if picked:
-                chosen_ids = picked
-        except Exception:
-            chosen_ids = list(catalog.keys())  # explicit reset: degrade to full inventory
+    system = (
+        "You are a Dify workflow resource recommender. From the AVAILABLE resources, pick the "
+        "ids relevant to the plan. Use ONLY listed ids. Reply with ONLY JSON: "
+        '{"resource_ids": ["<id>", ...]}.'
+    )
+    listing = "\n".join(f"- {rid} ({kind}): {ref.label}" for rid, (kind, ref) in catalog.items())
+    user = f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
+    try:
+        data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
+        chosen_ids = [rid for rid in (data.get("resource_ids") or []) if rid in catalog]
+    except Exception:
+        logger.warning("dify_builder: resource recommendation failed; recommending none", exc_info=True)
+        chosen_ids = []
+    # Recommending nothing is the honest answer when there is no signal -- no
+    # model, a failed call, or a model that picked none. The old code fell back
+    # to the whole tenant inventory, and because the client pre-checks every
+    # recommendation and submits them by default, that silently bound dozens of
+    # unrelated resources and appended their names to the plan fed to the
+    # generator. The caller states the situation instead.
     return [
         ResourceOption(
             id=rid,
