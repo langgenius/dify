@@ -122,7 +122,6 @@ class Dataset(Base):
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
     permission: Mapped[DatasetPermissionEnum] = mapped_column(
         EnumText(DatasetPermissionEnum, length=255),
-        server_default=sa.text("'only_me'"),
         default=DatasetPermissionEnum.ONLY_ME,
     )
     data_source_type = mapped_column(EnumText(DataSourceType, length=255))
@@ -149,7 +148,7 @@ class Dataset(Base):
     pipeline_id = mapped_column(StringUUID, nullable=True)
     chunk_structure = mapped_column(sa.String(255), nullable=True)
     enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
-    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False, server_default=sa.false())
+    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False)
 
     def get_total_documents(self, *, session: Session) -> int:
         return self.get_document_count(session=session)
@@ -745,14 +744,12 @@ class DocumentSegment(TypeBase):
     # indexing fields
     index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     answer: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True, default=None)
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    status: Mapped[SegmentStatus] = mapped_column(
-        EnumText(SegmentStatus, length=255), server_default=sa.text("'waiting'"), default=SegmentStatus.WAITING
-    )
+    status: Mapped[SegmentStatus] = mapped_column(EnumText(SegmentStatus, length=255), default=SegmentStatus.WAITING)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -958,7 +955,6 @@ class ChildChunk(TypeBase):
     type: Mapped[SegmentType] = mapped_column(
         EnumText(SegmentType, length=255),
         nullable=False,
-        server_default=sa.text("'automatic'"),
         default=SegmentType.AUTOMATIC,
     )
     error: Mapped[str | None] = mapped_column(LongText, nullable=True, init=False)
@@ -1071,9 +1067,7 @@ class DatasetKeywordTable(TypeBase):
     )
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False, unique=True)
     keyword_table: Mapped[str] = mapped_column(LongText, nullable=False)
-    data_source_type: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'database'"), default="database"
-    )
+    data_source_type: Mapped[str] = mapped_column(String(255), nullable=False, default="database")
 
     def get_keyword_table_dict(self, *, session: Session) -> dict[str, set[Any]] | None:
         class SetDecoder(json.JSONDecoder):
@@ -1237,7 +1231,7 @@ class DatasetPermission(TypeBase):
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    has_permission: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
+    has_permission: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -1337,7 +1331,7 @@ class DatasetAutoDisableLog(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    notified: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    notified: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
     )
@@ -1493,8 +1487,8 @@ class Pipeline(TypeBase):
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(LongText, nullable=False, default=sa.text("''"))
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    is_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
-    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    is_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1614,11 +1608,10 @@ class DocumentSegmentSummary(TypeBase):
     status: Mapped[SummaryStatus] = mapped_column(
         EnumText(SummaryStatus, length=32),
         nullable=False,
-        server_default=sa.text("'generating'"),
         default=SummaryStatus.GENERATING,
     )
     error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
