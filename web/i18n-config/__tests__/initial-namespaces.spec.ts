@@ -35,4 +35,25 @@ describe('getInitialNamespacesForPath', () => {
 
     expect(initial).toContain('explore')
   })
+
+  it('includes share namespaces for embedded web app routes', () => {
+    const initial = getInitialNamespacesForPath('/chat/token-1')
+
+    expect(initial).toContain('share')
+    expect(initial).toContain('workflow')
+  })
+
+  it('includes app overview namespaces for agent routes', () => {
+    const initial = getInitialNamespacesForPath('/agents/agent-1/access')
+
+    expect(initial).toContain('agentV2')
+    expect(initial).toContain('appOverview')
+  })
+
+  it('includes billing namespaces for account settings routes', () => {
+    const initial = getInitialNamespacesForPath('/account/profile')
+
+    expect(initial).toContain('billing')
+    expect(initial).toContain('permission')
+  })
 })

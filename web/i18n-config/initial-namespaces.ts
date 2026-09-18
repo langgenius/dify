@@ -52,7 +52,7 @@ const ROUTE_NAMESPACE_RULES: RouteNamespaceRule[] = [
   },
   {
     match: (pathname) => isPathUnder(pathname, '/agents'),
-    namespaces: ['agentV2', 'workflow', 'skill', 'custom'],
+    namespaces: ['agentV2', 'appOverview', 'workflow', 'skill', 'custom'],
   },
   {
     match: (pathname) => isPathUnder(pathname, '/skills'),

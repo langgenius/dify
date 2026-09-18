@@ -13,11 +13,7 @@ export async function I18nServerProvider({ children }: { children: React.ReactNo
   const resource = await getResourcesForPath(locale, pathname)
 
   return (
-    <I18nClientProvider
-      locale={locale}
-      resource={resource}
-      initialNamespaces={initialNamespaces}
-    >
+    <I18nClientProvider locale={locale} resource={resource} initialNamespaces={initialNamespaces}>
       {children}
     </I18nClientProvider>
   )
