@@ -33,6 +33,7 @@ from services.entities.account_entities import (
     AccountEmailResetStatus,
     AccountSnapshot,
 )
+from tests.unit_tests.model_factories import make_account_snapshot
 
 
 def _context() -> RequestContext:
@@ -45,21 +46,7 @@ def _context() -> RequestContext:
 
 
 def _account(*, email: str = "old@example.com") -> AccountSnapshot:
-    return AccountSnapshot(
-        id="account-1",
-        name="Account",
-        email=email,
-        avatar=None,
-        is_password_set=True,
-        interface_language="en-US",
-        interface_theme="light",
-        timezone="UTC",
-        last_login_at=None,
-        last_login_ip=None,
-        status="active",
-        initialized_at=datetime(2026, 1, 1),
-        created_at=datetime(2026, 1, 1),
-    )
+    return make_account_snapshot(email=email, is_password_set=True, initialized_at=datetime(2026, 1, 1))
 
 
 def _service() -> tuple[AccountChangeEmailService, dict[str, Mock]]:

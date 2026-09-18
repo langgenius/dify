@@ -1,7 +1,6 @@
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
 
 import contextlib
-import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -22,7 +21,8 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
-from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
+from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _workflow(
@@ -32,19 +32,13 @@ def _workflow(
     tenant_id: str = "tenant",
     kind: WorkflowKind = WorkflowKind.STANDARD,
 ) -> Workflow:
-    return Workflow(
-        id=workflow_id,
+    return make_workflow(
+        workflow_id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type=WorkflowType.WORKFLOW,
         kind=kind,
         version="1",
-        graph=json.dumps({"nodes": [], "edges": []}),
-        features="{}",
         created_by="creator",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
     )
 
 

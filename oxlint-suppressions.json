@@ -769,12 +769,6 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/header-in-mobile.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 4
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -1287,7 +1281,7 @@
   },
   "web/app/components/base/icons/src/vender/line/general/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 9
     }
   },
   "web/app/components/base/icons/src/vender/line/images/index.ts": {
@@ -5169,12 +5163,7 @@
       "count": 4
     }
   },
-  "web/i18n-config/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
-  "web/i18n-config/lib.client.ts": {
+  "web/i18n/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
     }

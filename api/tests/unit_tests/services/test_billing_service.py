@@ -22,7 +22,6 @@ import pytest
 from werkzeug.exceptions import InternalServerError
 
 from enums import CloudPlan
-from models import Account, Tenant
 from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
@@ -31,15 +30,6 @@ from services.errors.billing import (
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
-
-
-def _account(*, account_id: str = ACCOUNT_ID, email: str = "user@example.com", tenant_id: str = TENANT_ID) -> Account:
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = tenant_id
-    account = Account(name="Test User", email=email)
-    account.id = account_id
-    account._current_tenant = tenant
-    return account
 
 
 class TestBillingServiceSendRequest:

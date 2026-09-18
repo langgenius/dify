@@ -22,7 +22,7 @@ import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { consoleQuery } from '@/service/console'
 import { ApiKeyTable } from './api-key-table'
@@ -211,7 +211,7 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
           />
           {isLoading && (
             <div className="flex min-h-24 items-center border-y border-divider-subtle px-6">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
           {!!apiKeys?.length && (

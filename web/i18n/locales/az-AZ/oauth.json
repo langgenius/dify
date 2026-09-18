@@ -1,0 +1,19 @@
+{
+  "connect": "Qoşulma:",
+  "continue": "Davam et",
+  "error.authAppInfoFetchFailed": "İcazə vermək üçün tətbiq məlumatlarını əldə etmək mümkün olmadı",
+  "error.authorizeFailed": "İcazə vermək mümkün olmadı",
+  "error.invalidParams": "Yanlış parametrlər",
+  "login": "Giriş",
+  "scopes.avatar": "Avatar",
+  "scopes.email": "E-poçt",
+  "scopes.languagePreference": "Dil tərcihi",
+  "scopes.name": "Ad",
+  "scopes.timezone": "Saat qurşağı",
+  "switchAccount": "Hesabı dəyiş",
+  "tips.common": "Məxfiliyinizə hörmət edirik və bu məlumatlardan yalnız proqramçı alətlərimizdən istifadə təcrübənizi yaxşılaşdırmaq üçün istifadə edəcəyik.",
+  "tips.loggedIn": "Bu tətbiq Dify Cloud hesabınızdakı aşağıdakı məlumatlara giriş əldə etmək istəyir.",
+  "tips.needLogin": "İcazə vermək üçün daxil olun",
+  "tips.notLoggedIn": "Bu tətbiq Dify Cloud hesabınıza giriş əldə etmək istəyir",
+  "unknownApp": "Naməlum tətbiq"
+}

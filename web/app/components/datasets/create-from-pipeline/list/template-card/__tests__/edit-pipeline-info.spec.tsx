@@ -5,6 +5,7 @@ import { fireEvent, screen, render as testingLibraryRender, waitFor } from '@tes
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
+import { mockEmojiData } from '@/test/emoji-picker'
 import EditPipelineInfo from '../edit-pipeline-info'
 
 const render = (ui: ReactElement) =>
@@ -28,8 +29,8 @@ const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -282,7 +283,7 @@ describe('EditPipelineInfo', () => {
 
       // Open icon picker
       fireEvent.click(getIconButton())
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
     })
 
     it('should save correct icon_info when starting with image icon type', async () => {
@@ -346,13 +347,13 @@ describe('EditPipelineInfo', () => {
 
       // Open picker
       fireEvent.click(getIconButton())
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
 
       // Close without selection - should revert to original image icon
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
 
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
       })
     })
 
@@ -370,7 +371,7 @@ describe('EditPipelineInfo', () => {
 
       // Open picker and select emoji
       fireEvent.click(getIconButton())
-      const emojiButton = document.querySelector('em-emoji')?.closest('button')
+      const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
       expect(emojiButton).toBeTruthy()
       fireEvent.click(emojiButton!)
       fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
@@ -407,14 +408,14 @@ describe('EditPipelineInfo', () => {
   describe('AppIconPicker', () => {
     it('should not show picker initially', () => {
       render(<EditPipelineInfo {...defaultProps} />)
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
     })
 
     it('should open picker when icon is clicked', () => {
       render(<EditPipelineInfo {...defaultProps} />)
       fireEvent.click(getIconButton())
 
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
     })
 
     it('should close picker and update icon when emoji style is selected', async () => {
@@ -425,7 +426,7 @@ describe('EditPipelineInfo', () => {
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
       })
     })
 
@@ -445,7 +446,7 @@ describe('EditPipelineInfo', () => {
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
 
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
       })
     })
 
@@ -488,7 +489,7 @@ describe('EditPipelineInfo', () => {
       render(<EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />)
 
       fireEvent.click(getIconButton())
-      const emojiButton = document.querySelector('em-emoji')?.closest('button')
+      const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
       expect(emojiButton).toBeTruthy()
       fireEvent.click(emojiButton!)
       fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
@@ -577,3 +578,5 @@ describe('EditPipelineInfo', () => {
     })
   })
 })
+
+mockEmojiData()
