@@ -5,6 +5,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NodeActionsDropdownContent } from './dropdown-content'
@@ -45,17 +46,13 @@ export function NodeActionsDropdown({
     <DropdownMenu modal={false} open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger
         render={
-          <button
-            type="button"
+          <IconButton
+            size="md"
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-            className={cn(
-              'flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 text-text-tertiary hover:bg-state-base-hover',
-              'focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden data-popup-open:bg-state-base-hover',
-              triggerClassName,
-            )}
+            className={cn('data-popup-open:bg-state-base-hover', triggerClassName)}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
-          </button>
+          </IconButton>
         }
       />
       <DropdownMenuContent placement="bottom-end" className={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME}>

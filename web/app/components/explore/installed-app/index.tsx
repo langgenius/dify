@@ -4,7 +4,7 @@ import type { AppData } from '@/models/share'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import TextGenerationApp from '@/app/components/share/text-generation'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -224,7 +224,7 @@ const InstalledApp = ({ id }: { id: string }) => {
     return (
       <InstalledAppFrame>
         <div className="flex h-full items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       </InstalledAppFrame>
     )

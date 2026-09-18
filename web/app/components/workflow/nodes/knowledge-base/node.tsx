@@ -9,7 +9,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { DERIVED_MODEL_STATUS_BADGE_I18N } from '@/app/components/header/account-setting/model-provider-page/derive-model-status'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import { useSettingsDisplay } from './hooks/use-settings-display'

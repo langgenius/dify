@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import { FeaturesProvider } from '@/app/components/base/features'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
@@ -523,7 +523,7 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }

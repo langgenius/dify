@@ -3,18 +3,23 @@ import type { ChangeEvent, DragEvent, MouseEvent, RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { formatFileSize } from '@/utils/format'
+
+const importFormats = {
+  app: { accept: '.yaml,.yml,.ifpkg', displayName: 'DSL' },
+  dsl: { accept: '.yaml,.yml', displayName: 'YAML' },
+  pipeline: { accept: '.pipeline', displayName: 'PIPELINE' },
+} as const
 
 type Props = Readonly<{
   file: File | undefined
   updateFile: (file?: File) => void
   browseButtonRef?: RefObject<HTMLButtonElement | null>
   className?: string
-  accept?: string
-  displayName?: string
+  importType?: 'app' | 'dsl' | 'pipeline'
   disabled?: boolean
 }>
 
@@ -23,11 +28,17 @@ export function Uploader({
   updateFile,
   browseButtonRef,
   className,
-  accept = '.yaml,.yml',
-  displayName = 'YAML',
+  importType = 'dsl',
   disabled = false,
 }: Props) {
   const { t } = useTranslation()
+  const { accept, displayName: formatName } = importFormats[importType]
+  const isPackage = importType === 'app' && file?.name.toLowerCase().endsWith('.ifpkg')
+  const displayName = isPackage ? t(($) => $.appPackage, { ns: 'app' }) : formatName
+  const fileIconClassName = isPackage
+    ? 'i-ri-file-zip-line text-text-tertiary'
+    : 'i-custom-public-files-yaml'
+  const hint = importType === 'app' ? t(($) => $.importAppFormats, { ns: 'app' }) : undefined
   const [dragging, setDragging] = useState(false)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploaderRef = useRef<HTMLInputElement>(null)
@@ -37,6 +48,7 @@ export function Uploader({
   const removeButtonRef = useRef<HTMLButtonElement>(null)
   const fileNameId = useId()
   const fileMetadataId = useId()
+  const hintId = useId()
   const pendingFocusRef = useRef<{
     target: 'browse' | 'file'
     focusVisible: boolean
@@ -57,6 +69,21 @@ export function Uploader({
     })
     pendingFocusRef.current = null
   }, [file, resolvedBrowseButtonRef])
+
+  const selectFile = (nextFile?: File) => {
+    const extensions = accept.split(',').map((extension) => extension.trim().toLowerCase())
+    if (
+      nextFile &&
+      !extensions.some((extension) => nextFile.name.toLowerCase().endsWith(extension))
+    ) {
+      pendingFocusRef.current = null
+      toast.error(
+        t(($) => $['dslUploader.invalidFileType'], { ns: 'app', types: extensions.join(', ') }),
+      )
+      return
+    }
+    updateFile(nextFile)
+  }
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -83,7 +110,7 @@ export function Uploader({
       toast.error(t(($) => $['stepOne.uploader.validation.count'], { ns: 'datasetCreation' }))
       return
     }
-    updateFile(files[0])
+    if (files[0]) selectFile(files[0])
   }
   const selectHandle = (e: MouseEvent<HTMLButtonElement>) => {
     if (disabled) return
@@ -114,7 +141,7 @@ export function Uploader({
     if (disabled) return
     const currentFile = e.target.files?.[0]
     if (!currentFile) pendingFocusRef.current = null
-    updateFile(currentFile)
+    selectFile(currentFile)
   }
 
   return (
@@ -136,25 +163,36 @@ export function Uploader({
         {!file && (
           <div
             className={cn(
-              'flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal',
+              'relative flex min-h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-3 py-2 text-sm font-normal',
               dragging &&
                 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
             )}
           >
             <div className="flex w-full items-center justify-center space-x-2">
-              <span aria-hidden className="i-ri-upload-cloud-2-line size-6 text-text-tertiary" />
-              <div className="flex items-center text-text-tertiary">
-                <span>{t(($) => $['dslUploader.button'], { ns: 'app' })}</span>
-                <Button
-                  ref={resolvedBrowseButtonRef}
-                  variant="ghost-accent"
-                  size="small"
-                  className="ml-1 h-6 px-1 text-sm font-normal hover:bg-transparent hover:not-data-disabled:underline"
-                  disabled={disabled}
-                  onClick={selectHandle}
-                >
-                  {t(($) => $['dslUploader.browse'], { ns: 'app' })}
-                </Button>
+              <span
+                aria-hidden
+                className="i-ri-upload-cloud-2-line size-6 shrink-0 text-text-tertiary"
+              />
+              <div className="min-w-0 text-text-tertiary">
+                <div>
+                  <span>{t(($) => $['dslUploader.button'], { ns: 'app' })}</span>
+                  <Button
+                    ref={resolvedBrowseButtonRef}
+                    aria-describedby={hint ? hintId : undefined}
+                    variant="ghost-accent"
+                    size="small"
+                    className="ml-1 h-6 px-1 text-sm font-normal hover:bg-transparent hover:not-data-disabled:underline"
+                    disabled={disabled}
+                    onClick={selectHandle}
+                  >
+                    {t(($) => $['dslUploader.browse'], { ns: 'app' })}
+                  </Button>
+                </div>
+                {hint && (
+                  <p id={hintId} className="system-xs-regular text-text-tertiary">
+                    {hint}
+                  </p>
+                )}
               </div>
             </div>
             {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
@@ -173,25 +211,25 @@ export function Uploader({
             )}
           >
             <div className="flex items-center justify-center p-3">
-              <span aria-hidden className="i-custom-public-files-yaml size-6 shrink-0" />
+              <span aria-hidden className={cn(fileIconClassName, 'size-6 shrink-0')} />
             </div>
-            <div className="flex grow flex-col items-start gap-0.5 py-1 pr-2">
+            <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
               <span
                 id={fileNameId}
-                className="font-inter max-w-[calc(100%-30px)] overflow-hidden text-[12px] leading-4 font-medium text-ellipsis whitespace-nowrap text-text-secondary"
+                className="font-inter max-w-full truncate text-xs leading-4 font-medium text-text-secondary"
               >
                 {file.name}
               </span>
               <div
                 id={fileMetadataId}
-                className="font-inter flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase"
+                className="font-inter flex flex-wrap items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase"
               >
                 <span>{displayName}</span>
                 <span className="text-text-quaternary">·</span>
                 <span>{formatFileSize(file.size)}</span>
               </div>
             </div>
-            <div className="flex items-center pr-3 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+            <div className="flex shrink-0 items-center pr-3 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
               <IconButton
                 ref={removeButtonRef}
                 variant="ghost"

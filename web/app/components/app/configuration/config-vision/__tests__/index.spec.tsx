@@ -22,7 +22,7 @@ vi.mock('use-context-selector', async (importOriginal) => {
 const mockUseFeatures = vi.fn()
 const mockUseFeaturesStore = vi.fn()
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: FeatureStoreState) => any) => mockUseFeatures(selector),
+  useFeatures: (selector: (state: FeatureStoreState) => unknown) => mockUseFeatures(selector),
   useFeaturesStore: () => mockUseFeaturesStore(),
 }))
 
@@ -99,8 +99,13 @@ describe('ConfigVision', () => {
   it('should show the toggle and parameter controls when visible', () => {
     render(<ConfigVision />)
 
-    expect(screen.getByText('appDebug.vision.name'))!.toBeInTheDocument()
-    expect(screen.getByRole('switch'))!.toHaveAttribute('aria-checked', 'false')
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'appDebug.vision.name' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'appDebug.vision.name' }))!.toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
   })
 
   it('should enable both image and video uploads when toggled on with video support', async () => {
@@ -114,7 +119,7 @@ describe('ConfigVision', () => {
     })
 
     render(<ConfigVision />)
-    await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch', { name: 'appDebug.vision.name' }))
 
     const updatedFile = getLatestFileConfig()
     expect(updatedFile.allowed_file_types).toEqual([
@@ -140,7 +145,7 @@ describe('ConfigVision', () => {
     })
 
     render(<ConfigVision />)
-    await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch', { name: 'appDebug.vision.name' }))
 
     const updatedFile = getLatestFileConfig()
     expect(updatedFile.allowed_file_types).toEqual([])
@@ -161,7 +166,7 @@ describe('ConfigVision', () => {
     })
 
     render(<ConfigVision />)
-    await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch', { name: 'appDebug.vision.name' }))
 
     const updatedFile = getLatestFileConfig()
     expect(updatedFile.allowed_file_types).toEqual([SupportUploadFileTypes.document])

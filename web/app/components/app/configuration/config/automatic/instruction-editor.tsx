@@ -13,6 +13,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type Props = Readonly<{
+  'aria-labelledby'?: string
   editorKey: string
   value: string
   onChange: (text: string) => void
@@ -27,6 +28,7 @@ type Props = Readonly<{
 const i18nPrefix = 'generate'
 
 const InstructionEditor: FC<Props> = ({
+  'aria-labelledby': ariaLabelledBy,
   editorKey,
   generatorType,
   value,
@@ -65,6 +67,10 @@ const InstructionEditor: FC<Props> = ({
   return (
     <div className="relative">
       <PromptEditor
+        aria-labelledby={ariaLabelledBy}
+        aria-label={
+          ariaLabelledBy ? undefined : t(($) => $['generate.instruction'], { ns: 'appDebug' })
+        }
         wrapperClassName="border border-components-input-bg-normal! bg-components-input-bg-normal hover:border-components-input-bg-hover! rounded-[10px] px-4 pt-3"
         key={editorKey}
         instanceId={editorKey}

@@ -8,11 +8,11 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import { toast } from '@/app/notifications'
 import { InstallStepFromGitHub } from '../../types'
 import Installed from '../base/installed'
 import { fetchReleases } from '../hooks'
@@ -185,7 +185,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
           'w-140 overflow-hidden! text-left align-middle',
           cn(
             modalClassName,
-            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
+            'flex max-h-[calc(100dvh-48px)] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
           ),
         )}
       >

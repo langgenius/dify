@@ -82,7 +82,6 @@ def auth_for(
     return AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
         account_id=uuid.UUID(str(account.id)),
-        token_hash="integration-test",
         token_id=token_id,
         scopes=frozenset({Scope.FULL}),
         caller=account,

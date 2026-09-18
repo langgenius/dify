@@ -196,7 +196,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
@@ -640,7 +640,9 @@ describe('AgentConfigurePage', () => {
       })
       expect(configureSection).toHaveAttribute('aria-busy', 'true')
       expect(configureSection).toHaveClass('bg-background-body')
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('progressbar', { name: 'agentV2.agentDetail.sections.configure' }),
+      ).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
       expect(
         vi
@@ -685,7 +687,9 @@ describe('AgentConfigurePage', () => {
         { searchParams: '?mode=build' },
       )
 
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('progressbar', { name: 'agentV2.agentDetail.sections.configure' }),
+      ).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
 
       mocks.queryState.buildDraft = {
@@ -889,7 +893,9 @@ describe('AgentConfigurePage', () => {
         'publish:yes',
       )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
-      expect(screen.queryByRole('status', { name: 'appApi.loading' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('progressbar', { name: 'agentV2.agentDetail.sections.configure' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'send build message' })).toBeDisabled()
 
       refreshBuildConversation.resolve({
@@ -970,6 +976,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -984,6 +991,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -1085,6 +1093,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -1099,6 +1108,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -1381,7 +1391,9 @@ describe('AgentConfigurePage', () => {
       mocks.checkoutBuildDraft.mockRejectedValueOnce(new Error('checkout failed'))
       mocks.queryState.composer = {
         data: {
-          agent_soul: {},
+          agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          },
         },
         isFetching: false,
         isError: false,
@@ -1834,7 +1846,9 @@ describe('AgentConfigurePage', () => {
       mocks.checkoutBuildDraft.mockRejectedValueOnce(new Error('checkout failed'))
       mocks.queryState.composer = {
         data: {
-          agent_soul: {},
+          agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          },
         },
         isFetching: false,
         isError: false,
@@ -2004,6 +2018,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2018,6 +2033,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2060,6 +2076,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2074,6 +2091,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2238,6 +2256,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2305,9 +2324,8 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
     })
 
-    it('should block build chat checkout when no model is configured', async () => {
+    it('should require an explicit model even when the workspace has a default', async () => {
       const queryClient = createQueryClient()
-      modelHooksState.defaultTextGenerationModel = undefined
       mocks.queryState.composer = {
         data: {
           agent_soul: {
@@ -2358,6 +2376,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2372,6 +2391,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2425,6 +2445,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2439,6 +2460,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2488,6 +2510,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2574,6 +2597,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2588,6 +2612,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2637,6 +2662,7 @@ describe('AgentConfigurePage', () => {
       refetchBuildDraft.mockReturnValueOnce(staleRefresh.promise)
       mocks.checkoutBuildDraft.mockResolvedValue({
         agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
           prompt: {
             system_prompt: 'build prompt',
           },
@@ -2647,6 +2673,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.composer = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'draft prompt',
             },
@@ -2661,6 +2688,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: {
           agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
             prompt: {
               system_prompt: 'build prompt',
             },
@@ -2701,6 +2729,7 @@ describe('AgentConfigurePage', () => {
         staleRefresh.resolve({
           data: {
             agent_soul: {
+              model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
               prompt: {
                 system_prompt: 'stale refreshed prompt',
               },
@@ -2730,7 +2759,9 @@ describe('AgentConfigurePage', () => {
       }
       mocks.queryState.buildDraft = {
         data: {
-          agent_soul: {},
+          agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          },
           draft: {},
           variant: 'agent_app',
         },

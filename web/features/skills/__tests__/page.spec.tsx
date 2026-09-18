@@ -5,11 +5,11 @@ import type {
   SkillTagResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import SkillsPage from '../page'
 
 type SkillsInfiniteOptions = {
@@ -45,7 +45,7 @@ const mocks = vi.hoisted(() => ({
   tagsQueryOptions: vi.fn((_options: unknown) => ({})),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
@@ -893,6 +893,7 @@ describe('SkillsPage', () => {
       }),
     )
     await user.click(await screen.findByText('common.operation.export'))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
 
     await waitFor(() => {
       expect(mocks.exportSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
@@ -903,7 +904,7 @@ describe('SkillsPage', () => {
     })
   })
 
-  it('does not show export for an unpublished skill', async () => {
+  it('exports an unpublished skill from the card action menu', async () => {
     const user = userEvent.setup()
     mocks.skills = [createSkill({ latest_published_version_id: null })]
     mocks.skillPages = [mocks.skills]
@@ -915,7 +916,11 @@ describe('SkillsPage', () => {
       }),
     )
 
-    expect(screen.queryByText('common.operation.export')).not.toBeInTheDocument()
+    await user.click(await screen.findByText('common.operation.export'))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mocks.exportSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
+    })
   })
 
   it('confirms deletion with the skill name and refreshes list data', async () => {
