@@ -121,8 +121,8 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
   Quickly get Dify running in your environment with this [starter guide](#quick-start).
   Use our [documentation](https://docs.dify.ai) for further references and more in-depth instructions.
 
-- **Dify for enterprise / organizations<br/>**
-  We provide additional enterprise-centric features. [Send us an email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) to discuss your enterprise needs. <br/>
+- **[Dify Enterprise](https://dify.ai/dify-enterprise)<br/>**
+  For organizations requiring self-hosting, SSO, RBAC Security and Enterprise Support SLAs, please fill out [this form](https://share-na2.hsforms.com/14-09ff5HS92Sh4m3f4yrcw40s9fk) to speak to a solution representative. <br/>
 
 ## Staying ahead
 
@@ -140,7 +140,7 @@ Dify welcomes contributions of all kinds:
 
 - **Code**: Read the [Contribution Guide](CONTRIBUTING.md), then browse [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Ideas and feedback**: Start or join a [GitHub Discussion](https://github.com/langgenius/dify/discussions).
-- **Translations**: Follow the [internationalization guide](web/i18n-config/README.md) to add or update a locale.
+- **Translations**: Follow the [internationalization guide](web/i18n/README.md) to add or update a locale.
 - **Community**: Share the apps you build, help other users, and spread the word about Dify.
 
 ### Contributors

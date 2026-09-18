@@ -406,9 +406,11 @@ def _get_conversation(session: Session, current_user: Account, app_model, conver
         .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
         # Keep updated_at unchanged when only marking a conversation as read.
         .values(
-            read_at=naive_utc_now(),
-            read_account_id=current_user.id,
-            updated_at=Conversation.updated_at,
+            {
+                Conversation.read_at: naive_utc_now(),
+                Conversation.read_account_id: current_user.id,
+                Conversation.updated_at: Conversation.updated_at,
+            }
         )
     )
     session.flush()

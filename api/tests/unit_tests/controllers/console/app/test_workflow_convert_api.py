@@ -9,24 +9,12 @@ from flask import Flask
 
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.workflow import ConvertToWorkflowApi
-from models import Account, App, AppMode
-from models.model import IconType
+from models import Account, App
+from tests.unit_tests.model_factories import make_app
 
 
 def _app(app_id: str) -> App:
-    return App(
-        id=app_id,
-        tenant_id="tenant-1",
-        name=f"App {app_id}",
-        description="",
-        mode=AppMode.CHAT,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-    )
+    return make_app(app_id=app_id, name=f"App {app_id}")
 
 
 class TestConvertToWorkflowApi:

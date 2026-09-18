@@ -2675,6 +2675,7 @@ Export application configuration as DSL
 | app_id | path | Application ID to export | Yes | string (uuid) |
 | format | query | Export format; defaults to ifpkg for Agent Apps and yaml for other Apps | No | string, <br>**Available values:** "ifpkg", "yaml" |
 | include_secret | query | Include secrets in export | No | boolean |
+| version_id | query | Published Agent version ID to export; requires a paid plan on Cloud. If omitted, exports the shared draft, falling back to the active snapshot when no draft exists. | No | string (uuid) |
 | workflow_id | query | Specific workflow ID to export | No | string |
 
 #### Responses
@@ -12127,7 +12128,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Published Skill zip archive |
+| 200 | Draft Skill zip archive |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}/files
 #### Parameters
@@ -15780,6 +15781,7 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | format | string, <br>**Available values:** "ifpkg", "yaml" | Export format; defaults to ifpkg for Agent Apps and yaml for other Apps | No |
 | include_secret | boolean | Include secrets in export | No |
+| version_id | string | Published Agent version ID to export; requires a paid plan on Cloud. If omitted, exports the shared draft, falling back to the active snapshot when no draft exists. | No |
 | workflow_id | string | Specific workflow ID to export | No |
 
 #### AppExportResponse

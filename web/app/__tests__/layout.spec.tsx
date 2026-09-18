@@ -20,7 +20,7 @@ vi.mock('@/env', async (importOriginal) => {
   }
 })
 
-vi.mock('@/i18n-config/server', () => ({
+vi.mock('@/i18n/server', () => ({
   getLocaleOnServer: async () => 'en-US',
 }))
 

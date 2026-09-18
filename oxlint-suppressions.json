@@ -324,11 +324,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/config-vision/__tests__/index.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config/__tests__/agent-setting-button.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
@@ -376,14 +371,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/app/configuration/config/automatic/idea-output.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/app/configuration/config/automatic/instruction-editor.tsx": {
@@ -782,12 +769,6 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/header-in-mobile.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 4
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -1025,11 +1006,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/base/features/new-feature-panel/feature-card.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 5
     }
   },
   "web/app/components/base/features/new-feature-panel/file-upload/__tests__/index.spec.tsx": {
@@ -1305,7 +1281,7 @@
   },
   "web/app/components/base/icons/src/vender/line/general/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 9
     }
   },
   "web/app/components/base/icons/src/vender/line/images/index.ts": {
@@ -4748,12 +4724,6 @@
   "web/app/components/workflow/run/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 3
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 3
     }
   },
   "web/app/components/workflow/run/iteration-log/index.tsx": {
@@ -4808,12 +4778,6 @@
   },
   "web/app/components/workflow/run/node.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -5199,12 +5163,7 @@
       "count": 4
     }
   },
-  "web/i18n-config/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
-  "web/i18n-config/lib.client.ts": {
+  "web/i18n/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
     }
