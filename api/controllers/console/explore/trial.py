@@ -49,7 +49,6 @@ from controllers.console.explore.wraps import TrialAppResource
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
-from libs.login import login_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -72,6 +71,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
+from libs.login import login_required
 from models import Account, App
 from models.account import TenantStatus
 from models.model import AppMode, Site
