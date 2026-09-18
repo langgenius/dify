@@ -22,6 +22,8 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
+from extensions.application_services.app import build_app_api_key_service
+from extensions.application_services.knowledge import build_dataset_api_key_service
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now, utc_now
@@ -136,6 +138,7 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.app.api_key_service import AppApiKeyService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_site_service import AppSiteService
 from services.app_statistic_query import AppStatisticQuery
@@ -162,6 +165,7 @@ from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
+from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
@@ -253,6 +257,8 @@ class AccountServices:
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
     accounts: AccountServices
+    app_api_keys: AppApiKeyService
+    dataset_api_keys: DatasetApiKeyService
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     app_sites: AppSiteService
@@ -611,6 +617,8 @@ def build_application_services(
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
+        app_api_keys=build_app_api_key_service(database_client=database_client),
+        dataset_api_keys=build_dataset_api_key_service(database_client=database_client),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
