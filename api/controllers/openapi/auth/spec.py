@@ -21,9 +21,3 @@ class EndpointSpec:
 
     requirements: tuple[Requirement, ...]
     edition: frozenset[DeploymentEdition] | None = None
-
-    def __post_init__(self) -> None:
-        """Coerce at construction, not at the first request: a list survives
-        `__init__` untouched and only fails where `Pipeline.run` concatenates.
-        """
-        object.__setattr__(self, "requirements", tuple(self.requirements))
