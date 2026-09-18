@@ -409,6 +409,9 @@ class StubAgent:
     def analyze_goal(self, _goal_text):
         return {}
 
+    def propose_app_name(self, _goal_text, _requirements):
+        return ""
+
     def propose_plan_v1(self, _requirements):
         return []
 

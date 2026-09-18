@@ -52,7 +52,7 @@ from core.dify_builder.models import Action, Actor
 from libs.helper import dump_response
 from libs.login import login_required
 from services.dify_builder import progress_bus
-from services.dify_builder.service import resolve_action_kind
+from services.dify_builder.service import resolve_submitted_action
 from services.dify_builder.wiring import (
     build_service,
     dify_builder_error_response,
@@ -140,6 +140,7 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
                 actor=actor,
                 goal_text=payload.goal_text,
                 model_config=model_config,
+                derive_app_name=payload.derive_app_name,
             )
         )
     if isinstance(payload, DifyBuilderCreateEditSessionPayload):
@@ -179,7 +180,7 @@ def _action(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]:
     except ValidationError:
         return {"code": "bad_request"}, 400
     action = Action(
-        kind=resolve_action_kind(payload.action_id),
+        kind=resolve_submitted_action(payload.action_id, payload.payload),
         payload=payload.payload,
         base_version=payload.base_version,
         base_app_revision=payload.base_app_revision,

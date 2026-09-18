@@ -102,6 +102,14 @@ class LlmBuilderAgent:
     def analyze_goal(self, goal_text):
         return build.analyze_goal(self.model_or_none(), goal_text, self._reasoning_for("analyze-goal"))
 
+    def propose_app_name(self, goal_text, requirements):
+        return build.propose_app_name(
+            self.model_or_none(),
+            goal_text,
+            requirements,
+            self._reasoning_for("propose-app-name"),
+        )
+
     def propose_plan_v1(self, requirements):
         return build.propose_plan_v1(
             self.model_or_none(),

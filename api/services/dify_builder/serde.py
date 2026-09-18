@@ -68,6 +68,7 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         resource_selection=dict(d.get("resource_selection") or {}),
         built_node_ids=list(d.get("built_node_ids") or []),
         form_fields=list(d.get("form_fields") or []),
+        app_name_auto=bool(d.get("app_name_auto", False)),
         edit_rules=dict(d.get("edit_rules") or {}),
         edit_target_node_ids=list(d.get("edit_target_node_ids") or []),
         paused=bool(d.get("paused", False)),

@@ -5,6 +5,7 @@ Each degrades to an honest result on model-None / provider-error / parse-fail
 rather than crashing the advance. build_nodes lives in the same module
 (added in Task A6)."""
 
+import json
 import logging
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
@@ -20,6 +21,11 @@ from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.workflow_generator_service import WorkflowGeneratorService
 
 logger = logging.getLogger(__name__)
+
+# A reply longer than this is prose, not a title. Well above
+# ``naming.MAX_NAME_LENGTH`` so a good-but-long title is trimmed downstream
+# rather than rejected here.
+_MAX_PROPOSED_NAME_CHARS = 80
 
 
 def analyze_goal(
@@ -45,6 +51,43 @@ def analyze_goal(
     if not isinstance(fields, list) or not isinstance(values, dict):
         return _degraded_form(goal_text)
     return {"fields": form_schema.reconcile_form_fields(fields, values), "values": values}
+
+
+def propose_app_name(
+    model,
+    goal_text: str,
+    requirements: dict[str, Any],
+    on_reasoning: Callable[[str], None] | None = None,
+) -> str:
+    """Name the app the way a person would title it (spec N1).
+
+    Returns "" whenever it cannot beat the name already cut from the prompt --
+    no model, a failed call, or a sentence instead of a title. The caller then
+    keeps the derived name, so this never has to be right, only safe.
+    """
+    if model is None:
+        return ""
+    system = (
+        "You name Dify apps. Given the goal the user typed, reply with a short title for "
+        "the app -- a noun phrase naming what it does, at most 5 words, no trailing "
+        "punctuation, no quotes, not a sentence and not an instruction. "
+        "Write it in the same language the user wrote the goal in. "
+        "Reply with ONLY the title."
+    )
+    user = f"GOAL:\n{goal_text}"
+    if requirements:
+        user += f"\n\nREQUIREMENTS:\n{json.dumps(requirements, ensure_ascii=False)[:1000]}"
+    try:
+        raw = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning).strip()
+    except Exception:
+        logger.warning("dify_builder: app-name proposal failed; keeping the derived name", exc_info=True)
+        return ""
+    # A sentence ("Sure! Here is a good name for...") is worse than the
+    # mechanical cut, so accept only a title-shaped reply.
+    first_line = raw.splitlines()[0].strip() if raw else ""
+    if not first_line or len(first_line) > _MAX_PROPOSED_NAME_CHARS:
+        return ""
+    return first_line
 
 
 def _degraded_form(goal_text: str) -> dict[str, Any]:

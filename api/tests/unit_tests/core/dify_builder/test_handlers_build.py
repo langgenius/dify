@@ -1332,3 +1332,68 @@ def test_recovery_restart_resets_interrupted_step_to_entry_state():
     reloaded, fc = repo.get_session(s.id)
     assert reloaded.current_state == entry_state_for(EntryMode.BUILD)  # back at the flow entry
     assert fc.staged_repair == []  # working fields reset
+
+
+class _NamingAgent(PlaceholderAgent):
+    """Placeholder cognition plus a model that has an opinion about the name."""
+
+    def __init__(self, proposal: str = "Expense reimbursement approval") -> None:
+        self.proposal = proposal
+        self.calls: list[tuple[str, dict]] = []
+
+    def propose_app_name(self, goal_text, requirements):
+        self.calls.append((goal_text, dict(requirements)))
+        return self.proposal
+
+
+def _run_capability_check(agent, *, app_name_auto: bool, rename_app=None):
+    from core.dify_builder.handlers_build import build_registry
+
+    env, repo = _new_env(agent=agent)
+    env.rename_app = rename_app
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK, app_name_auto=app_name_auto)
+    runner = Runner(env, build_registry())
+    runner.advance(s.id, Turn(action=Action(kind="send_goal", payload={"text": "x"}, base_version=1), actor=_actor()))
+    _session_after, fc = repo.get_session(s.id)
+    return fc
+
+
+def test_goal_analysis_renames_an_app_still_carrying_its_derived_name():
+    agent = _NamingAgent()
+    renamed: list[str] = []
+    fc = _run_capability_check(agent, app_name_auto=True, rename_app=renamed.append)
+
+    assert renamed == ["Expense reimbursement approval"]
+    # The goal and the just-analyzed requirements are both handed to the model.
+    assert agent.calls[0][0] == "x"
+    assert agent.calls[0][1] == fc.requirements
+    # Cleared, so a later advance through this state never renames again.
+    assert fc.app_name_auto is False
+
+
+def test_an_app_named_by_its_user_is_never_renamed():
+    agent = _NamingAgent()
+    renamed: list[str] = []
+    fc = _run_capability_check(agent, app_name_auto=False, rename_app=renamed.append)
+
+    assert renamed == []
+    assert agent.calls == []
+    assert fc.app_name_auto is False
+
+
+def test_a_model_with_no_proposal_leaves_the_derived_name_alone():
+    agent = _NamingAgent(proposal="   ")
+    renamed: list[str] = []
+    fc = _run_capability_check(agent, app_name_auto=True, rename_app=renamed.append)
+
+    assert renamed == []
+    # Still consumed: one shot per session, whether or not it produced anything.
+    assert fc.app_name_auto is False
+
+
+def test_no_rename_callback_wired_costs_no_model_call():
+    agent = _NamingAgent()
+    fc = _run_capability_check(agent, app_name_auto=True, rename_app=None)
+
+    assert agent.calls == []
+    assert fc.app_name_auto is False

@@ -266,6 +266,10 @@ class DifyBuilderContext:
     resource_selection: dict[str, Any] = field(default_factory=dict)
     built_node_ids: list[str] = field(default_factory=list)
     form_fields: list[dict] = field(default_factory=list)
+    # True while the app still carries the name cut from its creating prompt, so
+    # Builder may refine it once (spec N1); cleared the moment it does. Plan
+    # approval freezes the name for good (spec N3, 批准即定名).
+    app_name_auto: bool = False
 
     # -- Edit fields (Slice 3, additive) --
     edit_rules: dict[str, Any] = field(default_factory=dict)
