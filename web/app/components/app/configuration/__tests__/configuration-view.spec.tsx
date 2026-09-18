@@ -327,6 +327,14 @@ describe('ConfigurationView', () => {
     expect(screen.queryByTestId('app-publisher')).not.toBeInTheDocument()
   })
 
+  it('provides the page heading inside the parent-owned main landmark', () => {
+    render(<ConfigurationView {...createViewModel()} />)
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'appDebug.orchestrate' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
+  })
+
   it('should open the mobile debug panel from the header button', () => {
     const onOpenDebugPanel = vi.fn()
     render(<ConfigurationView {...createViewModel({ isMobile: true, onOpenDebugPanel })} />)

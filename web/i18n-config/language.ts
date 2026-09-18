@@ -61,6 +61,7 @@ export const localeMap: Record<Locale, string> = {
   'fa-IR': 'fa',
   'sl-SI': 'sl',
   'ar-TN': 'ar',
+  'az-AZ': 'az',
 }
 
 export const getDocLanguage = (locale: string): DocLanguage => {

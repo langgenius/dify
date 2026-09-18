@@ -324,11 +324,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/config-vision/__tests__/index.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config/__tests__/agent-setting-button.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
@@ -376,14 +371,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/app/configuration/config/automatic/idea-output.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/app/configuration/config/automatic/instruction-editor.tsx": {
@@ -1025,11 +1012,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/base/features/new-feature-panel/feature-card.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 5
     }
   },
   "web/app/components/base/features/new-feature-panel/file-upload/__tests__/index.spec.tsx": {
