@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
@@ -90,7 +90,7 @@ const Datasets = ({
           ))
         )}
         {!showDatasetSkeleton && !hasAnyDataset && emptyElement}
-        {isFetchingNextPage && <Loading />}
+        {isFetchingNextPage && <LoadingPlaceholder />}
         <div ref={anchorRef} className="h-0" />
       </div>
     </>

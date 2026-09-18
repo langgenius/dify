@@ -771,7 +771,6 @@ vi.mock('react-i18next', async () => {
       'The app will stop running in this environment, and all of its access points will become unavailable.',
     'deployments.studio.undeployConfirmTitle': 'Undeploy {{versionName}} from {{envName}}',
     'deployments.status.RUNTIME_INSTANCE_STATUS_DEPLOYING': 'Deploying',
-    'deployments.status.RUNTIME_INSTANCE_STATUS_FAILED': 'Deploy failed',
     'deployments.status.RUNTIME_INSTANCE_STATUS_INVALID': 'Invalid',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
     'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED': 'Not deployed',
@@ -846,6 +845,10 @@ vi.mock('@/context/permission-state', async () => {
 
 vi.mock('@/context/i18n', () => ({
   getEnterpriseDocUrl: mockGetEnterpriseDocUrl,
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 
@@ -1109,7 +1112,7 @@ describe('AppDeploy', () => {
 
     render(<AppDeploy />)
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'common.appMenus.deploy' }),
     ).not.toBeInTheDocument()
@@ -2120,7 +2123,7 @@ describe('AppDeploy', () => {
       { queryClient },
     )
 
-    expect(screen.getByRole('status', { name: /loading/ })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: /loading/ })).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     await waitFor(() => {
       expect(deploymentRequests).toHaveLength(1)

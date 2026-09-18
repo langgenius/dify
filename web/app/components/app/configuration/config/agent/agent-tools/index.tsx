@@ -159,7 +159,7 @@ const AgentTools: FC = () => {
         noBodySpacing={tools.length === 0}
         title={
           <div className="flex items-center">
-            <div className="mr-1">{t(($) => $['agent.tools.name'], { ns: 'appDebug' })}</div>
+            <h2 className="mr-1">{t(($) => $['agent.tools.name'], { ns: 'appDebug' })}</h2>
             <Infotip aria-label={t(($) => $['agent.tools.description'], { ns: 'appDebug' })}>
               {t(($) => $['agent.tools.description'], { ns: 'appDebug' })}
             </Infotip>

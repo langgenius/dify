@@ -1,4 +1,4 @@
-import { getLocaleOnServer, getResources } from '@/i18n-config/server'
+import { getLocaleOnServer, getResources } from '@/i18n/server'
 import { I18nClientProvider } from './i18n'
 
 export async function I18nServerProvider({ children }: { children: React.ReactNode }) {

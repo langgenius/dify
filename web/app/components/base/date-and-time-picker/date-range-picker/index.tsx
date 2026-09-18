@@ -7,7 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { formatToLocalTime } from '@/utils/format'
 import DatePicker from '../date-picker'
 

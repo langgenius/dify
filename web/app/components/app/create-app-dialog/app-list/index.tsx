@@ -14,7 +14,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppTypeSelector from '@/app/components/app/type-selector'
 import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -171,7 +171,7 @@ const Apps = ({ onClose, onCreateFromBlank }: AppsProps) => {
   if (isLoading) {
     return (
       <div className="flex h-full items-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }

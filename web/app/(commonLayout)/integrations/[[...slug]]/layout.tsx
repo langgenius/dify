@@ -2,7 +2,7 @@ import type { PropsWithChildren } from 'react'
 import type { IntegrationSection } from '@/app/components/integrations/routes'
 import type { Metadata } from '@/next'
 import { getIntegrationRouteTargetBySlug } from '@/app/components/integrations/routes'
-import { getLocaleOnServer, getTranslation } from '@/i18n-config/server'
+import { getLocaleOnServer, getTranslation } from '@/i18n/server'
 
 type IntegrationsRouteLayoutProps = PropsWithChildren<{
   params: Promise<{

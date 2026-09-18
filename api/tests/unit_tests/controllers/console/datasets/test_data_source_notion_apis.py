@@ -20,23 +20,20 @@ from controllers.console.datasets.data_source import (
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, Dataset, Document
-from models.dataset import DataSourceType, DocumentCreatedFrom
+from models.dataset import DataSourceType
+from tests.unit_tests.model_factories import make_dataset, make_document
 
 
 def _dataset() -> Dataset:
-    return Dataset(id="ds-1", tenant_id="tenant-1", name="Dataset", created_by="u1")
+    return make_dataset(dataset_id="ds-1", created_by="u1")
 
 
 def _document() -> Document:
-    return Document(
-        id="d1",
-        tenant_id="tenant-1",
+    return make_document(
+        document_id="d1",
         dataset_id="ds-1",
-        position=1,
         data_source_type=DataSourceType.NOTION_IMPORT,
-        batch="batch-1",
         name="Notion page",
-        created_from=DocumentCreatedFrom.WEB,
         created_by="u1",
     )
 

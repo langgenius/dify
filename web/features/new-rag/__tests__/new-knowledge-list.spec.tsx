@@ -87,6 +87,10 @@ vi.mock('@/context/permission-state', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.example.com${path ?? ''}`,
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 

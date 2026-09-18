@@ -199,7 +199,7 @@ describe('QuotaPanel', () => {
     mockWorkspaceIsPending = true
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('should show used credits, total credits, and reset date', () => {
@@ -403,7 +403,7 @@ describe('QuotaPanel', () => {
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(screen.getByText('30')).toBeInTheDocument()
   })
 

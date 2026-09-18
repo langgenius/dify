@@ -5,6 +5,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
 import CreateAppModal from '../index'
 
@@ -27,16 +28,6 @@ const triggerHotkey = (hotkey: string) => {
   if (registration?.options?.enabled === false) return
   registration?.handler()
 }
-
-vi.mock('emoji-mart', () => ({
-  init: vi.fn(),
-  SearchIndex: { search: vi.fn().mockResolvedValue([]) },
-}))
-vi.mock('@emoji-mart/data', () => ({
-  default: {
-    categories: [{ id: 'people', emojis: ['😀'] }],
-  },
-}))
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
@@ -332,35 +323,28 @@ describe('CreateAppModal', () => {
     })
 
     it('should update icon payload when selecting emoji and confirming', async () => {
-      vi.useFakeTimers()
-      try {
-        const { onConfirm } = await setup({
-          appIconType: 'image',
-          appIcon: 'file-123',
-          appIconUrl: 'https://example.com/icon.png',
-        })
+      const { onConfirm } = await setup({
+        appIconType: 'image',
+        appIcon: 'file-123',
+        appIconUrl: 'https://example.com/icon.png',
+      })
 
-        const pickerDialog = openAppIconPicker()
+      const pickerDialog = openAppIconPicker()
 
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: '😀' }))
+      fireEvent.click(await within(pickerDialog).findByRole('gridcell', { name: 'Grinning face' }))
 
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
+      fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
 
-        fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
-        await act(async () => {
-          vi.advanceTimersByTime(300)
-        })
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+      await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1))
 
-        expect(onConfirm).toHaveBeenCalledTimes(1)
-        const payload = onConfirm.mock.calls[0]![0]
-        expect(payload).toMatchObject({
-          icon_type: 'emoji',
-          icon: '😀',
-          icon_background: '#FFEAD5',
-        })
-      } finally {
-        vi.useRealTimers()
-      }
+      expect(onConfirm).toHaveBeenCalledTimes(1)
+      const payload = onConfirm.mock.calls[0]![0]
+      expect(payload).toMatchObject({
+        icon_type: 'emoji',
+        icon: '😀',
+        icon_background: '#FFEAD5',
+      })
     })
 
     it('should allow changing only the background for the current emoji icon', async () => {
@@ -558,3 +542,5 @@ it('edits an existing app without waiting for application quota data', async () 
   await userEvent.setup().click(save)
   await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
 })
+
+mockEmojiData()

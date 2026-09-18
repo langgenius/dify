@@ -9,6 +9,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryState } from 'nuqs'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -16,8 +17,8 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useDocLink, useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { useDocLink } from '@/context/i18n'
+import { LanguagesSupported } from '@/i18n/language'
 import { useCodeBasedExtensions, useModelProviderDetails } from '@/service/use-common'
 import FormGeneration from './form-generation'
 import ModerationContent from './moderation-content'

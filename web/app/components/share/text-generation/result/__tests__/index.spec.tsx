@@ -175,7 +175,7 @@ describe('Result', () => {
     )
 
     expect(sendCompletionMessageMock).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeTruthy()
 
     await act(async () => {
       completionHandlers?.onData('Hello', false, {

@@ -27,7 +27,7 @@ type InputForm = {
   hide?: boolean
 }
 
-vi.mock('@/i18n-config/client', () => ({
+vi.mock('@/i18n/client', () => ({
   changeLanguage: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -693,7 +693,7 @@ describe('useEmbeddedChatbot', () => {
   describe('Language settings', () => {
     it('should set language from URL parameters', async () => {
       window.history.replaceState({}, '', '/?locale=zh-Hans')
-      const { changeLanguage } = await import('@/i18n-config/client')
+      const { changeLanguage } = await import('@/i18n/client')
 
       await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -703,7 +703,7 @@ describe('useEmbeddedChatbot', () => {
 
     it('should set language from system variables when URL param is missing', async () => {
       mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({ locale: 'fr-FR' })
-      const { changeLanguage } = await import('@/i18n-config/client')
+      const { changeLanguage } = await import('@/i18n/client')
 
       await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -719,7 +719,7 @@ describe('useEmbeddedChatbot', () => {
           default_language: 'ja-JP',
         },
       } as unknown as AppData
-      const { changeLanguage } = await import('@/i18n-config/client')
+      const { changeLanguage } = await import('@/i18n/client')
 
       await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 

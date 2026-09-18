@@ -21,10 +21,9 @@ from controllers.openapi.auth.prepare import (
 from libs.oauth_bearer import TokenType
 from models import Account, App, EndUser, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.enums import AppStatus
-from models.model import AppMode, IconType
 from services import end_user_service
 from services.enterprise.enterprise_service import WebAppAccessMode
+from tests.unit_tests.model_factories import make_account, make_app, make_tenant
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -46,32 +45,15 @@ def _app(
     tenant_id: str = TENANT_ID,
     enable_api: bool = True,
 ) -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name="OpenAPI app",
-        description="",
-        mode=AppMode.CHAT,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        status=AppStatus.NORMAL,
-        enable_site=True,
-        enable_api=enable_api,
-        max_active_requests=None,
-    )
+    return make_app(app_id=app_id, tenant_id=tenant_id, name="OpenAPI app", enable_api=enable_api)
 
 
 def _tenant(*, tenant_id: str = TENANT_ID, status: TenantStatus = TenantStatus.NORMAL) -> Tenant:
-    tenant = Tenant(name="OpenAPI tenant", status=status)
-    tenant.id = tenant_id
-    return tenant
+    return make_tenant(tenant_id=tenant_id, name="OpenAPI tenant", status=status)
 
 
 def _account(*, status: AccountStatus = AccountStatus.ACTIVE) -> Account:
-    account = Account(name="OpenAPI account", email="account@example.com", status=status)
-    account.id = ACCOUNT_ID
-    return account
+    return make_account(account_id=ACCOUNT_ID, name="OpenAPI account", email="account@example.com", status=status)
 
 
 def _persist(session: Session, *models: object) -> None:

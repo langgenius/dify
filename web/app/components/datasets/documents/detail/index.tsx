@@ -13,7 +13,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -355,7 +355,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         </div>
         <div className="flex flex-1 flex-row" style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading ? (
-            <Loading type="app" />
+            <LoadingPlaceholder className="h-full" />
           ) : (
             <div
               className={cn(

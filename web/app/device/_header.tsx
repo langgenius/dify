@@ -1,12 +1,12 @@
 'use client'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useLocale } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import LocaleMenu from '@/app/signin/_locale-menu'
-import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { setLocaleOnClient } from '@/i18n-config'
-import { languages } from '@/i18n-config/language'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
 import dynamic from '@/next/dynamic'
 
 const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector'), {

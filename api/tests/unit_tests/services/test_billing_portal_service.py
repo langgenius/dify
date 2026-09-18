@@ -1,4 +1,3 @@
-from datetime import datetime
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -8,6 +7,7 @@ from services.account_errors import AccountNotFoundError
 from services.account_ports import AccountRepository
 from services.billing_portal_service import BillingPortalService
 from services.entities.account_entities import AccountSnapshot
+from tests.unit_tests.model_factories import make_account_snapshot
 
 
 def _context() -> RequestContext:
@@ -20,21 +20,7 @@ def _context() -> RequestContext:
 
 
 def _account() -> AccountSnapshot:
-    return AccountSnapshot(
-        id="account-1",
-        name="Account",
-        email="owner@example.com",
-        avatar=None,
-        is_password_set=False,
-        interface_language="en-US",
-        interface_theme="light",
-        timezone="UTC",
-        last_login_at=None,
-        last_login_ip=None,
-        status="active",
-        initialized_at=None,
-        created_at=datetime(2026, 1, 1),
-    )
+    return make_account_snapshot(email="owner@example.com")
 
 
 @pytest.fixture
