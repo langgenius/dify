@@ -41,7 +41,7 @@ describe('SkillDetailPage metadata', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('saves selected workspace tags when the selector closes', async () => {
+  it('previews selected workspace tags immediately and saves once when the selector closes', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
@@ -51,6 +51,21 @@ describe('SkillDetailPage metadata', () => {
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
+
+    expect(
+      within(screen.getByRole('region', { name: /skillManagement\.detail\.fileCount/ })).getByText(
+        'Search',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('listbox')).toBeVisible()
+    expect(screen.getByRole('option', { name: 'Search' })).toHaveAttribute('aria-selected', 'true')
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.removeTag:{"tag":"Search"}',
+      }),
+    ).toBeDisabled()
+    expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalled()
+
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
@@ -64,9 +79,10 @@ describe('SkillDetailPage metadata', () => {
         expect.anything(),
       )
     })
+    expect(mocks.skillMetadataMutationFn).toHaveBeenCalledTimes(1)
   })
 
-  it('removes a selected tag when it is unchecked and the selector closes', async () => {
+  it('previews unchecked tags immediately and saves once when the selector closes', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({
       tags: ['Search', 'Productivity'],
@@ -79,6 +95,16 @@ describe('SkillDetailPage metadata', () => {
       }),
     )
     await user.click(await screen.findByRole('option', { name: 'Search' }))
+
+    const sidebar = within(
+      screen.getByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    )
+    expect(sidebar.queryByText('Search')).not.toBeInTheDocument()
+    expect(sidebar.getByText('Productivity')).toBeInTheDocument()
+    expect(screen.getByRole('listbox')).toBeVisible()
+    expect(screen.getByRole('option', { name: 'Search' })).toHaveAttribute('aria-selected', 'false')
+    expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalled()
+
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
@@ -91,6 +117,7 @@ describe('SkillDetailPage metadata', () => {
         expect.anything(),
       )
     })
+    expect(mocks.skillMetadataMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('renders an unmatched search as a create action instead of a tag checkbox', async () => {
@@ -117,7 +144,7 @@ describe('SkillDetailPage metadata', () => {
     expect(screen.queryByRole('option', { name: 'BrandNew' })).not.toBeInTheDocument()
   })
 
-  it('creates and binds an unmatched tag when the create action is selected', async () => {
+  it('previews a newly created tag immediately and binds it when the selector closes', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
@@ -137,6 +164,19 @@ describe('SkillDetailPage metadata', () => {
         name: "common.tag.create 'BrandNew'",
       }),
     )
+
+    expect(
+      within(screen.getByRole('region', { name: /skillManagement\.detail\.fileCount/ })).getByText(
+        'BrandNew',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('listbox')).toBeVisible()
+    expect(screen.getByRole('option', { name: 'BrandNew' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalled()
+
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
     await waitFor(() => {
@@ -149,9 +189,10 @@ describe('SkillDetailPage metadata', () => {
         expect.anything(),
       )
     })
+    expect(mocks.skillMetadataMutationFn).toHaveBeenCalledTimes(1)
   })
 
-  it('shows an added tag only after the metadata request finishes', async () => {
+  it('keeps selected tags visible and prevents reopening while the metadata request is pending', async () => {
     const user = userEvent.setup()
     let resolveMutation: ((detail: SkillDetailResponse) => void) | undefined
     mocks.skillDetailKey.mockReturnValue(['skill-detail'])
@@ -175,7 +216,23 @@ describe('SkillDetailPage metadata', () => {
     await user.click(await screen.findByRole('option', { name: 'Search' }))
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
-    expect(screen.queryByText('Search')).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: /skillManagement\.detail\.fileCount/ })).getByText(
+        'Search',
+      ),
+    ).toBeInTheDocument()
+    const addTagButton = screen.getByRole('combobox', {
+      name: 'skill.skillManagement.detail.addTag',
+    })
+    expect(addTagButton).toBeDisabled()
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.removeTag:{"tag":"Search"}',
+      }),
+    ).toBeDisabled()
+    await user.click(addTagButton)
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(mocks.skillMetadataMutationFn).toHaveBeenCalledTimes(1)
 
     await act(async () => {
       const nextDetail = createSkillDetail({
@@ -187,6 +244,61 @@ describe('SkillDetailPage metadata', () => {
     })
 
     expect(await screen.findByText('Search')).toBeInTheDocument()
+    expect(addTagButton).toBeEnabled()
+  })
+
+  it('restores persisted tags when saving the visible selection fails', async () => {
+    const user = userEvent.setup()
+    let rejectMutation: ((error: Error) => void) | undefined
+    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+    mocks.skillDetailQueryOptions.mockImplementation(() => ({
+      queryKey: ['skill-detail'],
+      queryFn: async () => mocks.skillDetail,
+    }))
+    mocks.skillDetail = createSkillDetail({ tags: ['Search'] })
+    mocks.skillMetadataMutationFn.mockImplementation(
+      () =>
+        new Promise<SkillDetailResponse>((_resolve, reject) => {
+          rejectMutation = reject
+        }),
+    )
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('combobox', {
+        name: 'skill.skillManagement.detail.addTag',
+      }),
+    )
+    await user.click(await screen.findByRole('option', { name: 'Search' }))
+    await user.click(screen.getByRole('option', { name: 'Productivity' }))
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
+
+    const sidebar = within(
+      screen.getByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    )
+    expect(sidebar.queryByText('Search')).not.toBeInTheDocument()
+    expect(sidebar.getByText('Productivity')).toBeInTheDocument()
+
+    await act(async () => {
+      rejectMutation?.(new Error('Saving tags failed'))
+    })
+
+    expect(await sidebar.findByText('Search')).toBeInTheDocument()
+    expect(sidebar.queryByText('Productivity')).not.toBeInTheDocument()
+    expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.detail.updateTagsFailed')
+    await user.click(
+      screen.getByRole('combobox', {
+        name: 'skill.skillManagement.detail.addTag',
+      }),
+    )
+    expect(await screen.findByRole('option', { name: 'Search' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByRole('option', { name: 'Productivity' })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
   })
 
   it('opens tag management from the selector', async () => {

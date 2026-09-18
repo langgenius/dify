@@ -32,6 +32,7 @@ import { SkillPublishShortcut } from './publish-bar'
 import {
   invalidateSkillDetail,
   runSkillFileMutation,
+  setSkillDetailCache,
   SKILL_TAG_CREATE_OPTION_PREFIX,
 } from './shared'
 
@@ -54,9 +55,11 @@ export function SkillTagsEditor({
   const [addOpen, setAddOpen] = useState(false)
   const [showTagManagement, setShowTagManagement] = useState(false)
   const [tagSearch, setTagSearch] = useState('')
-  const [draftTags, setDraftTags] = useState<string[]>([])
+  const [draftTags, setDraftTags] = useState<string[] | null>(null)
+  const [isSavingTags, setIsSavingTags] = useState(false)
   const persistedTags = useMemo(() => detail?.tags ?? [], [detail?.tags])
   const tags = persistedTags
+  const visibleTags = draftTags ?? tags
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions(),
   )
@@ -81,7 +84,7 @@ export function SkillTagsEditor({
 
     for (const tag of tags) addOption(tag)
     for (const tag of tagsQuery.data?.data ?? []) addOption(tag.tag)
-    for (const tag of draftTags) addOption(tag)
+    for (const tag of draftTags ?? []) addOption(tag)
     const hasExactMatch = options.some(
       (tag) => tag.name.toLocaleLowerCase() === normalizedTagSearch.toLocaleLowerCase(),
     )
@@ -106,10 +109,11 @@ export function SkillTagsEditor({
       }),
     [tagOptions],
   )
-  const draftTagIds = useMemo(() => draftTags.map(getSkillTagOptionId), [draftTags])
+  const draftTagIds = useMemo(() => visibleTags.map(getSkillTagOptionId), [visibleTags])
 
   const saveTags = (nextTags: string[]) => {
-    if (!detail || metadataMutation.isPending) return
+    if (!detail || isSavingTags) return
+    setIsSavingTags(true)
 
     void runSkillFileMutation(fileMutationCoordinator, (expectedUpdatedAt) =>
       metadataMutation.mutateAsync({
@@ -122,7 +126,8 @@ export function SkillTagsEditor({
         },
       }),
     )
-      .then(() => {
+      .then((nextDetail) => {
+        setSkillDetailCache(queryClient, skillId, nextDetail)
         const addedTag = nextTags.some((tag) => !tags.includes(tag))
         toast.success(
           addedTag
@@ -141,9 +146,15 @@ export function SkillTagsEditor({
         invalidateSkillDetail(queryClient, skillId)
         toast.error(t(($) => $['skillManagement.detail.updateTagsFailed']))
       })
+      .finally(() => {
+        setDraftTags(null)
+        setIsSavingTags(false)
+      })
   }
 
   const handleOpenChange = (open: boolean) => {
+    if (isSavingTags) return
+
     if (open) {
       setDraftTags(tags)
       setTagSearch('')
@@ -153,10 +164,13 @@ export function SkillTagsEditor({
 
     setAddOpen(false)
     setTagSearch('')
+    if (!draftTags) return
+
     const draftTagSet = new Set(draftTags)
     const tagsChanged =
       tags.length !== draftTags.length || tags.some((tag) => !draftTagSet.has(tag))
     if (tagsChanged) saveTags(draftTags)
+    else setDraftTags(null)
   }
 
   const renderTagBadge = (tag: string) => (
@@ -168,6 +182,7 @@ export function SkillTagsEditor({
       {!readonly && (
         <button
           type="button"
+          disabled={addOpen || isSavingTags}
           aria-label={t(($) => $['skillManagement.detail.removeTag'], { tag })}
           className="flex h-3 max-w-0 shrink-0 cursor-pointer items-center justify-center overflow-hidden text-text-quaternary opacity-0 outline-hidden transition-[max-width,margin,opacity] group-hover/tag:ml-0.5 group-hover/tag:max-w-3 group-hover/tag:opacity-100 hover:text-text-secondary focus-visible:ml-0.5 focus-visible:max-w-3 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={() => saveTags(tags.filter((currentTag) => currentTag !== tag))}
@@ -181,7 +196,7 @@ export function SkillTagsEditor({
   return (
     <>
       <div className="mt-3 flex flex-wrap items-center gap-1">
-        {tags.map(renderTagBadge)}
+        {visibleTags.map(renderTagBadge)}
         {!readonly && (
           <Combobox<string, true, TagComboboxItem>
             items={tagItems}
@@ -196,7 +211,7 @@ export function SkillTagsEditor({
               })
               const createOption = createOptionId ? tagOptionById.get(createOptionId) : undefined
               if (createOption && isCreateTagOption(createOption)) {
-                setDraftTags((currentTags) => [...currentTags, createOption.name])
+                setDraftTags((currentTags) => [...(currentTags ?? tags), createOption.name])
                 setTagSearch('')
                 return
               }
@@ -216,16 +231,16 @@ export function SkillTagsEditor({
           >
             <ComboboxTrigger
               icon={false}
-              disabled={!detail}
+              disabled={!detail || isSavingTags}
               aria-label={t(($) => $['skillManagement.detail.addTag'])}
               className={cn(
                 'h-4.5 w-auto min-w-4.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm p-0 text-text-tertiary hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover',
-                tags.length === 0 && 'border-dashed px-1.25',
+                visibleTags.length === 0 && 'border-dashed px-1.25',
               )}
             >
               <span className="flex items-center justify-center gap-0.5 system-2xs-medium-uppercase">
                 <span aria-hidden className="i-ri-add-line size-3 shrink-0" />
-                {tags.length === 0 && t(($) => $['skillManagement.detail.addTag'])}
+                {visibleTags.length === 0 && t(($) => $['skillManagement.detail.addTag'])}
               </span>
             </ComboboxTrigger>
             <ComboboxPortal>
