@@ -188,8 +188,6 @@
   "skillManagement.errors.missingSkillMd": "این بسته فاقد SKILL.md است. فایل را اضافه کنید و دوباره آن را وارد کنید.",
   "skillManagement.errors.nameConflict": "مهارتی به نام \"{{name}}\" از قبل وجود دارد. نام آن را در SKILL.md تغییر دهید و دوباره وارد کنید.",
   "skillManagement.errors.workspaceLimit": "فضای کاری شما به حداکثر 500 مهارت رسیده است. برای افزودن مهارت جدید، مهارت را حذف کنید.",
-  "skillManagement.exportDialog.description": "با این کار از پیش‌نویس ذخیره‌شدهٔ فعلی مهارت شما خروجی گرفته می‌شود. اگر در ویرایشگر تغییرات ذخیره‌نشده‌ای دارید، پیش از خروجی گرفتن آن‌ها را ذخیره کنید.",
-  "skillManagement.exportDialog.title": "خروجی گرفتن از پیش‌نویس ذخیره‌شدهٔ فعلی",
   "skillManagement.import": "وارد کردن",
   "skillManagement.importFailed": "وارد کردن مهارت انجام نشد.",
   "skillManagement.importSuccess": "Skill وارد شده است.",
