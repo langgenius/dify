@@ -284,7 +284,9 @@ class TestLLMGenerator:
             "reasoning_effort": "minimal",
         }
 
-    def test_generate_suggested_questions_after_answer_uses_defaults_when_schema_lookup_fails(self, mock_model_instance):
+    def test_generate_suggested_questions_after_answer_uses_defaults_when_schema_lookup_fails(
+        self, mock_model_instance
+    ):
         mock_response = MagicMock()
         mock_response.message.get_text_content.return_value = '["Question 1?"]'
         mock_model_instance.invoke_llm.return_value = mock_response

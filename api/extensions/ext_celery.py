@@ -183,10 +183,7 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
-    if (
-        dify_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED
-        and dify_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK
-    ):
+    if dify_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED and dify_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK:
         beat_schedule["tokener_bootstrap_recovery_sweeper"] = {
             "task": "tasks.bootstrap_tokener_tenant_task.sweep_pending_tokener_integrations_task",
             "schedule": timedelta(minutes=dify_config.TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL),
