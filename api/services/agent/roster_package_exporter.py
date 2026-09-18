@@ -146,7 +146,7 @@ class RosterAgentPackageExporter:
                 if draft is not None:
                     soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
                 else:
-                    snapshot = session.scalar(
+                    active_snapshot = session.scalar(
                         select(AgentConfigSnapshot)
                         .where(
                             AgentConfigSnapshot.id == snapshot_id,
@@ -155,9 +155,9 @@ class RosterAgentPackageExporter:
                         )
                         .limit(1)
                     )
-                    if snapshot is None:
+                    if active_snapshot is None:
                         raise AgentVersionNotFoundError()
-                    soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+                    soul = AgentSoulConfig.model_validate(active_snapshot.config_snapshot_dict)
 
             resource_soul, skill_sources, file_sources = self._collect_payloads(
                 session=session,
