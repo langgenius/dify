@@ -15,6 +15,20 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
     experimental_defaults: {
       workspaces: {
         current: {
+          skills: {
+            bySkillId: {
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
+                    })
+                  },
+                },
+              },
+            },
+          },
           rbac: {
             accessPolicies: {
               post: {
@@ -165,7 +179,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               onSuccess: (data, variables, _onMutateResult, context) => {
                 if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
 
-                if (!variables.body.app_id) {
+                if (!('app_id' in variables.body) || !variables.body.app_id) {
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.features.get.key(),
                   })

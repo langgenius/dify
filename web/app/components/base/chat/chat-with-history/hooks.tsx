@@ -16,7 +16,7 @@ import { getProcessedFilesFromResponse } from '@/app/components/base/file-upload
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-import { changeLanguage } from '@/i18n-config/client'
+import { changeLanguage } from '@/i18n/client'
 import {
   AppSourceType,
   delConversation,

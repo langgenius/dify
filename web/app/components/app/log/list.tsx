@@ -24,6 +24,7 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTitle,
   DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
@@ -48,7 +49,7 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -450,11 +451,11 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       {/* Panel Header */}
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="shrink-0">
-          <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
+          <DrawerTitle className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
             {isChatMode
               ? t(($) => $['detail.conversationId'], { ns: 'appLog' })
               : t(($) => $['detail.time'], { ns: 'appLog' })}
-          </div>
+          </DrawerTitle>
           {isChatMode && (
             <div className="flex items-center system-2xs-regular-uppercase text-text-secondary">
               <Tooltip>
@@ -695,7 +696,13 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
     }
   }
 
-  if (!conversationDetail) return null
+  if (!conversationDetail) {
+    return (
+      <DrawerTitle className="sr-only">
+        {t(($) => $['runDetail.title'], { ns: 'appLog' })}
+      </DrawerTitle>
+    )
+  }
 
   return (
     <DetailPanel
@@ -750,7 +757,13 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
     }
   }
 
-  if (!conversationDetail) return null
+  if (!conversationDetail) {
+    return (
+      <DrawerTitle className="sr-only">
+        {t(($) => $['runDetail.title'], { ns: 'appLog' })}
+      </DrawerTitle>
+    )
+  }
 
   return (
     <DetailPanel
@@ -909,7 +922,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     )
   }
 
-  if (!logs) return <Loading />
+  if (!logs) return <LoadingPlaceholder />
 
   return (
     <div className="relative mt-2 grow overflow-x-auto">
@@ -983,7 +996,13 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   <td className="h-4">
                     {!log.read_at && (
                       <div className="flex items-center p-3 pr-0.5">
-                        <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
+                        <span
+                          aria-hidden="true"
+                          className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"
+                        ></span>
+                        <span className="sr-only">
+                          {t(($) => $['table.unread'], { ns: 'appLog' })}
+                        </span>
                       </div>
                     )}
                   </td>

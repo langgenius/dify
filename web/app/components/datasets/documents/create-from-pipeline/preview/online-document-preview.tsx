@@ -59,7 +59,7 @@ const OnlineDocumentPreview = ({
           <div className="system-2xs-semibold-uppercase text-text-accent">
             {t(($) => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}
           </div>
-          <div className="text-tex-primary title-md-semi-bold">{currentPage?.page_name}</div>
+          <div className="title-md-semi-bold">{currentPage?.page_name}</div>
           <div className="flex items-center gap-x-1 system-xs-medium text-text-tertiary">
             <Notion className="size-3.5" />
             <span>{currentPage.type}</span>

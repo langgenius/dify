@@ -5,7 +5,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { getPluginLanguage } from '@/i18n/metadata'
 import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import { useMarketplaceMoreClick } from '../atoms'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
@@ -197,7 +197,7 @@ const CollectionSection = ({
               isPartnersCollection && styles.partnerTitle,
             )}
           >
-            {collection.label[getLanguage(locale)]}
+            {collection.label[getPluginLanguage(locale)]}
           </div>
           <div
             className={cn(
@@ -207,10 +207,10 @@ const CollectionSection = ({
           >
             {isPartnersCollection ? (
               <span className={styles.partnerDescription}>
-                {collection.description[getLanguage(locale)]}
+                {collection.description[getPluginLanguage(locale)]}
               </span>
             ) : (
-              collection.description[getLanguage(locale)]
+              collection.description[getPluginLanguage(locale)]
             )}
             {isPartnersCollection && (
               <>

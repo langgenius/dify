@@ -442,7 +442,7 @@ describe('DocumentsPage', () => {
       query: { limit: 100 },
     })
     expect(sourceOptions?.getNextPageParam({ nextCursor: 'next' })).toBe('next')
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
   it('restores document search and status filters from the URL', async () => {
@@ -1201,7 +1201,7 @@ describe('DocumentsPage', () => {
 
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
   })
 
@@ -1912,7 +1912,7 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
-    expect(within(panel).getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(within(panel).getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
     expect(
       within(panel).queryByText('dataset.newKnowledge.noBackgroundTasks'),
     ).not.toBeInTheDocument()

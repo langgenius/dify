@@ -44,7 +44,7 @@ import {
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'

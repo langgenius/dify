@@ -7,7 +7,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useSearchParams } from '@/next/navigation'
 import { useTextGenerationAppState } from './hooks/use-text-generation-app-state'
@@ -123,7 +123,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
   if (!appId || !siteInfo || !promptConfig) {
     return (
       <div className="flex h-screen items-center">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }

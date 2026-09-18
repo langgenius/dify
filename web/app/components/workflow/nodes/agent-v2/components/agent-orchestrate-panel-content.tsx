@@ -22,7 +22,7 @@ import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jo
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useDefaultModel,
@@ -123,7 +123,7 @@ export function WorkflowRosterAgentOrchestratePanelContent(
   if (!agentId || !agentSoulConfig) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -196,7 +196,7 @@ export function WorkflowInlineAgentConfigureWorkspace(
   if (!agentId) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -247,7 +247,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
   if (!agentSoulConfig || buildDraft.isPending) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
