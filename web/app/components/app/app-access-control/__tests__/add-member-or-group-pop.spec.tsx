@@ -177,6 +177,27 @@ describe('AddMemberOrGroupDialog', () => {
     )
   })
 
+  it('keeps member-search loading text in its existing live region', async () => {
+    const query = {
+      isLoading: true,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      data: { pages: [] },
+    }
+    mockUseSearchForWhiteListCandidates.mockReturnValue(query)
+    const user = userEvent.setup()
+    const view = render(<ControlledDialog />)
+    await user.click(screen.getByText('common.operation.add'))
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('common.loading')
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+
+    mockUseSearchForWhiteListCandidates.mockReturnValue({ ...query, isLoading: false })
+    view.rerender(<ControlledDialog />)
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('app.accessControlDialog.operateGroupAndMember.noResult')
+  })
+
   it('should show the empty state when no candidates are returned', async () => {
     mockUseSearchForWhiteListCandidates.mockReturnValue({
       isLoading: false,

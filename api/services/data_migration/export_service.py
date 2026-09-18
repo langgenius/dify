@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from typing import Any
-from uuid import UUID
 
 import sqlalchemy as sa
 import yaml
@@ -27,6 +26,7 @@ from services.data_migration.entities import (
     ResourceType,
 )
 from services.data_migration.package_service import MigrationPackageService
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 SUPPORTED_APP_MODES = {"workflow", "advanced-chat"}
@@ -370,22 +370,12 @@ class MigrationExportService:
                 )
 
     def _get_mcp_provider(self, tenant_id: str, provider_id: str, *, session: Session) -> MCPToolProvider:
-        predicates = [MCPToolProvider.server_identifier == provider_id]
-        if self._is_uuid_string(provider_id):
-            predicates.append(MCPToolProvider.id == provider_id)
-        provider = session.scalar(
-            sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, sa.or_(*predicates))
-        )
-        if provider is None:
-            raise MigrationDataError(f"MCP provider not found: {provider_id}")
-        return provider
-
-    def _is_uuid_string(self, value: str) -> bool:
         try:
-            UUID(value)
-        except ValueError:
-            return False
-        return True
+            return MCPToolManageService(session=session).get_provider_by_persisted_reference(
+                id_or_server_identifier=provider_id, tenant_id=tenant_id
+            )
+        except ValueError as exc:
+            raise MigrationDataError(f"MCP provider not found: {provider_id}") from exc
 
     def _serialize_mcp_provider(self, provider: MCPToolProvider) -> dict[str, Any]:
         provider_entity = provider.to_entity()

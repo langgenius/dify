@@ -36,6 +36,7 @@ from services.app_dsl_service import (
     Import,
     PendingData,
 )
+from services.app_import_source import download_app_import_source, try_read_yaml
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
@@ -128,24 +129,45 @@ class AppImportApi(Resource):
     def post(self, current_user: Account):
         if request.mimetype == "multipart/form-data":
             return self._import_package(current_user)
-        return self._import_dsl(validate_request(AppImportPayload), current_user)
+        payload = validate_request(AppImportPayload)
+        if payload.mode == "yaml-url" and payload.yaml_url:
+            return self._import_url(payload, current_user)
+        return self._import_dsl(payload, current_user)
+
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()),
+        RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()),
+    )
+    def _import_url(self, payload: AppImportPayload, current_user: Account):
+        with download_app_import_source(payload.yaml_url or "") as source:
+            content = try_read_yaml(source)
+            if content is not None:
+                return self._import_dsl(
+                    payload.model_copy(update={"mode": "yaml-content", "yaml_content": content, "yaml_url": None}),
+                    current_user,
+                )
+            return self._import_package(current_user, payload, source)
 
     @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
     @rbac_permission_required(RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()))
-    def _import_package(self, current_user: Account):
-        uploaded = request.files.get("file")
-        if uploaded is None or not uploaded.filename:
-            raise InvalidRosterAgentPackageError("Roster Agent package file is required")
-        if not uploaded.filename.lower().endswith(".ifpkg"):
-            raise InvalidRosterAgentPackageError("Roster Agent package file must use the .ifpkg extension")
-        if request.form.get("app_id"):
+    def _import_package(
+        self, current_user: Account, payload: AppImportPayload | None = None, source: BinaryIO | None = None
+    ):
+        app_id = payload.app_id if payload is not None else request.form.get("app_id")
+        if app_id:
             raise InvalidRosterAgentPackageError("Roster Agent package import does not support overwriting an App")
         account, tenant_id = _current_user_and_tenant_id(current_user)
         if tenant_id is None:
             raise Forbidden("Current workspace is required")
-        result = RosterAgentPackageImporter().import_package(
-            source=cast(BinaryIO, uploaded.stream), tenant_id=tenant_id, account=account
-        )
+        importer = RosterAgentPackageImporter()
+        if source is None:
+            uploaded = request.files.get("file")
+            if uploaded is None or not uploaded.filename:
+                raise InvalidRosterAgentPackageError("Roster Agent package file is required")
+            if not uploaded.filename.lower().endswith(".ifpkg"):
+                raise InvalidRosterAgentPackageError("Roster Agent package file must use the .ifpkg extension")
+            source = cast(BinaryIO, uploaded.stream)
+        result = importer.import_package(source=source, tenant_id=tenant_id, account=account)
         return Import(
             id=str(uuid4()),
             status=ImportStatus.COMPLETED_WITH_WARNINGS if result.warnings else ImportStatus.COMPLETED,

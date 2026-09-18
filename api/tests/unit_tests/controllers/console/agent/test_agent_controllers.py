@@ -75,6 +75,7 @@ from services.entities.agent_entities import (
     WorkflowComposerCopyFromRosterPayload,
 )
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
 
 
 def _persist_conversation_message(
@@ -228,12 +229,13 @@ def _app_detail_obj(**overrides) -> App:
 
 
 def _account(*, account_id: str = "account-1", privileged: bool = False, timezone: str | None = None) -> Account:
-    account = Account(name="Agent Controller Tester", email=f"{account_id}@example.com")
-    account.id = account_id
-    account.timezone = timezone
-    if privileged:
-        account.role = TenantAccountRole.OWNER
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Agent Controller Tester",
+        email=f"{account_id}@example.com",
+        timezone=timezone,
+        role=TenantAccountRole.OWNER if privileged else None,
+    )
 
 
 def _candidates_response(variant: str) -> dict:
@@ -1646,6 +1648,21 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
     )
     assert candidates["variant"] == "agent_app"
     assert cast(dict[str, object], captured["candidates"])["agent_id"] == agent_id
+
+
+def test_agent_composer_get_uses_read_only_session() -> None:
+    assert "@with_session(write=False)\n    def get" in getsource(AgentComposerApi)
+
+
+def test_agent_composer_get_accepts_missing_draft(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _agent_app_composer_response()
+    payload["draft"] = None
+    payload["agent_soul"] = {"prompt": {"system_prompt": "read-only snapshot"}}
+    monkeypatch.setattr(composer_controller.AgentComposerService, "load_agent_composer", lambda **_kwargs: payload)
+    with app.test_request_context():
+        result = unwrap(AgentComposerApi.get)(AgentComposerApi(), MagicMock(), "tenant-1", "agent-1")
+    assert result["draft"] is None
+    assert result["agent_soul"]["prompt"]["system_prompt"] == "read-only snapshot"
 
 
 def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(

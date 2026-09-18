@@ -20,6 +20,7 @@ from core.plugin.plugin_service import PluginService
 from core.provider_manager import ProviderManager
 from enums import DeploymentEdition
 from extensions import ext_hosting_provider
+from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 from models.provider import (
     Provider,
@@ -27,6 +28,7 @@ from models.provider import (
     ProviderModel,
     ProviderModelCredential,
     ProviderType,
+    TenantDefaultModel,
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
@@ -782,7 +784,7 @@ class ModelProviderService:
 
     def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> DefaultModelResponse | None:
         """
-        get default model of model type.
+        Get the default model, preserving saved configuration when provider resolution fails.
 
         :param tenant_id: workspace id
         :param model_type: model type
@@ -811,7 +813,29 @@ class ModelProviderService:
             )
         except Exception as e:
             logger.debug("get_default_model_of_model_type error: %s", e)
+
+        # Provider metadata is optional for displaying the saved configuration.
+        with session_factory.create_session() as session:
+            saved_model = session.execute(
+                select(TenantDefaultModel.model_name, TenantDefaultModel.provider_name).where(
+                    TenantDefaultModel.tenant_id == tenant_id,
+                    TenantDefaultModel.model_type == model_type_enum,
+                )
+            ).one_or_none()
+
+        if saved_model is None:
             return None
+
+        return DefaultModelResponse(
+            model=saved_model.model_name,
+            model_type=model_type_enum,
+            provider=SimpleProviderEntityResponse(
+                tenant_id=tenant_id,
+                provider=saved_model.provider_name,
+                label=I18nObject(en_US=saved_model.provider_name, zh_Hans=saved_model.provider_name),
+                supported_model_types=[],
+            ),
+        )
 
     def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str):
         """

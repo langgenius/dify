@@ -190,7 +190,7 @@ describe('List', () => {
 
       render(<List {...props} />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should render EmptyFolder when folder is empty and not loading', () => {
@@ -373,7 +373,7 @@ describe('List', () => {
 
           switch (expected) {
             case 'isAllLoading':
-              expect(screen.getByRole('status')).toBeInTheDocument()
+              expect(screen.getByRole('progressbar')).toBeInTheDocument()
               break
             case 'isPartialLoading':
               expect(screen.getByRole('status')).toBeInTheDocument()
@@ -824,11 +824,11 @@ describe('List', () => {
         const { rerender } = render(<List {...props1} />)
 
         // Assert initial loading state
-        expect(screen.getByRole('status')).toBeInTheDocument()
+        expect(screen.getByRole('progressbar')).toBeInTheDocument()
 
         rerender(<List {...props2} />)
 
-        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
         expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
       })
 
@@ -840,11 +840,11 @@ describe('List', () => {
         const { rerender } = render(<List {...props1} />)
 
         // Assert initial loading state
-        expect(screen.getByRole('status')).toBeInTheDocument()
+        expect(screen.getByRole('progressbar')).toBeInTheDocument()
 
         rerender(<List {...props2} />)
 
-        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
         expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
       })
 
@@ -934,7 +934,7 @@ describe('List', () => {
 
         switch (expectedState) {
           case 'all-loading':
-            expect(screen.getByRole('status')).toBeInTheDocument()
+            expect(screen.getByRole('progressbar')).toBeInTheDocument()
             break
           case 'partial-loading':
             expect(screen.getByRole('status')).toBeInTheDocument()

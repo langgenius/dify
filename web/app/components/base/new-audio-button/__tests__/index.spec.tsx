@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import appApi from '@/i18n/en-US/app-api.json'
+import appApi from '@/i18n/locales/en-US/app-api.json'
 import { useParams, usePathname } from '@/next/navigation'
 import AudioBtn from '../index'
 

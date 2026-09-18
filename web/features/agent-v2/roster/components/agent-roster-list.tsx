@@ -19,13 +19,13 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities, getAgentDefaultSection } from '@/features/agent-v2/acl'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -194,7 +194,7 @@ function AgentCardActionMenuItems({
       {onExport && (
         <MenuItem className="gap-2" disabled={isExporting} onClick={onExport}>
           <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
-          <span>{tApp(($) => $.export)}</span>
+          <span>{tApp(($) => $.exportApp)}</span>
         </MenuItem>
       )}
       {onDelete && (onEdit || onDuplicate || onExport) && <MenuSeparator />}
@@ -270,11 +270,12 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const handleExport = () => {
     if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
-      toast.error(tApp(($) => $.exportFailed))
+      toast.error(tApp(($) => $.exportAppFailed))
       return
     }
 
     return exportAppDsl({
+      format: 'ifpkg',
       appId: agent.app_id,
       appName: agent.name,
     })
@@ -344,7 +345,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
           }
         />
         {hasActions && (
-          <ContextMenuContent className="w-40">
+          <ContextMenuContent className="w-max min-w-40">
             <AgentCardActionMenuItems
               kind="context"
               isExporting={isExporting}
@@ -371,7 +372,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                   </IconButton>
                 }
               />
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-max min-w-40">
                 <AgentCardActionMenuItems
                   kind="dropdown"
                   isExporting={isExporting}

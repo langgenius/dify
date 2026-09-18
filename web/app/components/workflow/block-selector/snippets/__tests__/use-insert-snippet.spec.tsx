@@ -92,7 +92,7 @@ vi.mock('../../../hooks/use-workflow-history', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },

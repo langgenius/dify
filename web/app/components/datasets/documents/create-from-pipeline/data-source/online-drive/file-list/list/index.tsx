@@ -4,7 +4,7 @@ import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDataSourceStore } from '../../../store'
 import EmptyFolder from './empty-folder'
 import EmptySearchResult from './empty-search-result'
@@ -79,7 +79,7 @@ const List = ({
 
   return (
     <div className="grow overflow-hidden p-1 pt-0">
-      {isAllLoading && <Loading type="app" />}
+      {isAllLoading && <LoadingPlaceholder className="h-full" />}
       {isEmptyFolder && <EmptyFolder />}
       {isSearchResultEmpty && <EmptySearchResult onResetKeywords={handleResetKeywords} />}
       {fileList.length > 0 && (

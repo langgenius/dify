@@ -503,7 +503,7 @@ def test_export_skill_returns_archive_response(app: Flask, request_context: Requ
     api = WorkspaceSkillExportApi()
     method = unwrap(api.get)
     service = MagicMock()
-    service.pull_published_archive.return_value = MagicMock(
+    service.export_draft_archive.return_value = MagicMock(
         payload=b"zip-bytes",
         mime_type="application/zip",
         filename="finance-sop.zip",
@@ -520,17 +520,17 @@ def test_export_skill_returns_archive_response(app: Flask, request_context: Requ
     assert response.headers["Content-Disposition"].startswith("attachment;")
     response.direct_passthrough = False
     assert response.get_data() == b"zip-bytes"
-    service.pull_published_archive.assert_called_once_with(tenant_id="tenant-1", skill_id="skill-1")
+    service.export_draft_archive.assert_called_once_with(tenant_id="tenant-1", skill_id="skill-1")
 
 
 def test_export_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillExportApi()
     method = unwrap(api.get)
     service = MagicMock()
-    service.pull_published_archive.side_effect = SkillManagementServiceError(
-        "skill_not_published",
-        "skill not published",
-        status_code=409,
+    service.export_draft_archive.side_effect = SkillManagementServiceError(
+        "skill_not_found",
+        "skill not found",
+        status_code=404,
     )
 
     with (
@@ -539,8 +539,8 @@ def test_export_skill_maps_service_error(app: Flask, request_context: RequestCon
     ):
         payload, status = method(api, request_context, "skill-1")
 
-    assert status == 409
-    assert payload == {"code": "skill_not_published", "message": "skill not published"}
+    assert status == 404
+    assert payload == {"code": "skill_not_found", "message": "skill not found"}
 
 
 def test_inner_api_pulls_published_skill_archive(app: Flask) -> None:

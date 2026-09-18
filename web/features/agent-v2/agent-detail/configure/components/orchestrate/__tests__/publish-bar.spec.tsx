@@ -53,7 +53,7 @@ const composerQuery = vi.hoisted(() => ({
   shouldFail: false,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { mockEmojiData } from '@/test/emoji-picker'
 import PublishAsKnowledgePipelineModal from '../publish-as-knowledge-pipeline-modal'
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -157,11 +158,11 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should show icon picker when app icon clicked', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
 
     fireEvent.click(getIconButton())
 
-    expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
   })
 
   it('should update icon when emoji style is selected', async () => {
@@ -172,7 +173,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
     })
   })
 
@@ -182,7 +183,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     fireEvent.click(getIconButton())
     fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
 
-    expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
   })
 
   it('should close icon picker when cancel is clicked', async () => {
@@ -192,7 +193,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
 
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
     })
   })
 
@@ -215,3 +216,5 @@ describe('PublishAsKnowledgePipelineModal', () => {
     expect(mockOnConfirm).toHaveBeenCalledWith('Trimmed Name', expect.any(Object), 'Some desc')
   })
 })
+
+mockEmojiData()

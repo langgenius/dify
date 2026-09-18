@@ -579,7 +579,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       />,
     )
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
     await waitFor(() => expect(mocks.loadBuildDraft).toHaveBeenCalledTimes(1))
   })
