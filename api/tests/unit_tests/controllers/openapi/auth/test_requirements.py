@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
+from controllers.openapi.auth.context import RouteContractError
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -93,7 +94,7 @@ def test_an_app_requirement_off_an_app_route_is_a_wiring_bug(
     monkeypatch.setattr(APP_FETCH, never_reached)
     subject = account_subject()
 
-    with pytest.raises(LookupError, match="app_id is not a path parameter"):
+    with pytest.raises(RouteContractError, match="app_id is not a path parameter"):
         CheckAppApiEnabled().run(subject, make_ctx(sqlite_session, subject=subject), sqlite_session)
 
 

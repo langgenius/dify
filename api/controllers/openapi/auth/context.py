@@ -26,6 +26,14 @@ if TYPE_CHECKING:
 type Caller = Account | EndUser
 
 
+class RouteContractError(LookupError):
+    """A route's declarations and its code disagree: a handler read a slot no
+    requirement loaded, read the caller as a type the route does not admit, or
+    a requirement asked for a path parameter the route does not carry. Never
+    caught on purpose - it only ever means an endpoint was wired wrong.
+    """
+
+
 @dataclass
 class Context:
     subject: Subject
@@ -70,11 +78,13 @@ def _loaded[T](value: T | None, name: str) -> T:
     return value
 
 
-def _missing(name: str) -> LookupError:
-    return LookupError(f"{name} was not loaded: no requirement on this route asked for it")
+def _missing(name: str) -> RouteContractError:
+    return RouteContractError(f"{name} was not loaded: no requirement on this route asked for it")
 
 
 def _narrowed[C: Caller](caller: Caller, expected: type[C]) -> C:
     if not isinstance(caller, expected):
-        raise LookupError(f"the caller is a {type(caller).__name__}, not the {expected.__name__} this handler reads")
+        raise RouteContractError(
+            f"the caller is a {type(caller).__name__}, not the {expected.__name__} this handler reads"
+        )
     return caller

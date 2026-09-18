@@ -6,7 +6,7 @@ from enum import StrEnum
 from flask import request
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.openapi.auth.context import Caller, Context
+from controllers.openapi.auth.context import Caller, Context, RouteContractError
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import App, EndUser
@@ -76,7 +76,7 @@ def _path_param(ctx: Context, name: str) -> str:
     try:
         return ctx.view_args[name]
     except KeyError:
-        raise LookupError(
+        raise RouteContractError(
             f"{name} is not a path parameter of this route: the requirement asking for it does not belong here"
         )
 

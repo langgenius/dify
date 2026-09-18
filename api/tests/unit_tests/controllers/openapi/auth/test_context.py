@@ -7,7 +7,7 @@ from collections.abc import Callable
 import pytest
 from sqlalchemy.orm import Session
 
-from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.context import Context, RouteContractError
 from models.model import EndUser
 from tests.unit_tests.controllers.openapi.auth._world import make_ctx
 
@@ -24,12 +24,12 @@ READERS: dict[str, Callable[[Context], object]] = {
 @pytest.mark.parametrize("read", READERS.values(), ids=READERS.keys())
 def test_an_unloaded_slot_is_an_error_not_a_fetch(sqlite_session: Session, read: Callable[[Context], object]) -> None:
     ctx = make_ctx(sqlite_session)
-    with pytest.raises(LookupError, match="was not loaded"):
+    with pytest.raises(RouteContractError, match="was not loaded"):
         read(ctx)
 
 
 def test_the_caller_is_read_as_what_it_is(sqlite_session: Session) -> None:
     ctx = make_ctx(sqlite_session)
     ctx._caller = EndUser()
-    with pytest.raises(LookupError, match="not the Account"):
+    with pytest.raises(RouteContractError, match="not the Account"):
         _ = ctx.account
