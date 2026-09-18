@@ -52,7 +52,7 @@ const APIKeyInfoPanel: FC = () => {
           isCloud ? 'flex h-8 items-center space-x-1' : 'mb-6 leading-8',
         )}
       >
-        {isCloud && <em-emoji id="😀" />}
+        {isCloud && <span>😀</span>}
         {isCloud ? (
           <div>
             {t(($) => $['apiKeyInfo.cloud.trial.title'], {

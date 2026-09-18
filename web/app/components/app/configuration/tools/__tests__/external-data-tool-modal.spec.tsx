@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { mockEmojiData } from '@/test/emoji-picker'
 import ExternalDataToolModal from '../external-data-tool-modal'
 
 const mockToastError = vi.fn()
@@ -131,9 +132,9 @@ describe('ExternalDataToolModal', () => {
     fireEvent.click(screen.getByText('pick-extension'))
     fireEvent.click(screen.getByText('open-emoji-picker'))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
     })
-    const emojiButton = document.querySelector('em-emoji')?.closest('button')
+    const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
     expect(emojiButton).toBeTruthy()
     fireEvent.click(emojiButton!)
     fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
@@ -228,3 +229,5 @@ describe('ExternalDataToolModal', () => {
     expect(mockOnCancel).toHaveBeenCalled()
   })
 })
+
+mockEmojiData()

@@ -127,15 +127,15 @@ describe('AgentDetailSection', () => {
   })
 
   it('renders the current agent avatar, name, and role', () => {
-    const { container } = renderAgentDetailSection()
+    renderAgentDetailSection()
     const agentName = screen.getByText('Research Agent')
-    const agentAvatar = container.querySelector('em-emoji')?.parentElement
+    const agentAvatar = screen.getByText('🧪')
 
     expect(agentName).toBeInTheDocument()
     expect(screen.getByText('Research Assistant')).toBeInTheDocument()
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
     expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
-    expect(container.querySelector('em-emoji')).toHaveAttribute('id', '🧪')
+    expect(agentAvatar).toHaveTextContent('🧪')
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
   })
 

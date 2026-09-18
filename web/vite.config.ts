@@ -68,10 +68,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
           server: {
             port: 3000,
           },
-          ssr: {
-            // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
-            noExternal: ['emoji-mart'],
-          },
         }
       : {}),
 
