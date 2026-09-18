@@ -15,6 +15,7 @@ type ExportAppDslInput = {
   appId: string
   appName: string
   includeSecret?: boolean
+  versionId?: string
   format?: NonNullable<GetAppsByAppIdExportData['query']>['format']
 }
 
@@ -49,12 +50,17 @@ async function exportAppDslFile({
   appId,
   appName,
   includeSecret = false,
+  versionId,
   format,
 }: ExportAppDslInput) {
   const response = await consoleClient.apps.byAppId.export.get(
     {
       params: { app_id: appId },
-      query: { include_secret: includeSecret, ...(format && { format }) },
+      query: {
+        include_secret: includeSecret,
+        ...(versionId ? { version_id: versionId } : {}),
+        ...(format && { format }),
+      },
     },
     { context: { silent: true } },
   )

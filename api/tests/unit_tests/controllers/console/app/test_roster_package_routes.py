@@ -3,10 +3,12 @@ from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
+from uuid import UUID
 
 import httpx
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from controllers.console.app import app as app_module
@@ -346,9 +348,9 @@ def test_version_export_requires_cloud_paid_plan(
             response = unwrap(app_module.AppExportApi.get)(app_module.AppExportApi(), query, model)
             if export_format == "yaml":
                 assert response == {"data": "app: {}"}
-                assert export_dsl.call_args.kwargs["version_id"] == version_id
+                assert export_dsl.call_args.kwargs["version_id"] == UUID(version_id)
             else:
-                export.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1", version_id=version_id)
+                export.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1", version_id=UUID(version_id))
                 response.close()
     if edition == DeploymentEdition.CLOUD:
         get_plan.assert_called_once_with("tenant-1")
@@ -356,14 +358,18 @@ def test_version_export_requires_cloud_paid_plan(
         get_plan.assert_not_called()
 
 
-@pytest.mark.parametrize(("mode", "workflow_id"), [(AppMode.WORKFLOW, None), (AppMode.AGENT, "workflow-1")])
-def test_version_export_rejects_incompatible_query(mode: AppMode, workflow_id: str | None) -> None:
-    query = app_module.AppExportQuery.model_validate(
-        {"version_id": "11111111-1111-4111-8111-111111111111", "workflow_id": workflow_id}
-    )
+def test_export_query_rejects_conflicting_version_selectors() -> None:
+    with pytest.raises(ValidationError, match="version_id and workflow_id cannot be used together"):
+        app_module.AppExportQuery.model_validate(
+            {"version_id": "11111111-1111-4111-8111-111111111111", "workflow_id": "workflow-1"}
+        )
+
+
+def test_version_export_rejects_non_agent_apps() -> None:
+    query = app_module.AppExportQuery.model_validate({"version_id": "11111111-1111-4111-8111-111111111111"})
     with pytest.raises(BadRequest):
         unwrap(app_module.AppExportApi.get)(
-            app_module.AppExportApi(), query, App(id="app-1", tenant_id="tenant-1", mode=mode)
+            app_module.AppExportApi(), query, App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         )
 
 

@@ -12,6 +12,7 @@ import copy
 import json
 from collections.abc import Mapping
 from typing import Any, cast
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
@@ -72,7 +73,7 @@ class AgentDslService:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def export_agent_app(self, *, app: App, version_id: str | None = None) -> tuple[str, dict[str, AgentPackage]]:
+    def export_agent_app(self, *, app: App, version_id: UUID | None) -> tuple[str, dict[str, AgentPackage]]:
         """Export a visible version, or the shared draft with an active snapshot fallback."""
 
         agent = self.session.scalar(
