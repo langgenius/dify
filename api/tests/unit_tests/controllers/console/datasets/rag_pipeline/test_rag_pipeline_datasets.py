@@ -19,12 +19,16 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
 )
 from models.account import Account, TenantAccountRole
 from services.entities.dsl_entities import ImportStatus
+from tests.unit_tests.model_factories import make_account
 
 
 def _account(*, editor: bool) -> Account:
-    account = Account(name="RAG Pipeline Tester", email="rag-pipeline@example.com")
-    account.role = TenantAccountRole.EDITOR if editor else TenantAccountRole.NORMAL
-    return account
+    return make_account(
+        account_id=None,
+        name="RAG Pipeline Tester",
+        email="rag-pipeline@example.com",
+        role=TenantAccountRole.EDITOR if editor else TenantAccountRole.NORMAL,
+    )
 
 
 class TestCreateRagPipelineDatasetApi:

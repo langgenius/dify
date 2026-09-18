@@ -1,11 +1,11 @@
 import type { ThemeProviderProps } from 'next-themes'
 import type { Metadata, Viewport } from '@/next'
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { HydrationBoundary } from '@tanstack/react-query'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { AppToastHost } from '@/app/notifications/host'
 import { IS_PROD } from '@/config'
 import { getDatasetMap } from '@/env'
 import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/bootstrap-boundary'
@@ -13,7 +13,7 @@ import {
   dehydrateSystemFeatures,
   getOptionalSystemFeatures,
 } from '@/features/system-features/server'
-import { getLocaleOnServer } from '@/i18n-config/server'
+import { getLocaleOnServer } from '@/i18n/server'
 import { headers } from '@/next/headers'
 import { getApplicationTitle } from '@/utils/document-title'
 import { basePath } from '@/utils/var'
@@ -81,7 +81,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <TanStackQueryProvider>
                   <HydrationBoundary state={dehydratedState}>
                     <I18nServerProvider>
-                      <ToastHost timeout={5000} limit={3} />
+                      <AppToastHost timeout={5000} limit={3} />
                       <SystemFeaturesBootstrapBoundary>
                         <PartnerStackCookieRecorder />
                         <TooltipProvider delay={300} closeDelay={200}>

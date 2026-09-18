@@ -203,7 +203,7 @@ const toastMocks = vi.hoisted(() => {
   return { record, api }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 

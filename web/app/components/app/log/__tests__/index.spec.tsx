@@ -69,8 +69,8 @@ vi.mock('../retention-upgrade-notice', () => ({
   RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div>loading-logs</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div>loading-logs</div>,
 }))
 
 describe('Logs', () => {

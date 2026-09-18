@@ -63,7 +63,7 @@ vi.mock('@/app/components/plugins/marketplace/templates', () => ({
   ),
 }))
 
-vi.mock('@/i18n-config/server', () => ({
+vi.mock('@/i18n/server', () => ({
   getLocaleOnServer: () => Promise.resolve('en-US'),
 }))
 

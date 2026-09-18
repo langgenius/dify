@@ -18,6 +18,7 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { validPassword } from '@/config'
 import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -26,7 +27,6 @@ import { useRouter } from '@/next/navigation'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
-import Loading from '../components/base/loading'
 
 const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, password: true }).extend({
   email: zPostSetupBody.shape.email.pipe(z.email()),
@@ -95,7 +95,7 @@ const InstallForm = () => {
   }, [push])
 
   return loading ? (
-    <Loading />
+    <LoadingPlaceholder />
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
