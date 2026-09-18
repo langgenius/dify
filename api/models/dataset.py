@@ -685,7 +685,7 @@ class Document(TypeBase):
         )
         return built_in_fields
 
-    def to_dict(self) -> DocumentDict:
+    def to_dict(self) -> dict[str, Any]:
         result = asdict(self)
         result.pop("need_summary")
         result.update(
@@ -697,7 +697,7 @@ class Document(TypeBase):
             segment_count=self.segment_count,
             hit_count=self.hit_count,
         )
-        return cast(DocumentDict, result)
+        return result
 
 
 class DocumentSegment(TypeBase):
