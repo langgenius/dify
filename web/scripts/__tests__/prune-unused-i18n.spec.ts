@@ -40,7 +40,7 @@ describe('prune-unused-i18n', () => {
   describe('Usage Analysis', () => {
     it('should keep flat keys selected by t and Trans', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'account.changeEmail.title': 'Change email',
         'account.changeEmail.description': 'Description',
         'account.changeEmail.unused': 'Unused',
@@ -77,10 +77,10 @@ describe('prune-unused-i18n', () => {
 
     it('should use the default namespace for unresolved selectors', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'dynamic.app': 'Dynamic app key',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'unused.common': 'Unused common key',
       })
       writeSource(
@@ -107,7 +107,7 @@ describe('prune-unused-i18n', () => {
 
     it('should resolve selectors stored in variables', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         members_one: '1 member',
         members_other: '{{count}} members',
         unused: 'Unused',
@@ -136,7 +136,7 @@ describe('prune-unused-i18n', () => {
 
     it('should resolve finite selector maps with computed keys and optional entries', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         first: 'First',
         second: 'Second',
         unused: 'Unused',
@@ -177,7 +177,7 @@ describe('prune-unused-i18n', () => {
 
     it('should protect a selector map namespace when any candidate is unresolved', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         hidden: 'Potentially used by the dynamic selector',
         used: 'Used',
       })
@@ -208,7 +208,7 @@ describe('prune-unused-i18n', () => {
 
     it('should protect known selector properties that dynamic entries can override', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         hidden: 'Potentially used by the dynamic selector',
         used: 'Used',
       })
@@ -248,7 +248,7 @@ describe('prune-unused-i18n', () => {
 
     it('should resolve statically computed selector map properties', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         unused: 'Unused',
         used: 'Used',
       })
@@ -281,7 +281,7 @@ describe('prune-unused-i18n', () => {
 
     it('should ignore dotted literals passed to unrelated generic functions', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         used: 'Used',
         unused: 'Unused',
       })
@@ -312,7 +312,7 @@ describe('prune-unused-i18n', () => {
 
     it('should analyze translation adapter consumers without protecting their namespace', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         used: 'Used',
         unused: 'Unused',
       })
@@ -348,10 +348,10 @@ describe('prune-unused-i18n', () => {
 
     it('should infer the namespace of a typed destructured translation parameter', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app key',
       })
-      writeJson('i18n/en-US/deployments.json', {
+      writeJson('i18n/locales/en-US/deployments.json', {
         unused: 'Unused deployment key',
         'versions.deployTo': 'Deploy to {{name}}',
       })
@@ -385,11 +385,11 @@ describe('prune-unused-i18n', () => {
 
     it('should prefer checker namespaces for a translation parameter named t', async () => {
       // Arrange
-      writeJson('i18n/en-US/agent-v-2.json', {
+      writeJson('i18n/locales/en-US/agent-v-2.json', {
         'agentDetail.used': 'Used agent key',
         'agentDetail.unused': 'Unused agent key',
       })
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app key',
       })
       writeSource(
@@ -421,12 +421,12 @@ describe('prune-unused-i18n', () => {
 
     it('should infer branded TFunction namespaces for direct and destructured parameters', async () => {
       // Arrange
-      writeJson('i18n/en-US/agent-v-2.json', {
+      writeJson('i18n/locales/en-US/agent-v-2.json', {
         'agentDetail.direct': 'Direct use',
         'agentDetail.destructured': 'Destructured use',
         'agentDetail.unused': 'Unused agent key',
       })
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app key',
       })
       writeSource(
@@ -461,11 +461,11 @@ describe('prune-unused-i18n', () => {
 
     it('should ignore typed selector forwarding inside an adapter block body', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         unused: 'Unused',
         used: 'Used',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'unused.common': 'Unused common key',
       })
       writeSource(
@@ -506,7 +506,7 @@ describe('prune-unused-i18n', () => {
 
     it('should ignore a named adapter forwarding its typed selector parameter', async () => {
       // Arrange
-      writeJson('i18n/en-US/workflow.json', {
+      writeJson('i18n/locales/en-US/workflow.json', {
         unused: 'Unused',
         used: 'Used',
       })
@@ -548,7 +548,7 @@ describe('prune-unused-i18n', () => {
 
     it('should resolve a selected field from nested selector map entries', async () => {
       // Arrange
-      writeJson('i18n/en-US/plugin.json', {
+      writeJson('i18n/locales/en-US/plugin.json', {
         'source.first': 'First source',
         'source.second': 'Second source',
         unused: 'Unused',
@@ -602,7 +602,7 @@ describe('prune-unused-i18n', () => {
 
     it('should conservatively protect untyped JavaScript translation adapters', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         hidden: 'Potentially used',
         used: 'Used',
       })
@@ -629,10 +629,10 @@ describe('prune-unused-i18n', () => {
 
     it('should protect the selected namespace for an open string-key adapter', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/permission-keys.json', {
+      writeJson('i18n/locales/en-US/permission-keys.json', {
         'server.permission': 'Server permission',
       })
       writeSource(
@@ -660,7 +660,7 @@ describe('prune-unused-i18n', () => {
 
     it('should keep keys matching a dynamic selector pattern', async () => {
       // Arrange
-      writeJson('i18n/en-US/plugin.json', {
+      writeJson('i18n/locales/en-US/plugin.json', {
         'voice.language.enUS': 'English',
         'voice.language.zhCN': 'Chinese',
         unrelated: 'Unrelated',
@@ -691,7 +691,7 @@ describe('prune-unused-i18n', () => {
 
     it('should keep selector keys from a typed union', async () => {
       // Arrange
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'status.ready': 'Ready',
         'status.failed': 'Failed',
         'status.unused': 'Unused',
@@ -721,10 +721,10 @@ describe('prune-unused-i18n', () => {
 
     it('should keep selector keys from secondary namespaces', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'operation.close': 'Close',
         'unused.common': 'Unused common',
       })
@@ -752,10 +752,10 @@ describe('prune-unused-i18n', () => {
 
     it('should keep property and element access selectors from secondary namespaces', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         close: 'Close',
         confirm: 'Confirm',
         unused: 'Unused',
@@ -786,10 +786,10 @@ describe('prune-unused-i18n', () => {
 
     it('should only protect the selected namespace for an unresolved selector', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'maybe.used': 'Maybe used',
       })
       writeSource(
@@ -816,13 +816,13 @@ describe('prune-unused-i18n', () => {
 
     it('should keep literal keys, aliased t functions, ns options, namespace separators, and Trans keys', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'literal.title': 'Title',
         withDefault: 'With default',
         'trans.shared': 'Shared app',
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'operation.close': 'Close',
         'trans.shared': 'Shared common',
         'unused.common': 'Unused common',
@@ -863,7 +863,7 @@ describe('prune-unused-i18n', () => {
 
     it('should expand resolvable dynamic keys and keep matching prefixes for unresolved dynamic keys', async () => {
       // Arrange
-      writeJson('i18n/en-US/plugin.json', {
+      writeJson('i18n/locales/en-US/plugin.json', {
         'notice.fullMessage': 'Full message',
         'notice.reason.bad': 'Bad reason',
         'notice.reason.legacy': 'Legacy reason',
@@ -905,7 +905,7 @@ describe('prune-unused-i18n', () => {
 
     it('should protect an entire namespace when a dynamic key has no static prefix', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'maybe.used': 'Maybe used',
         'otherwise.unused': 'Otherwise unused',
       })
@@ -931,7 +931,7 @@ describe('prune-unused-i18n', () => {
 
     it('should keep typed key prefixes without protecting the whole namespace', async () => {
       // Arrange
-      writeJson('i18n/en-US/app-debug.json', {
+      writeJson('i18n/locales/en-US/app-debug.json', {
         'duplicateError.name': 'Name',
         'duplicateError.value': 'Value',
         'outside.unused': 'Outside',
@@ -966,7 +966,7 @@ describe('prune-unused-i18n', () => {
 
     it('should expand object map values when indexed with a dynamic key', async () => {
       // Arrange
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'status.ready': 'Ready',
         'status.failed': 'Failed',
         'status.unused': 'Unused',
@@ -999,7 +999,7 @@ describe('prune-unused-i18n', () => {
 
     it('should treat simple i18n key identity helpers as their literal argument', async () => {
       // Arrange
-      writeJson('i18n/en-US/common.json', {
+      writeJson('i18n/locales/en-US/common.json', {
         'mainNav.workspace.searchPlaceholder': 'Search',
         'mainNav.workspace.unused': 'Unused',
       })
@@ -1028,7 +1028,7 @@ describe('prune-unused-i18n', () => {
 
     it('should keep i18next plural variants when the base key is referenced', async () => {
       // Arrange
-      writeJson('i18n/en-US/deployments.json', {
+      writeJson('i18n/locales/en-US/deployments.json', {
         'overview.environments_one': '1 environment',
         'overview.environments_other': '{{count}} environments',
         'overview.unused_one': '1 unused',
@@ -1057,7 +1057,7 @@ describe('prune-unused-i18n', () => {
 
     it('should infer plural namespaces from typed TFunction parameters', async () => {
       // Arrange
-      writeJson('i18n/en-US/deployments.json', {
+      writeJson('i18n/locales/en-US/deployments.json', {
         'overview.chip.behind_one': '1 release behind',
         'overview.chip.behind_other': '{{count}} releases behind',
         'overview.chip.unused_one': '1 unused',
@@ -1085,7 +1085,7 @@ describe('prune-unused-i18n', () => {
 
     it('should keep literals when conditional i18n key types expand into unions', async () => {
       // Arrange
-      writeJson('i18n/en-US/agent-v-2.json', {
+      writeJson('i18n/locales/en-US/agent-v-2.json', {
         'agentDetail.configure.tools.credential.authOne': 'Auth 1',
         'agentDetail.configure.tools.unused': 'Unused',
       })
@@ -1127,7 +1127,7 @@ describe('prune-unused-i18n', () => {
 
     it('should collect keys from i18next instance t calls', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         'gotoAnything.actions.createChatflow': 'Chatflow',
         'gotoAnything.actions.createChatflowDesc': 'Create a chatflow',
         'gotoAnything.actions.unused': 'Unused',
@@ -1158,16 +1158,16 @@ describe('prune-unused-i18n', () => {
 
     it('should collect keys from imported and parameterized t functions', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         noAccessPermission: 'No access',
         'typeSelector.chatbot': 'Chatbot',
         'unused.app': 'Unused app',
       })
-      writeJson('i18n/en-US/app-api.json', {
+      writeJson('i18n/locales/en-US/app-api.json', {
         pause: 'Pause',
         'unused.api': 'Unused API',
       })
-      writeJson('i18n/en-US/tools.json', {
+      writeJson('i18n/locales/en-US/tools.json', {
         'mcp.server.publishTip': 'Publish first',
         'unused.tools': 'Unused tools',
       })
@@ -1209,11 +1209,11 @@ describe('prune-unused-i18n', () => {
   describe('Removal', () => {
     it('should remove unused keys from each locale', async () => {
       // Arrange
-      writeJson('i18n/en-US/app.json', {
+      writeJson('i18n/locales/en-US/app.json', {
         kept: 'Kept',
         unused: 'Unused',
       })
-      writeJson('i18n/zh-Hans/app.json', {
+      writeJson('i18n/locales/zh-Hans/app.json', {
         kept: '保留',
         unused: '未使用',
       })

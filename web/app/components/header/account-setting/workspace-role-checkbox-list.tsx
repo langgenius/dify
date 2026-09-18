@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { SearchInput } from '@/app/components/base/search-input'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
 type WorkspaceRoleCheckboxListProps = {

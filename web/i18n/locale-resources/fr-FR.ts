@@ -1,2 +1,2 @@
 export const loadResource = (fileNamespace: string) =>
-  import(`../../i18n/pt-BR/${fileNamespace}.json`)
+  import(`../locales/fr-FR/${fileNamespace}.json`)

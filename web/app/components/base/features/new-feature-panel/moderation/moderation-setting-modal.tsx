@@ -18,7 +18,7 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { useDocLink } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
 import { useCodeBasedExtensions, useModelProviderDetails } from '@/service/use-common'
 import FormGeneration from './form-generation'
 import ModerationContent from './moderation-content'

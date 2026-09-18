@@ -1,8 +1,8 @@
 'use client'
 
 import type { StrategyDetail } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config/locale'
-import type { PluginLanguage } from '@/i18n-config/metadata'
+import type { Locale } from '@/i18n/locale'
+import type { PluginLanguage } from '@/i18n/metadata'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'

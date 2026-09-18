@@ -47,13 +47,13 @@ vi.mock('#i18n', async (importOriginal) => ({
   useLocale: vi.fn(),
 }))
 
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n', () => ({
   i18n: {
     defaultLocale: 'en-US',
   },
 }))
 
-vi.mock('@/i18n-config/client', () => ({
+vi.mock('@/i18n/client', () => ({
   setLocaleOnClient: vi.fn(() => Promise.resolve()),
 }))
 

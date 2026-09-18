@@ -1,6 +1,6 @@
 import type { AnyFormApi, FieldValidators } from '@tanstack/react-form'
 import type { ForwardedRef, ReactNode } from 'react'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 
 export type TypeWithI18N<T = string> = {
   en_US: T

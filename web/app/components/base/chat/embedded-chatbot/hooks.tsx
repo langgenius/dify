@@ -1,6 +1,6 @@
 import type { ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import type { AppData, ConversationItem } from '@/models/share'
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
@@ -11,7 +11,7 @@ import { useConversationSelection } from '@/app/components/base/chat/storage'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
-import { changeLanguage } from '@/i18n-config/client'
+import { changeLanguage } from '@/i18n/client'
 import { AppSourceType, updateFeedback } from '@/service/share'
 import {
   useInvalidateShareConversations,

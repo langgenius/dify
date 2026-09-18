@@ -1,4 +1,4 @@
-import type { Locale } from '@/i18n-config/locale'
+import type { Locale } from '@/i18n/locale'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Link from '@/next/link'

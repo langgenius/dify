@@ -3,8 +3,8 @@ import type { CredentialFormSchemaBase } from '../header/account-setting/model-p
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
 import type { ToolCredential } from '@/app/components/tools/types'
-import type { Locale } from '@/i18n-config/locale'
-import type { PluginLanguage } from '@/i18n-config/metadata'
+import type { Locale } from '@/i18n/locale'
+import type { PluginLanguage } from '@/i18n/metadata'
 
 export enum PluginCategoryEnum {
   tool = 'tool',

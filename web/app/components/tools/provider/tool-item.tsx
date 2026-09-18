@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useLocale } from '#i18n'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
-import { getPluginLanguage } from '@/i18n-config/metadata'
+import { getPluginLanguage } from '@/i18n/metadata'
 
 type Props = Readonly<{
   disabled?: boolean

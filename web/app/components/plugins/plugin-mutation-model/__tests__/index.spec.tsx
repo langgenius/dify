@@ -18,8 +18,8 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/i18n-config/metadata', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/i18n-config/metadata')>()),
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
   renderI18nObject: (obj: Record<string, string>, locale: string) => {
     return obj?.[locale] || obj?.['en-US'] || ''
   },

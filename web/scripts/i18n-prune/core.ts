@@ -15,7 +15,7 @@ const SKIPPED_DIRECTORIES = new Set([
   '.vscode',
   'coverage',
   'dist',
-  'i18n',
+  'locales',
   'node_modules',
   'public',
 ])
@@ -1415,7 +1415,7 @@ function analyzeSourceFile(
 }
 
 function getCatalog(webRoot: string, defaultLocale: string, targetFiles: string[] = []): Catalog {
-  const localeDir = path.join(webRoot, 'i18n', defaultLocale)
+  const localeDir = path.join(webRoot, 'i18n', 'locales', defaultLocale)
   const targetFileNames = new Set(targetFiles.map((file) => file.replace(/\.json$/, '')))
   const targetNamespaces = new Set(
     targetFiles.map((file) => fileNameToNamespace(file.replace(/\.json$/, ''))),
@@ -1574,7 +1574,7 @@ export async function analyzeUnusedTranslations(
 
 function listLocales(webRoot: string) {
   return fs
-    .readdirSync(path.join(webRoot, 'i18n'), { withFileTypes: true })
+    .readdirSync(path.join(webRoot, 'i18n', 'locales'), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort()
@@ -1598,7 +1598,7 @@ export async function removeUnusedTranslations(
           ),
           namespaceByFileName: new Map(),
         })
-      const filePath = path.join(webRoot, 'i18n', locale, `${fileName}.json`)
+      const filePath = path.join(webRoot, 'i18n', 'locales', locale, `${fileName}.json`)
       if (!fs.existsSync(filePath)) continue
 
       const content = JSON.parse(fs.readFileSync(filePath, 'utf8')) as Record<string, unknown>
