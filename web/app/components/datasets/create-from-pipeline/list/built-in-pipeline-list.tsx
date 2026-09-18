@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { usePipelineTemplateList } from '@/service/use-pipeline'

@@ -1,8 +1,8 @@
 import data from './languages'
 
-export type SupportedLocale = (typeof data.languages)[number]['value']
+export type Locale = (typeof data.languages)[number]['value']
 
-export const defaultLocale = 'en-US' satisfies SupportedLocale
+export const defaultLocale = 'en-US' satisfies Locale
 export const supportedLocales = data.languages
   .filter((language) => language.supported)
   .map((language) => language.value)
@@ -21,7 +21,7 @@ export const canonicalizeLanguageTag = (language: string): string | undefined =>
   }
 }
 
-export const normalizeLocale = (language: string): SupportedLocale => {
+export const normalizeLocale = (language: string): Locale => {
   const canonical = canonicalizeLanguageTag(language)
   return supportedLocales.find((locale) => locale === canonical) ?? defaultLocale
 }

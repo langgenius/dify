@@ -133,6 +133,7 @@ const normalizeI18nObject = (
     en_US: en,
     zh_Hans: zhHans,
     ja_JP: ja,
+    pt_BR: ptBr,
   }
 }
 

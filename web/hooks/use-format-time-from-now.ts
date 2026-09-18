@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { useCallback } from 'react'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { localeMap } from '@/i18n-config/language'
 import 'dayjs/locale/az'
 import 'dayjs/locale/de'

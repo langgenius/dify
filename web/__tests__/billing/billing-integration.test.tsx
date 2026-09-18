@@ -67,6 +67,10 @@ vi.mock('@/context/workspace-state', async () => {
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 
