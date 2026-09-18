@@ -57,8 +57,7 @@ from repositories.recommended_app_catalog_repository import DatabaseRecommendedA
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
-from repositories.trial_app_query_repository import TrialAppQueryRepository
-from repositories.trial_app_usage_repository import TrialAppUsageRepository
+from repositories.trial_app_repository import TrialAppRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
@@ -139,6 +138,7 @@ from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_site_service import AppSiteService
 from services.app_statistic_query import AppStatisticQuery
+from services.app_task_service import AppTaskControlService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
 from services.auth.data_source_api_key_auth_gateways import (
@@ -190,6 +190,9 @@ from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
+from services.trial_app_access_service import TrialAppAccessService
+from services.trial_app_generation_adapters import AppGenerateServiceRuntime
+from services.trial_app_generation_service import TrialAppGenerationService
 from services.trial_app_usage import TrialAppUsageRecorder
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
@@ -282,6 +285,9 @@ class ApplicationServices:
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     remote_files: RemoteFileService
+    app_tasks: AppTaskControlService
+    trial_app_access: TrialAppAccessService
+    trial_app_generation: TrialAppGenerationService
     trial_app_usage: TrialAppUsageRecorder
     workflow_run_archives: WorkflowRunArchiveService
     workflow_runs: WorkflowRunService
@@ -428,6 +434,7 @@ def build_application_services(
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
     integrations = SQLAlchemyAccountIntegrationRepository(session_factory=database_client)
     trial_app_enabled = SystemFeatureService.is_trial_app_enabled()
+    trial_apps = TrialAppRepository(session_factory=database_client)
     database_catalog = DatabaseRecommendedAppCatalogRepository(session_factory=database_client, redis=redis)
     builtin_catalog = BuiltinRecommendedAppCatalogGateway()
     remote_catalog = RemoteRecommendedAppCatalogGateway()
@@ -707,11 +714,16 @@ def build_application_services(
         ),
         recommended_app_queries=RecommendedAppQueryService(
             catalog=recommended_app_catalog,
-            trial_apps=TrialAppQueryRepository(session_factory=database_client),
+            trial_apps=trial_apps,
             trial_enabled=trial_app_enabled,
         ),
         remote_files=remote_file_service,
-        trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
+        app_tasks=AppTaskControlService(redis_client=redis),
+        trial_app_access=TrialAppAccessService(apps=trial_apps),
+        trial_app_generation=TrialAppGenerationService(
+            runtime=AppGenerateServiceRuntime(session_factory=database_client), usage=trial_apps
+        ),
+        trial_app_usage=trial_apps,
         workflow_run_archives=WorkflowRunArchiveService(
             bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
