@@ -101,6 +101,8 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
   const checker = program.getTypeChecker()
   const used = new Map<string, Set<string>>()
   const protectedNamespaces = new Set<string>()
+  const moduleNamespaces = new Map<string, Set<string>>()
+  let currentNamespaces = new Set<string>()
 
   function declarations(node: ts.Node): readonly ts.Declaration[] {
     const symbol = checker.getSymbolAtLocation(node)
@@ -418,6 +420,7 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
       const text = separator > 0 && !key.namespace ? key.text.slice(separator + 1) : key.text
       for (const rawNamespace of namespaces) {
         const namespace = camelCase(rawNamespace)
+        currentNamespaces.add(namespace)
         if (!catalog.has(namespace)) continue
         if (key.wildcard && text === '.*' && !info.prefix) {
           protectedNamespaces.add(namespace)
@@ -513,6 +516,8 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
   }
   for (const id of modules.keys()) {
     const source = program.getSourceFile(id)
+    currentNamespaces = new Set<string>()
+    moduleNamespaces.set(id, currentNamespaces)
     if (source) visit(source)
   }
   const unused: Record<string, string[]> = {}
@@ -521,5 +526,10 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
     const missing = [...keys].filter((key) => !used.get(namespace)?.has(key)).sort()
     if (missing.length) unused[namespace] = missing
   }
-  return { unused, protectedNamespaces: [...protectedNamespaces].sort(), moduleCount: modules.size }
+  return {
+    unused,
+    protectedNamespaces: [...protectedNamespaces].sort(),
+    moduleCount: modules.size,
+    moduleNamespaces,
+  }
 }

@@ -1,18 +1,38 @@
-import type { Plugin } from 'vite'
+import type { Logger, Plugin } from 'vite'
+import type { ModuleDependencies } from './i18n-analysis/routes'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizePath } from 'vite'
+import { analyzeRouteNamespaces } from './i18n-analysis/routes'
 
 const SOURCE_META = 'dify:i18n-source'
 
 // Vite shares these instances across client, SSR, and RSC environments. Each
 // completed graph replaces its preceding scan build; only buildApp finalizes it.
-export function i18nPrunePlugin(): Plugin[] {
+export function i18nAnalysisPlugin(): Plugin[] {
   let root: string
+  let logger: Logger
+  let reportPath: string | undefined
   let buildingApp = false
   const graphs = new Map<string, Map<string, string>>()
+  const edges = new Map<string, Map<string, ModuleDependencies>>()
+  const moduleId = (id: string) => normalizePath(id.split('?')[0]!)
 
   const check = async () => {
-    const { checkTranslationGraph } = await import('./i18n-prune/graph')
+    const { checkTranslationGraph } = await import('./i18n-analysis/graph')
+    const usage = new Map<string, Set<string>>()
+    const dependencies = new Map<string, ModuleDependencies>()
+    for (const graph of edges.values()) {
+      for (const [id, imports] of graph) {
+        const merged = dependencies.get(id) ?? {
+          static: new Set<string>(),
+          dynamic: new Set<string>(),
+        }
+        for (const dependency of imports.static) merged.static.add(dependency)
+        for (const dependency of imports.dynamic) merged.dynamic.add(dependency)
+        dependencies.set(id, merged)
+      }
+    }
     let unused: Record<string, string[]> | undefined
     const protectedNamespaces = new Set<string>()
     for (const graph of graphs.values()) {
@@ -21,6 +41,11 @@ export function i18nPrunePlugin(): Plugin[] {
       const modules = new Map<string, string>()
       for (const [id, code] of graph) modules.set(normalizePath(id.split('?')[0]!), code)
       const result = checkTranslationGraph(root, modules)
+      for (const [id, namespaces] of result.moduleNamespaces) {
+        const merged = usage.get(id) ?? new Set<string>()
+        for (const namespace of namespaces) merged.add(namespace)
+        usage.set(id, merged)
+      }
       for (const namespace of result.protectedNamespaces) protectedNamespaces.add(namespace)
       // Intersect unused sets: usage (or protection) in any environment keeps a key.
       unused =
@@ -32,6 +57,27 @@ export function i18nPrunePlugin(): Plugin[] {
                 return [namespace, keys.filter((key) => remaining.has(key))]
               }),
             )
+    }
+    const routes = analyzeRouteNamespaces(normalizePath(root), dependencies, usage)
+    if (routes.length) {
+      logger.info(
+        [
+          '[i18n] Route namespace analysis (static build graph; may overestimate or miss runtime usage):',
+          'Includes ancestor boundaries, dynamic imports and all built parallel-slot branches. Interception segments remain in route labels.',
+          ...routes.flatMap(({ route, page, namespaces, groups }) => [
+            `  ${route} (${page}): ${namespaces.join(', ') || '(none detected)'}`,
+            ...Object.entries(groups).map(
+              ([name, entries]) =>
+                `    ${name}: ${entries.map((entry) => entry.namespace).join(', ') || '(none detected)'}`,
+            ),
+          ]),
+        ].join('\n'),
+      )
+    }
+    if (routes.length && reportPath) {
+      await fs.mkdir(path.dirname(reportPath), { recursive: true })
+      await fs.writeFile(reportPath, `${JSON.stringify({ version: 1, routes }, null, 2)}\n`)
+      logger.info(`[i18n] Full namespace sources: ${reportPath}`)
     }
     const keys = Object.entries(unused ?? {}).flatMap(([namespace, unused]) =>
       unused.map((key) => `${namespace}:${key}`),
@@ -56,19 +102,27 @@ export function i18nPrunePlugin(): Plugin[] {
 
   return [
     {
-      name: 'i18n-prune:collect',
+      name: 'i18n-analysis:collect',
       apply: 'build',
       enforce: 'pre',
       sharedDuringBuild: true,
       configResolved(config) {
         root = config.root
+        logger = config.logger
+        reportPath = config.build.write
+          ? path.resolve(root, config.build.outDir, 'i18n-routes.json')
+          : undefined
       },
       async buildApp() {
         graphs.clear()
+        edges.clear()
         buildingApp = true
       },
       buildStart() {
-        if (!buildingApp) graphs.clear()
+        if (!buildingApp) {
+          graphs.clear()
+          edges.clear()
+        }
       },
       transform(code, id) {
         const file = normalizePath(id.split('?')[0]!)
@@ -85,16 +139,29 @@ export function i18nPrunePlugin(): Plugin[] {
       },
       async generateBundle() {
         const graph = new Map<string, string>()
+        const dependencies = new Map<string, ModuleDependencies>()
         for (const id of this.getModuleIds()) {
-          const source: unknown = this.getModuleInfo(id)?.meta[SOURCE_META]
+          const info = this.getModuleInfo(id)
+          if (info) {
+            const imports = dependencies.get(moduleId(id)) ?? {
+              static: new Set<string>(),
+              dynamic: new Set<string>(),
+            }
+            for (const dependency of info.importedIds) imports.static.add(moduleId(dependency))
+            for (const dependency of info.dynamicallyImportedIds)
+              imports.dynamic.add(moduleId(dependency))
+            dependencies.set(moduleId(id), imports)
+          }
+          const source: unknown = info?.meta[SOURCE_META]
           if (typeof source === 'string') graph.set(id, source)
         }
         graphs.set(this.environment.name, graph)
+        edges.set(this.environment.name, dependencies)
         if (!buildingApp) await check()
       },
     },
     {
-      name: 'i18n-prune:check',
+      name: 'i18n-analysis:check',
       apply: 'build',
       sharedDuringBuild: true,
       buildApp: {
@@ -111,6 +178,7 @@ export function i18nPrunePlugin(): Plugin[] {
           } finally {
             buildingApp = false
             graphs.clear()
+            edges.clear()
           }
         },
       },
