@@ -1,8 +1,11 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentModelField } from '../field'
+
+const providerSummary = vi.hoisted(() => vi.fn())
 
 const modelList = vi.hoisted(() => vi.fn<() => Promise<{ data: ProviderWithModelsResponse[] }>>())
 
@@ -42,9 +45,10 @@ vi.mock('@/service/console', () => ({
         modelProviders: {
           summary: {
             get: {
-              queryOptions: () => ({
+              queryOptions: (options: object) => ({
                 queryKey: ['providers'],
-                queryFn: async () => ({ data: [] }),
+                queryFn: providerSummary,
+                ...options,
               }),
             },
           },
@@ -54,14 +58,14 @@ vi.mock('@/service/console', () => ({
   },
 }))
 
-function renderField() {
+function renderField(currentModel?: AgentComposerModel) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   const onSelect = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
-      <AgentModelField onSelect={onSelect} />
+      <AgentModelField currentModel={currentModel} onSelect={onSelect} />
     </QueryClientProvider>,
   )
   return { queryClient, onSelect }
@@ -70,6 +74,7 @@ function renderField() {
 describe('AgentModelField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    providerSummary.mockResolvedValue({ data: [] })
   })
 
   it('disables model controls until the catalog loads without selecting a model', async () => {
@@ -86,7 +91,7 @@ describe('AgentModelField', () => {
     expect(
       screen.getByRole('button', { name: 'common.modelProvider.modelSettings' }),
     ).toBeDisabled()
-    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
 
     await act(async () => {
       resolve({ data: [] })
@@ -98,6 +103,47 @@ describe('AgentModelField', () => {
       ).toBeEnabled()
     })
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('keeps a saved model neutral until both catalog and provider metadata arrive', async () => {
+    let resolveCatalog!: (value: { data: ProviderWithModelsResponse[] }) => void
+    let resolveProviders!: (value: { data: [] }) => void
+    modelList.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCatalog = resolve
+        }),
+    )
+    providerSummary.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveProviders = resolve
+        }),
+    )
+    const { onSelect } = renderField({ provider: 'openai', model: 'gpt-4' })
+    const trigger = screen.getByRole('button', { name: 'gpt-4' })
+    const settings = screen.getByRole('button', { name: 'common.modelProvider.modelSettings' })
+
+    expect(trigger).toBeDisabled()
+    expect(settings).toBeDisabled()
+    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
+    expect(screen.queryByText(/incompatible|disabled/i)).not.toBeInTheDocument()
+
+    await act(async () => {
+      resolveCatalog({ data: [] })
+    })
+    expect(trigger).toBeDisabled()
+    expect(settings).toBeDisabled()
+    expect(screen.queryByText(/incompatible|disabled/i)).not.toBeInTheDocument()
+
+    await act(async () => {
+      resolveProviders({ data: [] })
+    })
+    await waitFor(() => {
+      expect(trigger).toBeEnabled()
+    })
+    expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
     expect(onSelect).not.toHaveBeenCalled()
   })
 

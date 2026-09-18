@@ -27,7 +27,17 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
       enabled: !readOnly,
     }),
   )
+  const providerQuery = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      enabled: !readOnly && !!currentModel?.provider,
+    }),
+  )
   const modelListUnavailable = modelListQuery.data === undefined
+  const providerUnavailable = !!currentModel?.provider && providerQuery.data === undefined
+  const modelStatusUnavailable = modelListUnavailable || providerUnavailable
+  const hasLoadError =
+    (modelListUnavailable && modelListQuery.isError) ||
+    (providerUnavailable && providerQuery.isError)
 
   return (
     <Field name="model" className="gap-1 pb-4">
@@ -46,7 +56,8 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
           completionParams={(currentModel?.model_settings ?? {}) as FormValue}
           hideDebugWithMultipleModel
           modelList={modelListQuery.data ?? []}
-          readonly={modelListUnavailable}
+          readonly={modelStatusUnavailable}
+          modelListLoading={modelStatusUnavailable}
           showModelMeta={false}
           modelPredicate={isAgentCompatibleModel}
           modelSuggestionPredicate={isAgentSuggestedModel}
@@ -68,20 +79,20 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
           }}
         />
       )}
-      {!readOnly &&
-        modelListUnavailable &&
-        (modelListQuery.isError ? (
-          <div role="alert" className="flex items-center gap-2 text-text-warning">
-            <span>{t(($) => $['api.actionFailed'], { ns: 'common' })}</span>
-            <Button size="small" onClick={() => modelListQuery.refetch()}>
-              {t(($) => $['operation.retry'], { ns: 'common' })}
-            </Button>
-          </div>
-        ) : (
-          <span role="status" className="system-xs-regular text-text-tertiary">
-            {t(($) => $.loading, { ns: 'common' })}
-          </span>
-        ))}
+      {!readOnly && hasLoadError && (
+        <div role="alert" className="flex items-center gap-2 text-text-warning">
+          <span>{t(($) => $['api.actionFailed'], { ns: 'common' })}</span>
+          <Button
+            size="small"
+            onClick={() => {
+              if (modelListUnavailable) void modelListQuery.refetch()
+              if (providerUnavailable) void providerQuery.refetch()
+            }}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      )}
     </Field>
   )
 }

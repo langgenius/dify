@@ -58,6 +58,7 @@ export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & 
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   modelList?: ModelSelectorProvider[]
+  modelListLoading?: boolean
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
@@ -84,6 +85,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   nodesOutputVars,
   availableNodes,
   modelList,
+  modelListLoading,
   showModelMeta,
   modelPredicate,
   modelSuggestionPredicate,
@@ -173,6 +175,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           <SplitModelSelector
             value={hasSelectedModel ? { provider, model: modelId } : undefined}
             models={selectableModelList}
+            loading={modelListLoading}
             popupClassName={modelSelectorPopupClassName}
             disabled={readonly || modelSelectorReadonly}
             showModelMeta={showModelMeta}
@@ -215,6 +218,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               <ModelSelector
                 value={hasSelectedModel ? { provider, model: modelId } : undefined}
                 models={selectableModelList}
+                loading={modelListLoading}
                 disabled={modelSelectorReadonly}
                 onValueChange={handleChangeModel}
                 onHide={() => setOpen(false)}
