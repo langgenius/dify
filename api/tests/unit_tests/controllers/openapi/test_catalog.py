@@ -152,7 +152,7 @@ def test_input_schemas_are_flat_shallow_and_described(ops: dict[str, dict]):
 def test_catalog_route_serves_canonical_bytes_and_every_response_carries_the_fingerprint(app: Flask):
     client = app.test_client()
     raw, fingerprint = catalog_for(app)
-    res = client.get(CATALOG_PATH, headers={"User-Agent": "difyctl/0.0.1 (x; y; z)"})
+    res = client.get(CATALOG_PATH)
     assert (res.status_code, res.mimetype, res.data) == (200, "application/json", raw)
     assert fingerprint == hashlib.sha256(raw).hexdigest() == res.headers[CATALOG_HEADER]
     assert client.get("/openapi/v1/apps").headers[CATALOG_HEADER] == fingerprint
