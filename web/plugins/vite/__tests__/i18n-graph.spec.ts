@@ -37,6 +37,29 @@ describe('translation graph analysis', () => {
   })
 
   describe('Usage Analysis', () => {
+    it('reports explicit namespace loads even when no translation key is consumed', () => {
+      writeJson('i18n/locales/en-US/app.json', { unused: 'Unused' })
+      writeSource(
+        'src/page.ts',
+        `
+        declare function useTranslation(ns: string[]): unknown
+        declare function getTranslation(locale: string, ns: string): unknown
+        useTranslation(['app', 'common'])
+        getTranslation('en-US', 'login')
+        export function boundary(requiredNamespaces: ('workflow' | 'dataset')[]) {
+          useTranslation([...requiredNamespaces])
+        }
+        `,
+      )
+      const result = checkTranslationGraph(webRoot, modules)
+      expect([...result.moduleNamespaces.get(path.join(webRoot, 'src/page.ts'))!].sort()).toEqual([
+        'app',
+        'common',
+        'login',
+      ])
+      expect(result.unused).toEqual({ app: ['unused'] })
+    })
+
     it('resolves generic metadata selectors using the namespace at each call site', () => {
       writeJson('i18n/locales/en-US/app.json', { resetPassword: 'Unused app key' })
       writeJson('i18n/locales/en-US/login.json', {

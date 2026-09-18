@@ -1,4 +1,4 @@
-import { getRouteNamespaces, signInNamespaces } from '@/i18n/route-namespaces'
+import { getDeclaredRouteNamespaces, getRouteNamespaces } from '@/i18n/route-namespaces'
 import { getLocaleOnServer, getResources } from '@/i18n/server'
 import { headers } from '@/next/headers'
 import { basePath } from '@/utils/var'
@@ -11,7 +11,7 @@ export async function I18nServerProvider({ children }: { children: React.ReactNo
   const resource = await getResources(
     locale,
     requiredNamespaces,
-    requiredNamespaces === signInNamespaces,
+    getDeclaredRouteNamespaces(pathname, basePath) !== undefined,
   )
 
   return (

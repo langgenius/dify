@@ -78,8 +78,8 @@ Use the `Translate i18n Files with Claude Code` workflow dispatch for a manual s
 
 ## Initial route resources
 
-`route-namespaces.ts` owns the initial namespace requirements shared by server
-selection and client navigation. `/signin` and its child routes use `common` and
+`route-namespaces.ts` owns the explicit `routeNamespaceDeclarations` opt-in map
+shared by server selection, client navigation and production build validation. `/signin` and its child routes use `common` and
 `login`. Other routes retain the complete registry until they are migrated.
 
 The server reads the pathname that `proxy.ts` overwrites on every request. Missing
@@ -98,6 +98,21 @@ controls language switching, without discarding previously loaded bundles.
 Server metadata requests initialize an empty instance and load their requested
 namespace. Existing server consumers without a namespace keep the full-catalog
 behavior for cross-namespace calls.
+
+### Build validation
+
+Production Vite builds check every opted-in route against its declaration using
+the combined client, SSR and RSC module graphs. The check includes page imports,
+shared layouts and boundaries, dynamic imports and conservative parallel slots.
+An undeclared namespace fails the build and lists the route and source files.
+The JSON analysis report is written before validation, so it remains available
+when validation fails. Unregistered routes are not checked against a restricted
+list and continue to load the full catalog.
+
+Add a subtree to `routeNamespaceDeclarations` after auditing its dependencies;
+more specific declarations override ancestor declarations. The check covers
+statically recognized translation usage, not arbitrary runtime imports or
+unknown translation APIs. Consult the analyzer README for its limitations.
 
 ### Production validation of the sign-in migration
 

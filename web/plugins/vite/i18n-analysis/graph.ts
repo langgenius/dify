@@ -479,6 +479,22 @@ export function checkTranslationGraph(root: string, modules: ReadonlyMap<string,
       }
     }
     if (ts.isCallExpression(node)) {
+      const name = node.expression.getText()
+      if (/(?:^|\.)(?:useTranslation|getTranslation)$/.test(name)) {
+        // Explicit loading requests matter even when their t function is unused.
+        // Do not mark translation keys as used merely because a namespace loads.
+        const nsIndex = name.endsWith('getTranslation') ? 1 : 0
+        const argument = node.arguments[nsIndex]
+        for (const value of argument ? alternatives(argument) : []) {
+          if (!value || ts.isFunctionDeclaration(value)) continue
+          const entries = ts.isArrayLiteralExpression(value) ? value.elements : [value]
+          for (const entry of entries) {
+            // A route-dependent array's element type describes possible values,
+            // not the namespaces loaded on every route by the shared provider.
+            if (ts.isStringLiteralLike(entry)) currentNamespaces.add(entry.text)
+          }
+        }
+      }
       const info = translation(node.expression, node)
       const argument = info && node.arguments[info.argument]
       if (info && argument) {
