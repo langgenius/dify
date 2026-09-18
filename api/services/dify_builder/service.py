@@ -649,6 +649,7 @@ class DifyBuilderService:
         subscribe_fn: Callable[[str], _SessionSubscription | None] | None = None,
         authorize_app_fn: Callable[[Actor, str, AppAccess], None] | None = None,
         get_app_revision_fn: Callable[[str, Actor], str] | None = None,
+        get_app_name_fn: Callable[[str, Actor], str] | None = None,
     ) -> None:
         self._repo = repo
         self._session_lock = session_lock
@@ -656,10 +657,15 @@ class DifyBuilderService:
         self._subscribe_fn = subscribe_fn or (lambda _sid: None)
         self._authorize_app_fn = authorize_app_fn or (lambda _actor, _app_id, _access: None)
         self._get_app_revision_fn = get_app_revision_fn or (lambda _app_id, _actor: "")
+        self._get_app_name_fn = get_app_name_fn or (lambda _app_id, _actor: "")
 
     def _get_app_revision(self, app_id: str, actor: Actor) -> str:
         revision = self._get_app_revision_fn(app_id, actor)
         return revision if isinstance(revision, str) else ""
+
+    def _get_app_name(self, app_id: str, actor: Actor) -> str:
+        name = self._get_app_name_fn(app_id, actor)
+        return name if isinstance(name, str) else ""
 
     def _authorize_app(self, app_id: str, actor: Actor, access: AppAccess = AppAccess.EDIT) -> str:
         if not isinstance(app_id, str) or not (app_id := app_id.strip()):
@@ -871,6 +877,7 @@ class DifyBuilderService:
             skill_learning_policy=policy,
             model_config=model_config,
             last_snapshot_hash=app_revision,
+            app_name=self._get_app_name(app_id, actor),
             app_name_auto=derive_app_name,
         )
         s = Session(

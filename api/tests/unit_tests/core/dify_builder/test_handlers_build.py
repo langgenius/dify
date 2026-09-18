@@ -1358,35 +1358,64 @@ def _run_capability_check(agent, *, app_name_auto: bool, rename_app=None):
     return fc
 
 
+class _Renamer:
+    """Stands in for the service-layer rename, reporting back what it stored."""
+
+    def __init__(self, stored: str | None = None) -> None:
+        self.stored = stored
+        self.calls: list[str] = []
+
+    def __call__(self, proposed: str) -> str:
+        self.calls.append(proposed)
+        return self.stored if self.stored is not None else proposed
+
+
 def test_goal_analysis_renames_an_app_still_carrying_its_derived_name():
     agent = _NamingAgent()
-    renamed: list[str] = []
-    fc = _run_capability_check(agent, app_name_auto=True, rename_app=renamed.append)
+    renamer = _Renamer()
+    fc = _run_capability_check(agent, app_name_auto=True, rename_app=renamer)
 
-    assert renamed == ["Expense reimbursement approval"]
+    assert renamer.calls == ["Expense reimbursement approval"]
     # The goal and the just-analyzed requirements are both handed to the model.
     assert agent.calls[0][0] == "x"
     assert agent.calls[0][1] == fc.requirements
     # Cleared, so a later advance through this state never renames again.
     assert fc.app_name_auto is False
+    # Recorded, so the build-complete card can say it (spec N4).
+    assert fc.app_name == "Expense reimbursement approval"
+
+
+def test_the_context_records_the_name_the_database_actually_took():
+    # The service normalizes before storing, so the engine must not assume its
+    # proposal is what landed.
+    agent = _NamingAgent(proposal='  "Expense approval"  ')
+    fc = _run_capability_check(agent, app_name_auto=True, rename_app=_Renamer(stored="Expense approval"))
+
+    assert fc.app_name == "Expense approval"
+
+
+def test_a_rename_that_stored_nothing_leaves_the_context_name_alone():
+    fc = _run_capability_check(_NamingAgent(), app_name_auto=True, rename_app=_Renamer(stored=""))
+
+    assert fc.app_name == ""
 
 
 def test_an_app_named_by_its_user_is_never_renamed():
     agent = _NamingAgent()
-    renamed: list[str] = []
-    fc = _run_capability_check(agent, app_name_auto=False, rename_app=renamed.append)
+    renamer = _Renamer()
+    fc = _run_capability_check(agent, app_name_auto=False, rename_app=renamer)
 
-    assert renamed == []
+    assert renamer.calls == []
     assert agent.calls == []
     assert fc.app_name_auto is False
 
 
 def test_a_model_with_no_proposal_leaves_the_derived_name_alone():
     agent = _NamingAgent(proposal="   ")
-    renamed: list[str] = []
-    fc = _run_capability_check(agent, app_name_auto=True, rename_app=renamed.append)
+    renamer = _Renamer()
+    fc = _run_capability_check(agent, app_name_auto=True, rename_app=renamer)
 
-    assert renamed == []
+    assert renamer.calls == []
     # Still consumed: one shot per session, whether or not it produced anything.
     assert fc.app_name_auto is False
 
@@ -1397,3 +1426,51 @@ def test_no_rename_callback_wired_costs_no_model_call():
 
     assert agent.calls == []
     assert fc.app_name_auto is False
+
+
+def _approve_plan(**fc_kwargs):
+    from core.dify_builder.handlers_build import handle_plan_approval
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, repo = _new_env(dify=FakeBuildDifyPort())
+    s = _seed_build_session(
+        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v2", **fc_kwargs
+    )
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
+    return next(i for i in res.items if i.kind == "plan"), res
+
+
+def test_the_built_card_names_the_app():
+    # Spec N4: "Refund approval is ready" -- the app is named here and only here.
+    plan, _res = _approve_plan(app_name="Refund approval")
+
+    assert plan.payload["title"] == "Refund approval is ready"
+
+
+def test_the_built_card_keeps_a_generic_title_when_the_name_is_unknown():
+    plan, _res = _approve_plan()
+
+    assert plan.payload["title"] == "Build plan"
+
+
+def test_the_completion_receipt_never_repeats_the_name():
+    # Spec N4: 记录卡上不出现 -- the name is said once, in the card above.
+    from core.dify_builder.handlers_build import _emit_completion
+
+    fc = DifyBuilderContext(app_name="Refund approval", built_node_ids=["a", "b"])
+    items = _emit_completion(fc)
+
+    assert all("Refund approval" not in str(item.payload) for item in items)
+
+
+def test_the_built_card_title_is_localizable():
+    # The headline is interpolated, so it only survives localization if the
+    # static-string catalog knows the shape.
+    from core.dify_builder import strings
+
+    plan, _res = _approve_plan(app_name="Refund approval")
+    matched = strings.match_template(plan.payload["title"])
+
+    assert matched is not None
+    assert matched[1]["name"] == "Refund approval"
