@@ -1,104 +1,102 @@
-import type { Viewport } from 'next'
-import { Agentation } from 'agentation'
+import type { ThemeProviderProps } from 'next-themes'
+import type { Metadata, Viewport } from '@/next'
+import { ToastHost } from '@langgenius/dify-ui/toast'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
+import { HydrationBoundary } from '@tanstack/react-query'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
-import { Instrument_Serif } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
-import { IS_DEV } from '@/config'
-import GlobalPublicStoreProvider from '@/context/global-public-context'
-import { TanstackQueryInitializer } from '@/context/query-client'
+import { IS_PROD } from '@/config'
 import { getDatasetMap } from '@/env'
-import { getLocaleOnServer } from '@/i18n-config/server'
-import { cn } from '@/utils/classnames'
-import { ToastProvider } from './components/base/toast'
-import { TooltipProvider } from './components/base/ui/tooltip'
-import BrowserInitializer from './components/browser-initializer'
+import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/bootstrap-boundary'
+import {
+  dehydrateSystemFeatures,
+  getOptionalSystemFeatures,
+} from '@/features/system-features/server'
+import { getLocaleOnServer } from '@/i18n/server'
+import { headers } from '@/next/headers'
+import { getApplicationTitle } from '@/utils/document-title'
+import { basePath } from '@/utils/var'
+import { CloudAnalytics } from './components/base/analytics-consent/cloud-analytics'
+import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
+import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
-import SentryInitializer from './components/sentry-initializer'
-import RoutePrefixHandle from './routePrefixHandle'
+import { TanStackQueryProvider } from './query-provider'
+import '@/service/console/server'
 import './styles/globals.css'
-import './styles/markdown.scss'
+import './styles/markdown.css'
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: 'cover',
-  userScalable: false,
 }
 
-const instrumentSerif = Instrument_Serif({
-  weight: ['400'],
-  style: ['normal', 'italic'],
-  subsets: ['latin'],
-  variable: '--font-instrument-serif',
-})
+export async function generateMetadata(): Promise<Metadata> {
+  const systemFeatures = await getOptionalSystemFeatures()
+  const branding = systemFeatures?.branding
+  const applicationTitle = getApplicationTitle(branding)
+  const brandedFavicon = branding?.enabled ? branding.favicon : undefined
 
-const LocaleLayout = async ({
-  children,
-}: {
-  children: React.ReactNode
-}) => {
-  const locale = await getLocaleOnServer()
+  return {
+    title: {
+      default: applicationTitle,
+      template: `%s - ${applicationTitle}`,
+    },
+    icons: brandedFavicon
+      ? { icon: brandedFavicon, apple: brandedFavicon }
+      : { icon: `${basePath}/favicon.ico` },
+  }
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const datasetMap = getDatasetMap()
+  const [locale, requestHeaders] = await Promise.all([
+    getLocaleOnServer(),
+    headers(),
+    getOptionalSystemFeatures(),
+  ])
+  const dehydratedState = dehydrateSystemFeatures()
+  const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
+  const themeProviderProps: Omit<ThemeProviderProps, 'children'> = {
+    attribute: 'data-theme',
+    defaultTheme: 'system',
+    enableSystem: true,
+    disableTransitionOnChange: true,
+  }
+  if (nonce !== undefined) themeProviderProps.nonce = nonce
 
   return (
-    <html lang={locale ?? 'en'} className={cn('h-full', instrumentSerif.variable)} suppressHydrationWarning>
+    <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#1C64F2" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Dify" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/icon-192x192.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/icon-192x192.png" />
-        <meta name="msapplication-TileColor" content="#1C64F2" />
-        <meta name="msapplication-config" content="/browserconfig.xml" />
-
-        {/* <ReactGrabLoader /> */}
         <ReactScanLoader />
       </head>
-      <body
-        className="h-full select-auto"
-        {...datasetMap}
-      >
+      <body className="h-full bg-background-body" {...datasetMap}>
+        <CloudAnalytics />
         <div className="isolate h-full">
           <JotaiProvider>
-            <ThemeProvider
-              attribute="data-theme"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-              enableColorScheme={false}
-            >
+            <ThemeProvider {...themeProviderProps}>
               <NuqsAdapter>
-                <BrowserInitializer>
-                  <SentryInitializer>
-                    <TanstackQueryInitializer>
-                      <I18nServerProvider>
-                        <ToastProvider>
-                          <GlobalPublicStoreProvider>
-                            <TooltipProvider delay={300} closeDelay={200}>
-                              {children}
-                            </TooltipProvider>
-                          </GlobalPublicStoreProvider>
-                        </ToastProvider>
-                      </I18nServerProvider>
-                    </TanstackQueryInitializer>
-                  </SentryInitializer>
-                </BrowserInitializer>
+                <TanStackQueryProvider>
+                  <HydrationBoundary state={dehydratedState}>
+                    <I18nServerProvider>
+                      <ToastHost timeout={5000} limit={3} />
+                      <SystemFeaturesBootstrapBoundary>
+                        <PartnerStackCookieRecorder />
+                        <TooltipProvider delay={300} closeDelay={200}>
+                          {children}
+                        </TooltipProvider>
+                      </SystemFeaturesBootstrapBoundary>
+                    </I18nServerProvider>
+                  </HydrationBoundary>
+                </TanStackQueryProvider>
               </NuqsAdapter>
             </ThemeProvider>
           </JotaiProvider>
-          <RoutePrefixHandle />
-          {IS_DEV && <Agentation />}
+          <AgentationLoader />
         </div>
       </body>
     </html>
   )
 }
-
-export default LocaleLayout

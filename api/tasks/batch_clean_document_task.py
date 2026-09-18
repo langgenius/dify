@@ -1,16 +1,19 @@
 import logging
 import time
+from typing import cast
 
 import click
 from celery import shared_task
 from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment
+from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
+from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +22,12 @@ BATCH_SIZE = 1000
 
 
 @shared_task(queue="dataset")
-def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form: str | None, file_ids: list[str]):
+def batch_clean_document_task(
+    document_ids: list[str],
+    dataset_id: str,
+    doc_form: str | None,
+    file_ids: list[str],
+) -> None:
     """
     Clean document when document deleted.
     :param document_ids: document ids
@@ -38,6 +46,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
     index_node_ids: list[str] = []
     segment_ids: list[str] = []
     total_image_upload_file_ids: list[str] = []
+    dataset_tenant_id: str | None = None
 
     try:
         # ============ Step 1: Query segment and file data (short read-only transaction) ============
@@ -48,13 +57,24 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
             ).all()
 
             if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
+                index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
                 segment_ids = [segment.id for segment in segments]
 
                 # Collect image file IDs from segment content
                 for segment in segments:
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)
                     total_image_upload_file_ids.extend(image_upload_file_ids)
+
+                total_image_upload_file_ids.extend(
+                    session.scalars(
+                        select(SegmentAttachmentBinding.attachment_id).where(
+                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
+                            SegmentAttachmentBinding.dataset_id == dataset_id,
+                            SegmentAttachmentBinding.document_id.in_(document_ids),
+                            SegmentAttachmentBinding.segment_id.in_(segment_ids),
+                        )
+                    ).all()
+                )
 
             # Query storage keys for image files
             if total_image_upload_file_ids:
@@ -72,15 +92,21 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
         if index_node_ids:
             try:
                 # Fetch dataset in a fresh session to avoid DetachedInstanceError
-                with session_factory.create_session() as session:
-                    dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+                with session_factory.create_session() as session, session.begin():
+                    dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
                     if not dataset:
                         logger.warning("Dataset not found for vector index cleanup, dataset_id: %s", dataset_id)
                     else:
                         index_processor = IndexProcessorFactory(doc_form).init_index_processor()
                         index_processor.clean(
-                            dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
+                            dataset,
+                            index_node_ids,
+                            with_keywords=True,
+                            delete_child_chunks=True,
+                            delete_summaries=True,
+                            session=session,
                         )
+                        dataset_tenant_id = dataset.tenant_id
             except Exception:
                 logger.exception(
                     "Failed to clean vector index for dataset_id: %s, document_ids: %s, index_node_ids count: %d",
@@ -92,14 +118,16 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
         # ============ Step 3: Delete metadata binding (separate short transaction) ============
         try:
             with session_factory.create_session() as session:
-                deleted_count = (
-                    session.query(DatasetMetadataBinding)
-                    .where(
-                        DatasetMetadataBinding.dataset_id == dataset_id,
-                        DatasetMetadataBinding.document_id.in_(document_ids),
-                    )
-                    .delete(synchronize_session=False)
+                result = cast(
+                    CursorResult,
+                    session.execute(
+                        delete(DatasetMetadataBinding).where(
+                            DatasetMetadataBinding.dataset_id == dataset_id,
+                            DatasetMetadataBinding.document_id.in_(document_ids),
+                        )
+                    ),
                 )
+                deleted_count = result.rowcount
                 session.commit()
                 logger.debug("Deleted %d metadata bindings for dataset_id: %s", deleted_count, dataset_id)
         except Exception:
@@ -144,6 +172,13 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 batch = segment_ids[i : i + BATCH_SIZE]
                 try:
                     with session_factory.create_session() as session:
+                        binding_delete_stmt = delete(SegmentAttachmentBinding).where(
+                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
+                            SegmentAttachmentBinding.dataset_id == dataset_id,
+                            SegmentAttachmentBinding.document_id.in_(document_ids),
+                            SegmentAttachmentBinding.segment_id.in_(batch),
+                        )
+                        session.execute(binding_delete_stmt)
                         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(batch))
                         session.execute(segment_delete_stmt)
                         session.commit()
@@ -193,6 +228,9 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 len(storage_keys_to_delete),
                 dataset_id,
             )
+
+        if dataset_tenant_id is not None:
+            schedule_billing_vector_space_refresh(dataset_tenant_id)
 
         end_at = time.perf_counter()
         logger.info(

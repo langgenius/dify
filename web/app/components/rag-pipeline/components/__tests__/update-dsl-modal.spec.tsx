@@ -1,6 +1,5 @@
-import type { PropsWithChildren } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from '../update-dsl-modal'
 
@@ -15,15 +14,38 @@ class MockFileReader {
 
 vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 
-const mockNotify = vi.fn()
-vi.mock('use-context-selector', () => ({
-  useContext: () => ({ notify: mockNotify }),
-}))
+const toastMocks = vi.hoisted(() => {
+  const call = vi.fn()
+  return {
+    call,
+    api: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+      call({ message, ...options }),
+    ),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }
+})
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: { Provider: ({ children }: PropsWithChildren) => children },
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(toastMocks.api, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
 }))
-
 const mockEmit = vi.fn()
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
@@ -67,7 +89,7 @@ vi.mock('@/service/workflow', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  default: ({ updateFile }: { updateFile: (file?: File) => void }) => (
+  Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
     <div data-testid="uploader">
       <input
         type="file"
@@ -77,49 +99,11 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
           updateFile(file)
         }}
       />
-      <button
-        data-testid="clear-file"
-        onClick={() => updateFile(undefined)}
-      >
+      <button data-testid="clear-file" onClick={() => updateFile(undefined)}>
         Clear
       </button>
     </div>
   ),
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, className, variant, loading }: {
-    children: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-    className?: string
-    variant?: string
-    loading?: boolean
-  }) => (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={className}
-      data-variant={variant}
-      data-loading={loading}
-    >
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow, _onClose, className }: PropsWithChildren<{
-    isShow: boolean
-    _onClose: () => void
-    className?: string
-  }>) => isShow
-    ? (
-        <div data-testid="modal" className={className}>
-          {children}
-        </div>
-      )
-    : null,
 }))
 
 vi.mock('@/app/components/workflow/constants', () => ({
@@ -148,12 +132,6 @@ describe('UpdateDSLModal', () => {
   })
 
   describe('rendering', () => {
-    it('should render without crashing', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
-
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
-    })
-
     it('should render title', () => {
       render(<UpdateDSLModal {...defaultProps} />)
 
@@ -293,40 +271,6 @@ describe('UpdateDSLModal', () => {
     })
   })
 
-  describe('memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((UpdateDSLModal as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
-    })
-  })
-
-  describe('edge cases', () => {
-    it('should handle missing onImport callback', () => {
-      const props = {
-        onCancel: mockOnCancel,
-        onBackup: mockOnBackup,
-      }
-
-      render(<UpdateDSLModal {...props} />)
-
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
-    })
-
-    it('should render import button with warning variant', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      expect(importButton).toHaveAttribute('data-variant', 'warning')
-    })
-
-    it('should render backup button with secondary variant', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
-
-      const backupButtonText = screen.getByText('workflow.common.backupCurrentDraft')
-      const backupButton = backupButtonText.closest('button')
-      expect(backupButton).toHaveAttribute('data-variant', 'secondary')
-    })
-  })
-
   describe('import flow', () => {
     it('should call importDSL when import button is clicked with file content', async () => {
       render(<UpdateDSLModal {...defaultProps} />)
@@ -370,9 +314,11 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(importButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-        }))
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'success',
+          }),
+        )
       })
     })
 
@@ -415,17 +361,23 @@ describe('UpdateDSLModal', () => {
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
 
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          const importButton = screen.getByText('workflow.common.overwriteAndImport')
+          expect(importButton).not.toBeDisabled()
+        },
+        { timeout: 1000 },
+      )
 
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      await waitFor(() => {
-        expect(mockOnImport).toHaveBeenCalled()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(mockOnImport).toHaveBeenCalled()
+        },
+        { timeout: 1000 },
+      )
     })
 
     it('should show warning notification on import with warnings', async () => {
@@ -450,9 +402,11 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(importButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'warning',
-        }))
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'warning',
+          }),
+        )
       })
     })
 
@@ -478,9 +432,11 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(importButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'error',
-        }))
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+          }),
+        )
       })
     })
 
@@ -506,9 +462,11 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(importButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'error',
-        }))
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+          }),
+        )
       })
     })
 
@@ -530,9 +488,11 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(importButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'error',
-        }))
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+          }),
+        )
       })
     })
 
@@ -555,7 +515,7 @@ describe('UpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await new Promise<void>((resolve) => queueMicrotask(resolve))
       })
 
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
@@ -610,7 +570,7 @@ describe('UpdateDSLModal', () => {
 
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await new Promise<void>((resolve) => queueMicrotask(resolve))
       })
 
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
@@ -652,10 +612,13 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      await waitFor(() => {
-        expect(screen.getByText('1.0.0')).toBeInTheDocument()
-        expect(screen.getByText('2.0.0')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('1.0.0')).toBeInTheDocument()
+          expect(screen.getByText('2.0.0')).toBeInTheDocument()
+        },
+        { timeout: 1000 },
+      )
     })
 
     it('should close error modal when cancel button is clicked', async () => {
@@ -681,17 +644,15 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
-
-      const cancelButtons = screen.getAllByText('app.newApp.Cancel')
-      const errorModalCancelButton = cancelButtons.find(btn =>
-        btn.getAttribute('data-variant') === 'secondary',
+      await waitFor(
+        () => {
+          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        },
+        { timeout: 1000 },
       )
-      if (errorModalCancelButton) {
-        fireEvent.click(errorModalCancelButton)
-      }
+
+      const cancelButtons = screen.getAllByRole('button', { name: 'app.newApp.Cancel' })
+      fireEvent.click(cancelButtons.at(-1)!)
 
       await waitFor(() => {
         expect(screen.queryByText('app.newApp.appCreateDSLErrorTitle')).not.toBeInTheDocument()
@@ -721,7 +682,7 @@ describe('UpdateDSLModal', () => {
 
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await new Promise<void>((resolve) => queueMicrotask(resolve))
       })
 
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
@@ -733,9 +694,12 @@ describe('UpdateDSLModal', () => {
         await vi.advanceTimersByTimeAsync(350)
       })
 
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        },
+        { timeout: 1000 },
+      )
 
       const confirmButton = screen.getByText('app.newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -775,17 +739,22 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        },
+        { timeout: 1000 },
+      )
 
       const confirmButton = screen.getByText('app.newApp.Confirm')
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-        }))
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'success',
+          }),
+        )
       })
     })
 
@@ -817,17 +786,22 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        },
+        { timeout: 1000 },
+      )
 
       const confirmButton = screen.getByText('app.newApp.Confirm')
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'error',
-        }))
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+          }),
+        )
       })
     })
 
@@ -856,17 +830,22 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        },
+        { timeout: 1000 },
+      )
 
       const confirmButton = screen.getByText('app.newApp.Confirm')
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'error',
-        }))
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+          }),
+        )
       })
     })
 
@@ -898,17 +877,22 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        },
+        { timeout: 1000 },
+      )
 
       const confirmButton = screen.getByText('app.newApp.Confirm')
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'error',
-        }))
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+          }),
+        )
       })
     })
 
@@ -940,9 +924,12 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        },
+        { timeout: 1000 },
+      )
 
       const confirmButton = screen.getByText('app.newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -975,7 +962,7 @@ describe('UpdateDSLModal', () => {
 
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await new Promise<void>((resolve) => queueMicrotask(resolve))
       })
 
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
@@ -987,9 +974,12 @@ describe('UpdateDSLModal', () => {
         await vi.advanceTimersByTimeAsync(350)
       })
 
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        },
+        { timeout: 1000 },
+      )
 
       const confirmButton = screen.getByText('app.newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -1024,9 +1014,12 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        },
+        { timeout: 1000 },
+      )
     })
 
     it('should not call importDSLConfirm when importId is not set', async () => {

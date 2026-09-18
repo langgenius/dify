@@ -6,17 +6,18 @@ Test objectives:
 2. Verify span attribute mapping correctness
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.otel.decorators.handlers.generate_handler import AppGenerateHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class TestAppGenerateHandler:
     """Core tests for AppGenerateHandler"""
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @config_overrides_context(ENABLE_OTEL=True)
     def test_compatible_with_real_function_signature(
         self, tracer_provider_with_memory_exporter, mock_app_model, mock_account_user
     ):
@@ -31,6 +32,7 @@ class TestAppGenerateHandler:
         handler = AppGenerateHandler()
 
         kwargs = {
+            "session": MagicMock(),
             "app_model": mock_app_model,
             "user": mock_account_user,
             "args": {"workflow_id": "test-wf-123"},
@@ -39,7 +41,7 @@ class TestAppGenerateHandler:
             "root_node_id": None,
         }
 
-        arguments = handler._extract_arguments(AppGenerateService.generate, (), kwargs)
+        arguments = handler._extract_arguments(AppGenerateService.generate, **kwargs)
 
         assert arguments is not None, "Failed to extract arguments from AppGenerateService.generate"
         assert "app_model" in arguments, "Handler uses app_model but parameter is missing"
@@ -47,7 +49,7 @@ class TestAppGenerateHandler:
         assert "args" in arguments, "Handler uses args but parameter is missing"
         assert "streaming" in arguments, "Handler uses streaming but parameter is missing"
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @config_overrides_context(ENABLE_OTEL=True)
     def test_all_span_attributes_set_correctly(
         self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_app_model, mock_account_user
     ):
@@ -70,14 +72,11 @@ class TestAppGenerateHandler:
         handler.wrapper(
             tracer,
             dummy_func,
-            (),
-            {
-                "app_model": mock_app_model,
-                "user": mock_account_user,
-                "args": {"workflow_id": test_workflow_id},
-                "invoke_from": InvokeFrom.DEBUGGER,
-                "streaming": False,
-            },
+            app_model=mock_app_model,
+            user=mock_account_user,
+            args={"workflow_id": test_workflow_id},
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=False,
         )
 
         spans = memory_span_exporter.get_finished_spans()

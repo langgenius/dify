@@ -1,18 +1,20 @@
 'use client'
 import type { AppIconType } from '@/types/app'
-import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import AppIconPicker from '../../base/app-icon-picker'
 
 export type DuplicateAppModalProps = {
@@ -52,12 +54,26 @@ const DuplicateAppModal = ({
       : { type: 'emoji' as const, icon, background: icon_background },
   )
 
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.apps,
+    }),
+  )
+  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
 
   const submit = () => {
+    if (isAppQuotaUnavailable || isAppsFull) return
+
     if (!name.trim()) {
-      Toast.notify({ type: 'error', message: t('appCustomize.nameRequired', { ns: 'explore' }) })
+      toast.error(t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }))
       return
     }
     onConfirm({
@@ -71,56 +87,94 @@ const DuplicateAppModal = ({
 
   return (
     <>
-      <Modal
-        isShow={show}
-        onClose={noop}
-        className={cn('relative !max-w-[480px]', 'px-8')}
+      <Dialog
+        open={show}
+        onOpenChange={(open) => {
+          if (!open) onHide()
+        }}
       >
-        <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-        </div>
-        <div className="relative mb-9 mt-3 text-xl font-semibold leading-[30px] text-text-primary">{t('duplicateTitle', { ns: 'app' })}</div>
-        <div className="system-sm-regular mb-9 text-text-secondary">
-          <div className="system-md-medium mb-2">{t('appCustomize.subTitle', { ns: 'explore' })}</div>
-          <div className="flex items-center justify-between space-x-2">
-            <AppIcon
-              size="large"
-              onClick={() => { setShowAppIconPicker(true) }}
-              className="cursor-pointer"
-              iconType={appIcon.type}
-              icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-              background={appIcon.type === 'image' ? undefined : appIcon.background}
-              imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-            />
-            <Input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="h-10"
-            />
-          </div>
-          {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
-        </div>
-        <div className="flex flex-row-reverse">
-          <Button disabled={isAppsFull} className="ml-2 w-24" variant="primary" onClick={submit}>{t('duplicate', { ns: 'app' })}</Button>
-          <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-        </div>
-      </Modal>
+        <DialogContent className="w-full max-w-120! overflow-hidden! border-none px-8 text-left align-middle">
+          <IconButton
+            size="lg"
+            className="absolute top-4 right-4"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={onHide}
+          >
+            <span aria-hidden="true" className="i-ri-close-line size-4" />
+          </IconButton>
+          <DialogTitle className="relative mt-3 mb-9 text-xl leading-7.5 font-semibold text-text-primary">
+            {t(($) => $.duplicateTitle, { ns: 'app' })}
+          </DialogTitle>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              submit()
+            }}
+          >
+            <div className="mb-9 system-sm-regular text-text-secondary">
+              <Field className="gap-2" name="name">
+                <FieldLabel className="py-0 system-md-medium">
+                  {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
+                </FieldLabel>
+                <div className="flex items-center justify-between space-x-2">
+                  <button
+                    type="button"
+                    aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
+                    onClick={() => {
+                      setShowAppIconPicker(true)
+                    }}
+                    className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  >
+                    <AppIcon
+                      size="large"
+                      iconType={appIcon.type}
+                      icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                      background={appIcon.type === 'image' ? undefined : appIcon.background}
+                      imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                    />
+                  </button>
+                  <Input
+                    autoComplete="off"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-10"
+                    placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
+                  />
+                </div>
+              </Field>
+              {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
+            </div>
+            <div className="flex flex-row-reverse">
+              <Button
+                type="submit"
+                disabled={isAppQuotaUnavailable || isAppsFull}
+                className="ml-2 w-24"
+                variant="primary"
+              >
+                {t(($) => $.duplicate, { ns: 'app' })}
+              </Button>
+              <Button type="button" className="w-24" onClick={onHide}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
       {showAppIconPicker && (
         <AppIconPicker
+          open={showAppIconPicker}
+          initialEmoji={
+            appIcon.type === 'emoji'
+              ? { icon: appIcon.icon, background: appIcon.background }
+              : undefined
+          }
+          onOpenChange={setShowAppIconPicker}
           onSelect={(payload) => {
             setAppIcon(payload)
-            setShowAppIconPicker(false)
-          }}
-          onClose={() => {
-            setAppIcon(icon_type === 'image'
-              ? { type: 'image', url: icon_url!, fileId: icon }
-              : { type: 'emoji', icon, background: icon_background! })
-            setShowAppIconPicker(false)
           }}
         />
       )}
     </>
-
   )
 }
 

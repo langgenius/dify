@@ -3,7 +3,7 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
@@ -14,6 +14,7 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import SegmentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +31,12 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
     """
     start_at = time.perf_counter()
     with session_factory.create_session() as session:
-        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if not dataset:
             logger.info(click.style(f"Dataset {dataset_id} not found, pass.", fg="cyan"))
             return
 
-        dataset_document = session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
+        dataset_document = session.scalar(select(DatasetDocument).where(DatasetDocument.id == document_id).limit(1))
 
         if not dataset_document:
             logger.info(click.style(f"Document {document_id} not found, pass.", fg="cyan"))
@@ -72,7 +73,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                 )
 
                 if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                    child_chunks = segment.get_child_chunks()
+                    child_chunks = segment.get_child_chunks(session=session)
                     if child_chunks:
                         child_documents = []
                         for child_chunk in child_chunks:
@@ -89,7 +90,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                         document.children = child_documents
 
                 if dataset.is_multimodal:
-                    for attachment in segment.attachments:
+                    for attachment in segment.get_attachments(session=session):
                         multimodal_documents.append(
                             AttachmentDocument(
                                 page_content=attachment["name"],
@@ -104,7 +105,9 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                         )
                 documents.append(document)
             # save vector index
-            index_processor.load(dataset, documents, multimodal_documents=multimodal_documents)
+            index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
+
+            session.commit()
 
             # Enable summary indexes for these segments
             from services.summary_index_service import SummaryIndexService
@@ -115,25 +118,23 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                     dataset=dataset,
                     segment_ids=segment_ids_list,
                 )
-            except Exception as e:
-                logger.warning("Failed to enable summaries for segments: %s", str(e))
+            except Exception:
+                logger.warning("Failed to enable summaries for segments", exc_info=True)
 
             end_at = time.perf_counter()
             logger.info(click.style(f"Segments enabled to index latency: {end_at - start_at}", fg="green"))
         except Exception as e:
             logger.exception("enable segments to index failed")
             # update segment error msg
-            session.query(DocumentSegment).where(
-                DocumentSegment.id.in_(segment_ids),
-                DocumentSegment.dataset_id == dataset_id,
-                DocumentSegment.document_id == document_id,
-            ).update(
-                {
-                    "error": str(e),
-                    "status": "error",
-                    "disabled_at": naive_utc_now(),
-                    "enabled": False,
-                }
+            session.rollback()
+            session.execute(
+                update(DocumentSegment)
+                .where(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id == dataset_id,
+                    DocumentSegment.document_id == document_id,
+                )
+                .values(error=str(e), status=SegmentStatus.ERROR, disabled_at=naive_utc_now(), enabled=False)
             )
             session.commit()
         finally:

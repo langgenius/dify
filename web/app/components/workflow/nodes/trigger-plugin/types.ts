@@ -20,5 +20,5 @@ export type PluginTriggerNodeType = CommonNodeType & {
 }
 
 // Use base types directly
-export { VarKindType as PluginTriggerVarType } from '../_base/types'
+
 export type PluginTriggerVarInputs = ResourceVarInputs

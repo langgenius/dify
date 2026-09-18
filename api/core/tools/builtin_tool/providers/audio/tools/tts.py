@@ -1,32 +1,40 @@
-import io
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
+from sqlalchemy.orm import Session
+
+from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from services.model_provider_service import ModelProviderService
 
 
 class TTSTool(BuiltinTool):
+    @override
+    @with_credit_usage_created_by(CreditUsageCreatedBy.AUDIO)
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        provider, model = tool_parameters.get("model").split("#")  # type: ignore
-        voice = tool_parameters.get(f"voice#{provider}#{model}")
-        model_manager = ModelManager()
         if not self.runtime:
             raise ValueError("Runtime is required")
+        runtime = self.runtime
+        provider, model = tool_parameters.get("model").split("#")  # type: ignore
+        voice = tool_parameters.get(f"voice#{provider}#{model}")
+        model_manager = ModelManager.for_tenant(tenant_id=runtime.tenant_id, user_id=user_id)
         model_instance = model_manager.get_model_instance(
-            tenant_id=self.runtime.tenant_id or "",
+            tenant_id=runtime.tenant_id or "",
             provider=provider,
             model_type=ModelType.TTS,
             model=model,
@@ -39,21 +47,13 @@ class TTSTool(BuiltinTool):
                     raise ValueError("Sorry, no voice available.")
             else:
                 raise ValueError("Sorry, no voice available.")
-        tts = model_instance.invoke_tts(
-            content_text=tool_parameters.get("text"),  # type: ignore
-            user=user_id,
-            tenant_id=self.runtime.tenant_id,
-            voice=voice,
-        )
-        buffer = io.BytesIO()
-        for chunk in tts:
-            buffer.write(chunk)
-
-        wav_bytes = buffer.getvalue()
+        tts = model_instance.invoke_tts(content_text=tool_parameters.get("text"), voice=voice)  # type: ignore[arg-type]
+        audio_stream, mime_type = inspect_audio_stream(tts, get_model_audio_mime_type(model_instance))
+        audio_bytes = b"".join(audio_stream)
         yield self.create_text_message("Audio generated successfully")
         yield self.create_blob_message(
-            blob=wav_bytes,
-            meta={"mime_type": "audio/x-wav"},
+            blob=audio_bytes,
+            meta={"mime_type": mime_type},
         )
 
     def get_available_models(self) -> list[tuple[str, str, list[Any]]]:
@@ -70,6 +70,7 @@ class TTSTool(BuiltinTool):
                 items.append((provider, model.model, voices))
         return items
 
+    @override
     def get_runtime_parameters(
         self,
         conversation_id: str | None = None,

@@ -1,18 +1,42 @@
+import inspect
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import NAMESPACE_URL, uuid5
 
 import pytest
-from flask import Flask, g
+from flask import Flask, request
+from sqlalchemy.orm import Session
 
+from controllers.console.auth.error import InvalidTokenError
+from controllers.console.error import EducationActivateLimitError, EducationVerifyLimitError, EmailDomainSuspendedError
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,
+    AccountDeletionFeedbackPayload,
     ChangeEmailCheckApi,
     ChangeEmailResetApi,
+    ChangeEmailResetPayload,
     ChangeEmailSendEmailApi,
+    ChangeEmailSendPayload,
+    ChangeEmailValidityPayload,
     CheckEmailUnique,
+    CheckEmailUniquePayload,
+    EducationActivatePayload,
+    EducationApi,
+    EducationVerifyApi,
 )
-from models import Account
+from machinery.context import RequestContext
+from models import Account, AccountStatus, Tenant, TenantAccountJoin
+from models.account import TenantAccountRole
+from services import account_errors
 from services.account_service import AccountService
+from services.entities.account_entities import AccountEducationActivation, ChangeEmailVerification
+from services.entities.auth_entities import (
+    ChangeEmailNewEmailToken,
+    ChangeEmailNewEmailVerifiedToken,
+    ChangeEmailOldEmailToken,
+    ChangeEmailOldEmailVerifiedToken,
+    ChangeEmailPhase,
+)
 
 
 @pytest.fixture
@@ -20,228 +44,470 @@ def app():
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["RESTX_MASK_HEADER"] = "X-Fields"
-    app.login_manager = SimpleNamespace(_load_user=lambda: None)
+    setattr(app, "login_manager", SimpleNamespace(load_user_from_request_context=lambda: None))  # noqa: B010
     return app
 
 
-def _mock_wraps_db(mock_db):
-    mock_db.session.query.return_value.first.return_value = MagicMock()
-
-
-def _build_account(email: str, account_id: str = "acc", tenant: object | None = None) -> Account:
-    tenant_obj = tenant if tenant is not None else SimpleNamespace(id="tenant-id")
+def _build_account(email: str, account_id: str = "acc", tenant: Tenant | None = None) -> Account:
+    if tenant is None:
+        tenant_obj = Tenant(name="Tenant")
+        tenant_obj.id = "tenant-id"
+    else:
+        tenant_obj = tenant
     account = Account(name=account_id, email=email)
     account.email = email
     account.id = account_id
-    account.status = "active"
+    account.status = AccountStatus.ACTIVE
     account._current_tenant = tenant_obj
     return account
 
 
-def _set_logged_in_user(account: Account):
-    g._login_user = account
-    g._current_tenant = account.current_tenant
+def _stable_uuid(value: str) -> str:
+    return str(uuid5(NAMESPACE_URL, value))
 
 
-class TestChangeEmailSend:
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.workspace.account.current_account_with_tenant")
-    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
-    @patch("controllers.console.workspace.account.AccountService.send_change_email_email")
-    @patch("controllers.console.workspace.account.AccountService.is_email_send_ip_limit", return_value=False)
-    @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
-    @patch("libs.login.check_csrf_token", return_value=None)
-    @patch("controllers.console.wraps.FeatureService.get_system_features")
-    def test_should_normalize_new_email_phase(
-        self,
-        mock_features,
-        mock_csrf,
-        mock_extract_ip,
-        mock_is_ip_limit,
-        mock_send_email,
-        mock_get_change_data,
-        mock_current_account,
-        mock_db,
-        app,
-    ):
-        _mock_wraps_db(mock_db)
-        mock_features.return_value = SimpleNamespace(enable_change_email=True)
-        mock_account = _build_account("current@example.com", "acc1")
-        mock_current_account.return_value = (mock_account, None)
-        mock_get_change_data.return_value = {"email": "current@example.com"}
-        mock_send_email.return_value = "token-abc"
+def _persist_account_with_tenant(session: Session, email: str, account_name: str = "account") -> tuple[Account, Tenant]:
+    tenant = Tenant(name=f"{account_name} tenant")
+    tenant.id = _stable_uuid(f"tenant:{account_name}")
+    account = Account(name=account_name, email=email, status=AccountStatus.ACTIVE)
+    account.id = _stable_uuid(f"account:{account_name}")
+    membership = TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        current=True,
+        role=TenantAccountRole.OWNER,
+    )
+    session.add_all([account, tenant, membership])
+    session.commit()
+    account._current_tenant = tenant
+    account.role = TenantAccountRole.OWNER
+    return account, tenant
 
-        with app.test_request_context(
-            "/account/change-email",
-            method="POST",
-            json={"email": "New@Example.com", "language": "en-US", "phase": "new_email", "token": "token-123"},
+
+def _build_change_email_token(
+    phase: str,
+    *,
+    account_id: str = "acc",
+    email: str,
+    old_email: str,
+    code: str = "1234",
+):
+    token_kwargs = {
+        "account_id": account_id,
+        "email": email,
+        "old_email": old_email,
+        "code": code,
+    }
+    if phase == AccountService.CHANGE_EMAIL_PHASE_OLD:
+        return ChangeEmailOldEmailToken(**token_kwargs)
+    if phase == ChangeEmailPhase.OLD_EMAIL_VERIFIED:
+        return ChangeEmailOldEmailVerifiedToken(**token_kwargs)
+    if phase == AccountService.CHANGE_EMAIL_PHASE_NEW:
+        return ChangeEmailNewEmailToken(**token_kwargs)
+    if phase == ChangeEmailPhase.NEW_EMAIL_VERIFIED:
+        return ChangeEmailNewEmailVerifiedToken(**token_kwargs)
+    raise AssertionError(f"Unsupported phase for test helper: {phase}")
+
+
+class TestEducationApi:
+    def test_post_activates_education_discount(self, app: Flask):
+        education = MagicMock()
+        education.activate.return_value = AccountEducationActivation(message="success")
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+
+        with (
+            app.test_request_context(
+                "/account/education",
+                method="POST",
+                json={"token": "education-token", "institution": "Dify University", "role": "Student"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(education=education)),
+            ),
         ):
-            _set_logged_in_user(_build_account("tester@example.com", "tester"))
-            response = ChangeEmailSendEmailApi().post()
+            api = EducationApi()
+            method = inspect.unwrap(api.post)
+            result = method(api, EducationActivatePayload.model_validate(request.get_json() or {}), request_context)
 
-        assert response == {"result": "success", "data": "token-abc"}
-        mock_send_email.assert_called_once_with(
-            account=None,
-            email="new@example.com",
-            old_email="current@example.com",
-            language="en-US",
+        assert result == {"message": "success"}
+        education.activate.assert_called_once_with(
+            request_context,
+            token="education-token",
+            institution="Dify University",
+            role="Student",
+        )
+
+    def test_verify_maps_rate_limit_error(self, app: Flask):
+        education = MagicMock()
+        education.verify.side_effect = account_errors.EducationRateLimitExceededError
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+
+        with (
+            app.test_request_context("/account/education/verify", method="GET"),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(education=education)),
+            ),
+        ):
+            api = EducationVerifyApi()
+            with pytest.raises(EducationVerifyLimitError):
+                inspect.unwrap(api.get)(api, request_context)
+
+    def test_post_maps_rate_limit_error(self, app: Flask):
+        education = MagicMock()
+        education.activate.side_effect = account_errors.EducationRateLimitExceededError
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+
+        with (
+            app.test_request_context(
+                "/account/education",
+                method="POST",
+                json={"token": "education-token", "institution": "Dify University", "role": "Student"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(education=education)),
+            ),
+        ):
+            api = EducationApi()
+            with pytest.raises(EducationActivateLimitError):
+                inspect.unwrap(api.post)(
+                    api, EducationActivatePayload.model_validate(request.get_json() or {}), request_context
+                )
+
+
+def _change_email_context(account_id: str = "acc") -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id=account_id,
+        active_workspace_id="workspace-1",
+    )
+
+
+class TestChangeEmailControllers:
+    def test_send_delegates_parsed_request_to_application_service(self, app: Flask):
+        change_email = MagicMock()
+        change_email.send_code.return_value = "change-token"
+        context = _change_email_context()
+        payload = {
+            "email": "new@example.com",
+            "language": "zh-Hans",
+            "phase": "new_email",
+            "token": "verified-old-token",
+        }
+
+        with (
+            app.test_request_context(
+                "/account/change-email",
+                method="POST",
+                json=payload,
+                environ_base={"REMOTE_ADDR": "127.0.0.1"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
+            ),
+        ):
+            api = ChangeEmailSendEmailApi()
+            response = inspect.unwrap(api.post)(
+                api, ChangeEmailSendPayload.model_validate(request.get_json() or {}), context
+            )
+
+        assert response == {"result": "success", "data": "change-token"}
+        change_email.send_code.assert_called_once_with(
+            context,
+            requested_email="new@example.com",
+            language="zh-Hans",
             phase="new_email",
+            predecessor_token="verified-old-token",
+            ip_address="127.0.0.1",
         )
-        mock_extract_ip.assert_called_once()
-        mock_is_ip_limit.assert_called_once_with("127.0.0.1")
-        mock_csrf.assert_called_once()
 
+    def test_send_maps_invalid_state_to_http_error(self, app: Flask):
+        change_email = MagicMock()
+        change_email.send_code.side_effect = account_errors.InvalidChangeEmailTokenError
 
-class TestChangeEmailValidity:
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.workspace.account.current_account_with_tenant")
-    @patch("controllers.console.workspace.account.AccountService.reset_change_email_error_rate_limit")
-    @patch("controllers.console.workspace.account.AccountService.generate_change_email_token")
-    @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
-    @patch("controllers.console.workspace.account.AccountService.add_change_email_error_rate_limit")
-    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
-    @patch("controllers.console.workspace.account.AccountService.is_change_email_error_rate_limit")
-    @patch("libs.login.check_csrf_token", return_value=None)
-    @patch("controllers.console.wraps.FeatureService.get_system_features")
-    def test_should_validate_with_normalized_email(
-        self,
-        mock_features,
-        mock_csrf,
-        mock_is_rate_limit,
-        mock_get_data,
-        mock_add_rate,
-        mock_revoke_token,
-        mock_generate_token,
-        mock_reset_rate,
-        mock_current_account,
-        mock_db,
-        app,
-    ):
-        _mock_wraps_db(mock_db)
-        mock_features.return_value = SimpleNamespace(enable_change_email=True)
-        mock_account = _build_account("user@example.com", "acc2")
-        mock_current_account.return_value = (mock_account, None)
-        mock_is_rate_limit.return_value = False
-        mock_get_data.return_value = {"email": "user@example.com", "code": "1234", "old_email": "old@example.com"}
-        mock_generate_token.return_value = (None, "new-token")
-
-        with app.test_request_context(
-            "/account/change-email/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": "1234", "token": "token-123"},
+        with (
+            app.test_request_context(
+                "/account/change-email",
+                method="POST",
+                json={"email": "new@example.com", "phase": "new_email"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
+            ),
         ):
-            _set_logged_in_user(_build_account("tester@example.com", "tester"))
-            response = ChangeEmailCheckApi().post()
+            api = ChangeEmailSendEmailApi()
+            method = inspect.unwrap(api.post)
+            with pytest.raises(InvalidTokenError):
+                method(api, ChangeEmailSendPayload.model_validate(request.get_json() or {}), _change_email_context())
 
-        assert response == {"is_valid": True, "email": "user@example.com", "token": "new-token"}
-        mock_is_rate_limit.assert_called_once_with("user@example.com")
-        mock_add_rate.assert_not_called()
-        mock_revoke_token.assert_called_once_with("token-123")
+    def test_validity_serializes_promoted_token(self, app: Flask):
+        change_email = MagicMock()
+        change_email.verify_code.return_value = ChangeEmailVerification(
+            email="new@example.com",
+            token="verified-token",
+        )
+        context = _change_email_context()
+
+        with (
+            app.test_request_context(
+                "/account/change-email/validity",
+                method="POST",
+                json={"email": "New@Example.com", "code": "123456", "token": "pending-token"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
+            ),
+        ):
+            api = ChangeEmailCheckApi()
+            response = inspect.unwrap(api.post)(
+                api, ChangeEmailValidityPayload.model_validate(request.get_json() or {}), context
+            )
+
+        assert response == {"is_valid": True, "email": "new@example.com", "token": "verified-token"}
+        change_email.verify_code.assert_called_once_with(
+            context,
+            email="New@Example.com",
+            code="123456",
+            token="pending-token",
+        )
+
+    def test_reset_returns_updated_account(self, app: Flask):
+        change_email = MagicMock()
+        updated_account = _build_account("new@example.com", "acc")
+        change_email.reset.return_value = updated_account
+        context = _change_email_context()
+
+        with (
+            app.test_request_context(
+                "/account/change-email/reset",
+                method="POST",
+                json={"new_email": "New@Example.com", "token": "verified-token"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
+            ),
+        ):
+            api = ChangeEmailResetApi()
+            response = inspect.unwrap(api.post)(
+                api, ChangeEmailResetPayload.model_validate(request.get_json() or {}), context
+            )
+
+        assert response["email"] == "new@example.com"
+        change_email.reset.assert_called_once_with(
+            context,
+            new_email="New@Example.com",
+            token="verified-token",
+        )
+
+    def test_reset_maps_suspended_email_domain(self, app: Flask):
+        change_email = MagicMock()
+        change_email.reset.side_effect = account_errors.AccountEmailDomainSuspendedError
+
+        with (
+            app.test_request_context(
+                "/account/change-email/reset",
+                method="POST",
+                json={"new_email": "user@suspended.example", "token": "verified-token"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
+            ),
+        ):
+            api = ChangeEmailResetApi()
+            with pytest.raises(EmailDomainSuspendedError):
+                inspect.unwrap(api.post)(
+                    api, ChangeEmailResetPayload.model_validate(request.get_json() or {}), _change_email_context()
+                )
+
+
+class TestAccountServiceSendChangeEmailEmail:
+    """Service-level coverage for the phase-bound changes in `send_change_email_email`."""
+
+    def test_should_raise_value_error_for_invalid_phase(self):
+        with pytest.raises(ValueError, match="phase must be one of"):
+            AccountService.send_change_email_email(
+                account=_build_account("old@example.com", "acc"),
+                email="new@example.com",
+                old_email="user@example.com",
+                phase="old_email_verified",
+            )
+
+    @patch("services.account_service.send_change_mail_task")
+    @patch("services.account_service.AccountService.change_email_rate_limiter")
+    @patch("services.account_service.AccountService.generate_change_email_token")
+    def test_should_bind_account_id_and_target_email_into_generated_token(
+        self,
+        mock_generate_token: MagicMock,
+        mock_rate_limiter: MagicMock,
+        mock_mail_task: MagicMock,
+    ):
+        mock_rate_limiter.is_rate_limited.return_value = False
+        mock_generate_token.return_value = "the-token"
+        account = _build_account("old@example.com", "acc-123")
+
+        returned = AccountService.send_change_email_email(
+            account=account,
+            email="new@example.com",
+            old_email="old@example.com",
+            language="en-US",
+            phase=AccountService.CHANGE_EMAIL_PHASE_NEW,
+        )
+
+        assert returned == "the-token"
         mock_generate_token.assert_called_once_with(
-            "user@example.com", code="1234", old_email="old@example.com", additional_data={}
+            _build_change_email_token(
+                AccountService.CHANGE_EMAIL_PHASE_NEW,
+                account_id="acc-123",
+                email="new@example.com",
+                old_email="old@example.com",
+                code=mock_mail_task.delay.call_args.kwargs["code"],
+            ),
+            account,
         )
-        mock_reset_rate.assert_called_once_with("user@example.com")
-        mock_csrf.assert_called_once()
+        mock_mail_task.delay.assert_called_once_with(
+            language="en-US",
+            to="new@example.com",
+            code=mock_mail_task.delay.call_args.kwargs["code"],
+            phase=AccountService.CHANGE_EMAIL_PHASE_NEW,
+        )
+        mock_rate_limiter.increment_rate_limit.assert_called_once_with("new@example.com")
 
 
-class TestChangeEmailReset:
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.workspace.account.current_account_with_tenant")
-    @patch("controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email")
-    @patch("controllers.console.workspace.account.AccountService.update_account_email")
-    @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
-    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
-    @patch("controllers.console.workspace.account.AccountService.check_email_unique")
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
-    @patch("libs.login.check_csrf_token", return_value=None)
-    @patch("controllers.console.wraps.FeatureService.get_system_features")
-    def test_should_normalize_new_email_before_update(
-        self,
-        mock_features,
-        mock_csrf,
-        mock_is_freeze,
-        mock_check_unique,
-        mock_get_data,
-        mock_revoke_token,
-        mock_update_account,
-        mock_send_notify,
-        mock_current_account,
-        mock_db,
-        app,
-    ):
-        _mock_wraps_db(mock_db)
-        mock_features.return_value = SimpleNamespace(enable_change_email=True)
-        current_user = _build_account("old@example.com", "acc3")
-        mock_current_account.return_value = (current_user, None)
-        mock_is_freeze.return_value = False
-        mock_check_unique.return_value = True
-        mock_get_data.return_value = {"old_email": "OLD@example.com"}
-        mock_account_after_update = _build_account("new@example.com", "acc3-updated")
-        mock_update_account.return_value = mock_account_after_update
+class TestAccountServiceGetChangeEmailData:
+    @patch("services.account_service.TokenManager.get_token_data")
+    def test_should_parse_change_email_token_into_discriminated_union_model(self, mock_get_token_data):
+        mock_get_token_data.return_value = {
+            "token_type": "change_email",
+            "account_id": "acc-1",
+            "email": "new@example.com",
+            "old_email": "old@example.com",
+            "code": "654321",
+            "email_change_phase": ChangeEmailPhase.NEW_EMAIL_VERIFIED,
+        }
 
-        with app.test_request_context(
-            "/account/change-email/reset",
-            method="POST",
-            json={"new_email": "New@Example.com", "token": "token-123"},
-        ):
-            _set_logged_in_user(_build_account("tester@example.com", "tester"))
-            ChangeEmailResetApi().post()
+        token_data = AccountService.get_change_email_data("token-123")
 
-            mock_is_freeze.assert_called_once_with("new@example.com")
-            mock_check_unique.assert_called_once_with("new@example.com")
-            mock_revoke_token.assert_called_once_with("token-123")
-            mock_update_account.assert_called_once_with(current_user, email="new@example.com")
-            mock_send_notify.assert_called_once_with(email="new@example.com")
-            mock_csrf.assert_called_once()
+        assert token_data == _build_change_email_token(
+            ChangeEmailPhase.NEW_EMAIL_VERIFIED,
+            account_id="acc-1",
+            email="new@example.com",
+            old_email="old@example.com",
+            code="654321",
+        )
+
+    @patch("services.account_service.TokenManager.get_token_data")
+    def test_should_reject_change_email_token_without_account_id(self, mock_get_token_data):
+        mock_get_token_data.return_value = {
+            "token_type": "change_email",
+            "email": "new@example.com",
+            "old_email": "old@example.com",
+            "code": "654321",
+            "email_change_phase": AccountService.CHANGE_EMAIL_PHASE_NEW,
+        }
+
+        assert AccountService.get_change_email_data("token-123") is None
 
 
 class TestAccountDeletionFeedback:
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.workspace.account.BillingService.update_account_deletion_feedback")
-    def test_should_normalize_feedback_email(self, mock_update, mock_db, app):
-        _mock_wraps_db(mock_db)
-        with app.test_request_context(
-            "/account/delete/feedback",
-            method="POST",
-            json={"email": "User@Example.com", "feedback": "test"},
+    def test_delegates_feedback_to_application_service(self, app: Flask):
+        deletion_feedback = MagicMock()
+        with (
+            app.test_request_context(
+                "/account/delete/feedback",
+                method="POST",
+                json={"email": "User@Example.com", "feedback": "test"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(
+                    accounts=SimpleNamespace(deletion_feedback=deletion_feedback),
+                ),
+            ),
         ):
-            response = AccountDeleteUpdateFeedbackApi().post()
+            api = AccountDeleteUpdateFeedbackApi()
+            method = inspect.unwrap(api.post)
+            response = method(api, AccountDeletionFeedbackPayload.model_validate(request.get_json() or {}))
 
         assert response == {"result": "success"}
-        mock_update.assert_called_once_with("User@Example.com", "test")
+        deletion_feedback.submit.assert_called_once_with(email="User@Example.com", feedback="test")
 
 
 class TestCheckEmailUnique:
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.workspace.account.AccountService.check_email_unique")
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
-    def test_should_normalize_email(self, mock_is_freeze, mock_check_unique, mock_db, app):
-        _mock_wraps_db(mock_db)
-        mock_is_freeze.return_value = False
-        mock_check_unique.return_value = True
+    def test_delegates_to_email_availability_policy(self, app: Flask):
+        change_email = MagicMock()
 
-        with app.test_request_context(
-            "/account/change-email/check-email-unique",
-            method="POST",
-            json={"email": "Case@Test.com"},
+        with (
+            app.test_request_context(
+                "/account/change-email/check-email-unique",
+                method="POST",
+                json={"email": "Case@Test.com"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
+            ),
         ):
-            response = CheckEmailUnique().post()
+            api = CheckEmailUnique()
+            response = inspect.unwrap(api.post)(api, CheckEmailUniquePayload.model_validate(request.get_json() or {}))
 
         assert response == {"result": "success"}
-        mock_is_freeze.assert_called_once_with("case@test.com")
-        mock_check_unique.assert_called_once_with("case@test.com")
+        change_email.ensure_available.assert_called_once_with("Case@Test.com")
+
+    def test_maps_suspended_email_domain(self, app: Flask):
+        change_email = MagicMock()
+        change_email.ensure_available.side_effect = account_errors.AccountEmailDomainSuspendedError
+
+        with (
+            app.test_request_context(
+                "/account/change-email/check-email-unique",
+                method="POST",
+                json={"email": "user@suspended.example"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(change_email=change_email)),
+            ),
+        ):
+            api = CheckEmailUnique()
+            with pytest.raises(EmailDomainSuspendedError):
+                inspect.unwrap(api.post)(api, CheckEmailUniquePayload.model_validate(request.get_json() or {}))
 
 
-def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
-    session = MagicMock()
-    first = MagicMock()
-    first.scalar_one_or_none.return_value = None
-    second = MagicMock()
-    expected_account = MagicMock()
-    second.scalar_one_or_none.return_value = expected_account
-    session.execute.side_effect = [first, second]
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(Account, Tenant, TenantAccountJoin)],
+    indirect=True,
+)
+def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup(sqlite_session: Session):
+    expected_account, _ = _persist_account_with_tenant(
+        sqlite_session,
+        "mixed@test.com",
+        "case-fallback-account",
+    )
 
-    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=session)
+    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=sqlite_session)
 
     assert result is expected_account
-    assert session.execute.call_count == 2

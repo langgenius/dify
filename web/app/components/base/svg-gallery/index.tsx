@@ -1,37 +1,24 @@
 import { SVG } from '@svgdotjs/svg.js'
 import DOMPurify from 'dompurify'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 const SVGRenderer = ({ content }: { content: string }) => {
+  const { t } = useTranslation('common')
   const svgRef = useRef<HTMLDivElement>(null)
   const [imagePreview, setImagePreview] = useState('')
-  const [windowSize, setWindowSize] = useState({
-    /* v8 ignore start -- this client component can still be evaluated in non-browser contexts (SSR/type tooling); window fallback prevents reference errors. @preserve */
-    width: typeof window !== 'undefined' ? window.innerWidth : 0,
-    height: typeof window !== 'undefined' ? window.innerHeight : 0,
-    /* v8 ignore stop */
-  })
 
   const svgToDataURL = (svgElement: Element): string => {
     const svgString = new XMLSerializer().serializeToString(svgElement)
-    const base64String = Buffer.from(svgString).toString('base64')
+    const bytes = new TextEncoder().encode(svgString)
+    const base64String = btoa(Array.from(bytes, (byte) => String.fromCodePoint(byte)).join(''))
     return `data:image/svg+xml;base64,${base64String}`
   }
 
   useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight })
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  useEffect(() => {
     /* v8 ignore next 2 -- ref is expected after mount, but null can occur during rapid mount/unmount timing in React lifecycle edges. @preserve */
-    if (!svgRef.current)
-      return
+    if (!svgRef.current) return
 
     try {
       svgRef.current.innerHTML = ''
@@ -41,8 +28,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
       const svgDoc = parser.parseFromString(content, 'image/svg+xml')
       const svgElement = svgDoc.documentElement
 
-      if (!(svgElement instanceof SVGElement))
-        throw new Error('Invalid SVG content')
+      if (!(svgElement instanceof SVGElement)) throw new Error('Invalid SVG content')
 
       const originalWidth = Number.parseInt(svgElement.getAttribute('width') || '400', 10)
       const originalHeight = Number.parseInt(svgElement.getAttribute('height') || '600', 10)
@@ -55,14 +41,15 @@ const SVGRenderer = ({ content }: { content: string }) => {
       rootElement.click(() => {
         setImagePreview(svgToDataURL(svgElement as Element))
       })
-    }
-    catch {
+    } catch {
       /* v8 ignore next 2 -- if unmounted while handling parser/render errors, ref becomes null; guard avoids writing to a detached node. @preserve */
-      if (!svgRef.current)
-        return
-      svgRef.current.innerHTML = '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'
+      if (!svgRef.current) return
+      const generatingMessage = document.createElement('span')
+      generatingMessage.style.padding = '1rem'
+      generatingMessage.textContent = t(($) => $['svgRenderer.generatingImage'])
+      svgRef.current.replaceChildren(generatingMessage)
     }
-  }, [content, windowSize])
+  }, [content, t])
 
   return (
     <>
@@ -79,7 +66,9 @@ const SVGRenderer = ({ content }: { content: string }) => {
           margin: '0 auto',
         }}
       />
-      {imagePreview && (<ImagePreview url={imagePreview} title="Preview" onCancel={() => setImagePreview('')} />)}
+      {imagePreview && (
+        <ImagePreview url={imagePreview} title="Preview" onCancel={() => setImagePreview('')} />
+      )}
     </>
   )
 }

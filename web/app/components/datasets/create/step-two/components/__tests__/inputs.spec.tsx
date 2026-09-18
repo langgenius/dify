@@ -1,92 +1,43 @@
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from '../inputs'
 
-// i18n mock returns namespaced keys like "datasetCreation.stepTwo.separator"
-const ns = 'datasetCreation'
-
 describe('DelimiterInput', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+  it('commits the delimiter only after IME composition ends', () => {
+    const onValueChange = vi.fn()
+    render(<DelimiterInput value="" onValueChange={onValueChange} />)
+    const input = screen.getByRole('textbox', { name: 'datasetCreation.stepTwo.separator' })
 
-  it('should render separator label', () => {
-    render(<DelimiterInput />)
-    expect(screen.getByText(`${ns}.stepTwo.separator`)).toBeInTheDocument()
-  })
+    fireEvent.compositionStart(input)
+    fireEvent.change(input, { target: { value: 'w' } })
+    fireEvent.change(input, { target: { value: '文' } })
+    expect(onValueChange).not.toHaveBeenCalled()
 
-  it('should render text input with placeholder', () => {
-    render(<DelimiterInput />)
-    const input = screen.getByPlaceholderText(`${ns}.stepTwo.separatorPlaceholder`)
-    expect(input).toBeInTheDocument()
-    expect(input).toHaveAttribute('type', 'text')
+    fireEvent.compositionEnd(input)
+    expect(onValueChange).toHaveBeenCalledExactlyOnceWith('文')
   })
+})
 
-  it('should pass through value and onChange props', () => {
+describe.each([
+  { Component: MaxLengthInput, label: 'datasetCreation.stepTwo.maxLength' },
+  { Component: OverlapInput, label: 'datasetCreation.stepTwo.overlap' },
+])('$label', ({ Component, label }) => {
+  it('resets to the minimum when users clear the value', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
-    render(<DelimiterInput value="test-val" onChange={onChange} />)
-    expect(screen.getByDisplayValue('test-val')).toBeInTheDocument()
+    render(<Component value={50} onChange={onChange} />)
+
+    await user.clear(screen.getByRole('textbox', { name: label }))
+    expect(onChange).toHaveBeenLastCalledWith(1)
   })
 
-  it('should render tooltip content', () => {
-    render(<DelimiterInput />)
-    // Tooltip triggers render; component mounts without error
-    expect(screen.getByText(`${ns}.stepTwo.separator`)).toBeInTheDocument()
-  })
-})
+  it('clamps out-of-range edits before updating chunk settings', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<Component value={50} max={100} onChange={onChange} />)
 
-describe('MaxLengthInput', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render max length label', () => {
-    render(<MaxLengthInput onChange={vi.fn()} />)
-    expect(screen.getByText(`${ns}.stepTwo.maxLength`)).toBeInTheDocument()
-  })
-
-  it('should render number input', () => {
-    render(<MaxLengthInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
-    expect(input).toBeInTheDocument()
-  })
-
-  it('should accept value prop', () => {
-    render(<MaxLengthInput value={500} onChange={vi.fn()} />)
-    expect(screen.getByDisplayValue('500')).toBeInTheDocument()
-  })
-
-  it('should have min of 1', () => {
-    render(<MaxLengthInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
-    expect(input).toHaveAttribute('min', '1')
-  })
-})
-
-describe('OverlapInput', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render overlap label', () => {
-    render(<OverlapInput onChange={vi.fn()} />)
-    expect(screen.getAllByText(new RegExp(`${ns}.stepTwo.overlap`)).length).toBeGreaterThan(0)
-  })
-
-  it('should render number input', () => {
-    render(<OverlapInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
-    expect(input).toBeInTheDocument()
-  })
-
-  it('should accept value prop', () => {
-    render(<OverlapInput value={50} onChange={vi.fn()} />)
-    expect(screen.getByDisplayValue('50')).toBeInTheDocument()
-  })
-
-  it('should have min of 1', () => {
-    render(<OverlapInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
-    expect(input).toHaveAttribute('min', '1')
+    await user.tripleClick(screen.getByRole('textbox', { name: label }))
+    await user.paste('150')
+    expect(onChange).toHaveBeenLastCalledWith(100)
   })
 })

@@ -1,29 +1,32 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalSelect } from '@/app/components/base/select'
-import { languages } from '@/i18n-config/language'
-import { cn } from '@/utils/classnames'
+import { languages } from '@/i18n/language'
 
-type Props = {
+type Props = Readonly<{
   currentModel: any
   language: string
   voice: string
   onChange: (language: string, voice: string) => void
-}
+}>
 
-const TTSParamsPanel = ({
-  currentModel,
-  language,
-  voice,
-  onChange,
-}: Props) => {
+const supportedLanguages = languages.filter((item) => item.supported)
+
+const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
   const { t } = useTranslation()
-  const voiceList = useMemo(() => {
-    if (!currentModel)
-      return []
-    return currentModel.model_properties.voices.map((item: { mode: any }) => ({
-      ...item,
+  const voiceList = useMemo<Array<{ label: string; value: string }>>(() => {
+    if (!currentModel) return []
+    return currentModel.model_properties.voices.map((item: { mode: string; name: string }) => ({
+      label: item.name,
       value: item.mode,
     }))
   }, [currentModel])
@@ -36,30 +39,58 @@ const TTSParamsPanel = ({
   return (
     <>
       <div className="mb-3">
-        <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
-          {t('voice.voiceSettings.language', { ns: 'appDebug' })}
+        <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
+          {t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
         </div>
-        <PortalSelect
-          triggerClassName="h-8"
-          popupClassName={cn('z-[1000]')}
-          popupInnerClassName={cn('w-[354px]')}
+        <Select
           value={language}
-          items={languages.filter(item => item.supported)}
-          onSelect={item => setLanguage(item.value as string)}
-        />
+          onValueChange={(value) => {
+            if (value == null) return
+            setLanguage(value)
+          }}
+        >
+          <SelectTrigger
+            className="w-full"
+            aria-label={t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="w-88.5">
+            {supportedLanguages.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                <SelectItemText>{item.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="mb-3">
-        <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
-          {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
+        <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
+          {t(($) => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}
         </div>
-        <PortalSelect
-          triggerClassName="h-8"
-          popupClassName={cn('z-[1000]')}
-          popupInnerClassName={cn('w-[354px]')}
+        <Select
           value={voice}
-          items={voiceList}
-          onSelect={item => setVoice(item.value as string)}
-        />
+          onValueChange={(value) => {
+            if (value == null) return
+            setVoice(value)
+          }}
+        >
+          <SelectTrigger
+            className="w-full"
+            aria-label={t(($) => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="w-88.5">
+            {voiceList.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                <SelectItemText>{item.label}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </>
   )

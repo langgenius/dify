@@ -1,16 +1,12 @@
 import type { CustomCollectionBackend, CustomParamSchema } from '@/app/components/tools/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import { testAPIAvailable } from '@/service/tools'
 import TestApi from '../test-api'
 
 vi.mock('@/service/tools', () => ({
   testAPIAvailable: vi.fn(),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(() => 'en-US'),
 }))
 
 const testAPIAvailableMock = vi.mocked(testAPIAvailable)
@@ -35,13 +31,15 @@ describe('TestApi', () => {
     summary: 'summary',
     method: 'GET',
     server_url: 'https://api.example.com',
-    parameters: [{
-      name: 'limit',
-      label: {
-        en_US: 'Limit',
-        zh_Hans: '限制',
-      },
-    } as CustomParamSchema['parameters'][0]],
+    parameters: [
+      {
+        name: 'limit',
+        label: {
+          en_US: 'Limit',
+          zh_Hans: '限制',
+        },
+      } as CustomParamSchema['parameters'][0],
+    ],
   }
 
   const mockOnHide = vi.fn()
@@ -68,20 +66,12 @@ describe('TestApi', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      await act(async () => {
-        renderTestApi()
-      })
-
-      expect(screen.getByText('tools.test.testResult')).toBeInTheDocument()
-    })
-
     it('should display tool name in the title', async () => {
       await act(async () => {
         renderTestApi()
       })
 
-      expect(screen.getByText(/testOp/)).toBeInTheDocument()
+      expect(screen.getByText(/testOp/))!.toBeInTheDocument()
     })
 
     it('should render parameters table', async () => {
@@ -89,9 +79,9 @@ describe('TestApi', () => {
         renderTestApi()
       })
 
-      expect(screen.getByText('tools.test.parameters')).toBeInTheDocument()
-      expect(screen.getByText('tools.test.value')).toBeInTheDocument()
-      expect(screen.getByText('Limit')).toBeInTheDocument()
+      expect(screen.getByText('tools.test.parameters'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.test.value'))!.toBeInTheDocument()
+      expect(screen.getByText('Limit'))!.toBeInTheDocument()
     })
 
     it('should render test result placeholder', async () => {
@@ -99,7 +89,7 @@ describe('TestApi', () => {
         renderTestApi()
       })
 
-      expect(screen.getByText('tools.test.testResultPlaceholder')).toBeInTheDocument()
+      expect(screen.getByText('tools.test.testResultPlaceholder'))!.toBeInTheDocument()
     })
 
     it('should render with positionCenter prop', async () => {
@@ -107,7 +97,7 @@ describe('TestApi', () => {
         renderTestApi({ positionCenter: true })
       })
 
-      expect(screen.getByText('tools.test.testResult')).toBeInTheDocument()
+      expect(screen.getByText('tools.test.testResult'))!.toBeInTheDocument()
     })
   })
 
@@ -118,7 +108,7 @@ describe('TestApi', () => {
       renderTestApi()
 
       const parameterInput = screen.getAllByRole('textbox')[0]
-      fireEvent.change(parameterInput, { target: { value: '5' } })
+      fireEvent.change(parameterInput!, { target: { value: '5' } })
       fireEvent.click(screen.getByRole('button', { name: 'tools.test.title' }))
 
       await waitFor(() => {
@@ -134,7 +124,7 @@ describe('TestApi', () => {
             limit: '5',
           },
         })
-        expect(screen.getByText('ok')).toBeInTheDocument()
+        expect(screen.getByText('ok'))!.toBeInTheDocument()
       })
     })
 
@@ -145,7 +135,7 @@ describe('TestApi', () => {
       fireEvent.click(screen.getByRole('button', { name: 'tools.test.title' }))
 
       await waitFor(() => {
-        expect(screen.getByText('API Error occurred')).toBeInTheDocument()
+        expect(screen.getByText('API Error occurred'))!.toBeInTheDocument()
       })
     })
 
@@ -164,7 +154,7 @@ describe('TestApi', () => {
       // API should have been called
       await waitFor(() => {
         expect(testAPIAvailableMock).toHaveBeenCalledTimes(1)
-        expect(screen.getByText('test completed')).toBeInTheDocument()
+        expect(screen.getByText('test completed'))!.toBeInTheDocument()
       })
     })
 
@@ -204,7 +194,8 @@ describe('TestApi', () => {
       })
 
       // Check that the auth method is displayed
-      expect(screen.getByText('tools.createTool.authMethod.types.none')).toBeInTheDocument()
+      // Check that the auth method is displayed
+      expect(screen.getByText('tools.createTool.authMethod.types.none'))!.toBeInTheDocument()
     })
 
     it('should display current auth type in the button', async () => {
@@ -223,7 +214,10 @@ describe('TestApi', () => {
       })
 
       // Check that the auth method display shows the correct type
-      expect(screen.getByText('tools.createTool.authMethod.types.api_key_header')).toBeInTheDocument()
+      // Check that the auth method display shows the correct type
+      expect(
+        screen.getByText('tools.createTool.authMethod.types.api_key_header'),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -248,8 +242,8 @@ describe('TestApi', () => {
       renderTestApi({ tool: toolWithMultipleParams })
 
       const inputs = screen.getAllByRole('textbox')
-      fireEvent.change(inputs[0], { target: { value: '10' } })
-      fireEvent.change(inputs[1], { target: { value: '20' } })
+      fireEvent.change(inputs[0]!, { target: { value: '10' } })
+      fireEvent.change(inputs[1]!, { target: { value: '20' } })
 
       fireEvent.click(screen.getByRole('button', { name: 'tools.test.title' }))
 

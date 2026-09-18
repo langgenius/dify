@@ -1,18 +1,59 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { ChunkingMode, DatasetPermission, DataSourceType, WeightedScoreEnum } from '@/models/datasets'
+import { act, waitFor } from '@testing-library/react'
+import {
+  ChunkingMode,
+  DatasetPermission,
+  DataSourceType,
+  WeightedScoreEnum,
+} from '@/models/datasets'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../../create/step-two'
 import { useFormState } from '../use-form-state'
+
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
+}))
 
 // Mock contexts
 const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => false, // isCurrentWorkspaceDatasetOperator
-}))
+const renderHook = (callback: () => ReturnType<typeof useFormState>) =>
+  renderHookWithConsoleState(callback, {
+    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+  })
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createWorkspaceStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }))
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }))
+})
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createSystemFeaturesStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }))
+})
 
 const createDefaultMockDataset = (): DataSet => ({
   id: 'dataset-1',
@@ -80,12 +121,15 @@ const createDefaultMockDataset = (): DataSet => ({
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
+  permission_keys: [DatasetACLPermission.Edit],
 })
 
 let mockDataset: DataSet = createDefaultMockDataset()
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: DataSet | null, mutateDatasetRes: () => void }) => unknown) => {
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: DataSet | null; mutateDatasetRes: () => void }) => unknown,
+  ) => {
     const state = {
       dataset: mockDataset,
       mutateDatasetRes: mockMutateDatasets,
@@ -107,24 +151,41 @@ vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
     data: {
       accounts: [
-        { id: 'user-1', name: 'User 1', email: 'user1@example.com', role: 'owner', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
-        { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+        {
+          id: 'user-1',
+          name: 'User 1',
+          email: 'user1@example.com',
+          role: 'owner',
+          avatar: '',
+          avatar_url: '',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
+        {
+          id: 'user-2',
+          name: 'User 2',
+          email: 'user2@example.com',
+          role: 'admin',
+          avatar: '',
+          avatar_url: '',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
       ],
     },
   }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({ data: [] }),
 }))
 
 vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: () => true,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
   },
 }))
 
@@ -168,7 +229,7 @@ describe('useFormState', () => {
       const { result } = renderHook(() => useFormState())
 
       expect(result.current.memberList).toHaveLength(2)
-      expect(result.current.memberList[0].name).toBe('User 1')
+      expect(result.current.memberList[0]!.name).toBe('User 1')
     })
 
     it('should return currentDataset from context', () => {
@@ -176,6 +237,17 @@ describe('useFormState', () => {
 
       expect(result.current.currentDataset).toBeDefined()
       expect(result.current.currentDataset?.id).toBe('dataset-1')
+    })
+
+    it('should expose editability from dataset ACL permission keys without legacy role state', () => {
+      mockDataset = {
+        ...createDefaultMockDataset(),
+        permission_keys: [DatasetACLPermission.Readonly],
+      }
+      const { result } = renderHook(() => useFormState())
+
+      expect(result.current.canEditSettings).toBe(false)
+      expect('isCurrentWorkspaceDatasetOperator' in result.current).toBe(false)
     })
   })
 
@@ -252,7 +324,7 @@ describe('useFormState', () => {
       expect(result.current.showAppIconPicker).toBe(true)
     })
 
-    it('should select emoji icon and close picker', () => {
+    it('should select emoji icon without owning picker close state', () => {
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -267,7 +339,7 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.showAppIconPicker).toBe(false)
+      expect(result.current.showAppIconPicker).toBe(true)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'emoji',
         icon: '🎉',
@@ -276,7 +348,7 @@ describe('useFormState', () => {
       })
     })
 
-    it('should select image icon and close picker', () => {
+    it('should select image icon without owning picker close state', () => {
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -291,7 +363,7 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.showAppIconPicker).toBe(false)
+      expect(result.current.showAppIconPicker).toBe(true)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'image',
         icon: 'file-123',
@@ -300,7 +372,7 @@ describe('useFormState', () => {
       })
     })
 
-    it('should restore previous icon when picker is closed', () => {
+    it('should close picker through open state setter without changing icon', () => {
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -316,15 +388,10 @@ describe('useFormState', () => {
       })
 
       act(() => {
-        result.current.handleOpenAppIconPicker()
-      })
-
-      act(() => {
-        result.current.handleCloseAppIconPicker()
+        result.current.setShowAppIconPicker(false)
       })
 
       expect(result.current.showAppIconPicker).toBe(false)
-      // After close, icon should be restored to the icon before opening
       expect(result.current.iconInfo).toEqual({
         icon_type: 'emoji',
         icon: '🎉',
@@ -423,7 +490,7 @@ describe('useFormState', () => {
 
   describe('handleSave', () => {
     it('should show error toast when name is empty', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -434,14 +501,11 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.any(String),
-      })
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
     })
 
     it('should show error toast when name is whitespace only', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -452,10 +516,7 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.any(String),
-      })
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
     })
 
     it('should call updateDatasetSetting with correct params', async () => {
@@ -476,8 +537,23 @@ describe('useFormState', () => {
       })
     })
 
+    it('should not save when dataset only has readonly ACL permission', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      mockDataset = {
+        ...createDefaultMockDataset(),
+        permission_keys: [DatasetACLPermission.Readonly],
+      }
+      const { result } = renderHook(() => useFormState())
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).not.toHaveBeenCalled()
+    })
+
     it('should show success toast on successful save', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       const { result } = renderHook(() => useFormState())
 
       await act(async () => {
@@ -485,10 +561,7 @@ describe('useFormState', () => {
       })
 
       await waitFor(() => {
-        expect(Toast.default.notify).toHaveBeenCalledWith({
-          type: 'success',
-          message: expect.any(String),
-        })
+        expect(toast.success).toHaveBeenCalledWith(expect.any(String))
       })
     })
 
@@ -533,7 +606,9 @@ describe('useFormState', () => {
 
     it('should not save when already loading', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
-      vi.mocked(updateDatasetSetting).mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+      vi.mocked(updateDatasetSetting).mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
+      )
 
       const { result } = renderHook(() => useFormState())
 
@@ -553,7 +628,7 @@ describe('useFormState', () => {
 
     it('should show error toast on save failure', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       vi.mocked(updateDatasetSetting).mockRejectedValueOnce(new Error('Network error'))
 
       const { result } = renderHook(() => useFormState())
@@ -562,10 +637,7 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.any(String),
-      })
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
     })
 
     it('should include partial_member_list when permission is partialMembers', async () => {
@@ -760,4 +832,20 @@ describe('useFormState', () => {
       })
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return { data: [] }
+    },
+  }
 })

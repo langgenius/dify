@@ -2,79 +2,704 @@ name: Main CI Pipeline
 
 on:
   pull_request:
-    branches: ["main"]
-  push:
-    branches: ["main"]
+    branches: ['main']
+  merge_group:
+    branches: ['main']
+    types: [checks_requested]
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
   checks: write
   statuses: write
 
 concurrency:
-  group: main-ci-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+  # Pull request deduplication is owned by skip-duplicate-actions so pre_job can
+  # publish should_skip before required status finalizers run.
+  group: main-ci-${{ github.event.merge_group.head_sha || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'merge_group' }}
 
 jobs:
+  pre_job:
+    name: Skip Duplicate Checks
+    runs-on: depot-ubuntu-24.04
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip || 'false' }}
+    steps:
+      - id: skip_check
+        continue-on-error: true
+        uses: fkirc/skip-duplicate-actions@b974a9395958c231af965b70070979a577efa578 # v5.3.2
+        with:
+          cancel_others: 'true'
+          concurrent_skipping: same_content_newer
+
   # Check which paths were changed to determine which tests to run
   check-changes:
     name: Check Changed Files
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     outputs:
       api-changed: ${{ steps.changes.outputs.api }}
+      cli-changed: ${{ steps.changes.outputs.cli }}
+      e2e-changed: ${{ steps.changes.outputs.e2e }}
       web-changed: ${{ steps.changes.outputs.web }}
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
+      sandbox-runtime-changed: ${{ steps.changes.outputs.sandbox-runtime }}
+      dify-agent-changed: ${{ steps.changes.outputs.dify-agent }}
+      python-style-changed: ${{ steps.changes.outputs.python-style }}
+      dify-agent-style-changed: ${{ steps.changes.outputs.dify-agent-style }}
+      web-style-changed: ${{ steps.changes.outputs.web-style }}
+      ts-common-style-changed: ${{ steps.changes.outputs.ts-common-style }}
+      superlinter-changed: ${{ steps.changes.outputs.superlinter }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: changes
         with:
           filters: |
             api:
               - 'api/**'
-              - 'docker/**'
+              - 'scripts/ast_grep_guard.py'
+              - 'scripts/check_no_new_getattr.py'
+              - 'scripts/check_no_new_controller_sqlalchemy.py'
+              - 'scripts/lint_controller_sqlalchemy.py'
+              - 'scripts/ast_grep_rules/no_new_getattr.yml'
+              - 'scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml'
+              - '.github/workflows/style.yml'
+              - '.github/workflows/main-ci.yml'
               - '.github/workflows/api-tests.yml'
+              - 'docker/.env.example'
+              - 'docker/envs/middleware.env.example'
+              - 'docker/docker-compose.middleware.yaml'
+              - 'docker/docker-compose-template.yaml'
+              - 'docker/generate_docker_compose'
+              - 'docker/ssrf_proxy/**'
+              - 'docker/volumes/sandbox/conf/**'
+            cli:
+              - 'cli/**'
+              - 'packages/contracts/**'
+              - 'packages/tsconfig/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'lint.config.ts'
+              - '.npmrc'
+              - '.github/workflows/cli-tests.yml'
+              - '.github/actions/setup-web/**'
             web:
               - 'web/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/main-ci.yml'
               - '.github/workflows/web-tests.yml'
+              - '.github/actions/setup-web/**'
+            e2e:
+              - 'api/**'
+              - 'e2e/**'
+              - 'web/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'docker/docker-compose.middleware.yaml'
+              - 'docker/envs/middleware.env.example'
+              - 'docker/ssrf_proxy/**'
+              - 'docker/volumes/sandbox/conf/**'
+              - '.github/workflows/web-e2e.yml'
+              - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'
             vdb:
               - 'api/core/rag/datasource/**'
-              - 'docker/**'
+              - 'api/tests/integration_tests/vdb/**'
+              - 'api/conftest.py'
+              - 'api/tests/pytest_dify.py'
+              - 'api/providers/vdb/*/tests/**'
               - '.github/workflows/vdb-tests.yml'
+              - 'docker/.env.example'
+              - 'docker/envs/middleware.env.example'
+              - 'docker/docker-compose.pytest.ports.yaml'
+              - 'docker/docker-compose.yaml'
+              - 'docker/docker-compose-template.yaml'
+              - 'docker/generate_docker_compose'
+              - 'docker/certbot/**'
+              - 'docker/couchbase-server/**'
+              - 'docker/elasticsearch/**'
+              - 'docker/iris/**'
+              - 'docker/nginx/**'
+              - 'docker/pgvector/**'
+              - 'docker/ssrf_proxy/**'
+              - 'docker/startupscripts/**'
+              - 'docker/tidb/**'
+              - 'docker/volumes/**'
               - 'api/uv.lock'
               - 'api/pyproject.toml'
+            sandbox-runtime:
+              - 'dify-agent-runtime/**'
+              - '.github/workflows/sandbox-runtime-tests.yml'
+            dify-agent:
+              - 'dify-agent/**'
+              - '.github/workflows/dify-agent-tests.yml'
             migration:
               - 'api/migrations/**'
+              - 'api/.env.example'
               - '.github/workflows/db-migration-test.yml'
+              - 'docker/.env.example'
+              - 'docker/envs/middleware.env.example'
+              - 'docker/docker-compose.middleware.yaml'
+              - 'docker/docker-compose-template.yaml'
+              - 'docker/generate_docker_compose'
+              - 'docker/ssrf_proxy/**'
+              - 'docker/volumes/sandbox/conf/**'
+            python-style:
+              - 'api/**'
+              - 'scripts/ast_grep_guard.py'
+              - 'scripts/check_no_new_getattr.py'
+              - 'scripts/check_no_new_controller_sqlalchemy.py'
+              - 'scripts/lint_controller_sqlalchemy.py'
+              - 'scripts/ast_grep_rules/no_new_getattr.yml'
+              - 'scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml'
+              - '.github/workflows/style.yml'
+              - '.github/workflows/main-ci.yml'
+            dify-agent-style:
+              - 'dify-agent/**'
+              - '.github/workflows/style.yml'
+              - '.github/workflows/main-ci.yml'
+            web-style:
+              - 'web/**'
+              - 'e2e/**'
+              - 'sdks/nodejs-client/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'knip.config.ts'
+              - 'scripts/check-web-production-unused-after-knip-fix.mjs'
+              - '.github/workflows/style.yml'
+              - '.github/actions/setup-web/**'
+            ts-common-style:
+              - 'web/**'
+              - 'cli/**'
+              - 'e2e/**'
+              - 'sdks/nodejs-client/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'vite.config.ts'
+              - 'lint.config.ts'
+              - 'eslint.config.mjs'
+              - 'knip.config.ts'
+              - 'scripts/check-web-production-unused-after-knip-fix.mjs'
+              - 'oxlint-suppressions.json'
+              - 'eslint-suppressions.json'
+              - '.vscode/**'
+              - '.github/**'
+            superlinter:
+              - '**.sh'
+              - '**.yaml'
+              - '**.yml'
+              - '**Dockerfile'
+              - 'dev/**'
+              - '.editorconfig'
+              - '.vite-hooks/**'
 
-  # Run tests in parallel
+  # Run tests in parallel while always emitting stable required checks.
+  api-tests-run:
+    name: Run API Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed == 'true'
+    uses: ./.github/workflows/api-tests.yml
+    secrets: inherit
+
+  api-tests-skip:
+    name: Skip API Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped API tests
+        run: echo "No API-related changes detected; skipping API tests."
+
   api-tests:
     name: API Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.api-changed == 'true'
-    uses: ./.github/workflows/api-tests.yml
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - api-tests-run
+      - api-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize API Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.api-changed }}
+          RUN_RESULT: ${{ needs.api-tests-run.result }}
+          SKIP_RESULT: ${{ needs.api-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "API tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "API tests ran successfully."
+              exit 0
+            fi
+
+            echo "API tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "API tests were skipped because no API-related files changed."
+            exit 0
+          fi
+
+          echo "API tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
+  cli-tests-run:
+    name: Run CLI Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed == 'true'
+    uses: ./.github/workflows/cli-tests.yml
+    secrets: inherit
+
+  cli-tests-skip:
+    name: Skip CLI Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped CLI tests
+        run: echo "No CLI-related changes detected; skipping CLI tests."
+
+  cli-tests:
+    name: CLI Tests
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - cli-tests-run
+      - cli-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize CLI Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.cli-changed }}
+          RUN_RESULT: ${{ needs.cli-tests-run.result }}
+          SKIP_RESULT: ${{ needs.cli-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "CLI tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "CLI tests ran successfully."
+              exit 0
+            fi
+
+            echo "CLI tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "CLI tests were skipped because no CLI-related files changed."
+            exit 0
+          fi
+
+          echo "CLI tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
+  web-tests-run:
+    name: Run Web Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed == 'true'
+    uses: ./.github/workflows/web-tests.yml
+    secrets: inherit
+
+  web-tests-skip:
+    name: Skip Web Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped web tests
+        run: echo "No web-related changes detected; skipping web tests."
 
   web-tests:
     name: Web Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.web-changed == 'true'
-    uses: ./.github/workflows/web-tests.yml
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - web-tests-run
+      - web-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize Web Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.web-changed }}
+          RUN_RESULT: ${{ needs.web-tests-run.result }}
+          SKIP_RESULT: ${{ needs.web-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "Web tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "Web tests ran successfully."
+              exit 0
+            fi
+
+            echo "Web tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "Web tests were skipped because no web-related files changed."
+            exit 0
+          fi
+
+          echo "Web tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
+  web-e2e-run:
+    name: Run Web Full-Stack E2E
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed == 'true'
+    uses: ./.github/workflows/web-e2e.yml
+    with:
+      run-external-runtime: false
+    secrets: inherit
+
+  web-e2e-skip:
+    name: Skip Web Full-Stack E2E
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped web full-stack e2e
+        run: echo "No E2E-related changes detected; skipping web full-stack E2E."
+
+  web-e2e:
+    name: Web Full-Stack E2E
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - web-e2e-run
+      - web-e2e-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize Web Full-Stack E2E status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.e2e-changed }}
+          RUN_RESULT: ${{ needs.web-e2e-run.result }}
+          SKIP_RESULT: ${{ needs.web-e2e-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "Web full-stack E2E was skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "Web full-stack E2E ran successfully."
+              exit 0
+            fi
+
+            echo "Web full-stack E2E was required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "Web full-stack E2E was skipped because no E2E-related files changed."
+            exit 0
+          fi
+
+          echo "Web full-stack E2E was not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
 
   style-check:
     name: Style Check
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
     uses: ./.github/workflows/style.yml
+    with:
+      base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+      classification-succeeded: ${{ needs.check-changes.result == 'success' }}
+      run-python-style: ${{ needs.check-changes.outputs.python-style-changed == 'true' }}
+      run-dify-agent-style: ${{ needs.check-changes.outputs.dify-agent-style-changed == 'true' }}
+      run-web-style: ${{ needs.check-changes.outputs.web-style-changed == 'true' }}
+      run-ts-common-style: ${{ needs.check-changes.outputs.ts-common-style-changed == 'true' }}
+      run-superlinter: ${{ needs.check-changes.outputs.superlinter-changed == 'true' }}
+      skip-checks: ${{ needs.pre_job.outputs.should_skip == 'true' }}
+
+  vdb-tests-run:
+    name: Run VDB Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed == 'true'
+    uses: ./.github/workflows/vdb-tests.yml
+
+  vdb-tests-skip:
+    name: Skip VDB Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped VDB tests
+        run: echo "No VDB-related changes detected; skipping VDB tests."
 
   vdb-tests:
     name: VDB Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.vdb-changed == 'true'
-    uses: ./.github/workflows/vdb-tests.yml
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - vdb-tests-run
+      - vdb-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize VDB Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.vdb-changed }}
+          RUN_RESULT: ${{ needs.vdb-tests-run.result }}
+          SKIP_RESULT: ${{ needs.vdb-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "VDB tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "VDB tests ran successfully."
+              exit 0
+            fi
+
+            echo "VDB tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "VDB tests were skipped because no VDB-related files changed."
+            exit 0
+          fi
+
+          echo "VDB tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
+  db-migration-test-run:
+    name: Run DB Migration Test
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed == 'true'
+    uses: ./.github/workflows/db-migration-test.yml
+
+  db-migration-test-skip:
+    name: Skip DB Migration Test
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped DB migration tests
+        run: echo "No migration-related changes detected; skipping DB migration tests."
 
   db-migration-test:
     name: DB Migration Test
-    needs: check-changes
-    if: needs.check-changes.outputs.migration-changed == 'true'
-    uses: ./.github/workflows/db-migration-test.yml
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - db-migration-test-run
+      - db-migration-test-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize DB Migration Test status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.migration-changed }}
+          RUN_RESULT: ${{ needs.db-migration-test-run.result }}
+          SKIP_RESULT: ${{ needs.db-migration-test-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "DB migration tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "DB migration tests ran successfully."
+              exit 0
+            fi
+
+            echo "DB migration tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "DB migration tests were skipped because no migration-related files changed."
+            exit 0
+          fi
+
+          echo "DB migration tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
+  sandbox-runtime-tests-run:
+    name: Run Sandbox Runtime Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.sandbox-runtime-changed == 'true'
+    uses: ./.github/workflows/sandbox-runtime-tests.yml
+    secrets: inherit
+
+  sandbox-runtime-tests-skip:
+    name: Skip Sandbox Runtime Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.sandbox-runtime-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped sandbox runtime tests
+        run: echo "No sandbox-runtime-related changes detected; skipping sandbox runtime tests."
+
+  sandbox-runtime-tests:
+    name: Sandbox Runtime Tests
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - sandbox-runtime-tests-run
+      - sandbox-runtime-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize Sandbox Runtime Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.sandbox-runtime-changed }}
+          RUN_RESULT: ${{ needs.sandbox-runtime-tests-run.result }}
+          SKIP_RESULT: ${{ needs.sandbox-runtime-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "Sandbox runtime tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "Sandbox runtime tests ran successfully."
+              exit 0
+            fi
+
+            echo "Sandbox runtime tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "Sandbox runtime tests were skipped because no sandbox-runtime-related files changed."
+            exit 0
+          fi
+
+          echo "Sandbox runtime tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
+  dify-agent-tests-run:
+    name: Run Dify Agent Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.dify-agent-changed == 'true'
+    uses: ./.github/workflows/dify-agent-tests.yml
+    secrets: inherit
+
+  dify-agent-tests-skip:
+    name: Skip Dify Agent Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.dify-agent-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped dify agent tests
+        run: echo "No dify-agent-related changes detected; skipping dify agent tests."
+
+  dify-agent-tests:
+    name: Dify Agent Tests
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - dify-agent-tests-run
+      - dify-agent-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize Dify Agent Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.dify-agent-changed }}
+          RUN_RESULT: ${{ needs.dify-agent-tests-run.result }}
+          SKIP_RESULT: ${{ needs.dify-agent-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "Dify agent tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "Dify agent tests ran successfully."
+              exit 0
+            fi
+
+            echo "Dify agent tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "Dify agent tests were skipped because no dify-agent-related files changed."
+            exit 0
+          fi
+
+          echo "Dify agent tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1

@@ -1,9 +1,11 @@
+from typing import Any
+
 from werkzeug.exceptions import HTTPException
 
 
 class BaseHTTPException(HTTPException):
     error_code: str = "unknown"
-    data: dict | None = None
+    data: dict[str, Any] | None = None
 
     def __init__(self, description=None, response=None):
         super().__init__(description, response)

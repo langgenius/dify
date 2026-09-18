@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataType, UpdateType } from '../../types'
 import useBatchEditDocumentMetadata from '../use-batch-edit-document-metadata'
 
@@ -34,9 +34,10 @@ vi.mock('@/service/knowledge/use-metadata', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
   },
 }))
 
@@ -53,9 +54,7 @@ describe('useBatchEditDocumentMetadata', () => {
     {
       id: 'doc-2',
       name: 'Document 2',
-      doc_metadata: [
-        { id: '1', name: 'field_one', type: DataType.string, value: 'Value 2' },
-      ],
+      doc_metadata: [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value 2' }],
     },
   ]
 
@@ -143,11 +142,13 @@ describe('useBatchEditDocumentMetadata', () => {
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListWithBuiltIn as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListWithBuiltIn as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
-      const hasBuiltIn = result.current.originalList.some(item => item.id === 'built-in')
+      const hasBuiltIn = result.current.originalList.some((item) => item.id === 'built-in')
       expect(hasBuiltIn).toBe(false)
     })
 
@@ -155,26 +156,24 @@ describe('useBatchEditDocumentMetadata', () => {
       const docListWithDifferentValues: DocListItem[] = [
         {
           id: 'doc-1',
-          doc_metadata: [
-            { id: '1', name: 'field', type: DataType.string, value: 'Value A' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field', type: DataType.string, value: 'Value A' }],
         },
         {
           id: 'doc-2',
-          doc_metadata: [
-            { id: '1', name: 'field', type: DataType.string, value: 'Value B' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field', type: DataType.string, value: 'Value B' }],
         },
       ]
 
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListWithDifferentValues as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListWithDifferentValues as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
-      const fieldItem = result.current.originalList.find(item => item.id === '1')
+      const fieldItem = result.current.originalList.find((item) => item.id === '1')
       expect(fieldItem?.isMultipleValue).toBe(true)
     })
 
@@ -182,26 +181,24 @@ describe('useBatchEditDocumentMetadata', () => {
       const docListWithSameValues: DocListItem[] = [
         {
           id: 'doc-1',
-          doc_metadata: [
-            { id: '1', name: 'field', type: DataType.string, value: 'Same Value' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field', type: DataType.string, value: 'Same Value' }],
         },
         {
           id: 'doc-2',
-          doc_metadata: [
-            { id: '1', name: 'field', type: DataType.string, value: 'Same Value' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field', type: DataType.string, value: 'Same Value' }],
         },
       ]
 
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListWithSameValues as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListWithSameValues as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
-      const fieldItem = result.current.originalList.find(item => item.id === '1')
+      const fieldItem = result.current.originalList.find((item) => item.id === '1')
       expect(fieldItem?.isMultipleValue).toBe(false)
     })
 
@@ -210,35 +207,31 @@ describe('useBatchEditDocumentMetadata', () => {
       const docListThreeDocs: DocListItem[] = [
         {
           id: 'doc-1',
-          doc_metadata: [
-            { id: '1', name: 'field', type: DataType.string, value: 'Value A' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field', type: DataType.string, value: 'Value A' }],
         },
         {
           id: 'doc-2',
-          doc_metadata: [
-            { id: '1', name: 'field', type: DataType.string, value: 'Value B' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field', type: DataType.string, value: 'Value B' }],
         },
         {
           id: 'doc-3',
-          doc_metadata: [
-            { id: '1', name: 'field', type: DataType.string, value: 'Value C' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field', type: DataType.string, value: 'Value C' }],
         },
       ]
 
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListThreeDocs as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListThreeDocs as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
       // Should only have one item for field '1', marked as multiple
-      const fieldItems = result.current.originalList.filter(item => item.id === '1')
+      const fieldItems = result.current.originalList.filter((item) => item.id === '1')
       expect(fieldItems.length).toBe(1)
-      expect(fieldItems[0].isMultipleValue).toBe(true)
+      expect(fieldItems[0]!.isMultipleValue).toBe(true)
     })
   })
 
@@ -293,16 +286,16 @@ describe('useBatchEditDocumentMetadata', () => {
       const docListSingleDoc: DocListItem[] = [
         {
           id: 'doc-1',
-          doc_metadata: [
-            { id: '1', name: 'field_one', type: DataType.string, value: 'Old Value' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field_one', type: DataType.string, value: 'Old Value' }],
         },
       ]
 
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListSingleDoc as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListSingleDoc as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
@@ -351,7 +344,9 @@ describe('useBatchEditDocumentMetadata', () => {
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListSingleDoc as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListSingleDoc as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
@@ -376,16 +371,16 @@ describe('useBatchEditDocumentMetadata', () => {
       const docListSingleDoc: DocListItem[] = [
         {
           id: 'doc-1',
-          doc_metadata: [
-            { id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' }],
         },
       ]
 
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListSingleDoc as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListSingleDoc as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
@@ -423,9 +418,7 @@ describe('useBatchEditDocumentMetadata', () => {
       const docListMissingField: DocListItem[] = [
         {
           id: 'doc-1',
-          doc_metadata: [
-            { id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' }],
         },
         {
           id: 'doc-2',
@@ -436,7 +429,9 @@ describe('useBatchEditDocumentMetadata', () => {
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListMissingField as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListMissingField as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
@@ -457,7 +452,7 @@ describe('useBatchEditDocumentMetadata', () => {
 
       // Both documents should have the field after applying to all
       expect(mockMutateAsync).toHaveBeenCalled()
-      const callArgs = mockMutateAsync.mock.calls[0][0]
+      const callArgs = mockMutateAsync.mock.calls[0]![0]
       expect(callArgs.metadata_list.length).toBe(2)
     })
 
@@ -466,15 +461,11 @@ describe('useBatchEditDocumentMetadata', () => {
       const docListDifferentValues: DocListItem[] = [
         {
           id: 'doc-1',
-          doc_metadata: [
-            { id: '1', name: 'field_one', type: DataType.string, value: 'Value A' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value A' }],
         },
         {
           id: 'doc-2',
-          doc_metadata: [
-            { id: '1', name: 'field_one', type: DataType.string, value: 'Value B' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value B' }],
         },
         {
           id: 'doc-3',
@@ -485,7 +476,9 @@ describe('useBatchEditDocumentMetadata', () => {
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListDifferentValues as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListDifferentValues as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
@@ -522,7 +515,9 @@ describe('useBatchEditDocumentMetadata', () => {
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListSingleDoc as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListSingleDoc as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
@@ -621,16 +616,16 @@ describe('useBatchEditDocumentMetadata', () => {
       const docListSingleDoc: DocListItem[] = [
         {
           id: 'doc-1',
-          doc_metadata: [
-            { id: '1', name: 'field_one', type: DataType.string, value: 'Old Value' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field_one', type: DataType.string, value: 'Old Value' }],
         },
       ]
 
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListSingleDoc as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListSingleDoc as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
@@ -650,7 +645,7 @@ describe('useBatchEditDocumentMetadata', () => {
         await result.current.handleSave(editedList, [], false)
       })
 
-      const callArgs = mockMutateAsync.mock.calls[0][0]
+      const callArgs = mockMutateAsync.mock.calls[0]![0]
       const sentItem = callArgs.metadata_list[0].metadata_list[0]
 
       // Only id, name, type, value should be present
@@ -664,16 +659,16 @@ describe('useBatchEditDocumentMetadata', () => {
       const docListSingleDoc: DocListItem[] = [
         {
           id: 'doc-1',
-          doc_metadata: [
-            { id: '1', name: 'field_one', type: DataType.string, value: 'Value' },
-          ],
+          doc_metadata: [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value' }],
         },
       ]
 
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListSingleDoc as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListSingleDoc as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 
@@ -692,7 +687,7 @@ describe('useBatchEditDocumentMetadata', () => {
         await result.current.handleSave(editedList, [], false)
       })
 
-      const callArgs = mockMutateAsync.mock.calls[0][0]
+      const callArgs = mockMutateAsync.mock.calls[0]![0]
       const sentItem = callArgs.metadata_list[0].metadata_list[0]
 
       // value should be null, not undefined
@@ -722,7 +717,9 @@ describe('useBatchEditDocumentMetadata', () => {
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          docList: docListNoMetadata as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+          docList: docListNoMetadata as Parameters<
+            typeof useBatchEditDocumentMetadata
+          >[0]['docList'],
         }),
       )
 

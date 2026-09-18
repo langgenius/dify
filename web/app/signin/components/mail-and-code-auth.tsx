@@ -1,14 +1,17 @@
-import type { FormEvent } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
-import { emailRegex } from '@/config'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
+import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
+import { emailRegex, TURNSTILE_SITE_KEY } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendEMailLoginCode } from '@/service/common'
+import Turnstile from './turnstile'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean
@@ -18,60 +21,105 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
-  const [loading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileGeneration, setTurnstileGeneration] = useState(0)
   const locale = useLocale()
+  const setCountdownLeftTime = useSetCountdownLeftTime()
+  const turnstileSiteKey = TURNSTILE_SITE_KEY.trim()
+  const isTurnstileRequired = systemFeatures.deployment_edition === 'CLOUD'
+  const shouldRenderTurnstile = isTurnstileRequired && Boolean(turnstileSiteKey)
 
   const handleGetEMailVerificationCode = async () => {
+    if (loading) return
+    let shouldResetTurnstile = false
     try {
-      if (!email) {
-        Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
-        return
-      }
-
-      if (!emailRegex.test(email)) {
-        Toast.notify({
-          type: 'error',
-          message: t('error.emailInValid', { ns: 'login' }),
-        })
-        return
-      }
-      setIsLoading(true)
-      const ret = await sendEMailLoginCode(email, locale)
+      setLoading(true)
+      shouldResetTurnstile = isTurnstileRequired
+      const ret = await sendEMailLoginCode(
+        email,
+        locale,
+        isTurnstileRequired ? turnstileToken : undefined,
+      )
       if (ret.result === 'success') {
-        localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('email', encodeURIComponent(email))
         params.set('token', encodeURIComponent(ret.data))
         router.push(`/signin/check-code?${params.toString()}`)
+        shouldResetTurnstile = false
+      }
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoading(false)
+      if (shouldResetTurnstile) {
+        setTurnstileToken('')
+        setTurnstileGeneration((value) => value + 1)
       }
     }
-    catch (error) {
-      console.error(error)
-    }
-    finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    handleGetEMailVerificationCode()
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input type="text" className="hidden" />
-      <div className="mb-2">
-        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('email', { ns: 'login' })}</label>
-        <div className="mt-1">
-          <Input id="email" type="email" disabled={isInvite} value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
+    <Form
+      onFormSubmit={() => {
+        void handleGetEMailVerificationCode()
+      }}
+    >
+      <Field
+        name="email"
+        disabled={isInvite}
+        validate={(value) => {
+          const emailValue = String(value)
+          return !emailValue || emailRegex.test(emailValue)
+            ? null
+            : t(($) => $['error.emailInValid'], { ns: 'login' })
+        }}
+        className={shouldRenderTurnstile ? 'mb-1' : 'mb-4'}
+      >
+        <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
+        <Input
+          type="email"
+          autoComplete="email"
+          spellCheck={false}
+          disabled={isInvite}
+          required
+          value={email}
+          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
+          onValueChange={setEmail}
+        />
+        <FieldError>
+          {t(($) => $[email ? 'error.emailInValid' : 'error.emailEmpty'], { ns: 'login' })}
+        </FieldError>
+      </Field>
+      {shouldRenderTurnstile && (
+        <div className="mb-4">
+          <Turnstile
+            key={turnstileGeneration}
+            action="signin_code"
+            siteKey={turnstileSiteKey}
+            onVerify={setTurnstileToken}
+            onInvalidate={() => {
+              setTurnstileToken('')
+            }}
+            onError={() => {
+              setTurnstileToken('')
+            }}
+          />
         </div>
-        <div className="mt-3">
-          <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t('signup.verifyMail', { ns: 'login' })}</Button>
-        </div>
-      </div>
-    </form>
+      )}
+      <Button
+        type="submit"
+        loading={loading}
+        disabled={isTurnstileRequired && !turnstileToken}
+        variant="primary"
+        className="w-full"
+      >
+        {t(($) => $['signup.verifyMail'], { ns: 'login' })}
+      </Button>
+    </Form>
   )
 }

@@ -1,110 +1,115 @@
+"""Controller tests for Console workflow pause details."""
+
 from __future__ import annotations
 
 from datetime import datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 
-from controllers.console import wraps as console_wraps
+from controllers.common.errors import NotFoundError
 from controllers.console.app import workflow_run as workflow_run_module
-from controllers.web.error import NotFoundError
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.nodes.human_input.entities import FormInput, UserAction
-from dify_graph.nodes.human_input.enums import FormInputType
-from libs import login as login_lib
-from models.account import Account, AccountStatus, TenantAccountRole
-from models.workflow import WorkflowRun
+from machinery.context import RequestContext
+from services.workflow_run_service import WorkflowRunPauseDetails, WorkflowRunPausedNode
+from tests.unit_tests.config_override import apply_config_overrides
 
 
-def _make_account() -> Account:
-    account = Account(name="tester", email="tester@example.com")
-    account.status = AccountStatus.ACTIVE
-    account.role = TenantAccountRole.OWNER
-    account.id = "account-123"  # type: ignore[assignment]
-    account._current_tenant = SimpleNamespace(id="tenant-123")  # type: ignore[attr-defined]
-    account._get_current_object = lambda: account  # type: ignore[attr-defined]
-    return account
+def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=workspace_id,
+    )
 
 
-def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account) -> None:
-    monkeypatch.setattr(login_lib.dify_config, "LOGIN_DISABLED", True)
-    monkeypatch.setattr(login_lib, "current_user", account)
-    monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(login_lib, "check_csrf_token", lambda *_, **__: None)
-    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(workflow_run_module, "current_user", account)
-    monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
-
-
-class _PauseEntity:
-    def __init__(self, paused_at: datetime, reasons: list[HumanInputRequired]):
-        self.paused_at = paused_at
-        self._reasons = reasons
-
-    def get_pause_reasons(self):
-        return self._reasons
+def _mock_application_services(monkeypatch: pytest.MonkeyPatch, workflow_runs: Mock) -> None:
+    monkeypatch.setattr(
+        workflow_run_module,
+        "application_services",
+        lambda: SimpleNamespace(workflow_runs=workflow_runs),
+    )
 
 
 def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    account = _make_account()
-    _patch_console_guards(monkeypatch, account)
-    monkeypatch.setattr(workflow_run_module.dify_config, "APP_WEB_URL", "https://web.example.com")
-
-    workflow_run = Mock(spec=WorkflowRun)
-    workflow_run.tenant_id = "tenant-123"
-    workflow_run.status = WorkflowExecutionStatus.PAUSED
-    workflow_run.created_at = datetime(2024, 1, 1, 12, 0, 0)
-    fake_db = SimpleNamespace(engine=Mock(), session=SimpleNamespace(get=lambda *_: workflow_run))
-    monkeypatch.setattr(workflow_run_module, "db", fake_db)
-
-    reason = HumanInputRequired(
-        form_id="form-1",
-        form_content="content",
-        inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
-        actions=[UserAction(id="approve", title="Approve")],
-        node_id="node-1",
-        node_title="Ask Name",
-        form_token="backstage-token",
+    apply_config_overrides(monkeypatch, APP_WEB_URL="https://web.example.com/")
+    workflow_runs = Mock()
+    workflow_runs.get_pause_details.return_value = WorkflowRunPauseDetails(
+        paused_at=datetime(2024, 1, 1, 12, 0, 0),
+        paused_nodes=(
+            WorkflowRunPausedNode(
+                node_id="node-1",
+                node_title="Ask Name",
+                form_id="form-1",
+                form_token="backstage-token",
+            ),
+        ),
     )
-    pause_entity = _PauseEntity(paused_at=datetime(2024, 1, 1, 12, 0, 0), reasons=[reason])
+    _mock_application_services(monkeypatch, workflow_runs)
+    request_context = _request_context()
 
-    repo = Mock()
-    repo.get_workflow_pause.return_value = pause_entity
-    monkeypatch.setattr(
-        workflow_run_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_run_repository",
-        lambda *_, **__: repo,
-    )
-
+    api = workflow_run_module.ConsoleWorkflowPauseDetailsApi()
+    handler = unwrap(api.get)
     with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
-        response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")
+        response, status = handler(api, request_context, workflow_run_id="run-1")
 
     assert status == 200
-    assert response["paused_at"] == "2024-01-01T12:00:00Z"
-    assert response["paused_nodes"][0]["node_id"] == "node-1"
-    assert response["paused_nodes"][0]["pause_type"]["type"] == "human_input"
-    assert (
-        response["paused_nodes"][0]["pause_type"]["backstage_input_url"]
-        == "https://web.example.com/form/backstage-token"
+    assert response == {
+        "paused_at": "2024-01-01T12:00:00Z",
+        "paused_nodes": [
+            {
+                "node_id": "node-1",
+                "node_title": "Ask Name",
+                "pause_type": {
+                    "type": "human_input",
+                    "form_id": "form-1",
+                    "backstage_input_url": "https://web.example.com/form/backstage-token",
+                },
+            }
+        ],
+    }
+    workflow_runs.get_pause_details.assert_called_once_with(
+        request_context,
+        workflow_run_id="run-1",
     )
-    assert "pending_human_inputs" not in response
 
 
-def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    account = _make_account()
-    _patch_console_guards(monkeypatch, account)
-    monkeypatch.setattr(workflow_run_module.dify_config, "APP_WEB_URL", "https://web.example.com")
+def test_pause_details_maps_missing_or_inaccessible_run_to_not_found(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workflow_runs = Mock()
+    workflow_runs.get_pause_details.return_value = None
+    _mock_application_services(monkeypatch, workflow_runs)
+    request_context = _request_context(workspace_id="other-tenant")
+    api = workflow_run_module.ConsoleWorkflowPauseDetailsApi()
+    handler = unwrap(api.get)
 
-    workflow_run = Mock(spec=WorkflowRun)
-    workflow_run.tenant_id = "tenant-456"
-    workflow_run.status = WorkflowExecutionStatus.PAUSED
-    workflow_run.created_at = datetime(2024, 1, 1, 12, 0, 0)
-    fake_db = SimpleNamespace(engine=Mock(), session=SimpleNamespace(get=lambda *_: workflow_run))
-    monkeypatch.setattr(workflow_run_module, "db", fake_db)
+    with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+        with pytest.raises(NotFoundError, match="Workflow run not found"):
+            handler(api, request_context, workflow_run_id="run-1")
 
-    with pytest.raises(NotFoundError):
-        with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
-            response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")
+    workflow_runs.get_pause_details.assert_called_once_with(
+        request_context,
+        workflow_run_id="run-1",
+    )
+
+
+def test_pause_details_returns_empty_response_for_non_paused_run(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_runs = Mock()
+    workflow_runs.get_pause_details.return_value = WorkflowRunPauseDetails(paused_at=None, paused_nodes=())
+    _mock_application_services(monkeypatch, workflow_runs)
+
+    api = workflow_run_module.ConsoleWorkflowPauseDetailsApi()
+    handler = unwrap(api.get)
+    with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+        response, status = handler(api, _request_context(), workflow_run_id="run-1")
+
+    assert status == 200
+    assert response == {"paused_at": None, "paused_nodes": []}
+
+
+def test_pause_details_response_schema_is_registered() -> None:
+    assert workflow_run_module.WorkflowPauseDetailsResponse.__name__ in workflow_run_module.console_ns.models

@@ -1,28 +1,16 @@
-import type {
-  Klass,
-  LexicalEditor,
-  LexicalNode,
-  RangeSelection,
-  TextNode,
-} from 'lexical'
+import type { Klass, LexicalEditor, LexicalNode, TextNode } from 'lexical'
 import type { CustomTextNode } from '../plugins/custom-text/node'
 import type { MenuTextMatch } from '../types'
 import {
   $splitNodeContainingQuery,
   decoratorTransform,
-  getSelectedNode,
   registerLexicalTextEntity,
   textToEditorState,
 } from '../utils'
 
 const mockState = vi.hoisted(() => ({
-  isAtNodeEnd: false,
   selection: null as unknown,
   createTextNode: vi.fn(),
-}))
-
-vi.mock('@lexical/selection', () => ({
-  $isAtNodeEnd: () => mockState.isAtNodeEnd,
 }))
 
 vi.mock('lexical', async (importOriginal) => {
@@ -30,20 +18,20 @@ vi.mock('lexical', async (importOriginal) => {
   return {
     ...actual,
     $getSelection: () => mockState.selection,
-    $isRangeSelection: (selection: unknown) => !!(selection as { __isRangeSelection?: boolean } | null)?.__isRangeSelection,
+    $isRangeSelection: (selection: unknown) =>
+      !!(selection as { __isRangeSelection?: boolean } | null)?.__isRangeSelection,
     $createTextNode: mockState.createTextNode,
     $isTextNode: (node: unknown) => !!(node as { __isTextNode?: boolean } | null)?.__isTextNode,
   }
 })
 
 vi.mock('./plugins/custom-text/node', () => ({
-  CustomTextNode: class MockCustomTextNode { },
+  CustomTextNode: class MockCustomTextNode {},
 }))
 
 describe('prompt-editor/utils', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockState.isAtNodeEnd = false
     mockState.selection = null
   })
   function makeEditor() {
@@ -56,74 +44,6 @@ describe('prompt-editor/utils', () => {
     const editor = { registerNodeTransform } as unknown as LexicalEditor
     return { editor, registerNodeTransform }
   }
-
-  // ---------------------------------------------------------------------------
-  // getSelectedNode
-  // ---------------------------------------------------------------------------
-  describe('getSelectedNode', () => {
-    it('should return anchor node when anchor and focus are the same node', () => {
-      const sharedNode = { id: 'same' }
-      const selection = {
-        anchor: { getNode: () => sharedNode },
-        focus: { getNode: () => sharedNode },
-        isBackward: () => false,
-      } as unknown as RangeSelection
-
-      expect(getSelectedNode(selection)).toBe(sharedNode)
-    })
-
-    it('should return anchor node for backward selection when focus IS at node end', () => {
-      const anchorNode = { id: 'anchor' }
-      const focusNode = { id: 'focus' }
-      const selection = {
-        anchor: { getNode: () => anchorNode },
-        focus: { getNode: () => focusNode },
-        isBackward: () => true,
-      } as unknown as RangeSelection
-
-      mockState.isAtNodeEnd = true
-      expect(getSelectedNode(selection)).toBe(anchorNode)
-    })
-
-    it('should return focus node for backward selection when focus is NOT at node end', () => {
-      const anchorNode = { id: 'anchor' }
-      const focusNode = { id: 'focus' }
-      const selection = {
-        anchor: { getNode: () => anchorNode },
-        focus: { getNode: () => focusNode },
-        isBackward: () => true,
-      } as unknown as RangeSelection
-
-      mockState.isAtNodeEnd = false
-      expect(getSelectedNode(selection)).toBe(focusNode)
-    })
-
-    it('should return anchor node for forward selection when anchor IS at node end', () => {
-      const anchorNode = { id: 'anchor' }
-      const focusNode = { id: 'focus' }
-      const selection = {
-        anchor: { getNode: () => anchorNode },
-        focus: { getNode: () => focusNode },
-        isBackward: () => false,
-      } as unknown as RangeSelection
-
-      mockState.isAtNodeEnd = true
-      expect(getSelectedNode(selection)).toBe(anchorNode)
-    })
-
-    it('should return focus node for forward selection when anchor is NOT at node end', () => {
-      const anchorNode = { id: 'anchor' }
-      const focusNode = { id: 'focus' }
-      const selection = {
-        anchor: { getNode: () => anchorNode },
-        focus: { getNode: () => focusNode },
-        isBackward: () => false,
-      } as unknown as RangeSelection
-
-      mockState.isAtNodeEnd = false
-      expect(getSelectedNode(selection)).toBe(focusNode)
-    })
-  })
 
   // ---------------------------------------------------------------------------
   // registerLexicalTextEntity
@@ -151,7 +71,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((node: TextNode) => node as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const reverseTransform = registerNodeTransform.mock.calls[1][1] as (n: TN) => void
+      const reverseTransform = registerNodeTransform.mock.calls[1]![1] as (n: TN) => void
       const node = new TargetNode() as TN
       reverseTransform(node)
 
@@ -181,7 +101,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const reverseTransform = registerNodeTransform.mock.calls[1][1] as (n: TN) => void
+      const reverseTransform = registerNodeTransform.mock.calls[1]![1] as (n: TN) => void
       const node = new TargetNode() as TN
       reverseTransform(node)
 
@@ -206,7 +126,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const reverseTransform = registerNodeTransform.mock.calls[1][1] as (n: TN) => void
+      const reverseTransform = registerNodeTransform.mock.calls[1]![1] as (n: TN) => void
       const node = new TargetNode() as TN
       reverseTransform(node)
 
@@ -240,7 +160,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const reverseTransform = registerNodeTransform.mock.calls[1][1] as (n: TN) => void
+      const reverseTransform = registerNodeTransform.mock.calls[1]![1] as (n: TN) => void
       const node = new TargetNode() as TN
       reverseTransform(node)
 
@@ -275,7 +195,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const reverseTransform = registerNodeTransform.mock.calls[1][1] as (n: TN) => void
+      const reverseTransform = registerNodeTransform.mock.calls[1]![1] as (n: TN) => void
       const node = new TargetNode() as TN
       reverseTransform(node)
 
@@ -330,7 +250,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       const node = new NodeUnderTest() as unknown as TextNode
       textTransform(node)
 
@@ -358,7 +278,7 @@ describe('prompt-editor/utils', () => {
         getLatest = vi.fn(() => ({ __mode: 0 }))
       }
       const getMatch = vi.fn(() => null)
-      class TargetNode { }
+      class TargetNode {}
       const { editor, registerNodeTransform } = makeEditor()
       const createdTextNode = { setFormat: vi.fn() }
       mockState.createTextNode.mockReturnValue(createdTextNode)
@@ -367,7 +287,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       const node = new NodeUnderTest() as unknown as TextNode
       textTransform(node)
 
@@ -395,7 +315,7 @@ describe('prompt-editor/utils', () => {
         getLatest = vi.fn(() => ({ __mode: 0 }))
       }
       const getMatch = vi.fn(() => null)
-      class TargetNode { }
+      class TargetNode {}
       const { editor, registerNodeTransform } = makeEditor()
       mockState.createTextNode.mockReturnValue({ setFormat: vi.fn() })
       type TN = InstanceType<typeof TargetNode> & TextNode
@@ -403,7 +323,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       const node = new NodeUnderTest() as unknown as TextNode
       textTransform(node)
 
@@ -430,7 +350,7 @@ describe('prompt-editor/utils', () => {
         return callCount === 1 ? { start: 6, end: 10 } : null
       })
       const replacementNode = { setFormat: vi.fn(), replace: vi.fn() }
-      class TargetNode { }
+      class TargetNode {}
       const { editor, registerNodeTransform } = makeEditor()
       mockState.createTextNode.mockReturnValue({ setFormat: vi.fn() })
       type TN = InstanceType<typeof TargetNode> & TextNode
@@ -438,7 +358,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn(() => replacementNode as unknown as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       const node = new NodeUnderTest() as unknown as TextNode
       textTransform(node)
 
@@ -470,10 +390,7 @@ describe('prompt-editor/utils', () => {
         getNextSibling: vi.fn(() => null),
         splitText: vi.fn(() => [replacedNode, null]),
       } as unknown as CustomTextNode
-      const getMatch = vi
-        .fn()
-        .mockReturnValueOnce({ start: 0, end: 1 })
-        .mockReturnValueOnce(null)
+      const getMatch = vi.fn().mockReturnValueOnce({ start: 0, end: 1 }).mockReturnValueOnce(null)
       const createdNode = { id: 'created' }
       const createNode = vi.fn(() => createdNode as unknown as LexicalNode)
 
@@ -497,7 +414,11 @@ describe('prompt-editor/utils', () => {
         splitText: vi.fn(),
       } as unknown as CustomTextNode
 
-      decoratorTransform(node, vi.fn(() => null), vi.fn())
+      decoratorTransform(
+        node,
+        vi.fn(() => null),
+        vi.fn(),
+      )
 
       expect(nextSibling.markDirty).toHaveBeenCalled()
     })
@@ -646,7 +567,11 @@ describe('prompt-editor/utils', () => {
         anchor: { type: 'text', offset: 1, getNode: () => anchorNode },
       }
       // replaceableString longer than offset → startOffset < 0
-      const longMatch: MenuTextMatch = { leadOffset: 0, matchingString: 'abc', replaceableString: '@abcdef' }
+      const longMatch: MenuTextMatch = {
+        leadOffset: 0,
+        matchingString: 'abc',
+        replaceableString: '@abcdef',
+      }
       expect($splitNodeContainingQuery(longMatch)).toBeNull()
     })
 
@@ -765,7 +690,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       const node = new NodeUnderTest() as unknown as TextNode
       textTransform(node)
 
@@ -775,7 +700,7 @@ describe('prompt-editor/utils', () => {
 
     it('should return when nextSibling nextMatch.start !== 0 (line 122-123)', () => {
       // Similar to decoratorTransform but for textNodeTransform
-      class TargetNode { }
+      class TargetNode {}
       const nextSibling = {
         __isTextNode: true,
         isTextEntity: vi.fn(() => false),
@@ -804,7 +729,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((node: TextNode) => node as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       textTransform(new NodeUnderTest() as unknown as TextNode)
 
       // nextMatch.start !== 0 → return (line 123)
@@ -819,7 +744,7 @@ describe('prompt-editor/utils', () => {
       // (this actually tests line 134 indirectly by ensuring line 152 exits; and also line 134=true)
       // The cleanest way to reach line 134 is: match is null AND nextText is '' AND no nextSibling
       // That happens when match===null at the start of the while loop: nextText='', no nextSibling → exit
-      class TargetNode { }
+      class TargetNode {}
       const nodeToReplace = { replace: vi.fn(), getFormat: vi.fn(() => 0) }
       class NodeUnderTest {
         __isTextNode = true
@@ -838,8 +763,7 @@ describe('prompt-editor/utils', () => {
       let n = 0
       const getMatch = vi.fn(() => {
         n++
-        if (n === 1)
-          return { start: 0, end: 3 } // first iter: match found → splitText → currentNode=null
+        if (n === 1) return { start: 0, end: 3 } // first iter: match found → splitText → currentNode=null
         return null // second iter would return null, but we exit at line 152 before this
       })
       const replacementNode = { setFormat: vi.fn(), replace: vi.fn() }
@@ -849,7 +773,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn(() => replacementNode as unknown as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       textTransform(new NodeUnderTest() as unknown as TextNode)
 
       // createNode was called (first match replacement) and currentNode=null exits loop at 152
@@ -859,7 +783,7 @@ describe('prompt-editor/utils', () => {
     it('should continue loop when prevSibling isTextEntity and match.start===0 (line 137-138)', () => {
       // Ensure no prevSibling (so prevSibling processing is skipped) and the node gets a match
       // at start=0 with a prevSibling that isTextEntity → continue
-      class TargetNode { }
+      class TargetNode {}
       // prevSibling has no __isTextNode → $isTextNode returns false → skip prevSibling block
       const prevSiblingEntity = {
         // No __isTextNode so $isTextNode=false, but getNode returns this for prevSibling
@@ -894,8 +818,7 @@ describe('prompt-editor/utils', () => {
         // nextText = 'abc'.slice(3) = '' → nextSibling=null → no nextSibling branch
         // match not null → check line 137: start===0 && prevSibling.__isTextNode && isTextEntity=true → continue!
         // call 3 (continue, while loop again): match=getMatch('') = null → return at line 134
-        if (n <= 2)
-          return { start: 0, end: 3 }
+        if (n <= 2) return { start: 0, end: 3 }
         return null
       })
 
@@ -904,7 +827,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((node: TextNode) => node as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       textTransform(new NodeUnderTest() as unknown as TextNode)
 
       // continue was executed (createNode skipped for the continue iteration), exits via match=null
@@ -985,7 +908,7 @@ describe('prompt-editor/utils', () => {
   // ---------------------------------------------------------------------------
   describe('registerLexicalTextEntity - remaining textNodeTransform branches', () => {
     it('textNodeTransform: returns immediately when node is not simple text (line 58-59)', () => {
-      class TargetNode { }
+      class TargetNode {}
       class NodeUnderTest {
         __isTextNode = true
         isSimpleText = vi.fn(() => false) // NOT simple text
@@ -1000,7 +923,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       textTransform(new NodeUnderTest() as unknown as TextNode)
 
       // isSimpleText returns false → return at line 59, getMatch never called
@@ -1032,8 +955,7 @@ describe('prompt-editor/utils', () => {
       const { editor, registerNodeTransform } = makeEditor()
       mockState.createTextNode.mockReturnValue({ setFormat: vi.fn() })
       const getMatch = vi.fn((text: string) => {
-        if (text === '@abcd')
-          return { start: 0, end: 4 } // prevMatch
+        if (text === '@abcd') return { start: 0, end: 4 } // prevMatch
         return null
       })
 
@@ -1059,7 +981,7 @@ describe('prompt-editor/utils', () => {
       }
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       textTransform(new NodeUnderTest2() as unknown as TextNode)
 
       // diff=1, text.length=2 → remaining='d' → setTextContent called with '@ab'+'c'='@abc'
@@ -1105,8 +1027,7 @@ describe('prompt-editor/utils', () => {
       }
       // combinedText='@abc', prevMatch.end=4 → diff=4-3=1, text.length=1 → diff===text.length → node.remove()
       const getMatch = vi.fn((text: string) => {
-        if (text === '@abc')
-          return { start: 0, end: 4 }
+        if (text === '@abc') return { start: 0, end: 4 }
         return null
       })
       const { editor, registerNodeTransform } = makeEditor()
@@ -1116,7 +1037,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       const node = new NodeUnderTest() as unknown as TextNode
       textTransform(node)
 
@@ -1127,7 +1048,7 @@ describe('prompt-editor/utils', () => {
 
     it('textNodeTransform: returns when nextText is non-empty and nextMatch.start===0 (line 130-131)', () => {
       // In the else branch (nextText !== ''): if nextMatch !== null && nextMatch.start===0 → return
-      class TargetNode { }
+      class TargetNode {}
       class NodeUnderTest {
         __isTextNode = true
         isSimpleText = vi.fn(() => true)
@@ -1145,10 +1066,8 @@ describe('prompt-editor/utils', () => {
       let n = 0
       const getMatch = vi.fn(() => {
         n++
-        if (n === 1)
-          return { start: 0, end: 3 } // first iter: nextText='abcdef'.slice(3)='def' (non-empty)
-        if (n === 2)
-          return { start: 0, end: 3 } // second call (on nextText='def'): start===0 → return at line 131
+        if (n === 1) return { start: 0, end: 3 } // first iter: nextText='abcdef'.slice(3)='def' (non-empty)
+        if (n === 2) return { start: 0, end: 3 } // second call (on nextText='def'): start===0 → return at line 131
         return null
       })
       const { editor, registerNodeTransform } = makeEditor()
@@ -1158,7 +1077,7 @@ describe('prompt-editor/utils', () => {
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
-      const textTransform = registerNodeTransform.mock.calls[0][1] as (n: TextNode) => void
+      const textTransform = registerNodeTransform.mock.calls[0]![1] as (n: TextNode) => void
       textTransform(new NodeUnderTest() as unknown as TextNode)
 
       // Returns at line 131 because nextMatch.start===0 for nextText → no split/replace

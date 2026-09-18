@@ -7,24 +7,34 @@ import { FeaturesProvider } from '../../../context'
 import SettingContent from '../setting-content'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', () => ({
-  default: ({ payload, onChange }: { payload: Record<string, unknown>, onChange: (p: Record<string, unknown>) => void }) => (
+  default: ({
+    payload,
+    onChange,
+  }: {
+    payload: Record<string, unknown>
+    onChange: (p: Record<string, unknown>) => void
+  }) => (
     <div data-testid="file-upload-setting">
       <span data-testid="payload">{JSON.stringify(payload)}</span>
       <button
         data-testid="change-setting"
-        onClick={() => onChange({
-          ...payload,
-          allowed_file_types: ['document'],
-        })}
+        onClick={() =>
+          onChange({
+            ...payload,
+            allowed_file_types: ['document'],
+          })
+        }
       >
         Change
       </button>
       <button
         data-testid="clear-file-types"
-        onClick={() => onChange({
-          ...payload,
-          allowed_file_types: [],
-        })}
+        onClick={() =>
+          onChange({
+            ...payload,
+            allowed_file_types: [],
+          })
+        }
       >
         Clear
       </button>
@@ -57,7 +67,7 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (
-  props: { imageUpload?: boolean, onClose?: () => void, onChange?: OnFeaturesChange } = {},
+  props: { imageUpload?: boolean; onClose?: () => void; onChange?: OnFeaturesChange } = {},
   featureOverrides?: Partial<Features>,
 ) => {
   const features = { ...defaultFeatures, ...featureOverrides }
@@ -104,7 +114,9 @@ describe('SettingContent', () => {
     renderWithProvider({}, { file: undefined })
 
     const payload = screen.getByTestId('payload')
-    expect(payload.textContent).toContain('"allowed_file_upload_methods":["local_file","remote_url"]')
+    expect(payload.textContent).toContain(
+      '"allowed_file_upload_methods":["local_file","remote_url"]',
+    )
     expect(payload.textContent).toContain('"allowed_file_types":["image"]')
     expect(payload.textContent).toContain('"max_length":3')
   })
@@ -120,10 +132,9 @@ describe('SettingContent', () => {
     const onClose = vi.fn()
     renderWithProvider({ onClose })
 
-    const closeIconButton = screen.getByTestId('close-setting-modal')
+    const closeIconButton = screen.getByRole('button', { name: 'common.operation.close' })
     expect(closeIconButton).toBeInTheDocument()
-    if (!closeIconButton)
-      throw new Error('Close icon button should exist')
+    if (!closeIconButton) throw new Error('Close icon button should exist')
 
     fireEvent.click(closeIconButton)
 
@@ -134,7 +145,7 @@ describe('SettingContent', () => {
     const onClose = vi.fn()
     renderWithProvider({ onClose })
 
-    const closeIconButton = screen.getByTestId('close-setting-modal')
+    const closeIconButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeIconButton.focus()
     await userEvent.keyboard('{Enter}')
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -144,9 +155,9 @@ describe('SettingContent', () => {
     const onClose = vi.fn()
     renderWithProvider({ onClose })
 
-    const closeIconButton = screen.getByTestId('close-setting-modal')
+    const closeIconButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeIconButton.focus()
-    fireEvent.keyDown(closeIconButton, { key: ' ' })
+    await userEvent.keyboard(' ')
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -154,7 +165,7 @@ describe('SettingContent', () => {
     const onClose = vi.fn()
     renderWithProvider({ onClose })
 
-    const closeIconButton = screen.getByTestId('close-setting-modal')
+    const closeIconButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeIconButton.focus()
     fireEvent.keyDown(closeIconButton, { key: 'Escape' })
 

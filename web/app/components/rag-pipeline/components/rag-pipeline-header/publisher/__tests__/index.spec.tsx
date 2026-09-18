@@ -1,39 +1,85 @@
 import type { IconInfo } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
+import { render as renderWithoutPricing } from '@/test/console/render'
 import Publisher from '../index'
-import Popup from '../popup'
+import { Popup } from '../popup'
 
-const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
+vi.mock('@/features/system-features/state', async () => {
+  const { atom } = await import('jotai')
+  return {
+    deploymentEditionAtom: atom('CLOUD'),
+  }
+})
+
+const hotkeyHandlers = vi.hoisted(() => new Map<string, (event: KeyboardEvent) => void>())
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (hotkey: string, handler: (event: KeyboardEvent) => void) => {
+      hotkeyHandlers.set(hotkey, handler)
+    },
+  }
+})
+
+const triggerHotkey = (hotkey: string) => {
+  const handler = hotkeyHandlers.get(hotkey)
+  if (!handler) return
+
+  act(() => {
+    handler({ preventDefault: vi.fn() } as unknown as KeyboardEvent)
+  })
+}
+
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
-  useRouter: () => ({ push: mockPush }),
 }))
 
-vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode, href: string }) => (
-    <a href={href} {...props}>{children}</a>
-  ),
+vi.mock('@/next/link', () => ({
+  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
 
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (
+    selector: (state: { accessControl: { canReleaseAndVersion: boolean } }) => unknown,
+  ) =>
+    selector({
+      accessControl: { canReleaseAndVersion: true },
+    }),
 }))
 
 const mockPublishedAt = vi.fn(() => null as number | null)
 const mockDraftUpdatedAt = vi.fn(() => 1700000000)
 const mockPipelineId = vi.fn(() => 'test-pipeline-id')
 const mockSetPublishedAt = vi.fn()
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockDatasetMaintainer: string | undefined
+let mockCurrentUserId = 'user-1'
+let mockIsLoadingWorkspacePermissionKeys = false
+let mockWorkspacePermissionKeys: string[] = []
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (s: Record<string, unknown>) => unknown) => {
@@ -54,27 +100,56 @@ vi.mock('@/app/components/workflow/store', () => ({
 const mockMutateDatasetRes = vi.fn()
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (s: Record<string, unknown>) => unknown) => {
-    const state = { mutateDatasetRes: mockMutateDatasetRes }
+    const state = {
+      dataset: {
+        permission_keys: mockDatasetPermissionKeys,
+        maintainer: mockDatasetMaintainer,
+      },
+      mutateDatasetRes: mockMutateDatasetRes,
+    }
     return selector(state)
   },
 }))
 
-const mockSetShowPricingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: () => mockSetShowPricingModal,
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+let publishEnabled = true
+
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
 }))
 
-const mockIsAllowPublishAsCustomKnowledgePipelineTemplate = vi.fn(() => true)
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    isAllowPublishAsCustomKnowledgePipelineTemplate: mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
   }),
-  useProviderContextSelector: <T,>(selector: (s: { isAllowPublishAsCustomKnowledgePipelineTemplate: boolean }) => T): T =>
-    selector({ isAllowPublishAsCustomKnowledgePipelineTemplate: mockIsAllowPublishAsCustomKnowledgePipelineTemplate() }),
 }))
-
-const mockNotify = vi.fn()
-
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://api.dify.ai/v1/datasets/test-dataset-id',
 }))
@@ -83,10 +158,8 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: (timestamp: number) => {
       const diff = Date.now() / 1000 - timestamp
-      if (diff < 60)
-        return 'just now'
-      if (diff < 3600)
-        return `${Math.floor(diff / 60)} minutes ago`
+      if (diff < 60) return 'just now'
+      if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`
       return new Date(timestamp * 1000).toLocaleDateString()
     },
   }),
@@ -120,13 +193,12 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: (key: string) => key,
-  getKeyboardKeyNameBySystem: (key: string) => key === 'ctrl' ? '⌘' : key,
-}))
-
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
-  default: ({ confirmDisabled, onConfirm, onCancel }: {
+  default: ({
+    confirmDisabled,
+    onConfirm,
+    onCancel,
+  }: {
     confirmDisabled: boolean
     onConfirm: (name: string, icon: IconInfo, description?: string) => void
     onCancel: () => void
@@ -135,43 +207,61 @@ vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
       <button
         data-testid="modal-confirm"
         disabled={confirmDisabled}
-        onClick={() => onConfirm('Test Pipeline', { type: 'emoji', emoji: '📚', background: '#fff' } as unknown as IconInfo, 'Test description')}
+        onClick={() =>
+          onConfirm(
+            'Test Pipeline',
+            { type: 'emoji', emoji: '📚', background: '#fff' } as unknown as IconInfo,
+            'Test description',
+          )
+        }
       >
         Confirm
       </button>
-      <button data-testid="modal-cancel" onClick={onCancel}>Cancel</button>
+      <button data-testid="modal-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        staleTime: Infinity,
+      },
     },
-  },
-})
+  })
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-        {ui}
-      </ToastContext.Provider>
-    </QueryClientProvider>,
-  )
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
+  seedFeatures(queryClient, { knowledge_pipeline: { publish_enabled: publishEnabled } })
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
 }
 
 describe('publisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    hotkeyHandlers.clear()
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockPublishedAt.mockReturnValue(null)
     mockDraftUpdatedAt.mockReturnValue(1700000000)
     mockPipelineId.mockReturnValue('test-pipeline-id')
-    mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+    publishEnabled = true
     mockHandleCheckBeforePublish.mockResolvedValue(true)
+    mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockDatasetMaintainer = undefined
+    mockCurrentUserId = 'user-1'
+    mockIsLoadingWorkspacePermissionKeys = false
+    mockWorkspacePermissionKeys = []
   })
 
   describe('Publisher (index.tsx)', () => {
@@ -186,8 +276,7 @@ describe('publisher', () => {
       it('should render portal element in closed state by default', () => {
         renderWithQueryClient(<Publisher />)
 
-        const trigger = screen.getByText('workflow.common.publish').closest('[data-state]')
-        expect(trigger).toHaveAttribute('data-state', 'closed')
+        expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'false')
         expect(screen.queryByText('workflow.common.publishUpdate')).not.toBeInTheDocument()
       })
 
@@ -246,11 +335,6 @@ describe('publisher', () => {
 
         expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
       })
-
-      it('should be memoized with React.memo', () => {
-        expect(Publisher).toBeDefined()
-        expect((Publisher as unknown as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
-      })
     })
 
     describe('User Interactions', () => {
@@ -262,6 +346,27 @@ describe('publisher', () => {
         await waitFor(() => {
           expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
         })
+      })
+
+      it('should close the outer popover before opening publish-as follow-up flow', async () => {
+        mockPublishedAt.mockReturnValue(1700000000)
+        publishEnabled = false
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        await waitFor(() => {
+          expect(screen.getByText('pipeline.common.publishAs')).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByText('pipeline.common.publishAs'))
+
+        await waitFor(() => {
+          expect(screen.queryByText('pipeline.common.publishAs')).not.toBeInTheDocument()
+        })
+        await waitFor(() =>
+          expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+        )
       })
     })
   })
@@ -308,26 +413,15 @@ describe('publisher', () => {
 
         renderWithQueryClient(<Popup />)
 
-        const addDocumentsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.goToAddDocuments'),
-        )
+        const addDocumentsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.goToAddDocuments'))
         expect(addDocumentsButton).toBeDisabled()
-      })
-
-      it('should enable action buttons when published', () => {
-        mockPublishedAt.mockReturnValue(1700000000)
-
-        renderWithQueryClient(<Popup />)
-
-        const addDocumentsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.goToAddDocuments'),
-        )
-        expect(addDocumentsButton).not.toBeDisabled()
       })
 
       it('should show premium badge when publish as template is not allowed', () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
 
         renderWithQueryClient(<Popup />)
 
@@ -336,7 +430,7 @@ describe('publisher', () => {
 
       it('should not show premium badge when publish as template is allowed', () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
 
         renderWithQueryClient(<Popup />)
 
@@ -379,45 +473,48 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: /workflow.common.published/i })).toBeInTheDocument()
+          expect(
+            screen.getByRole('button', { name: /workflow.common.published/i }),
+          ).toBeInTheDocument()
         })
       })
     })
 
     describe('User Interactions', () => {
-      it('should navigate to add documents when go to add documents is clicked', async () => {
+      it('should link to add documents when the pipeline is published', () => {
         mockPublishedAt.mockReturnValue(1700000000)
         renderWithQueryClient(<Popup />)
 
-        const addDocumentsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.goToAddDocuments'),
-        )
-        fireEvent.click(addDocumentsButton!)
-
-        expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-id/documents/create-from-pipeline')
+        expect(
+          screen.getByRole('link', { name: 'pipeline.common.goToAddDocuments' }),
+        ).toHaveAttribute('href', '/datasets/test-dataset-id/documents/create-from-pipeline')
       })
 
       it('should show pricing modal when publish as template is clicked without permission', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         renderWithQueryClient(<Popup />)
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
-        expect(mockSetShowPricingModal).toHaveBeenCalled()
+        await waitFor(() =>
+          expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+        )
       })
 
       it('should show publish as knowledge pipeline modal when permitted', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
-        renderWithQueryClient(<Popup />)
+        publishEnabled = true
+        renderWithQueryClient(<Publisher />)
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -427,12 +524,14 @@ describe('publisher', () => {
 
       it('should close publish as knowledge pipeline modal when cancel is clicked', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
-        renderWithQueryClient(<Popup />)
+        publishEnabled = true
+        renderWithQueryClient(<Publisher />)
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -442,18 +541,22 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-cancel'))
 
         await waitFor(() => {
-          expect(screen.queryByTestId('publish-as-knowledge-pipeline-modal')).not.toBeInTheDocument()
+          expect(
+            screen.queryByTestId('publish-as-knowledge-pipeline-modal'),
+          ).not.toBeInTheDocument()
         })
       })
 
       it('should call publishAsCustomizedPipeline when confirm is clicked in modal', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockPublishAsCustomizedPipeline.mockResolvedValue({})
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -465,6 +568,35 @@ describe('publisher', () => {
         await waitFor(() => {
           expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
             pipelineId: 'test-pipeline-id',
+            name: 'Test Pipeline',
+            icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
+            description: 'Test description',
+          })
+        })
+      })
+
+      it('should publish as template with empty pipeline id fallback', async () => {
+        mockPublishedAt.mockReturnValue(1700000000)
+        mockPipelineId.mockReturnValue(undefined as unknown as string)
+        mockPublishAsCustomizedPipeline.mockResolvedValue({})
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
+        fireEvent.click(publishAsButton!)
+
+        await waitFor(() => {
+          expect(screen.getByTestId('publish-as-knowledge-pipeline-modal')).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByTestId('modal-confirm'))
+
+        await waitFor(() => {
+          expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
+            pipelineId: '',
             name: 'Test Pipeline',
             icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
             description: 'Test description',
@@ -500,7 +632,7 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith(
+          expect(toastMocks.call).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'success',
               message: 'datasetPipeline.publishPipeline.success.message',
@@ -540,11 +672,13 @@ describe('publisher', () => {
       it('should show success notification for publish as template', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockPublishAsCustomizedPipeline.mockResolvedValue({})
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -554,7 +688,7 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith(
+          expect(toastMocks.call).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'success',
               message: 'datasetPipeline.publishTemplate.success.message',
@@ -566,11 +700,13 @@ describe('publisher', () => {
       it('should invalidate customized template list after publish as template', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockPublishAsCustomizedPipeline.mockResolvedValue({})
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -609,7 +745,7 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith({
+          expect(toastMocks.call).toHaveBeenCalledWith({
             type: 'error',
             message: 'datasetPipeline.publishPipeline.error.message',
           })
@@ -619,11 +755,13 @@ describe('publisher', () => {
       it('should show error notification when publish as template fails', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockPublishAsCustomizedPipeline.mockRejectedValue(new Error('Template publish failed'))
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -633,7 +771,7 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith({
+          expect(toastMocks.call).toHaveBeenCalledWith({
             type: 'error',
             message: 'datasetPipeline.publishTemplate.error.message',
           })
@@ -643,11 +781,13 @@ describe('publisher', () => {
       it('should close modal after publish as template error', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockPublishAsCustomizedPipeline.mockRejectedValue(new Error('Template publish failed'))
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -657,7 +797,9 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(screen.queryByTestId('publish-as-knowledge-pipeline-modal')).not.toBeInTheDocument()
+          expect(
+            screen.queryByTestId('publish-as-knowledge-pipeline-modal'),
+          ).not.toBeInTheDocument()
         })
       })
     })
@@ -674,15 +816,11 @@ describe('publisher', () => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
         })
 
-        const cancelButtons = screen.getAllByRole('button')
-        const cancelButton = cancelButtons.find(btn =>
-          btn.className.includes('cancel') || btn.textContent?.includes('Cancel'),
-        )
-        if (cancelButton)
-          fireEvent.click(cancelButton)
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-        // Note: This test verifies the confirm modal can be displayed
-        expect(screen.getByText('pipeline.common.confirmPublishContent')).toBeInTheDocument()
+        await waitFor(() => {
+          expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+        })
       })
 
       it('should publish when confirm is clicked in confirm modal', async () => {
@@ -697,32 +835,29 @@ describe('publisher', () => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
         })
 
-        expect(screen.getByText('pipeline.common.confirmPublishContent')).toBeInTheDocument()
-      })
-    })
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(Popup).toBeDefined()
-        expect((Popup as unknown as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
+        await waitFor(() => {
+          expect(mockPublishWorkflow).toHaveBeenCalled()
+        })
       })
     })
 
     describe('Prop Variations', () => {
       it('should display correct width when permission is allowed', () => {
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
-        expect(popupDiv.className).toContain('w-[360px]')
+        expect(popupDiv.className).toContain('w-90')
       })
 
       it('should display correct width when permission is not allowed', () => {
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
-        expect(popupDiv.className).toContain('w-[400px]')
+        expect(popupDiv.className).toContain('w-100')
       })
 
       it('should display draft updated time when not published', () => {
@@ -750,9 +885,12 @@ describe('publisher', () => {
 
         renderWithQueryClient(<Popup />)
 
-        const apiLink = screen.getByRole('link')
+        const apiLink = screen.getByRole('link', {
+          name: 'workflow.common.accessAPIReference',
+        })
         expect(apiLink).toHaveAttribute('href', 'https://api.dify.ai/v1/datasets/test-dataset-id')
         expect(apiLink).toHaveAttribute('target', '_blank')
+        expect(apiLink).toHaveAttribute('rel', 'noopener noreferrer')
       })
     })
 
@@ -762,7 +900,7 @@ describe('publisher', () => {
         mockPublishWorkflow.mockResolvedValue({ created_at: 1700100000 })
         renderWithQueryClient(<Popup />)
 
-        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
+        triggerHotkey('Mod+Shift+P')
 
         await waitFor(() => {
           expect(mockPublishWorkflow).toHaveBeenCalled()
@@ -778,12 +916,14 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: /workflow.common.published/i })).toBeInTheDocument()
+          expect(
+            screen.getByRole('button', { name: /workflow.common.published/i }),
+          ).toBeInTheDocument()
         })
 
         vi.clearAllMocks()
 
-        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
+        triggerHotkey('Mod+Shift+P')
 
         expect(mockPublishWorkflow).not.toHaveBeenCalled()
       })
@@ -792,7 +932,7 @@ describe('publisher', () => {
         mockPublishedAt.mockReturnValue(null)
         renderWithQueryClient(<Popup />)
 
-        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
+        triggerHotkey('Mod+Shift+P')
 
         await waitFor(() => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
@@ -802,19 +942,24 @@ describe('publisher', () => {
       it('should not trigger duplicate publish via shortcut when already publishing', async () => {
         let resolvePublish: () => void = () => {}
         mockPublishedAt.mockReturnValue(1700000000)
-        mockPublishWorkflow.mockImplementation(() => new Promise((resolve) => {
-          resolvePublish = () => resolve({ created_at: 1700100000 })
-        }))
+        mockPublishWorkflow.mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              resolvePublish = () => resolve({ created_at: 1700100000 })
+            }),
+        )
         renderWithQueryClient(<Popup />)
 
-        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
+        triggerHotkey('Mod+Shift+P')
 
         await waitFor(() => {
-          const publishButton = screen.getByRole('button', { name: /workflow.common.publishUpdate/i })
+          const publishButton = screen.getByRole('button', {
+            name: /workflow.common.publishUpdate/i,
+          })
           expect(publishButton).toBeDisabled()
         })
 
-        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
+        triggerHotkey('Mod+Shift+P')
 
         expect(mockPublishWorkflow).toHaveBeenCalledTimes(1)
 
@@ -832,7 +977,9 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: /workflow.common.published/i })).toBeInTheDocument()
+          expect(
+            screen.getByRole('button', { name: /workflow.common.published/i }),
+          ).toBeInTheDocument()
         })
       })
 
@@ -845,14 +992,16 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith({
+          expect(toastMocks.call).toHaveBeenCalledWith({
             type: 'error',
             message: 'datasetPipeline.publishPipeline.error.message',
           })
         })
 
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: /workflow.common.publishUpdate/i })).toBeInTheDocument()
+          expect(
+            screen.getByRole('button', { name: /workflow.common.publishUpdate/i }),
+          ).toBeInTheDocument()
         })
       })
 
@@ -871,7 +1020,9 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: /workflow.common.published/i })).toBeInTheDocument()
+          expect(
+            screen.getByRole('button', { name: /workflow.common.published/i }),
+          ).toBeInTheDocument()
         })
       })
 
@@ -890,7 +1041,7 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith({
+          expect(toastMocks.call).toHaveBeenCalledWith({
             type: 'error',
             message: 'datasetPipeline.publishPipeline.error.message',
           })
@@ -984,11 +1135,13 @@ describe('publisher', () => {
     it('should complete full publish as template flow', async () => {
       mockPublishedAt.mockReturnValue(1700000000)
       mockPublishAsCustomizedPipeline.mockResolvedValue({})
-      renderWithQueryClient(<Popup />)
+      renderWithQueryClient(<Publisher />)
 
-      const publishAsButton = screen.getAllByRole('button').find(btn =>
-        btn.textContent?.includes('pipeline.common.publishAs'),
-      )
+      fireEvent.click(screen.getByText('workflow.common.publish'))
+
+      const publishAsButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
       fireEvent.click(publishAsButton!)
 
       await waitFor(() => {
@@ -998,7 +1151,7 @@ describe('publisher', () => {
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
+        expect(toastMocks.call).toHaveBeenCalledWith(
           expect.objectContaining({
             type: 'success',
           }),

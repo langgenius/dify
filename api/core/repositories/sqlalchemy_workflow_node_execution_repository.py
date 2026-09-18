@@ -7,7 +7,7 @@ import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, TypeVar, Union
+from typing import Any, override
 
 import psycopg2.errors
 from sqlalchemy import UnaryExpression, asc, desc, select
@@ -17,13 +17,13 @@ from sqlalchemy.orm import sessionmaker
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from configs import dify_config
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
-from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from extensions.ext_storage import storage
-from libs.helper import extract_tenant_id
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.uuid_utils import uuidv7
 from models import (
     Account,
@@ -63,7 +63,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Union[Account, EndUser],
+        tenant_id: str,
+        user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):
@@ -72,24 +73,24 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
-            user: Account or EndUser object containing tenant_id, user ID, and role information
+            tenant_id: Tenant that owns the workflow node execution
+            user: Account or EndUser used for creator attribution
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
         """
         # If an engine is provided, create a sessionmaker from it
-        if isinstance(session_factory, Engine):
-            self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
-        elif isinstance(session_factory, sessionmaker):
-            self._session_factory = session_factory
-        else:
-            raise ValueError(
-                f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
-            )
+        match session_factory:
+            case Engine():
+                self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+            case sessionmaker():
+                self._session_factory = session_factory
+            case _:
+                raise ValueError(
+                    f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
+                )
 
-        # Extract tenant_id from user
-        tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
+            raise ValueError("tenant_id is required")
         self._tenant_id = tenant_id
 
         # Store app context
@@ -146,7 +147,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             index=db_model.index,
             predecessor_node_id=db_model.predecessor_node_id,
             node_id=db_model.node_id,
-            node_type=NodeType(db_model.node_type),
+            node_type=db_model.node_type,
             title=db_model.title,
             inputs=inputs,
             process_data=process_data,
@@ -298,6 +299,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             content=value_json.encode("utf-8"),
             mimetype="application/json",
             user=self._user,
+            tenant_id=self._tenant_id,
         )
         offload = WorkflowNodeExecutionOffload(
             id=uuidv7(),
@@ -313,6 +315,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             offload=offload,
         )
 
+    @override
     def save(self, execution: WorkflowNodeExecution) -> None:
         """
         Save or update a NodeExecution domain entity to the database.
@@ -370,6 +373,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             logger.exception("Failed to save workflow node execution after all retries")
             raise
 
+    @override
+    def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
+        """Persist a caller row before an Agent v2 participant is materialized."""
+
+        self.save(execution)
+
     def _persist_to_database(self, db_model: WorkflowNodeExecutionModel):
         """
         Persist the database model to the database.
@@ -384,6 +393,13 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
             if existing:
+                merged_process_data = preserve_workflow_agent_binding_id(
+                    existing.process_data_dict,
+                    db_model.process_data_dict,
+                )
+                db_model.process_data = (
+                    _deterministic_json_dump(merged_process_data) if merged_process_data is not None else None
+                )
                 # Update existing record by copying all non-private attributes
                 for key, value in db_model.__dict__.items():
                     if not key.startswith("_"):
@@ -399,6 +415,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             if db_model.node_execution_id:
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
+    @override
     def save_execution_data(self, execution: WorkflowNodeExecution):
         domain_model = execution
         with self._session_factory(expire_on_commit=False) as session:
@@ -439,18 +456,25 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             else:
                 db_model.outputs = self._json_encode(domain_model.outputs)
 
-        if domain_model.process_data is not None:
+        process_data = preserve_workflow_agent_binding_id(db_model.process_data_dict, domain_model.process_data)
+        if process_data is not None:
             result = self._truncate_and_upload(
-                domain_model.process_data,
+                process_data,
                 domain_model.id,
                 ExecutionOffLoadType.PROCESS_DATA,
             )
             if result is not None:
-                db_model.process_data = self._json_encode(result.truncated_value)
-                domain_model.set_truncated_process_data(result.truncated_value)
+                truncated_process_data = preserve_workflow_agent_binding_id(
+                    process_data,
+                    result.truncated_value,
+                )
+                if truncated_process_data is None:
+                    raise ValueError("truncated process data is unavailable")
+                db_model.process_data = self._json_encode(truncated_process_data)
+                domain_model.set_truncated_process_data(truncated_process_data)
                 offload_data = _replace_or_append_offload(offload_data, result.offload)
             else:
-                db_model.process_data = self._json_encode(domain_model.process_data)
+                db_model.process_data = self._json_encode(process_data)
 
         db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():
@@ -518,29 +542,29 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
             return db_models
 
-    def get_by_workflow_run(
+    @override
+    def get_by_workflow_execution(
         self,
-        workflow_run_id: str,
+        workflow_execution_id: str,
         order_config: OrderConfig | None = None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     ) -> Sequence[WorkflowNodeExecution]:
         """
-        Retrieve all NodeExecution instances for a specific workflow run.
+        Retrieve all node executions for a workflow execution.
 
         This method always queries the database to ensure complete and ordered results,
         but updates the cache with any retrieved executions.
 
         Args:
-            workflow_run_id: The workflow run ID
+            workflow_execution_id: The workflow execution identifier
             order_config: Optional configuration for ordering results
                 order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
                 order_config.order_direction: Direction to order ("asc" or "desc")
 
         Returns:
-            A list of NodeExecution instances
+            A list of node execution instances
         """
-        # Get the database models using the new method
-        db_models = self.get_db_models_by_workflow_run(workflow_run_id, order_config, triggered_from)
+        db_models = self.get_db_models_by_workflow_run(workflow_execution_id, order_config, triggered_from)
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             domain_models = executor.map(self._to_domain_model, db_models, timeout=30)
@@ -552,10 +576,7 @@ def _deterministic_json_dump(value: Mapping[str, Any]) -> str:
     return json.dumps(value, sort_keys=True)
 
 
-_T = TypeVar("_T")
-
-
-def _find_first(seq: Sequence[_T], pred: Callable[[_T], bool]) -> _T | None:
+def _find_first[T](seq: Sequence[T], pred: Callable[[T], bool]) -> T | None:
     filtered = [i for i in seq if pred(i)]
     if filtered:
         return filtered[0]

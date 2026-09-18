@@ -1,10 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import CreateCard from '../create-card'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
@@ -13,11 +12,22 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
 }))
+
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      success: mockToastSuccess,
+      error: mockToastError,
+    },
+  }
+})
 
 const mockCreateEmptyDataset = vi.fn()
 const mockInvalidDatasetList = vi.fn()
@@ -37,14 +47,11 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 describe('CreateCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockToastSuccess.mockReset()
+    mockToastError.mockReset()
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CreateCard />)
-      expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
-    })
-
     it('should render title and description', () => {
       render(<CreateCard />)
       expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
@@ -67,7 +74,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -83,7 +92,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -99,7 +110,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -115,7 +128,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       // Should not throw and should handle error gracefully
@@ -132,7 +147,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -144,30 +161,16 @@ describe('CreateCard', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper card styling', () => {
-      const { container } = render(<CreateCard />)
-      const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('relative', 'flex', 'cursor-pointer', 'flex-col', 'rounded-xl')
-    })
-
     it('should have fixed height', () => {
       const { container } = render(<CreateCard />)
       const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('h-[132px]')
+      expect(card).toHaveClass('h-33')
     })
 
     it('should have shadow and border', () => {
       const { container } = render(<CreateCard />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('border-[0.5px]', 'shadow-xs')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<CreateCard />)
-      rerender(<CreateCard />)
-      expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
     })
   })
 })

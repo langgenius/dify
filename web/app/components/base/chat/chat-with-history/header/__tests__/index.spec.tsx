@@ -2,7 +2,7 @@ import type { ChatWithHistoryContextValue } from '../../context'
 import type { AppData, ConversationItem } from '@/models/share'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useChatWithHistoryContext } from '../../context'
 import Header from '../index'
 
@@ -14,45 +14,6 @@ vi.mock('../../context', () => ({
 // Mock InputsFormContent
 vi.mock('@/app/components/base/chat/chat-with-history/inputs-form/content', () => ({
   default: () => <div data-testid="inputs-form-content">InputsFormContent</div>,
-}))
-
-// Mock PortalToFollowElem using React Context
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await import('react')
-  const MockContext = React.createContext(false)
-
-  return {
-    PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-      return (
-        <MockContext.Provider value={open}>
-          <div data-open={open}>{children}</div>
-        </MockContext.Provider>
-      )
-    },
-    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => {
-      const open = React.useContext(MockContext)
-      if (!open)
-        return null
-      return <div>{children}</div>
-    },
-    PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-      <div onClick={onClick}>{children}</div>
-    ),
-  }
-})
-
-// Mock Modal to avoid Headless UI issues in tests
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow, title }: { children: React.ReactNode, isShow: boolean, title: React.ReactNode }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="modal">
-        {!!title && <div>{title}</div>}
-        {children}
-      </div>
-    )
-  },
 }))
 
 const mockAppData: AppData = {
@@ -108,7 +69,7 @@ describe('Header Component', () => {
         currentConversationItem: mockConv,
         sidebarCollapseState: true,
       })
-      expect(screen.getByText('My Chat')).toBeInTheDocument()
+      expect(screen.getByText('My Chat'))!.toBeInTheDocument()
     })
 
     it('should render ViewFormDropdown trigger when inputsForms are present', () => {
@@ -120,8 +81,8 @@ describe('Header Component', () => {
       })
 
       const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + NewChat(1) + ResetChat(1) + ViewForm(1) = 4 buttons
-      expect(buttons).toHaveLength(4)
+      // Sidebar(1) + Conversation operation(1) + NewChat(1) + ResetChat(1) + ViewForm(1) = 5 buttons
+      expect(buttons).toHaveLength(5)
     })
   })
 
@@ -130,9 +91,7 @@ describe('Header Component', () => {
       const handleNewConversation = vi.fn()
       setup({ handleNewConversation, sidebarCollapseState: true, currentConversationId: 'conv-1' })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar, NewChat, ResetChat (3)
-      const resetChatBtn = buttons[buttons.length - 1]
+      const resetChatBtn = screen.getByRole('button', { name: 'share.chat.resetChat' })
       await userEvent.click(resetChatBtn)
 
       expect(handleNewConversation).toHaveBeenCalled()
@@ -142,8 +101,7 @@ describe('Header Component', () => {
       const handleSidebarCollapse = vi.fn()
       setup({ handleSidebarCollapse, sidebarCollapseState: true })
 
-      const buttons = screen.getAllByRole('button')
-      const sidebarBtn = buttons[0]
+      const sidebarBtn = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })
       await userEvent.click(sidebarBtn)
 
       expect(handleSidebarCollapse).toHaveBeenCalledWith(false)
@@ -163,7 +121,7 @@ describe('Header Component', () => {
       await userEvent.click(trigger)
 
       const pinBtn = await screen.findByText('explore.sidebar.action.pin')
-      expect(pinBtn).toBeInTheDocument()
+      expect(pinBtn)!.toBeInTheDocument()
 
       await userEvent.click(pinBtn)
 
@@ -225,7 +183,7 @@ describe('Header Component', () => {
       const renameMenuBtn = await screen.findByText('explore.sidebar.action.rename')
       await userEvent.click(renameMenuBtn)
 
-      expect(await screen.findByText('common.chat.renameConversation')).toBeInTheDocument()
+      expect(await screen.findByText('common.chat.renameConversation'))!.toBeInTheDocument()
 
       const input = screen.getByDisplayValue('My Chat')
       await userEvent.clear(input)
@@ -234,9 +192,13 @@ describe('Header Component', () => {
       const saveBtn = await screen.findByText('common.operation.save')
       await userEvent.click(saveBtn)
 
-      expect(handleRenameConversation).toHaveBeenCalledWith('conv-1', 'New Name', expect.any(Object))
+      expect(handleRenameConversation).toHaveBeenCalledWith(
+        'conv-1',
+        'New Name',
+        expect.any(Object),
+      )
 
-      const successCallback = handleRenameConversation.mock.calls[0][2].onSuccess
+      const successCallback = handleRenameConversation.mock.calls[0]![2].onSuccess
       await act(async () => {
         successCallback()
       })
@@ -262,14 +224,14 @@ describe('Header Component', () => {
       await userEvent.click(deleteMenuBtn)
 
       expect(handleDeleteConversation).not.toHaveBeenCalled()
-      expect(await screen.findByText('share.chat.deleteConversation.title')).toBeInTheDocument()
+      expect(await screen.findByText('share.chat.deleteConversation.title'))!.toBeInTheDocument()
 
       const confirmBtn = await screen.findByText('common.operation.confirm')
       await userEvent.click(confirmBtn)
 
       expect(handleDeleteConversation).toHaveBeenCalledWith('conv-1', expect.any(Object))
 
-      const successCallback = handleDeleteConversation.mock.calls[0][1].onSuccess
+      const successCallback = handleDeleteConversation.mock.calls[0]![1].onSuccess
       await act(async () => {
         successCallback()
       })
@@ -311,7 +273,7 @@ describe('Header Component', () => {
       await userEvent.click(screen.getByText('My Chat'))
       await userEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
-      expect(await screen.findByText('share.chat.deleteConversation.title')).toBeInTheDocument()
+      expect(await screen.findByText('share.chat.deleteConversation.title'))!.toBeInTheDocument()
     })
   })
 
@@ -325,14 +287,14 @@ describe('Header Component', () => {
       })
 
       const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + NewChat(1) + ResetChat(1) = 3 buttons
-      expect(buttons).toHaveLength(3)
+      // Sidebar(1) + Conversation operation(1) + NewChat(1) + ResetChat(1) = 4 buttons
+      expect(buttons).toHaveLength(4)
     })
 
     it('should render system title if conversation id is missing', () => {
       setup({ currentConversationId: '', sidebarCollapseState: true })
       const titleEl = screen.getByText('Test App')
-      expect(titleEl).toHaveClass('system-md-semibold')
+      expect(titleEl)!.toHaveClass('system-md-semibold')
     })
 
     it('should render app icon from URL when icon_url is provided', () => {
@@ -347,7 +309,7 @@ describe('Header Component', () => {
         },
       })
       const img = screen.getByAltText('app icon')
-      expect(img).toHaveAttribute('src', 'https://example.com/icon.png')
+      expect(img)!.toHaveAttribute('src', 'https://example.com/icon.png')
     })
 
     it('should handle undefined appData gracefully (optional chaining)', () => {
@@ -364,7 +326,8 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
       // The separator is just a div with text content '/'
-      expect(screen.getByText('/')).toBeInTheDocument()
+      // The separator is just a div with text content '/'
+      expect(screen.getByText('/'))!.toBeInTheDocument()
     })
 
     it('should handle New Chat button state when currentConversationId is present but isResponding is true', () => {
@@ -374,9 +337,7 @@ describe('Header Component', () => {
         currentConversationId: 'conv-1',
       })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar, NewChat, ResetChat (3)
-      const newChatBtn = buttons[1]
+      const newChatBtn = screen.getByRole('button', { name: 'share.chat.newChatTip' })
       expect(newChatBtn).toBeDisabled()
     })
 
@@ -387,9 +348,7 @@ describe('Header Component', () => {
         currentConversationId: '',
       })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar, NewChat (2)
-      const newChatBtn = buttons[1]
+      const newChatBtn = screen.getByRole('button', { name: 'share.chat.newChatTip' })
       expect(newChatBtn).toBeDisabled()
     })
 
@@ -416,7 +375,9 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      const operationTrigger = container.querySelector('.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover') as HTMLElement
+      const operationTrigger = container.querySelector(
+        '.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover',
+      ) as HTMLElement
       await userEvent.click(operationTrigger)
       await userEvent.click(await screen.findByText('explore.sidebar.action.rename'))
 

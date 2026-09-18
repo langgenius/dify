@@ -50,6 +50,17 @@ def stub_support_types(monkeypatch: pytest.MonkeyPatch):
     return mod
 
 
+def _patch_remote_fetcher(monkeypatch: pytest.MonkeyPatch, mod, *, head=None, get=None) -> None:
+    def fake_make_request(method, url, **kwargs):
+        if method == "HEAD" and head is not None:
+            return head(url, **kwargs)
+        if method == "GET" and get is not None:
+            return get(url, **kwargs)
+        raise AssertionError(f"unexpected remote fetcher method: {method}")
+
+    monkeypatch.setattr(mod.remote_fetcher, "make_request", fake_make_request)
+
+
 def test_get_url_unsupported_content_type(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     # HEAD 200 but content-type not supported and not text/html
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
@@ -58,7 +69,7 @@ def test_get_url_unsupported_content_type(monkeypatch: pytest.MonkeyPatch, stub_
             headers={"Content-Type": "image/png"},  # not supported
         )
 
-    monkeypatch.setattr(stub_support_types.ssrf_proxy, "head", fake_head)
+    _patch_remote_fetcher(monkeypatch, stub_support_types, head=fake_head)
 
     result = get_url("https://x.test/file.png")
     assert result == "Unsupported content-type [image/png] of URL."
@@ -82,7 +93,7 @@ def test_get_url_supported_binary_type_uses_extract_processor(monkeypatch: pytes
         assert return_text is True
         return "PDF extracted text"
 
-    monkeypatch.setattr(stub_support_types.ssrf_proxy, "head", fake_head)
+    _patch_remote_fetcher(monkeypatch, stub_support_types, head=fake_head)
     monkeypatch.setattr(stub_support_types.ExtractProcessor, "load_from_url", staticmethod(fake_load_from_url))
 
     result = get_url("https://x.test/doc.pdf")
@@ -103,8 +114,7 @@ def test_get_url_html_flow_with_chardet_and_readability(monkeypatch: pytest.Monk
     # chardet.detect returns utf-8
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
-    monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
+    _patch_remote_fetcher(monkeypatch, mod, head=fake_head, get=fake_get)
 
     mock_best = SimpleNamespace(encoding="utf-8")
     mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
@@ -137,8 +147,7 @@ def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch: pytest.
 
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
-    monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
+    _patch_remote_fetcher(monkeypatch, mod, head=fake_head, get=fake_get)
     mock_best = SimpleNamespace(encoding="utf-8")
     mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
     monkeypatch.setattr(mod.charset_normalizer, "from_bytes", lambda _: mock_from_bytes)
@@ -150,7 +159,7 @@ def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch: pytest.
 
 
 def test_get_url_403_cloudscraper_fallback(monkeypatch: pytest.MonkeyPatch, stub_support_types):
-    """HEAD 403 → use cloudscraper.get via ssrf_proxy.make_request, then proceed."""
+    """HEAD 403 → use cloudscraper.get via remote_fetcher.make_request, then proceed."""
 
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
         return FakeResponse(status_code=403, headers={})
@@ -167,7 +176,7 @@ def test_get_url_403_cloudscraper_fallback(monkeypatch: pytest.MonkeyPatch, stub
 
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
+    _patch_remote_fetcher(monkeypatch, mod, head=fake_head)
     monkeypatch.setattr(mod.cloudscraper, "create_scraper", lambda: FakeScraper())
     mock_best = SimpleNamespace(encoding="utf-8")
     mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
@@ -192,7 +201,7 @@ def test_get_url_head_non_200_returns_status(monkeypatch: pytest.MonkeyPatch, st
 
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
+    _patch_remote_fetcher(monkeypatch, mod, head=fake_head)
 
     out = get_url("https://x.test/fail")
     assert out == "URL returned status code 500."
@@ -214,7 +223,7 @@ def test_get_url_content_disposition_filename_detection(monkeypatch: pytest.Monk
 
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
+    _patch_remote_fetcher(monkeypatch, mod, head=fake_head)
     monkeypatch.setattr(mod.ExtractProcessor, "load_from_url", staticmethod(fake_load_from_url))
 
     out = get_url("https://x.test/fname")
@@ -241,8 +250,7 @@ def test_get_url_html_encoding_fallback_when_decode_fails(monkeypatch: pytest.Mo
 
     import core.tools.utils.web_reader_tool as mod
 
-    monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
-    monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
+    _patch_remote_fetcher(monkeypatch, mod, head=fake_head, get=fake_get)
 
     mock_best = SimpleNamespace(encoding="utf-8")
     mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
@@ -278,9 +286,31 @@ def test_extract_using_readabilipy_field_mapping_and_defaults(monkeypatch: pytes
     article = extract_using_readabilipy("<html>...</html>")
     assert article.title == "Hello"
     assert article.author == "Alice"
-    assert isinstance(article.text, list)
-    assert article.text
-    assert article.text[0]["text"] == "world"
+    assert article.text == "world"
+
+
+def test_extract_using_readabilipy_flattens_plain_text_items(monkeypatch: pytest.MonkeyPatch):
+    """readabilipy returns plain_text as a list of dicts; the article text must be clean joined text,
+    not the Python repr of that list, and HTML tags inside items must be stripped."""
+
+    def fake_simple_json_from_html_string(html, use_readability=True):
+        return {
+            "title": "T",
+            "byline": "A",
+            "plain_text": [
+                {"type": "text", "text": "<p>First paragraph.</p>"},
+                {"type": "text", "text": "Second paragraph."},
+                {"type": "text", "text": ""},
+                "not-a-dict",
+            ],
+        }
+
+    import core.tools.utils.web_reader_tool as mod
+
+    monkeypatch.setattr(mod, "simple_json_from_html_string", fake_simple_json_from_html_string)
+
+    article = extract_using_readabilipy("<html>...</html>")
+    assert article.text == "First paragraph.\nSecond paragraph."
 
 
 def test_extract_using_readabilipy_defaults_when_missing(monkeypatch: pytest.MonkeyPatch):
@@ -294,7 +324,7 @@ def test_extract_using_readabilipy_defaults_when_missing(monkeypatch: pytest.Mon
     article = extract_using_readabilipy("<html>...</html>")
     assert article.title == ""
     assert article.author == ""
-    assert article.text == []
+    assert article.text == ""
 
 
 # ---------------------------

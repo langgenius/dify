@@ -41,3 +41,21 @@ class MilvusConfig(BaseSettings):
         description='Milvus text analyzer parameters, e.g., {"type": "chinese"} for Chinese segmentation support.',
         default=None,
     )
+
+    MILVUS_SECURE: bool = Field(
+        description="Enable TLS for the Milvus connection (one-way TLS). When True, the client uses gRPC over TLS "
+        "and verifies the server certificate. Equivalent to passing secure=True to pymilvus.",
+        default=False,
+    )
+
+    MILVUS_SERVER_PEM_PATH: str | None = Field(
+        description="Filesystem path inside the container to the Milvus server certificate (PEM). Mount this via "
+        "a Kubernetes secret. Used as pymilvus's server_pem_path when MILVUS_SECURE is True.",
+        default=None,
+    )
+
+    MILVUS_SERVER_NAME: str | None = Field(
+        description="Server name (TLS SNI / certificate CN or SAN) to verify against the Milvus server certificate. "
+        "Required when MILVUS_SERVER_PEM_PATH is set.",
+        default=None,
+    )

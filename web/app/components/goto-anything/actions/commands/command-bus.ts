@@ -1,4 +1,4 @@
-export type CommandHandler = (args?: Record<string, any>) => void | Promise<void>
+type CommandHandler = (args?: Record<string, any>) => void | Promise<void>
 
 const handlers = new Map<string, CommandHandler>()
 
@@ -12,8 +12,7 @@ const unregisterCommand = (name: string) => {
 
 export const executeCommand = async (name: string, args?: Record<string, any>) => {
   const handler = handlers.get(name)
-  if (!handler)
-    return
+  if (!handler) return
   await handler(args)
 }
 

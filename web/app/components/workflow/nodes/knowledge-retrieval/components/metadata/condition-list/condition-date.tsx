@@ -1,74 +1,78 @@
-import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
-import {
-  RiCalendarLine,
-  RiCloseCircleFill,
-} from '@remixicon/react'
+import type { DatePickerProps } from '@/app/components/base/date-and-time-picker/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import { useAppContext } from '@/context/app-context'
-import { cn } from '@/utils/classnames'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 
 type ConditionDateProps = {
   value?: number
   onChange: (date?: number) => void
 }
-const ConditionDate = ({
-  value,
-  onChange,
-}: ConditionDateProps) => {
+const ConditionDate = ({ value, onChange }: ConditionDateProps) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.timezone ?? undefined,
+  })
 
-  const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
-    if (date)
-      onChange(date.unix())
-    else
-      onChange()
-  }, [onChange])
+  const handleDateChange = useCallback(
+    (date?: dayjs.Dayjs) => {
+      if (date) onChange(date.unix())
+      else onChange()
+    },
+    [onChange],
+  )
 
-  const renderTrigger = useCallback(({
-    handleClickTrigger,
-  }: TriggerProps) => {
-    return (
-      <div className="group flex items-center" onClick={handleClickTrigger}>
-        <div
-          className={cn(
-            'system-sm-regular mr-0.5 flex h-6 grow cursor-pointer items-center px-1',
-            value ? 'text-text-secondary' : 'text-text-tertiary',
-          )}
-        >
-          {
-            value
-              ? dayjs(value * 1000).tz(timezone).format('MMMM DD YYYY HH:mm A')
-              : t('nodes.knowledgeRetrieval.metadata.panel.datePlaceholder', { ns: 'workflow' })
-          }
-        </div>
-        {
-          !!value && (
-            <RiCloseCircleFill
+  const renderTrigger = useCallback<NonNullable<DatePickerProps['renderTrigger']>>(
+    (props) => {
+      const hasValue = Boolean(value)
+      const triggerText = value
+        ? dayjs(value * 1000)
+            .tz(timezone)
+            .format('MMMM DD YYYY HH:mm A')
+        : t(($) => $['nodes.knowledgeRetrieval.metadata.panel.datePlaceholder'], { ns: 'workflow' })
+
+      return (
+        <div className={cn('group flex items-center', props.className)}>
+          <button
+            {...props}
+            type="button"
+            className={cn(
+              'mr-0.5 flex h-6 grow cursor-pointer items-center border-none bg-transparent px-1 py-0 text-left system-sm-regular focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+              hasValue ? 'text-text-secondary' : 'text-text-tertiary',
+            )}
+          >
+            <span className="grow">{triggerText}</span>
+            <RiCalendarLine
               className={cn(
-                'hidden h-4 w-4 shrink-0 cursor-pointer hover:text-components-input-text-filled group-hover:block',
-                value && 'text-text-quaternary',
+                'block size-4 shrink-0',
+                hasValue ? 'text-text-quaternary' : 'text-text-tertiary',
               )}
+              aria-hidden="true"
+            />
+          </button>
+          {hasValue ? (
+            <button
+              type="button"
+              aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+              className="size-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-text-quaternary opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden [@media(hover:none)]:opacity-100"
               onClick={(e) => {
                 e.stopPropagation()
                 handleDateChange()
               }}
-            />
-          )
-        }
-        <RiCalendarLine
-          className={cn(
-            'block h-4 w-4 shrink-0',
-            value ? 'text-text-quaternary' : 'text-text-tertiary',
-            value && 'group-hover:hidden',
-          )}
-        />
-      </div>
-    )
-  }, [value, handleDateChange, timezone, t])
+            >
+              <RiCloseCircleFill className="size-4" aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+      )
+    },
+    [value, handleDateChange, timezone, t],
+  )
 
   return (
     <div className="h-8 px-2 py-1">

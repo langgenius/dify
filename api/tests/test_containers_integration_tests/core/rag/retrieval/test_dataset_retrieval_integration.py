@@ -3,17 +3,20 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from dify_graph.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest
+from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset, Document
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestGetAvailableDatasetsIntegration:
     def test_returns_datasets_with_available_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -24,8 +27,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -35,9 +39,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -49,14 +53,14 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
                 name=f"Document {i}",
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 doc_language="en",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=False,
             )
@@ -75,7 +79,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].name == dataset.name
 
     def test_filters_out_datasets_with_only_archived_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -85,8 +89,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -94,7 +99,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -106,13 +111,13 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 name=f"Archived Document {i}",
                 created_by=account.id,
-                doc_form="text_model",
-                indexing_status="completed",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=True,  # Archived
             )
@@ -128,7 +133,7 @@ class TestGetAvailableDatasetsIntegration:
         assert len(result) == 0
 
     def test_filters_out_datasets_with_only_disabled_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -138,8 +143,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -147,7 +153,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -159,13 +165,13 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 name=f"Disabled Document {i}",
                 created_by=account.id,
-                doc_form="text_model",
-                indexing_status="completed",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=False,  # Disabled
                 archived=False,
             )
@@ -181,7 +187,7 @@ class TestGetAvailableDatasetsIntegration:
         assert len(result) == 0
 
     def test_filters_out_datasets_with_non_completed_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -191,8 +197,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -200,24 +207,24 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
 
         # Create documents with non-completed status
-        for i, status in enumerate(["indexing", "parsing", "splitting"]):
+        for i, status in enumerate([IndexingStatus.INDEXING, IndexingStatus.PARSING, IndexingStatus.SPLITTING]):
             document = Document(
                 id=str(uuid.uuid4()),
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 name=f"Document {status}",
                 created_by=account.id,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 indexing_status=status,  # Not completed
                 enabled=True,
                 archived=False,
@@ -234,7 +241,7 @@ class TestGetAvailableDatasetsIntegration:
         assert len(result) == 0
 
     def test_includes_external_datasets_without_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test that external datasets are returned even with no available documents.
@@ -254,8 +261,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -263,7 +271,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="external",  # External provider
-            data_source_type="external",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -278,7 +286,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].id == dataset.id
         assert result[0].provider == "external"
 
-    def test_filters_by_tenant_id(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_filters_by_tenant_id(self, db_session_with_containers: Session, mock_external_service_dependencies):
         # Arrange
         fake = Faker()
 
@@ -288,8 +296,11 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account1, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(
+            account1, name=fake.company(), session=db_session_with_containers
+        )
         tenant1 = account1.current_tenant
 
         account2 = AccountService.create_account(
@@ -297,8 +308,11 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account2, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(
+            account2, name=fake.company(), session=db_session_with_containers
+        )
         tenant2 = account2.current_tenant
 
         # Create dataset for tenant1
@@ -307,7 +321,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant1.id,
             name="Tenant 1 Dataset",
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account1.id,
         )
         db_session_with_containers.add(dataset1)
@@ -318,7 +332,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant2.id,
             name="Tenant 2 Dataset",
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account2.id,
         )
         db_session_with_containers.add(dataset2)
@@ -330,13 +344,13 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 position=0,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 name=f"Document for {dataset.name}",
                 created_by=account.id,
-                doc_form="text_model",
-                indexing_status="completed",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=False,
             )
@@ -354,7 +368,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].tenant_id == tenant1.id
 
     def test_returns_empty_list_when_no_datasets_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -364,8 +378,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Don't create any datasets
@@ -377,7 +392,9 @@ class TestGetAvailableDatasetsIntegration:
         # Assert
         assert result == []
 
-    def test_returns_only_requested_dataset_ids(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_returns_only_requested_dataset_ids(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         # Arrange
         fake = Faker()
 
@@ -386,8 +403,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create multiple datasets
@@ -398,7 +416,7 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=tenant.id,
                 name=f"Dataset {i}",
                 provider="dify",
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 created_by=account.id,
             )
             db_session_with_containers.add(dataset)
@@ -410,13 +428,13 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=0,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 name=f"Document {i}",
                 created_by=account.id,
-                doc_form="text_model",
-                indexing_status="completed",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=False,
             )
@@ -437,7 +455,7 @@ class TestGetAvailableDatasetsIntegration:
 
 class TestKnowledgeRetrievalIntegration:
     def test_knowledge_retrieval_with_available_datasets(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -447,8 +465,9 @@ class TestKnowledgeRetrievalIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -456,9 +475,9 @@ class TestKnowledgeRetrievalIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
         db_session_with_containers.add(dataset)
 
@@ -467,15 +486,15 @@ class TestKnowledgeRetrievalIntegration:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch=str(uuid.uuid4()),  # Required field
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             name=fake.sentence(),
             created_by=account.id,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.commit()
@@ -499,13 +518,13 @@ class TestKnowledgeRetrievalIntegration:
             with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
                 with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
                     # Act
-                    result = dataset_retrieval.knowledge_retrieval(request)
+                    result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
                     # Assert
                     assert isinstance(result, list)
 
     def test_knowledge_retrieval_no_available_datasets(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -515,8 +534,9 @@ class TestKnowledgeRetrievalIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset but no documents
@@ -525,7 +545,7 @@ class TestKnowledgeRetrievalIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -547,13 +567,13 @@ class TestKnowledgeRetrievalIntegration:
         # Mock rate limit check
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             # Act
-            result = dataset_retrieval.knowledge_retrieval(request)
+            result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
             # Assert
             assert result == []
 
     def test_knowledge_retrieval_rate_limit_exceeded(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -563,8 +583,9 @@ class TestKnowledgeRetrievalIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -572,7 +593,7 @@ class TestKnowledgeRetrievalIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -599,16 +620,16 @@ class TestKnowledgeRetrievalIntegration:
         ):
             # Act & Assert
             with pytest.raises(Exception, match="Rate limit exceeded"):
-                dataset_retrieval.knowledge_retrieval(request)
+                dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
 
 @pytest.fixture
 def mock_external_service_dependencies():
     with (
-        patch("services.account_service.FeatureService") as mock_account_feature_service,
+        patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
     ):
         # Setup default mock returns for account service
-        mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+        mock_account_feature_service.is_registration_allowed.return_value = True
 
         yield {
             "account_feature_service": mock_account_feature_service,

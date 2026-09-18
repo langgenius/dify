@@ -1,6 +1,7 @@
 """Abstract interface for document loader implementations."""
 
 import csv
+from typing import Any, override
 
 import pandas as pd
 
@@ -23,15 +24,17 @@ class CSVExtractor(BaseExtractor):
         encoding: str | None = None,
         autodetect_encoding: bool = False,
         source_column: str | None = None,
-        csv_args: dict | None = None,
+        csv_args: dict[str, Any] | None = None,
     ):
         """Initialize with file path."""
         self._file_path = file_path
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
         self.source_column = source_column
-        self.csv_args = csv_args or {}
+        # Preserve source text for indexing unless the caller requests type or NA conversion.
+        self.csv_args: dict[str, Any] = {"dtype": str, "keep_default_na": False, **(csv_args or {})}
 
+    @override
     def extract(self) -> list[Document]:
         """Load data into document objects."""
         docs = []

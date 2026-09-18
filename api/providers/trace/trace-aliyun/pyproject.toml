@@ -1,0 +1,14 @@
+[project]
+name = "dify-trace-aliyun"
+version = "0.0.1"
+dependencies = [
+    # versions inherited from parent
+    "opentelemetry-api",
+    "opentelemetry-exporter-otlp-proto-grpc",
+    "opentelemetry-sdk",
+    "opentelemetry-semantic-conventions",
+]
+description = "Dify ops tracing provider (Aliyun)."
+
+[tool.setuptools.packages.find]
+where = ["src"]

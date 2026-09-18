@@ -57,13 +57,16 @@ export type CaseItem = {
 export type HandleAddCondition = (valueSelector: ValueSelector, varItem: Var) => void
 export type HandleRemoveCondition = (conditionId: string) => void
 export type HandleUpdateCondition = (conditionId: string, newCondition: Condition) => void
-export type HandleUpdateConditionLogicalOperator = (value: LogicalOperator) => void
 
 export type HandleToggleConditionLogicalOperator = () => void
 
 export type HandleAddSubVariableCondition = (conditionId: string, key?: string) => void
 export type handleRemoveSubVariableCondition = (conditionId: string, subConditionId: string) => void
-export type HandleUpdateSubVariableCondition = (conditionId: string, subConditionId: string, newSubCondition: Condition) => void
+export type HandleUpdateSubVariableCondition = (
+  conditionId: string,
+  subConditionId: string,
+  newSubCondition: Condition,
+) => void
 export type HandleToggleSubVariableConditionLogicalOperator = (conditionId: string) => void
 
 export type LoopVariable = {
@@ -84,8 +87,8 @@ export type LoopNodeType = CommonNodeType & {
   loop_variables?: LoopVariable[]
 }
 
-export type HandleUpdateLoopVariable = (id: string, updateData: Partial<LoopVariable>) => void
-export type HandleRemoveLoopVariable = (id: string) => void
+type HandleUpdateLoopVariable = (id: string, updateData: Partial<LoopVariable>) => void
+type HandleRemoveLoopVariable = (id: string) => void
 
 export type LoopVariablesComponentShape = {
   nodeId: string

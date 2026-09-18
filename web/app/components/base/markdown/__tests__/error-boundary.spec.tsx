@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ErrorBoundary from '../error-boundary'
 import '@testing-library/jest-dom'
 
@@ -8,7 +8,7 @@ describe('ErrorBoundary', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -39,9 +39,7 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>,
     )
 
-    expect(
-      screen.getByText(/Oops! An error occurred/i),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Oops! An error occurred/i)).toBeInTheDocument()
 
     expect(consoleErrorSpy).toHaveBeenCalled()
 

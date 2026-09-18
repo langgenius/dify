@@ -14,6 +14,10 @@ class ProviderNotSupportSpeechToTextServiceError(Exception):
     pass
 
 
+class SpeechToTextDisabledServiceError(Exception):
+    """Raised when the effective app configuration disables speech-to-text."""
+
+
 class ProviderNotSupportTextToSpeechServiceError(Exception):
     pass
 

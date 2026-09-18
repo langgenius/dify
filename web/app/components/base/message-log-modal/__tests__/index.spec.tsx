@@ -4,11 +4,9 @@ import { useStore } from '@/app/components/app/store'
 import MessageLogModal from '../index'
 
 let clickAwayHandler: (() => void) | null = null
-let clickAwayHandlers: (() => void)[] = []
 vi.mock('ahooks', () => ({
   useClickAway: (fn: () => void) => {
     clickAwayHandler = fn
-    clickAwayHandlers.push(fn)
   },
 }))
 
@@ -17,7 +15,15 @@ vi.mock('@/app/components/app/store', () => ({
 }))
 
 vi.mock('@/app/components/workflow/run', () => ({
-  default: ({ activeTab, runDetailUrl, tracingListUrl }: { activeTab: string, runDetailUrl: string, tracingListUrl: string }) => (
+  default: ({
+    activeTab,
+    runDetailUrl,
+    tracingListUrl,
+  }: {
+    activeTab: string
+    runDetailUrl: string
+    tracingListUrl: string
+  }) => (
     <div
       data-testid="workflow-run"
       data-active-tab={activeTab}
@@ -40,11 +46,12 @@ describe('MessageLogModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     clickAwayHandler = null
-    clickAwayHandlers = []
-    // eslint-disable-next-line ts/no-explicit-any
-    vi.mocked(useStore).mockImplementation((selector: any) => selector({
-      appDetail: { id: 'app-1' },
-    }))
+    // oxlint-disable-next-line typescript/no-explicit-any
+    vi.mocked(useStore).mockImplementation((selector: any) =>
+      selector({
+        appDetail: { id: 'app-1' },
+      }),
+    )
   })
 
   describe('Render', () => {
@@ -54,60 +61,94 @@ describe('MessageLogModal', () => {
     })
 
     it('renders nothing if currentLogItem.workflow_run_id is missing', () => {
-      const { container } = render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={{ id: '1' } as IChatItem} />)
+      const { container } = render(
+        <MessageLogModal
+          width={800}
+          onCancel={onCancel}
+          currentLogItem={{ id: '1' } as IChatItem}
+        />,
+      )
       expect(container.firstChild).toBeNull()
     })
 
     it('renders modal with correct title and Run component', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
-      expect(screen.getByText(/title/i)).toBeInTheDocument()
-      expect(screen.getByTestId('workflow-run')).toBeInTheDocument()
+      expect(screen.getByText(/title/i))!.toBeInTheDocument()
+      expect(screen.getByTestId('workflow-run'))!.toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
     it('passes correct props to Run component', () => {
-      render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} defaultTab="TRACING" />)
+      render(
+        <MessageLogModal
+          width={800}
+          onCancel={onCancel}
+          currentLogItem={mockLog}
+          defaultTab="TRACING"
+        />,
+      )
       const runComponent = screen.getByTestId('workflow-run')
       expect(runComponent.getAttribute('data-active-tab')).toBe('TRACING')
-      expect(runComponent.getAttribute('data-run-detail-url')).toBe('/apps/app-1/workflow-runs/run-1')
-      expect(runComponent.getAttribute('data-tracing-list-url')).toBe('/apps/app-1/workflow-runs/run-1/node-executions')
+      expect(runComponent.getAttribute('data-run-detail-url')).toBe(
+        '/apps/app-1/workflow-runs/run-1',
+      )
+      expect(runComponent.getAttribute('data-tracing-list-url')).toBe(
+        '/apps/app-1/workflow-runs/run-1/node-executions',
+      )
     })
 
     it('sets fixed style when fixedWidth is false (floating)', () => {
-      const { container } = render(<MessageLogModal width={1000} onCancel={onCancel} currentLogItem={mockLog} fixedWidth={false} />)
-      const modal = container.firstChild as HTMLElement
-      expect(modal.style.position).toBe('fixed')
-      expect(modal.style.width).toBe('480px')
+      const { container } = render(
+        <MessageLogModal
+          width={1000}
+          onCancel={onCancel}
+          currentLogItem={mockLog}
+          fixedWidth={false}
+        />,
+      )
+      const modal = screen.getByRole('dialog')
+      expect(container).not.toContainElement(modal)
+      expect(document.body).toContainElement(modal)
     })
 
     it('sets fixed width when fixedWidth is true', () => {
-      const { container } = render(<MessageLogModal width={1000} onCancel={onCancel} currentLogItem={mockLog} fixedWidth={true} />)
-      const modal = container.firstChild as HTMLElement
-      expect(modal.style.width).toBe('1000px')
+      const { container } = render(
+        <MessageLogModal
+          width={1000}
+          onCancel={onCancel}
+          currentLogItem={mockLog}
+          fixedWidth={true}
+        />,
+      )
+      const panel = container.firstElementChild as HTMLElement
+      expect(panel).toHaveClass('relative', 'z-10')
+      expect(panel.style.width).toBe('1000px')
     })
   })
 
   describe('Interaction', () => {
     it('calls onCancel when close icon is clicked', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
-      const closeButton = screen.getByTestId('close-button')
-      expect(closeButton).toBeInTheDocument()
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
+      expect(closeButton)!.toBeInTheDocument()
       fireEvent.click(closeButton)
       expect(onCancel).toHaveBeenCalledTimes(1)
     })
 
     it('calls onCancel when clicked away', () => {
-      render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
+      render(
+        <MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} fixedWidth />,
+      )
       expect(clickAwayHandler).toBeTruthy()
       clickAwayHandler!()
       expect(onCancel).toHaveBeenCalledTimes(1)
     })
 
-    it('does not call onCancel when clicked away if not mounted', () => {
+    it('does not use click away to close the floating dialog', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
-      expect(clickAwayHandlers.length).toBeGreaterThan(0)
-      clickAwayHandlers[0]() // This is the closure from the initial render, where mounted is false
+      expect(clickAwayHandler).toBeTruthy()
+      clickAwayHandler!()
       expect(onCancel).not.toHaveBeenCalled()
     })
   })

@@ -38,11 +38,22 @@ class TestCompletionAppGenerateResponseConverter:
         metadata = {
             "retriever_resources": [
                 {
+                    "dataset_id": "dataset-1",
+                    "dataset_name": "Dataset 1",
+                    "document_id": "document-1",
                     "segment_id": "s",
                     "position": 1,
+                    "data_source_type": "file",
                     "document_name": "doc",
                     "score": 0.9,
+                    "hit_count": 2,
+                    "word_count": 128,
+                    "segment_position": 3,
+                    "index_node_hash": "abc1234",
                     "content": "c",
+                    "page": 5,
+                    "title": "Citation Title",
+                    "files": [{"id": "file-1"}],
                     "summary": "sum",
                     "extra": "x",
                 }
@@ -66,7 +77,12 @@ class TestCompletionAppGenerateResponseConverter:
 
         assert "annotation_reply" not in result["metadata"]
         assert "usage" not in result["metadata"]
+        assert result["metadata"]["retriever_resources"][0]["dataset_id"] == "dataset-1"
+        assert result["metadata"]["retriever_resources"][0]["document_id"] == "document-1"
         assert result["metadata"]["retriever_resources"][0]["segment_id"] == "s"
+        assert result["metadata"]["retriever_resources"][0]["data_source_type"] == "file"
+        assert result["metadata"]["retriever_resources"][0]["segment_position"] == 3
+        assert result["metadata"]["retriever_resources"][0]["index_node_hash"] == "abc1234"
         assert "extra" not in result["metadata"]["retriever_resources"][0]
 
     def test_convert_blocking_simple_response_metadata_not_dict(self):

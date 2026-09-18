@@ -1,22 +1,44 @@
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { z } from 'zod'
-import Toast from '@/app/components/base/toast'
-
 import Form from '../form'
+
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      error: mockToastError,
+    },
+  }
+})
 
 // Mock the Header component (sibling component, not a base component)
 vi.mock('../header', () => ({
-  default: ({ onReset, resetDisabled, onPreview, previewDisabled }: {
+  default: ({
+    onReset,
+    resetDisabled,
+    onPreview,
+    previewDisabled,
+  }: {
     onReset: () => void
     resetDisabled: boolean
     onPreview: () => void
     previewDisabled: boolean
   }) => (
     <div data-testid="form-header">
-      <button data-testid="reset-btn" onClick={onReset} disabled={resetDisabled}>Reset</button>
-      <button data-testid="preview-btn" onClick={onPreview} disabled={previewDisabled}>Preview</button>
+      <button data-testid="reset-btn" onClick={onReset} disabled={resetDisabled}>
+        Reset
+      </button>
+      <button data-testid="preview-btn" onClick={onPreview} disabled={previewDisabled}>
+        Preview
+      </button>
     </div>
   ),
 }))
@@ -27,8 +49,20 @@ const schema = z.object({
 })
 
 const defaultConfigs: BaseConfiguration[] = [
-  { variable: 'name', type: 'text-input', label: 'Name', required: true, showConditions: [] } as BaseConfiguration,
-  { variable: 'value', type: 'text-input', label: 'Value', required: false, showConditions: [] } as BaseConfiguration,
+  {
+    variable: 'name',
+    type: 'text-input',
+    label: 'Name',
+    required: true,
+    showConditions: [],
+  } as BaseConfiguration,
+  {
+    variable: 'value',
+    type: 'text-input',
+    label: 'Value',
+    required: false,
+    showConditions: [],
+  } as BaseConfiguration,
 ]
 
 const defaultProps = {
@@ -44,7 +78,7 @@ const defaultProps = {
 describe('Form (process-documents)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
+    mockToastError.mockReset()
   })
 
   // Verify basic rendering of form structure
@@ -59,12 +93,32 @@ describe('Form (process-documents)', () => {
 
     it('should render all configuration fields', () => {
       const configs: BaseConfiguration[] = [
-        { variable: 'a', type: 'text-input', label: 'A', required: false, showConditions: [] } as BaseConfiguration,
-        { variable: 'b', type: 'text-input', label: 'B', required: false, showConditions: [] } as BaseConfiguration,
-        { variable: 'c', type: 'text-input', label: 'C', required: false, showConditions: [] } as BaseConfiguration,
+        {
+          variable: 'a',
+          type: 'text-input',
+          label: 'A',
+          required: false,
+          showConditions: [],
+        } as BaseConfiguration,
+        {
+          variable: 'b',
+          type: 'text-input',
+          label: 'B',
+          required: false,
+          showConditions: [],
+        } as BaseConfiguration,
+        {
+          variable: 'c',
+          type: 'text-input',
+          label: 'C',
+          required: false,
+          showConditions: [],
+        } as BaseConfiguration,
       ]
 
-      render(<Form {...defaultProps} configurations={configs} initialData={{ a: '', b: '', c: '' }} />)
+      render(
+        <Form {...defaultProps} configurations={configs} initialData={{ a: '', b: '', c: '' }} />,
+      )
 
       expect(screen.getByText('A')).toBeInTheDocument()
       expect(screen.getByText('B')).toBeInTheDocument()
@@ -106,9 +160,7 @@ describe('Form (process-documents)', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'error' }),
-        )
+        expect(mockToastError).toHaveBeenCalledWith('"name" Name is required')
       })
     })
 
@@ -121,7 +173,7 @@ describe('Form (process-documents)', () => {
       await waitFor(() => {
         expect(defaultProps.onSubmit).toHaveBeenCalled()
       })
-      expect(Toast.notify).not.toHaveBeenCalled()
+      expect(mockToastError).not.toHaveBeenCalled()
     })
   })
 

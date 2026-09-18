@@ -1,52 +1,84 @@
-import { RiQuestionLine } from '@remixicon/react'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { InputNumber } from '@/app/components/base/input-number'
-import Slider from '@/app/components/base/slider'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
+
+const MIN_KEYWORD_NUMBER = 0
+const MAX_KEYWORD_NUMBER = 50
 
 type KeyWordNumberProps = {
   keywordNumber: number
   onKeywordNumberChange: (value: number) => void
 }
 
-const KeyWordNumber = ({
-  keywordNumber,
-  onKeywordNumberChange,
-}: KeyWordNumberProps) => {
+const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberProps) => {
   const { t } = useTranslation()
+  const label = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
 
-  const handleInputChange = useCallback((value: number | undefined) => {
-    if (value)
-      onKeywordNumberChange(value)
-  }, [onKeywordNumberChange])
+  const handleInputChange = useCallback(
+    (value: number | null) => {
+      onKeywordNumberChange(value ?? MIN_KEYWORD_NUMBER)
+    },
+    [onKeywordNumberChange],
+  )
 
   return (
-    <div className="flex items-center gap-x-1">
+    <Fieldset className="flex items-center gap-x-1">
+      <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex grow items-center gap-x-0.5">
-        <div className="system-xs-medium truncate text-text-secondary">
-          {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
-        </div>
-        <Tooltip
-          popupContent="number of keywords"
-        >
-          <RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" />
-        </Tooltip>
+        <div className="truncate system-xs-medium text-text-secondary">{label}</div>
+        <Infotip aria-label={label} className="size-3.5">
+          {label}
+        </Infotip>
       </div>
       <Slider
-        className="mr-3 w-[206px] shrink-0"
+        className="mr-3 w-51.5 shrink-0"
         value={keywordNumber}
-        max={50}
-        onChange={onKeywordNumberChange}
-      />
-      <InputNumber
-        wrapperClassName="shrink-0 w-12"
-        type="number"
+        min={MIN_KEYWORD_NUMBER}
+        max={MAX_KEYWORD_NUMBER}
+        onValueChange={onKeywordNumberChange}
+      >
+        <SliderLabel className="sr-only">{label}</SliderLabel>
+        <SliderControl>
+          <SliderTrack>
+            <SliderIndicator />
+            <SliderThumb />
+          </SliderTrack>
+        </SliderControl>
+      </Slider>
+      <NumberField
+        className="w-18.5 shrink-0"
+        min={MIN_KEYWORD_NUMBER}
+        max={MAX_KEYWORD_NUMBER}
         value={keywordNumber}
-        onChange={handleInputChange}
-      />
-    </div>
+        onValueChange={handleInputChange}
+      >
+        <NumberFieldGroup>
+          <NumberFieldInput aria-label={label} className="w-12 flex-none px-2 text-center" />
+          <NumberFieldControls>
+            <NumberFieldIncrement />
+            <NumberFieldDecrement />
+          </NumberFieldControls>
+        </NumberFieldGroup>
+      </NumberField>
+    </Fieldset>
   )
 }
 

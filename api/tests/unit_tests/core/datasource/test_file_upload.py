@@ -35,7 +35,7 @@ TEST COVERAGE OVERVIEW:
    - Tests hash consistency and determinism
 
 6. Invalid Filename Handling (TestInvalidFilenameHandling)
-   - Validates rejection of filenames with invalid characters (/, \\, :, *, ?, ", <, >, |)
+   - Validates rejection of filenames with path separators (/, \\)
    - Tests filename length truncation (max 200 characters)
    - Prevents path traversal attacks
    - Handles edge cases like empty filenames
@@ -120,7 +120,6 @@ Run with coverage: pytest api/tests/unit_tests/core/datasource/test_file_upload.
 import hashlib  # For SHA3-256 hashing of file content
 import os  # For file path operations
 import uuid  # For generating unique identifiers
-from unittest.mock import Mock  # For mocking dependencies
 
 # Third-party imports
 import pytest  # Testing framework
@@ -535,30 +534,23 @@ class TestInvalidFilenameHandling:
 
     @pytest.mark.parametrize(
         "invalid_char",
-        ["/", "\\", ":", "*", "?", '"', "<", ">", "|"],
+        ["/", "\\"],
     )
     def test_filename_contains_invalid_characters(self, invalid_char):
         """Test detection of invalid characters in filename.
 
-        Security-critical test that validates rejection of dangerous filename characters.
+        Security-critical test that validates rejection of path separators.
         These characters are blocked because they:
         - / and \\ : Directory separators, could enable path traversal
-        - : : Drive letter separator on Windows, reserved character
-        - * and ? : Wildcards, could cause issues in file operations
-        - " : Quote character, could break command-line operations
-        - < and > : Redirection operators, command injection risk
-        - | : Pipe operator, command injection risk
 
         Blocking these characters prevents:
         - Path traversal attacks (../../etc/passwd)
-        - Command injection
-        - File system corruption
-        - Cross-platform compatibility issues
+        - ZIP entry traversal issues
+        - Ambiguous path handling
         """
         # Arrange - Create filename with invalid character
         filename = f"test{invalid_char}file.txt"
-        # Define complete list of invalid characters
-        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
+        invalid_chars = ["/", "\\"]
 
         # Act - Check if filename contains any invalid character
         has_invalid_char = any(c in filename for c in invalid_chars)
@@ -570,12 +562,22 @@ class TestInvalidFilenameHandling:
         """Test that valid filenames pass validation."""
         # Arrange
         filename = "valid_file-name_123.txt"
-        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
+        invalid_chars = ["/", "\\"]
 
         # Act
         has_invalid_char = any(c in filename for c in invalid_chars)
 
         # Assert
+        assert has_invalid_char is False
+
+    @pytest.mark.parametrize("safe_char", [":", "*", "?", '"', "<", ">", "|"])
+    def test_filename_allows_safe_metadata_characters(self, safe_char):
+        """Test that non-separator punctuation remains allowed in filenames."""
+        filename = f"candidate{safe_char}resume.txt"
+        invalid_chars = ["/", "\\"]
+
+        has_invalid_char = any(c in filename for c in invalid_chars)
+
         assert has_invalid_char is False
 
     def test_extremely_long_filename_truncation(self):
@@ -683,12 +685,11 @@ class TestUserRoleHandling:
     def test_creator_role_detection_account(self):
         """Test creator role detection for Account user."""
         # Arrange
-        user = Mock()
-        user.__class__.__name__ = "Account"
-
-        # Act
         from models import Account
 
+        user = Account(name="Test User", email="user@example.com")
+
+        # Act
         is_account = isinstance(user, Account) or user.__class__.__name__ == "Account"
         role = CreatorUserRole.ACCOUNT if is_account else CreatorUserRole.END_USER
 
@@ -698,12 +699,17 @@ class TestUserRoleHandling:
     def test_creator_role_detection_end_user(self):
         """Test creator role detection for EndUser."""
         # Arrange
-        user = Mock()
-        user.__class__.__name__ = "EndUser"
+        from models import Account, EndUser
+        from models.model import EndUserType
+
+        user = EndUser(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            type=EndUserType.SERVICE_API,
+            session_id="session-1",
+        )
 
         # Act
-        from models import Account
-
         is_account = isinstance(user, Account) or user.__class__.__name__ == "Account"
         role = CreatorUserRole.ACCOUNT if is_account else CreatorUserRole.END_USER
 
@@ -904,7 +910,7 @@ class TestFilenameValidation:
         """Test that filenames with spaces are handled correctly."""
         # Arrange
         filename = "my document with spaces.pdf"
-        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
+        invalid_chars = ["/", "\\"]
 
         # Act - Check for invalid characters
         has_invalid = any(c in filename for c in invalid_chars)
@@ -921,7 +927,7 @@ class TestFilenameValidation:
             "مستند.txt",  # Arabic
             "ファイル.jpg",  # Japanese
         ]
-        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
+        invalid_chars = ["/", "\\"]
 
         # Act & Assert - Unicode should be allowed
         for filename in unicode_filenames:
@@ -1246,9 +1252,9 @@ class TestFileConstants:
     """
 
     def test_image_extensions_set_properties(self):
-        """Test that IMAGE_EXTENSIONS set has expected properties."""
-        # Assert - Should be a set
-        assert isinstance(IMAGE_EXTENSIONS, set)
+        """Test that IMAGE_EXTENSIONS frozenset has expected properties."""
+        # Assert - Should be immutable
+        assert isinstance(IMAGE_EXTENSIONS, frozenset)
         # Should not be empty
         assert len(IMAGE_EXTENSIONS) > 0
         # Should contain common image formats
@@ -1257,9 +1263,9 @@ class TestFileConstants:
             assert ext in IMAGE_EXTENSIONS or ext.upper() in IMAGE_EXTENSIONS
 
     def test_video_extensions_set_properties(self):
-        """Test that VIDEO_EXTENSIONS set has expected properties."""
-        # Assert - Should be a set
-        assert isinstance(VIDEO_EXTENSIONS, set)
+        """Test that VIDEO_EXTENSIONS frozenset has expected properties."""
+        # Assert - Should be immutable
+        assert isinstance(VIDEO_EXTENSIONS, frozenset)
         # Should not be empty
         assert len(VIDEO_EXTENSIONS) > 0
         # Should contain common video formats
@@ -1268,9 +1274,9 @@ class TestFileConstants:
             assert ext in VIDEO_EXTENSIONS or ext.upper() in VIDEO_EXTENSIONS
 
     def test_audio_extensions_set_properties(self):
-        """Test that AUDIO_EXTENSIONS set has expected properties."""
-        # Assert - Should be a set
-        assert isinstance(AUDIO_EXTENSIONS, set)
+        """Test that AUDIO_EXTENSIONS frozenset has expected properties."""
+        # Assert - Should be immutable
+        assert isinstance(AUDIO_EXTENSIONS, frozenset)
         # Should not be empty
         assert len(AUDIO_EXTENSIONS) > 0
         # Should contain common audio formats
@@ -1279,9 +1285,9 @@ class TestFileConstants:
             assert ext in AUDIO_EXTENSIONS or ext.upper() in AUDIO_EXTENSIONS
 
     def test_document_extensions_set_properties(self):
-        """Test that DOCUMENT_EXTENSIONS set has expected properties."""
-        # Assert - Should be a set
-        assert isinstance(DOCUMENT_EXTENSIONS, set)
+        """Test that DOCUMENT_EXTENSIONS frozenset has expected properties."""
+        # Assert - Should be immutable
+        assert isinstance(DOCUMENT_EXTENSIONS, frozenset)
         # Should not be empty
         assert len(DOCUMENT_EXTENSIONS) > 0
         # Should contain common document formats

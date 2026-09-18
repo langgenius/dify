@@ -1,26 +1,32 @@
 """Word (.docx) document extractor used for RAG ingestion.
 
-Supports local file paths and remote URLs (downloaded via `core.helper.ssrf_proxy`).
+Supports local file paths and remote URLs downloaded through the unified remote-file fetcher.
 """
 
+import inspect
 import logging
 import mimetypes
 import os
 import re
 import tempfile
 import uuid
+from typing import override
 from urllib.parse import urlparse
 
 from docx import Document as DocxDocument
 from docx.oxml.ns import qn
+from docx.table import Table
+from docx.text.paragraph import Paragraph
 from docx.text.run import Run
+from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -33,20 +39,26 @@ class WordExtractor(BaseExtractor):
 
     Args:
         file_path: Path to the file to load.
+        session: Session used to persist extracted images.
     """
 
-    def __init__(self, file_path: str, tenant_id: str, user_id: str):
+    _closed: bool
+    _session: Session | None
+
+    def __init__(self, file_path: str, tenant_id: str, user_id: str, *, session: Session | None = None):
         """Initialize with file path."""
+        self._closed = False
         self.file_path = file_path
         self.tenant_id = tenant_id
         self.user_id = user_id
+        self._session = session
 
         if "~" in self.file_path:
             self.file_path = os.path.expanduser(self.file_path)
 
         # If the file is a web path, download it to a temporary file, and use that
         if not os.path.isfile(self.file_path) and self._is_valid_url(self.file_path):
-            response = ssrf_proxy.get(self.file_path)
+            response = remote_fetcher.make_request("GET", self.file_path)
 
             if response.status_code != 200:
                 response.close()
@@ -64,10 +76,29 @@ class WordExtractor(BaseExtractor):
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
-    def __del__(self):
-        if hasattr(self, "temp_file"):
-            self.temp_file.close()
+    def close(self) -> None:
+        """Best-effort cleanup for downloaded temporary files."""
+        if getattr(self, "_closed", False):
+            return
 
+        self._closed = True
+        temp_file = getattr(self, "temp_file", None)
+        if temp_file is None:
+            return
+
+        try:
+            close_result = temp_file.close()
+            if inspect.isawaitable(close_result):
+                close_awaitable = getattr(close_result, "close", None)
+                if callable(close_awaitable):
+                    close_awaitable()
+        except Exception:
+            logger.debug("Failed to cleanup downloaded word temp file", exc_info=True)
+
+    def __del__(self):
+        self.close()
+
+    @override
     def extract(self) -> list[Document]:
         """Load given path as single page."""
         content = self.parse_docx(self.file_path)
@@ -85,9 +116,11 @@ class WordExtractor(BaseExtractor):
         return bool(parsed.netloc) and bool(parsed.scheme)
 
     def _extract_images_from_docx(self, doc):
+        session = self._session or db.session
         image_count = 0
         image_map = {}
-        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+        upload_files: list[UploadFile] = []
+        base_url = dify_config.FILES_URL
 
         for r_id, rel in doc.part.rels.items():
             if "image" in rel.target_ref:
@@ -97,9 +130,9 @@ class WordExtractor(BaseExtractor):
                     if not self._is_valid_url(url):
                         continue
                     try:
-                        response = ssrf_proxy.get(url)
-                    except Exception as e:
-                        logger.warning("Failed to download image from URL: %s: %s", url, str(e))
+                        response = remote_fetcher.make_request("GET", url)
+                    except Exception:
+                        logger.warning("Failed to download image from URL: %s", url, exc_info=True)
                         continue
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers.get("Content-Type", ""))
@@ -112,7 +145,7 @@ class WordExtractor(BaseExtractor):
                         # save file to db
                         upload_file = UploadFile(
                             tenant_id=self.tenant_id,
-                            storage_type=dify_config.STORAGE_TYPE,
+                            storage_type=StorageType(dify_config.STORAGE_TYPE),
                             key=file_key,
                             name=file_key,
                             size=0,
@@ -125,7 +158,7 @@ class WordExtractor(BaseExtractor):
                             used_by=self.user_id,
                             used_at=naive_utc_now(),
                         )
-                        db.session.add(upload_file)
+                        upload_files.append(upload_file)
                         image_map[r_id] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
                 else:
                     image_ext = rel.target_ref.split(".")[-1]
@@ -140,7 +173,7 @@ class WordExtractor(BaseExtractor):
                     # save file to db
                     upload_file = UploadFile(
                         tenant_id=self.tenant_id,
-                        storage_type=dify_config.STORAGE_TYPE,
+                        storage_type=StorageType(dify_config.STORAGE_TYPE),
                         key=file_key,
                         name=file_key,
                         size=0,
@@ -153,9 +186,12 @@ class WordExtractor(BaseExtractor):
                         used_by=self.user_id,
                         used_at=naive_utc_now(),
                     )
-                    db.session.add(upload_file)
+                    upload_files.append(upload_file)
                     image_map[rel.target_part] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
-        db.session.commit()
+        if upload_files:
+            session.add_all(upload_files)
+        if self._session is None:
+            session.commit()
         return image_map
 
     def _table_to_markdown(self, table, image_map):
@@ -261,10 +297,10 @@ class WordExtractor(BaseExtractor):
 
         return "".join(paragraph_content).strip()
 
-    def parse_docx(self, docx_path):
+    def parse_docx(self, docx_path: str) -> str:
         doc = DocxDocument(docx_path)
 
-        content = []
+        content: list[str] = []
 
         image_map = self._extract_images_from_docx(doc)
 
@@ -365,7 +401,7 @@ class WordExtractor(BaseExtractor):
             paragraph_content = []
             # State for legacy HYPERLINK fields
             hyperlink_field_url = None
-            hyperlink_field_text_parts: list = []
+            hyperlink_field_text_parts: list[str] = []
             is_collecting_field_text = False
             # Iterate through paragraph elements in document order
             for child in paragraph._element:
@@ -420,18 +456,11 @@ class WordExtractor(BaseExtractor):
                     process_hyperlink(child, paragraph_content)
             return "".join(paragraph_content) if paragraph_content else ""
 
-        paragraphs = doc.paragraphs.copy()
-        tables = doc.tables.copy()
-        for element in doc.element.body:
-            if hasattr(element, "tag"):
-                if isinstance(element.tag, str) and element.tag.endswith("p"):  # paragraph
-                    para = paragraphs.pop(0)
-                    parsed_paragraph = parse_paragraph(para)
-                    if parsed_paragraph.strip():
-                        content.append(parsed_paragraph)
-                    else:
-                        content.append("\n")
-                elif isinstance(element.tag, str) and element.tag.endswith("tbl"):  # table
-                    table = tables.pop(0)
-                    content.append(self._table_to_markdown(table, image_map))
+        for block in doc.iter_inner_content():
+            match block:
+                case Paragraph():
+                    parsed_paragraph = parse_paragraph(block)
+                    content.append(parsed_paragraph if parsed_paragraph.strip() else "\n")
+                case Table():
+                    content.append(self._table_to_markdown(block, image_map))
         return "\n".join(content)

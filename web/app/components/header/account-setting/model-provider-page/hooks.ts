@@ -1,169 +1,114 @@
 import type {
+  ModelType,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  ConfigurationMethodEnum,
   Credential,
   CustomConfigurationModelFixedFields,
   CustomModel,
   DefaultModel,
   DefaultModelResponse,
-  Model,
   ModelModalModeEnum,
   ModelProvider,
-  ModelTypeEnum,
 } from './declarations'
+import type { ModelModalType } from '@/context/modal-context'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocale } from '#i18n'
 import {
   useMarketplacePlugins,
   useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useLocale } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
-import {
-  fetchDefaultModal,
-  fetchModelList,
-  fetchModelProviderCredentials,
-  getPayUrl,
-} from '@/service/common'
-import { commonQueryKeys } from '@/service/use-common'
-import {
-  ConfigurationMethodEnum,
-  CustomConfigurationStatusEnum,
-  ModelStatusEnum,
-} from './declarations'
-import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
+import { getModelLanguage } from '@/i18n/metadata'
+import { fetchDefaultModal } from '@/service/common'
+import { consoleQuery } from '@/service/console'
+import { commonQueryKeys, modelProviderDetailsQueryOptions } from '@/service/use-common'
+import { useExpandModelProviderList } from './atoms'
+import { CustomConfigurationStatusEnum, ModelStatusEnum, ModelTypeEnum } from './declarations'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
-  modelList: Model[],
+  modelList: ProviderWithModelsResponse[],
 ) => [DefaultModel | undefined, (model: DefaultModel) => void]
 export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
   defaultModel,
   modelList,
 ) => {
   const currentDefaultModel = useMemo(() => {
-    const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider.provider)
-    const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
-    const currentDefaultModel = currentProvider && currentModel && {
-      model: currentModel.model,
-      provider: currentProvider.provider,
-    }
+    const currentProvider = modelList.find(
+      (provider) => provider.provider === defaultModel?.provider.provider,
+    )
+    const currentModel = currentProvider?.models.find(
+      (model) => model.model === defaultModel?.model,
+    )
+    const currentDefaultModel = currentProvider &&
+      currentModel && {
+        model: currentModel.model,
+        provider: currentProvider.provider,
+      }
 
     return currentDefaultModel
   }, [defaultModel, modelList])
-  const [defaultModelState, setDefaultModelState] = useState<DefaultModel | undefined>(currentDefaultModel)
-  const handleDefaultModelChange = useCallback((model: DefaultModel) => {
-    setDefaultModelState(model)
-  }, [])
-  useEffect(() => {
-    setDefaultModelState(currentDefaultModel)
-  }, [currentDefaultModel])
+  const currentDefaultModelKey = currentDefaultModel
+    ? `${currentDefaultModel.provider}:${currentDefaultModel.model}`
+    : ''
+  const [defaultModelState, setDefaultModelState] = useState<DefaultModel | undefined>(
+    currentDefaultModel,
+  )
+  const [defaultModelSourceKey, setDefaultModelSourceKey] = useState(currentDefaultModelKey)
+  const selectedDefaultModel =
+    defaultModelSourceKey === currentDefaultModelKey ? defaultModelState : currentDefaultModel
 
-  return [defaultModelState, handleDefaultModelChange]
+  const handleDefaultModelChange = useCallback(
+    (model: DefaultModel) => {
+      setDefaultModelSourceKey(currentDefaultModelKey)
+      setDefaultModelState(model)
+    },
+    [currentDefaultModelKey],
+  )
+
+  return [selectedDefaultModel, handleDefaultModelChange]
 }
 
 export const useLanguage = () => {
   const locale = useLocale()
-  return locale.replace('-', '_')
+  return getModelLanguage(locale)
 }
 
-export const useProviderCredentialsAndLoadBalancing = (
-  provider: string,
-  configurationMethod: ConfigurationMethodEnum,
-  configured?: boolean,
-  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-  credentialId?: string,
+type ModelQueryOptions = {
+  enabled?: boolean
+}
+
+export const useDefaultModel = (
+  type: ModelTypeEnum,
+  { enabled = true }: ModelQueryOptions = {},
 ) => {
-  const queryClient = useQueryClient()
-  const predefinedEnabled = configurationMethod === ConfigurationMethodEnum.predefinedModel && configured && !!credentialId
-  const customEnabled = configurationMethod === ConfigurationMethodEnum.customizableModel && !!currentCustomConfigurationModelFixedFields && !!credentialId
-
-  const { data: predefinedFormSchemasValue, isPending: isPredefinedLoading } = useQuery(
-    {
-      queryKey: ['model-providers', 'credentials', provider, credentialId],
-      queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`),
-      enabled: predefinedEnabled,
-    },
-  )
-  const { data: customFormSchemasValue, isPending: isCustomizedLoading } = useQuery(
-    {
-      queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId],
-      queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`),
-      enabled: customEnabled,
-    },
-  )
-
-  const credentials = useMemo(() => {
-    return configurationMethod === ConfigurationMethodEnum.predefinedModel
-      ? predefinedFormSchemasValue?.credentials
-      : customFormSchemasValue?.credentials
-        ? {
-            ...customFormSchemasValue?.credentials,
-            ...currentCustomConfigurationModelFixedFields,
-          }
-        : undefined
-  }, [
-    configurationMethod,
-    credentialId,
-    currentCustomConfigurationModelFixedFields,
-    customFormSchemasValue?.credentials,
-    predefinedFormSchemasValue?.credentials,
-  ])
-
-  const mutate = useMemo(() => () => {
-    if (predefinedEnabled)
-      queryClient.invalidateQueries({ queryKey: ['model-providers', 'credentials', provider, credentialId] })
-    if (customEnabled)
-      queryClient.invalidateQueries({ queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId] })
-  }, [customEnabled, credentialId, currentCustomConfigurationModelFixedFields?.__model_name, currentCustomConfigurationModelFixedFields?.__model_type, predefinedEnabled, provider, queryClient])
-
-  return {
-    credentials,
-    loadBalancing: (configurationMethod === ConfigurationMethodEnum.predefinedModel
-      ? predefinedFormSchemasValue
-      : customFormSchemasValue
-    )?.load_balancing,
-    mutate,
-    isLoading: isPredefinedLoading || isCustomizedLoading,
-  }
-  // as ([Record<string, string | boolean | undefined> | undefined, ModelLoadBalancingConfig | undefined])
-}
-
-export const useModelList = (type: ModelTypeEnum) => {
-  const { data, refetch, isPending } = useQuery({
-    queryKey: commonQueryKeys.modelList(type),
-    queryFn: () => fetchModelList(`/workspaces/current/models/model-types/${type}`),
-  })
-
-  return {
-    data: data?.data || [],
-    mutate: refetch,
-    isLoading: isPending,
-  }
-}
-
-export const useDefaultModel = (type: ModelTypeEnum) => {
   const { data, refetch, isPending } = useQuery({
     queryKey: commonQueryKeys.defaultModel(type),
     queryFn: () => fetchDefaultModal(`/workspaces/current/default-model?model_type=${type}`),
+    enabled,
   })
 
   return {
     data: data?.data,
     mutate: refetch,
-    isLoading: isPending,
+    isLoading: enabled && isPending,
   }
 }
 
-export const useCurrentProviderAndModel = (modelList: Model[], defaultModel?: DefaultModel) => {
-  const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider)
-  const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
+export const getCurrentProviderAndModel = <
+  TProvider extends { models: Array<{ model: string }>; provider: string },
+>(
+  modelList: TProvider[],
+  defaultModel?: DefaultModel,
+) => {
+  const currentProvider = modelList.find((provider) => provider.provider === defaultModel?.provider)
+  const currentModel: TProvider['models'][number] | undefined = currentProvider?.models.find(
+    (model) => model.model === defaultModel?.model,
+  )
 
   return {
     currentProvider,
@@ -171,13 +116,24 @@ export const useCurrentProviderAndModel = (modelList: Model[], defaultModel?: De
   }
 }
 
-export const useTextGenerationCurrentProviderAndModelAndModelList = (defaultModel?: DefaultModel) => {
-  const { textGenerationModelList } = useProviderContext()
-  const activeTextGenerationModelList = textGenerationModelList.filter(model => model.status === ModelStatusEnum.active)
-  const {
-    currentProvider,
-    currentModel,
-  } = useCurrentProviderAndModel(textGenerationModelList, defaultModel)
+export { getCurrentProviderAndModel as useCurrentProviderAndModel }
+
+export const useTextGenerationCurrentProviderAndModelAndModelList = (
+  defaultModel?: DefaultModel,
+) => {
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
+  const activeTextGenerationModelList = textGenerationModelList.filter(
+    (model) => model.status === ModelStatusEnum.active,
+  )
+  const { currentProvider, currentModel } = getCurrentProviderAndModel(
+    textGenerationModelList,
+    defaultModel,
+  )
 
   return {
     currentProvider,
@@ -188,7 +144,12 @@ export const useTextGenerationCurrentProviderAndModelAndModelList = (defaultMode
 }
 
 export const useModelListAndDefaultModel = (type: ModelTypeEnum) => {
-  const { data: modelList } = useModelList(type)
+  const { data: modelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: type } },
+      select: (response) => response.data,
+    }),
+  )
   const { data: defaultModel } = useDefaultModel(type)
 
   return {
@@ -199,10 +160,10 @@ export const useModelListAndDefaultModel = (type: ModelTypeEnum) => {
 
 export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: ModelTypeEnum) => {
   const { modelList, defaultModel } = useModelListAndDefaultModel(type)
-  const { currentProvider, currentModel } = useCurrentProviderAndModel(
-    modelList,
-    { provider: defaultModel?.provider.provider || '', model: defaultModel?.model || '' },
-  )
+  const { currentProvider, currentModel } = getCurrentProviderAndModel(modelList, {
+    provider: defaultModel?.provider.provider || '',
+    model: defaultModel?.model || '',
+  })
 
   return {
     modelList,
@@ -215,60 +176,98 @@ export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: Mode
 export const useUpdateModelList = () => {
   const queryClient = useQueryClient()
 
-  const updateModelList = useCallback((type: ModelTypeEnum) => {
-    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(type) })
-  }, [queryClient])
+  const updateModelList = useCallback(
+    (type: ModelTypeEnum | ModelType) => {
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+          input: {
+            params: {
+              model_type: type,
+            },
+          },
+        }),
+      })
+    },
+    [queryClient],
+  )
 
   return updateModelList
 }
 
-export const useAnthropicBuyQuota = () => {
-  const [loading, setLoading] = useState(false)
+export const useInvalidateDefaultModel = () => {
+  const queryClient = useQueryClient()
 
-  const handleGetPayUrl = async () => {
-    if (loading)
-      return
-
-    setLoading(true)
-    try {
-      const res = await getPayUrl('/workspaces/current/model-providers/anthropic/checkout-url')
-
-      window.location.href = res.url
-    }
-    finally {
-      setLoading(false)
-    }
-  }
-
-  return handleGetPayUrl
+  return useCallback(
+    (type: ModelTypeEnum) => {
+      queryClient.invalidateQueries({ queryKey: commonQueryKeys.defaultModel(type) })
+    },
+    [queryClient],
+  )
 }
-
 export const useUpdateModelProviders = () => {
   const queryClient = useQueryClient()
 
   const updateModelProviders = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviders })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+    })
+    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails })
   }, [queryClient])
 
   return updateModelProviders
 }
 
-export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText: string) => {
-  const exclude = useMemo(() => {
-    return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
-  }, [providers])
-  const {
-    plugins: collectionPlugins = [],
-    isLoading: isCollectionLoading,
-  } = useMarketplacePluginsByCollectionId('__model-settings-pinned-models')
+export const useLazyModelProviderDetail = (providerName: string) => {
+  const [enabled, setEnabled] = useState(false)
+  const queryClient = useQueryClient()
+  const { data, isFetching } = useQuery({
+    ...modelProviderDetailsQueryOptions(),
+    enabled,
+  })
+  const providerDetail = data?.data.find((provider) => provider.provider === providerName)
+
+  const loadProviderDetail = useCallback(async () => {
+    setEnabled(true)
+    try {
+      const response = await queryClient.query(modelProviderDetailsQueryOptions())
+      return response.data.find((provider) => provider.provider === providerName)
+    } catch {
+      return undefined
+    }
+  }, [providerName, queryClient])
+
+  return {
+    providerDetail,
+    loadProviderDetail,
+    isProviderDetailEnabled: enabled,
+    isLoadingProviderDetail: enabled && isFetching,
+  }
+}
+
+export const useMarketplaceAllPlugins = (
+  searchText: string,
+  installedPluginIds: string[],
+  enabled = true,
+) => {
+  const exclude = installedPluginIds
+  const { plugins: collectionPlugins = [], isLoading: isCollectionLoading } =
+    useMarketplacePluginsByCollectionId(enabled ? '__model-settings-pinned-models' : undefined)
   const {
     plugins,
     queryPlugins,
     queryPluginsWithDebounced,
+    cancelQueryPluginsWithDebounced = () => {},
+    resetQueryParams = () => {},
     isLoading: isPluginsLoading,
-  } = useMarketplacePlugins()
+  } = useMarketplacePlugins(enabled)
 
   useEffect(() => {
+    if (!enabled) {
+      cancelQueryPluginsWithDebounced()
+      resetQueryParams()
+      return
+    }
+
     if (searchText) {
       queryPluginsWithDebounced({
         query: searchText,
@@ -278,8 +277,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         sort_by: 'install_count',
         sort_order: 'DESC',
       })
-    }
-    else {
+    } else {
       queryPlugins({
         query: '',
         category: PluginCategoryEnum.model,
@@ -290,54 +288,94 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         sort_order: 'DESC',
       })
     }
-  }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])
+  }, [
+    cancelQueryPluginsWithDebounced,
+    enabled,
+    queryPlugins,
+    queryPluginsWithDebounced,
+    resetQueryParams,
+    searchText,
+    exclude,
+  ])
 
   const allPlugins = useMemo(() => {
-    const allPlugins = collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))
+    if (!enabled) return []
+
+    const allPlugins = collectionPlugins.filter((plugin) => !exclude.includes(plugin.plugin_id))
 
     if (plugins?.length) {
       for (let i = 0; i < plugins.length; i++) {
         const plugin = plugins[i]
 
-        if (plugin.type !== 'bundle' && !allPlugins.find(p => p.plugin_id === plugin.plugin_id))
-          allPlugins.push(plugin)
+        if (
+          !exclude.includes(plugin!.plugin_id) &&
+          plugin!.type !== 'bundle' &&
+          !allPlugins.find((p) => p.plugin_id === plugin!.plugin_id)
+        )
+          allPlugins.push(plugin!)
       }
     }
 
     return allPlugins
-  }, [plugins, collectionPlugins, exclude])
+  }, [enabled, plugins, collectionPlugins, exclude])
 
   return {
-    plugins: searchText ? plugins : allPlugins,
-    isLoading: isCollectionLoading || isPluginsLoading,
+    plugins:
+      enabled && searchText
+        ? plugins?.filter((plugin) => !exclude.includes(plugin.plugin_id))
+        : allPlugins,
+    isLoading: enabled && (isCollectionLoading || isPluginsLoading),
   }
 }
 
 export const useRefreshModel = () => {
-  const { eventEmitter } = useEventEmitterContextContext()
+  const expandModelProviderList = useExpandModelProviderList()
+  const queryClient = useQueryClient()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
-  const handleRefreshModel = useCallback((
-    provider: ModelProvider,
-    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-    refreshModelList?: boolean,
-  ) => {
-    updateModelProviders()
+  const handleRefreshModel = useCallback(
+    (
+      provider: ModelProvider,
+      CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+      refreshModelList?: boolean,
+    ) => {
+      const modelProviderModelListQueryKey =
+        consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
+          input: {
+            params: {
+              provider: provider.provider,
+            },
+          },
+        })
+      queryClient.invalidateQueries({
+        queryKey: modelProviderModelListQueryKey,
+        exact: true,
+        refetchType: 'none',
+      })
 
-    provider.supported_model_types.forEach((type) => {
-      updateModelList(type)
-    })
+      updateModelProviders()
 
-    if (refreshModelList && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
-      eventEmitter?.emit({
-        type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-        payload: provider.provider,
-      } as any)
+      provider.supported_model_types.forEach((type) => {
+        updateModelList(type)
+      })
 
-      if (CustomConfigurationModelFixedFields?.__model_type)
-        updateModelList(CustomConfigurationModelFixedFields.__model_type)
-    }
-  }, [eventEmitter, updateModelList, updateModelProviders])
+      if (
+        refreshModelList &&
+        provider.custom_configuration.status === CustomConfigurationStatusEnum.active
+      ) {
+        expandModelProviderList(provider.provider)
+        queryClient.invalidateQueries({
+          queryKey: modelProviderModelListQueryKey,
+          exact: true,
+          refetchType: 'active',
+        })
+
+        if (CustomConfigurationModelFixedFields?.__model_type)
+          updateModelList(CustomConfigurationModelFixedFields.__model_type)
+      }
+    },
+    [expandModelProviderList, queryClient, updateModelList, updateModelProviders],
+  )
 
   return {
     handleRefreshModel,
@@ -345,7 +383,7 @@ export const useRefreshModel = () => {
 }
 
 export const useModelModalHandler = () => {
-  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
+  const setShowModelModal = useModalContextSelector((state) => state.setShowModelModal)
 
   return (
     provider: ModelProvider,
@@ -355,7 +393,7 @@ export const useModelModalHandler = () => {
       isModelCredential?: boolean
       credential?: Credential
       model?: CustomModel
-      onUpdate?: (newPayload: any, formValues?: Record<string, any>) => void
+      onUpdate?: (newPayload?: ModelModalType, formValues?: Record<string, unknown>) => void
       mode?: ModelModalModeEnum
     } = {},
   ) => {

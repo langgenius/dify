@@ -5,33 +5,29 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import type { GenRes } from '@/service/debug'
 import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
 import {
-  RiDatabase2Line,
-  RiFileExcel2Line,
-  RiGitCommitLine,
-  RiNewspaperLine,
-  RiPresentationLine,
-  RiRoadMapLine,
-  RiTerminalBoxLine,
-  RiTranslate,
-  RiUser2Line,
-} from '@remixicon/react'
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean, useSessionStorageState } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
-import Loading from '@/app/components/base/loading'
-
-import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/app/configuration/toast'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { consoleQuery } from '@/service/console'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
-import { useGenerateRuleTemplate } from '@/service/use-apps'
+import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from './idea-output'
 import InstructionEditorInBasic from './instruction-editor'
 import InstructionEditorInWorkflow from './instruction-editor-in-workflow'
@@ -43,7 +39,7 @@ import useGenData from './use-gen-data'
 
 const i18nPrefix = 'generate'
 
-export type IGetAutomaticResProps = {
+type IGetAutomaticResProps = {
   mode: AppModeEnum
   isShow: boolean
   onClose: () => void
@@ -56,18 +52,19 @@ export type IGetAutomaticResProps = {
 }
 
 const TryLabel: FC<{
-  Icon: any
+  iconClassName: string
   text: string
   onClick: () => void
-}> = ({ Icon, text, onClick }) => {
+}> = ({ iconClassName, text, onClick }) => {
   return (
-    <div
-      className="mr-1 mt-2 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
+    <button
+      type="button"
+      className="mt-2 mr-1 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
       onClick={onClick}
     >
-      <Icon className="h-4 w-4 text-text-tertiary"></Icon>
+      <span aria-hidden className={`${iconClassName} size-4 text-text-tertiary`} />
       <div className="ml-1 text-xs font-medium text-text-secondary">{text}</div>
-    </div>
+    </button>
   )
 }
 
@@ -83,149 +80,152 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onFinished,
 }) => {
   const { t } = useTranslation()
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
-    : null
-  const [model, setModel] = React.useState<Model>(localModel || {
-    name: '',
-    provider: '',
-    mode: mode as unknown as ModelModeType.chat,
-    completion_params: {} as CompletionParams,
-  })
-  const {
-    defaultModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
+  const instructionLabelId = useId()
+  const [storedModel, setStoredModel] = useAutoGenModel()
+  const [selectedModel, setSelectedModel] = React.useState<Model>()
+  const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
+    ModelTypeEnum.textGeneration,
+  )
+  const model = useMemo<Model>(() => {
+    if (selectedModel) return selectedModel
+    if (storedModel) return storedModel
+
+    return {
+      name: defaultModel?.model ?? '',
+      provider: defaultModel?.provider.provider ?? '',
+      mode: mode as unknown as ModelModeType,
+      completion_params: {} as CompletionParams,
+    }
+  }, [defaultModel, mode, selectedModel, storedModel])
   const tryList = [
     {
-      icon: RiTerminalBoxLine,
+      iconClassName: 'i-ri-terminal-box-line',
       key: 'pythonDebugger',
     },
     {
-      icon: RiTranslate,
+      iconClassName: 'i-ri-translate',
       key: 'translation',
     },
     {
-      icon: RiPresentationLine,
+      iconClassName: 'i-ri-presentation-line',
       key: 'meetingTakeaways',
     },
     {
-      icon: RiNewspaperLine,
+      iconClassName: 'i-ri-newspaper-line',
       key: 'writingsPolisher',
     },
     {
-      icon: RiUser2Line,
+      iconClassName: 'i-ri-user-2-line',
       key: 'professionalAnalyst',
     },
     {
-      icon: RiFileExcel2Line,
+      iconClassName: 'i-ri-file-excel-2-line',
       key: 'excelFormulaExpert',
     },
     {
-      icon: RiRoadMapLine,
+      iconClassName: 'i-ri-road-map-line',
       key: 'travelPlanning',
     },
     {
-      icon: RiDatabase2Line,
+      iconClassName: 'i-ri-database-2-line',
       key: 'SQLSorcerer',
     },
     {
-      icon: RiGitCommitLine,
+      iconClassName: 'i-ri-git-commit-line',
       key: 'GitGud',
     },
   ] as const
 
-  const [instructionFromSessionStorage, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`)
-  const instruction = instructionFromSessionStorage || ''
+  const [instructionFromSessionStorage, setInstructionFromSessionStorage] =
+    useSessionStorageState<string>(
+      `improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`,
+    )
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
-  type TemplateKey = typeof tryList[number]['key']
+  type TemplateKey = (typeof tryList)[number]['key']
 
   const [editorKey, setEditorKey] = useState(`${flowId}-0`)
-  const handleChooseTemplate = useCallback((key: TemplateKey) => {
-    return () => {
-      const template = t(`generate.template.${key}.instruction` as const, { ns: 'appDebug' })
-      setInstruction(template)
-      setEditorKey(`${flowId}-${Date.now()}`)
-    }
-  }, [t])
+  const handleChooseTemplate = useCallback(
+    (key: TemplateKey) => {
+      return () => {
+        const template = t(($) => $[`generate.template.${key}.instruction` as const], {
+          ns: 'appDebug',
+        })
+        setInstructionFromSessionStorage(template)
+        setEditorKey(`${flowId}-${Date.now()}`)
+      }
+    },
+    [flowId, setInstructionFromSessionStorage, t],
+  )
 
-  const { data: instructionTemplate } = useGenerateRuleTemplate(GeneratorType.prompt, isBasicMode)
-  useEffect(() => {
-    if (!instruction && instructionTemplate)
-      setInstruction(instructionTemplate.data)
-
-    setEditorKey(`${flowId}-${Date.now()}`)
-  }, [instructionTemplate])
+  const { data: instructionTemplate } = useQuery({
+    ...consoleQuery.instructionGenerate.template.post.queryOptions({
+      input: { body: { type: GeneratorType.prompt } },
+    }),
+    enabled: !isBasicMode,
+    retry: 0,
+  })
+  const instruction = instructionFromSessionStorage ?? instructionTemplate?.data ?? ''
+  const instructionEditorKey = `${editorKey}-${instructionTemplate ? 'template' : 'pending'}`
 
   const isValid = () => {
     if (instruction.trim() === '') {
-      Toast.notify({
-        type: 'error',
-        message: t('errorMsg.fieldRequired', {
+      toast.error(
+        t(($) => $['errorMsg.fieldRequired'], {
           ns: 'common',
-          field: t('generate.instruction', { ns: 'appDebug' }),
+          field: t(($) => $['generate.instruction'], { ns: 'appDebug' }),
         }),
-      })
+      )
       return false
     }
     return true
   }
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
   const storageKey = `${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`
-  const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenData({
-    storageKey,
-  })
-
-  useEffect(() => {
-    if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
-        : null
-      if (localModel) {
-        setModel(localModel)
-      }
-      else {
-        setModel(prev => ({
-          ...prev,
-          name: defaultModel.model,
-          provider: defaultModel.provider.provider,
-        }))
-      }
-    }
-  }, [defaultModel])
+  const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenData(
+    {
+      storageKey,
+    },
+  )
 
   const renderLoading = (
-    <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
-      <Loading />
-      <div className="text-[13px] text-text-tertiary">{t('generate.loading', { ns: 'appDebug' })}</div>
+    <div className="flex min-w-0 flex-col items-center justify-center space-y-3 xl:h-full xl:flex-1">
+      <LoadingPlaceholder />
+      <div className="text-[13px] text-text-tertiary">
+        {t(($) => $['generate.loading'], { ns: 'appDebug' })}
+      </div>
     </div>
   )
 
-  const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
-    const newModel = {
-      ...model,
-      provider: newValue.provider,
-      name: newValue.modelId,
-      mode: newValue.mode as ModelModeType,
-    }
-    setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+  const handleModelChange = useCallback(
+    (newValue: { modelId: string; provider: string; mode?: string; features?: string[] }) => {
+      const newModel = {
+        ...model,
+        provider: newValue.provider,
+        name: newValue.modelId,
+        mode: newValue.mode as ModelModeType,
+      }
+      setSelectedModel(newModel)
+      setStoredModel(newModel)
+    },
+    [model, setStoredModel],
+  )
 
-  const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
-    const newModel = {
-      ...model,
-      completion_params: newParams as CompletionParams,
-    }
-    setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+  const handleCompletionParamsChange = useCallback(
+    (newParams: FormValue) => {
+      const newModel = {
+        ...model,
+        completion_params: newParams as CompletionParams,
+      }
+      setSelectedModel(newModel)
+      setStoredModel(newModel)
+    },
+    [model, setStoredModel],
+  )
 
   const onGenerate = async () => {
-    if (!isValid())
-      return
-    if (isLoading)
-      return
+    if (!isValid()) return
+    if (isLoading) return
     setLoadingTrue()
     try {
       let apiRes: GenRes
@@ -242,13 +242,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         } as GenRes
         if (error) {
           hasError = true
-          Toast.notify({
-            type: 'error',
-            message: error,
-          })
+          toast.error(error)
         }
-      }
-      else {
+      } else {
         const { error, ...res } = await generateRule({
           flow_id: flowId,
           node_id: nodeId,
@@ -260,157 +256,182 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         apiRes = res
         if (error) {
           hasError = true
-          Toast.notify({
-            type: 'error',
-            message: error,
-          })
+          toast.error(error)
         }
       }
-      if (!hasError)
-        addVersion(apiRes)
-    }
-    finally {
+      if (!hasError) addVersion(apiRes)
+    } finally {
       setLoadingFalse()
     }
   }
 
-  const [isShowConfirmOverwrite, {
-    setTrue: showConfirmOverwrite,
-    setFalse: hideShowConfirmOverwrite,
-  }] = useBoolean(false)
+  const [
+    isShowConfirmOverwrite,
+    { setTrue: showConfirmOverwrite, setFalse: hideShowConfirmOverwrite },
+  ] = useBoolean(false)
 
   const isShowAutoPromptResPlaceholder = () => {
     return !isLoading && !current
   }
 
   return (
-    <Modal
-      isShow={isShow}
-      onClose={onClose}
-      className="min-w-[1140px] !p-0"
+    <Dialog
+      open={isShow}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
     >
-      <div className="flex h-[680px] flex-wrap">
-        <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
-          <div className="mb-5">
-            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('generate.title', { ns: 'appDebug' })}</div>
-            <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('generate.description', { ns: 'appDebug' })}</div>
-          </div>
-          <div>
-            <ModelParameterModal
-              popupClassName="!w-[520px]"
-              portalToFollowElemContentClassName="z-[1000]"
-              isAdvancedMode={true}
-              provider={model.provider}
-              completionParams={model.completion_params}
-              modelId={model.name}
-              setModel={handleModelChange}
-              onCompletionParamsChange={handleCompletionParamsChange}
-              hideDebugWithMultipleModel
-            />
-          </div>
-          {isBasicMode && (
-            <div className="mt-4">
-              <div className="flex items-center">
-                <div className="mr-3 shrink-0 text-xs font-semibold uppercase leading-[18px] text-text-tertiary">{t('generate.tryIt', { ns: 'appDebug' })}</div>
-                <div
-                  className="h-px grow"
-                  style={{
-                    background: 'linear-gradient(to right, rgba(243, 244, 246, 1), rgba(243, 244, 246, 0))',
-                  }}
-                >
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-285 overflow-y-auto border-none p-0! text-left align-middle xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
+        <div className="flex min-h-0 flex-col xl:h-full xl:flex-row">
+          <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-r">
+            <div className="mb-5">
+              <DialogTitle className={`text-lg leading-7 font-bold ${s.textGradient}`}>
+                {t(($) => $['generate.title'], { ns: 'appDebug' })}
+              </DialogTitle>
+              <div className="mt-1 text-[13px] font-normal text-text-tertiary">
+                {t(($) => $['generate.description'], { ns: 'appDebug' })}
+              </div>
+            </div>
+            <div>
+              <ModelParameterModal
+                popupClassName="w-130! max-w-[calc(100vw-2rem)]"
+                isAdvancedMode={true}
+                provider={model.provider}
+                completionParams={model.completion_params}
+                modelId={model.name}
+                setModel={handleModelChange}
+                onCompletionParamsChange={handleCompletionParamsChange}
+                hideDebugWithMultipleModel
+              />
+            </div>
+            {isBasicMode && (
+              <div className="mt-4">
+                <div className="flex items-center">
+                  <div className="mr-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary uppercase">
+                    {t(($) => $['generate.tryIt'], { ns: 'appDebug' })}
+                  </div>
+                  <div
+                    className="h-px grow"
+                    style={{
+                      background:
+                        'linear-gradient(to right, rgba(243, 244, 246, 1), rgba(243, 244, 246, 0))',
+                    }}
+                  ></div>
+                </div>
+                <div className="flex flex-wrap">
+                  {tryList.map((item) => (
+                    <TryLabel
+                      key={item.key}
+                      iconClassName={item.iconClassName}
+                      text={t(($) => $[`generate.template.${item.key}.name`], { ns: 'appDebug' })}
+                      onClick={handleChooseTemplate(item.key)}
+                    />
+                  ))}
                 </div>
               </div>
-              <div className="flex flex-wrap">
-                {tryList.map(item => (
-                  <TryLabel
-                    key={item.key}
-                    Icon={item.icon}
-                    text={t(`generate.template.${item.key}.name`, { ns: 'appDebug' })}
-                    onClick={handleChooseTemplate(item.key)}
+            )}
+
+            {/* inputs */}
+            <div className="mt-4">
+              <div>
+                <div
+                  id={instructionLabelId}
+                  className="mb-1.5 system-sm-semibold-uppercase text-text-secondary"
+                >
+                  {t(($) => $['generate.instruction'], { ns: 'appDebug' })}
+                </div>
+                {isBasicMode ? (
+                  <InstructionEditorInBasic
+                    aria-labelledby={instructionLabelId}
+                    editorKey={instructionEditorKey}
+                    generatorType={GeneratorType.prompt}
+                    value={instruction}
+                    onChange={setInstructionFromSessionStorage}
+                    availableVars={[]}
+                    availableNodes={[]}
+                    isShowCurrentBlock={!!currentPrompt}
+                    isShowLastRunBlock={false}
                   />
-                ))}
+                ) : (
+                  <InstructionEditorInWorkflow
+                    aria-labelledby={instructionLabelId}
+                    editorKey={instructionEditorKey}
+                    generatorType={GeneratorType.prompt}
+                    value={instruction}
+                    onChange={setInstructionFromSessionStorage}
+                    nodeId={nodeId || ''}
+                    isShowCurrentBlock={!!currentPrompt}
+                  />
+                )}
+              </div>
+              <IdeaOutput value={ideaOutput} onChange={setIdeaOutput} />
+
+              <div className="mt-7 flex flex-wrap justify-end gap-2">
+                <Button onClick={onClose}>
+                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}
+                </Button>
+                <Button
+                  className="flex"
+                  variant="primary"
+                  onClick={onGenerate}
+                  disabled={isLoading}
+                >
+                  <span aria-hidden className="i-custom-vender-other-generator size-4" />
+                  <span className="text-xs font-semibold">
+                    {t(($) => $['generate.generate'], { ns: 'appDebug' })}
+                  </span>
+                </Button>
               </div>
             </div>
+          </div>
+
+          {!isLoading && current && (
+            <div className="min-w-0 bg-background-default-subtle p-6 pb-0 xl:h-full xl:flex-1">
+              <Result
+                current={current!}
+                isBasicMode={isBasicMode}
+                nodeId={nodeId!}
+                currentVersionIndex={currentVersionIndex || 0}
+                setCurrentVersionIndex={setCurrentVersionIndex}
+                versions={versions || []}
+                onApply={showConfirmOverwrite}
+                generatorType={GeneratorType.prompt}
+              />
+            </div>
           )}
-
-          {/* inputs */}
-          <div className="mt-4">
-            <div>
-              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('generate.instruction', { ns: 'appDebug' })}</div>
-              {isBasicMode
-                ? (
-                    <InstructionEditorInBasic
-                      editorKey={editorKey}
-                      generatorType={GeneratorType.prompt}
-                      value={instruction}
-                      onChange={setInstruction}
-                      availableVars={[]}
-                      availableNodes={[]}
-                      isShowCurrentBlock={!!currentPrompt}
-                      isShowLastRunBlock={false}
-                    />
-                  )
-                : (
-                    <InstructionEditorInWorkflow
-                      editorKey={editorKey}
-                      generatorType={GeneratorType.prompt}
-                      value={instruction}
-                      onChange={setInstruction}
-                      nodeId={nodeId || ''}
-                      isShowCurrentBlock={!!currentPrompt}
-                    />
-                  )}
-            </div>
-            <IdeaOutput
-              value={ideaOutput}
-              onChange={setIdeaOutput}
-            />
-
-            <div className="mt-7 flex justify-end space-x-2">
-              <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`, { ns: 'appDebug' })}</Button>
-              <Button
-                className="flex space-x-1"
-                variant="primary"
-                onClick={onGenerate}
-                disabled={isLoading}
-              >
-                <Generator className="h-4 w-4" />
-                <span className="text-xs font-semibold">{t('generate.generate', { ns: 'appDebug' })}</span>
-              </Button>
-            </div>
-          </div>
+          {isLoading && renderLoading}
+          {isShowAutoPromptResPlaceholder() && <ResPlaceholder />}
+          <AlertDialog
+            open={isShowConfirmOverwrite}
+            onOpenChange={(open) => !open && hideShowConfirmOverwrite()}
+          >
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  {t(($) => $['generate.overwriteTitle'], { ns: 'appDebug' })}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  {t(($) => $['generate.overwriteMessage'], { ns: 'appDebug' })}
+                </AlertDialogDescription>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>
+                  {t(($) => $['operation.cancel'], { ns: 'common' })}
+                </AlertDialogCancelButton>
+                <AlertDialogConfirmButton
+                  onClick={() => {
+                    hideShowConfirmOverwrite()
+                    onFinished(current!)
+                  }}
+                >
+                  {t(($) => $['operation.confirm'], { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
-
-        {(!isLoading && current) && (
-          <div className="h-full w-0 grow bg-background-default-subtle p-6 pb-0">
-            <Result
-              current={current!}
-              isBasicMode={isBasicMode}
-              nodeId={nodeId!}
-              currentVersionIndex={currentVersionIndex || 0}
-              setCurrentVersionIndex={setCurrentVersionIndex}
-              versions={versions || []}
-              onApply={showConfirmOverwrite}
-              generatorType={GeneratorType.prompt}
-            />
-          </div>
-        )}
-        {isLoading && renderLoading}
-        {isShowAutoPromptResPlaceholder() && <ResPlaceholder />}
-        {isShowConfirmOverwrite && (
-          <Confirm
-            title={t('generate.overwriteTitle', { ns: 'appDebug' })}
-            content={t('generate.overwriteMessage', { ns: 'appDebug' })}
-            isShow
-            onConfirm={() => {
-              hideShowConfirmOverwrite()
-              onFinished(current!)
-            }}
-            onCancel={hideShowConfirmOverwrite}
-          />
-        )}
-      </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   )
 }
 export default React.memo(GetAutomaticRes)

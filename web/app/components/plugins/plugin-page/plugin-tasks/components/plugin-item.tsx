@@ -1,0 +1,67 @@
+import type { FC, ReactNode } from 'react'
+import type { PluginStatus } from '@/app/components/plugins/types'
+import type { PluginLanguage } from '@/i18n/metadata'
+import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import CardIcon from '@/app/components/plugins/card/base/card-icon'
+
+type PluginItemProps = {
+  plugin: PluginStatus
+  getIconUrl: (icon: string) => string
+  language: PluginLanguage
+  statusIcon: ReactNode
+  statusText: ReactNode
+  statusClassName?: string
+  action?: ReactNode
+  onClear?: () => void
+}
+
+const PluginItem: FC<PluginItemProps> = ({
+  plugin,
+  getIconUrl,
+  language,
+  statusIcon,
+  statusText,
+  statusClassName,
+  action,
+  onClear,
+}) => {
+  const hasPluginIcon = !!plugin.icon
+  const pluginName = plugin.labels[language] || plugin.plugin_unique_identifier
+
+  return (
+    <div className="group/item flex w-full max-w-full min-w-0 gap-1 overflow-hidden rounded-lg p-2 hover:bg-state-base-hover">
+      <div className="relative shrink-0 self-start">
+        {hasPluginIcon ? (
+          <CardIcon size="small" src={getIconUrl(plugin.icon)} />
+        ) : (
+          // oxlint-disable-next-line dify/prefer-tailwind-icons -- Reuse the same MagicBox component as the marketplace install button.
+          <MagicBox className="size-8 text-text-tertiary" />
+        )}
+        <div className="absolute -right-0.5 -bottom-0.5 z-10">{statusIcon}</div>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1 wrap-anywhere">
+        <div className="truncate system-sm-medium text-text-secondary">
+          {plugin.labels[language]}
+        </div>
+        <div
+          className={`max-w-full min-w-0 system-xs-regular wrap-anywhere wrap-break-word ${statusClassName || 'text-text-tertiary'}`}
+        >
+          {statusText}
+        </div>
+        {action}
+      </div>
+      {onClear && (
+        <button
+          type="button"
+          aria-label={`Clear ${pluginName}`}
+          className="invisible flex size-6 shrink-0 items-center justify-center self-start rounded-md group-hover/item:visible hover:bg-state-base-hover-alt"
+          onClick={onClear}
+        >
+          <span className="i-ri-close-line size-4 text-text-tertiary" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+export default PluginItem

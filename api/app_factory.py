@@ -1,15 +1,97 @@
 import logging
 import time
+from collections.abc import Callable
+from typing import NamedTuple
 
+import socketio
+from flask import request
 from opentelemetry.trace import get_current_span
 from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
+from werkzeug.exceptions import Forbidden, HTTPException, ServiceUnavailable
 
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
+from controllers.console.error import UnauthorizedAndForceLogout
 from core.logging.context import init_request_context
 from dify_app import DifyApp
+from enums import DeploymentEdition
+from extensions.ext_socketio import sio
+from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.feature_entities import LicenseStatus
 
 logger = logging.getLogger(__name__)
+
+# Console bootstrap APIs exempt from license check.
+# Defined at module level to avoid per-request tuple construction.
+# - system-features: license status for expiry UI (GlobalPublicStoreProvider)
+# - setup: install/setup status check (AppInitializer)
+# - init: init password validation for fresh install (InitPasswordPopup)
+# - login: auto-login after setup completion (InstallForm)
+# - features: billing/plan features (ProviderContextProvider)
+# - account/profile: login check + user profile (AppContextProvider, useIsLogin)
+# - workspaces/current: workspace + model providers (AppContextProvider)
+# - version: version check (AppContextProvider)
+# - activate/check: invitation link validation (signin page)
+# Without these exemptions, the signin page triggers location.reload()
+# on unauthorized_and_force_logout, causing an infinite loop.
+_CONSOLE_EXEMPT_PREFIXES = (
+    "/console/api/system-features",
+    "/console/api/setup",
+    "/console/api/init",
+    "/console/api/login",
+    "/console/api/features",
+    "/console/api/account/profile",
+    "/console/api/workspaces/current",
+    "/console/api/version",
+    "/console/api/activate/check",
+)
+
+_WEBAPP_EXEMPT_PREFIXES = ("/api/system-features",)
+
+_INVALID_LICENSE_STATUSES = (LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST)
+
+
+def _session_surface_error(license_status: LicenseStatus | None) -> HTTPException:
+    if license_status is None:
+        return UnauthorizedAndForceLogout("Unable to verify enterprise license. Please contact your administrator.")
+    return UnauthorizedAndForceLogout(f"Enterprise license is {license_status}. Please contact your administrator.")
+
+
+def _bearer_surface_error(license_status: LicenseStatus | None) -> HTTPException:
+    """Token-authed: forcing a logout is meaningless and license state must not leak."""
+    return Forbidden(description="license_required")
+
+
+def _retryable_surface_error(license_status: LicenseStatus | None) -> HTTPException:
+    """Webhook senders retry on 5xx but treat 4xx as permanent, disabling the subscription."""
+    return ServiceUnavailable(description="license_required")
+
+
+class _LicenseGatedSurface(NamedTuple):
+    prefix: str
+    exempt_prefixes: tuple[str, ...]
+    build_error: Callable[[LicenseStatus | None], HTTPException]
+
+
+# /files (plugin-daemon data plane), /inner/api (enterprise control plane) and /health
+# stay ungated: blocking them breaks workflow execution or license recovery itself.
+_LICENSE_GATED_SURFACES = (
+    _LicenseGatedSurface("/console/api/", _CONSOLE_EXEMPT_PREFIXES, _session_surface_error),
+    _LicenseGatedSurface("/api/", _WEBAPP_EXEMPT_PREFIXES, _session_surface_error),
+    _LicenseGatedSurface("/v1", (), _bearer_surface_error),
+    _LicenseGatedSurface("/mcp", (), _bearer_surface_error),
+    _LicenseGatedSurface("/triggers", (), _retryable_surface_error),
+)
+
+
+def _match_license_gated_surface(path: str) -> _LicenseGatedSurface | None:
+    for surface in _LICENSE_GATED_SURFACES:
+        if not path.startswith(surface.prefix):
+            continue
+        if any(path.startswith(exempt) for exempt in surface.exempt_prefixes):
+            return None
+        return surface
+    return None
 
 
 # ----------------------------
@@ -23,6 +105,10 @@ def create_flask_app_with_configs() -> DifyApp:
     dify_app = DifyApp(__name__)
     dify_app.config.from_mapping(dify_config.model_dump())
     dify_app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    # flask-restx appends url-map suggestions to 404 bodies: they enumerate routes to
+    # anonymous callers, and a policy 404 on an existing route (edition admission)
+    # ends up suggesting the very path that was just requested.
+    dify_app.config["RESTX_ERROR_404_HELP"] = False
 
     # add before request hook
     @dify_app.before_request
@@ -30,6 +116,18 @@ def create_flask_app_with_configs() -> DifyApp:
         # Initialize logging context for this request
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
+
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+            surface = _match_license_gated_surface(request.path)
+            if surface is not None:
+                try:
+                    license_status = EnterpriseService.get_cached_license_status()
+                except Exception:
+                    logger.exception("Failed to check enterprise license status")
+                    license_status = None
+
+                if license_status is None or license_status in _INVALID_LICENSE_STATUSES:
+                    raise surface.build_error(license_status)
 
     # add after request hook for injecting trace headers from OpenTelemetry span context
     # Only adds headers when OTEL is enabled and has valid context
@@ -53,21 +151,25 @@ def create_flask_app_with_configs() -> DifyApp:
             logger.warning("Failed to add trace headers to response", exc_info=True)
         return response
 
-    # Capture the decorator's return value to avoid pyright reportUnusedFunction
+    # Capture the decorator return values so static checkers do not treat the hooks as unused.
     _ = before_request
     _ = add_trace_headers
 
     return dify_app
 
 
-def create_app() -> DifyApp:
+def create_app() -> tuple[socketio.WSGIApp, DifyApp]:
     start_time = time.perf_counter()
     app = create_flask_app_with_configs()
     initialize_extensions(app)
+
+    sio.app = app
+    socketio_app = socketio.WSGIApp(sio, app)
+
     end_time = time.perf_counter()
     if dify_config.DEBUG:
         logger.info("Finished create_app (%s ms)", round((end_time - start_time) * 1000, 2))
-    return app
+    return socketio_app, app
 
 
 def initialize_extensions(app: DifyApp):
@@ -75,21 +177,25 @@ def initialize_extensions(app: DifyApp):
     from context.flask_app_context import init_flask_context
     from extensions import (
         ext_app_metrics,
+        ext_application_services,
         ext_blueprints,
         ext_celery,
         ext_code_based_extension,
         ext_commands,
         ext_compress,
         ext_database,
+        ext_enterprise_telemetry,
         ext_fastopenapi,
         ext_forward_refs,
         ext_hosting_provider,
         ext_import_modules,
+        ext_key_provider,
         ext_logging,
         ext_login,
         ext_logstore,
         ext_mail,
         ext_migrate,
+        ext_oauth_bearer,
         ext_orjson,
         ext_otel,
         ext_proxy_fix,
@@ -112,7 +218,6 @@ def initialize_extensions(app: DifyApp):
         ext_import_modules,
         ext_orjson,
         ext_forward_refs,
-        ext_set_secretkey,
         ext_compress,
         ext_code_based_extension,
         ext_database,
@@ -120,6 +225,8 @@ def initialize_extensions(app: DifyApp):
         ext_migrate,
         ext_redis,
         ext_storage,
+        ext_key_provider,  # Initialize after storage, since RSAKeyProvider reads private keys from it
+        ext_set_secretkey,
         ext_logstore,  # Initialize logstore after storage, before celery
         ext_celery,
         ext_login,
@@ -131,8 +238,11 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_fastopenapi,
         ext_otel,
+        ext_enterprise_telemetry,
         ext_request_logging,
         ext_session_factory,
+        ext_application_services,
+        ext_oauth_bearer,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]
@@ -151,10 +261,11 @@ def initialize_extensions(app: DifyApp):
 
 def create_migrations_app() -> DifyApp:
     app = create_flask_app_with_configs()
-    from extensions import ext_database, ext_migrate
+    from extensions import ext_commands, ext_database, ext_migrate
 
     # Initialize only required extensions
     ext_database.init_app(app)
     ext_migrate.init_app(app)
+    ext_commands.init_app(app)
 
     return app

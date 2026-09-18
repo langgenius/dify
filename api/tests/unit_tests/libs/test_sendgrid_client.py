@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -6,7 +7,7 @@ from python_http_client.exceptions import UnauthorizedError
 from libs.sendgrid import SendGridClient
 
 
-def _mail(to: str = "user@example.com") -> dict:
+def _mail(to: str = "user@example.com") -> dict[str, Any]:
     return {"to": to, "subject": "Hi", "html": "<b>Hi</b>"}
 
 

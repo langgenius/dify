@@ -1,6 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { usePipelineConfig } from '../use-pipeline-config'
 
 const mockUseStore = vi.fn()
@@ -15,12 +14,14 @@ vi.mock('@/app/components/workflow/store', () => ({
 
 const mockUseWorkflowConfig = vi.fn()
 vi.mock('@/service/use-workflow', () => ({
-  useWorkflowConfig: (url: string, callback: (data: unknown) => void) => mockUseWorkflowConfig(url, callback),
+  useWorkflowConfig: (url: string, callback: (data: unknown) => void) =>
+    mockUseWorkflowConfig(url, callback),
 }))
 
 const mockUseDataSourceList = vi.fn()
 vi.mock('@/service/use-pipeline', () => ({
-  useDataSourceList: (enabled: boolean, callback: (data: unknown) => void) => mockUseDataSourceList(enabled, callback),
+  useDataSourceList: (enabled: boolean, callback: (data: unknown) => void) =>
+    mockUseDataSourceList(enabled, callback),
 }))
 
 vi.mock('@/utils/var', () => ({
@@ -54,10 +55,6 @@ describe('usePipelineConfig', () => {
   })
 
   describe('hook initialization', () => {
-    it('should render without crashing', () => {
-      expect(() => renderHook(() => usePipelineConfig())).not.toThrow()
-    })
-
     it('should call useWorkflowConfig with correct URL for nodes default configs', () => {
       renderHook(() => usePipelineConfig())
 
@@ -79,10 +76,7 @@ describe('usePipelineConfig', () => {
     it('should call useWorkflowConfig with correct URL for file upload config', () => {
       renderHook(() => usePipelineConfig())
 
-      expect(mockUseWorkflowConfig).toHaveBeenCalledWith(
-        '/files/upload',
-        expect.any(Function),
-      )
+      expect(mockUseWorkflowConfig).toHaveBeenCalledWith('/files/upload', expect.any(Function))
     })
 
     it('should call useDataSourceList when pipelineId exists', () => {
@@ -175,7 +169,7 @@ describe('usePipelineConfig', () => {
       expect(mockSetPublishedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
     })
 
-    it('should handle undefined workflow response', () => {
+    it('should reset published at when workflow response is empty', () => {
       let capturedCallback: ((data: unknown) => void) | undefined
       mockUseWorkflowConfig.mockImplementation((url: string, callback: (data: unknown) => void) => {
         if (url.includes('/publish')) {
@@ -187,22 +181,22 @@ describe('usePipelineConfig', () => {
 
       capturedCallback?.(undefined)
 
-      expect(mockSetPublishedAt).toHaveBeenCalledWith(undefined)
+      expect(mockSetPublishedAt).toHaveBeenCalledWith(0)
     })
   })
 
   describe('handleUpdateDataSourceList', () => {
     it('should set data source list', () => {
       let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation((_enabled: boolean, callback: (data: unknown) => void) => {
-        capturedCallback = callback
-      })
+      mockUseDataSourceList.mockImplementation(
+        (_enabled: boolean, callback: (data: unknown) => void) => {
+          capturedCallback = callback
+        },
+      )
 
       renderHook(() => usePipelineConfig())
 
-      const dataSourceList = [
-        { declaration: { identity: { icon: '/icon.png' } } },
-      ]
+      const dataSourceList = [{ declaration: { identity: { icon: '/icon.png' } } }]
 
       capturedCallback?.(dataSourceList)
 
@@ -211,53 +205,53 @@ describe('usePipelineConfig', () => {
 
     it('should prepend basePath to icon if not included', () => {
       let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation((_enabled: boolean, callback: (data: unknown) => void) => {
-        capturedCallback = callback
-      })
+      mockUseDataSourceList.mockImplementation(
+        (_enabled: boolean, callback: (data: unknown) => void) => {
+          capturedCallback = callback
+        },
+      )
 
       renderHook(() => usePipelineConfig())
 
-      const dataSourceList = [
-        { declaration: { identity: { icon: '/icon.png' } } },
-      ]
+      const dataSourceList = [{ declaration: { identity: { icon: '/icon.png' } } }]
 
       capturedCallback?.(dataSourceList)
 
-      expect(dataSourceList[0].declaration.identity.icon).toBe('/base/icon.png')
+      expect(dataSourceList[0]!.declaration.identity.icon).toBe('/base/icon.png')
     })
 
     it('should not modify icon if it already includes basePath', () => {
       let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation((_enabled: boolean, callback: (data: unknown) => void) => {
-        capturedCallback = callback
-      })
+      mockUseDataSourceList.mockImplementation(
+        (_enabled: boolean, callback: (data: unknown) => void) => {
+          capturedCallback = callback
+        },
+      )
 
       renderHook(() => usePipelineConfig())
 
-      const dataSourceList = [
-        { declaration: { identity: { icon: '/base/icon.png' } } },
-      ]
+      const dataSourceList = [{ declaration: { identity: { icon: '/base/icon.png' } } }]
 
       capturedCallback?.(dataSourceList)
 
-      expect(dataSourceList[0].declaration.identity.icon).toBe('/base/icon.png')
+      expect(dataSourceList[0]!.declaration.identity.icon).toBe('/base/icon.png')
     })
 
     it('should handle non-string icon', () => {
       let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation((_enabled: boolean, callback: (data: unknown) => void) => {
-        capturedCallback = callback
-      })
+      mockUseDataSourceList.mockImplementation(
+        (_enabled: boolean, callback: (data: unknown) => void) => {
+          capturedCallback = callback
+        },
+      )
 
       renderHook(() => usePipelineConfig())
 
-      const dataSourceList = [
-        { declaration: { identity: { icon: { url: '/icon.png' } } } },
-      ]
+      const dataSourceList = [{ declaration: { identity: { icon: { url: '/icon.png' } } } }]
 
       capturedCallback?.(dataSourceList)
 
-      expect(dataSourceList[0].declaration.identity.icon).toEqual({ url: '/icon.png' })
+      expect(dataSourceList[0]!.declaration.identity.icon).toEqual({ url: '/icon.png' })
     })
   })
 

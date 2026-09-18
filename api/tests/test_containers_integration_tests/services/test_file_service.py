@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from extensions.storage.storage_type import StorageType
 from models import Account, Tenant
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser, UploadFile
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
@@ -37,8 +38,6 @@ class TestFileService:
             mock_storage.save.return_value = None
             mock_storage.load.return_value = BytesIO(b"mock file content")
             mock_file_helpers.get_signed_file_url.return_value = "https://example.com/signed-url"
-            mock_file_helpers.verify_image_signature.return_value = True
-            mock_file_helpers.verify_file_signature.return_value = True
             mock_extract_processor.load_from_upload_file.return_value = "extracted text content"
 
             yield {
@@ -111,7 +110,7 @@ class TestFileService:
 
         end_user = EndUser(
             tenant_id=str(fake.uuid4()),
-            type="web",
+            type=EndUserType.BROWSER,
             name=fake.name(),
             is_anonymous=False,
             session_id=fake.uuid4(),
@@ -140,7 +139,7 @@ class TestFileService:
 
         upload_file = UploadFile(
             tenant_id=account.current_tenant_id if hasattr(account, "current_tenant_id") else str(fake.uuid4()),
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"upload_files/test/{fake.uuid4()}.txt",
             name="test_file.txt",
             size=1024,
@@ -262,6 +261,27 @@ class TestFileService:
                 mimetype=mimetype,
                 user=account,
             )
+
+    def test_upload_file_allows_regular_punctuation_in_filename(
+        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
+    ):
+        """
+        Test file upload allows punctuation that is safe when stored as metadata.
+        """
+        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
+
+        filename = 'candidate?resume for "dify"<final>|v2:.txt'
+        content = b"test content"
+        mimetype = "text/plain"
+
+        upload_file = FileService(engine).upload_file(
+            filename=filename,
+            content=content,
+            mimetype=mimetype,
+            user=account,
+        )
+
+        assert upload_file.name == filename
 
     def test_upload_file_filename_too_long(
         self, db_session_with_containers: Session, engine, mock_external_service_dependencies
@@ -492,7 +512,7 @@ class TestFileService:
 
         db_session_with_containers.commit()
 
-        result = FileService(engine).get_file_preview(file_id=upload_file.id)
+        result = FileService(engine).get_file_preview(file_id=upload_file.id, tenant_id=upload_file.tenant_id)
 
         assert result == "extracted text content"
         mock_external_service_dependencies["extract_processor"].load_from_upload_file.assert_called_once()
@@ -507,7 +527,7 @@ class TestFileService:
         non_existent_id = str(fake.uuid4())
 
         with pytest.raises(NotFound, match="File not found"):
-            FileService(engine).get_file_preview(file_id=non_existent_id)
+            FileService(engine).get_file_preview(file_id=non_existent_id, tenant_id=str(fake.uuid4()))
 
     def test_get_file_preview_unsupported_file_type(
         self, db_session_with_containers: Session, engine, mock_external_service_dependencies
@@ -527,7 +547,7 @@ class TestFileService:
         db_session_with_containers.commit()
 
         with pytest.raises(UnsupportedFileTypeError):
-            FileService(engine).get_file_preview(file_id=upload_file.id)
+            FileService(engine).get_file_preview(file_id=upload_file.id, tenant_id=upload_file.tenant_id)
 
     def test_get_file_preview_text_truncation(
         self, db_session_with_containers: Session, engine, mock_external_service_dependencies
@@ -550,252 +570,10 @@ class TestFileService:
         long_text = "x" * 5000  # Longer than PREVIEW_WORDS_LIMIT
         mock_external_service_dependencies["extract_processor"].load_from_upload_file.return_value = long_text
 
-        result = FileService(engine).get_file_preview(file_id=upload_file.id)
+        result = FileService(engine).get_file_preview(file_id=upload_file.id, tenant_id=upload_file.tenant_id)
 
         assert len(result) == 3000  # PREVIEW_WORDS_LIMIT
         assert result == "x" * 3000
-
-    # Test get_image_preview method
-    def test_get_image_preview_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test successful image preview generation.
-        """
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-        upload_file = self._create_test_upload_file(
-            db_session_with_containers, mock_external_service_dependencies, account
-        )
-
-        # Update file to have image extension
-        upload_file.extension = "jpg"
-
-        db_session_with_containers.commit()
-
-        timestamp = "1234567890"
-        nonce = "test_nonce"
-        sign = "test_signature"
-
-        generator, mime_type = FileService(engine).get_image_preview(
-            file_id=upload_file.id,
-            timestamp=timestamp,
-            nonce=nonce,
-            sign=sign,
-        )
-
-        assert generator is not None
-        assert mime_type == upload_file.mime_type
-        mock_external_service_dependencies["file_helpers"].verify_image_signature.assert_called_once()
-
-    def test_get_image_preview_invalid_signature(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test image preview with invalid signature.
-        """
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-        upload_file = self._create_test_upload_file(
-            db_session_with_containers, mock_external_service_dependencies, account
-        )
-
-        # Mock invalid signature
-        mock_external_service_dependencies["file_helpers"].verify_image_signature.return_value = False
-
-        timestamp = "1234567890"
-        nonce = "test_nonce"
-        sign = "invalid_signature"
-
-        with pytest.raises(NotFound, match="File not found or signature is invalid"):
-            FileService(engine).get_image_preview(
-                file_id=upload_file.id,
-                timestamp=timestamp,
-                nonce=nonce,
-                sign=sign,
-            )
-
-    def test_get_image_preview_file_not_found(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test image preview with non-existent file.
-        """
-        fake = Faker()
-        non_existent_id = str(fake.uuid4())
-
-        timestamp = "1234567890"
-        nonce = "test_nonce"
-        sign = "test_signature"
-
-        with pytest.raises(NotFound, match="File not found or signature is invalid"):
-            FileService(engine).get_image_preview(
-                file_id=non_existent_id,
-                timestamp=timestamp,
-                nonce=nonce,
-                sign=sign,
-            )
-
-    def test_get_image_preview_unsupported_file_type(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test image preview with non-image file type.
-        """
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-        upload_file = self._create_test_upload_file(
-            db_session_with_containers, mock_external_service_dependencies, account
-        )
-
-        # Update file to have non-image extension
-        upload_file.extension = "pdf"
-
-        db_session_with_containers.commit()
-
-        timestamp = "1234567890"
-        nonce = "test_nonce"
-        sign = "test_signature"
-
-        with pytest.raises(UnsupportedFileTypeError):
-            FileService(engine).get_image_preview(
-                file_id=upload_file.id,
-                timestamp=timestamp,
-                nonce=nonce,
-                sign=sign,
-            )
-
-    # Test get_file_generator_by_file_id method
-    def test_get_file_generator_by_file_id_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test successful file generator retrieval.
-        """
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-        upload_file = self._create_test_upload_file(
-            db_session_with_containers, mock_external_service_dependencies, account
-        )
-
-        timestamp = "1234567890"
-        nonce = "test_nonce"
-        sign = "test_signature"
-
-        generator, file_obj = FileService(engine).get_file_generator_by_file_id(
-            file_id=upload_file.id,
-            timestamp=timestamp,
-            nonce=nonce,
-            sign=sign,
-        )
-
-        assert generator is not None
-        assert file_obj.id == upload_file.id
-        mock_external_service_dependencies["file_helpers"].verify_file_signature.assert_called_once()
-
-    def test_get_file_generator_by_file_id_invalid_signature(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file generator retrieval with invalid signature.
-        """
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-        upload_file = self._create_test_upload_file(
-            db_session_with_containers, mock_external_service_dependencies, account
-        )
-
-        # Mock invalid signature
-        mock_external_service_dependencies["file_helpers"].verify_file_signature.return_value = False
-
-        timestamp = "1234567890"
-        nonce = "test_nonce"
-        sign = "invalid_signature"
-
-        with pytest.raises(NotFound, match="File not found or signature is invalid"):
-            FileService(engine).get_file_generator_by_file_id(
-                file_id=upload_file.id,
-                timestamp=timestamp,
-                nonce=nonce,
-                sign=sign,
-            )
-
-    def test_get_file_generator_by_file_id_file_not_found(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file generator retrieval with non-existent file.
-        """
-        fake = Faker()
-        non_existent_id = str(fake.uuid4())
-
-        timestamp = "1234567890"
-        nonce = "test_nonce"
-        sign = "test_signature"
-
-        with pytest.raises(NotFound, match="File not found or signature is invalid"):
-            FileService(engine).get_file_generator_by_file_id(
-                file_id=non_existent_id,
-                timestamp=timestamp,
-                nonce=nonce,
-                sign=sign,
-            )
-
-    # Test get_public_image_preview method
-    def test_get_public_image_preview_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test successful public image preview generation.
-        """
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-        upload_file = self._create_test_upload_file(
-            db_session_with_containers, mock_external_service_dependencies, account
-        )
-
-        # Update file to have image extension
-        upload_file.extension = "jpg"
-
-        db_session_with_containers.commit()
-
-        generator, mime_type = FileService(engine).get_public_image_preview(file_id=upload_file.id)
-
-        assert generator is not None
-        assert mime_type == upload_file.mime_type
-        mock_external_service_dependencies["storage"].load.assert_called_once()
-
-    def test_get_public_image_preview_file_not_found(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test public image preview with non-existent file.
-        """
-        fake = Faker()
-        non_existent_id = str(fake.uuid4())
-
-        with pytest.raises(NotFound, match="File not found or signature is invalid"):
-            FileService(engine).get_public_image_preview(file_id=non_existent_id)
-
-    def test_get_public_image_preview_unsupported_file_type(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test public image preview with non-image file type.
-        """
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-        upload_file = self._create_test_upload_file(
-            db_session_with_containers, mock_external_service_dependencies, account
-        )
-
-        # Update file to have non-image extension
-        upload_file.extension = "pdf"
-
-        db_session_with_containers.commit()
-
-        with pytest.raises(UnsupportedFileTypeError):
-            FileService(engine).get_public_image_preview(file_id=upload_file.id)
 
     # Test edge cases and boundary conditions
     def test_upload_file_empty_content(

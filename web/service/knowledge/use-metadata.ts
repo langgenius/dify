@@ -1,4 +1,8 @@
-import type { BuiltInMetadataItem, MetadataBatchEditToServer, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
+import type {
+  BuiltInMetadataItem,
+  MetadataBatchEditToServer,
+  MetadataItemWithValueLength,
+} from '@/app/components/datasets/metadata/types'
 import type { DocumentDetailResponse } from '@/models/datasets'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, patch, post } from '../base'
@@ -8,15 +12,20 @@ import { useDocumentListKey, useInvalidDocumentList } from './use-document'
 const NAME_SPACE = 'dataset-metadata'
 
 export const useDatasetMetaData = (datasetId: string) => {
-  return useQuery<{ doc_metadata: MetadataItemWithValueLength[], built_in_field_enabled: boolean }>({
-    queryKey: [NAME_SPACE, 'dataset', datasetId],
-    queryFn: () => {
-      return get<{ doc_metadata: MetadataItemWithValueLength[], built_in_field_enabled: boolean }>(`/datasets/${datasetId}/metadata`)
+  return useQuery<{ doc_metadata: MetadataItemWithValueLength[]; built_in_field_enabled: boolean }>(
+    {
+      queryKey: [NAME_SPACE, 'dataset', datasetId],
+      queryFn: () => {
+        return get<{
+          doc_metadata: MetadataItemWithValueLength[]
+          built_in_field_enabled: boolean
+        }>(`/datasets/${datasetId}/metadata`)
+      },
     },
-  })
+  )
 }
 
-export const useInvalidDatasetMetaData = (datasetId: string) => {
+const useInvalidDatasetMetaData = (datasetId: string) => {
   return useInvalid([NAME_SPACE, 'dataset', datasetId])
 }
 
@@ -32,7 +41,7 @@ export const useCreateMetaData = (datasetId: string) => {
     },
   })
 }
-export const useInvalidAllDocumentMetaData = (datasetId: string) => {
+const useInvalidAllDocumentMetaData = (datasetId: string) => {
   const queryClient = useQueryClient()
   return () => {
     queryClient.invalidateQueries({
@@ -91,11 +100,19 @@ export const useBuiltInMetaDataFields = () => {
   })
 }
 
-export const useDocumentMetaData = ({ datasetId, documentId }: { datasetId: string, documentId: string }) => {
+export const useDocumentMetaData = ({
+  datasetId,
+  documentId,
+}: {
+  datasetId: string
+  documentId: string
+}) => {
   return useQuery<DocumentDetailResponse>({
     queryKey: [NAME_SPACE, 'document', datasetId, documentId],
     queryFn: () => {
-      return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params: { metadata: 'only' } })
+      return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, {
+        params: { metadata: 'only' },
+      })
     },
   })
 }
@@ -107,7 +124,7 @@ export const useBatchUpdateDocMetadata = () => {
       dataset_id: string
       metadata_list: MetadataBatchEditToServer
     }) => {
-      const documentIds = payload.metadata_list.map(item => item.document_id)
+      const documentIds = payload.metadata_list.map((item) => item.document_id)
       await post(`/datasets/${payload.dataset_id}/documents/metadata`, {
         body: {
           operation_data: payload.metadata_list,
@@ -126,11 +143,13 @@ export const useBatchUpdateDocMetadata = () => {
       })
 
       // meta data in single document
-      await Promise.all(documentIds.map(documentId => queryClient.invalidateQueries(
-        {
-          queryKey: [NAME_SPACE, 'document', payload.dataset_id, documentId],
-        },
-      )))
+      await Promise.all(
+        documentIds.map((documentId) =>
+          queryClient.invalidateQueries({
+            queryKey: [NAME_SPACE, 'document', payload.dataset_id, documentId],
+          }),
+        ),
+      )
     },
   })
 }

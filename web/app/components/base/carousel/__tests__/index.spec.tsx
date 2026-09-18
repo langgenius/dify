@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { Carousel, useCarousel } from '../index'
@@ -11,15 +11,15 @@ type EmblaEventName = 'reInit' | 'select'
 type EmblaListener = (api: MockEmblaApi | undefined) => void
 
 type MockEmblaApi = {
-  scrollPrev: Mock
-  scrollNext: Mock
-  scrollTo: Mock
-  selectedScrollSnap: Mock
-  canScrollPrev: Mock
-  canScrollNext: Mock
-  slideNodes: Mock
-  on: Mock
-  off: Mock
+  scrollPrev: Mock<() => void>
+  scrollNext: Mock<() => void>
+  scrollTo: Mock<(index: number) => void>
+  selectedScrollSnap: Mock<() => number>
+  canScrollPrev: Mock<() => boolean>
+  canScrollNext: Mock<() => boolean>
+  slideNodes: Mock<() => HTMLDivElement[]>
+  on: Mock<(event: EmblaEventName, callback: EmblaListener) => void>
+  off: Mock<(event: EmblaEventName, callback: EmblaListener) => void>
 }
 
 let mockCanScrollPrev = false
@@ -33,20 +33,20 @@ const mockCarouselRef = vi.fn()
 const mockedUseEmblaCarousel = vi.mocked(useEmblaCarousel)
 
 const createMockEmblaApi = (): MockEmblaApi => ({
-  scrollPrev: vi.fn(),
-  scrollNext: vi.fn(),
-  scrollTo: vi.fn(),
-  selectedScrollSnap: vi.fn(() => mockSelectedIndex),
-  canScrollPrev: vi.fn(() => mockCanScrollPrev),
-  canScrollNext: vi.fn(() => mockCanScrollNext),
-  slideNodes: vi.fn(() =>
-    Array.from({ length: mockSlideCount }).fill(document.createElement('div')),
+  scrollPrev: vi.fn<() => void>(),
+  scrollNext: vi.fn<() => void>(),
+  scrollTo: vi.fn<(index: number) => void>(),
+  selectedScrollSnap: vi.fn<() => number>(() => mockSelectedIndex),
+  canScrollPrev: vi.fn<() => boolean>(() => mockCanScrollPrev),
+  canScrollNext: vi.fn<() => boolean>(() => mockCanScrollNext),
+  slideNodes: vi.fn<() => HTMLDivElement[]>(() =>
+    Array.from({ length: mockSlideCount }, () => document.createElement('div')),
   ),
-  on: vi.fn((event: EmblaEventName, callback: EmblaListener) => {
+  on: vi.fn<(event: EmblaEventName, callback: EmblaListener) => void>((event, callback) => {
     listeners[event].push(callback)
   }),
-  off: vi.fn((event: EmblaEventName, callback: EmblaListener) => {
-    listeners[event] = listeners[event].filter(listener => listener !== callback)
+  off: vi.fn<(event: EmblaEventName, callback: EmblaListener) => void>((event, callback) => {
+    listeners[event] = listeners[event].filter((listener) => listener !== callback)
   }),
 })
 
@@ -89,9 +89,9 @@ describe('Carousel', () => {
     listeners = { reInit: [], select: [] }
     mockApi = createMockEmblaApi()
 
-    mockedUseEmblaCarousel.mockReturnValue(
-      [mockCarouselRef, mockApi] as unknown as ReturnType<typeof useEmblaCarousel>,
-    )
+    mockedUseEmblaCarousel.mockReturnValue([mockCarouselRef, mockApi] as unknown as ReturnType<
+      typeof useEmblaCarousel
+    >)
   })
 
   // Rendering and basic semantic structure.
@@ -99,10 +99,10 @@ describe('Carousel', () => {
     it('should render region and slides when used with content and items', () => {
       renderCarouselWithControls()
 
-      expect(screen.getByRole('region')).toHaveAttribute('aria-roledescription', 'carousel')
-      expect(screen.getByTestId('carousel-content')).toHaveClass('flex')
+      expect(screen.getByRole('region'))!.toHaveAttribute('aria-roledescription', 'carousel')
+      expect(screen.getByTestId('carousel-content'))!.toHaveClass('flex')
       screen.getAllByRole('group').forEach((slide) => {
-        expect(slide).toHaveAttribute('aria-roledescription', 'slide')
+        expect(slide)!.toHaveAttribute('aria-roledescription', 'slide')
       })
     })
   })
@@ -117,31 +117,28 @@ describe('Carousel', () => {
         </Carousel>,
       )
 
-      expect(mockedUseEmblaCarousel).toHaveBeenCalledWith(
-        { loop: true, axis: 'x' },
-        [plugin],
-      )
+      expect(mockedUseEmblaCarousel).toHaveBeenCalledWith({ loop: true, axis: 'x' }, [plugin])
     })
 
     it('should configure embla with vertical axis and vertical content classes when orientation is vertical', () => {
       renderCarouselWithControls('vertical')
 
-      expect(mockedUseEmblaCarousel).toHaveBeenCalledWith(
-        { axis: 'y' },
-        undefined,
-      )
-      expect(screen.getByTestId('carousel-content')).toHaveClass('flex-col')
+      expect(mockedUseEmblaCarousel).toHaveBeenCalledWith({ axis: 'y' }, undefined)
     })
   })
 
   // Ref API exposes embla and controls.
   describe('Ref API', () => {
     it('should expose carousel API and controls via ref', () => {
-      type CarouselRef = { api: unknown, selectedIndex: number }
+      type CarouselRef = { api: unknown; selectedIndex: number }
       const ref = { current: null as CarouselRef | null }
 
       render(
-        <Carousel ref={(r) => { ref.current = r as unknown as CarouselRef }}>
+        <Carousel
+          ref={(r) => {
+            ref.current = r as unknown as CarouselRef
+          }}
+        >
           <Carousel.Content />
         </Carousel>,
       )
@@ -171,7 +168,7 @@ describe('Carousel', () => {
       renderCarouselWithControls()
       const dots = screen.getAllByRole('button', { name: 'Dot' })
 
-      fireEvent.click(dots[2])
+      fireEvent.click(dots[2]!)
 
       expect(mockApi.scrollTo).toHaveBeenCalledWith(2)
     })
@@ -191,16 +188,16 @@ describe('Carousel', () => {
       })
 
       const dots = screen.getAllByRole('button', { name: 'Dot' })
-      expect(screen.getByRole('button', { name: 'Prev' })).toBeEnabled()
-      expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled()
-      expect(dots[2]).toHaveAttribute('data-state', 'active')
+      expect(screen.getByRole('button', { name: 'Prev' }))!.toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Next' }))!.toBeEnabled()
+      expect(dots[2])!.toHaveAttribute('data-state', 'active')
     })
 
-    it('should subscribe to embla events and unsubscribe from select on unmount', () => {
+    it('should release embla subscriptions on unmount', () => {
       const { unmount } = renderCarouselWithControls()
 
       const selectCallback = mockApi.on.mock.calls.find(
-        call => call[0] === 'select',
+        (call) => call[0] === 'select',
       )?.[1] as EmblaListener
 
       expect(mockApi.on).toHaveBeenCalledWith('reInit', expect.any(Function))
@@ -208,6 +205,7 @@ describe('Carousel', () => {
 
       unmount()
 
+      expect(mockApi.off).toHaveBeenCalledWith('reInit', selectCallback)
       expect(mockApi.off).toHaveBeenCalledWith('select', selectCallback)
     })
   })
@@ -226,14 +224,14 @@ describe('Carousel', () => {
     })
 
     it('should render with disabled controls and no dots when embla api is undefined', () => {
-      mockedUseEmblaCarousel.mockReturnValue(
-        [mockCarouselRef, undefined] as unknown as ReturnType<typeof useEmblaCarousel>,
-      )
+      mockedUseEmblaCarousel.mockReturnValue([mockCarouselRef, undefined] as unknown as ReturnType<
+        typeof useEmblaCarousel
+      >)
 
       renderCarouselWithControls()
 
-      expect(screen.getByRole('button', { name: 'Prev' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Prev' }))!.toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Next' }))!.toBeDisabled()
       expect(screen.queryByRole('button', { name: 'Dot' })).not.toBeInTheDocument()
     })
 

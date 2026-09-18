@@ -1,6 +1,7 @@
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.parameters import PluginParameterOption
@@ -11,6 +12,7 @@ from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import SubscriptionBuilder
 from extensions.ext_database import db
+from models.provider_ids import TriggerProviderID
 from models.tools import BuiltinToolProvider
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
@@ -56,24 +58,24 @@ class PluginParameterService:
                     # fetch credentials from db
                     with Session(db.engine) as session:
                         if credential_id:
-                            db_record = (
-                                session.query(BuiltinToolProvider)
+                            db_record = session.scalar(
+                                select(BuiltinToolProvider)
                                 .where(
                                     BuiltinToolProvider.tenant_id == tenant_id,
                                     BuiltinToolProvider.provider == provider,
                                     BuiltinToolProvider.id == credential_id,
                                 )
-                                .first()
+                                .limit(1)
                             )
                         else:
-                            db_record = (
-                                session.query(BuiltinToolProvider)
+                            db_record = session.scalar(
+                                select(BuiltinToolProvider)
                                 .where(
                                     BuiltinToolProvider.tenant_id == tenant_id,
                                     BuiltinToolProvider.provider == provider,
                                 )
                                 .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                                .first()
+                                .limit(1)
                             )
 
                     if db_record is None:
@@ -84,7 +86,12 @@ class PluginParameterService:
             case "trigger":
                 subscription: TriggerProviderSubscriptionApiEntity | SubscriptionBuilder | None
                 if credential_id:
-                    subscription = TriggerSubscriptionBuilderService.get_subscription_builder(credential_id)
+                    subscription = TriggerSubscriptionBuilderService.get_subscription_builder(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        provider_id=TriggerProviderID(f"{plugin_id}/{provider}"),
+                        subscription_builder_id=credential_id,
+                    )
                     if not subscription:
                         trigger_subscription = TriggerProviderService.get_subscription_by_id(tenant_id, credential_id)
                         subscription = trigger_subscription.to_api_entity() if trigger_subscription else None

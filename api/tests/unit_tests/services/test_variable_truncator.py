@@ -17,9 +17,8 @@ from uuid import uuid4
 
 import pytest
 
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.file.models import File
-from dify_graph.variables.segments import (
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
     ArraySegment,
@@ -42,9 +41,9 @@ from services.variable_truncator import (
 @pytest.fixture
 def file() -> File:
     return File(
-        id=str(uuid4()),  # Generate new UUID for File.id
+        file_id=str(uuid4()),  # Generate new UUID for File.id
         tenant_id=str(uuid.uuid4()),
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id=str(uuid.uuid4()),
         filename="test_file.txt",
@@ -200,14 +199,14 @@ class TestArrayTruncation:
 
     def test_small_array_no_truncation(self, small_truncator: VariableTruncator):
         """Test that small arrays are not truncated."""
-        small_array = [1, 2]
+        small_array: list[object] = [1, 2]
         result = small_truncator._truncate_array(small_array, 1000)
         assert result.value == small_array
         assert result.truncated is False
 
     def test_array_element_limit_truncation(self, small_truncator: VariableTruncator):
         """Test that arrays over element limit are truncated."""
-        large_array = [1, 2, 3, 4, 5, 6]  # Exceeds limit of 3
+        large_array: list[object] = [1, 2, 3, 4, 5, 6]  # Exceeds limit of 3
         result = small_truncator._truncate_array(large_array, 1000)
 
         assert result.truncated is True
@@ -216,7 +215,7 @@ class TestArrayTruncation:
     def test_array_size_budget_truncation(self, small_truncator: VariableTruncator):
         """Test array truncation due to size budget constraints."""
         # Create array with strings that will exceed size budget
-        large_strings = ["very long string " * 5, "another long string " * 5]
+        large_strings: list[object] = ["very long string " * 5, "another long string " * 5]
         result = small_truncator._truncate_array(large_strings, 50)
 
         assert result.truncated is True
@@ -277,10 +276,10 @@ class TestObjectTruncation:
 
         # Values should be truncated if they exist
         for key, value in result.value.items():
-            if isinstance(value, str):
-                original_value = obj_with_long_values[key]
-                # Value should be same or smaller
-                assert len(value) <= len(original_value)
+            assert isinstance(value, str)
+            original_value = obj_with_long_values[key]
+            # Value should be same or smaller
+            assert len(value) <= len(original_value)
 
     def test_object_key_dropping(self, small_truncator):
         """Test object truncation where keys are dropped due to size constraints."""
@@ -507,10 +506,9 @@ class TestEdgeCases:
         truncator = VariableTruncator(string_length_limit=10)
 
         # Unicode characters
-        unicode_text = "🌍🚀🌍🚀🌍🚀🌍🚀🌍🚀"  # Each emoji counts as 1 character
+        unicode_text = "你好世界你好世界你好世界"  # Multi-byte UTF-8 characters
         result = truncator.truncate(StringSegment(value=unicode_text))
-        if len(unicode_text) > 10:
-            assert result.truncated is True
+        assert result.truncated is True
 
         # Special JSON characters
         special_chars = '{"key": "value with \\"quotes\\" and \\n newlines"}'
@@ -632,13 +630,12 @@ class TestIntegrationScenarios:
         result = truncator.truncate(segment)
 
         assert isinstance(result, TruncationResult)
-        # Should handle all data types appropriately
-        if result.truncated:
-            # Verify the result is smaller or equal than original
-            original_size = truncator.calculate_json_size(mixed_data)
-            if isinstance(result.result, ObjectSegment):
-                result_size = truncator.calculate_json_size(result.result.value)
-                assert result_size <= original_size
+        assert result.truncated is True
+        assert isinstance(result.result, ObjectSegment)
+        # Verify the result is smaller or equal than original
+        original_size = truncator.calculate_json_size(mixed_data)
+        result_size = truncator.calculate_json_size(result.result.value)
+        assert result_size <= original_size
 
     def test_file_and_array_file_variable_mapping(self, file):
         truncator = VariableTruncator(string_length_limit=30, array_element_limit=3, max_size_bytes=300)
@@ -676,3 +673,118 @@ def test_dummy_variable_truncator_methods():
     assert isinstance(result, TruncationResult)
     assert result.result == segment
     assert result.truncated is False
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for langgenius/dify#39218.
+#
+# Before the fix, ``_truncate_array`` had a "Dirty fix" branch that
+# unconditionally appended every ``File`` element to ``truncated_value``
+# *before* the count cap and the byte-budget check, and *before*
+# ``used_size`` was ever incremented. That made ``list[File]`` arrays:
+#   1. uncapped by ``array_element_limit``,
+#   2. uncounted against ``max_size_bytes``, and
+#   3. always reported ``truncated=False``.
+# The fix routes ``File`` through ``_truncate_json_primitives``'s dedicated
+# ``File`` branch, which returns the file as-is with its real serialized
+# size, while preserving the count cap and the byte budget.
+# ---------------------------------------------------------------------------
+
+
+class TestFileArrayTruncationRegression39218:
+    """``list[File]`` must respect ``array_element_limit`` and the byte budget."""
+
+    @pytest.fixture
+    def truncator(self) -> VariableTruncator:
+        return VariableTruncator(
+            array_element_limit=3,
+            max_size_bytes=1000,
+            string_length_limit=50,
+        )
+
+    @staticmethod
+    def _make_file(name: str = "f") -> File:
+        return File(
+            id=name,
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url=f"https://example.com/{name}.txt",
+            filename=f"{name}.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=1024,
+        )
+
+    def test_file_array_respects_element_count_cap(self, truncator: VariableTruncator) -> None:
+        # Use a target_size larger than ``count * file_size`` so the byte
+        # budget never binds — only the count cap should fire.
+        # Each File serializes to ~237 bytes; 3 files = ~713 bytes.
+        files = [self._make_file(f"f{i}") for i in range(500)]
+
+        result = truncator._truncate_array(files, target_size=10_000_000)
+
+        # Before the fix, all 500 File entries survived (``len(value)==500``,
+        # ``truncated==False``). After the fix, the array is capped at
+        # ``array_element_limit=3`` and ``truncated`` flips to True.
+        assert len(result.value) == 3
+        assert result.truncated is True
+
+    def test_file_array_reports_real_used_size(self, truncator: VariableTruncator) -> None:
+        # Large budget so the count cap fires before the byte budget does.
+        files = [self._make_file(f"f{i}") for i in range(500)]
+
+        result = truncator._truncate_array(files, target_size=10_000_000)
+
+        # Before the fix, ``used_size`` for a File array was the empty-array
+        # baseline of 2 bytes (``[]``), regardless of how many File entries
+        # actually returned. After the fix, ``used_size`` reflects the real
+        # serialized size of the returned ``File`` payload.
+        assert result.value_size > 100
+        assert result.truncated is True
+
+    def test_file_array_respects_byte_budget(self, truncator: VariableTruncator) -> None:
+        # Use a small ``target_size`` so the byte budget is the binding
+        # constraint. Each File serializes to ~237 bytes, so even one File
+        # blows the 200-byte budget.
+        files = [self._make_file(f"f{i}") for i in range(50)]
+
+        result = truncator._truncate_array(files, target_size=200)
+
+        # Before the fix, all 50 File entries survived and ``used_size``
+        # reported ``2`` (the empty-array baseline). After the fix, the
+        # loop sees the File payload: ``value_size`` reflects the real
+        # serialized size, and the loop stops after the first File because
+        # adding the next one would exceed ``target_size``.
+        assert len(result.value) == 1
+        assert result.value_size > 100  # the File's real serialized size
+        assert result.value_size <= 250  # in the ballpark of the budget
+
+    def test_mixed_array_counts_files_toward_cap(self, truncator: VariableTruncator) -> None:
+        mixed: list[object] = [
+            self._make_file("f0"),
+            "a",
+            self._make_file("f1"),
+            "b",
+            self._make_file("f2"),
+            "c",
+            self._make_file("f3"),
+            "d",
+        ]
+
+        result = truncator._truncate_array(mixed, target_size=10_000_000)
+
+        # 8 items, cap of 3 → exactly 3 items. Files and primitives are
+        # counted together toward the cap.
+        assert len(result.value) == 3
+        assert result.truncated is True
+
+    def test_single_file_in_array_is_preserved(self, truncator: VariableTruncator) -> None:
+        result = truncator._truncate_array([self._make_file("only")], target_size=10_000_000)
+
+        # The File itself is not truncated — the dedicated ``File`` branch
+        # in ``_truncate_json_primitives`` returns the file untouched. Only
+        # the array-shape accounting changes.
+        assert len(result.value) == 1
+        assert isinstance(result.value[0], File)
+        assert result.value[0].id == "only"
+        assert result.truncated is False

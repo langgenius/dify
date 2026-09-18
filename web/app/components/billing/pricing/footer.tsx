@@ -1,44 +1,45 @@
-import type { Category } from '.'
-import { RiArrowRightUpLine } from '@remixicon/react'
-import Link from 'next/link'
-import * as React from 'react'
+import type { Locale } from '@/i18n/locale'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import { CategoryEnum } from '.'
+import { useLocale } from '#i18n'
+import Link from '@/next/link'
 
-type FooterProps = {
-  pricingPageURL: string
-  currentCategory: Category
+const websiteLocalePaths: Partial<Record<Locale, string>> = {
+  'zh-Hans': '/zh',
+  'ja-JP': '/ja',
+  'ko-KR': '/ko',
 }
 
-const Footer = ({
-  pricingPageURL,
-  currentCategory,
-}: FooterProps) => {
+export function PricingFooter({ category }: { category: 'cloud' | 'self-hosted' }) {
+  const locale = useLocale()
+  const comparisonPage = category === 'cloud' ? 'dify-cloud' : 'dify-enterprise'
+  const pricingPageURL = `https://dify.ai${websiteLocalePaths[locale] ?? ''}/pricing/${comparisonPage}#compare`
   const { t } = useTranslation()
 
   return (
     <div className="flex min-h-16 w-full justify-center border-t border-divider-accent px-10">
-      <div className={cn('flex max-w-[1680px] grow border-x border-divider-accent p-6', currentCategory === CategoryEnum.CLOUD ? 'justify-between' : 'justify-end')}>
-        {currentCategory === CategoryEnum.CLOUD && (
-          <div className="flex flex-col text-text-tertiary">
-            <span className="system-xs-regular">{t('plansCommon.taxTip', { ns: 'billing' })}</span>
-            <span className="system-xs-regular">{t('plansCommon.taxTipSecond', { ns: 'billing' })}</span>
+      <div
+        data-category={category}
+        className="flex max-w-[1680px] grow justify-end gap-6 border-x border-divider-accent p-6 data-[category=cloud]:justify-between"
+      >
+        {category === 'cloud' && (
+          <div className="flex min-w-0 flex-1 flex-col text-text-tertiary">
+            <span className="system-xs-regular">
+              {t(($) => $['plansCommon.taxTip'], { ns: 'billing' })}
+            </span>
           </div>
         )}
-        <span className="flex h-fit items-center gap-x-1 text-saas-dify-blue-accessible">
+        <span className="flex h-fit shrink-0 items-center gap-x-1 text-saas-dify-blue-accessible">
           <Link
             href={pricingPageURL}
-            className="system-md-regular"
+            className="rounded-xs system-md-regular hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             target="_blank"
+            rel="noopener noreferrer"
           >
-            {t('plansCommon.comparePlanAndFeatures', { ns: 'billing' })}
+            {t(($) => $['plansCommon.comparePlanAndFeatures'], { ns: 'billing' })}
           </Link>
-          <RiArrowRightUpLine className="size-4" />
+          <span aria-hidden="true" className="i-ri-arrow-right-up-line size-4" />
         </span>
       </div>
     </div>
   )
 }
-
-export default React.memo(Footer)

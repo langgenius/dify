@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, override
 
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -9,7 +9,9 @@ from core.tools.plugin_tool.tool import PluginTool
 
 
 class PluginToolProviderController(BuiltinToolProviderController):
-    entity: ToolProviderEntityWithPlugin
+    # TODO: Split the credential/schema helpers from BuiltinToolProviderController
+    # so plugin providers do not need to inherit builtin tool-loading behavior.
+    entity: ToolProviderEntityWithPlugin  # pyrefly: ignore[bad-override-mutable-attribute]
     tenant_id: str
     plugin_id: str
     plugin_unique_identifier: str
@@ -23,6 +25,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
         self.plugin_unique_identifier = plugin_unique_identifier
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider
@@ -31,6 +34,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
         """
         return ToolProviderType.PLUGIN
 
+    @override
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider
@@ -44,7 +48,8 @@ class PluginToolProviderController(BuiltinToolProviderController):
         ):
             raise ToolProviderCredentialValidationError("Invalid credentials")
 
-    def get_tool(self, tool_name: str) -> PluginTool:  # type: ignore
+    @override
+    def get_tool(self, tool_name: str) -> PluginTool:  # type: ignore[override]  # pyrefly: ignore[bad-override]
         """
         return tool with given name
         """
@@ -63,7 +68,8 @@ class PluginToolProviderController(BuiltinToolProviderController):
             plugin_unique_identifier=self.plugin_unique_identifier,
         )
 
-    def get_tools(self) -> list[PluginTool]:  # type: ignore
+    @override
+    def get_tools(self) -> list[PluginTool]:  # type: ignore[override]  # pyrefly: ignore[bad-override]
         """
         get all tools
         """

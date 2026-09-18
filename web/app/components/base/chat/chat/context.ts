@@ -3,7 +3,9 @@
 import type { ChatProps } from './index'
 import { createContext, useContext } from 'use-context-selector'
 
-export type ChatContextValue = Pick<ChatProps, 'config'
+export type ChatContextValue = Pick<
+  ChatProps,
+  | 'config'
   | 'isResponding'
   | 'chatList'
   | 'showPromptLog'
@@ -11,14 +13,16 @@ export type ChatContextValue = Pick<ChatProps, 'config'
   | 'answerIcon'
   | 'onSend'
   | 'onRegenerate'
+  | 'showRegenerate'
   | 'onAnnotationEdited'
   | 'onAnnotationAdded'
   | 'onAnnotationRemoved'
   | 'disableFeedback'
   | 'onFeedback'
-  | 'getHumanInputNodeData'> & {
-    readonly?: boolean
-  }
+  | 'getHumanInputNodeData'
+> & {
+  readonly?: boolean
+}
 
 export const ChatContext = createContext<ChatContextValue>({
   chatList: [],
@@ -26,5 +30,3 @@ export const ChatContext = createContext<ChatContextValue>({
 })
 
 export const useChatContext = () => useContext(ChatContext)
-
-export default ChatContext

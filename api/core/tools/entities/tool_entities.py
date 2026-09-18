@@ -6,9 +6,20 @@ from collections.abc import Mapping
 from enum import StrEnum, auto
 from typing import Any, Union
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationInfo,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
+from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
+from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
     MCPServerParameterType,
     PluginParameter,
@@ -18,9 +29,17 @@ from core.plugin.entities.parameters import (
     cast_parameter_value,
     init_frontend_parameter,
 )
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.entities import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
+
+
+class EmojiIconDict(TypedDict):
+    background: str
+    content: str
+
+
+emoji_icon_adapter: TypeAdapter[EmojiIconDict] = TypeAdapter(EmojiIconDict)
 
 
 class ToolLabelEnum(StrEnum):
@@ -130,7 +149,7 @@ class ToolInvokeMessage(BaseModel):
         text: str
 
     class JsonMessage(BaseModel):
-        json_object: dict | list
+        json_object: dict[str, Any] | list[Any]
         suppress_output: bool = Field(default=False, description="Whether to suppress JSON output in result string")
 
     class BlobMessage(BaseModel):
@@ -273,9 +292,7 @@ class ToolInvokeMessageBinary(BaseModel):
 
 
 class ToolParameter(PluginParameter):
-    """
-    Overrides type
-    """
+    """Tool-specific parameter declaration and invocation-value normalization."""
 
     class ToolParameterType(StrEnum):
         """
@@ -294,6 +311,8 @@ class ToolParameter(PluginParameter):
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR
         ANY = PluginParameterType.ANY
         DYNAMIC_SELECT = PluginParameterType.DYNAMIC_SELECT
+        DATE = PluginParameterType.DATE
+        DATE_RANGE = PluginParameterType.DATE_RANGE
 
         # MCP object and array type parameters
         ARRAY = MCPServerParameterType.ARRAY
@@ -314,11 +333,27 @@ class ToolParameter(PluginParameter):
         LLM = auto()  # will be set by LLM
 
     type: ToolParameterType = Field(..., description="The type of the parameter")
+    multiple: bool = Field(
+        default=False,
+        description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
+    )
     human_description: I18nObject | None = Field(default=None, description="The description presented to the user")
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: str | None = None
     # MCP object and array type parameters use this field to store the schema
-    input_schema: dict | None = None
+    input_schema: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def validate_multiple(self) -> ToolParameter:
+        supports_multiple = self.type in {
+            self.ToolParameterType.SELECT,
+            self.ToolParameterType.DYNAMIC_SELECT,
+        }
+        if self.multiple and not supports_multiple:
+            raise ValueError("multiple is only valid for select and dynamic-select parameters")
+        if supports_multiple and self.default is not None and (isinstance(self.default, list) != self.multiple):
+            raise ValueError("default must be a list exactly when multiple is true")
+        return self
 
     @classmethod
     def get_simple_instance(
@@ -359,8 +394,25 @@ class ToolParameter(PluginParameter):
             options=option_objs,
         )
 
-    def init_frontend_parameter(self, value: Any):
-        return init_frontend_parameter(self, self.type, value)
+    def init_frontend_parameter(self, value: Any) -> Any:
+        """Normalize a value against this tool parameter's full declaration."""
+        if not self.multiple:
+            return init_frontend_parameter(self, self.type, value)
+
+        parameter_value = self.default if value is None else value
+        if parameter_value is None:
+            parameter_value = []
+        if not isinstance(parameter_value, list):
+            raise ValueError(f"tool parameter {self.name} must be a list when multiple is true")
+        if not all(isinstance(item, str) for item in parameter_value):
+            raise ValueError(f"tool parameter {self.name} must contain only strings")
+        if self.required and not parameter_value:
+            raise ValueError(f"tool parameter {self.name} not found in tool config")
+        if self.type == self.ToolParameterType.SELECT:
+            options = [option.value for option in self.options]
+            if any(item not in options for item in parameter_value):
+                raise ValueError(f"tool parameter {self.name} value {parameter_value} not in options {options}")
+        return parameter_value
 
 
 class ToolProviderIdentity(BaseModel):
@@ -410,15 +462,6 @@ class ToolEntity(BaseModel):
         return value or {}
 
 
-class OAuthSchema(BaseModel):
-    client_schema: list[ProviderConfig] = Field(
-        default_factory=list[ProviderConfig], description="The schema of the OAuth client"
-    )
-    credentials_schema: list[ProviderConfig] = Field(
-        default_factory=list[ProviderConfig], description="The schema of the OAuth credentials"
-    )
-
-
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
     plugin_id: str | None = None
@@ -440,6 +483,12 @@ class WorkflowToolParameterConfiguration(BaseModel):
     form: ToolParameter.ToolParameterForm = Field(..., description="The form of the parameter")
 
 
+class ToolInvokeMetaDict(TypedDict):
+    time_cost: float
+    error: str | None
+    tool_config: dict[str, Any] | None
+
+
 class ToolInvokeMeta(BaseModel):
     """
     Tool invoke meta
@@ -447,7 +496,7 @@ class ToolInvokeMeta(BaseModel):
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
     error: str | None = None
-    tool_config: dict | None = None
+    tool_config: dict[str, Any] | None = None
 
     @classmethod
     def empty(cls) -> ToolInvokeMeta:
@@ -463,12 +512,13 @@ class ToolInvokeMeta(BaseModel):
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self):
-        return {
+    def to_dict(self) -> ToolInvokeMetaDict:
+        result: ToolInvokeMetaDict = {
             "time_cost": self.time_cost,
             "error": self.error,
             "tool_config": self.tool_config,
         }
+        return result
 
 
 class ToolLabel(BaseModel):

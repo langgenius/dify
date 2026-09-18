@@ -1,8 +1,18 @@
-import type { GitHubRepoReleaseResponse, PluginDeclaration, PluginManifestInMarket, UpdateFromGitHubPayload } from '../../../types'
+import type {
+  GitHubRepoReleaseResponse,
+  PluginDeclaration,
+  PluginManifestInMarket,
+  UpdateFromGitHubPayload,
+} from '../../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../../types'
-import { convertRepoToUrl, parseGitHubUrl, pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../../utils'
+import {
+  convertRepoToUrl,
+  parseGitHubUrl,
+  pluginManifestInMarketToPluginProps,
+  pluginManifestToCardPluginProps,
+} from '../../utils'
 import InstallFromGitHub from '../index'
 
 // Factory functions for test data (defined before mocks that use them)
@@ -32,19 +42,36 @@ const createMockReleases = (): GitHubRepoReleaseResponse[] => [
   {
     tag_name: 'v1.0.0',
     assets: [
-      { id: 1, name: 'plugin-v1.0.0.zip', browser_download_url: 'https://github.com/test/repo/releases/download/v1.0.0/plugin-v1.0.0.zip' },
-      { id: 2, name: 'plugin-v1.0.0.tar.gz', browser_download_url: 'https://github.com/test/repo/releases/download/v1.0.0/plugin-v1.0.0.tar.gz' },
+      {
+        id: 1,
+        name: 'plugin-v1.0.0.zip',
+        browser_download_url:
+          'https://github.com/test/repo/releases/download/v1.0.0/plugin-v1.0.0.zip',
+      },
+      {
+        id: 2,
+        name: 'plugin-v1.0.0.tar.gz',
+        browser_download_url:
+          'https://github.com/test/repo/releases/download/v1.0.0/plugin-v1.0.0.tar.gz',
+      },
     ],
   },
   {
     tag_name: 'v0.9.0',
     assets: [
-      { id: 3, name: 'plugin-v0.9.0.zip', browser_download_url: 'https://github.com/test/repo/releases/download/v0.9.0/plugin-v0.9.0.zip' },
+      {
+        id: 3,
+        name: 'plugin-v0.9.0.zip',
+        browser_download_url:
+          'https://github.com/test/repo/releases/download/v0.9.0/plugin-v0.9.0.zip',
+      },
     ],
   },
 ]
 
-const createUpdatePayload = (overrides: Partial<UpdateFromGitHubPayload> = {}): UpdateFromGitHubPayload => ({
+const createUpdatePayload = (
+  overrides: Partial<UpdateFromGitHubPayload> = {},
+): UpdateFromGitHubPayload => ({
   originalPackageInfo: {
     id: 'original-id',
     repo: 'owner/repo',
@@ -57,10 +84,16 @@ const createUpdatePayload = (overrides: Partial<UpdateFromGitHubPayload> = {}): 
 
 // Mock external dependencies
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (props: { type: string, message: string }) => mockNotify(props),
-  },
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign((props: { type: string; message: string }) => mockNotify(props), {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+    warning: (message: string) => mockNotify({ type: 'warning', message }),
+    info: (message: string) => mockNotify({ type: 'info', message }),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 const mockGetIconUrl = vi.fn()
@@ -68,10 +101,16 @@ vi.mock('@/app/components/plugins/install-plugin/base/use-get-icon', () => ({
   default: () => ({ getIconUrl: mockGetIconUrl }),
 }))
 
-const mockFetchReleases = vi.fn()
-vi.mock('../../hooks', () => ({
-  useGitHubReleases: () => ({ fetchReleases: mockFetchReleases }),
+const { mockFetchReleases } = vi.hoisted(() => ({
+  mockFetchReleases: vi.fn(),
 }))
+vi.mock('../../hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks')>()
+  return {
+    ...actual,
+    fetchReleases: mockFetchReleases,
+  }
+})
 
 const mockRefreshPluginList = vi.fn()
 vi.mock('../../hooks/use-refresh-plugin-list', () => ({
@@ -89,25 +128,6 @@ vi.mock('../../hooks/use-hide-logic', () => ({
 }))
 
 // Mock child components
-vi.mock('../steps/setURL', () => ({
-  default: ({ repoUrl, onChange, onNext, onCancel }: {
-    repoUrl: string
-    onChange: (value: string) => void
-    onNext: () => void
-    onCancel: () => void
-  }) => (
-    <div data-testid="set-url-step">
-      <input
-        data-testid="repo-url-input"
-        value={repoUrl}
-        onChange={e => onChange(e.target.value)}
-      />
-      <button data-testid="next-btn" onClick={onNext}>Next</button>
-      <button data-testid="cancel-btn" onClick={onCancel}>Cancel</button>
-    </div>
-  ),
-}))
-
 vi.mock('../steps/selectPackage', () => ({
   default: ({
     repoUrl,
@@ -123,12 +143,12 @@ vi.mock('../steps/selectPackage', () => ({
   }: {
     repoUrl: string
     selectedVersion: string
-    versions: { value: string, name: string }[]
-    onSelectVersion: (item: { value: string, name: string }) => void
+    versions: { value: string; name: string }[]
+    onSelectVersion: (item: { value: string; name: string }) => void
     selectedPackage: string
-    packages: { value: string, name: string }[]
-    onSelectPackage: (item: { value: string, name: string }) => void
-    onUploaded: (result: { uniqueIdentifier: string, manifest: PluginDeclaration }) => void
+    packages: { value: string; name: string }[]
+    onSelectPackage: (item: { value: string; name: string }) => void
+    onUploaded: (result: { uniqueIdentifier: string; manifest: PluginDeclaration }) => void
     onFailed: (errorMsg: string) => void
     onBack: () => void
   }) => (
@@ -152,20 +172,21 @@ vi.mock('../steps/selectPackage', () => ({
       </button>
       <button
         data-testid="trigger-upload-btn"
-        onClick={() => onUploaded({
-          uniqueIdentifier: 'test-unique-id',
-          manifest: createMockManifest(),
-        })}
+        onClick={() =>
+          onUploaded({
+            uniqueIdentifier: 'test-unique-id',
+            manifest: createMockManifest(),
+          })
+        }
       >
         Trigger Upload
       </button>
-      <button
-        data-testid="trigger-upload-fail-btn"
-        onClick={() => onFailed('Upload failed error')}
-      >
+      <button data-testid="trigger-upload-fail-btn" onClick={() => onFailed('Upload failed error')}>
         Trigger Upload Fail
       </button>
-      <button data-testid="back-btn" onClick={onBack}>Back</button>
+      <button data-testid="back-btn" onClick={onBack}>
+        Back
+      </button>
     </div>
   ),
 }))
@@ -198,18 +219,35 @@ vi.mock('../steps/loaded', () => ({
       <span data-testid="loaded-repo-url">{repoUrl}</span>
       <span data-testid="loaded-version">{selectedVersion}</span>
       <span data-testid="loaded-package">{selectedPackage}</span>
-      <button data-testid="loaded-back-btn" onClick={onBack}>Back</button>
-      <button data-testid="start-install-btn" onClick={onStartToInstall}>Start Install</button>
-      <button data-testid="install-success-btn" onClick={() => onInstalled()}>Install Success</button>
-      <button data-testid="install-success-no-refresh-btn" onClick={() => onInstalled(true)}>Install Success No Refresh</button>
-      <button data-testid="install-fail-btn" onClick={() => onFailed('Install failed')}>Install Fail</button>
-      <button data-testid="install-fail-no-msg-btn" onClick={() => onFailed()}>Install Fail No Msg</button>
+      <button data-testid="loaded-back-btn" onClick={onBack}>
+        Back
+      </button>
+      <button data-testid="start-install-btn" onClick={onStartToInstall}>
+        Start Install
+      </button>
+      <button data-testid="install-success-btn" onClick={() => onInstalled()}>
+        Install Success
+      </button>
+      <button data-testid="install-success-no-refresh-btn" onClick={() => onInstalled(true)}>
+        Install Success No Refresh
+      </button>
+      <button data-testid="install-fail-btn" onClick={() => onFailed('Install failed')}>
+        Install Fail
+      </button>
+      <button data-testid="install-fail-no-msg-btn" onClick={() => onFailed()}>
+        Install Fail No Msg
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../base/installed', () => ({
-  default: ({ payload, isFailed, errMsg, onCancel }: {
+  default: ({
+    payload,
+    isFailed,
+    errMsg,
+    onCancel,
+  }: {
     payload: PluginDeclaration | null
     isFailed: boolean
     errMsg: string | null
@@ -219,10 +257,16 @@ vi.mock('../../base/installed', () => ({
       <span data-testid="installed-payload">{payload?.name || 'no-payload'}</span>
       <span data-testid="is-failed">{isFailed ? 'true' : 'false'}</span>
       <span data-testid="error-msg">{errMsg || 'no-error'}</span>
-      <button data-testid="installed-close-btn" onClick={onCancel}>Close</button>
+      <button data-testid="installed-close-btn" onClick={onCancel}>
+        Close
+      </button>
     </div>
   ),
 }))
+
+const getRepoUrlInput = () => screen.getByLabelText('plugin.installFromGitHub.gitHubRepo')
+const getNextButton = () => screen.getByRole('button', { name: 'plugin.installModal.next' })
+const getCancelButton = () => screen.getByRole('button', { name: 'plugin.installModal.cancel' })
 
 describe('InstallFromGitHub', () => {
   const defaultProps = {
@@ -246,11 +290,12 @@ describe('InstallFromGitHub', () => {
   // Rendering Tests
   // ================================
   describe('Rendering', () => {
-    it('should render modal with correct initial state for new installation', () => {
+    it('should render and focus the URL for a new installation', async () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
-      expect(screen.getByTestId('repo-url-input')).toHaveValue('')
+      expect(getRepoUrlInput()).toBeInTheDocument()
+      expect(getRepoUrlInput()).toHaveValue('')
+      await waitFor(() => expect(getRepoUrlInput()).toHaveFocus())
     })
 
     it('should render modal with selectPackage step when updatePayload is provided', () => {
@@ -259,20 +304,15 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} updatePayload={updatePayload} />)
 
       expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
-      expect(screen.getByTestId('repo-url-display')).toHaveTextContent('https://github.com/owner/repo')
+      expect(screen.getByTestId('repo-url-display')).toHaveTextContent(
+        'https://github.com/owner/repo',
+      )
     })
 
     it('should render install note text in non-terminal steps', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       expect(screen.getByText('plugin.installFromGitHub.installNote')).toBeInTheDocument()
-    })
-
-    it('should apply modal className from useHideLogic', () => {
-      // Verify useHideLogic provides modalClassName
-      // The actual className application is handled by Modal component internally
-      // We verify the hook integration by checking that it returns the expected class
-      expect(mockHideLogicState.modalClassName).toBe('test-modal-class')
     })
   })
 
@@ -300,7 +340,7 @@ describe('InstallFromGitHub', () => {
     it('should update repoUrl when user types in input', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/test/repo' } })
 
       expect(input).toHaveValue('https://github.com/test/repo')
@@ -309,15 +349,29 @@ describe('InstallFromGitHub', () => {
     it('should transition from setUrl to selectPackage on successful URL submit', async () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
 
-      const nextBtn = screen.getByTestId('next-btn')
+      const nextBtn = getNextButton()
       fireEvent.click(nextBtn)
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
       })
+    })
+
+    it('should submit the repo URL form from the set URL step', async () => {
+      render(<InstallFromGitHub {...defaultProps} />)
+
+      const input = getRepoUrlInput()
+      const form = input.closest('form')
+      fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
+
+      expect(form).toBeInTheDocument()
+      expect(getNextButton()).toHaveAttribute('type', 'submit')
+      fireEvent.submit(form!)
+
+      expect(await screen.findByRole('button', { name: 'Select Version' })).toBeInTheDocument()
     })
 
     it('should update selectedVersion when version is selected', async () => {
@@ -431,10 +485,10 @@ describe('InstallFromGitHub', () => {
     it('should show error toast for invalid GitHub URL', async () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'invalid-url' } })
 
-      const nextBtn = screen.getByTestId('next-btn')
+      const nextBtn = getNextButton()
       fireEvent.click(nextBtn)
 
       await waitFor(() => {
@@ -450,10 +504,10 @@ describe('InstallFromGitHub', () => {
 
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
 
-      const nextBtn = screen.getByTestId('next-btn')
+      const nextBtn = getNextButton()
       fireEvent.click(nextBtn)
 
       await waitFor(() => {
@@ -469,10 +523,10 @@ describe('InstallFromGitHub', () => {
 
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
 
-      const nextBtn = screen.getByTestId('next-btn')
+      const nextBtn = getNextButton()
       fireEvent.click(nextBtn)
 
       await waitFor(() => {
@@ -492,9 +546,9 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       // Navigate to selectPackage
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
@@ -504,8 +558,9 @@ describe('InstallFromGitHub', () => {
       fireEvent.click(screen.getByTestId('back-btn'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
+        expect(getRepoUrlInput()).toBeInTheDocument()
       })
+      expect(getRepoUrlInput()).not.toHaveFocus()
     })
 
     it('should go back from readyToInstall to selectPackage', async () => {
@@ -534,7 +589,7 @@ describe('InstallFromGitHub', () => {
     it('should call onClose when cancel button is clicked', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('cancel-btn'))
+      fireEvent.click(getCancelButton())
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
     })
@@ -560,6 +615,42 @@ describe('InstallFromGitHub', () => {
 
       await waitFor(() => {
         expect(defaultProps.onSuccess).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('waits for an async onSuccess callback before showing installation success', async () => {
+      let resolveSuccess: (() => void) | undefined
+      const onSuccess = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSuccess = resolve
+          }),
+      )
+      render(
+        <InstallFromGitHub
+          onClose={vi.fn()}
+          onSuccess={onSuccess}
+          updatePayload={createUpdatePayload()}
+        />,
+      )
+
+      fireEvent.click(screen.getByTestId('trigger-upload-btn'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('loaded-step')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId('install-success-btn'))
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledTimes(1)
+      })
+      expect(screen.queryByTestId('installed-step')).not.toBeInTheDocument()
+
+      resolveSuccess?.()
+
+      await waitFor(() => {
+        expect(screen.getByTestId('installed-step')).toBeInTheDocument()
       })
     })
 
@@ -638,28 +729,6 @@ describe('InstallFromGitHub', () => {
 
       await waitFor(() => {
         expect(mockHideLogicState.setIsInstalling).toHaveBeenCalledWith(false)
-      })
-    })
-  })
-
-  // ================================
-  // Callback Stability Tests (Memoization)
-  // ================================
-  describe('Callback Stability', () => {
-    it('should maintain stable handleUploadFail callback reference', async () => {
-      const { rerender } = render(<InstallFromGitHub {...defaultProps} updatePayload={createUpdatePayload()} />)
-
-      const firstRender = screen.getByTestId('select-package-step')
-      expect(firstRender).toBeInTheDocument()
-
-      // Rerender with same props
-      rerender(<InstallFromGitHub {...defaultProps} updatePayload={createUpdatePayload()} />)
-
-      // The component should still work correctly
-      fireEvent.click(screen.getByTestId('trigger-upload-fail-btn'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('installed-step')).toBeInTheDocument()
       })
     })
   })
@@ -771,10 +840,10 @@ describe('InstallFromGitHub', () => {
     it('should handle URL without trailing slash', async () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
 
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(mockFetchReleases).toHaveBeenCalledWith('owner', 'repo')
@@ -785,18 +854,20 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       // Set URL
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/test/myrepo' } })
 
       // Navigate to selectPackage
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
       })
 
       // Verify URL is preserved
-      expect(screen.getByTestId('repo-url-display')).toHaveTextContent('https://github.com/test/myrepo')
+      expect(screen.getByTestId('repo-url-display')).toHaveTextContent(
+        'https://github.com/test/myrepo',
+      )
 
       // Select version and package
       fireEvent.click(screen.getByTestId('select-version-btn'))
@@ -810,7 +881,9 @@ describe('InstallFromGitHub', () => {
       })
 
       // Verify all data is preserved
-      expect(screen.getByTestId('loaded-repo-url')).toHaveTextContent('https://github.com/test/myrepo')
+      expect(screen.getByTestId('loaded-repo-url')).toHaveTextContent(
+        'https://github.com/test/myrepo',
+      )
       expect(screen.getByTestId('loaded-version')).toHaveTextContent('v1.0.0')
       expect(screen.getByTestId('loaded-package')).toHaveTextContent('package.zip')
     })
@@ -902,7 +975,9 @@ describe('InstallFromGitHub', () => {
       fireEvent.click(screen.getByTestId('install-success-btn'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installFromGitHub.installedSuccessfully')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.installFromGitHub.installedSuccessfully'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -968,12 +1043,12 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       // Start from setUrl step
-      expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
+      expect(getRepoUrlInput()).toBeInTheDocument()
 
       // Enter URL
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
@@ -987,14 +1062,25 @@ describe('InstallFromGitHub', () => {
 
       // Start from selectPackage step
       expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
-      expect(screen.getByTestId('repo-url-display')).toHaveTextContent('https://github.com/owner/repo')
+      expect(screen.getByTestId('repo-url-display')).toHaveTextContent(
+        'https://github.com/owner/repo',
+      )
     })
 
     it('should use releases from updatePayload', () => {
       const customReleases: GitHubRepoReleaseResponse[] = [
-        { tag_name: 'v2.0.0', assets: [{ id: 1, name: 'custom.zip', browser_download_url: 'url' }] },
-        { tag_name: 'v1.5.0', assets: [{ id: 2, name: 'custom2.zip', browser_download_url: 'url2' }] },
-        { tag_name: 'v1.0.0', assets: [{ id: 3, name: 'custom3.zip', browser_download_url: 'url3' }] },
+        {
+          tag_name: 'v2.0.0',
+          assets: [{ id: 1, name: 'custom.zip', browser_download_url: 'url' }],
+        },
+        {
+          tag_name: 'v1.5.0',
+          assets: [{ id: 2, name: 'custom2.zip', browser_download_url: 'url2' }],
+        },
+        {
+          tag_name: 'v1.0.0',
+          assets: [{ id: 3, name: 'custom3.zip', browser_download_url: 'url3' }],
+        },
       ]
 
       const updatePayload = createUpdatePayload({
@@ -1025,7 +1111,9 @@ describe('InstallFromGitHub', () => {
 
       render(<InstallFromGitHub {...defaultProps} updatePayload={updatePayload} />)
 
-      expect(screen.getByTestId('repo-url-display')).toHaveTextContent('https://github.com/myorg/myrepo')
+      expect(screen.getByTestId('repo-url-display')).toHaveTextContent(
+        'https://github.com/myorg/myrepo',
+      )
     })
   })
 
@@ -1059,7 +1147,9 @@ describe('InstallFromGitHub', () => {
       await waitFor(() => {
         expect(screen.getByTestId('installed-step')).toBeInTheDocument()
         expect(screen.getByTestId('is-failed')).toHaveTextContent('true')
-        expect(screen.getByTestId('error-msg')).toHaveTextContent('plugin.installModal.installFailedDesc')
+        expect(screen.getByTestId('error-msg')).toHaveTextContent(
+          'plugin.installModal.installFailedDesc',
+        )
       })
     })
   })
@@ -1074,7 +1164,7 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       // Verify we're on setUrl step
-      expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
+      expect(getRepoUrlInput()).toBeInTheDocument()
 
       // The setUrl step doesn't expose onBack in the real component,
       // but our mock doesn't have it either - this is correct behavior
@@ -1085,9 +1175,9 @@ describe('InstallFromGitHub', () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       // Navigate to selectPackage
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
@@ -1111,11 +1201,11 @@ describe('InstallFromGitHub', () => {
       fireEvent.click(screen.getByTestId('back-btn'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
+        expect(getRepoUrlInput()).toBeInTheDocument()
       })
 
       // Verify URL is preserved after back navigation
-      expect(screen.getByTestId('repo-url-input')).toHaveValue('https://github.com/owner/repo')
+      expect(getRepoUrlInput()).toHaveValue('https://github.com/owner/repo')
     })
   })
 })
@@ -1356,114 +1446,6 @@ describe('Install Plugin Utils', () => {
 // Steps Components Tests
 // ================================
 
-// SetURL Component Tests
-describe('SetURL Component', () => {
-  // Import the real component for testing
-  const SetURL = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    // Re-mock the SetURL component with a more testable version
-    vi.doMock('./steps/setURL', () => ({
-      default: SetURL,
-    }))
-  })
-
-  describe('Rendering', () => {
-    it('should render label with correct text', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      // The mocked component should be rendered
-      expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
-    })
-
-    it('should render input field with placeholder', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      expect(input).toBeInTheDocument()
-    })
-
-    it('should render cancel and next buttons', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      expect(screen.getByTestId('cancel-btn')).toBeInTheDocument()
-      expect(screen.getByTestId('next-btn')).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should display repoUrl value in input', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      fireEvent.change(input, { target: { value: 'https://github.com/test/repo' } })
-
-      expect(input).toHaveValue('https://github.com/test/repo')
-    })
-
-    it('should call onChange when input value changes', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      fireEvent.change(input, { target: { value: 'new-value' } })
-
-      expect(input).toHaveValue('new-value')
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onNext when next button is clicked', async () => {
-      mockFetchReleases.mockResolvedValue(createMockReleases())
-
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-
-      fireEvent.click(screen.getByTestId('next-btn'))
-
-      await waitFor(() => {
-        expect(mockFetchReleases).toHaveBeenCalled()
-      })
-    })
-
-    it('should call onCancel when cancel button is clicked', () => {
-      const onClose = vi.fn()
-      render(<InstallFromGitHub onClose={onClose} onSuccess={vi.fn()} />)
-
-      fireEvent.click(screen.getByTestId('cancel-btn'))
-
-      expect(onClose).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty URL input', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      expect(input).toHaveValue('')
-    })
-
-    it('should handle URL with whitespace only', () => {
-      render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
-
-      const input = screen.getByTestId('repo-url-input')
-      fireEvent.change(input, { target: { value: '   ' } })
-
-      // With whitespace only, next should still be submittable but validation will fail
-      fireEvent.click(screen.getByTestId('next-btn'))
-
-      // Should show error for invalid URL
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'plugin.error.inValidGitHubUrl',
-      })
-    })
-  })
-})
-
 // SelectPackage Component Tests
 describe('SelectPackage Component', () => {
   beforeEach(() => {
@@ -1501,9 +1483,9 @@ describe('SelectPackage Component', () => {
       render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
 
       // Navigate to selectPackage step
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('back-btn')).toBeInTheDocument()
@@ -1578,9 +1560,9 @@ describe('SelectPackage Component', () => {
       render(<InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} />)
 
       // Navigate to selectPackage
-      const input = screen.getByTestId('repo-url-input')
+      const input = getRepoUrlInput()
       fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
-      fireEvent.click(screen.getByTestId('next-btn'))
+      fireEvent.click(getNextButton())
 
       await waitFor(() => {
         expect(screen.getByTestId('select-package-step')).toBeInTheDocument()
@@ -1589,7 +1571,7 @@ describe('SelectPackage Component', () => {
       fireEvent.click(screen.getByTestId('back-btn'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('set-url-step')).toBeInTheDocument()
+        expect(getRepoUrlInput()).toBeInTheDocument()
       })
     })
 
@@ -1674,11 +1656,7 @@ describe('SelectPackage Component', () => {
       })
 
       render(
-        <InstallFromGitHub
-          onClose={vi.fn()}
-          onSuccess={vi.fn()}
-          updatePayload={updatePayload}
-        />,
+        <InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} updatePayload={updatePayload} />,
       )
 
       expect(screen.getByTestId('versions-count')).toHaveTextContent('0')
@@ -1696,11 +1674,7 @@ describe('SelectPackage Component', () => {
       })
 
       render(
-        <InstallFromGitHub
-          onClose={vi.fn()}
-          onSuccess={vi.fn()}
-          updatePayload={updatePayload}
-        />,
+        <InstallFromGitHub onClose={vi.fn()} onSuccess={vi.fn()} updatePayload={updatePayload} />,
       )
 
       // Select the empty version
@@ -1820,7 +1794,9 @@ describe('Loaded Component', () => {
       fireEvent.click(screen.getByTestId('trigger-upload-btn'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('loaded-repo-url')).toHaveTextContent('https://github.com/owner/repo')
+        expect(screen.getByTestId('loaded-repo-url')).toHaveTextContent(
+          'https://github.com/owner/repo',
+        )
       })
     })
 
@@ -1969,11 +1945,7 @@ describe('Loaded Component', () => {
       const updatePayload = createUpdatePayload()
 
       render(
-        <InstallFromGitHub
-          onClose={vi.fn()}
-          onSuccess={onSuccess}
-          updatePayload={updatePayload}
-        />,
+        <InstallFromGitHub onClose={vi.fn()} onSuccess={onSuccess} updatePayload={updatePayload} />,
       )
 
       // Navigate to loaded step

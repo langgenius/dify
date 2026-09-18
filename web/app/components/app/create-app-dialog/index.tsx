@@ -1,38 +1,25 @@
 'use client'
-import { useKeyPress } from 'ahooks'
-import { useCallback } from 'react'
-import FullScreenModal from '@/app/components/base/fullscreen-modal'
+import { useTranslation } from 'react-i18next'
+import { CreateAppDialogShell } from '../create-app-dialog-shell'
 import AppList from './app-list'
 
 type CreateAppDialogProps = {
   show: boolean
-  onSuccess: () => void
   onClose: () => void
   onCreateFromBlank?: () => void
 }
 
-const CreateAppTemplateDialog = ({ show, onSuccess, onClose, onCreateFromBlank }: CreateAppDialogProps) => {
-  const handleEscKeyPress = useCallback(() => {
-    if (show)
-      onClose()
-  }, [show, onClose])
-
-  useKeyPress('esc', handleEscKeyPress)
+const CreateAppTemplateDialog = ({ show, onClose, onCreateFromBlank }: CreateAppDialogProps) => {
+  const { t } = useTranslation()
 
   return (
-    <FullScreenModal
-      open={show}
-      closable
+    <CreateAppDialogShell
+      show={show}
+      title={t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
       onClose={onClose}
     >
-      <AppList
-        onCreateFromBlank={onCreateFromBlank}
-        onSuccess={() => {
-          onSuccess()
-          onClose()
-        }}
-      />
-    </FullScreenModal>
+      <AppList onCreateFromBlank={onCreateFromBlank} onClose={onClose} />
+    </CreateAppDialogShell>
   )
 }
 

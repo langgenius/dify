@@ -1,26 +1,59 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useClickAway } from 'ahooks'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { fetchAgentLogDetail } from '@/service/log'
 import AgentLogModal from '../index'
+
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
 
 vi.mock('@/service/log', () => ({
   fetchAgentLogDetail: vi.fn(),
 }))
 
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: mockToast,
+}))
+
 vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn(selector => selector({ appDetail: { id: 'app-id' } })),
+  useStore: vi.fn((selector) => selector({ appDetail: { id: 'app-id' } })),
 }))
 
 vi.mock('@/app/components/workflow/run/status', () => ({
-  default: ({ status, time, tokens, error }: { status: string, time?: number, tokens?: number, error?: string }) => (
-    <div data-testid="status-panel" data-status={String(status)} data-time={String(time)} data-tokens={String(tokens)}>{error ? <span>{String(error)}</span> : null}</div>
+  default: ({
+    status,
+    time,
+    tokens,
+    error,
+  }: {
+    status: string
+    time?: number
+    tokens?: number
+    error?: string
+  }) => (
+    <div
+      data-testid="status-panel"
+      data-status={String(status)}
+      data-time={String(time)}
+      data-tokens={String(tokens)}
+    >
+      {error ? <span>{String(error)}</span> : null}
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
+  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
     <div data-testid="code-editor">
       {title}
       {typeof value === 'string' ? value : JSON.stringify(value)}
@@ -37,7 +70,9 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
-  ChevronRight: (props: { className?: string }) => <div data-testid="chevron-right" className={props.className} />,
+  ChevronRight: (props: { className?: string }) => (
+    <div data-testid="chevron-right" className={props.className} />
+  ),
 }))
 
 vi.mock('ahooks', () => ({
@@ -71,14 +106,23 @@ describe('AgentLogModal', () => {
         agent_mode: 'function_call',
         iterations: 1,
       },
-      iterations: [{
-        created_at: '',
-        files: [],
-        thought: '',
-        tokens: 0,
-        tool_raw: { inputs: '', outputs: '' },
-        tool_calls: [{ tool_name: 'tool1', status: 'success', tool_icon: null, tool_label: { 'en-US': 'Tool 1' } }],
-      }],
+      iterations: [
+        {
+          created_at: '',
+          files: [],
+          thought: '',
+          tokens: 0,
+          tool_raw: { inputs: '', outputs: '' },
+          tool_calls: [
+            {
+              tool_name: 'tool1',
+              status: 'success',
+              tool_icon: null,
+              tool_label: { 'en-US': 'Tool 1' },
+            },
+          ],
+        },
+      ],
       files: [],
     })
   })
@@ -89,16 +133,14 @@ describe('AgentLogModal', () => {
   })
 
   it('should return null if no conversationId', () => {
-    const { container } = render(<AgentLogModal {...mockProps} currentLogItem={{ id: '1' } as unknown as IChatItem} />)
+    const { container } = render(
+      <AgentLogModal {...mockProps} currentLogItem={{ id: '1' } as unknown as IChatItem} />,
+    )
     expect(container.firstChild).toBeNull()
   })
 
   it('should render correctly when log item is provided', async () => {
-    render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
-        <AgentLogModal {...mockProps} />
-      </ToastContext.Provider>,
-    )
+    render(<AgentLogModal {...mockProps} />)
 
     expect(screen.getByText('appLog.runDetail.workflowTitle')).toBeInTheDocument()
 
@@ -107,16 +149,23 @@ describe('AgentLogModal', () => {
     })
   })
 
+  it('should render the floating modal through a dialog portal', () => {
+    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+
+    const { container } = render(<AgentLogModal {...mockProps} floating />)
+
+    const modal = screen.getByRole('dialog')
+    expect(container).not.toContainElement(modal)
+    expect(document.body).toContainElement(modal)
+    expect(modal).toHaveClass('fixed', 'z-50', 'w-120!', 'left-[max(8px,calc(100vw-1136px))]!')
+  })
+
   it('should call onCancel when close button is clicked', () => {
     vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
 
-    render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
-        <AgentLogModal {...mockProps} />
-      </ToastContext.Provider>,
-    )
+    render(<AgentLogModal {...mockProps} />)
 
-    const closeBtn = screen.getByRole('heading', { name: /appLog.runDetail.workflowTitle/i }).nextElementSibling!
+    const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
     fireEvent.click(closeBtn)
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
@@ -130,11 +179,7 @@ describe('AgentLogModal', () => {
       clickAwayHandler = callback
     })
 
-    render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
-        <AgentLogModal {...mockProps} />
-      </ToastContext.Provider>,
-    )
+    render(<AgentLogModal {...mockProps} />)
     clickAwayHandler(new Event('click'))
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
@@ -150,11 +195,21 @@ describe('AgentLogModal', () => {
       }
     })
 
-    render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
-        <AgentLogModal {...mockProps} />
-      </ToastContext.Provider>,
-    )
+    render(<AgentLogModal {...mockProps} />)
+
+    expect(mockProps.onCancel).not.toHaveBeenCalled()
+  })
+
+  it('should not use click-away to close the floating dialog', () => {
+    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+
+    let clickAwayHandler!: (event: Event) => void
+    vi.mocked(useClickAway).mockImplementation((callback) => {
+      clickAwayHandler = callback
+    })
+
+    render(<AgentLogModal {...mockProps} floating />)
+    clickAwayHandler(new Event('click'))
 
     expect(mockProps.onCancel).not.toHaveBeenCalled()
   })

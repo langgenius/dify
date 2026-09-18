@@ -17,7 +17,7 @@ vi.mock('@svgdotjs/svg.js', () => ({
 
 vi.mock('dompurify', () => ({
   default: {
-    sanitize: vi.fn(content => content),
+    sanitize: vi.fn((content) => content),
   },
 }))
 
@@ -64,22 +64,7 @@ describe('SVGRenderer', () => {
       render(<SVGRenderer content="invalid" />)
 
       await waitFor(() => {
-        expect(screen.getByText(/Error rendering SVG/)).toBeInTheDocument()
-      })
-    })
-
-    it('re-renders on window resize', async () => {
-      render(<SVGRenderer content={validSvg} />)
-      await waitFor(() => {
-        expect(mockAddTo).toHaveBeenCalledTimes(1)
-      })
-
-      await act(async () => {
-        window.dispatchEvent(new Event('resize'))
-      })
-
-      await waitFor(() => {
-        expect(mockAddTo).toHaveBeenCalledTimes(2)
+        expect(screen.getByText('common.svgRenderer.generatingImage'))!.toBeInTheDocument()
       })
     })
 
@@ -104,17 +89,14 @@ describe('SVGRenderer', () => {
       await waitFor(() => {
         expect(mockClick).toHaveBeenCalled()
       })
-      const clickHandler = mockClick.mock.calls[0][0]
+      const clickHandler = mockClick.mock.calls[0]![0]
 
       await act(async () => {
         clickHandler()
       })
       const img = screen.getByAltText('Preview')
-      expect(img).toBeInTheDocument()
-      expect(img).toHaveAttribute(
-        'src',
-        expect.stringContaining('data:image/svg+xml;base64'),
-      )
+      expect(img)!.toBeInTheDocument()
+      expect(img)!.toHaveAttribute('src', expect.stringContaining('data:image/svg+xml;base64'))
     })
 
     it('closes image preview on cancel', async () => {
@@ -124,14 +106,14 @@ describe('SVGRenderer', () => {
       await waitFor(() => {
         expect(mockClick).toHaveBeenCalled()
       })
-      const clickHandler = mockClick.mock.calls[0][0]
+      const clickHandler = mockClick.mock.calls[0]![0]
       await act(async () => {
         clickHandler()
       })
 
-      expect(screen.getByAltText('Preview')).toBeInTheDocument()
+      expect(screen.getByAltText('Preview'))!.toBeInTheDocument()
 
-      await user.click(screen.getByTestId('image-preview-close-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       await waitFor(() => {
         expect(screen.queryByAltText('Preview')).not.toBeInTheDocument()

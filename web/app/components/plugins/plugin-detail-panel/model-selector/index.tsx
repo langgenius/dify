@@ -1,85 +1,113 @@
+import type { FC } from 'react'
 import type {
-  FC,
-  ReactNode,
-} from 'react'
-import type {
-  DefaultModel,
   FormValue,
   ModelFeatureEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
+import type { ModelSelectorValue } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Toast from '@/app/components/base/toast'
-import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
-import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
-import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelSettingsTrigger } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-settings-trigger'
+import { SplitModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { consoleQuery } from '@/service/console'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
 
-export type ModelParameterModalProps = {
+type ModelParameterModalProps = {
   popupClassName?: string
-  portalToFollowElemContentClassName?: string
   isAdvancedMode: boolean
-  value: any
-  setModel: (model: any) => void
-  renderTrigger?: (v: TriggerProps) => ReactNode
+  value?: PluginModelValue | null
+  setModel: (model: PluginModelValue) => void
   readonly?: boolean
   isInWorkflow?: boolean
-  isAgentStrategy?: boolean
   scope?: string
+}
+
+type PluginModelValue = Record<string, unknown> & {
+  completion_params?: FormValue
+  completionParams?: FormValue
+  language?: string
+  model?: string
+  model_type?: string
+  provider?: string
+  voice?: string
 }
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   popupClassName,
-  portalToFollowElemContentClassName,
   isAdvancedMode,
   value,
   setModel,
-  renderTrigger,
   readonly,
   isInWorkflow,
-  isAgentStrategy,
   scope = ModelTypeEnum.textGeneration,
 }) => {
   const { t } = useTranslation()
-  const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
   const scopeFeatures = useMemo((): ModelFeatureEnum[] => {
-    if (scopeArray.includes('all'))
-      return []
-    return scopeArray.filter(item => ![
-      ModelTypeEnum.textGeneration,
-      ModelTypeEnum.textEmbedding,
-      ModelTypeEnum.rerank,
-      ModelTypeEnum.moderation,
-      ModelTypeEnum.speech2text,
-      ModelTypeEnum.tts,
-    ].includes(item as ModelTypeEnum)).map(item => item as ModelFeatureEnum)
+    if (scopeArray.includes('all')) return []
+    return scopeArray
+      .filter(
+        (item) =>
+          ![
+            ModelTypeEnum.textGeneration,
+            ModelTypeEnum.textEmbedding,
+            ModelTypeEnum.rerank,
+            ModelTypeEnum.moderation,
+            ModelTypeEnum.speech2text,
+            ModelTypeEnum.tts,
+          ].includes(item as ModelTypeEnum),
+      )
+      .map((item) => item as ModelFeatureEnum)
   }, [scopeArray])
 
-  const { data: textGenerationList } = useModelList(ModelTypeEnum.textGeneration)
-  const { data: textEmbeddingList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankList } = useModelList(ModelTypeEnum.rerank)
-  const { data: moderationList } = useModelList(ModelTypeEnum.moderation)
-  const { data: sttList } = useModelList(ModelTypeEnum.speech2text)
-  const { data: ttsList } = useModelList(ModelTypeEnum.tts)
+  const { data: textGenerationList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: textEmbeddingList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: moderationList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.moderation } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: sttList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.speech2text } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: ttsList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.tts } },
+      select: (response) => response.data,
+    }),
+  )
 
   const scopedModelList = useMemo(() => {
-    const resultList: any[] = []
     if (scopeArray.includes('all')) {
       return [
         ...textGenerationList,
@@ -90,43 +118,42 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         ...moderationList,
       ]
     }
-    if (scopeArray.includes(ModelTypeEnum.textGeneration))
-      return textGenerationList
-    if (scopeArray.includes(ModelTypeEnum.textEmbedding))
-      return textEmbeddingList
-    if (scopeArray.includes(ModelTypeEnum.rerank))
-      return rerankList
-    if (scopeArray.includes(ModelTypeEnum.moderation))
-      return moderationList
-    if (scopeArray.includes(ModelTypeEnum.speech2text))
-      return sttList
-    if (scopeArray.includes(ModelTypeEnum.tts))
-      return ttsList
-    return resultList
-  }, [scopeArray, textGenerationList, textEmbeddingList, rerankList, sttList, ttsList, moderationList])
+    if (scopeArray.includes(ModelTypeEnum.textGeneration)) return textGenerationList
+    if (scopeArray.includes(ModelTypeEnum.textEmbedding)) return textEmbeddingList
+    if (scopeArray.includes(ModelTypeEnum.rerank)) return rerankList
+    if (scopeArray.includes(ModelTypeEnum.moderation)) return moderationList
+    if (scopeArray.includes(ModelTypeEnum.speech2text)) return sttList
+    if (scopeArray.includes(ModelTypeEnum.tts)) return ttsList
+    return []
+  }, [
+    scopeArray,
+    textGenerationList,
+    textEmbeddingList,
+    rerankList,
+    sttList,
+    ttsList,
+    moderationList,
+  ])
 
   const { currentProvider, currentModel } = useMemo(() => {
-    const currentProvider = scopedModelList.find(item => item.provider === value?.provider)
-    const currentModel = currentProvider?.models.find((model: { model: string }) => model.model === value?.model)
+    const currentProvider = scopedModelList.find((item) => item.provider === value?.provider)
+    const currentModel = currentProvider?.models.find(
+      (model: { model: string }) => model.model === value?.model,
+    )
     return {
       currentProvider,
       currentModel,
     }
   }, [scopedModelList, value?.provider, value?.model])
 
-  const hasDeprecated = useMemo(() => {
-    return !currentProvider || !currentModel
-  }, [currentModel, currentProvider])
-  const modelDisabled = useMemo(() => {
-    return currentModel?.status !== ModelStatusEnum.active
-  }, [currentModel?.status])
-  const disabled = useMemo(() => {
-    return !isAPIKeySet || hasDeprecated || modelDisabled
-  }, [hasDeprecated, isAPIKeySet, modelDisabled])
+  const hasDeprecated = !currentProvider || !currentModel
+  const modelSettingsDisabled = hasDeprecated || currentModel?.status !== ModelStatusEnum.active
 
-  const handleChangeModel = async ({ provider, model }: DefaultModel) => {
-    const targetProvider = scopedModelList.find(modelItem => modelItem.provider === provider)
-    const targetModelItem = targetProvider?.models.find((modelItem: { model: string }) => modelItem.model === model)
+  const handleChangeModel = async ({ provider, model }: ModelSelectorValue) => {
+    const targetProvider = scopedModelList.find((modelItem) => modelItem.provider === provider)
+    const targetModelItem = targetProvider?.models.find(
+      (modelItem: { model: string }) => modelItem.model === model,
+    )
     const model_type = targetModelItem?.model_type as string
 
     let nextCompletionParams: FormValue = {}
@@ -143,14 +170,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 
         const keys = Object.keys(removedDetails || {})
         if (keys.length) {
-          Toast.notify({
-            type: 'warning',
-            message: `${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`,
-          })
+          toast.warning(
+            `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+          )
         }
-      }
-      catch {
-        Toast.notify({ type: 'error', message: t('error', { ns: 'common' }) })
+      } catch {
+        toast.error(t(($) => $.error, { ns: 'common' }))
       }
     }
 
@@ -186,100 +211,59 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     })
   }
 
+  const selectedModel =
+    value?.provider && value.model ? { provider: value.provider, model: value.model } : undefined
+  const hasSelectedModel = !!selectedModel
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement={isInWorkflow ? 'left' : 'bottom-end'}
-      offset={4}
+      onOpenChange={(newOpen) => {
+        if (readonly && newOpen) return
+        setOpen(newOpen)
+      }}
     >
       <div className="relative">
-        <PortalToFollowElemTrigger
-          onClick={() => {
-            if (readonly)
-              return
-            setOpen(v => !v)
-          }}
-          className="block"
+        <div className="isolate flex h-8 min-w-74 items-center gap-px rounded-lg">
+          <SplitModelSelector
+            value={selectedModel}
+            models={scopedModelList}
+            disabled={readonly}
+            scopeFeatures={scopeFeatures}
+            surface={isInWorkflow ? 'workflow' : 'default'}
+            onValueChange={handleChangeModel}
+          />
+          <ModelSettingsTrigger
+            disabled={readonly || !hasSelectedModel || modelSettingsDisabled}
+            surface={isInWorkflow ? 'workflow' : 'default'}
+          />
+        </div>
+        <PopoverContent
+          placement={isInWorkflow ? 'left' : 'bottom-end'}
+          sideOffset={4}
+          className={cn(popupClassName, 'w-97.25 rounded-2xl')}
         >
-          {
-            renderTrigger
-              ? renderTrigger({
-                  open,
-                  disabled,
-                  modelDisabled,
-                  hasDeprecated,
-                  currentProvider,
-                  currentModel,
-                  providerName: value?.provider,
-                  modelId: value?.model,
-                })
-              : (isAgentStrategy
-                  ? (
-                      <AgentModelTrigger
-                        disabled={disabled}
-                        hasDeprecated={hasDeprecated}
-                        currentProvider={currentProvider}
-                        currentModel={currentModel}
-                        providerName={value?.provider}
-                        modelId={value?.model}
-                        scope={scope}
-                      />
-                    )
-                  : (
-                      <Trigger
-                        disabled={disabled}
-                        isInWorkflow={isInWorkflow}
-                        modelDisabled={modelDisabled}
-                        hasDeprecated={hasDeprecated}
-                        currentProvider={currentProvider}
-                        currentModel={currentModel}
-                        providerName={value?.provider}
-                        modelId={value?.model}
-                      />
-                    )
-                )
-          }
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className={cn('z-50', portalToFollowElemContentClassName)}>
-          <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
-            <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
-              <div className="relative">
-                <div className={cn('system-sm-semibold mb-1 flex h-6 items-center text-text-secondary')}>
-                  {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
-                </div>
-                <ModelSelector
-                  defaultModel={(value?.provider || value?.model) ? { provider: value?.provider, model: value?.model } : undefined}
-                  modelList={scopedModelList}
-                  scopeFeatures={scopeFeatures}
-                  onSelect={handleChangeModel}
-                />
-              </div>
-              {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
-                <div className="my-3 h-px bg-divider-subtle" />
-              )}
-              {currentModel?.model_type === ModelTypeEnum.textGeneration && (
-                <LLMParamsPanel
-                  provider={value?.provider}
-                  modelId={value?.model}
-                  completionParams={value?.completion_params || {}}
-                  onCompletionParamsChange={handleLLMParamsChange}
-                  isAdvancedMode={isAdvancedMode}
-                />
-              )}
-              {currentModel?.model_type === ModelTypeEnum.tts && (
-                <TTSParamsPanel
-                  currentModel={currentModel}
-                  language={value?.language}
-                  voice={value?.voice}
-                  onChange={handleTTSParamsChange}
-                />
-              )}
-            </div>
+          <div className="max-h-105 overflow-y-auto p-4 pt-3">
+            {currentModel?.model_type === ModelTypeEnum.textGeneration && selectedModel && (
+              <LLMParamsPanel
+                provider={selectedModel.provider}
+                modelId={selectedModel.model}
+                completionParams={value?.completion_params || {}}
+                onCompletionParamsChange={handleLLMParamsChange}
+                isAdvancedMode={isAdvancedMode}
+              />
+            )}
+            {currentModel?.model_type === ModelTypeEnum.tts && selectedModel && (
+              <TTSParamsPanel
+                currentModel={currentModel}
+                language={value?.language ?? ''}
+                voice={value?.voice ?? ''}
+                onChange={handleTTSParamsChange}
+              />
+            )}
           </div>
-        </PortalToFollowElemContent>
+        </PopoverContent>
       </div>
-    </PortalToFollowElem>
+    </Popover>
   )
 }
 

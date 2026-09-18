@@ -11,7 +11,7 @@ from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
 from services.account_service import AccountService, TenantService
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -23,10 +23,10 @@ class TestWorkflowToolManageService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.app_service.FeatureService") as mock_feature_service,
+            patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
-            patch("services.app_service.ModelManager") as mock_model_manager,
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
+            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
             patch(
                 "services.tools.workflow_tools_manage_service.WorkflowToolProviderController"
             ) as mock_workflow_tool_provider_controller,
@@ -34,12 +34,12 @@ class TestWorkflowToolManageService:
             patch("services.tools.workflow_tools_manage_service.ToolTransformService") as mock_tool_transform_service,
         ):
             # Setup default mock returns for app service
-            mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+            mock_feature_service.is_webapp_auth_enabled.return_value = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
 
             # Setup default mock returns for account service
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_account_feature_service.is_registration_allowed.return_value = True
 
             # Mock ModelManager for model configuration
             mock_model_instance = mock_model_manager.return_value
@@ -79,9 +79,7 @@ class TestWorkflowToolManageService:
         fake = Faker()
 
         # Setup mocks for account creation
-        mock_external_service_dependencies[
-            "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
         account = AccountService.create_account(
@@ -89,24 +87,25 @@ class TestWorkflowToolManageService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "workflow",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="workflow",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Create workflow for the app
         workflow = WorkflowModel(
@@ -538,6 +537,9 @@ class TestWorkflowToolManageService:
                 ]
             }
         )
+        # The service reads the published workflow in its own session, so the graph has
+        # to be committed — matching test_update_workflow_tool_human_input_node_error.
+        db_session_with_containers.commit()
 
         tool_parameters = self._create_test_workflow_tool_parameters()
         with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
@@ -878,6 +880,9 @@ class TestWorkflowToolManageService:
             ]
         }
         workflow.graph = json.dumps(workflow_graph)
+        # The service reads the published workflow in its own session, so the graph has
+        # to be committed for this setup to reach it.
+        db_session_with_containers.commit()
 
         # Setup workflow tool parameters with FILE type
         file_parameters = [
@@ -953,6 +958,9 @@ class TestWorkflowToolManageService:
             ]
         }
         workflow.graph = json.dumps(workflow_graph)
+        # The service reads the published workflow in its own session, so the graph has
+        # to be committed for this setup to reach it.
+        db_session_with_containers.commit()
 
         # Setup workflow tool parameters with FILES type
         files_parameters = [
@@ -1043,3 +1051,112 @@ class TestWorkflowToolManageService:
         # After the fix, this should always be 0
         # For now, we document that the record may exist, demonstrating the bug
         # assert tool_count == 0  # Expected after fix
+
+    def test_delete_workflow_tool_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test successful deletion of a workflow tool."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        tool_name = fake.unique.word()
+
+        WorkflowToolManageService.create_workflow_tool(
+            user_id=account.id,
+            tenant_id=account.current_tenant.id,
+            workflow_app_id=app.id,
+            name=tool_name,
+            label=fake.word(),
+            icon={"type": "emoji", "emoji": "🔧"},
+            description=fake.text(max_nb_chars=200),
+            parameters=self._create_test_workflow_tool_parameters(),
+        )
+
+        tool = (
+            db_session_with_containers.query(WorkflowToolProvider)
+            .where(WorkflowToolProvider.tenant_id == account.current_tenant.id, WorkflowToolProvider.name == tool_name)
+            .first()
+        )
+        assert tool is not None
+
+        result = WorkflowToolManageService.delete_workflow_tool(account.id, account.current_tenant.id, tool.id)
+
+        assert result == {"result": "success"}
+        deleted = (
+            db_session_with_containers.query(WorkflowToolProvider).where(WorkflowToolProvider.id == tool.id).first()
+        )
+        assert deleted is None
+
+    def test_list_tenant_workflow_tools_empty(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test listing workflow tools when none exist returns empty list."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        result = WorkflowToolManageService.list_tenant_workflow_tools(account.id, account.current_tenant.id)
+
+        assert result == []
+
+    def test_get_workflow_tool_by_tool_id_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that get_workflow_tool_by_tool_id raises ValueError when tool not found."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        with pytest.raises(ValueError, match="Tool not found"):
+            WorkflowToolManageService.get_workflow_tool_by_tool_id(account.id, account.current_tenant.id, fake.uuid4())
+
+    def test_get_workflow_tool_by_app_id_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that get_workflow_tool_by_app_id raises ValueError when tool not found."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        with pytest.raises(ValueError, match="Tool not found"):
+            WorkflowToolManageService.get_workflow_tool_by_app_id(account.id, account.current_tenant.id, fake.uuid4())
+
+    def test_list_single_workflow_tools_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that list_single_workflow_tools raises ValueError when tool not found."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        with pytest.raises(ValueError, match="not found"):
+            WorkflowToolManageService.list_single_workflow_tools(account.id, account.current_tenant.id, fake.uuid4())
+
+    def test_create_workflow_tool_with_labels(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that labels are forwarded to ToolLabelManager when provided."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        result = WorkflowToolManageService.create_workflow_tool(
+            user_id=account.id,
+            tenant_id=account.current_tenant.id,
+            workflow_app_id=app.id,
+            name=fake.unique.word(),
+            label=fake.word(),
+            icon={"type": "emoji", "emoji": "🔧"},
+            description=fake.text(max_nb_chars=200),
+            parameters=self._create_test_workflow_tool_parameters(),
+            labels=["label-1", "label-2"],
+        )
+
+        assert result == {"result": "success"}
+        mock_external_service_dependencies["tool_label_manager"].update_tool_labels.assert_called_once()

@@ -1,7 +1,7 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { OnlineDriveFileType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
 import {

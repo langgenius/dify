@@ -4,7 +4,9 @@ import time
 import click
 from celery import shared_task
 
+from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
@@ -30,13 +32,14 @@ def add_annotation_to_index_task(
     start_at = time.perf_counter()
 
     try:
-        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-            collection_binding_id, "annotation"
-        )
+        with session_factory.create_session() as session:
+            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                collection_binding_id, session, "annotation"
+            )
         dataset = Dataset(
             id=app_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider=dataset_collection_binding.provider_name,
             embedding_model=dataset_collection_binding.model_name,
             collection_binding_id=dataset_collection_binding.id,
@@ -45,7 +48,8 @@ def add_annotation_to_index_task(
         document = Document(
             page_content=question, metadata={"annotation_id": annotation_id, "app_id": app_id, "doc_id": annotation_id}
         )
-        vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+        with session_factory.create_session() as session:
+            vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
         vector.create([document], duplicate_check=True)
 
         end_at = time.perf_counter()

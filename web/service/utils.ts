@@ -1,8 +1,9 @@
 import { FlowType } from '@/types/common'
 
-export const flowPrefixMap = {
+const flowPrefixMap = {
   [FlowType.appFlow]: 'apps',
   [FlowType.ragPipeline]: 'rag/pipelines',
+  [FlowType.snippet]: 'snippets',
 }
 
 export const getFlowPrefix = (type?: FlowType) => {

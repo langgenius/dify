@@ -4,13 +4,13 @@ import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem } from '@/models/datasets'
 import { useCallback, useState } from 'react'
 
-export type PreviewState = {
+type PreviewState = {
   currentFile: File | undefined
   currentNotionPage: NotionPage | undefined
   currentWebsite: CrawlResultItem | undefined
 }
 
-export type PreviewActions = {
+type PreviewActions = {
   showFilePreview: (file: File) => void
   hideFilePreview: () => void
   showNotionPagePreview: (page: NotionPage) => void
@@ -19,7 +19,7 @@ export type PreviewActions = {
   hideWebsitePreview: () => void
 }
 
-export type UsePreviewStateReturn = PreviewState & PreviewActions
+type UsePreviewStateReturn = PreviewState & PreviewActions
 
 /**
  * Custom hook for managing preview state across different data source types.

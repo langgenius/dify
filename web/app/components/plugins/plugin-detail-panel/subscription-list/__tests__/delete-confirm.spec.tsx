@@ -1,27 +1,40 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DeleteConfirm } from '../delete-confirm'
 
 const mockRefetch = vi.fn()
 const mockDelete = vi.fn()
-const mockToast = vi.fn()
+const mockDeleteState = { isPending: false }
+const mockToastSuccess = vi.hoisted(() => vi.fn())
+const mockToastError = vi.hoisted(() => vi.fn())
 
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => ({ refetch: mockRefetch }),
 }))
 
 vi.mock('@/service/use-triggers', () => ({
-  useDeleteTriggerSubscription: () => ({ mutate: mockDelete, isPending: false }),
+  useDeleteTriggerSubscription: () => ({
+    mutate: mockDelete,
+    isPending: mockDeleteState.isPending,
+  }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (args: { type: string, message: string }) => mockToast(args),
-  },
-}))
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      success: mockToastSuccess,
+      error: mockToastError,
+    },
+  }
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockDeleteState.isPending = false
   mockDelete.mockImplementation((_id: string, options?: { onSuccess?: () => void }) => {
     options?.onSuccess?.()
   })
@@ -39,14 +52,21 @@ describe('DeleteConfirm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/,
+      }),
+    )
 
     expect(mockDelete).not.toHaveBeenCalled()
-    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+    expect(mockToastError).toHaveBeenCalledWith(
+      'pluginTrigger.subscription.list.item.actions.deleteConfirm.confirmInputWarning',
+    )
   })
 
-  it('should allow deletion after matching input name', () => {
+  it('should allow deletion by submitting a matching input name', async () => {
     const onClose = vi.fn()
+    const user = userEvent.setup()
 
     render(
       <DeleteConfirm
@@ -58,12 +78,12 @@ describe('DeleteConfirm', () => {
       />,
     )
 
-    fireEvent.change(
-      screen.getByPlaceholderText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirmInputPlaceholder/),
-      { target: { value: 'Subscription One' } },
+    await user.type(
+      screen.getByRole('textbox', {
+        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirmInputTip/,
+      }),
+      'Subscription One{Enter}',
     )
-
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
 
     expect(mockDelete).toHaveBeenCalledWith('sub-1', expect.any(Object))
     expect(mockRefetch).toHaveBeenCalledTimes(1)
@@ -85,8 +105,36 @@ describe('DeleteConfirm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/,
+      }),
+    )
 
-    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: 'network error' }))
+    expect(mockToastError).toHaveBeenCalledWith('network error')
+  })
+
+  it('should ignore form submission while deletion is pending', async () => {
+    mockDeleteState.isPending = true
+    const user = userEvent.setup()
+
+    render(
+      <DeleteConfirm
+        isShow
+        currentId="sub-1"
+        currentName="Subscription One"
+        workflowsInUse={1}
+        onClose={vi.fn()}
+      />,
+    )
+
+    await user.type(
+      screen.getByRole('textbox', {
+        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirmInputTip/,
+      }),
+      'Subscription One{Enter}',
+    )
+
+    expect(mockDelete).not.toHaveBeenCalled()
   })
 })

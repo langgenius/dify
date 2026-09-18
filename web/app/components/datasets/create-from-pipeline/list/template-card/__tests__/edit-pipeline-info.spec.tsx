@@ -1,10 +1,19 @@
+import type { ReactElement } from 'react'
 import type { PipelineTemplate } from '@/models/pipeline'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import Toast from '@/app/components/base/toast'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { fireEvent, screen, render as testingLibraryRender, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
+import { mockEmojiData } from '@/test/emoji-picker'
 import EditPipelineInfo from '../edit-pipeline-info'
+
+const render = (ui: ReactElement) =>
+  testingLibraryRender(
+    <Dialog open>
+      <DialogContent>{ui}</DialogContent>
+    </Dialog>,
+  )
 
 const mockUpdatePipeline = vi.fn()
 const mockInvalidCustomizedTemplateList = vi.fn()
@@ -16,38 +25,20 @@ vi.mock('@/service/use-pipeline', () => ({
   useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
 }))
 
-// Mock AppIconPicker to capture interactions
-let _mockOnSelect: ((icon: { type: 'emoji' | 'image', icon?: string, background?: string, fileId?: string, url?: string }) => void) | undefined
-let _mockOnClose: (() => void) | undefined
-
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({ onSelect, onClose }: {
-    onSelect: (icon: { type: 'emoji' | 'image', icon?: string, background?: string, fileId?: string, url?: string }) => void
-    onClose: () => void
-  }) => {
-    _mockOnSelect = onSelect
-    _mockOnClose = onClose
-    return (
-      <div data-testid="app-icon-picker">
-        <button data-testid="select-emoji" onClick={() => onSelect({ type: 'emoji', icon: '🎯', background: '#FFEAD5' })}>
-          Select Emoji
-        </button>
-        <button data-testid="select-image" onClick={() => onSelect({ type: 'image', fileId: 'new-file-id', url: 'https://new-icon.com/icon.png' })}>
-          Select Image
-        </button>
-        <button data-testid="close-picker" onClick={onClose}>
-          Close Picker
-        </button>
-      </div>
-    )
-  },
-}))
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      error: mockToastError,
+    },
+  }
+})
 
 const createPipelineTemplate = (overrides: Partial<PipelineTemplate> = {}): PipelineTemplate => ({
   id: 'pipeline-1',
@@ -85,28 +76,25 @@ describe('EditPipelineInfo', () => {
     onClose: vi.fn(),
     pipeline: createPipelineTemplate(),
   }
+  const getIconButton = () =>
+    screen.getByRole('button', {
+      name: 'common.operation.edit datasetPipeline.pipelineNameAndIcon',
+    })
 
   beforeEach(() => {
     vi.clearAllMocks()
-    _mockOnSelect = undefined
-    _mockOnClose = undefined
+    mockToastError.mockReset()
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<EditPipelineInfo {...defaultProps} />)
-      expect(screen.getByText(/editPipelineInfo/i)).toBeInTheDocument()
-    })
-
     it('should render title', () => {
       render(<EditPipelineInfo {...defaultProps} />)
-      expect(screen.getByText(/editPipelineInfo/i)).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: /editPipelineInfo/i })).toBeInTheDocument()
     })
 
     it('should render close button', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const closeButton = container.querySelector('button[type="button"]')
-      expect(closeButton).toBeInTheDocument()
+      render(<EditPipelineInfo {...defaultProps} />)
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
 
     it('should render name input with initial value', () => {
@@ -139,11 +127,11 @@ describe('EditPipelineInfo', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onClose when close button is clicked', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
+    it('should call onClose when close button is clicked', async () => {
+      const user = userEvent.setup()
+      render(<EditPipelineInfo {...defaultProps} />)
 
-      const closeButton = container.querySelector('button[type="button"]')
-      fireEvent.click(closeButton!)
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
     })
@@ -175,7 +163,8 @@ describe('EditPipelineInfo', () => {
       expect(screen.getByDisplayValue('New description')).toBeInTheDocument()
     })
 
-    it('should call updatePipeline when save is clicked with valid name', async () => {
+    it('should submit with Enter from the name input', async () => {
+      const user = userEvent.setup()
       mockUpdatePipeline.mockImplementation((_data, callbacks) => {
         callbacks.onSuccess()
         return Promise.resolve()
@@ -183,8 +172,8 @@ describe('EditPipelineInfo', () => {
 
       render(<EditPipelineInfo {...defaultProps} />)
 
-      const saveButton = screen.getByText(/operation\.save/i)
-      fireEvent.click(saveButton)
+      await user.click(screen.getByRole('textbox', { name: 'datasetPipeline.pipelineNameAndIcon' }))
+      await user.keyboard('{Enter}')
 
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalled()
@@ -235,10 +224,7 @@ describe('EditPipelineInfo', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Please enter a name for the Knowledge Base.',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('datasetPipeline.editPipelineInfoNameRequired')
       })
     })
 
@@ -260,9 +246,9 @@ describe('EditPipelineInfo', () => {
   // Icon Types Tests (Branch Coverage for lines 29-30, 36-37)
   describe('Icon Types', () => {
     it('should initialize with emoji icon type when pipeline has emoji icon', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
+      render(<EditPipelineInfo {...defaultProps} />)
       // Should render component with emoji icon
-      expect(container.querySelector('[class*="cursor-pointer"]')).toBeInTheDocument()
+      expect(getIconButton()).toBeInTheDocument()
       expect(screen.getByDisplayValue('Test Pipeline')).toBeInTheDocument()
     })
 
@@ -277,10 +263,10 @@ describe('EditPipelineInfo', () => {
         onClose: vi.fn(),
         pipeline: imagePipeline,
       }
-      const { container } = render(<EditPipelineInfo {...props} />)
+      render(<EditPipelineInfo {...props} />)
       // Component should initialize with image icon state
       expect(screen.getByDisplayValue('Image Pipeline')).toBeInTheDocument()
-      expect(container.querySelector('[class*="cursor-pointer"]')).toBeInTheDocument()
+      expect(getIconButton()).toBeInTheDocument()
     })
 
     it('should render correctly with image icon and then update', () => {
@@ -290,15 +276,14 @@ describe('EditPipelineInfo', () => {
         ...defaultProps,
         pipeline: imagePipeline,
       }
-      const { container } = render(<EditPipelineInfo {...props} />)
+      render(<EditPipelineInfo {...props} />)
 
       // Verify component rendered with image pipeline
       expect(screen.getByDisplayValue('Image Pipeline')).toBeInTheDocument()
 
       // Open icon picker
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
-      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+      fireEvent.click(getIconButton())
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
     })
 
     it('should save correct icon_info when starting with image icon type', async () => {
@@ -353,23 +338,23 @@ describe('EditPipelineInfo', () => {
       })
     })
 
-    it('should revert to initial image icon when picker is closed without selection', () => {
+    it('should revert to initial image icon when picker is closed without selection', async () => {
       const props = {
         ...defaultProps,
         pipeline: createImagePipelineTemplate(),
       }
-      const { container } = render(<EditPipelineInfo {...props} />)
+      render(<EditPipelineInfo {...props} />)
 
       // Open picker
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
-      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+      fireEvent.click(getIconButton())
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
 
       // Close without selection - should revert to original image icon
-      const closeButton = screen.getByTestId('close-picker')
-      fireEvent.click(closeButton)
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
 
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+      })
     })
 
     it('should switch from image icon to emoji icon when selected', async () => {
@@ -382,13 +367,15 @@ describe('EditPipelineInfo', () => {
         ...defaultProps,
         pipeline: createImagePipelineTemplate(),
       }
-      const { container } = render(<EditPipelineInfo {...props} />)
+      render(<EditPipelineInfo {...props} />)
 
       // Open picker and select emoji
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
-      const selectEmojiButton = screen.getByTestId('select-emoji')
-      fireEvent.click(selectEmojiButton)
+      fireEvent.click(getIconButton())
+      const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
+      expect(emojiButton).toBeTruthy()
+      fireEvent.click(emojiButton!)
+      fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       const saveButton = screen.getByText(/operation\.save/i)
       fireEvent.click(saveButton)
@@ -398,7 +385,8 @@ describe('EditPipelineInfo', () => {
           expect.objectContaining({
             icon_info: expect.objectContaining({
               icon_type: 'emoji',
-              icon: '🎯',
+              icon: expect.any(String),
+              icon_background: '#E4FBCC',
             }),
           }),
           expect.any(Object),
@@ -406,34 +394,13 @@ describe('EditPipelineInfo', () => {
       })
     })
 
-    it('should switch from emoji icon to image icon when selected', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+    it('should switch to the image tab in the real picker', () => {
+      render(<EditPipelineInfo {...defaultProps} />)
 
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
+      fireEvent.click(getIconButton())
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.image/ }))
 
-      // Open picker and select image
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
-      const selectImageButton = screen.getByTestId('select-image')
-      fireEvent.click(selectImageButton)
-
-      const saveButton = screen.getByText(/operation\.save/i)
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        expect(mockUpdatePipeline).toHaveBeenCalledWith(
-          expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'image',
-              icon: 'new-file-id',
-            }),
-          }),
-          expect.any(Object),
-        )
-      })
+      expect(screen.getByRole('button', { name: /iconPicker\.ok/ })).toBeInTheDocument()
     })
   })
 
@@ -441,51 +408,46 @@ describe('EditPipelineInfo', () => {
   describe('AppIconPicker', () => {
     it('should not show picker initially', () => {
       render(<EditPipelineInfo {...defaultProps} />)
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
     })
 
     it('should open picker when icon is clicked', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      render(<EditPipelineInfo {...defaultProps} />)
+      fireEvent.click(getIconButton())
 
-      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
     })
 
-    it('should close picker and update icon when emoji is selected', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+    it('should close picker and update icon when emoji style is selected', async () => {
+      render(<EditPipelineInfo {...defaultProps} />)
+      fireEvent.click(getIconButton())
 
-      const selectEmojiButton = screen.getByTestId('select-emoji')
-      fireEvent.click(selectEmojiButton)
+      fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
-      // Picker should close
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+      })
     })
 
-    it('should close picker and update icon when image is selected', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+    it('should keep picker open when only switching to image tab', () => {
+      render(<EditPipelineInfo {...defaultProps} />)
+      fireEvent.click(getIconButton())
 
-      const selectImageButton = screen.getByTestId('select-image')
-      fireEvent.click(selectImageButton)
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.image/ }))
 
-      // Picker should close
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /iconPicker\.ok/ })).toBeInTheDocument()
     })
 
-    it('should revert icon when picker is closed without selection', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+    it('should revert icon when picker is closed without selection', async () => {
+      render(<EditPipelineInfo {...defaultProps} />)
+      fireEvent.click(getIconButton())
 
-      const closeButton = screen.getByTestId('close-picker')
-      fireEvent.click(closeButton)
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
 
-      // Picker should close
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+      })
     })
 
     it('should save with new emoji icon selection', async () => {
@@ -494,13 +456,12 @@ describe('EditPipelineInfo', () => {
         return Promise.resolve()
       })
 
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
+      render(<EditPipelineInfo {...defaultProps} />)
 
       // Open picker and select new emoji
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
-      const selectEmojiButton = screen.getByTestId('select-emoji')
-      fireEvent.click(selectEmojiButton)
+      fireEvent.click(getIconButton())
+      fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       const saveButton = screen.getByText(/operation\.save/i)
       fireEvent.click(saveButton)
@@ -510,8 +471,8 @@ describe('EditPipelineInfo', () => {
           expect.objectContaining({
             icon_info: expect.objectContaining({
               icon_type: 'emoji',
-              icon: '🎯',
-              icon_background: '#FFEAD5',
+              icon: '📊',
+              icon_background: '#E4FBCC',
             }),
           }),
           expect.any(Object),
@@ -519,19 +480,20 @@ describe('EditPipelineInfo', () => {
       })
     })
 
-    it('should save with new image icon selection', async () => {
+    it('should save after confirming a real emoji selection from an image icon', async () => {
       mockUpdatePipeline.mockImplementation((_data, callbacks) => {
         callbacks.onSuccess()
         return Promise.resolve()
       })
 
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
+      render(<EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />)
 
-      // Open picker and select new image
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
-      const selectImageButton = screen.getByTestId('select-image')
-      fireEvent.click(selectImageButton)
+      fireEvent.click(getIconButton())
+      const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
+      expect(emojiButton).toBeTruthy()
+      fireEvent.click(emojiButton!)
+      fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       const saveButton = screen.getByText(/operation\.save/i)
       fireEvent.click(saveButton)
@@ -540,9 +502,9 @@ describe('EditPipelineInfo', () => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
             icon_info: expect.objectContaining({
-              icon_type: 'image',
-              icon: 'new-file-id',
-              icon_url: 'https://new-icon.com/icon.png',
+              icon_type: 'emoji',
+              icon: expect.any(String),
+              icon_background: '#E4FBCC',
             }),
           }),
           expect.any(Object),
@@ -609,24 +571,12 @@ describe('EditPipelineInfo', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper container styling', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('relative', 'flex', 'flex-col')
-    })
-
     it('should have close button in header', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const closeButton = container.querySelector('button.absolute')
+      render(<EditPipelineInfo {...defaultProps} />)
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
       expect(closeButton).toHaveClass('right-5', 'top-5')
     })
   })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<EditPipelineInfo {...defaultProps} />)
-      rerender(<EditPipelineInfo {...defaultProps} />)
-      expect(screen.getByText(/editPipelineInfo/i)).toBeInTheDocument()
-    })
-  })
 })
+
+mockEmojiData()

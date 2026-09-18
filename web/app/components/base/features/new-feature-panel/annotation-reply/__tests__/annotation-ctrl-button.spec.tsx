@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AnnotationCtrlButton from '../annotation-ctrl-button'
 
 const mockSetShowAnnotationFullModal = vi.fn()
@@ -9,15 +11,6 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 let mockAnnotatedResponseUsage = 5
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: {
-      usage: { get annotatedResponse() { return mockAnnotatedResponseUsage } },
-      total: { annotatedResponse: 100 },
-    },
-    enableBilling: true,
-  }),
-}))
 
 const mockAddAnnotation = vi.fn().mockResolvedValue({
   id: 'annotation-1',
@@ -28,9 +21,22 @@ vi.mock('@/service/annotation', () => ({
   addAnnotation: (...args: unknown[]) => mockAddAnnotation(...args),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: vi.fn() },
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
 }))
+
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { annotation_quota_limit: { size: mockAnnotatedResponseUsage, limit: 100 } },
+  })
+}
 
 describe('AnnotationCtrlButton', () => {
   beforeEach(() => {
@@ -50,7 +56,9 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }),
+    ).toBeInTheDocument()
   })
 
   it('should call onEdit when edit button is clicked', () => {
@@ -66,7 +74,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
 
     expect(onEdit).toHaveBeenCalled()
   })
@@ -83,7 +91,9 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }),
+    ).toBeInTheDocument()
   })
 
   it('should not render any button when not cached and no answer', () => {
@@ -115,7 +125,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     await waitFor(() => {
       expect(mockAddAnnotation).toHaveBeenCalledWith('test-app', {
@@ -141,7 +151,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     expect(mockSetShowAnnotationFullModal).toHaveBeenCalled()
     expect(mockAddAnnotation).not.toHaveBeenCalled()
@@ -166,7 +176,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     await waitFor(() => {
       expect(onAdded).toHaveBeenCalledWith('annotation-2', '')

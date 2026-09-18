@@ -1,19 +1,22 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Uploader from '../uploader'
 
-const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: {
-    Provider: ({ children }: { children: React.ReactNode }) => children,
-    Consumer: ({ children }: { children: (value: { notify: typeof mockNotify }) => React.ReactNode }) => children({ notify: mockNotify }),
-  },
-}))
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
 
-// Mock use-context-selector
-vi.mock('use-context-selector', () => ({
-  useContext: () => ({ notify: mockNotify }),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: mockToast,
 }))
 
 const createMockFile = (name = 'test.pipeline', _size = 1024): File => {
@@ -34,11 +37,6 @@ describe('Uploader', () => {
 
   // Rendering Tests - No File
   describe('Rendering - No File', () => {
-    it('should render without crashing', () => {
-      render(<Uploader {...defaultProps} />)
-      expect(screen.getByText(/dslUploader\.button/i)).toBeInTheDocument()
-    })
-
     it('should render upload prompt when no file', () => {
       render(<Uploader {...defaultProps} />)
       expect(screen.getByText(/dslUploader\.button/i)).toBeInTheDocument()
@@ -46,7 +44,7 @@ describe('Uploader', () => {
 
     it('should render browse link when no file', () => {
       render(<Uploader {...defaultProps} />)
-      expect(screen.getByText(/dslUploader\.browse/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /dslUploader\.browse/i })).toBeInTheDocument()
     })
 
     it('should render upload icon when no file', () => {
@@ -104,7 +102,7 @@ describe('Uploader', () => {
       const input = document.getElementById('fileUploader') as HTMLInputElement
       const clickSpy = vi.spyOn(input, 'click')
 
-      const browseLink = screen.getByText(/dslUploader\.browse/i)
+      const browseLink = screen.getByRole('button', { name: /dslUploader\.browse/i })
       fireEvent.click(browseLink)
 
       expect(clickSpy).toHaveBeenCalled()
@@ -130,35 +128,15 @@ describe('Uploader', () => {
       const { container } = render(<Uploader {...defaultProps} file={file} />)
 
       const deleteButton = container.querySelector('[class*="group-hover:flex"] button')
-      if (deleteButton)
-        fireEvent.click(deleteButton)
+      if (deleteButton) fireEvent.click(deleteButton)
 
       expect(defaultProps.updateFile).toHaveBeenCalledWith()
     })
   })
 
   // Custom className Tests
-  describe('Custom className', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<Uploader {...defaultProps} className="custom-class" />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('custom-class')
-    })
-
-    it('should merge custom className with default', () => {
-      const { container } = render(<Uploader {...defaultProps} className="custom-class" />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('mt-6', 'custom-class')
-    })
-  })
 
   describe('Layout', () => {
-    it('should have proper container styling', () => {
-      const { container } = render(<Uploader {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('mt-6')
-    })
-
     it('should have dropzone styling when no file', () => {
       const { container } = render(<Uploader {...defaultProps} />)
       const dropzone = container.querySelector('[class*="border-dashed"]')
@@ -170,14 +148,6 @@ describe('Uploader', () => {
       const { container } = render(<Uploader {...defaultProps} file={file} />)
       const fileCard = container.querySelector('[class*="rounded-lg"]')
       expect(fileCard).toBeInTheDocument()
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<Uploader {...defaultProps} />)
-      rerender(<Uploader {...defaultProps} />)
-      expect(screen.getByText(/dslUploader\.button/i)).toBeInTheDocument()
     })
   })
 })

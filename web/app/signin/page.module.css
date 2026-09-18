@@ -2,7 +2,7 @@
   background: center/contain url('./assets/github.svg') no-repeat;
 }
 
-html[data-theme="dark"] .githubIcon {
+html[data-theme='dark'] .githubIcon {
   background: center/contain url('./assets/github-dark.svg') no-repeat;
 }
 

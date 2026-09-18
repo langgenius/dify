@@ -1,12 +1,14 @@
 from textwrap import dedent
 
+from flask import Flask
+
 from .test_utils import CodeExecutorTestMixin
 
 
 class TestJavaScriptCodeExecutor(CodeExecutorTestMixin):
     """Test class for JavaScript code executor functionality."""
 
-    def test_javascript_plain(self, flask_app_with_containers):
+    def test_javascript_plain(self, flask_app_with_containers: Flask):
         """Test basic JavaScript code execution with console.log output"""
         CodeExecutor, CodeLanguage = self.code_executor_imports
 
@@ -14,7 +16,7 @@ class TestJavaScriptCodeExecutor(CodeExecutorTestMixin):
         result_message = CodeExecutor.execute_code(language=CodeLanguage.JAVASCRIPT, preload="", code=code)
         assert result_message == "Hello World\n"
 
-    def test_javascript_json(self, flask_app_with_containers):
+    def test_javascript_json(self, flask_app_with_containers: Flask):
         """Test JavaScript code execution with JSON output"""
         CodeExecutor, CodeLanguage = self.code_executor_imports
 
@@ -25,7 +27,7 @@ class TestJavaScriptCodeExecutor(CodeExecutorTestMixin):
         result = CodeExecutor.execute_code(language=CodeLanguage.JAVASCRIPT, preload="", code=code)
         assert result == '{"Hello":"World"}\n'
 
-    def test_javascript_with_code_template(self, flask_app_with_containers):
+    def test_javascript_with_code_template(self, flask_app_with_containers: Flask):
         """Test JavaScript workflow code template execution with inputs"""
         CodeExecutor, CodeLanguage = self.code_executor_imports
         JavascriptCodeProvider, _ = self.javascript_imports
@@ -37,7 +39,7 @@ class TestJavaScriptCodeExecutor(CodeExecutorTestMixin):
         )
         assert result == {"result": "HelloWorld"}
 
-    def test_javascript_get_runner_script(self, flask_app_with_containers):
+    def test_javascript_get_runner_script(self, flask_app_with_containers: Flask):
         """Test JavaScript template transformer runner script generation"""
         _, NodeJsTemplateTransformer = self.javascript_imports
 

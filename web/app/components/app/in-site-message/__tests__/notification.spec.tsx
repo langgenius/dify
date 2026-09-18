@@ -1,0 +1,256 @@
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import InSiteMessageNotification from '../notification'
+
+const { mockEdition, mockLocale, mockNotification, mockNotificationDismiss } = vi.hoisted(() => ({
+  mockEdition: {
+    value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null,
+  },
+  mockLocale: { value: 'en-US' },
+  mockNotification: vi.fn(),
+  mockNotificationDismiss: vi.fn(),
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => mockLocale.value,
+}))
+
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          queryFn: () => new Promise(() => {}),
+          ...options,
+        }),
+      },
+    },
+    notification: {
+      get: {
+        queryOptions: (options?: { enabled?: boolean; input?: unknown }) => ({
+          queryKey: ['console', 'notification', 'get', options?.input],
+          queryFn: () => mockNotification(options?.input),
+          ...options,
+        }),
+      },
+      dismiss: {
+        post: {
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
+            mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
+            ...options,
+          }),
+        },
+      },
+    },
+  },
+}))
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  })
+  queryClient.setQueryData(['console', 'systemFeatures', 'get'], {
+    deployment_edition: mockEdition.value,
+  })
+
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+
+  return Wrapper
+}
+
+describe('InSiteMessageNotification', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockEdition.value = 'CLOUD'
+    mockLocale.value = 'en-US'
+    vi.stubGlobal('open', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  // Validate query gating and empty state rendering.
+  describe('Rendering', () => {
+    it('should render null and skip query when not cloud edition', async () => {
+      mockEdition.value = 'COMMUNITY'
+      const Wrapper = createWrapper()
+      const { container } = render(<InSiteMessageNotification />, { wrapper: Wrapper })
+
+      await waitFor(() => {
+        expect(mockNotification).not.toHaveBeenCalled()
+      })
+      expect(container).toBeEmptyDOMElement()
+    })
+
+    it('should render null when notification list is empty', async () => {
+      mockNotification.mockResolvedValue({ notifications: [] })
+      const Wrapper = createWrapper()
+      const { container } = render(<InSiteMessageNotification />, { wrapper: Wrapper })
+
+      await waitFor(() => {
+        expect(mockNotification).toHaveBeenCalledWith({ query: { language: 'en-US' } })
+      })
+      expect(container).toBeEmptyDOMElement()
+    })
+
+    it('should refetch notification when the interface language changes', async () => {
+      mockNotification.mockResolvedValue({ notifications: [] })
+      const Wrapper = createWrapper()
+      const { rerender } = render(<InSiteMessageNotification />, { wrapper: Wrapper })
+
+      await waitFor(() => {
+        expect(mockNotification).toHaveBeenCalledWith({ query: { language: 'en-US' } })
+      })
+
+      mockLocale.value = 'zh-Hans'
+      rerender(<InSiteMessageNotification />)
+
+      await waitFor(() => {
+        expect(mockNotification).toHaveBeenCalledWith({ query: { language: 'zh-Hans' } })
+      })
+      expect(mockNotification).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  // Validate parsed-body behavior and action handling.
+  describe('Notification body parsing and actions', () => {
+    it('should render parsed main/actions and dismiss only on close action', async () => {
+      mockNotification.mockResolvedValue({
+        notifications: [
+          {
+            notification_id: 'n-1',
+            title: 'Update title',
+            subtitle: 'Update subtitle',
+            title_pic_url: 'https://example.com/bg.png',
+            body: JSON.stringify({
+              main: 'Parsed body main',
+              actions: [
+                {
+                  action: 'link',
+                  data: 'https://example.com/docs',
+                  text: 'Visit docs',
+                  type: 'primary',
+                },
+                { action: 'close', text: 'Outline close', type: 'outline' },
+                { action: 'close', text: 'Dismiss now', type: 'default' },
+                { action: 'link', data: 'https://example.com/invalid', text: 100, type: 'primary' },
+              ],
+            }),
+          },
+        ],
+      })
+      mockNotificationDismiss.mockResolvedValue({ success: true })
+
+      const Wrapper = createWrapper()
+      render(<InSiteMessageNotification />, { wrapper: Wrapper })
+
+      await waitFor(() => {
+        expect(screen.getByText('Parsed body main')).toBeInTheDocument()
+      })
+      const docsLink = screen.getByRole('link', { name: 'Visit docs' })
+      expect(docsLink).toHaveAttribute('href', 'https://example.com/docs')
+      expect(docsLink).toHaveAttribute('target', '_blank')
+      expect(docsLink).toHaveAttribute('rel', 'noopener noreferrer')
+      expect(screen.getByRole('button', { name: 'Outline close' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Dismiss now' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Invalid' })).not.toBeInTheDocument()
+
+      fireEvent.click(docsLink)
+      expect(mockNotificationDismiss).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss now' }))
+      await waitFor(() => {
+        expect(mockNotificationDismiss).toHaveBeenCalledWith(
+          {
+            body: {
+              notification_id: 'n-1',
+            },
+          },
+          expect.objectContaining({
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
+          }),
+        )
+      })
+    })
+
+    it('should fallback to raw body and default close action when body is invalid json', async () => {
+      mockNotification.mockResolvedValue({
+        notifications: [
+          {
+            notification_id: 'n-2',
+            title: 'Fallback title',
+            subtitle: 'Fallback subtitle',
+            title_pic_url: 'https://example.com/bg-2.png',
+            body: 'raw body text',
+          },
+        ],
+      })
+      mockNotificationDismiss.mockResolvedValue({ success: true })
+
+      const Wrapper = createWrapper()
+      render(<InSiteMessageNotification />, { wrapper: Wrapper })
+
+      await waitFor(() => {
+        expect(screen.getByText('raw body text')).toBeInTheDocument()
+      })
+
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
+      fireEvent.click(closeButton)
+
+      await waitFor(() => {
+        expect(mockNotificationDismiss).toHaveBeenCalledWith(
+          {
+            body: {
+              notification_id: 'n-2',
+            },
+          },
+          expect.objectContaining({
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
+          }),
+        )
+      })
+    })
+
+    it('should fallback to default close action when parsed actions are all invalid', async () => {
+      mockNotification.mockResolvedValue({
+        notifications: [
+          {
+            notification_id: 'n-3',
+            title: 'Invalid action title',
+            subtitle: 'Invalid action subtitle',
+            title_pic_url: 'https://example.com/bg-3.png',
+            body: JSON.stringify({
+              main: 'Main from parsed body',
+              actions: [
+                { action: 'link', type: 'primary', text: 100, data: 'https://example.com' },
+              ],
+            }),
+          },
+        ],
+      })
+
+      const Wrapper = createWrapper()
+      render(<InSiteMessageNotification />, { wrapper: Wrapper })
+
+      await waitFor(() => {
+        expect(screen.getByText('Main from parsed body')).toBeInTheDocument()
+      })
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
+    })
+  })
+})

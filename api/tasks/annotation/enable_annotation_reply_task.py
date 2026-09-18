@@ -7,10 +7,12 @@ from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset
+from models.enums import CollectionBindingType
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -34,46 +36,52 @@ def enable_annotation_reply_task(
     start_at = time.perf_counter()
     # get app info
     with session_factory.create_session() as session:
-        app = session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+        app = session.scalar(
+            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
+        )
 
         if not app:
             logger.info(click.style(f"App not found: {app_id}", fg="red"))
             return
 
         annotations = session.scalars(select(MessageAnnotation).where(MessageAnnotation.app_id == app_id)).all()
-        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
-        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
+        enable_app_annotation_key = f"enable_app_annotation_{app_id}"
+        enable_app_annotation_job_key = f"enable_app_annotation_job_{job_id}"
 
         try:
             documents = []
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name, embedding_model_name, "annotation"
+                embedding_provider_name, embedding_model_name, session, CollectionBindingType.ANNOTATION
             )
-            annotation_setting = (
-                session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
+            annotation_setting = session.scalar(
+                select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
             )
             if annotation_setting:
                 if dataset_collection_binding.id != annotation_setting.collection_binding_id:
                     old_dataset_collection_binding = (
                         DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                            annotation_setting.collection_binding_id, "annotation"
+                            annotation_setting.collection_binding_id, session, CollectionBindingType.ANNOTATION
                         )
                     )
                     if old_dataset_collection_binding and annotations:
                         old_dataset = Dataset(
                             id=app_id,
                             tenant_id=tenant_id,
-                            indexing_technique="high_quality",
+                            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                             embedding_model_provider=old_dataset_collection_binding.provider_name,
                             embedding_model=old_dataset_collection_binding.model_name,
                             collection_binding_id=old_dataset_collection_binding.id,
                         )
 
-                        old_vector = Vector(old_dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                        old_vector = Vector(
+                            old_dataset,
+                            attributes=["doc_id", "annotation_id", "app_id"],
+                            session=session,
+                        )
                         try:
                             old_vector.delete()
-                        except Exception as e:
-                            logger.info(click.style(f"Delete annotation index error: {str(e)}", fg="red"))
+                        except Exception:
+                            logger.info("Delete annotation index error", exc_info=True)
                 annotation_setting.score_threshold = score_threshold
                 annotation_setting.collection_binding_id = dataset_collection_binding.id
                 annotation_setting.updated_user_id = user_id
@@ -92,7 +100,7 @@ def enable_annotation_reply_task(
             dataset = Dataset(
                 id=app_id,
                 tenant_id=tenant_id,
-                indexing_technique="high_quality",
+                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                 embedding_model_provider=embedding_provider_name,
                 embedding_model=embedding_model_name,
                 collection_binding_id=dataset_collection_binding.id,
@@ -105,11 +113,11 @@ def enable_annotation_reply_task(
                     )
                     documents.append(document)
 
-                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
                 try:
                     vector.delete_by_metadata_field("app_id", app_id)
-                except Exception as e:
-                    logger.info(click.style(f"Delete annotation index error: {str(e)}", fg="red"))
+                except Exception:
+                    logger.info("Delete annotation index error", exc_info=True)
                 vector.create(documents)
             session.commit()
             redis_client.setex(enable_app_annotation_job_key, 600, "completed")
@@ -123,7 +131,7 @@ def enable_annotation_reply_task(
         except Exception as e:
             logger.exception("Annotation batch created index failed")
             redis_client.setex(enable_app_annotation_job_key, 600, "error")
-            enable_app_annotation_error_key = f"enable_app_annotation_error_{str(job_id)}"
+            enable_app_annotation_error_key = f"enable_app_annotation_error_{job_id}"
             redis_client.setex(enable_app_annotation_error_key, 600, str(e))
             session.rollback()
         finally:

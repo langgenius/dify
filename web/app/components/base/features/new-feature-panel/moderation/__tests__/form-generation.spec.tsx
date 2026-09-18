@@ -1,11 +1,12 @@
-import type { I18nText } from '@/i18n-config/language'
+import type { I18nText } from '@/i18n/language'
 import type { CodeBasedExtensionForm } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import FormGeneration from '../form-generation'
 
 const { mockLocale } = vi.hoisted(() => ({ mockLocale: { value: 'en-US' } }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale.value,
 }))
 
@@ -91,13 +92,7 @@ describe('FormGeneration', () => {
 
   it('should display existing values', () => {
     const form = createForm()
-    render(
-      <FormGeneration
-        forms={[form]}
-        value={{ api_key: 'existing-key' }}
-        onChange={vi.fn()}
-      />,
-    )
+    render(<FormGeneration forms={[form]} value={{ api_key: 'existing-key' }} onChange={vi.fn()} />)
 
     expect(screen.getByDisplayValue('existing-key')).toBeInTheDocument()
   })
@@ -132,8 +127,8 @@ describe('FormGeneration', () => {
     })
     render(<FormGeneration forms={[form]} value={{}} onChange={onChange} />)
 
-    fireEvent.click(screen.getByText(/placeholder\.select/))
-    fireEvent.click(screen.getByText('GPT-4'))
+    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('option', { name: 'GPT-4' }))
 
     expect(onChange).toHaveBeenCalledWith({ model: 'gpt-4' })
   })
@@ -152,7 +147,7 @@ describe('FormGeneration', () => {
     render(<FormGeneration forms={[form]} value={{}} onChange={vi.fn()} />)
 
     expect(screen.getByText('模型')).toBeInTheDocument()
-    fireEvent.click(screen.getByText(/placeholder\.select/))
-    expect(screen.getByText('智谱-4')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('combobox'))
+    expect(screen.getByRole('option', { name: '智谱-4' })).toBeInTheDocument()
   })
 })

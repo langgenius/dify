@@ -1,169 +1,55 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { mockEmojiData } from '@/test/emoji-picker'
 import EmojiPickerInner from '../Inner'
 
-vi.mock('@emoji-mart/data', () => ({
-  default: {
-    categories: [
-      {
-        id: 'nature',
-        emojis: ['rabbit', 'bear'],
-      },
-      {
-        id: 'food',
-        emojis: ['apple', 'orange'],
-      },
-    ],
-  },
-}))
+vi.mock('@/utils/var', () => ({ basePath: '/console' }))
 
-vi.mock('emoji-mart', () => ({
-  init: vi.fn(),
-}))
-
-vi.mock('@/utils/emoji', () => ({
-  searchEmoji: vi.fn().mockResolvedValue(['dog', 'cat']),
-}))
+mockEmojiData()
 
 describe('EmojiPickerInner', () => {
-  const mockOnSelect = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    // Define the custom element to avoid "Unknown custom element" warnings
-    if (!customElements.get('em-emoji')) {
-      customElements.define('em-emoji', class extends HTMLElement {
-        static get observedAttributes() { return ['id'] }
-      })
-    }
+  it('selects Unicode from self-hosted data and preserves the chosen background', async () => {
+    const onSelect = vi.fn()
+    render(<EmojiPickerInner onSelect={onSelect} />)
+    fireEvent.click(await screen.findByRole('gridcell', { name: 'Grinning face' }))
+    expect(onSelect).toHaveBeenLastCalledWith('😀', '#FFEAD5')
+    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    expect(onSelect).toHaveBeenLastCalledWith('😀', '#E4FBCC')
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenCalledWith(
+      '/console/emoji/emojibase-17.0.0/en/data.json',
+      expect.any(Object),
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      '/console/emoji/emojibase-17.0.0/en/messages.json',
+      expect.any(Object),
+    )
   })
 
-  describe('Rendering', () => {
-    it('renders initial categories and emojis correctly', () => {
-      render(<EmojiPickerInner onSelect={mockOnSelect} />)
-
-      expect(screen.getByText('nature')).toBeInTheDocument()
-      expect(screen.getByText('food')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
-    })
+  it('filters search, selects a result, shows empty state and restores categories on clear', async () => {
+    const onSelect = vi.fn()
+    render(<EmojiPickerInner onSelect={onSelect} />)
+    await screen.findByRole('gridcell', { name: 'Grinning face' })
+    const search = screen.getByRole('searchbox')
+    fireEvent.change(search, { target: { value: 'rabbit' } })
+    fireEvent.click(await screen.findByRole('gridcell', { name: 'Rabbit face' }))
+    expect(onSelect).toHaveBeenLastCalledWith('🐰', '#FFEAD5')
+    fireEvent.change(search, { target: { value: 'zzzz-no-emoji' } })
+    await screen.findByText('common.noData')
+    fireEvent.change(search, { target: { value: '' } })
+    await screen.findByRole('gridcell', { name: 'Grinning face' })
   })
 
-  describe('User Interactions', () => {
-    it('calls searchEmoji and displays results when typing in search input', async () => {
-      render(<EmojiPickerInner onSelect={mockOnSelect} />)
-      const searchInput = screen.getByPlaceholderText('Search emojis...')
-
-      await act(async () => {
-        fireEvent.change(searchInput, { target: { value: 'anim' } })
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Search')).toBeInTheDocument()
-      })
-
-      const searchSection = screen.getByText('Search').parentElement
-      expect(searchSection?.querySelectorAll('em-emoji').length).toBe(2)
-    })
-
-    it('updates selected emoji and calls onSelect when an emoji is clicked', async () => {
-      render(<EmojiPickerInner onSelect={mockOnSelect} />)
-      const emojiContainers = screen.getAllByTestId(/^emoji-container-/)
-
-      await act(async () => {
-        fireEvent.click(emojiContainers[0])
-      })
-
-      expect(mockOnSelect).toHaveBeenCalledWith('rabbit', expect.any(String))
-    })
-
-    it('toggles style colors display when clicking the chevron', async () => {
-      render(<EmojiPickerInner onSelect={mockOnSelect} />)
-
-      expect(screen.queryByText('#FFEAD5')).not.toBeInTheDocument()
-
-      const toggleButton = screen.getByTestId('toggle-colors')
-      expect(toggleButton).toBeInTheDocument()
-
-      await act(async () => {
-        fireEvent.click(toggleButton!)
-      })
-
-      expect(screen.getByText('Choose Style')).toBeInTheDocument()
-      const colorOptions = document.querySelectorAll('[style^="background:"]')
-      expect(colorOptions.length).toBeGreaterThan(0)
-    })
-
-    it('updates background color and calls onSelect when a color is clicked', async () => {
-      render(<EmojiPickerInner onSelect={mockOnSelect} />)
-
-      const toggleButton = screen.getByTestId('toggle-colors')
-      await act(async () => {
-        fireEvent.click(toggleButton!)
-      })
-
-      const emojiContainers = screen.getAllByTestId(/^emoji-container-/)
-      await act(async () => {
-        fireEvent.click(emojiContainers[0])
-      })
-
-      mockOnSelect.mockClear()
-
-      const colorOptions = document.querySelectorAll('[style^="background:"]')
-      await act(async () => {
-        fireEvent.click(colorOptions[1].parentElement!)
-      })
-
-      expect(mockOnSelect).toHaveBeenCalledWith('rabbit', '#E4FBCC')
-    })
-
-    it('updates selected emoji when clicking a search result', async () => {
-      render(<EmojiPickerInner onSelect={mockOnSelect} />)
-      const searchInput = screen.getByPlaceholderText('Search emojis...')
-
-      await act(async () => {
-        fireEvent.change(searchInput, { target: { value: 'anim' } })
-      })
-
-      await screen.findByText('Search')
-
-      const searchEmojis = screen.getAllByTestId(/^emoji-search-result-/)
-      await act(async () => {
-        fireEvent.click(searchEmojis![0])
-      })
-
-      expect(mockOnSelect).toHaveBeenCalledWith('dog', expect.any(String))
-    })
-
-    it('toggles style colors display back and forth', async () => {
-      render(<EmojiPickerInner onSelect={mockOnSelect} />)
-
-      const toggleButton = screen.getByTestId('toggle-colors')
-
-      await act(async () => {
-        fireEvent.click(toggleButton!)
-      })
-      expect(screen.getByText('Choose Style')).toBeInTheDocument()
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('toggle-colors')!) // It should be the other icon now
-      })
-      expect(screen.queryByText('#FFEAD5')).not.toBeInTheDocument()
-    })
-
-    it('clears search results when input is cleared', async () => {
-      render(<EmojiPickerInner onSelect={mockOnSelect} />)
-      const searchInput = screen.getByPlaceholderText('Search emojis...')
-
-      await act(async () => {
-        fireEvent.change(searchInput, { target: { value: 'anim' } })
-      })
-
-      await screen.findByText('Search')
-
-      await act(async () => {
-        fireEvent.change(searchInput, { target: { value: '' } })
-      })
-
-      expect(screen.queryByText('Search')).not.toBeInTheDocument()
-    })
+  it('resolves a saved ID in style previews and only emits after a user action', async () => {
+    const onSelect = vi.fn()
+    render(<EmojiPickerInner emoji="rabbit" onSelect={onSelect} />)
+    const color = screen.getByRole('button', { name: '#E4FBCC' })
+    expect(color).toHaveTextContent('🐰')
+    expect(onSelect).not.toHaveBeenCalled()
+    fireEvent.click(color)
+    expect(onSelect).toHaveBeenCalledWith('🐰', '#E4FBCC')
+    fireEvent.click(screen.getByRole('button', { name: 'Choose Style' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: '#E4FBCC' })).not.toBeInTheDocument(),
+    )
   })
 })

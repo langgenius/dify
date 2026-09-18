@@ -1,26 +1,47 @@
 'use client'
+import type { FormActions } from '@langgenius/dify-ui/form'
 import type { MailRegisterResponse } from '@/service/use-common'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldValidity,
+} from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { useLocale } from '#i18n'
+import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { validPassword } from '@/config'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { useMailRegister } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
+import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { getBrowserTimezone } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
+
+type PasswordFormValues = {
+  password: string
+  confirmPassword: string
+}
 
 const parseUtmInfo = () => {
   const utmInfoStr = Cookies.get('utm_info')
-  if (!utmInfoStr)
-    return null
+  if (!utmInfoStr) return null
   try {
     return JSON.parse(utmInfoStr)
-  }
-  catch (e) {
+  } catch (e) {
     console.error('Failed to parse utm_info cookie:', e)
     return null
   }
@@ -29,135 +50,144 @@ const parseUtmInfo = () => {
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
+  const locale = useLocale()
 
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const formActionsRef = useRef<FormActions>(null)
+  const confirmPasswordRef = useRef<HTMLInputElement>(null)
   const { mutateAsync: register, isPending } = useMailRegister()
+  const pageTitle = t(($) => $.changePassword, { ns: 'login' })
+  useDocumentTitle(pageTitle)
 
-  const showErrorMessage = useCallback((message: string) => {
-    Toast.notify({
-      type: 'error',
-      message,
-    })
-  }, [])
-
-  const valid = useCallback(() => {
-    if (!password.trim()) {
-      showErrorMessage(t('error.passwordEmpty', { ns: 'login' }))
-      return false
-    }
-    if (!validPassword.test(password)) {
-      showErrorMessage(t('error.passwordInvalid', { ns: 'login' }))
-      return false
-    }
-    if (password !== confirmPassword) {
-      showErrorMessage(t('account.notEqual', { ns: 'common' }))
-      return false
-    }
-    return true
-  }, [password, confirmPassword, showErrorMessage, t])
-
-  const handleSubmit = useCallback(async () => {
-    if (!valid())
-      return
-    try {
-      const res = await register({
-        token,
-        new_password: password,
-        password_confirm: confirmPassword,
-      })
-      const { result } = res as MailRegisterResponse
-      if (result === 'success') {
-        const utmInfo = parseUtmInfo()
-        trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
-          method: 'email',
-          ...utmInfo,
+  const handleSubmit = useCallback(
+    async (formValues: PasswordFormValues) => {
+      if (isPending) return
+      try {
+        const res = await register({
+          token,
+          new_password: formValues.password,
+          password_confirm: formValues.confirmPassword,
+          language: locale,
+          timezone: getBrowserTimezone(),
         })
+        const { result } = res as MailRegisterResponse
+        if (result === 'success') {
+          const utmInfo = parseUtmInfo()
+          rememberCreateAppExternalAttribution({ utmInfo })
+          // Defer the Amplitude event until the user ID is attached. The app context
+          // external sync replays it after setUserId runs once the redirect lands on /apps.
+          // Firing it here would record it under an anonymous Amplitude profile.
+          rememberRegistrationSuccess({ method: 'email', utmInfo })
 
-        sendGAEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
-          method: 'email',
-          ...utmInfo,
-        })
-        Cookies.remove('utm_info') // Clean up: remove utm_info cookie
+          sendGAEvent(
+            utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success',
+            {
+              method: 'email',
+              ...utmInfo,
+            },
+          )
+          Cookies.remove('utm_info') // Clean up: remove utm_info cookie
 
-        Toast.notify({
-          type: 'success',
-          message: t('api.actionSuccess', { ns: 'common' }),
-        })
-        router.replace('/apps')
+          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
+          replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
+        }
+      } catch (error) {
+        console.error(error)
       }
-    }
-    catch (error) {
-      console.error(error)
-    }
-  }, [password, token, valid, confirmPassword, register])
+    },
+    [token, register, locale, queryClient, router, searchParams, t, isPending],
+  )
 
   return (
-    <div className={
-      cn(
-        'flex w-full grow flex-col items-center justify-center',
-        'px-6',
-        'md:px-[108px]',
-      )
-    }
+    <div
+      className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
     >
-      <div className="flex flex-col md:w-[400px]">
+      <div className="flex flex-col md:w-100">
         <div className="mx-auto w-full">
-          <h2 className="title-4xl-semi-bold text-text-primary">
-            {t('changePassword', { ns: 'login' })}
-          </h2>
-          <p className="body-md-regular mt-2 text-text-secondary">
-            {t('changePasswordTip', { ns: 'login' })}
+          <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
+          <p className="mt-2 body-md-regular text-text-secondary">
+            {t(($) => $.changePasswordTip, { ns: 'login' })}
           </p>
         </div>
 
         <div className="mx-auto mt-6 w-full">
-          <div>
-            {/* Password */}
-            <div className="mb-5">
-              <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">
-                {t('account.newPassword', { ns: 'common' })}
-              </label>
-              <div className="relative mt-1">
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
-                />
-
-              </div>
-              <div className="body-xs-regular mt-1 text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
-            </div>
-            {/* Confirm Password */}
-            <div className="mb-5">
-              <label htmlFor="confirmPassword" className="system-md-semibold my-2 text-text-secondary">
-                {t('account.confirmPassword', { ns: 'common' })}
-              </label>
-              <div className="relative mt-1">
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder={t('confirmPasswordPlaceholder', { ns: 'login' }) || ''}
-                />
-              </div>
-            </div>
-            <div>
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={handleSubmit}
-                disabled={isPending || !password || !confirmPassword}
-              >
-                {t('changePasswordBtn', { ns: 'login' })}
-              </Button>
-            </div>
-          </div>
+          <Form<PasswordFormValues>
+            actionsRef={formActionsRef}
+            onFormSubmit={(formValues) => void handleSubmit(formValues)}
+          >
+            <Field
+              name="password"
+              validate={(value) => {
+                const passwordValue = String(value)
+                if (!passwordValue.trim())
+                  return t(($) => $['error.passwordEmpty'], { ns: 'login' })
+                return validPassword.test(passwordValue)
+                  ? null
+                  : t(($) => $['error.passwordInvalid'], { ns: 'login' })
+              }}
+              className="mb-5"
+            >
+              <FieldLabel>{t(($) => $['account.newPassword'], { ns: 'common' })}</FieldLabel>
+              <Input
+                type="password"
+                required
+                autoComplete="new-password"
+                spellCheck={false}
+                onValueChange={() => {
+                  if (confirmPasswordRef.current?.value)
+                    formActionsRef.current?.validate('confirmPassword')
+                }}
+                placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+              />
+              <FieldValidity>
+                {({ validity }) =>
+                  validity.valid !== false ? (
+                    <FieldDescription>
+                      {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                    </FieldDescription>
+                  ) : null
+                }
+              </FieldValidity>
+              <FieldValidity>
+                {({ validity }) => (
+                  <FieldError>
+                    {t(
+                      ($) =>
+                        $[validity.valueMissing ? 'error.passwordEmpty' : 'error.passwordInvalid'],
+                      { ns: 'login' },
+                    )}
+                  </FieldError>
+                )}
+              </FieldValidity>
+            </Field>
+            <Field
+              name="confirmPassword"
+              validate={(value, formValues) => {
+                const confirmationValue = String(value)
+                return !confirmationValue || confirmationValue === formValues.password
+                  ? null
+                  : t(($) => $['account.notEqual'], { ns: 'common' })
+              }}
+              className="mb-5"
+            >
+              <FieldLabel>{t(($) => $['account.confirmPassword'], { ns: 'common' })}</FieldLabel>
+              <Input
+                type="password"
+                required
+                autoComplete="new-password"
+                spellCheck={false}
+                ref={confirmPasswordRef}
+                placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
+              />
+              <FieldError>{t(($) => $['account.notEqual'], { ns: 'common' })}</FieldError>
+            </Field>
+            <Button type="submit" variant="primary" className="w-full" loading={isPending}>
+              {t(($) => $.changePasswordBtn, { ns: 'login' })}
+            </Button>
+          </Form>
         </div>
       </div>
     </div>

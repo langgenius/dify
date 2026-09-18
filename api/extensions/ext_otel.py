@@ -59,7 +59,7 @@ def init_app(app: DifyApp):
             SERVICE_NAME: dify_config.APPLICATION_NAME,
             SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
             PROCESS_PID: os.getpid(),
-            DEPLOYMENT_ENVIRONMENT_NAME: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+            DEPLOYMENT_ENVIRONMENT_NAME: f"{dify_config.DEPLOY_ENV}-{dify_config.DEPLOYMENT_EDITION.value}",
             HOST_NAME: socket.gethostname(),
             HOST_ARCH: platform.machine(),
             "custom.deployment.git_commit": dify_config.COMMIT_SHA,
@@ -78,16 +78,24 @@ def init_app(app: DifyApp):
     protocol = (dify_config.OTEL_EXPORTER_OTLP_PROTOCOL or "").lower()
     if dify_config.OTEL_EXPORTER_TYPE == "otlp":
         if protocol == "grpc":
+            # Auto-detect TLS: https:// uses secure, everything else is insecure
+            endpoint = dify_config.OTLP_BASE_ENDPOINT
+            insecure = not endpoint.startswith("https://")
+
+            # Header field names must consist of lowercase letters, check RFC7540
+            grpc_headers = (
+                (("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),) if dify_config.OTLP_API_KEY else ()
+            )
+
             exporter = GRPCSpanExporter(
-                endpoint=dify_config.OTLP_BASE_ENDPOINT,
-                # Header field names must consist of lowercase letters, check RFC7540
-                headers=(("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),),
-                insecure=True,
+                endpoint=endpoint,
+                headers=grpc_headers,
+                insecure=insecure,
             )
             metric_exporter = GRPCMetricExporter(
-                endpoint=dify_config.OTLP_BASE_ENDPOINT,
-                headers=(("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),),
-                insecure=True,
+                endpoint=endpoint,
+                headers=grpc_headers,
+                insecure=insecure,
             )
         else:
             headers = {"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"} if dify_config.OTLP_API_KEY else None

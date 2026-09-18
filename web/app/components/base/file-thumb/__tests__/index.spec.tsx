@@ -1,13 +1,6 @@
-/* eslint-disable next/no-img-element */
-import type { ImgHTMLAttributes } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FileThumb from '../index'
-
-vi.mock('next/image', () => ({
-  __esModule: true,
-  default: (props: ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
-}))
 
 describe('FileThumb Component', () => {
   const mockImageFile = {

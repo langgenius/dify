@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 from unittest.mock import patch
 
 import pytest
@@ -16,6 +16,7 @@ from core.tools.errors import ToolProviderNotFoundError
 
 
 class _FakeBuiltinTool(BuiltinTool):
+    @override
     def _invoke(
         self,
         user_id: str,
@@ -30,6 +31,7 @@ class _FakeBuiltinTool(BuiltinTool):
 class _ConcreteBuiltinProvider(BuiltinToolProviderController):
     last_validation: tuple[str, dict[str, Any]] | None = None
 
+    @override
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         self.last_validation = (user_id, credentials)
 
@@ -78,7 +80,7 @@ def _tool_yaml() -> dict[str, Any]:
     }
 
 
-def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch):
+def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch: pytest.MonkeyPatch):
     yaml_payloads = [_provider_yaml(), _tool_yaml()]
 
     def _load_yaml(*args, **kwargs):

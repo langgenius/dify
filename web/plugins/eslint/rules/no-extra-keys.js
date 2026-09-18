@@ -6,7 +6,7 @@ export default {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Ensure non-English JSON files don\'t have extra keys not present in en-US',
+      description: "Ensure non-English JSON files don't have extra keys not present in en-US",
     },
     fixable: 'code',
   },
@@ -15,17 +15,15 @@ export default {
       Program(node) {
         const { filename, sourceCode } = context
 
-        if (!filename.endsWith('.json'))
-          return
+        if (!filename.endsWith('.json')) return
 
         const parts = normalize(filename).split(sep)
-        // e.g., i18n/ar-TN/common.json -> jsonFile = common.json, lang = ar-TN
+        // e.g., i18n/locales/ar-TN/common.json -> jsonFile = common.json, lang = ar-TN
         const jsonFile = parts.at(-1)
         const lang = parts.at(-2)
 
         // Skip English files
-        if (lang === 'en-US')
-          return
+        if (lang === 'en-US') return
 
         let currentJson = {}
         let englishJson = {}
@@ -33,11 +31,10 @@ export default {
         try {
           currentJson = JSON.parse(sourceCode.text)
           // Look for the same filename in en-US folder
-          // e.g., i18n/ar-TN/common.json -> i18n/en-US/common.json
+          // e.g., i18n/locales/ar-TN/common.json -> i18n/locales/en-US/common.json
           const englishFilePath = path.join(path.dirname(filename), '..', 'en-US', jsonFile ?? '')
           englishJson = JSON.parse(fs.readFileSync(englishFilePath, 'utf8'))
-        }
-        catch (error) {
+        } catch (error) {
           context.report({
             node,
             message: `Error parsing JSON: ${error instanceof Error ? error.message : String(error)}`,
@@ -46,7 +43,7 @@ export default {
         }
 
         const extraKeys = Object.keys(currentJson).filter(
-          key => !Object.prototype.hasOwnProperty.call(englishJson, key),
+          (key) => !Object.prototype.hasOwnProperty.call(englishJson, key),
         )
 
         for (const key of extraKeys) {

@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useUploader } from '../use-uploader'
 
 describe('useUploader Hook', () => {
@@ -19,8 +19,7 @@ describe('useUploader Hook', () => {
   })
 
   afterEach(() => {
-    if (mockContainer.parentNode)
-      document.body.removeChild(mockContainer)
+    if (mockContainer.parentNode) document.body.removeChild(mockContainer)
   })
 
   describe('Initial State', () => {

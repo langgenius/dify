@@ -24,6 +24,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ def clean_dataset_task(
     """
     logger.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
+    vector_cleanup_succeeded = False
 
     with session_factory.create_session() as session:
         try:
@@ -92,7 +94,8 @@ def clean_dataset_task(
             # This ensures Document/Segment deletion can continue even if vector database cleanup fails
             try:
                 index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-                index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True)
+                index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True, session=session)
+                vector_cleanup_succeeded = True
                 logger.info(click.style(f"Successfully cleaned vector database for dataset: {dataset_id}", fg="green"))
             except Exception:
                 logger.exception(click.style(f"Failed to clean vector database for dataset {dataset_id}", fg="red"))
@@ -112,7 +115,9 @@ def clean_dataset_task(
                 segment_ids = [segment.id for segment in segments]
                 for segment in segments:
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)
-                    image_files = session.query(UploadFile).where(UploadFile.id.in_(image_upload_file_ids)).all()
+                    image_files = session.scalars(
+                        select(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
+                    ).all()
                     for image_file in image_files:
                         if image_file is None:
                             continue
@@ -150,20 +155,22 @@ def clean_dataset_task(
                 )
                 session.execute(binding_delete_stmt)
 
-            session.query(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id).delete()
-            session.query(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id).delete()
-            session.query(AppDatasetJoin).where(AppDatasetJoin.dataset_id == dataset_id).delete()
+            session.execute(delete(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id))
+            session.execute(delete(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id))
+            session.execute(delete(AppDatasetJoin).where(AppDatasetJoin.dataset_id == dataset_id))
             # delete dataset metadata
-            session.query(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset_id).delete()
-            session.query(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset_id).delete()
+            session.execute(delete(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset_id))
+            session.execute(delete(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset_id))
             # delete pipeline and workflow
             if pipeline_id:
-                session.query(Pipeline).where(Pipeline.id == pipeline_id).delete()
-                session.query(Workflow).where(
-                    Workflow.tenant_id == tenant_id,
-                    Workflow.app_id == pipeline_id,
-                    Workflow.type == WorkflowType.RAG_PIPELINE,
-                ).delete()
+                session.execute(delete(Pipeline).where(Pipeline.id == pipeline_id))
+                session.execute(
+                    delete(Workflow).where(
+                        Workflow.tenant_id == tenant_id,
+                        Workflow.app_id == pipeline_id,
+                        Workflow.type == WorkflowType.RAG_PIPELINE,
+                    )
+                )
             # delete files
             if documents:
                 file_ids = []
@@ -174,7 +181,7 @@ def clean_dataset_task(
                             if data_source_info and "upload_file_id" in data_source_info:
                                 file_id = data_source_info["upload_file_id"]
                                 file_ids.append(file_id)
-                files = session.query(UploadFile).where(UploadFile.id.in_(file_ids)).all()
+                files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
                 for file in files:
                     storage.delete(file.key)
 
@@ -182,6 +189,8 @@ def clean_dataset_task(
                 session.execute(file_delete_stmt)
 
             session.commit()
+            if vector_cleanup_succeeded:
+                schedule_billing_vector_space_refresh(dataset.tenant_id)
             end_at = time.perf_counter()
             logger.info(
                 click.style(

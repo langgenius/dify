@@ -13,18 +13,8 @@ const CornerLabels = ({ dataset }: CornerLabelsProps) => {
   if (!dataset.embedding_available) {
     return (
       <CornerLabel
-        label={t('cornerLabel.unavailable', { ns: 'dataset' })}
-        className="absolute right-0 top-0 z-10"
-        labelClassName="rounded-tr-xl"
-      />
-    )
-  }
-
-  if (dataset.runtime_mode === 'rag_pipeline') {
-    return (
-      <CornerLabel
-        label={t('cornerLabel.pipeline', { ns: 'dataset' })}
-        className="absolute right-0 top-0 z-10"
+        label={t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })}
+        className="absolute top-0 right-0 z-5"
         labelClassName="rounded-tr-xl"
       />
     )

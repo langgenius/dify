@@ -1,0 +1,81 @@
+import type { ReactNode } from 'react'
+import { render } from '@testing-library/react'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import EmbeddingModel from '../embedding-model'
+
+const mockModelListQuery = vi.hoisted(() => vi.fn())
+const mockModelSelector = vi.hoisted(() =>
+  vi.fn(() => <div data-testid="model-selector">selector</div>),
+)
+
+vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
+  Field: ({
+    children,
+    fieldTitleProps,
+  }: {
+    children: ReactNode
+    fieldTitleProps: { warningDot?: boolean }
+  }) => (
+    <div data-testid="field" data-warning-dot={String(!!fieldTitleProps.warningDot)}>
+      {children}
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
+  ModelSelector: mockModelSelector,
+}))
+
+describe('EmbeddingModel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockModelListQuery.mockReturnValue({
+      data: [{ provider: 'openai', model: 'text-embedding-3-large' }],
+    })
+  })
+
+  it('should pass the selected model configuration and warning state to the selector field', () => {
+    const onEmbeddingModelChange = vi.fn()
+
+    render(
+      <EmbeddingModel
+        embeddingModel="text-embedding-3-large"
+        embeddingModelProvider="openai"
+        warningDot
+        onEmbeddingModelChange={onEmbeddingModelChange}
+      />,
+    )
+
+    expect(mockModelListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ input: { params: { model_type: ModelTypeEnum.textEmbedding } } }),
+    )
+    expect(mockModelSelector).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: {
+          provider: 'openai',
+          model: 'text-embedding-3-large',
+        },
+        models: [{ provider: 'openai', model: 'text-embedding-3-large' }],
+        disabled: false,
+        showDeprecatedWarnIcon: true,
+      }),
+      undefined,
+    )
+  })
+
+  it('should pass an undefined value when the embedding model is incomplete', () => {
+    render(<EmbeddingModel embeddingModel="text-embedding-3-large" />)
+
+    expect(mockModelSelector).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: undefined,
+      }),
+      undefined,
+    )
+  })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return { ...actual, useQuery: mockModelListQuery }
+})

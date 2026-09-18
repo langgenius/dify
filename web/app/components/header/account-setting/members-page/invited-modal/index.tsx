@@ -1,104 +1,156 @@
-import type { InvitationResult } from '@/models/common'
-import { XMarkIcon } from '@heroicons/react/24/outline'
-import { CheckCircleIcon } from '@heroicons/react/24/solid'
-import { RiQuestionLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
-import { useMemo } from 'react'
+import type {
+  MemberInviteAlreadyMemberResponse,
+  MemberInviteFailedResponse,
+  MemberInviteResponse,
+  MemberInviteSuccessResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Modal from '@/app/components/base/modal'
-import Tooltip from '@/app/components/base/tooltip'
-import { IS_CE_EDITION } from '@/config'
-import s from './index.module.css'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import InvitationLink from './invitation-link'
 
-export type SuccessInvitationResult = Extract<InvitationResult, { status: 'success' }>
-export type FailedInvitationResult = Extract<InvitationResult, { status: 'failed' }>
-
 type IInvitedModalProps = {
-  invitationResults: InvitationResult[]
+  invitationResults: MemberInviteResponse['invitation_results']
   onCancel: () => void
 }
-const InvitedModal = ({
-  invitationResults,
-  onCancel,
-}: IInvitedModalProps) => {
+const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloudEdition = deploymentEdition === 'CLOUD'
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
 
-  const successInvitationResults = useMemo<SuccessInvitationResult[]>(() => invitationResults?.filter(item => item.status === 'success') as SuccessInvitationResult[], [invitationResults])
-  const failedInvitationResults = useMemo<FailedInvitationResult[]>(() => invitationResults?.filter(item => item.status !== 'success') as FailedInvitationResult[], [invitationResults])
+  const successInvitationResults = invitationResults.filter(
+    (item): item is MemberInviteSuccessResponse => item.status === 'success',
+  )
+  const alreadyMemberInvitationResults = invitationResults.filter(
+    (item): item is MemberInviteAlreadyMemberResponse => item.status === 'already_member',
+  )
+  const failedInvitationResults = invitationResults.filter(
+    (item): item is MemberInviteFailedResponse => item.status === 'failed',
+  )
+  const onlyAlreadyMembers =
+    alreadyMemberInvitationResults.length > 0 &&
+    successInvitationResults.length === 0 &&
+    failedInvitationResults.length === 0
+  const description = t(
+    ($) => $[onlyAlreadyMembers ? 'members.alreadyInTeamTip' : 'members.invitationSentTip'],
+    { ns: 'common' },
+  )
 
   return (
-    <div className={s.wrap}>
-      <Modal isShow onClose={noop} className={s.modal}>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent backdropProps={{ forceRender: true }} className="w-120 p-8">
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-8 right-8"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="mb-3 flex justify-between">
-          <div className="
-            flex h-12 w-12 items-center justify-center rounded-xl
-            border-[0.5px] border-components-panel-border bg-background-section-burn
-            shadow-xl
-          "
-          >
-            <CheckCircleIcon className="h-[22px] w-[22px] text-[#039855]" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-background-section-burn shadow-xl">
+            <div className="i-heroicons-check-circle-solid h-5.5 w-5.5 text-[#039855]" />
           </div>
-          <XMarkIcon className="h-4 w-4 cursor-pointer" onClick={onCancel} />
         </div>
-        <div className="mb-1 text-xl font-semibold text-text-primary">{t('members.invitationSent', { ns: 'common' })}</div>
-        {!IS_CE_EDITION && (
-          <div className="mb-10 text-sm text-text-tertiary">{t('members.invitationSentTip', { ns: 'common' })}</div>
-        )}
-        {IS_CE_EDITION && (
+        <DialogTitle className="mb-1 text-xl font-semibold text-text-primary">
+          {t(
+            ($) =>
+              $[onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent'],
+            { ns: 'common' },
+          )}
+        </DialogTitle>
+        {isCloudEdition && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
+        {(isNonCloudEdition || !!alreadyMemberInvitationResults.length) && (
           <>
-            <div className="mb-5 text-sm text-text-tertiary">{t('members.invitationSentTip', { ns: 'common' })}</div>
+            {isNonCloudEdition && (
+              <div className="mb-5 text-sm text-text-tertiary">{description}</div>
+            )}
             <div className="mb-9 flex flex-col gap-2">
-              {
-                !!successInvitationResults.length
-                && (
-                  <>
-                    <div className="font-Medium py-2 text-sm text-text-primary">{t('members.invitationLink', { ns: 'common' })}</div>
-                    {successInvitationResults.map(item =>
-                      <InvitationLink key={item.email} value={item} />)}
-                  </>
-                )
-              }
-              {
-                !!failedInvitationResults.length
-                && (
-                  <>
-                    <div className="font-Medium py-2 text-sm text-text-primary">{t('members.failedInvitationEmails', { ns: 'common' })}</div>
-                    <div className="flex flex-wrap justify-between gap-y-1">
-                      {
-                        failedInvitationResults.map(item => (
-                          <div key={item.email} className="flex justify-center rounded-md border border-red-300 bg-orange-50 px-1">
-                            <Tooltip
-                              popupContent={item.message}
-                            >
+              {isNonCloudEdition && !!successInvitationResults.length && (
+                <>
+                  <div className="py-2 text-sm font-medium text-text-primary">
+                    {t(($) => $['members.invitationLink'], { ns: 'common' })}
+                  </div>
+                  {successInvitationResults.map((item) => (
+                    <InvitationLink key={item.email} value={item} />
+                  ))}
+                </>
+              )}
+              {!!alreadyMemberInvitationResults.length && (
+                <>
+                  <div className="py-2 text-sm font-medium text-text-primary">
+                    {t(($) => $['members.alreadyInTeam'], { ns: 'common' })}
+                  </div>
+                  {!onlyAlreadyMembers && (
+                    <div className="text-sm text-text-tertiary">
+                      {t(($) => $['members.alreadyInTeamTip'], { ns: 'common' })}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap justify-between gap-y-1">
+                    {alreadyMemberInvitationResults.map((item) => (
+                      <div
+                        key={item.email}
+                        className="flex justify-center rounded-md border border-components-panel-border bg-background-section-burn px-1 text-sm text-text-secondary"
+                      >
+                        {item.email}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {isNonCloudEdition && !!failedInvitationResults.length && (
+                <>
+                  <div className="py-2 text-sm font-medium text-text-primary">
+                    {t(($) => $['members.failedInvitationEmails'], { ns: 'common' })}
+                  </div>
+                  <div className="flex flex-wrap justify-between gap-y-1">
+                    {failedInvitationResults.map((item) => (
+                      <div
+                        key={item.email}
+                        className="flex justify-center rounded-md border border-red-300 bg-orange-50 px-1"
+                      >
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
                               <div className="flex items-center justify-center gap-1 text-sm">
                                 {item.email}
-                                <RiQuestionLine className="h-4 w-4 text-red-300" />
+                                <div className="i-ri-question-line size-4 text-red-300" />
                               </div>
-                            </Tooltip>
-                          </div>
-                        ),
-                        )
-                      }
-                    </div>
-                  </>
-                )
-              }
+                            }
+                          />
+                          <TooltipContent>{item.message}</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </>
         )}
         <div className="flex justify-end">
-          <Button
-            className="w-[96px]"
-            onClick={onCancel}
-            variant="primary"
-          >
-            {t('members.ok', { ns: 'common' })}
+          <Button className="w-24" onClick={onCancel} variant="primary">
+            {t(($) => $['members.ok'], { ns: 'common' })}
           </Button>
         </div>
-      </Modal>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

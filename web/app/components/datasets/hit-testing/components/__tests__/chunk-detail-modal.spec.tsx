@@ -1,6 +1,7 @@
 import type { HitTesting } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChunkDetailModal from '../chunk-detail-modal'
 
 vi.mock('@/app/components/base/file-uploader/file-type-icon', () => ({
@@ -9,16 +10,6 @@ vi.mock('@/app/components/base/file-uploader/file-type-icon', () => ({
 
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
-}))
-
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, title, onClose }: { children: React.ReactNode, title: string, onClose: () => void }) => (
-    <div data-testid="modal">
-      <div data-testid="modal-title">{title}</div>
-      <button data-testid="modal-close" onClick={onClose}>close</button>
-      {children}
-    </div>
-  ),
 }))
 
 vi.mock('../../../common/image-list', () => ({
@@ -30,7 +21,9 @@ vi.mock('../../../documents/detail/completed/common/dot', () => ({
 }))
 
 vi.mock('../../../documents/detail/completed/common/segment-index-tag', () => ({
-  SegmentIndexTag: ({ positionId }: { positionId: number }) => <span data-testid="segment-index-tag">{positionId}</span>,
+  SegmentIndexTag: ({ positionId }: { positionId: number }) => (
+    <span data-testid="segment-index-tag">{positionId}</span>
+  ),
 }))
 
 vi.mock('../../../documents/detail/completed/common/summary-text', () => ({
@@ -42,7 +35,9 @@ vi.mock('@/app/components/datasets/documents/detail/completed/common/tag', () =>
 }))
 
 vi.mock('../child-chunks-item', () => ({
-  default: ({ payload }: { payload: { id: string } }) => <div data-testid="child-chunk">{payload.id}</div>,
+  default: ({ payload }: { payload: { id: string } }) => (
+    <div data-testid="child-chunk">{payload.id}</div>
+  ),
 }))
 
 vi.mock('../mask', () => ({
@@ -85,7 +80,7 @@ describe('ChunkDetailModal', () => {
 
   it('should render modal with title', () => {
     render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
-    expect(screen.getByTestId('modal-title')).toHaveTextContent('chunkDetail')
+    expect(screen.getByRole('dialog')).toHaveTextContent('chunkDetail')
   })
 
   it('should render segment index tag and score', () => {
@@ -133,5 +128,22 @@ describe('ChunkDetailModal', () => {
   it('should render mask overlay', () => {
     render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
     expect(screen.getByTestId('mask')).toBeInTheDocument()
+  })
+
+  it('should call onHide when close button is clicked', async () => {
+    const user = userEvent.setup()
+    render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(onHide).toHaveBeenCalled()
+  })
+
+  it('should call onHide when the dialog requests close', () => {
+    render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    expect(onHide).toHaveBeenCalledTimes(1)
   })
 })

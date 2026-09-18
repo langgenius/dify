@@ -17,7 +17,7 @@ class CSVSanitizer:
     """
 
     # Characters that can start a formula in Excel/LibreOffice/Google Sheets
-    FORMULA_CHARS = frozenset({"=", "+", "-", "@", "\t", "\r"})
+    FORMULA_CHARS = frozenset(("=", "+", "-", "@", "\t", "\r"))
 
     @classmethod
     def sanitize_value(cls, value: Any) -> str:

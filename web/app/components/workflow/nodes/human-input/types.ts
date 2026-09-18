@@ -1,8 +1,10 @@
 import type {
   CommonNodeType,
-  InputVarType,
+  UploadFileSetting,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 
 export type HumanInputNodeType = CommonNodeType & {
   delivery_methods: DeliveryMethod[]
@@ -59,14 +61,119 @@ export type UserAction = {
   button_style: UserActionButtonType
 }
 
-export type FormInputItemDefault = {
+type StringDefault = {
   selector: ValueSelector
   type: 'variable' | 'constant'
   value: string
 }
 
-export type FormInputItem = {
-  type: InputVarType
+type StringListSource = {
+  selector: ValueSelector
+  type: 'variable' | 'constant'
+  value: string[]
+}
+
+// Preserve the old export during the transition to the new schema names.
+export type FormInputItemDefault = StringDefault
+
+type BaseFormInputItem = {
   output_variable_name: string
-  default: FormInputItemDefault
+}
+
+export type ParagraphFormInput = BaseFormInputItem & {
+  type: InputVarType.paragraph
+  default: StringDefault
+}
+
+export type SelectFormInput = BaseFormInputItem & {
+  type: InputVarType.select
+  option_source: StringListSource
+}
+
+type SharedFileFormInput = Pick<
+  UploadFileSetting,
+  'allowed_file_extensions' | 'allowed_file_types' | 'allowed_file_upload_methods'
+>
+
+export type FileFormInput = BaseFormInputItem &
+  SharedFileFormInput & {
+    type: InputVarType.singleFile
+  }
+
+export type FileListFormInput = BaseFormInputItem &
+  SharedFileFormInput & {
+    type: InputVarType.multiFiles
+    number_limits?: UploadFileSetting['number_limits']
+  }
+
+export type FormInputItem = ParagraphFormInput | SelectFormInput | FileFormInput | FileListFormInput
+
+export const isParagraphFormInput = (input: FormInputItem): input is ParagraphFormInput => {
+  return input.type === InputVarType.paragraph
+}
+
+export const isSelectFormInput = (input: FormInputItem): input is SelectFormInput => {
+  return input.type === InputVarType.select
+}
+
+export const isFileFormInput = (input: FormInputItem): input is FileFormInput => {
+  return input.type === InputVarType.singleFile
+}
+
+export const isFileListFormInput = (input: FormInputItem): input is FileListFormInput => {
+  return input.type === InputVarType.multiFiles
+}
+
+export const createDefaultParagraphFormInput = (output_variable_name = ''): ParagraphFormInput => ({
+  type: InputVarType.paragraph,
+  output_variable_name,
+  default: {
+    type: 'constant',
+    selector: [],
+    value: '',
+  },
+})
+
+const createDefaultSelectFormInput = (output_variable_name = ''): SelectFormInput => ({
+  type: InputVarType.select,
+  output_variable_name,
+  option_source: {
+    type: 'constant',
+    selector: [],
+    value: [],
+  },
+})
+
+const createDefaultFileFormInput = (output_variable_name = ''): FileFormInput => ({
+  type: InputVarType.singleFile,
+  output_variable_name,
+  allowed_file_extensions: [],
+  allowed_file_types: [SupportUploadFileTypes.image],
+  allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+})
+
+const createDefaultFileListFormInput = (output_variable_name = ''): FileListFormInput => ({
+  type: InputVarType.multiFiles,
+  output_variable_name,
+  allowed_file_extensions: [],
+  allowed_file_types: [SupportUploadFileTypes.image],
+  allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+  number_limits: 5,
+})
+
+export const createDefaultFormInputByType = (
+  type: FormInputItem['type'],
+  output_variable_name = '',
+): FormInputItem => {
+  switch (type) {
+    case InputVarType.select:
+      return createDefaultSelectFormInput(output_variable_name)
+    case InputVarType.singleFile:
+      return createDefaultFileFormInput(output_variable_name)
+    case InputVarType.multiFiles:
+      return createDefaultFileListFormInput(output_variable_name)
+    case InputVarType.paragraph:
+    default:
+      return createDefaultParagraphFormInput(output_variable_name)
+  }
 }

@@ -1,11 +1,14 @@
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import CrawledResultItem from '../crawled-result-item'
 
 describe('CrawledResultItem', () => {
   const defaultProps = {
-    payload: { title: 'Example Page', source_url: 'https://example.com/page' } as CrawlResultItemType,
+    payload: {
+      title: 'Example Page',
+      source_url: 'https://example.com/page',
+    } as CrawlResultItemType,
     isChecked: false,
     isPreview: false,
     onCheckChange: vi.fn(),
@@ -22,21 +25,16 @@ describe('CrawledResultItem', () => {
     expect(screen.getByText('https://example.com/page')).toBeInTheDocument()
   })
 
-  it('should apply active styling when isPreview', () => {
-    const { container } = render(<CrawledResultItem {...defaultProps} isPreview={true} />)
-    expect((container.firstChild as HTMLElement).className).toContain('bg-state-base-active')
-  })
-
   it('should call onCheckChange with true when unchecked checkbox is clicked', () => {
-    render(<CrawledResultItem {...defaultProps} isChecked={false} testId="crawl-item" />)
-    const checkbox = screen.getByTestId('checkbox-crawl-item')
+    render(<CrawledResultItem {...defaultProps} isChecked={false} />)
+    const checkbox = screen.getByRole('checkbox', { name: 'Example Page https://example.com/page' })
     fireEvent.click(checkbox)
     expect(defaultProps.onCheckChange).toHaveBeenCalledWith(true)
   })
 
   it('should call onCheckChange with false when checked checkbox is clicked', () => {
-    render(<CrawledResultItem {...defaultProps} isChecked={true} testId="crawl-item" />)
-    const checkbox = screen.getByTestId('checkbox-crawl-item')
+    render(<CrawledResultItem {...defaultProps} isChecked={true} />)
+    const checkbox = screen.getByRole('checkbox', { name: 'Example Page https://example.com/page' })
     fireEvent.click(checkbox)
     expect(defaultProps.onCheckChange).toHaveBeenCalledWith(false)
   })

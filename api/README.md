@@ -40,6 +40,8 @@ The scripts resolve paths relative to their location, so you can run them from a
    ./dev/start-web
    ```
 
+   `./dev/setup` and `./dev/start-web` install JavaScript dependencies through the repository root workspace, so you do not need a separate `cd web && pnpm install` step.
+
 1. Set up your application by visiting `http://localhost:3000`.
 
 1. Start the worker service (async and scheduler tasks, runs from `api`).
@@ -87,15 +89,24 @@ The scripts resolve paths relative to their location, so you can run them from a
 
 1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`, more can check [Claude.md](../CLAUDE.md)
 
+   Continue in the `api` directory from the previous step.
+
    ```bash
-   cd api
    uv run pytest                           # Run all tests
    uv run pytest tests/unit_tests/         # Unit tests only
    uv run pytest tests/integration_tests/  # Integration tests
 
    # Code quality
-   ./dev/reformat               # Run all formatters and linters
+   ../dev/reformat              # Run all formatters and linters
    uv run ruff check --fix ./   # Fix linting issues
    uv run ruff format ./        # Format code
-   uv run basedpyright .        # Type checking
+   uv run pyrefly check         # Type checking
    ```
+
+## Generate TS stub
+
+```
+uv run dev/generate_swagger_specs.py --output-dir openapi
+```
+
+use https://jsontotable.org/openapi-to-typescript to convert to typescript

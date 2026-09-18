@@ -198,7 +198,7 @@ class TestMessageListQuery:
         assert q.limit == 20
 
     def test_invalid_conversation_id(self) -> None:
-        with pytest.raises(ValidationError, match="not a valid uuid"):
+        with pytest.raises(ValidationError, match="must be a valid UUID"):
             MessageListQuery(conversation_id="bad")
 
     def test_limit_bounds(self) -> None:
@@ -216,7 +216,7 @@ class TestMessageListQuery:
 
     def test_invalid_first_id(self) -> None:
         cid = str(uuid4())
-        with pytest.raises(ValidationError, match="not a valid uuid"):
+        with pytest.raises(ValidationError, match="must be a valid UUID"):
             MessageListQuery(conversation_id=cid, first_id="invalid")
 
 
@@ -258,11 +258,12 @@ from controllers.web.remote_files import RemoteFileUploadPayload
 class TestRemoteFileUploadPayload:
     def test_valid_url(self) -> None:
         p = RemoteFileUploadPayload(url="https://example.com/file.pdf")
-        assert str(p.url) == "https://example.com/file.pdf"
+        assert p.url == "https://example.com/file.pdf"
 
-    def test_invalid_url(self) -> None:
-        with pytest.raises(ValidationError):
-            RemoteFileUploadPayload(url="not-a-url")
+    def test_url_syntax_is_validated_by_remote_file_service(self) -> None:
+        payload = RemoteFileUploadPayload(url="not-a-url")
+
+        assert payload.url == "not-a-url"
 
     def test_url_required(self) -> None:
         with pytest.raises(ValidationError):

@@ -1,17 +1,20 @@
 from urllib.parse import quote
+from uuid import UUID
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.common.errors import UnsupportedFileTypeError
 from controllers.common.file_response import enforce_download_for_html
+from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.files import files_ns
-from core.tools.signature import verify_tool_file_signature
-from core.tools.tool_file_manager import ToolFileManager
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+from extensions.ext_application_services import application_services
+from services.tool_file_download_service import (
+    ToolFileDownloadAccessDeniedError,
+    ToolFileDownloadNotFoundError,
+)
 
 
 class ToolFileQuery(BaseModel):
@@ -21,9 +24,7 @@ class ToolFileQuery(BaseModel):
     as_attachment: bool = Field(default=False, description="Download as attachment")
 
 
-files_ns.schema_model(
-    ToolFileQuery.__name__, ToolFileQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_schema_models(files_ns, ToolFileQuery)
 
 
 @files_ns.route("/tools/<uuid:file_id>.<string:extension>")
@@ -34,10 +35,7 @@ class ToolFileApi(Resource):
         params={
             "file_id": "Tool file identifier",
             "extension": "Expected file extension",
-            "timestamp": "Unix timestamp used in the signature",
-            "nonce": "Random string used in the signature",
-            "sign": "HMAC signature verifying the request",
-            "as_attachment": "Whether to download the file as an attachment",
+            **query_params_from_model(ToolFileQuery),
         }
     )
     @files_ns.doc(
@@ -45,47 +43,38 @@ class ToolFileApi(Resource):
             200: "Tool file stream returned successfully",
             403: "Forbidden - invalid signature",
             404: "File not found",
-            415: "Unsupported file type",
         }
     )
-    def get(self, file_id, extension):
-        file_id = str(file_id)
-
-        args = ToolFileQuery.model_validate(request.args.to_dict())
-        if not verify_tool_file_signature(file_id=file_id, timestamp=args.timestamp, nonce=args.nonce, sign=args.sign):
-            raise Forbidden("Invalid request.")
-
+    @model_validate(ToolFileQuery)
+    def get(self, args: ToolFileQuery, file_id: UUID, extension: str) -> Response:
         try:
-            tool_file_manager = ToolFileManager()
-            stream, tool_file = tool_file_manager.get_file_generator_by_tool_file_id(
-                file_id,
+            download = application_services().tool_file_downloads.get_signed_file(
+                file_id=str(file_id),
+                timestamp=args.timestamp,
+                nonce=args.nonce,
+                sign=args.sign,
             )
-
-            if not stream or not tool_file:
-                raise NotFound("file is not found")
-
-        except NotFound:
-            raise
-
-        except Exception:
-            raise UnsupportedFileTypeError()
+        except ToolFileDownloadAccessDeniedError as error:
+            raise Forbidden("Invalid request.") from error
+        except ToolFileDownloadNotFoundError as error:
+            raise NotFound("file is not found") from error
 
         response = Response(
-            stream,
-            mimetype=tool_file.mimetype,
+            download.content,
+            mimetype=download.mime_type,
             direct_passthrough=True,
             headers={},
         )
-        if tool_file.size > 0:
-            response.headers["Content-Length"] = str(tool_file.size)
-        if args.as_attachment:
-            encoded_filename = quote(tool_file.name)
+        if download.size > 0:
+            response.headers["Content-Length"] = str(download.size)
+        if args.as_attachment and download.filename:
+            encoded_filename = quote(download.filename)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
         enforce_download_for_html(
             response,
-            mime_type=tool_file.mimetype,
-            filename=tool_file.name,
+            mime_type=download.mime_type,
+            filename=download.filename,
             extension=extension,
         )
 

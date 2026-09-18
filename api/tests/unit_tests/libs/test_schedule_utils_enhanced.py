@@ -326,7 +326,16 @@ class TestPerformanceEnhanced(unittest.TestCase):
             "@daily",  # Predefined expression
         ]
 
-        start_time = time.time()
+        # Measure CPU time rather than wall clock time because CI runs this file
+        # under xdist, where worker preemption can inflate elapsed time without
+        # indicating a real regression in cron parsing.
+        for expr in complex_expressions:
+            try:
+                calculate_next_run_at(expr, "UTC", self.base_time)
+            except Exception:
+                pass
+
+        start_time = time.process_time()
 
         for expr in complex_expressions:
             with self.subTest(expr=expr):
@@ -337,8 +346,8 @@ class TestPerformanceEnhanced(unittest.TestCase):
                     # Some expressions might not be supported - acceptable
                     pass
 
-        end_time = time.time()
-        execution_time = (end_time - start_time) * 1000  # milliseconds
+        end_time = time.process_time()
+        execution_time = (end_time - start_time) * 1000  # CPU milliseconds
 
         # Should be fast (less than 100ms for all expressions)
         assert execution_time < 100, "Enhanced expressions should parse quickly"
@@ -350,7 +359,9 @@ class TestPerformanceEnhanced(unittest.TestCase):
         expression = "0 9 * * MON-FRI"  # Weekdays at 9 AM
         iterations = 20
 
-        start_time = time.time()
+        calculate_next_run_at(expression, "UTC", self.base_time)
+
+        start_time = time.process_time()
 
         current_time = self.base_time
         for _ in range(iterations):
@@ -358,8 +369,8 @@ class TestPerformanceEnhanced(unittest.TestCase):
             assert result is not None
             current_time = result + timedelta(seconds=1)  # Move forward slightly
 
-        end_time = time.time()
-        total_time = (end_time - start_time) * 1000  # milliseconds
+        end_time = time.process_time()
+        total_time = (end_time - start_time) * 1000  # CPU milliseconds
         avg_time = total_time / iterations
 
         # Average should be very fast (less than 5ms per calculation)

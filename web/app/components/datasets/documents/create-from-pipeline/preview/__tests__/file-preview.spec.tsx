@@ -1,6 +1,6 @@
 import type { CustomFile } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import FilePreview from '../file-preview'
 
 const mockFileData = { content: 'file content here with some text' }
@@ -39,30 +39,30 @@ describe('FilePreview', () => {
 
   it('should render preview label', () => {
     render(<FilePreview {...defaultProps} />)
-    expect(screen.getByText('datasetPipeline.addDocuments.stepOne.preview')).toBeInTheDocument()
+    expect(screen.getByText('datasetPipeline.addDocuments.stepOne.preview'))!.toBeInTheDocument()
   })
 
   it('should render file name', () => {
     render(<FilePreview {...defaultProps} />)
-    expect(screen.getByText('document.pdf')).toBeInTheDocument()
+    expect(screen.getByText('document.pdf'))!.toBeInTheDocument()
   })
 
   it('should render file content when loaded', () => {
     render(<FilePreview {...defaultProps} />)
-    expect(screen.getByText('file content here with some text')).toBeInTheDocument()
+    expect(screen.getByText('file content here with some text'))!.toBeInTheDocument()
   })
 
   it('should render loading state', () => {
     mockIsFetching = true
     render(<FilePreview {...defaultProps} />)
-    expect(screen.getByTestId('loading')).toBeInTheDocument()
+    expect(screen.getByTestId('loading'))!.toBeInTheDocument()
   })
 
   it('should call hidePreview when close button clicked', () => {
     render(<FilePreview {...defaultProps} />)
     const buttons = screen.getAllByRole('button')
     const closeBtn = buttons[buttons.length - 1]
-    fireEvent.click(closeBtn)
+    fireEvent.click(closeBtn!)
     expect(defaultProps.hidePreview).toHaveBeenCalled()
   })
 })

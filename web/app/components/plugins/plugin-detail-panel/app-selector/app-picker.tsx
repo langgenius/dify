@@ -1,32 +1,46 @@
 'use client'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import type { FC } from 'react'
-import type { App } from '@/types/app'
-import * as React from 'react'
-import { useCallback, useEffect, useRef } from 'react'
+
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { ComboboxPositionerProps } from '@langgenius/dify-ui/combobox'
+import type { ReactNode } from 'react'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+  ComboboxItemText,
+  ComboboxList,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
+  ComboboxStatus,
+  ComboboxTrigger,
+} from '@langgenius/dify-ui/combobox'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { AppModeEnum } from '@/types/app'
 
-type Props = {
-  scope: string
+type AppPickerProps = Pick<ComboboxPositionerProps, 'placement'> & {
+  scope?: string
   disabled: boolean
-  trigger: React.ReactNode
-  placement?: Placement
-  offset?: OffsetOptions
+  trigger: ReactNode
+  offset?: number
   isShow: boolean
   onShowChange: (isShow: boolean) => void
-  onSelect: (app: App) => void
-  apps: App[]
+  onSelect: (app: AppPartial) => void
+  apps: AppPartial[]
   isLoading: boolean
   hasMore: boolean
   onLoadMore: () => void
@@ -34,8 +48,57 @@ type Props = {
   onSearchChange: (text: string) => void
 }
 
-const AppPicker: FC<Props> = ({
-  scope: _scope,
+function getAppTypeLabel(app: AppPartial) {
+  switch (app.mode) {
+    case AppModeEnum.ADVANCED_CHAT:
+      return 'chatflow'
+    case AppModeEnum.AGENT_CHAT:
+      return 'agent'
+    case AppModeEnum.CHAT:
+      return 'chat'
+    case AppModeEnum.COMPLETION:
+      return 'completion'
+    case AppModeEnum.WORKFLOW:
+      return 'workflow'
+    default:
+      return app.mode
+  }
+}
+
+function getAppSearchText(app: AppPartial) {
+  return `${app.name} ${app.id} ${getAppTypeLabel(app)}`
+}
+
+function AppPickerOption({ app }: { app: AppPartial }) {
+  const appIconType = zIconType.safeParse(app.icon_type).data ?? null
+  return (
+    <ComboboxItem
+      key={app.id}
+      value={app}
+      className="mx-0 grid-cols-[minmax(0,1fr)_auto] gap-3 py-1 pr-3 pl-2"
+    >
+      <ComboboxItemText className="flex min-w-0 items-center gap-3 px-0">
+        <AppIcon
+          className="shrink-0"
+          size="xs"
+          iconType={appIconType}
+          icon={app.icon ?? undefined}
+          background={app.icon_background}
+          imageUrl={app.icon_url}
+        />
+        <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
+          <span className="mr-1">{app.name}</span>
+          <span className="text-text-tertiary">({app.id.slice(0, 8)})</span>
+        </span>
+      </ComboboxItemText>
+      <span className="shrink-0 system-2xs-medium-uppercase text-text-tertiary">
+        {getAppTypeLabel(app)}
+      </span>
+    </ComboboxItem>
+  )
+}
+
+export function AppPicker({
   disabled,
   trigger,
   placement = 'right-start',
@@ -49,160 +112,115 @@ const AppPicker: FC<Props> = ({
   onLoadMore,
   searchText,
   onSearchChange,
-}) => {
+}: AppPickerProps) {
   const { t } = useTranslation()
-  const observerTarget = useRef<HTMLDivElement>(null)
-  const observerRef = useRef<IntersectionObserver | null>(null)
-  const loadingRef = useRef(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
-    const target = entries[0]
-    if (!target.isIntersecting || loadingRef.current || !hasMore || isLoading)
-      return
+  const handleValueChange = useCallback(
+    (app: AppPartial | null) => {
+      if (!app) return
 
-    loadingRef.current = true
-    onLoadMore()
-    // Reset loading state
-    setTimeout(() => {
-      loadingRef.current = false
-    }, 500)
-  }, [hasMore, isLoading, onLoadMore])
+      onSelect(app)
+      onShowChange(false)
+    },
+    [onSelect, onShowChange],
+  )
 
-  useEffect(() => {
-    if (!isShow) {
-      if (observerRef.current) {
-        observerRef.current.disconnect()
-        observerRef.current = null
-      }
-      return
-    }
-
-    let mutationObserver: MutationObserver | null = null
-
-    const setupIntersectionObserver = () => {
-      if (!observerTarget.current)
-        return
-
-      // Create new observer
-      observerRef.current = new IntersectionObserver(handleIntersection, {
-        root: null,
-        rootMargin: '100px',
-        threshold: 0.1,
-      })
-
-      observerRef.current.observe(observerTarget.current)
-    }
-
-    // Set up MutationObserver to watch DOM changes
-    mutationObserver = new MutationObserver((_mutations) => {
-      if (observerTarget.current) {
-        setupIntersectionObserver()
-        mutationObserver?.disconnect()
-      }
-    })
-
-    // Watch body changes since Portal adds content to body
-    mutationObserver.observe(document.body, {
-      childList: true,
-      subtree: true,
-    })
-
-    // If element exists, set up IntersectionObserver directly
-    if (observerTarget.current)
-      setupIntersectionObserver()
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect()
-        observerRef.current = null
-      }
-      mutationObserver?.disconnect()
-    }
-  }, [isShow, handleIntersection])
-
-  const getAppType = (app: App) => {
-    switch (app.mode) {
-      case AppModeEnum.ADVANCED_CHAT:
-        return 'chatflow'
-      case AppModeEnum.AGENT_CHAT:
-        return 'agent'
-      case AppModeEnum.CHAT:
-        return 'chat'
-      case AppModeEnum.COMPLETION:
-        return 'completion'
-      case AppModeEnum.WORKFLOW:
-        return 'workflow'
-    }
-  }
-
-  const handleTriggerClick = () => {
-    if (disabled)
-      return
-    onShowChange(true)
+  const handleClearSearch = () => {
+    onSearchChange('')
+    inputRef.current?.focus()
   }
 
   return (
-    <PortalToFollowElem
-      placement={placement}
-      offset={offset}
+    <Combobox<AppPartial>
+      items={apps}
       open={isShow}
+      inputValue={searchText}
       onOpenChange={onShowChange}
+      onInputValueChange={onSearchChange}
+      onValueChange={handleValueChange}
+      itemToStringLabel={(app) => app?.name ?? ''}
+      itemToStringValue={(app) => app?.id ?? ''}
+      filter={(app, query) => getAppSearchText(app).toLowerCase().includes(query.toLowerCase())}
+      disabled={disabled}
     >
-      <PortalToFollowElemTrigger
-        onClick={handleTriggerClick}
+      <ComboboxTrigger
+        aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
+        icon={false}
+        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent data-popup-open:bg-transparent"
       >
         {trigger}
-      </PortalToFollowElemTrigger>
-
-      <PortalToFollowElemContent className="z-[1000]">
-        <div className="relative flex max-h-[400px] min-h-20 w-[356px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
-          <div className="p-2 pb-1">
-            <Input
-              showLeftIcon
-              showClearIcon
-              value={searchText}
-              onChange={e => onSearchChange(e.target.value)}
-              onClear={() => onSearchChange('')}
-            />
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-1">
-            {apps.map(app => (
-              <div
-                key={app.id}
-                className="flex cursor-pointer items-center gap-3 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover"
-                onClick={() => onSelect(app)}
-              >
-                <AppIcon
-                  className="shrink-0"
-                  size="xs"
-                  iconType={app.icon_type}
-                  icon={app.icon}
-                  background={app.icon_background}
-                  imageUrl={app.icon_url}
-                />
-                <div title={`${app.name} (${app.id})`} className="system-sm-medium grow text-components-input-text-filled">
-                  <span className="mr-1">{app.name}</span>
-                  <span className="text-text-tertiary">
-                    (
-                    {app.id.slice(0, 8)}
-                    )
-                  </span>
-                </div>
-                <div className="system-2xs-medium-uppercase shrink-0 text-text-tertiary">{getAppType(app)}</div>
+      </ComboboxTrigger>
+      <ComboboxPortal>
+        <ComboboxPositioner placement={placement} sideOffset={offset}>
+          <ComboboxPopup
+            aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
+            className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+          >
+            <div className="relative flex max-h-100 min-h-20 w-89 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+              <div className="p-2 pb-1">
+                <ComboboxInputGroup className="h-8 min-h-8 px-2">
+                  <span
+                    className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary"
+                    aria-hidden="true"
+                  />
+                  <ComboboxInput
+                    ref={inputRef}
+                    aria-label={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
+                    placeholder={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
+                    className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
+                  />
+                  {searchText && (
+                    <IconButton
+                      size="xs"
+                      aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                      className="ml-1.5 size-3.5 shrink-0 rounded-none text-text-quaternary hover:bg-transparent hover:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+                      onClick={handleClearSearch}
+                      onMouseDown={(event) => event.preventDefault()}
+                    >
+                      <span
+                        className="i-custom-vender-solid-general-x-circle size-3.5"
+                        aria-hidden="true"
+                      />
+                    </IconButton>
+                  )}
+                </ComboboxInputGroup>
               </div>
-            ))}
-            <div ref={observerTarget} className="h-4 w-full">
-              {isLoading && (
-                <div className="flex justify-center py-2">
-                  <div className="text-sm text-gray-500">{t('loading', { ns: 'common' })}</div>
-                </div>
-              )}
+              <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+                <ScrollAreaViewport
+                  role="region"
+                  aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
+                  style={{ overflowX: 'hidden' }}
+                >
+                  <ScrollAreaContent className="p-1" style={{ minWidth: 0 }}>
+                    <ComboboxStatus>
+                      {isLoading ? t(($) => $.loading, { ns: 'common' }) : null}
+                    </ComboboxStatus>
+                    <ComboboxList<AppPartial> className="max-h-none overflow-visible p-0">
+                      {(app) => <AppPickerOption key={app.id} app={app} />}
+                    </ComboboxList>
+                    <ComboboxEmpty>
+                      {!isLoading ? t(($) => $.noData, { ns: 'common' }) : null}
+                    </ComboboxEmpty>
+                    {hasMore && (
+                      <div className="flex justify-center px-3 py-2">
+                        <Button size="small" disabled={isLoading} onClick={() => onLoadMore()}>
+                          {isLoading
+                            ? t(($) => $.loading, { ns: 'common' })
+                            : t(($) => $['common.loadMore'], { ns: 'workflow' })}
+                        </Button>
+                      </div>
+                    )}
+                  </ScrollAreaContent>
+                </ScrollAreaViewport>
+                <ScrollAreaScrollbar>
+                  <ScrollAreaThumb />
+                </ScrollAreaScrollbar>
+              </ScrollArea>
             </div>
-          </div>
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+          </ComboboxPopup>
+        </ComboboxPositioner>
+      </ComboboxPortal>
+    </Combobox>
   )
 }
-
-export default React.memo(AppPicker)

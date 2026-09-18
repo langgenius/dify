@@ -1,11 +1,11 @@
 import logging
 from collections.abc import Mapping
 
-from sqlalchemy import case
-from sqlalchemy.orm import Session
+from sqlalchemy import case, select
+from sqlalchemy.orm import sessionmaker
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
+from models.enums import EndUserType
 from models.model import App, DefaultEndUserSessionID, EndUser
 
 logger = logging.getLogger(__name__)
@@ -24,15 +24,15 @@ class EndUserService:
         when an end-user ID is known.
         """
 
-        with Session(db.engine, expire_on_commit=False) as session:
-            return (
-                session.query(EndUser)
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            return session.scalar(
+                select(EndUser)
                 .where(
                     EndUser.id == end_user_id,
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
                 )
-                .first()
+                .limit(1)
             )
 
     @classmethod
@@ -41,11 +41,11 @@ class EndUserService:
         Get or create an end user for a given app.
         """
 
-        return cls.get_or_create_end_user_by_type(InvokeFrom.SERVICE_API, app_model.tenant_id, app_model.id, user_id)
+        return cls.get_or_create_end_user_by_type(EndUserType.SERVICE_API, app_model.tenant_id, app_model.id, user_id)
 
     @classmethod
     def get_or_create_end_user_by_type(
-        cls, type: InvokeFrom, tenant_id: str, app_id: str, user_id: str | None = None
+        cls, type: EndUserType, tenant_id: str, app_id: str, user_id: str | None = None
     ) -> EndUser:
         """
         Get or create an end user for a given app and type.
@@ -54,21 +54,26 @@ class EndUserService:
         if not user_id:
             user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             # Query with ORDER BY to prioritize exact type matches while maintaining backward compatibility
             # This single query approach is more efficient than separate queries
-            end_user = (
-                session.query(EndUser)
+            end_user = session.scalar(
+                select(EndUser)
                 .where(
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
                     EndUser.session_id == user_id,
+                    # An AppDeploy row is never a legacy row this could upgrade:
+                    # the type was added after the split, and FileGrantService
+                    # reads its rows by type. Retyping one here would hide it
+                    # from that read and strand the files it owns.
+                    EndUser.type != EndUserType.APP_DEPLOY,
                 )
                 .order_by(
                     # Prioritize records with matching type (0 = match, 1 = no match)
                     case((EndUser.type == type, 0), else_=1)
                 )
-                .first()
+                .limit(1)
             )
 
             if end_user:
@@ -82,7 +87,6 @@ class EndUserService:
                         user_id,
                     )
                     end_user.type = type
-                    session.commit()
             else:
                 # Create new end user if none exists
                 end_user = EndUser(
@@ -94,13 +98,12 @@ class EndUserService:
                     external_user_id=user_id,
                 )
                 session.add(end_user)
-                session.commit()
 
         return end_user
 
     @classmethod
     def create_end_user_batch(
-        cls, type: InvokeFrom, tenant_id: str, app_ids: list[str], user_id: str
+        cls, type: EndUserType, tenant_id: str, app_ids: list[str], user_id: str
     ) -> Mapping[str, EndUser]:
         """Create end users in batch.
 
@@ -135,22 +138,24 @@ class EndUserService:
         if not unique_app_ids:
             return result
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             # Fetch existing end users for all target apps in a single query
-            existing_end_users: list[EndUser] = (
-                session.query(EndUser)
-                .where(
-                    EndUser.tenant_id == tenant_id,
-                    EndUser.app_id.in_(unique_app_ids),
-                    EndUser.session_id == user_id,
-                    EndUser.type == type,
-                )
-                .all()
+            existing_end_users: list[EndUser] = list(
+                session.scalars(
+                    select(EndUser).where(
+                        EndUser.tenant_id == tenant_id,
+                        EndUser.app_id.in_(unique_app_ids),
+                        EndUser.session_id == user_id,
+                        EndUser.type == type,
+                    )
+                ).all()
             )
 
             found_app_ids: set[str] = set()
             for eu in existing_end_users:
                 # If duplicates exist due to weak DB constraints, prefer the first
+                if eu.app_id is None:
+                    continue
                 if eu.app_id not in result:
                     result[eu.app_id] = eu
                 found_app_ids.add(eu.app_id)
@@ -174,9 +179,10 @@ class EndUserService:
                     )
 
                 session.add_all(new_end_users)
-                session.commit()
 
                 for eu in new_end_users:
+                    if eu.app_id is None:
+                        continue
                     result[eu.app_id] = eu
 
         return result

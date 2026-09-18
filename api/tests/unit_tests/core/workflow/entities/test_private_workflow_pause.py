@@ -1,10 +1,27 @@
 """Tests for _PrivateWorkflowPauseEntity implementation."""
 
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from models.workflow import WorkflowPause as WorkflowPauseModel
 from repositories.sqlalchemy_api_workflow_run_repository import _PrivateWorkflowPauseEntity
+
+
+def _make_workflow_pause(
+    *,
+    pause_id: str = "pause-123",
+    workflow_run_id: str = "execution-456",
+    state_object_key: str = "test-state-key",
+    resumed_at: datetime | None = None,
+) -> WorkflowPauseModel:
+    pause = WorkflowPauseModel(
+        workflow_id="workflow-789",
+        workflow_run_id=workflow_run_id,
+        state_object_key=state_object_key,
+        resumed_at=resumed_at,
+    )
+    pause.id = pause_id
+    return pause
 
 
 class TestPrivateWorkflowPauseEntity:
@@ -12,34 +29,28 @@ class TestPrivateWorkflowPauseEntity:
 
     def test_entity_initialization(self):
         """Test entity initialization with required parameters."""
-        # Create mock models
-        mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-        mock_pause_model.id = "pause-123"
-        mock_pause_model.workflow_run_id = "execution-456"
-        mock_pause_model.resumed_at = None
+        pause_model = _make_workflow_pause()
 
         # Create entity
-        entity = _PrivateWorkflowPauseEntity(pause_model=mock_pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
 
         # Verify initialization
-        assert entity._pause_model is mock_pause_model
+        assert entity._pause_model is pause_model
         assert entity._cached_state is None
 
     def test_id_property(self):
         """Test id property returns pause model ID."""
-        mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-        mock_pause_model.id = "pause-123"
+        pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=mock_pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
 
         assert entity.id == "pause-123"
 
     def test_workflow_execution_id_property(self):
         """Test workflow_execution_id property returns workflow run ID."""
-        mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-        mock_pause_model.workflow_run_id = "execution-456"
+        pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=mock_pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
 
         assert entity.workflow_execution_id == "execution-456"
 
@@ -47,19 +58,17 @@ class TestPrivateWorkflowPauseEntity:
         """Test resumed_at property returns pause model resumed_at."""
         resumed_at = datetime(2023, 12, 25, 15, 30, 45)
 
-        mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-        mock_pause_model.resumed_at = resumed_at
+        pause_model = _make_workflow_pause(resumed_at=resumed_at)
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=mock_pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
 
         assert entity.resumed_at == resumed_at
 
     def test_resumed_at_property_none(self):
         """Test resumed_at property returns None when not set."""
-        mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-        mock_pause_model.resumed_at = None
+        pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=mock_pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
 
         assert entity.resumed_at is None
 
@@ -69,10 +78,9 @@ class TestPrivateWorkflowPauseEntity:
         state_data = b'{"test": "data", "step": 5}'
         mock_storage.load.return_value = state_data
 
-        mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-        mock_pause_model.state_object_key = "test-state-key"
+        pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=mock_pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
 
         # First call should load from storage
         result = entity.get_state()
@@ -87,10 +95,9 @@ class TestPrivateWorkflowPauseEntity:
         state_data = b'{"test": "data", "step": 5}'
         mock_storage.load.return_value = state_data
 
-        mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-        mock_pause_model.state_object_key = "test-state-key"
+        pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=mock_pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
 
         # First call
         result1 = entity.get_state()
@@ -107,9 +114,9 @@ class TestPrivateWorkflowPauseEntity:
         """Test get_state returns pre-cached data."""
         state_data = b'{"test": "data", "step": 5}'
 
-        mock_pause_model = MagicMock(spec=WorkflowPauseModel)
+        pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=mock_pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
 
         # Pre-cache data
         entity._cached_state = state_data
@@ -128,9 +135,9 @@ class TestPrivateWorkflowPauseEntity:
         with patch("repositories.sqlalchemy_api_workflow_run_repository.storage", autospec=True) as mock_storage:
             mock_storage.load.return_value = binary_data
 
-            mock_pause_model = MagicMock(spec=WorkflowPauseModel)
+            pause_model = _make_workflow_pause()
 
-            entity = _PrivateWorkflowPauseEntity(pause_model=mock_pause_model, reason_models=[], human_input_form=[])
+            entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
 
             result = entity.get_state()
 

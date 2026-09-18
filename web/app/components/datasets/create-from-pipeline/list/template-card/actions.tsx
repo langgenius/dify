@@ -1,13 +1,19 @@
-import { RiAddLine, RiArrowRightUpLine, RiMoreFill } from '@remixicon/react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import CustomPopover from '@/app/components/base/popover'
 import Operations from './operations'
 
 type ActionsProps = {
   onApplyTemplate: () => void
-  handleShowTemplateDetails: () => void
   showMoreOperations: boolean
   openEditModal: () => void
   handleExportDSL: (includeSecret?: boolean) => void
@@ -16,53 +22,60 @@ type ActionsProps = {
 
 const Actions = ({
   onApplyTemplate,
-  handleShowTemplateDetails,
   showMoreOperations,
   openEditModal,
   handleExportDSL,
   handleDelete,
 }: ActionsProps) => {
   const { t } = useTranslation()
+  const [isMoreOperationsOpen, setIsMoreOperationsOpen] = React.useState(false)
 
   return (
-    <div className="absolute bottom-0 left-0 z-10 hidden w-full items-center gap-x-1 bg-pipeline-template-card-hover-bg p-4 pt-8 group-hover:flex">
-      <Button
-        variant="primary"
-        onClick={onApplyTemplate}
-        className="grow gap-x-0.5"
-      >
-        <RiAddLine className="size-4" />
-        <span className="px-0.5">{t('operations.choose', { ns: 'datasetPipeline' })}</span>
+    <div
+      className={cn(
+        'absolute bottom-0 left-0 z-10 flex w-full items-center gap-x-1 bg-pipeline-template-card-hover-bg p-4 pt-8',
+        !isMoreOperationsOpen &&
+          'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100',
+      )}
+    >
+      <Button variant="primary" onClick={onApplyTemplate} className="grow">
+        <span aria-hidden className="i-ri-add-line size-4" />
+        <span>{t(($) => $['operations.choose'], { ns: 'datasetPipeline' })}</span>
       </Button>
-      <Button
-        variant="secondary"
-        onClick={handleShowTemplateDetails}
-        className="grow gap-x-0.5"
-      >
-        <RiArrowRightUpLine className="size-4" />
-        <span className="px-0.5">{t('operations.details', { ns: 'datasetPipeline' })}</span>
-      </Button>
-      {
-        showMoreOperations && (
-          <CustomPopover
-            htmlContent={(
-              <Operations
-                openEditModal={openEditModal}
-                onExport={handleExportDSL}
-                onDelete={handleDelete}
-              />
+      <DialogTrigger
+        render={
+          <Button variant="secondary" className="grow">
+            <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
+            <span>{t(($) => $['operations.details'], { ns: 'datasetPipeline' })}</span>
+          </Button>
+        }
+      />
+      {showMoreOperations && (
+        <DropdownMenu open={isMoreOperationsOpen} onOpenChange={setIsMoreOperationsOpen}>
+          <DropdownMenuTrigger
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+            className={cn(
+              'flex size-8 cursor-pointer items-center justify-center rounded-lg p-0 shadow-xs shadow-shadow-shadow-3',
+              'data-popup-open:bg-state-base-hover',
             )}
-            className="z-20 min-w-[160px]"
-            popupClassName="rounded-xl bg-none shadow-none ring-0 min-w-[160px]"
-            position="br"
-            trigger="click"
-            btnElement={
-              <RiMoreFill className="size-4 text-text-tertiary" />
-            }
-            btnClassName="size-8 cursor-pointer justify-center rounded-lg p-0 shadow-xs shadow-shadow-shadow-3"
-          />
-        )
-      }
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuPositioner placement="bottom-end" sideOffset={4}>
+              <DropdownMenuPopup className="min-w-40">
+                <Operations
+                  openEditModal={openEditModal}
+                  onExport={handleExportDSL}
+                  onDelete={handleDelete}
+                  onClose={() => setIsMoreOperationsOpen(false)}
+                />
+              </DropdownMenuPopup>
+            </DropdownMenuPositioner>
+          </DropdownMenuPortal>
+        </DropdownMenu>
+      )}
     </div>
   )
 }

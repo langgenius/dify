@@ -1,5 +1,5 @@
 import type { FetchOptionType, ResponseError } from './fetch'
-import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
+import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
   DataSourceNodeCompletedResponse,
@@ -21,24 +21,92 @@ import type {
   NodeStartedResponse,
   ParallelBranchFinishedResponse,
   ParallelBranchStartedResponse,
+  ReasoningChunkResponse,
   TextChunkResponse,
   TextReplaceResponse,
   WorkflowFinishedResponse,
   WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
-import Toast from '@/app/components/base/toast'
-import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
+import {
+  API_PREFIX,
+  CSRF_COOKIE_NAME,
+  CSRF_HEADER_NAME,
+  PASSPORT_HEADER_NAME,
+  PUBLIC_API_PREFIX,
+  WEB_APP_SHARE_CODE_HEADER_NAME,
+} from '@/config'
 import { asyncRunSafe } from '@/utils'
+import { isClient } from '@/utils/client'
+import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
-import { getWebAppPassport } from './webapp-auth'
+import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
+import {
+  beginWebAppAuthorizationRecovery,
+  clearWebAppPassport,
+  completeWebAppAuthorizationRecovery,
+  getWebAppPassport,
+} from './webapp-auth'
 
 const TIME_OUT = 100000
 
+const isWebAppAuthorizationEndpoint = (url: string) =>
+  /\/(?:login(?:\/|\?|$)|passport(?:\?|$))/.test(url)
+
+const recoverEnvironmentWebAppAuthorization = (
+  error: { code?: string | number; message?: string; reason?: string },
+  url?: string,
+) => {
+  const address = resolveWebAppAddress()
+  if (
+    address?.kind !== 'environment' ||
+    (error.reason !== 'APPDEPLOY_UNAUTHORIZED' && error.code !== 'unauthorized') ||
+    (url && isWebAppAuthorizationEndpoint(url))
+  )
+    return false
+
+  if (!beginWebAppAuthorizationRecovery(address)) {
+    requiredWebSSOLogin(error.message, 403)
+    return true
+  }
+
+  clearWebAppPassport(address)
+  window.location.reload()
+  return true
+}
+
+const handleWebAppAuthorizationError = (
+  error: { code?: string | number; message?: string; reason?: string },
+  url?: string,
+) => {
+  if (
+    error.reason === 'APPDEPLOY_WEB_APP_ACCESS_DENIED' ||
+    error.code === 'web_app_access_denied'
+  ) {
+    requiredWebSSOLogin(error.message, 403)
+    return true
+  }
+  return recoverEnvironmentWebAppAuthorization(error, url)
+}
+
+const isAbortError = (error: unknown) => {
+  if (typeof error === 'string') return error === 'AbortError' || error.startsWith('AbortError:')
+
+  return (
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+  )
+}
+
+const shouldNotifyStreamError = (error: unknown) =>
+  !isAbortError(error) && !String(error).includes('TypeError: Cannot assign to read only property')
+
 export type IOnDataMoreInfo = {
+  event?: string
   conversationId?: string
   taskId?: string
   messageId: string
@@ -47,40 +115,103 @@ export type IOnDataMoreInfo = {
 }
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
-export type IOnThought = (though: ThoughtItem) => void
-export type IOnFile = (file: VisionFile) => void
-export type IOnMessageEnd = (messageEnd: MessageEnd) => void
+type IOnThought = (though: ThoughtItem) => void
+type IOnFile = (file: VisionFile) => void
+type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
-export type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
 
-export type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => void
-export type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) => void
-export type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
-export type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
-export type IOnIterationStarted = (workflowStarted: IterationStartedResponse) => void
-export type IOnIterationNext = (workflowStarted: IterationNextResponse) => void
-export type IOnNodeRetry = (nodeFinished: NodeFinishedResponse) => void
-export type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => void
-export type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedResponse) => void
-export type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
-export type IOnTextChunk = (textChunk: TextChunkResponse) => void
-export type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
-export type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
-export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
-export type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
-export type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
-export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
-export type IOnAgentLog = (agentLog: AgentLogResponse) => void
+const reportStreamResponseError = async (
+  response: Response,
+  onError: IOnError | undefined,
+  onNotifyError?: IOnError,
+) => {
+  let errorMessage = 'Server Error'
+  let errorCode: string | undefined
+  try {
+    const data: unknown = await response.json()
+    if (typeof data === 'object' && data !== null && 'message' in data) {
+      const message = data.message
+      if (typeof message === 'string' && message) errorMessage = message
+    }
+    if (typeof data === 'object' && data !== null && 'code' in data) {
+      const code = data.code
+      if (typeof code === 'string' && code) errorCode = code
+    }
+  } catch {}
 
-export type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => void
-export type IOnHumanInputFormFilled = (humanInputFormFilled: HumanInputFormFilledResponse) => void
-export type IOnHumanInputFormTimeout = (humanInputFormTimeout: HumanInputFormTimeoutResponse) => void
-export type IOWorkflowPaused = (workflowPaused: WorkflowPausedResponse) => void
-export type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
-export type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
-export type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
+  if (errorCode) {
+    onError?.(errorMessage, errorCode)
+    onNotifyError?.(errorMessage, errorCode)
+  } else {
+    onError?.(errorMessage)
+    onNotifyError?.(errorMessage)
+  }
+}
+
+const handlePublicStreamResponseError = async (
+  response: Response,
+  onError: IOnError | undefined,
+  onNotifyError: IOnError | undefined,
+  silent: boolean | undefined,
+) => {
+  let data: { code?: string; message?: string; reason?: string } | undefined
+  try {
+    data = (await response.clone().json()) as typeof data
+  } catch {}
+
+  if (data) {
+    if (handleWebAppAuthorizationError(data)) return
+    if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized') {
+      requiredWebSSOLogin()
+      return
+    }
+  }
+
+  if (onNotifyError && !silent) await reportStreamResponseError(response, onError, onNotifyError)
+  else if (!silent)
+    await reportStreamResponseError(response, onError, (message) => toast.error(message))
+  else await reportStreamResponseError(response, onError)
+}
+
+type UnhandledEventError = {
+  conversationId?: string
+  errorCode?: string
+  errorMessage: string
+  messageId?: string
+}
+type IOnUnhandledEvent = (event: Record<string, unknown>) => UnhandledEventError | void
+
+type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => void
+type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) => void
+type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
+type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
+type IOnIterationStarted = (workflowStarted: IterationStartedResponse) => void
+type IOnIterationNext = (workflowStarted: IterationNextResponse) => void
+type IOnNodeRetry = (nodeFinished: NodeFinishedResponse) => void
+type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => void
+type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedResponse) => void
+type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
+type IOnTextChunk = (textChunk: TextChunkResponse) => void
+type IOnReasoning = (reasoningChunk: ReasoningChunkResponse) => void
+type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
+type IOnTTSEnd = (messageId: string, audioStr: string) => void
+type IOnTextReplace = (textReplace: TextReplaceResponse) => void
+type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
+type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
+type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
+type IOnAgentLog = (agentLog: AgentLogResponse) => void
+
+type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => void
+type IOnHumanInputFormFilled = (humanInputFormFilled: HumanInputFormFilledResponse) => void
+type IOnHumanInputFormTimeout = (humanInputFormTimeout: HumanInputFormTimeoutResponse) => void
+type IOWorkflowPaused = (workflowPaused: WorkflowPausedResponse) => void
+type IOnDataSourceNodeProcessing = (
+  dataSourceNodeProcessing: DataSourceNodeProcessingResponse,
+) => void
+type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
+type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
@@ -95,11 +226,15 @@ export type IOtherOptions = {
   request?: Request
 
   onData?: IOnData // for stream
+  onReasoning?: IOnReasoning
   onThought?: IOnThought
   onFile?: IOnFile
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
+  /** Replaces the default global error notification for this request. */
+  onNotifyError?: IOnError
+  onUnhandledEvent?: IOnUnhandledEvent
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
 
@@ -132,18 +267,48 @@ export type IOtherOptions = {
   onDataSourceNodeError?: IOnDataSourceNodeError
 }
 
+const discardRegistrationStateForConsoleAuthBoundary = ({
+  isMarketplaceAPI,
+  isPublicAPI,
+}: IOtherOptions) => {
+  if (isMarketplaceAPI || isPublicAPI) return
+  discardRegistrationSessionState()
+}
+
 function jumpTo(url: string) {
-  if (!url)
-    return
-  const targetPath = new URL(url, globalThis.location.origin).pathname
-  if (targetPath === globalThis.location.pathname)
-    return
-  globalThis.location.href = url
+  if (!url || !isClient) return
+  const targetPath = new URL(url, window.location.origin).pathname
+  if (targetPath === window.location.pathname) return
+  window.location.href = url
+}
+
+const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
+const SIGNIN_PATH = '/signin'
+
+export const buildSigninUrlWithRedirect = (): string => {
+  const loginUrl = `${isClient ? window.location.origin : ''}${basePath}/signin`
+  if (!isClient) return loginUrl
+
+  const signinPath = `${basePath}${SIGNIN_PATH}`
+  if (window.location.pathname === signinPath || window.location.pathname === `${signinPath}/`)
+    return loginUrl
+
+  if (window.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
+    const currentUrl = window.location.href
+    return `${loginUrl}?redirect_url=${encodeURIComponent(currentUrl)}`
+  }
+
+  const currentTarget = resolveLoginRedirectTarget(
+    `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    { allowSameOriginAbsolute: false },
+  )
+  if (!currentTarget || currentTarget.kind !== 'internal') return loginUrl
+
+  return `${loginUrl}?redirect_url=${encodeURIComponent(currentTarget.href)}`
 }
 
 function unicodeToChar(text: string) {
-  if (!text)
-    return ''
+  if (!text) return ''
 
   return text.replace(/\\u([0-9a-f]{4})/g, (_match, p1) => {
     return String.fromCharCode(Number.parseInt(p1, 16))
@@ -151,34 +316,53 @@ function unicodeToChar(text: string) {
 }
 
 const WBB_APP_LOGIN_PATH = '/webapp-signin'
-function requiredWebSSOLogin(message?: string, code?: number) {
-  const params = new URLSearchParams()
-  // prevent redirect loop
-  if (globalThis.location.pathname === WBB_APP_LOGIN_PATH)
-    return
 
-  params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
-  if (message)
-    params.append('message', message)
-  if (code)
-    params.append('code', String(code))
-  globalThis.location.href = `${globalThis.location.origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
+export function isWebAppSigninPath(pathname: string) {
+  const basePathSegment = basePath.replace(/^\/+|\/+$/g, '')
+  const signinPath = `${basePathSegment ? `/${basePathSegment}` : ''}${WBB_APP_LOGIN_PATH}`
+  return pathname === signinPath || pathname === `${signinPath}/`
+}
+
+export function buildWebAppSigninUrlWithRedirect(
+  origin: string,
+  pathname: string,
+  search: string,
+  message?: string,
+  code?: number,
+) {
+  const params = new URLSearchParams()
+  params.set('redirect_url', `${pathname}${search}`)
+  if (message) params.set('message', message)
+  if (code) params.set('code', String(code))
+
+  return `${origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
+}
+
+function requiredWebSSOLogin(message?: string, code?: number) {
+  if (!isClient) return
+
+  // prevent redirect loop
+  if (isWebAppSigninPath(window.location.pathname)) return
+
+  window.location.href = buildWebAppSigninUrlWithRedirect(
+    window.location.origin,
+    window.location.pathname,
+    window.location.search,
+    message,
+    code,
+  )
 }
 
 function formatURL(url: string, isPublicAPI: boolean) {
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  if (url.startsWith('http://') || url.startsWith('https://'))
-    return url
-  const urlWithoutProtocol = url.startsWith('/') ? url : `/${url}`
+  let urlPrefix = API_PREFIX
+  if (isPublicAPI) urlPrefix = PUBLIC_API_PREFIX
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  const urlWithoutProtocol = isPublicAPI
+    ? getWebAppPublicApiPath(resolveWebAppAddress(), url)
+    : url.startsWith('/')
+      ? url
+      : `/${url}`
   return `${urlPrefix}${urlWithoutProtocol}`
-}
-
-export function format(text: string) {
-  let res = text.trim()
-  if (res.startsWith('\n'))
-    res = res.replace('\n', '')
-
-  return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
 export const handleStream = (
@@ -214,176 +398,176 @@ export const handleStream = (
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
   onDataSourceNodeError?: IOnDataSourceNodeError,
+  onReasoning?: IOnReasoning,
+  onUnhandledEvent?: IOnUnhandledEvent,
 ) => {
-  if (!response.ok)
-    throw new Error('Network response was not ok')
+  if (!response.ok) throw new Error('Network response was not ok')
 
   const reader = response.body?.getReader()
   const decoder = new TextDecoder('utf-8')
   let buffer = ''
   let bufferObj: Record<string, any>
   let isFirstMessage = true
+  const completeWithError = (errorMessage: string, errorCode?: string) => {
+    onData('', false, {
+      conversationId: bufferObj?.conversation_id,
+      messageId: bufferObj?.message_id ?? '',
+      errorMessage,
+      errorCode,
+    })
+    onCompleted?.(true, errorMessage)
+  }
+
   function read() {
     let hasError = false
-    reader?.read().then((result: ReadableStreamReadResult<Uint8Array>) => {
-      if (result.done) {
-        onCompleted?.()
-        return
-      }
-      buffer += decoder.decode(result.value, { stream: true })
-      const lines = buffer.split('\n')
-      try {
-        lines.forEach((message) => {
-          if (message.startsWith('data: ')) { // check if it starts with data:
-            try {
-              bufferObj = JSON.parse(message.substring(6)) as Record<string, any>// remove data: and parse as json
+    reader?.read().then(
+      (result: ReadableStreamReadResult<Uint8Array>) => {
+        if (result.done) {
+          onCompleted?.()
+          return
+        }
+        buffer += decoder.decode(result.value, { stream: true })
+        const lines = buffer.split('\n')
+        try {
+          lines.forEach((message) => {
+            if (message.startsWith('data: ')) {
+              // check if it starts with data:
+              try {
+                bufferObj = JSON.parse(message.substring(6)) as Record<string, any> // remove data: and parse as json
+              } catch {
+                // mute handle message cut off
+                onData('', isFirstMessage, {
+                  conversationId: bufferObj?.conversation_id,
+                  messageId: bufferObj?.message_id,
+                })
+                return
+              }
+              if (!bufferObj || typeof bufferObj !== 'object') {
+                onData('', isFirstMessage, {
+                  conversationId: undefined,
+                  messageId: '',
+                  errorMessage: 'Invalid response data',
+                  errorCode: 'invalid_data',
+                })
+                hasError = true
+                onCompleted?.(true, 'Invalid response data')
+                return
+              }
+              const hasErrorStatus = typeof bufferObj.status === 'number' && bufferObj.status >= 400
+              if (bufferObj.event === 'error' || hasErrorStatus || !bufferObj.event) {
+                onData('', false, {
+                  conversationId: undefined,
+                  messageId: '',
+                  errorMessage: bufferObj?.message,
+                  errorCode: bufferObj?.code,
+                })
+                hasError = true
+                onCompleted?.(true, bufferObj?.message)
+                return
+              }
+              if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
+                // can not use format here. Because message is splitted.
+                onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
+                  event: bufferObj.event,
+                  conversationId: bufferObj.conversation_id,
+                  taskId: bufferObj.task_id,
+                  messageId: bufferObj.id,
+                })
+                isFirstMessage = false
+              } else if (bufferObj.event === 'agent_thought') {
+                onThought?.(bufferObj as ThoughtItem)
+              } else if (bufferObj.event === 'message_file') {
+                onFile?.(bufferObj as VisionFile)
+              } else if (bufferObj.event === 'message_end') {
+                onMessageEnd?.(bufferObj as MessageEnd)
+              } else if (bufferObj.event === 'message_replace') {
+                onMessageReplace?.(bufferObj as MessageReplace)
+              } else if (bufferObj.event === 'workflow_started') {
+                onWorkflowStarted?.(bufferObj as WorkflowStartedResponse)
+              } else if (bufferObj.event === 'workflow_finished') {
+                onWorkflowFinished?.(bufferObj as WorkflowFinishedResponse)
+              } else if (bufferObj.event === 'node_started') {
+                onNodeStarted?.(bufferObj as NodeStartedResponse)
+              } else if (bufferObj.event === 'node_finished') {
+                onNodeFinished?.(bufferObj as NodeFinishedResponse)
+              } else if (bufferObj.event === 'iteration_started') {
+                onIterationStart?.(bufferObj as IterationStartedResponse)
+              } else if (bufferObj.event === 'iteration_next') {
+                onIterationNext?.(bufferObj as IterationNextResponse)
+              } else if (bufferObj.event === 'iteration_completed') {
+                onIterationFinish?.(bufferObj as IterationFinishedResponse)
+              } else if (bufferObj.event === 'loop_started') {
+                onLoopStart?.(bufferObj as LoopStartedResponse)
+              } else if (bufferObj.event === 'loop_next') {
+                onLoopNext?.(bufferObj as LoopNextResponse)
+              } else if (bufferObj.event === 'loop_completed') {
+                onLoopFinish?.(bufferObj as LoopFinishedResponse)
+              } else if (bufferObj.event === 'node_retry') {
+                onNodeRetry?.(bufferObj as NodeFinishedResponse)
+              } else if (bufferObj.event === 'parallel_branch_started') {
+                onParallelBranchStarted?.(bufferObj as ParallelBranchStartedResponse)
+              } else if (bufferObj.event === 'parallel_branch_finished') {
+                onParallelBranchFinished?.(bufferObj as ParallelBranchFinishedResponse)
+              } else if (bufferObj.event === 'text_chunk') {
+                onTextChunk?.(bufferObj as TextChunkResponse)
+              } else if (bufferObj.event === 'reasoning_chunk') {
+                onReasoning?.(bufferObj as ReasoningChunkResponse)
+              } else if (bufferObj.event === 'text_replace') {
+                onTextReplace?.(bufferObj as TextReplaceResponse)
+              } else if (bufferObj.event === 'agent_log') {
+                onAgentLog?.(bufferObj as AgentLogResponse)
+              } else if (bufferObj.event === 'tts_message') {
+                onTTSChunk?.(bufferObj.message_id, bufferObj.audio, bufferObj.audio_type)
+              } else if (bufferObj.event === 'tts_message_end') {
+                onTTSEnd?.(bufferObj.message_id, bufferObj.audio)
+              } else if (bufferObj.event === 'human_input_required') {
+                onHumanInputRequired?.(bufferObj as HumanInputRequiredResponse)
+              } else if (bufferObj.event === 'human_input_form_filled') {
+                onHumanInputFormFilled?.(bufferObj as HumanInputFormFilledResponse)
+              } else if (bufferObj.event === 'human_input_form_timeout') {
+                onHumanInputFormTimeout?.(bufferObj as HumanInputFormTimeoutResponse)
+              } else if (bufferObj.event === 'workflow_paused') {
+                onWorkflowPaused?.(bufferObj as WorkflowPausedResponse)
+              } else if (bufferObj.event === 'datasource_processing') {
+                onDataSourceNodeProcessing?.(bufferObj as DataSourceNodeProcessingResponse)
+              } else if (bufferObj.event === 'datasource_completed') {
+                onDataSourceNodeCompleted?.(bufferObj as DataSourceNodeCompletedResponse)
+              } else if (bufferObj.event === 'datasource_error') {
+                onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
+              } else {
+                const unhandledEventError = onUnhandledEvent?.(bufferObj)
+                if (unhandledEventError) {
+                  onData('', false, {
+                    conversationId: unhandledEventError.conversationId,
+                    messageId: unhandledEventError.messageId ?? '',
+                    errorMessage: unhandledEventError.errorMessage,
+                    errorCode: unhandledEventError.errorCode,
+                  })
+                  hasError = true
+                  onCompleted?.(true, unhandledEventError.errorMessage)
+                  return
+                }
+                console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
+              }
             }
-            catch {
-              // mute handle message cut off
-              onData('', isFirstMessage, {
-                conversationId: bufferObj?.conversation_id,
-                messageId: bufferObj?.message_id,
-              })
-              return
-            }
-            if (!bufferObj || typeof bufferObj !== 'object') {
-              onData('', isFirstMessage, {
-                conversationId: undefined,
-                messageId: '',
-                errorMessage: 'Invalid response data',
-                errorCode: 'invalid_data',
-              })
-              hasError = true
-              onCompleted?.(true, 'Invalid response data')
-              return
-            }
-            if (bufferObj.status === 400 || !bufferObj.event) {
-              onData('', false, {
-                conversationId: undefined,
-                messageId: '',
-                errorMessage: bufferObj?.message,
-                errorCode: bufferObj?.code,
-              })
-              hasError = true
-              onCompleted?.(true, bufferObj?.message)
-              return
-            }
-            if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
-              // can not use format here. Because message is splitted.
-              onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
-                conversationId: bufferObj.conversation_id,
-                taskId: bufferObj.task_id,
-                messageId: bufferObj.id,
-              })
-              isFirstMessage = false
-            }
-            else if (bufferObj.event === 'agent_thought') {
-              onThought?.(bufferObj as ThoughtItem)
-            }
-            else if (bufferObj.event === 'message_file') {
-              onFile?.(bufferObj as VisionFile)
-            }
-            else if (bufferObj.event === 'message_end') {
-              onMessageEnd?.(bufferObj as MessageEnd)
-            }
-            else if (bufferObj.event === 'message_replace') {
-              onMessageReplace?.(bufferObj as MessageReplace)
-            }
-            else if (bufferObj.event === 'workflow_started') {
-              onWorkflowStarted?.(bufferObj as WorkflowStartedResponse)
-            }
-            else if (bufferObj.event === 'workflow_finished') {
-              onWorkflowFinished?.(bufferObj as WorkflowFinishedResponse)
-            }
-            else if (bufferObj.event === 'node_started') {
-              onNodeStarted?.(bufferObj as NodeStartedResponse)
-            }
-            else if (bufferObj.event === 'node_finished') {
-              onNodeFinished?.(bufferObj as NodeFinishedResponse)
-            }
-            else if (bufferObj.event === 'iteration_started') {
-              onIterationStart?.(bufferObj as IterationStartedResponse)
-            }
-            else if (bufferObj.event === 'iteration_next') {
-              onIterationNext?.(bufferObj as IterationNextResponse)
-            }
-            else if (bufferObj.event === 'iteration_completed') {
-              onIterationFinish?.(bufferObj as IterationFinishedResponse)
-            }
-            else if (bufferObj.event === 'loop_started') {
-              onLoopStart?.(bufferObj as LoopStartedResponse)
-            }
-            else if (bufferObj.event === 'loop_next') {
-              onLoopNext?.(bufferObj as LoopNextResponse)
-            }
-            else if (bufferObj.event === 'loop_completed') {
-              onLoopFinish?.(bufferObj as LoopFinishedResponse)
-            }
-            else if (bufferObj.event === 'node_retry') {
-              onNodeRetry?.(bufferObj as NodeFinishedResponse)
-            }
-            else if (bufferObj.event === 'parallel_branch_started') {
-              onParallelBranchStarted?.(bufferObj as ParallelBranchStartedResponse)
-            }
-            else if (bufferObj.event === 'parallel_branch_finished') {
-              onParallelBranchFinished?.(bufferObj as ParallelBranchFinishedResponse)
-            }
-            else if (bufferObj.event === 'text_chunk') {
-              onTextChunk?.(bufferObj as TextChunkResponse)
-            }
-            else if (bufferObj.event === 'text_replace') {
-              onTextReplace?.(bufferObj as TextReplaceResponse)
-            }
-            else if (bufferObj.event === 'agent_log') {
-              onAgentLog?.(bufferObj as AgentLogResponse)
-            }
-            else if (bufferObj.event === 'tts_message') {
-              onTTSChunk?.(bufferObj.message_id, bufferObj.audio, bufferObj.audio_type)
-            }
-            else if (bufferObj.event === 'tts_message_end') {
-              onTTSEnd?.(bufferObj.message_id, bufferObj.audio)
-            }
-            else if (bufferObj.event === 'human_input_required') {
-              onHumanInputRequired?.(bufferObj as HumanInputRequiredResponse)
-            }
-            else if (bufferObj.event === 'human_input_form_filled') {
-              onHumanInputFormFilled?.(bufferObj as HumanInputFormFilledResponse)
-            }
-            else if (bufferObj.event === 'human_input_form_timeout') {
-              onHumanInputFormTimeout?.(bufferObj as HumanInputFormTimeoutResponse)
-            }
-            else if (bufferObj.event === 'workflow_paused') {
-              onWorkflowPaused?.(bufferObj as WorkflowPausedResponse)
-            }
-            else if (bufferObj.event === 'datasource_processing') {
-              onDataSourceNodeProcessing?.(bufferObj as DataSourceNodeProcessingResponse)
-            }
-            else if (bufferObj.event === 'datasource_completed') {
-              onDataSourceNodeCompleted?.(bufferObj as DataSourceNodeCompletedResponse)
-            }
-            else if (bufferObj.event === 'datasource_error') {
-              onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
-            }
-            else {
-              console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
-            }
-          }
-        })
-        buffer = lines[lines.length - 1]
-      }
-      catch (e) {
-        onData('', false, {
-          conversationId: undefined,
-          messageId: '',
-          errorMessage: `${e}`,
-        })
-        hasError = true
-        onCompleted?.(true, e as string)
-        return
-      }
-      if (!hasError)
-        read()
-    })
+          })
+          buffer = lines[lines.length - 1]!
+        } catch (e) {
+          onData('', false, {
+            conversationId: undefined,
+            messageId: '',
+            errorMessage: `${e}`,
+          })
+          hasError = true
+          onCompleted?.(true, e as string)
+          return
+        }
+        if (!hasError) read()
+      },
+      (e: unknown) => {
+        completeWithError(String(e), 'stream_read_error')
+      },
+    )
   }
   read()
 }
@@ -404,16 +588,27 @@ type UploadResponse = {
   [key: string]: unknown
 }
 
-export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<UploadResponse> => {
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+export const upload = async (
+  options: UploadOptions,
+  isPublicAPI?: boolean,
+  url?: string,
+  searchParams?: string,
+): Promise<UploadResponse> => {
+  const address = resolveWebAppAddress()
+  const shareCode = address?.code
+  const publicApiPrefix = PUBLIC_API_PREFIX
+  const urlPrefix = isPublicAPI ? publicApiPrefix : API_PREFIX
   const defaultOptions = {
     method: 'POST',
-    url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
+    url:
+      (url
+        ? `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, url) : url}`
+        : `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, '/files/upload') : '/files/upload'}`) +
+      (searchParams || ''),
     headers: {
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(address),
+      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
     },
   }
   const mergedOptions = {
@@ -425,21 +620,26 @@ export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?
   return new Promise((resolve, reject) => {
     const xhr = mergedOptions.xhr
     xhr.open(mergedOptions.method, mergedOptions.url)
-    for (const key in mergedOptions.headers)
-      xhr.setRequestHeader(key, mergedOptions.headers[key])
+    for (const key in mergedOptions.headers) xhr.setRequestHeader(key, mergedOptions.headers[key]!)
 
     xhr.withCredentials = true
     xhr.responseType = 'json'
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
-        if (xhr.status === 201)
-          resolve(xhr.response)
-        else
+        if (xhr.status === 201) resolve(xhr.response)
+        else {
+          if (
+            isPublicAPI &&
+            (xhr.status === 401 || xhr.status === 403) &&
+            typeof xhr.response === 'object' &&
+            xhr.response !== null
+          )
+            handleWebAppAuthorizationError(xhr.response)
           reject(xhr)
+        }
       }
     }
-    if (mergedOptions.onprogress)
-      xhr.upload.onprogress = mergedOptions.onprogress
+    if (mergedOptions.onprogress) xhr.upload.onprogress = mergedOptions.onprogress
     xhr.send(mergedOptions.data)
   })
 }
@@ -452,6 +652,7 @@ export const ssePost = async (
   const {
     isPublicAPI = false,
     onData,
+    onReasoning,
     onCompleted,
     onThought,
     onFile,
@@ -473,6 +674,7 @@ export const ssePost = async (
     onTextReplace,
     onAgentLog,
     onError,
+    onNotifyError,
     getAbortController,
     onLoopStart,
     onLoopNext,
@@ -484,66 +686,64 @@ export const ssePost = async (
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
+    onUnhandledEvent,
+    silent,
   } = otherOptions
   const abortController = new AbortController()
 
   // No need to get token from localStorage, cookies will be sent automatically
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
-  const options = Object.assign({}, baseOptions, {
-    method: 'POST',
-    signal: abortController.signal,
-    headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
-    }),
-  } as RequestInit, fetchOptions)
+  const shareCode = resolveWebAppAddress()?.code
+  const options = Object.assign(
+    {},
+    baseOptions,
+    {
+      method: 'POST',
+      signal: abortController.signal,
+      headers: new Headers({
+        [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
+        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
+        [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
+      }),
+    } as RequestInit,
+    fetchOptions,
+  )
+  options.headers = new Headers(options.headers)
 
   const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType)
-    (options.headers as Headers).set('Content-Type', ContentType.json)
+  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
   const urlWithPrefix = formatURL(url, isPublicAPI)
 
   const { body } = options
-  if (body)
-    options.body = JSON.stringify(body)
+  if (body) options.body = JSON.stringify(body)
 
-  globalThis.fetch(urlWithPrefix, options as RequestInit)
+  globalThis
+    .fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401) {
+        if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string, message?: string }) => {
-              if (isPublicAPI) {
-                if (data.code === 'web_app_access_denied')
-                  requiredWebSSOLogin(data.message, 403)
-
-                if (data.code === 'web_sso_auth_required')
-                  requiredWebSSOLogin()
-
-                if (data.code === 'unauthorized')
-                  requiredWebSSOLogin()
-              }
-            })
+            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
+          } else {
+            refreshAccessTokenOrReLogin(TIME_OUT)
+              .then(() => {
+                ssePost(url, fetchOptions, otherOptions)
+              })
+              .catch((err) => {
+                const errorMessage = String(err)
+                console.error(err)
+                onError?.(errorMessage)
+              })
           }
-          else {
-            refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
-              ssePost(url, fetchOptions, otherOptions)
-            }).catch((err) => {
-              console.error(err)
-            })
-          }
-        }
-        else {
-          res.json().then((data) => {
-            Toast.notify({ type: 'error', message: data.message || 'Server Error' })
-          })
-          onError?.('Server Error')
+        } else {
+          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
+          else if (!silent)
+            void reportStreamResponseError(res, onError, (message) => toast.error(message))
+          else void reportStreamResponseError(res, onError)
         }
         return
       }
@@ -552,9 +752,11 @@ export const ssePost = async (
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-            if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
-              Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+            // These errors can happen when a stream is intentionally stopped or its page is left.
+            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
+              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
+              else toast.error(moreInfo.errorMessage)
+            }
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -589,12 +791,17 @@ export const ssePost = async (
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
+        onReasoning,
+        onUnhandledEvent,
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
-        Toast.notify({ type: 'error', message: e })
-      onError?.(e)
+      const errorMessage = String(e)
+      if (!silent && shouldNotifyStreamError(e)) {
+        if (onNotifyError) onNotifyError(errorMessage)
+        else toast.error(errorMessage)
+      }
+      onError?.(errorMessage)
     })
 }
 
@@ -606,6 +813,7 @@ export const sseGet = async (
   const {
     isPublicAPI = false,
     onData,
+    onReasoning,
     onCompleted,
     onThought,
     onFile,
@@ -627,6 +835,7 @@ export const sseGet = async (
     onTextReplace,
     onAgentLog,
     onError,
+    onNotifyError,
     getAbortController,
     onLoopStart,
     onLoopNext,
@@ -638,59 +847,58 @@ export const sseGet = async (
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
+    onUnhandledEvent,
+    silent,
   } = otherOptions
   const abortController = new AbortController()
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
-  const options = Object.assign({}, baseOptions, {
-    signal: abortController.signal,
-    headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
-    }),
-  } as RequestInit, fetchOptions)
+  const shareCode = resolveWebAppAddress()?.code
+  const options = Object.assign(
+    {},
+    baseOptions,
+    {
+      signal: abortController.signal,
+      headers: new Headers({
+        [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
+        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
+        [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
+      }),
+    } as RequestInit,
+    fetchOptions,
+  )
+  options.headers = new Headers(options.headers)
 
   const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType)
-    (options.headers as Headers).set('Content-Type', ContentType.json)
+  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
   const urlWithPrefix = formatURL(url, isPublicAPI)
 
-  globalThis.fetch(urlWithPrefix, options as RequestInit)
+  globalThis
+    .fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401) {
+        if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string, message?: string }) => {
-              if (isPublicAPI) {
-                if (data.code === 'web_app_access_denied')
-                  requiredWebSSOLogin(data.message, 403)
-
-                if (data.code === 'web_sso_auth_required')
-                  requiredWebSSOLogin()
-
-                if (data.code === 'unauthorized')
-                  requiredWebSSOLogin()
-              }
-            })
+            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
+          } else {
+            refreshAccessTokenOrReLogin(TIME_OUT)
+              .then(() => {
+                sseGet(url, fetchOptions, otherOptions)
+              })
+              .catch((err) => {
+                const errorMessage = String(err)
+                console.error(err)
+                onError?.(errorMessage)
+              })
           }
-          else {
-            refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
-              sseGet(url, fetchOptions, otherOptions)
-            }).catch((err) => {
-              console.error(err)
-            })
-          }
-        }
-        else {
-          res.json().then((data) => {
-            Toast.notify({ type: 'error', message: data.message || 'Server Error' })
-          })
-          onError?.('Server Error')
+        } else {
+          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
+          else if (!silent)
+            void reportStreamResponseError(res, onError, (message) => toast.error(message))
+          else void reportStreamResponseError(res, onError)
         }
         return
       }
@@ -699,9 +907,11 @@ export const sseGet = async (
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-            if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
-              Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+            // These errors can happen when a stream is intentionally stopped or its page is left.
+            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
+              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
+              else toast.error(moreInfo.errorMessage)
+            }
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -736,95 +946,217 @@ export const sseGet = async (
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
+        onReasoning,
+        onUnhandledEvent,
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
-        Toast.notify({ type: 'error', message: e })
-      onError?.(e)
+      const errorMessage = String(e)
+      if (!silent && shouldNotifyStreamError(e)) {
+        if (onNotifyError) onNotifyError(errorMessage)
+        else toast.error(errorMessage)
+      }
+      onError?.(errorMessage)
     })
 }
 
+export type GeneratorStreamCallbacks = {
+  /** Fired once when the planner stage finishes — carries the high-level plan. */
+  onPlan?: (data: Record<string, unknown>) => void
+  /** Fired once when the builder + validation finish — carries the final graph envelope. */
+  onResult?: (data: Record<string, unknown>) => void
+  onError?: (message: string) => void
+  onCompleted?: () => void
+  getAbortController?: (abortController: AbortController) => void
+}
+
+/**
+ * Dedicated SSE consumer for the workflow generator's plan-first stream
+ * (`/workflow-generate/stream`). Kept separate from ``ssePost`` /
+ * ``handleStream`` on purpose: those are wired to the chat / workflow-run event
+ * vocabulary (``message``, ``node_finished``, …) and threading two more
+ * positional callbacks through that shared, high-blast-radius path isn't worth
+ * it. This helper reuses the same cookie-auth + CSRF + abort setup but
+ * only understands the generator's two events: ``plan`` then ``result``.
+ */
+export const sseGeneratorPost = (
+  url: string,
+  body: unknown,
+  { onPlan, onResult, onError, onCompleted, getAbortController }: GeneratorStreamCallbacks,
+) => {
+  const abortController = new AbortController()
+  const baseOptions = getBaseOptions()
+  const options = Object.assign({}, baseOptions, {
+    method: 'POST',
+    signal: abortController.signal,
+    headers: new Headers({
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
+      'Content-Type': ContentType.json,
+    }),
+    body: JSON.stringify(body),
+  } as RequestInit)
+
+  getAbortController?.(abortController)
+
+  const urlWithPrefix = formatURL(url, false)
+
+  const fail = (e: unknown) => {
+    // Aborts are intentional (modal close / regenerate) — never surface them.
+    if (e instanceof Error && e.name === 'AbortError') return
+    onError?.(`${e}`)
+  }
+
+  globalThis
+    .fetch(urlWithPrefix, options as RequestInit)
+    .then((res) => {
+      if (!/^[23]\d{2}$/.test(String(res.status))) {
+        if (res.status === 401) {
+          refreshAccessTokenOrReLogin(TIME_OUT)
+            .then(() =>
+              sseGeneratorPost(url, body, {
+                onPlan,
+                onResult,
+                onError,
+                onCompleted,
+                getAbortController,
+              }),
+            )
+            .catch(() => onError?.('Unauthorized'))
+          return
+        }
+        res
+          .json()
+          .then((data: { message?: string }) => onError?.(data?.message || 'Server Error'))
+          .catch(() => onError?.('Server Error'))
+        return
+      }
+
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let buffer = ''
+      const read = () => {
+        reader
+          ?.read()
+          .then(({ done, value }) => {
+            if (done) {
+              onCompleted?.()
+              return
+            }
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            // Process every complete line; keep the trailing partial in the buffer.
+            lines.slice(0, -1).forEach((message) => {
+              if (!message.startsWith('data: ')) return
+              let obj: Record<string, unknown>
+              try {
+                obj = JSON.parse(message.slice(6))
+              } catch {
+                // A chunk boundary split the JSON — it'll re-arrive intact next read.
+                return
+              }
+              if (obj.event === 'plan') onPlan?.(obj)
+              else if (obj.event === 'result') onResult?.(obj)
+            })
+            buffer = lines[lines.length - 1] || ''
+            read()
+          })
+          .catch(fail)
+      }
+      read()
+    })
+    .catch(fail)
+}
+
 // base request
-export const request = async<T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
+    const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
-    if (err === null)
+    if (err === null) {
+      const address = resolveWebAppAddress()
+      if (isPublicAPI && address?.kind === 'environment' && !isWebAppAuthorizationEndpoint(url))
+        completeWebAppAuthorizationRecovery(address)
       return resp
+    }
     const errResp: Response = err as any
-    if (errResp.status === 401) {
+    if (errResp.status === 401 || (errResp.status === 403 && isPublicAPI)) {
+      if (!isClient) return Promise.reject(err)
+
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      const loginUrl = `${globalThis.location.origin}${basePath}/signin`
       if (parseErr) {
-        globalThis.location.href = loginUrl
+        if (errResp.status === 401) {
+          discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
+          window.location.href = buildSigninUrlWithRedirect()
+        }
         return Promise.reject(err)
       }
-      if (/\/login/.test(url))
-        return Promise.reject(errRespData)
+      if (/\/login/.test(url)) return Promise.reject(errRespData)
+      if (handleWebAppAuthorizationError(errRespData, url)) return Promise.reject(err)
       // special code
       const { code, message } = errRespData
-      // webapp sso
-      if (code === 'web_app_access_denied') {
-        requiredWebSSOLogin(message, 403)
-        return Promise.reject(err)
-      }
       if (code === 'web_sso_auth_required') {
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
+      if (errResp.status === 403) return Promise.reject(err)
       if (code === 'unauthorized_and_force_logout') {
         // Cookies will be cleared by the backend
-        globalThis.location.reload()
+        discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
+        window.location.reload()
         return Promise.reject(err)
       }
-      const {
-        isPublicAPI = false,
-        silent,
-      } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {
-        Toast.notify({ type: 'error', message, duration: 4000 })
+      if (code === 'init_validate_failed' && !silent) {
+        toast.error(message, { timeout: 4000 })
         return Promise.reject(err)
       }
-      if (code === 'not_init_validated' && IS_CE_EDITION) {
-        jumpTo(`${globalThis.location.origin}${basePath}/init`)
+      if (code === 'not_init_validated') {
+        jumpTo(`${window.location.origin}${basePath}/init`)
         return Promise.reject(err)
       }
-      if (code === 'not_setup' && IS_CE_EDITION) {
-        jumpTo(`${globalThis.location.origin}${basePath}/install`)
+      if (code === 'not_setup') {
+        jumpTo(`${window.location.origin}${basePath}/install`)
         return Promise.reject(err)
       }
 
       // refresh token
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
-      if (refreshErr === null)
-        return baseFetch<T>(url, options, otherOptionsForBaseFetch)
-      if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
-        jumpTo(loginUrl)
+      if (refreshErr === null) return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      // /device is the device-flow chooser; logged-out is a valid state
+      // there. Redirecting to /signin loses the user_code context and
+      // the post-login flow lands on /apps instead of returning here.
+      if (window.location.pathname === `${basePath}/device`) return Promise.reject(err)
+      discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
+      if (window.location.pathname !== `${basePath}/signin`) {
+        jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }
       if (!silent) {
-        Toast.notify({ type: 'error', message })
+        toast.error(message)
         return Promise.reject(err)
       }
-      jumpTo(loginUrl)
+      jumpTo(buildSigninUrlWithRedirect())
+      return Promise.reject(err)
+    } else {
       return Promise.reject(err)
     }
-    else {
-      return Promise.reject(err)
-    }
-  }
-  catch (error) {
+  } catch (error) {
     console.error(error)
     return Promise.reject(error)
   }
 }
 
 // request methods
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'GET' }), otherOptions)
 }
@@ -839,6 +1171,12 @@ export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOth
   return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
 }
@@ -852,14 +1190,22 @@ export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOp
   return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
 }
 
-export const putPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return put<T>(url, options, { ...otherOptions, isPublicAPI: true })
-}
-
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'DELETE' }), otherOptions)
 }
@@ -868,6 +1214,12 @@ export const delPublic = <T>(url: string, options = {}, otherOptions?: IOtherOpt
   return del<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'PATCH' }), otherOptions)
 }

@@ -1,60 +1,60 @@
 import type { ReactNode } from 'react'
-import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
-import { noop } from 'es-toolkit/function'
-import { Fragment, useCallback, useEffect } from 'react'
-import { cn } from '@/utils/classnames'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogClose,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+  DialogViewport,
+} from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useTranslation } from 'react-i18next'
 
-type DialogProps = {
-  className?: string
+type MenuDialogProps = {
   children: ReactNode
-  show: boolean
-  onClose?: () => void
+  title: string
+  onClose: () => void
 }
 
-const MenuDialog = ({
-  className,
-  children,
-  show,
-  onClose,
-}: DialogProps) => {
-  const close = useCallback(() => onClose?.(), [onClose])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        close()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [close])
+const MenuDialog = ({ children, title, onClose }: MenuDialogProps) => {
+  const { t } = useTranslation()
 
   return (
-    <Transition appear show={show} as={Fragment}>
-      <Dialog as="div" className="relative z-[60]" onClose={noop}>
-        <div className="fixed inset-0">
-          <div className="flex min-h-full flex-col items-center justify-center">
-            <TransitionChild>
-              <DialogPanel className={cn(
-                'relative h-full w-full grow overflow-hidden bg-background-sidenav-bg p-0 text-left align-middle backdrop-blur-md transition-all',
-                'duration-300 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
-                'data-[enter]:scale-100 data-[enter]:opacity-100',
-                'data-[enter]:scale-95 data-[leave]:opacity-0',
-                className,
-              )}
-              >
-                <div className="absolute right-0 top-0 h-full w-1/2 bg-components-panel-bg" />
-                {children}
-              </DialogPanel>
-            </TransitionChild>
-          </div>
-        </div>
-      </Dialog>
-    </Transition>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <DialogPortal>
+        <DialogBackdrop className="bg-transparent" />
+        <DialogViewport>
+          <DialogPopup className="pointer-events-none relative isolate h-full w-full scale-100 overflow-visible rounded-none border-none bg-transparent shadow-none transition-opacity data-ending-style:scale-100 data-starting-style:scale-100">
+            <DialogTitle className="sr-only">{title}</DialogTitle>
+            <div className="pointer-events-auto absolute top-6 right-6 z-10 flex shrink-0 flex-col items-center">
+              <DialogClose
+                render={
+                  <IconButton
+                    variant="tertiary"
+                    size="xl"
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  >
+                    <span aria-hidden className="i-ri-close-line size-5" />
+                  </IconButton>
+                }
+              />
+              <div aria-hidden className="mt-1 system-2xs-medium-uppercase text-text-tertiary">
+                ESC
+              </div>
+            </div>
+            <div className="pointer-events-auto relative z-0 h-full w-full overflow-hidden bg-background-sidenav-bg backdrop-blur-md">
+              {children}
+            </div>
+          </DialogPopup>
+        </DialogViewport>
+      </DialogPortal>
+    </Dialog>
   )
 }
 

@@ -16,6 +16,7 @@ from core.plugin.entities.request import (
     TriggerSubscriptionResponse,
 )
 from core.plugin.impl.trigger import PluginTriggerClient
+from core.plugin.plugin_service import PluginService
 from core.trigger.entities.api_entities import EventApiEntity, TriggerProviderApiEntity
 from core.trigger.entities.entities import (
     EventEntity,
@@ -30,7 +31,6 @@ from core.trigger.entities.entities import (
 )
 from core.trigger.errors import TriggerProviderCredentialValidationError
 from models.provider_ids import TriggerProviderID
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 

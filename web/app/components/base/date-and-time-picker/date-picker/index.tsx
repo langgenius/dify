@@ -1,14 +1,11 @@
+import type { PopoverProps } from '@langgenius/dify-ui/popover'
 import type { Dayjs } from 'dayjs'
 import type { DatePickerProps, Period } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import Calendar from '../calendar'
 import TimePickerHeader from '../time-picker/header'
 import TimePickerOptions from '../time-picker/options'
@@ -32,23 +29,22 @@ const DatePicker = ({
   onChange,
   onClear,
   placeholder,
+  disabled = false,
   needTimePicker = true,
   renderTrigger,
   triggerWrapClassName,
-  popupZIndexClassname = 'z-[11]',
   noConfirm,
   getIsDateDisabled,
 }: DatePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState(ViewType.date)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const isInitial = useRef(true)
+  const isInitialRef = useRef(true)
+  const triggerAreaRef = useRef<HTMLDivElement>(null)
 
   // Normalize the value to ensure that all subsequent uses are Day.js objects.
   const normalizedValue = useMemo(() => {
-    if (!value)
-      return undefined
+    if (!value) return undefined
     return dayjs.isDayjs(value) ? value.tz(timezone) : dayjs(value).tz(timezone)
   }, [value, timezone])
 
@@ -62,53 +58,71 @@ const DatePicker = ({
   const [selectedYear, setSelectedYear] = useState(() => (inputValue || defaultValue).year())
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-        setView(ViewType.date)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  useEffect(() => {
-    if (isInitial.current) {
-      isInitial.current = false
+    if (isInitialRef.current) {
+      isInitialRef.current = false
       return
     }
     clearMonthMapCache()
     if (normalizedValue) {
       const newValue = getDateWithTimezone({ date: normalizedValue, timezone })
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- timezone changes intentionally resync the displayed calendar state.
       setCurrentDate(newValue)
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- timezone changes intentionally resync the selected value.
       setSelectedDate(newValue)
       onChange(newValue)
+    } else {
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- timezone changes intentionally resync the displayed calendar state.
+      setCurrentDate((prev) => getDateWithTimezone({ date: prev, timezone }))
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- timezone changes intentionally resync the selected value.
+      setSelectedDate((prev) => (prev ? getDateWithTimezone({ date: prev, timezone }) : undefined))
     }
-    else {
-      setCurrentDate(prev => getDateWithTimezone({ date: prev, timezone }))
-      setSelectedDate(prev => prev ? getDateWithTimezone({ date: prev, timezone }) : undefined)
-    }
+    // oxlint-disable-next-line react/exhaustive-deps -- this effect intentionally runs only when timezone changes.
   }, [timezone])
+
+  const handleOpenChange = useCallback<NonNullable<PopoverProps['onOpenChange']>>(
+    (nextOpen, details) => {
+      const isFocusGuardClose =
+        !nextOpen && details.reason === 'focus-out' && details.event.type === 'focusin'
+      if (isFocusGuardClose) {
+        details.cancel()
+        // Let Base UI move focus past its guard before the controlled root closes.
+        queueMicrotask(() => {
+          setIsOpen(false)
+          setView(ViewType.date)
+        })
+        return
+      }
+      const outsideTarget =
+        details.reason === 'focus-out' && details.event instanceof FocusEvent
+          ? details.event.relatedTarget
+          : details.event.target
+      if (
+        !nextOpen &&
+        (details.reason === 'outside-press' || details.reason === 'focus-out') &&
+        outsideTarget instanceof Node &&
+        triggerAreaRef.current?.contains(outsideTarget)
+      ) {
+        details.cancel()
+        return
+      }
+      setIsOpen(nextOpen)
+      setView(ViewType.date)
+      if (nextOpen && normalizedValue) {
+        setCurrentDate(normalizedValue)
+        setSelectedDate(normalizedValue)
+      }
+    },
+    [normalizedValue],
+  )
 
   const handleClickTrigger = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (isOpen) {
-      setIsOpen(false)
-      return
-    }
-    setView(ViewType.date)
-    setIsOpen(true)
-    if (normalizedValue) {
-      setCurrentDate(normalizedValue)
-      setSelectedDate(normalizedValue)
-    }
   }
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
     setSelectedDate(undefined)
-    if (!isOpen)
-      onClear()
+    if (!isOpen) onClear()
   }
 
   const days = useMemo(() => {
@@ -123,20 +137,25 @@ const DatePicker = ({
     setCurrentDate(currentDate.clone().subtract(1, 'month'))
   }, [currentDate])
 
-  const handleConfirmDate = useCallback((passedInSelectedDate?: Dayjs) => {
-    // passedInSelectedDate may be a click event when noConfirm is false
-    const nextDate = (dayjs.isDayjs(passedInSelectedDate) ? passedInSelectedDate : selectedDate)
-    onChange(nextDate ? nextDate.tz(timezone) : undefined)
-    setIsOpen(false)
-  }, [selectedDate, onChange, timezone])
+  const handleConfirmDate = useCallback(
+    (passedInSelectedDate?: Dayjs) => {
+      // passedInSelectedDate may be a click event when noConfirm is false
+      const nextDate = dayjs.isDayjs(passedInSelectedDate) ? passedInSelectedDate : selectedDate
+      onChange(nextDate ? nextDate.tz(timezone) : undefined)
+      setIsOpen(false)
+    },
+    [selectedDate, onChange, timezone],
+  )
 
-  const handleDateSelect = useCallback((day: Dayjs) => {
-    const newDate = cloneTime(day, selectedDate || getDateWithTimezone({ timezone }))
-    setCurrentDate(newDate)
-    setSelectedDate(newDate)
-    if (noConfirm)
-      handleConfirmDate(newDate)
-  }, [selectedDate, timezone, noConfirm, handleConfirmDate])
+  const handleDateSelect = useCallback(
+    (day: Dayjs) => {
+      const newDate = cloneTime(day, selectedDate || getDateWithTimezone({ timezone }))
+      setCurrentDate(newDate)
+      setSelectedDate(newDate)
+      if (noConfirm) handleConfirmDate(newDate)
+    },
+    [selectedDate, timezone, noConfirm, handleConfirmDate],
+  )
 
   const handleSelectCurrentDate = () => {
     const newDate = getDateWithTimezone({ timezone })
@@ -151,8 +170,7 @@ const DatePicker = ({
       setView(ViewType.time)
       return
     }
-    if (view === ViewType.time)
-      setView(ViewType.date)
+    if (view === ViewType.time) setView(ViewType.date)
   }
 
   const handleTimeSelect = (hour: string, minute: string, period: Period) => {
@@ -162,20 +180,41 @@ const DatePicker = ({
     })
   }
 
-  const handleSelectHour = useCallback((hour: string) => {
-    const selectedTime = selectedDate || getDateWithTimezone({ timezone })
-    handleTimeSelect(hour, selectedTime.minute().toString().padStart(2, '0'), selectedTime.format('A') as Period)
-  }, [selectedDate, timezone])
+  const handleSelectHour = useCallback(
+    (hour: string) => {
+      const selectedTime = selectedDate || getDateWithTimezone({ timezone })
+      handleTimeSelect(
+        hour,
+        selectedTime.minute().toString().padStart(2, '0'),
+        selectedTime.format('A') as Period,
+      )
+    },
+    [selectedDate, timezone],
+  )
 
-  const handleSelectMinute = useCallback((minute: string) => {
-    const selectedTime = selectedDate || getDateWithTimezone({ timezone })
-    handleTimeSelect(getHourIn12Hour(selectedTime).toString().padStart(2, '0'), minute, selectedTime.format('A') as Period)
-  }, [selectedDate, timezone])
+  const handleSelectMinute = useCallback(
+    (minute: string) => {
+      const selectedTime = selectedDate || getDateWithTimezone({ timezone })
+      handleTimeSelect(
+        getHourIn12Hour(selectedTime).toString().padStart(2, '0'),
+        minute,
+        selectedTime.format('A') as Period,
+      )
+    },
+    [selectedDate, timezone],
+  )
 
-  const handleSelectPeriod = useCallback((period: Period) => {
-    const selectedTime = selectedDate || getDateWithTimezone({ timezone })
-    handleTimeSelect(getHourIn12Hour(selectedTime).toString().padStart(2, '0'), selectedTime.minute().toString().padStart(2, '0'), period)
-  }, [selectedDate, timezone])
+  const handleSelectPeriod = useCallback(
+    (period: Period) => {
+      const selectedTime = selectedDate || getDateWithTimezone({ timezone })
+      handleTimeSelect(
+        getHourIn12Hour(selectedTime).toString().padStart(2, '0'),
+        selectedTime.minute().toString().padStart(2, '0'),
+        period,
+      )
+    },
+    [selectedDate, timezone],
+  )
 
   const handleOpenYearMonthPicker = () => {
     setSelectedMonth(currentDate.month())
@@ -200,127 +239,152 @@ const DatePicker = ({
   }, [])
 
   const handleYearMonthConfirm = () => {
-    setCurrentDate(prev => prev.clone().month(selectedMonth).year(selectedYear))
+    setCurrentDate((prev) => prev.clone().month(selectedMonth).year(selectedYear))
     setView(ViewType.date)
   }
 
-  const timeFormat = needTimePicker ? t('dateFormats.displayWithTime', { ns: 'time' }) : t('dateFormats.display', { ns: 'time' })
+  const timeFormat = needTimePicker
+    ? t(($) => $['dateFormats.displayWithTime'], { ns: 'time' })
+    : t(($) => $['dateFormats.display'], { ns: 'time' })
   const displayValue = normalizedValue?.format(timeFormat) || ''
   const displayTime = selectedDate?.format('hh:mm A') || '--:-- --'
-  const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t('defaultPlaceholder', { ns: 'time' }))
-
   return (
-    <PortalToFollowElem
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      placement="bottom-end"
-    >
-      <PortalToFollowElemTrigger className={triggerWrapClassName}>
-        {renderTrigger
-          ? (
-              renderTrigger({
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
+      <div ref={triggerAreaRef} className={cn('min-w-0', triggerWrapClassName)}>
+        <PopoverTrigger
+          disabled={disabled}
+          onClick={handleClickTrigger}
+          className={triggerWrapClassName}
+          render={(props, state) => {
+            if (renderTrigger) {
+              return renderTrigger(props, state, {
                 value: normalizedValue,
                 selectedDate,
-                isOpen,
                 handleClear,
-                handleClickTrigger,
-              }))
-          : (
+              })
+            }
+
+            const triggerPlaceholder = placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
+            const triggerDisplayValue = state.open
+              ? selectedDate?.format(timeFormat) || ''
+              : displayValue
+
+            return (
               <div
-                className="group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt"
-                onClick={handleClickTrigger}
-                data-testid="date-picker-trigger"
-              >
-                <input
-                  className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 text-components-input-text-filled
-            outline-none system-xs-regular placeholder:text-components-input-text-placeholder"
-                  readOnly
-                  value={isOpen ? '' : displayValue}
-                  placeholder={placeholderDate}
-                />
-                <span className={cn('i-ri-calendar-line h-4 w-4 shrink-0 text-text-quaternary', isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary', (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden')} />
-                <span className={cn('i-ri-close-circle-fill hidden h-4 w-4 shrink-0 text-text-quaternary', (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block')} onClick={handleClear} data-testid="date-picker-clear-button" />
-              </div>
-            )}
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className={popupZIndexClassname}>
-        <div className="mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
-          {/* Header */}
-          {view === ViewType.date
-            ? (
-                <DatePickerHeader
-                  handleOpenYearMonthPicker={handleOpenYearMonthPicker}
-                  currentDate={currentDate}
-                  onClickNextMonth={handleClickNextMonth}
-                  onClickPrevMonth={handleClickPrevMonth}
-                />
-              )
-            : view === ViewType.yearMonth
-              ? (
-                  <YearAndMonthPickerHeader
-                    selectedYear={selectedYear}
-                    selectedMonth={selectedMonth}
-                    onClick={handleCloseYearMonthPicker}
-                  />
-                )
-              : (
-                  <TimePickerHeader />
+                className={cn(
+                  'group relative flex w-63 items-center rounded-lg bg-components-input-bg-normal hover:bg-state-base-hover-alt',
+                  disabled && 'opacity-60',
+                  props.className,
                 )}
+              >
+                <button
+                  {...props}
+                  type="button"
+                  aria-label={`${triggerPlaceholder}${triggerDisplayValue ? `: ${triggerDisplayValue}` : ''}`}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-x-0.5 rounded-lg px-2 py-1 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-default"
+                  data-testid="date-picker-trigger"
+                >
+                  <span
+                    className={cn(
+                      'min-w-0 flex-1 truncate p-1 system-xs-regular',
+                      triggerDisplayValue
+                        ? 'text-components-input-text-filled'
+                        : 'text-components-input-text-placeholder',
+                    )}
+                  >
+                    {triggerDisplayValue || triggerPlaceholder}
+                  </span>
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'i-ri-calendar-line size-4 shrink-0 text-text-quaternary',
+                      state.open ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+                    )}
+                  />
+                </button>
+                {(displayValue || (state.open && selectedDate)) && !disabled && (
+                  <button
+                    type="button"
+                    aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                    className="absolute right-2 flex size-4 shrink-0 items-center justify-center rounded-full border-none bg-components-input-bg-normal p-0 text-text-quaternary opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden [@media(hover:none)]:opacity-100"
+                    onClick={handleClear}
+                  >
+                    <span className="i-ri-close-circle-fill size-4" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            )
+          }}
+        />
+      </div>
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={0}
+        className="border-none bg-transparent shadow-none"
+      >
+        <div className="mt-1 w-63 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
+          {/* Header */}
+          {view === ViewType.date ? (
+            <DatePickerHeader
+              handleOpenYearMonthPicker={handleOpenYearMonthPicker}
+              currentDate={currentDate}
+              onClickNextMonth={handleClickNextMonth}
+              onClickPrevMonth={handleClickPrevMonth}
+            />
+          ) : view === ViewType.yearMonth ? (
+            <YearAndMonthPickerHeader
+              selectedYear={selectedYear}
+              selectedMonth={selectedMonth}
+              onClick={handleCloseYearMonthPicker}
+            />
+          ) : (
+            <TimePickerHeader />
+          )}
 
           {/* Content */}
-          {
-            view === ViewType.date
-              ? (
-                  <Calendar
-                    days={days}
-                    selectedDate={selectedDate}
-                    onDateClick={handleDateSelect}
-                    getIsDateDisabled={getIsDateDisabled}
-                  />
-                )
-              : view === ViewType.yearMonth
-                ? (
-                    <YearAndMonthPickerOptions
-                      selectedMonth={selectedMonth}
-                      selectedYear={selectedYear}
-                      handleMonthSelect={handleMonthSelect}
-                      handleYearSelect={handleYearSelect}
-                    />
-                  )
-                : (
-                    <TimePickerOptions
-                      selectedTime={selectedDate}
-                      handleSelectHour={handleSelectHour}
-                      handleSelectMinute={handleSelectMinute}
-                      handleSelectPeriod={handleSelectPeriod}
-                    />
-                  )
-          }
+          {view === ViewType.date ? (
+            <Calendar
+              days={days}
+              selectedDate={selectedDate}
+              onDateClick={handleDateSelect}
+              getIsDateDisabled={getIsDateDisabled}
+            />
+          ) : view === ViewType.yearMonth ? (
+            <YearAndMonthPickerOptions
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              handleMonthSelect={handleMonthSelect}
+              handleYearSelect={handleYearSelect}
+            />
+          ) : (
+            <TimePickerOptions
+              selectedTime={selectedDate}
+              handleSelectHour={handleSelectHour}
+              handleSelectMinute={handleSelectMinute}
+              handleSelectPeriod={handleSelectPeriod}
+            />
+          )}
 
           {/* Footer */}
-          {
-            [ViewType.date, ViewType.time].includes(view) && !noConfirm && (
-              <DatePickerFooter
-                needTimePicker={needTimePicker}
-                displayTime={displayTime}
-                view={view}
-                handleClickTimePicker={handleClickTimePicker}
-                handleSelectCurrentDate={handleSelectCurrentDate}
-                handleConfirmDate={handleConfirmDate}
-              />
-            )
-          }
-          {
-            ![ViewType.date, ViewType.time].includes(view) && (
-              <YearAndMonthPickerFooter
-                handleYearMonthCancel={handleYearMonthCancel}
-                handleYearMonthConfirm={handleYearMonthConfirm}
-              />
-            )
-          }
+          {[ViewType.date, ViewType.time].includes(view) && !noConfirm && (
+            <DatePickerFooter
+              needTimePicker={needTimePicker}
+              displayTime={displayTime}
+              view={view}
+              handleClickTimePicker={handleClickTimePicker}
+              handleSelectCurrentDate={handleSelectCurrentDate}
+              handleConfirmDate={handleConfirmDate}
+            />
+          )}
+          {![ViewType.date, ViewType.time].includes(view) && (
+            <YearAndMonthPickerFooter
+              handleYearMonthCancel={handleYearMonthCancel}
+              handleYearMonthConfirm={handleYearMonthConfirm}
+            />
+          )}
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

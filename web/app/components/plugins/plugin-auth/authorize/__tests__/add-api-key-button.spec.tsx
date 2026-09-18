@@ -1,16 +1,37 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthCategory } from '../../types'
 import AddApiKeyButton from '../add-api-key-button'
 
 let _mockModalOpen = false
 vi.mock('../api-key-modal', () => ({
-  default: ({ onClose, onUpdate }: { onClose: () => void, onUpdate?: () => void }) => {
-    _mockModalOpen = true
+  default: ({
+    open = true,
+    onClose,
+    onOpenChange,
+    onUpdate,
+  }: {
+    open?: boolean
+    onClose: () => void
+    onOpenChange?: (open: boolean) => void
+    onUpdate?: () => void
+  }) => {
+    _mockModalOpen = open
+    if (!open) return null
+
+    const handleClose = () => {
+      onOpenChange?.(false)
+      onClose()
+    }
+
     return (
       <div data-testid="api-key-modal">
-        <button data-testid="modal-close" onClick={onClose}>Close</button>
-        <button data-testid="modal-update" onClick={onUpdate}>Update</button>
+        <button data-testid="modal-close" onClick={handleClose}>
+          Close
+        </button>
+        <button data-testid="modal-update" onClick={onUpdate}>
+          Update
+        </button>
       </div>
     )
   },

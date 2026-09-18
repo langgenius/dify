@@ -5,12 +5,12 @@ import Research from './assets/research-mod.svg'
 import Selection from './assets/selection-mod.svg'
 
 export const indexMethodIcon = {
-  high_quality: GoldIcon,
-  economical: Piggybank,
+  high_quality: GoldIcon.src,
+  economical: Piggybank.src,
 }
 
 export const retrievalIcon = {
-  vector: Selection,
-  fullText: Research,
-  hybrid: PatternRecognition,
+  vector: Selection.src,
+  fullText: Research.src,
+  hybrid: PatternRecognition.src,
 }

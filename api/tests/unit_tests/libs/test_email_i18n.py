@@ -21,7 +21,7 @@ from libs.email_i18n import (
     create_default_email_config,
     get_email_i18n_service,
 )
-from services.feature_service import BrandingModel
+from services.entities.feature_entities import BrandingModel
 
 
 class MockEmailRenderer:
@@ -503,6 +503,7 @@ class TestEmailI18nIntegration:
             EmailType.ACCOUNT_DELETION_VERIFICATION,
             EmailType.QUEUE_MONITOR_ALERT,
             EmailType.DOCUMENT_CLEAN_NOTIFY,
+            EmailType.WORKFLOW_COMMENT_MENTION,
         ]
 
         for email_type in expected_types:

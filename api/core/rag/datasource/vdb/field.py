@@ -1,4 +1,24 @@
 from enum import StrEnum, auto
+from typing import Any
+
+from pydantic import TypeAdapter
+
+_metadata_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+
+
+def parse_metadata_json(raw: Any) -> dict[str, Any]:
+    """Parse metadata from a JSON string or pass through an existing dict.
+
+    Many VDB drivers return metadata as either a JSON string or an already-
+    decoded dict depending on the column type and driver version.
+    """
+    if raw is None or raw in ("", b""):
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    if not isinstance(raw, (str, bytes, bytearray)):
+        return {}
+    return _metadata_adapter.validate_json(raw)
 
 
 class Field(StrEnum):

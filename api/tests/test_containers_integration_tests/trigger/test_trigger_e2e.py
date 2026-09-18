@@ -10,15 +10,22 @@ from typing import Any
 import pytest
 from flask import Flask, Response
 from flask.testing import FlaskClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.plugin.entities.request import TriggerInvokeEventResponse
+from core.trigger.constants import (
+    TRIGGER_PLUGIN_NODE_TYPE,
+    TRIGGER_SCHEDULE_NODE_TYPE,
+    TRIGGER_WEBHOOK_NODE_TYPE,
+)
 from core.trigger.debug import event_selectors
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.event_selectors import PluginTriggerDebugEventPoller, WebhookTriggerDebugEventPoller
 from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
-from dify_graph.enums import NodeType
+from enums import DeploymentEdition
+from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
 from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
@@ -34,7 +41,7 @@ from models.trigger import (
 from models.workflow import Workflow
 from schedule import workflow_schedule_task
 from schedule.workflow_schedule_task import poll_workflow_schedules
-from services import feature_service as feature_service_module
+from services.system_feature_service import SystemFeatureService
 from services.trigger import webhook_service
 from services.trigger.schedule_service import ScheduleService
 from services.workflow_service import WorkflowService
@@ -48,10 +55,10 @@ WEBHOOK_ID_DEBUG = "whdebug1234567890123456"
 TEST_TRIGGER_URL = "https://trigger.example.com/base"
 
 
-def _build_workflow_graph(root_node_id: str, trigger_type: NodeType) -> str:
+def _build_workflow_graph(root_node_id: str, trigger_type: str) -> str:
     """Build a minimal workflow graph JSON for testing."""
-    node_data: dict[str, Any] = {"type": trigger_type.value, "title": "trigger"}
-    if trigger_type == NodeType.TRIGGER_WEBHOOK:
+    node_data: dict[str, Any] = {"type": trigger_type, "title": "trigger"}
+    if trigger_type == TRIGGER_WEBHOOK_NODE_TYPE:
         node_data.update(
             {
                 "method": "POST",
@@ -64,7 +71,7 @@ def _build_workflow_graph(root_node_id: str, trigger_type: NodeType) -> str:
     graph = {
         "nodes": [
             {"id": root_node_id, "data": node_data},
-            {"id": "answer-1", "data": {"type": NodeType.ANSWER.value, "title": "answer"}},
+            {"id": "answer-1", "data": {"type": BuiltinNodeTypes.ANSWER, "title": "answer"}},
         ],
         "edges": [{"source": root_node_id, "target": "answer-1", "sourceHandle": "success"}],
     }
@@ -82,8 +89,8 @@ def test_publish_blocks_start_and_trigger_coexistence(
 
     graph = {
         "nodes": [
-            {"id": "start", "data": {"type": NodeType.START.value}},
-            {"id": "trig", "data": {"type": NodeType.TRIGGER_WEBHOOK.value}},
+            {"id": "start", "data": {"type": BuiltinNodeTypes.START}},
+            {"id": "trig", "data": {"type": TRIGGER_WEBHOOK_NODE_TYPE}},
         ],
         "edges": [],
     }
@@ -105,11 +112,13 @@ def test_publish_blocks_start_and_trigger_coexistence(
     workflow_service = WorkflowService()
 
     monkeypatch.setattr(
-        feature_service_module.FeatureService,
-        "get_system_features",
-        classmethod(lambda _cls: SimpleNamespace(plugin_manager=SimpleNamespace(enabled=False))),
+        SystemFeatureService,
+        "is_plugin_manager_enabled",
+        classmethod(lambda _cls: False),
     )
-    monkeypatch.setattr("services.workflow_service.dify_config", SimpleNamespace(BILLING_ENABLED=False))
+    monkeypatch.setattr(
+        "services.workflow_service.dify_config", SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    )
 
     with pytest.raises(ValueError, match="Start node and trigger nodes cannot coexist"):
         workflow_service.publish_workflow(session=db_session_with_containers, app_model=app_model, account=account)
@@ -152,7 +161,7 @@ def test_webhook_trigger_creates_trigger_log(
     tenant, account = tenant_and_account
 
     webhook_node_id = "webhook-node"
-    graph_json = _build_workflow_graph(webhook_node_id, NodeType.TRIGGER_WEBHOOK)
+    graph_json = _build_workflow_graph(webhook_node_id, TRIGGER_WEBHOOK_NODE_TYPE)
     published_workflow = Workflow.new(
         tenant_id=tenant.id,
         app_id=app_model.id,
@@ -188,7 +197,7 @@ def test_webhook_trigger_creates_trigger_log(
     db_session_with_containers.add_all([webhook_trigger, app_trigger])
     db_session_with_containers.commit()
 
-    def _fake_trigger_workflow_async(session: Session, user: Any, trigger_data: Any) -> SimpleNamespace:
+    def _fake_trigger_workflow_async(user: Any, trigger_data: Any, *, session: Session) -> SimpleNamespace:
         log = WorkflowTriggerLog(
             tenant_id=trigger_data.tenant_id,
             app_id=trigger_data.app_id,
@@ -222,7 +231,9 @@ def test_webhook_trigger_creates_trigger_log(
     assert response.status_code == 200
 
     db_session_with_containers.expire_all()
-    logs = db_session_with_containers.query(WorkflowTriggerLog).filter_by(app_id=app_model.id).all()
+    logs = db_session_with_containers.scalars(
+        select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id)
+    ).all()
     assert logs, "Webhook trigger should create trigger log"
 
 
@@ -282,7 +293,7 @@ def test_schedule_visual_debug_poll_generates_event(monkeypatch: pytest.MonkeyPa
     node_config = {
         "id": "schedule-visual",
         "data": {
-            "type": NodeType.TRIGGER_SCHEDULE.value,
+            "type": TRIGGER_SCHEDULE_NODE_TYPE,
             "mode": "visual",
             "frequency": "daily",
             "visual_config": {"time": "3:00 PM"},
@@ -372,7 +383,7 @@ def test_webhook_debug_dispatches_event(
     """Webhook single-step debug should dispatch debug event and be pollable."""
     tenant, account = tenant_and_account
     webhook_node_id = "webhook-debug-node"
-    graph_json = _build_workflow_graph(webhook_node_id, NodeType.TRIGGER_WEBHOOK)
+    graph_json = _build_workflow_graph(webhook_node_id, TRIGGER_WEBHOOK_NODE_TYPE)
     draft_workflow = Workflow.new(
         tenant_id=tenant.id,
         app_id=app_model.id,
@@ -443,7 +454,7 @@ def test_plugin_single_step_debug_flow(
     node_config = {
         "id": node_id,
         "data": {
-            "type": NodeType.TRIGGER_PLUGIN.value,
+            "type": TRIGGER_PLUGIN_NODE_TYPE,
             "title": "plugin",
             "plugin_id": "plugin-1",
             "plugin_unique_identifier": "plugin-1",
@@ -519,14 +530,14 @@ def test_schedule_trigger_creates_trigger_log(
             {
                 "id": schedule_node_id,
                 "data": {
-                    "type": NodeType.TRIGGER_SCHEDULE.value,
+                    "type": TRIGGER_SCHEDULE_NODE_TYPE,
                     "title": "schedule",
                     "mode": "cron",
                     "cron_expression": "0 9 * * *",
                     "timezone": "UTC",
                 },
             },
-            {"id": "answer-1", "data": {"type": NodeType.ANSWER.value, "title": "answer"}},
+            {"id": "answer-1", "data": {"type": BuiltinNodeTypes.ANSWER, "title": "answer"}},
         ],
         "edges": [{"source": schedule_node_id, "target": "answer-1", "sourceHandle": "success"}],
     }
@@ -567,7 +578,7 @@ def test_schedule_trigger_creates_trigger_log(
     db_session_with_containers.commit()
 
     # Mock AsyncWorkflowService to create WorkflowTriggerLog
-    def _fake_trigger_workflow_async(session: Session, user: Any, trigger_data: Any) -> SimpleNamespace:
+    def _fake_trigger_workflow_async(user: Any, trigger_data: Any, *, session: Session) -> SimpleNamespace:
         log = WorkflowTriggerLog(
             tenant_id=trigger_data.tenant_id,
             app_id=trigger_data.app_id,
@@ -597,16 +608,18 @@ def test_schedule_trigger_creates_trigger_log(
     )
 
     # Mock quota to avoid rate limiting
-    from enums import quota_type
+    from services import quota_service
 
-    monkeypatch.setattr(quota_type.QuotaType.TRIGGER, "consume", lambda _tenant_id: quota_type.unlimited())
+    monkeypatch.setattr(quota_service.QuotaService, "reserve", lambda *_args, **_kwargs: quota_service.unlimited())
 
     # Execute schedule trigger
     workflow_schedule_tasks.run_schedule_trigger(plan.id)
 
     # Verify WorkflowTriggerLog was created
     db_session_with_containers.expire_all()
-    logs = db_session_with_containers.query(WorkflowTriggerLog).filter_by(app_id=app_model.id).all()
+    logs = db_session_with_containers.scalars(
+        select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id)
+    ).all()
     assert logs, "Schedule trigger should create WorkflowTriggerLog"
     assert logs[0].trigger_type == AppTriggerType.TRIGGER_SCHEDULE
     assert logs[0].root_node_id == schedule_node_id
@@ -639,7 +652,7 @@ def test_schedule_visual_cron_conversion(
     node_config: dict[str, Any] = {
         "id": "schedule-node",
         "data": {
-            "type": NodeType.TRIGGER_SCHEDULE.value,
+            "type": TRIGGER_SCHEDULE_NODE_TYPE,
             "mode": mode,
             "timezone": "UTC",
         },
@@ -680,7 +693,7 @@ def test_plugin_trigger_full_chain_with_db_verification(
             {
                 "id": plugin_node_id,
                 "data": {
-                    "type": NodeType.TRIGGER_PLUGIN.value,
+                    "type": TRIGGER_PLUGIN_NODE_TYPE,
                     "title": "plugin",
                     "plugin_id": "test-plugin",
                     "plugin_unique_identifier": "test-plugin",
@@ -690,7 +703,7 @@ def test_plugin_trigger_full_chain_with_db_verification(
                     "parameters": {},
                 },
             },
-            {"id": "answer-1", "data": {"type": NodeType.ANSWER.value, "title": "answer"}},
+            {"id": "answer-1", "data": {"type": BuiltinNodeTypes.ANSWER, "title": "answer"}},
         ],
         "edges": [{"source": plugin_node_id, "target": "answer-1", "sourceHandle": "success"}],
     }
@@ -781,11 +794,12 @@ def test_plugin_trigger_full_chain_with_db_verification(
 
     # Verify database records exist
     db_session_with_containers.expire_all()
-    plugin_triggers = (
-        db_session_with_containers.query(WorkflowPluginTrigger)
-        .filter_by(app_id=app_model.id, node_id=plugin_node_id)
-        .all()
-    )
+    plugin_triggers = db_session_with_containers.scalars(
+        select(WorkflowPluginTrigger).where(
+            WorkflowPluginTrigger.app_id == app_model.id,
+            WorkflowPluginTrigger.node_id == plugin_node_id,
+        )
+    ).all()
     assert plugin_triggers, "WorkflowPluginTrigger record should exist"
     assert plugin_triggers[0].provider_id == provider_id
     assert plugin_triggers[0].event_name == "test_event"
@@ -826,7 +840,7 @@ def test_plugin_debug_via_http_endpoint(
     node_config = {
         "id": node_id,
         "data": {
-            "type": NodeType.TRIGGER_PLUGIN.value,
+            "type": TRIGGER_PLUGIN_NODE_TYPE,
             "title": "plugin-debug",
             "plugin_id": "debug-plugin",
             "plugin_unique_identifier": "debug-plugin",

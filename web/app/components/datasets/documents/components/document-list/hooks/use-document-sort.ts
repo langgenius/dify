@@ -19,20 +19,22 @@ export const useDocumentSort = ({
   const sortKey = remoteSortValue.startsWith('-') ? remoteSortValue.slice(1) : remoteSortValue
 
   const sortField = useMemo<SortField>(() => {
-    return REMOTE_SORT_FIELDS.has(sortKey as RemoteSortField) ? sortKey as RemoteSortField : null
+    return REMOTE_SORT_FIELDS.has(sortKey as RemoteSortField) ? (sortKey as RemoteSortField) : null
   }, [sortKey])
 
-  const handleSort = useCallback((field: SortField) => {
-    if (!field)
-      return
+  const handleSort = useCallback(
+    (field: SortField) => {
+      if (!field) return
 
-    if (sortField === field) {
-      const nextSortOrder = sortOrder === 'desc' ? 'asc' : 'desc'
-      onRemoteSortChange(nextSortOrder === 'desc' ? `-${field}` : field)
-      return
-    }
-    onRemoteSortChange(`-${field}`)
-  }, [onRemoteSortChange, sortField, sortOrder])
+      if (sortField === field) {
+        const nextSortOrder = sortOrder === 'desc' ? 'asc' : 'desc'
+        onRemoteSortChange(nextSortOrder === 'desc' ? `-${field}` : field)
+        return
+      }
+      onRemoteSortChange(`-${field}`)
+    },
+    [onRemoteSortChange, sortField, sortOrder],
+  )
 
   return {
     sortField,

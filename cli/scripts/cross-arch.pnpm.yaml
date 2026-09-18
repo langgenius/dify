@@ -1,0 +1,20 @@
+# Cross-arch keyring prebuilds for difyctl release builds.
+#
+# Appended onto pnpm-workspace.yaml in CI *before* the dependency install so a
+# single `pnpm install` pulls the @napi-rs/keyring native bindings for every
+# release target, letting `bun build --compile` embed the correct per-target
+# `.node` into each standalone binary.
+#
+# Kept out of the committed pnpm-workspace.yaml on purpose: setting it as a
+# workspace default would pull every foreign-arch prebuild into ordinary dev
+# installs. pnpm only honors supportedArchitectures from pnpm config files
+# (workspace yaml / .npmrc parsed as pnpm config), and only on the install that
+# first populates node_modules — a second pass is a no-op.
+supportedArchitectures:
+  os:
+    - linux
+    - darwin
+    - win32
+  cpu:
+    - x64
+    - arm64

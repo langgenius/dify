@@ -1,7 +1,8 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionSelectorEntry } from '../selector-entry'
 
 let mockSubscriptions: TriggerSubscription[] = []
@@ -26,17 +27,24 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
+  toast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 const createSubscription = (overrides: Partial<TriggerSubscription> = {}): TriggerSubscription => ({
   id: 'sub-1',
   name: 'Subscription One',
   provider: 'provider-1',
-  credential_type: TriggerCredentialTypeEnum.ApiKey,
+  credential_type: TriggerCredentialType.ApiKey,
   credentials: {},
   endpoint: 'https://example.com',
   parameters: {},
@@ -54,15 +62,20 @@ describe('SubscriptionSelectorEntry', () => {
   it('should render empty state label when no selection and closed', () => {
     render(<SubscriptionSelectorEntry selectedId={undefined} onSelect={vi.fn()} />)
 
-    expect(screen.getByText('pluginTrigger.subscription.noSubscriptionSelected')).toBeInTheDocument()
+    expect(
+      screen.getByText('pluginTrigger.subscription.noSubscriptionSelected'),
+    ).toBeInTheDocument()
   })
 
-  it('should render placeholder when open without selection', () => {
+  it('should render placeholder when open without selection', async () => {
+    const user = userEvent.setup()
     render(<SubscriptionSelectorEntry selectedId={undefined} onSelect={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button'))
 
-    expect(screen.getByText('pluginTrigger.subscription.selectPlaceholder')).toBeInTheDocument()
+    expect(
+      await screen.findByText('pluginTrigger.subscription.selectPlaceholder'),
+    ).toBeInTheDocument()
   })
 
   it('should show selected subscription name when id matches', () => {
@@ -85,7 +98,10 @@ describe('SubscriptionSelectorEntry', () => {
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
 
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'sub-1', name: 'Subscription One' }), expect.any(Function))
-    expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'sub-1', name: 'Subscription One' }),
+      expect.any(Function),
+    )
+    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
   })
 })

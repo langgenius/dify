@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 
 
 class TestDatasetDocumentProperties:
@@ -29,7 +30,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -39,16 +40,16 @@ class TestDatasetDocumentProperties:
                 tenant_id=tenant_id,
                 dataset_id=dataset.id,
                 position=i + 1,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="batch_001",
                 name=f"doc_{i}.pdf",
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=created_by,
             )
             db_session_with_containers.add(doc)
         db_session_with_containers.flush()
 
-        assert dataset.total_documents == 3
+        assert dataset.get_total_documents(session=db_session_with_containers) == 3
 
     def test_dataset_available_documents_count(self, db_session_with_containers: Session) -> None:
         """Test dataset can count available documents."""
@@ -56,7 +57,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -65,12 +66,12 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="batch_001",
             name="available.pdf",
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
         )
@@ -78,12 +79,12 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=2,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="batch_001",
             name="pending.pdf",
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
-            indexing_status="waiting",
+            indexing_status=IndexingStatus.WAITING,
             enabled=True,
             archived=False,
         )
@@ -91,19 +92,19 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=3,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="batch_001",
             name="disabled.pdf",
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=False,
             archived=False,
         )
         db_session_with_containers.add_all([doc_available, doc_pending, doc_disabled])
         db_session_with_containers.flush()
 
-        assert dataset.total_available_documents == 1
+        assert dataset.get_total_available_documents(session=db_session_with_containers) == 1
 
     def test_dataset_word_count_aggregation(self, db_session_with_containers: Session) -> None:
         """Test dataset can aggregate word count from documents."""
@@ -111,7 +112,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -121,17 +122,17 @@ class TestDatasetDocumentProperties:
                 tenant_id=tenant_id,
                 dataset_id=dataset.id,
                 position=i + 1,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="batch_001",
                 name=f"doc_{i}.pdf",
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=created_by,
                 word_count=wc,
             )
             db_session_with_containers.add(doc)
         db_session_with_containers.flush()
 
-        assert dataset.word_count == 5000
+        assert dataset.get_word_count(session=db_session_with_containers) == 5000
 
     def test_dataset_available_segment_count(self, db_session_with_containers: Session) -> None:
         """Test Dataset.available_segment_count counts completed and enabled segments."""
@@ -139,7 +140,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -148,10 +149,10 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="batch_001",
             name="doc.pdf",
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
         db_session_with_containers.add(doc)
@@ -166,7 +167,7 @@ class TestDatasetDocumentProperties:
                 content=f"segment {i}",
                 word_count=100,
                 tokens=50,
-                status="completed",
+                status=SegmentStatus.COMPLETED,
                 enabled=True,
                 created_by=created_by,
             )
@@ -180,7 +181,7 @@ class TestDatasetDocumentProperties:
             content="waiting segment",
             word_count=100,
             tokens=50,
-            status="waiting",
+            status=SegmentStatus.WAITING,
             enabled=True,
             created_by=created_by,
         )
@@ -195,7 +196,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -204,10 +205,10 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="batch_001",
             name="doc.pdf",
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
         db_session_with_containers.add(doc)
@@ -227,7 +228,7 @@ class TestDatasetDocumentProperties:
             db_session_with_containers.add(seg)
         db_session_with_containers.flush()
 
-        assert doc.segment_count == 3
+        assert doc.get_segment_count(session=db_session_with_containers) == 3
 
     def test_document_hit_count_aggregation(self, db_session_with_containers: Session) -> None:
         """Test document can aggregate hit count from segments."""
@@ -235,7 +236,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -244,10 +245,10 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="batch_001",
             name="doc.pdf",
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
         db_session_with_containers.add(doc)
@@ -268,7 +269,7 @@ class TestDatasetDocumentProperties:
             db_session_with_containers.add(seg)
         db_session_with_containers.flush()
 
-        assert doc.hit_count == 25
+        assert doc.get_hit_count(session=db_session_with_containers) == 25
 
 
 class TestDocumentSegmentNavigationProperties:
@@ -288,7 +289,7 @@ class TestDocumentSegmentNavigationProperties:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="Test Dataset",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
         )
         db_session_with_containers.add(dataset)
@@ -298,10 +299,10 @@ class TestDocumentSegmentNavigationProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="batch_001",
             name="test.pdf",
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
         db_session_with_containers.add(document)
@@ -321,7 +322,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        related_dataset = segment.dataset
+        related_dataset = segment.get_dataset(session=db_session_with_containers)
 
         # Assert
         assert related_dataset is not None
@@ -335,7 +336,7 @@ class TestDocumentSegmentNavigationProperties:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="Test Dataset",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
         )
         db_session_with_containers.add(dataset)
@@ -345,10 +346,10 @@ class TestDocumentSegmentNavigationProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="batch_001",
             name="test.pdf",
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
         db_session_with_containers.add(document)
@@ -368,7 +369,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        related_document = segment.document
+        related_document = segment.get_document(session=db_session_with_containers)
 
         # Assert
         assert related_document is not None
@@ -382,7 +383,7 @@ class TestDocumentSegmentNavigationProperties:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="Test Dataset",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
         )
         db_session_with_containers.add(dataset)
@@ -392,10 +393,10 @@ class TestDocumentSegmentNavigationProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="batch_001",
             name="test.pdf",
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
         db_session_with_containers.add(document)
@@ -425,7 +426,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        prev_seg = segment.previous_segment
+        prev_seg = segment.previous_segment(session=db_session_with_containers)
 
         # Assert
         assert prev_seg is not None
@@ -439,7 +440,7 @@ class TestDocumentSegmentNavigationProperties:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="Test Dataset",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
         )
         db_session_with_containers.add(dataset)
@@ -449,10 +450,10 @@ class TestDocumentSegmentNavigationProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="batch_001",
             name="test.pdf",
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
         db_session_with_containers.add(document)
@@ -482,7 +483,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        next_seg = segment.next_segment
+        next_seg = segment.next_segment(session=db_session_with_containers)
 
         # Assert
         assert next_seg is not None

@@ -1,39 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated
 
-from flask_restx import fields
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field, WithJsonSchema
 
-simple_end_user_fields = {
-    "id": fields.String,
-    "type": fields.String,
-    "is_anonymous": fields.Boolean,
-    "session_id": fields.String,
-}
+from fields.base import ResponseModel
 
-end_user_detail_fields = {
-    "id": fields.String,
-    "tenant_id": fields.String,
-    "app_id": fields.String,
-    "type": fields.String,
-    "external_user_id": fields.String,
-    "name": fields.String,
-    "is_anonymous": fields.Boolean,
-    "session_id": fields.String,
-    "created_at": fields.DateTime,
-    "updated_at": fields.DateTime,
-}
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
 
 
 class SimpleEndUser(ResponseModel):
@@ -51,9 +25,9 @@ class EndUserDetail(ResponseModel):
     `is_anonymous` from `_is_anonymous` to return the stored value.
     """
 
-    id: str
-    tenant_id: str
-    app_id: str | None = None
+    id: UUIDString
+    tenant_id: UUIDString
+    app_id: UUIDString | None = None
     type: str
     external_user_id: str | None = None
     name: str | None = None

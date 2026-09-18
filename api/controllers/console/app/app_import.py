@@ -1,42 +1,49 @@
-from flask_restx import Resource, fields, marshal_with
+from typing import BinaryIO, Literal, cast
+from uuid import uuid4
+
+from flask import request
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
+from controllers.common.rbac import PlainApp, RBACCheck, Workspace
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
     account_initialization_required,
     cloud_edition_billing_resource_check,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
+    validate_request,
+    with_current_user,
 )
+from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
-from fields.app_fields import (
-    app_import_check_dependencies_fields,
-    app_import_fields,
-    leaked_dependency_fields,
-)
+from extensions.ext_redis import redis_client
+from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
-from models.model import App
-from services.app_dsl_service import AppDslService, ImportStatus
+from models.account import Account
+from models.model import App, AppMode
+from services.agent.errors import InvalidRosterAgentPackageError
+from services.agent.roster_package_importer import RosterAgentPackageImporter
+from services.app_dsl_service import (
+    IMPORT_INFO_REDIS_KEY_PREFIX,
+    AppDslService,
+    Import,
+    PendingData,
+)
+from services.app_import_source import download_app_import_source, try_read_yaml
 from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import FeatureService
+from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
+from services.errors.account import NoPermissionError
+from services.system_feature_service import SystemFeatureService
 
 from .. import console_ns
-
-# Register models for flask_restx to avoid dict type issues in Swagger
-# Register base model first
-leaked_dependency_model = console_ns.model("LeakedDependency", leaked_dependency_fields)
-
-app_import_model = console_ns.model("AppImport", app_import_fields)
-
-# For nested models, need to replace nested dict with registered model
-app_import_check_dependencies_fields_copy = app_import_check_dependencies_fields.copy()
-app_import_check_dependencies_fields_copy["leaked_dependencies"] = fields.List(fields.Nested(leaked_dependency_model))
-app_import_check_dependencies_model = console_ns.model(
-    "AppImportCheckDependencies", app_import_check_dependencies_fields_copy
-)
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+from .permission_keys import get_app_permission_keys
 
 
 class AppImportPayload(BaseModel):
@@ -51,73 +58,230 @@ class AppImportPayload(BaseModel):
     app_id: str | None = Field(None)
 
 
-console_ns.schema_model(
-    AppImportPayload.__name__, AppImportPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+class RosterAgentPackageConflictResponse(ResponseModel):
+    code: str
+    message: str
+    status: Literal[409] = 409
+    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
+
+
+register_enum_models(console_ns, ImportStatus)
+register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
+register_response_schema_models(console_ns, RosterAgentPackageConflictResponse)
+
+
+def _current_user_and_tenant_id(current_user: Account | None) -> tuple[Account, str | None]:
+    if current_user is None:
+        account, tenant_id = current_account_with_tenant()
+        return account, str(tenant_id) if tenant_id else None
+
+    current_tenant_id = getattr(current_user, "current_tenant_id", None)
+    if current_tenant_id:
+        return current_user, str(current_tenant_id)
+
+    current_tenant = getattr(current_user, "current_tenant", None)
+    current_tenant_object_id = getattr(current_tenant, "id", None)
+    if current_tenant_object_id:
+        return current_user, str(current_tenant_object_id)
+
+    account, fallback_tenant_id = current_account_with_tenant()
+    return account, str(fallback_tenant_id) if fallback_tenant_id else None
 
 
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
-    @console_ns.expect(console_ns.models[AppImportPayload.__name__])
+    @console_ns.doc(
+        params={
+            "payload": {
+                "required": True,
+                "content": {
+                    "application/json": {"schema": {"$ref": "#/definitions/AppImportPayload"}},
+                    "multipart/form-data": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "file": {
+                                    "type": "string",
+                                    "format": "binary",
+                                    "description": "Roster Agent .ifpkg archive",
+                                }
+                            },
+                            "required": ["file"],
+                        }
+                    },
+                },
+            }
+        },
+    )
+    @console_ns.response(200, "Import completed", console_ns.models[Import.__name__])
+    @console_ns.response(202, "Import pending confirmation", console_ns.models[Import.__name__])
+    @console_ns.response(400, "Import failed", console_ns.models[Import.__name__])
+    @console_ns.response(403, "Insufficient import or plugin installation permissions")
+    @console_ns.response(
+        409, "Agent name conflict or missing plugins", console_ns.models[RosterAgentPackageConflictResponse.__name__]
+    )
+    @console_ns.response(413, "Roster Agent package exceeds the size limit")
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(app_import_model)
-    @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
-    def post(self):
-        # Check user role first
-        current_user, _ = current_account_with_tenant()
-        args = AppImportPayload.model_validate(console_ns.payload)
+    @with_current_user
+    def post(self, current_user: Account):
+        if request.mimetype == "multipart/form-data":
+            return self._import_package(current_user)
+        payload = validate_request(AppImportPayload)
+        if payload.mode == "yaml-url" and payload.yaml_url:
+            return self._import_url(payload, current_user)
+        return self._import_dsl(payload, current_user)
 
-        # Create service with session
-        with Session(db.engine) as session:
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()),
+        RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()),
+    )
+    def _import_url(self, payload: AppImportPayload, current_user: Account):
+        with download_app_import_source(payload.yaml_url or "") as source:
+            content = try_read_yaml(source)
+            if content is not None:
+                return self._import_dsl(
+                    payload.model_copy(update={"mode": "yaml-content", "yaml_content": content, "yaml_url": None}),
+                    current_user,
+                )
+            return self._import_package(current_user, payload, source)
+
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()))
+    def _import_package(
+        self, current_user: Account, payload: AppImportPayload | None = None, source: BinaryIO | None = None
+    ):
+        app_id = payload.app_id if payload is not None else request.form.get("app_id")
+        if app_id:
+            raise InvalidRosterAgentPackageError("Roster Agent package import does not support overwriting an App")
+        account, tenant_id = _current_user_and_tenant_id(current_user)
+        if tenant_id is None:
+            raise Forbidden("Current workspace is required")
+        importer = RosterAgentPackageImporter()
+        if source is None:
+            uploaded = request.files.get("file")
+            if uploaded is None or not uploaded.filename:
+                raise InvalidRosterAgentPackageError("Roster Agent package file is required")
+            if not uploaded.filename.lower().endswith(".ifpkg"):
+                raise InvalidRosterAgentPackageError("Roster Agent package file must use the .ifpkg extension")
+            source = cast(BinaryIO, uploaded.stream)
+        result = importer.import_package(source=source, tenant_id=tenant_id, account=account)
+        return Import(
+            id=str(uuid4()),
+            status=ImportStatus.COMPLETED_WITH_WARNINGS if result.warnings else ImportStatus.COMPLETED,
+            app_id=result.app_id,
+            app_mode=AppMode.AGENT,
+            warnings=result.warnings,
+        ).model_dump(mode="json"), 200
+
+    @cloud_edition_billing_resource_check("apps")
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()))
+    def _import_dsl(self, req_data: AppImportPayload, current_user: Account | None = None):
+        current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
+
+        # AppDslService performs internal commits for some creation paths, so use a plain
+        # Session here instead of nesting it inside sessionmaker(...).begin().
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             # Import app
             account = current_user
-            result = import_service.import_app(
-                account=account,
-                import_mode=args.mode,
-                yaml_content=args.yaml_content,
-                yaml_url=args.yaml_url,
-                name=args.name,
-                description=args.description,
-                icon_type=args.icon_type,
-                icon=args.icon,
-                icon_background=args.icon_background,
-                app_id=args.app_id,
-            )
-            session.commit()
-        if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+            try:
+                result = import_service.import_app(
+                    account=account,
+                    import_mode=req_data.mode,
+                    yaml_content=req_data.yaml_content,
+                    yaml_url=req_data.yaml_url,
+                    name=req_data.name,
+                    description=req_data.description,
+                    icon_type=req_data.icon_type,
+                    icon=req_data.icon,
+                    icon_background=req_data.icon_background,
+                    app_id=req_data.app_id,
+                )
+            except NoPermissionError as e:
+                raise Forbidden(str(e))
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+            else:
+                session.commit()
+
+        is_created_app = req_data.app_id is None and result.status in {
+            ImportStatus.COMPLETED,
+            ImportStatus.COMPLETED_WITH_WARNINGS,
+        }
+        if dify_config.RBAC_ENABLED and is_created_app and result.app_id:
+            current_user, current_tenant_id = _current_user_and_tenant_id(current_user)
+            if current_tenant_id:
+                result.permission_keys = get_app_permission_keys(
+                    current_tenant_id,
+                    current_user.id,
+                    result.app_id,
+                )
+
+        if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
         # Return appropriate status code based on result
         status = result.status
-        if status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
-        elif status == ImportStatus.PENDING:
-            return result.model_dump(mode="json"), 202
-        return result.model_dump(mode="json"), 200
+        match status:
+            case ImportStatus.FAILED:
+                return result.model_dump(mode="json"), 400
+            case ImportStatus.PENDING:
+                return result.model_dump(mode="json"), 202
+            case ImportStatus.COMPLETED | ImportStatus.COMPLETED_WITH_WARNINGS:
+                return result.model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/imports/<string:import_id>/confirm")
 class AppImportConfirmApi(Resource):
+    @console_ns.response(200, "Import confirmed", console_ns.models[Import.__name__])
+    @console_ns.response(400, "Import failed", console_ns.models[Import.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(app_import_model)
     @edit_permission_required
-    def post(self, import_id):
-        # Check user role first
-        current_user, _ = current_account_with_tenant()
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()))
+    @with_current_user
+    def post(self, current_user: Account | None = None, import_id: str = ""):
+        current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
+        redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
+        pending_data_raw = redis_client.get(redis_key)
+        pending_data: PendingData | None = None
+        if pending_data_raw:
+            pending_data = PendingData.model_validate_json(pending_data_raw)
 
-        # Create service with session
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             # Confirm import
             account = current_user
-            result = import_service.confirm_import(import_id=import_id, account=account)
-            session.commit()
+            try:
+                result = import_service.confirm_import(import_id=import_id, account=account)
+            except NoPermissionError as e:
+                raise Forbidden(str(e))
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+            else:
+                session.commit()
+
+        is_created_app = bool(
+            pending_data
+            and pending_data.app_id is None
+            and result.status
+            in {
+                ImportStatus.COMPLETED,
+                ImportStatus.COMPLETED_WITH_WARNINGS,
+            }
+        )
+        if dify_config.RBAC_ENABLED and is_created_app and result.app_id:
+            current_user, current_tenant_id = _current_user_and_tenant_id(current_user)
+            if current_tenant_id:
+                result.permission_keys = get_app_permission_keys(
+                    current_tenant_id,
+                    current_user.id,
+                    result.app_id,
+                )
 
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:
@@ -127,14 +291,19 @@ class AppImportConfirmApi(Resource):
 
 @console_ns.route("/apps/imports/<string:app_id>/check-dependencies")
 class AppImportCheckDependenciesApi(Resource):
+    @console_ns.response(
+        200,
+        "Dependencies checked",
+        console_ns.models[CheckDependenciesResult.__name__],
+    )
     @setup_required
     @login_required
     @get_app_model
     @account_initialization_required
-    @marshal_with(app_import_check_dependencies_model)
     @edit_permission_required
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     def get(self, app_model: App):
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             result = import_service.check_dependencies(app_model=app_model)
 

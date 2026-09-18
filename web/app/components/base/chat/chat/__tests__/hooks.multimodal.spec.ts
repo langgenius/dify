@@ -29,7 +29,9 @@ describe('Multimodal File Handling', () => {
     it('should map unknown to application/octet-stream', () => {
       const fileType: string = 'unknown'
       const expectedMime = 'application/octet-stream'
-      const mimeType = ['image', 'video', 'audio'].includes(fileType) ? 'image/png' : 'application/octet-stream'
+      const mimeType = ['image', 'video', 'audio'].includes(fileType)
+        ? 'image/png'
+        : 'application/octet-stream'
       expect(mimeType).toBe(expectedMime)
     })
   })
@@ -97,25 +99,53 @@ describe('Multimodal File Handling', () => {
   describe('SupportFileType mapping', () => {
     it('should map image type to image supportFileType', () => {
       const fileType: string = 'image'
-      const supportFileType = fileType === 'image' ? 'image' : fileType === 'video' ? 'video' : fileType === 'audio' ? 'audio' : 'document'
+      const supportFileType =
+        fileType === 'image'
+          ? 'image'
+          : fileType === 'video'
+            ? 'video'
+            : fileType === 'audio'
+              ? 'audio'
+              : 'document'
       expect(supportFileType).toBe('image')
     })
 
     it('should map video type to video supportFileType', () => {
       const fileType: string = 'video'
-      const supportFileType = fileType === 'image' ? 'image' : fileType === 'video' ? 'video' : fileType === 'audio' ? 'audio' : 'document'
+      const supportFileType =
+        fileType === 'image'
+          ? 'image'
+          : fileType === 'video'
+            ? 'video'
+            : fileType === 'audio'
+              ? 'audio'
+              : 'document'
       expect(supportFileType).toBe('video')
     })
 
     it('should map audio type to audio supportFileType', () => {
       const fileType: string = 'audio'
-      const supportFileType = fileType === 'image' ? 'image' : fileType === 'video' ? 'video' : fileType === 'audio' ? 'audio' : 'document'
+      const supportFileType =
+        fileType === 'image'
+          ? 'image'
+          : fileType === 'video'
+            ? 'video'
+            : fileType === 'audio'
+              ? 'audio'
+              : 'document'
       expect(supportFileType).toBe('audio')
     })
 
     it('should map unknown type to document supportFileType', () => {
       const fileType: string = 'unknown'
-      const supportFileType = fileType === 'image' ? 'image' : fileType === 'video' ? 'video' : fileType === 'audio' ? 'audio' : 'document'
+      const supportFileType =
+        fileType === 'image'
+          ? 'image'
+          : fileType === 'video'
+            ? 'video'
+            : fileType === 'audio'
+              ? 'audio'
+              : 'document'
       expect(supportFileType).toBe('document')
     })
   })
@@ -165,13 +195,15 @@ describe('Multimodal File Handling', () => {
       const nonAgentResponse: { agent_thoughts?: Array<Record<string, unknown>> } = {
         agent_thoughts: [],
       }
-      const isAgentMode = nonAgentResponse.agent_thoughts && nonAgentResponse.agent_thoughts.length > 0
+      const isAgentMode =
+        nonAgentResponse.agent_thoughts && nonAgentResponse.agent_thoughts.length > 0
       expect(isAgentMode).toBe(false)
     })
 
     it('should detect non-agent mode when agent_thoughts is undefined', () => {
       const nonAgentResponse: { agent_thoughts?: Array<Record<string, unknown>> } = {}
-      const isAgentMode = nonAgentResponse.agent_thoughts && nonAgentResponse.agent_thoughts.length > 0
+      const isAgentMode =
+        nonAgentResponse.agent_thoughts && nonAgentResponse.agent_thoughts.length > 0
       expect(isAgentMode).toBeFalsy()
     })
   })

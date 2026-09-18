@@ -10,6 +10,7 @@ api = ExternalApi(
     version="1.0",
     title="Service API",
     description="API for application services",
+    register_default_root=False,
 )
 
 service_api_ns = Namespace("service_api", description="Service operations", path="/")
@@ -23,9 +24,11 @@ from .app import (
     conversation,
     file,
     file_preview,
+    human_input_form,
     message,
     site,
     workflow,
+    workflow_events,
 )
 from .dataset import (
     dataset,
@@ -50,6 +53,7 @@ __all__ = [
     "file",
     "file_preview",
     "hit_testing",
+    "human_input_form",
     "index",
     "message",
     "metadata",
@@ -58,6 +62,7 @@ __all__ = [
     "segment",
     "site",
     "workflow",
+    "workflow_events",
 ]
 
 api.add_namespace(service_api_ns)

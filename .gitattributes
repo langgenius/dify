@@ -5,3 +5,7 @@
 # them.
 
 *.sh      text eol=lf
+
+# Codegen output must stay byte-identical across platforms so
+# `pnpm tree:check` in CI does not trip on CRLF rewrites.
+*.generated.ts  text eol=lf

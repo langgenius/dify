@@ -1,9 +1,10 @@
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
 
-from services.operation_service import OperationService
+from services.operation_service import OPERATION_REQUEST_TIMEOUT, OperationService
 
 
 class TestOperationService:
@@ -43,6 +44,7 @@ class TestOperationService:
         assert kwargs["json"] == json_data
         assert kwargs["headers"]["Billing-Api-Secret-Key"] == "s3cr3t"
         assert kwargs["headers"]["Content-Type"] == "application/json"
+        assert kwargs["timeout"] == OPERATION_REQUEST_TIMEOUT
 
     @patch("httpx.request")
     def test_should_propagate_httpx_error_when__send_request_raises(
@@ -105,7 +107,7 @@ class TestOperationService:
     )
     @patch.object(OperationService, "_send_request")
     def test_should_map_parameters_correctly_when_record_utm_called(
-        self, mock_send: MagicMock, utm_info: dict, expected_params: dict
+        self, mock_send: MagicMock, utm_info: dict[str, Any], expected_params: dict[str, Any]
     ):
         """Test that record_utm correctly maps utm_info to parameters and calls _send_request"""
         # Arrange

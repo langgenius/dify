@@ -1,0 +1,379 @@
+import json
+import logging
+from typing import Any, override
+
+import sqlalchemy
+from pydantic import BaseModel, model_validator
+from sqlalchemy import JSON, TEXT, Column, DateTime, String, Table, create_engine, insert
+from sqlalchemy import text as sql_text
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
+from configs import dify_config
+from core.rag.datasource.vdb.field import Field, parse_metadata_json
+from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
+from core.rag.models.document import Document
+from extensions.ext_redis import redis_client
+from models.dataset import Dataset
+
+logger = logging.getLogger(__name__)
+
+FULLTEXT_INDEX_NAME = "idx_text"
+
+
+class TiDBVectorConfig(BaseModel):
+    host: str
+    port: int
+    user: str
+    password: str
+    database: str
+    program_name: str
+    enable_fulltext_search: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_config(cls, values: dict[str, Any]):
+        if not values["host"]:
+            raise ValueError("config TIDB_VECTOR_HOST is required")
+        if not values["port"]:
+            raise ValueError("config TIDB_VECTOR_PORT is required")
+        if not values["user"]:
+            raise ValueError("config TIDB_VECTOR_USER is required")
+        if not values["database"]:
+            raise ValueError("config TIDB_VECTOR_DATABASE is required")
+        if not values["program_name"]:
+            raise ValueError("config APPLICATION_NAME is required")
+        return values
+
+
+class TiDBVector(BaseVector):
+    @override
+    def get_type(self) -> str:
+        return VectorType.TIDB_VECTOR
+
+    def _table(self, dim: int) -> Table:
+        from tidb_vector.sqlalchemy import VectorType  # type: ignore
+
+        return Table(
+            self._collection_name,
+            self._orm_base.metadata,
+            Column(Field.PRIMARY_KEY, String(36), primary_key=True, nullable=False),
+            Column(
+                Field.VECTOR,
+                VectorType(dim),
+                nullable=False,
+            ),
+            Column(Field.TEXT_KEY, TEXT, nullable=False),
+            Column("meta", JSON, nullable=False),
+            Column("create_time", DateTime, server_default=sqlalchemy.text("CURRENT_TIMESTAMP")),
+            Column(
+                "update_time", DateTime, server_default=sqlalchemy.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+            ),
+            extend_existing=True,
+        )
+
+    def __init__(self, collection_name: str, config: TiDBVectorConfig, distance_func: str = "cosine"):
+        super().__init__(collection_name)
+        self._client_config = config
+        self._url = (
+            f"mysql+pymysql://{config.user}:{config.password}@{config.host}:{config.port}/{config.database}?"
+            f"ssl_verify_cert=true&ssl_verify_identity=true&program_name={config.program_name}"
+        )
+        self._distance_func = distance_func.lower()
+        self._engine = create_engine(self._url)
+        self._orm_base = declarative_base()
+        self._dimension = 1536
+
+    @override
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+        logger.info("create collection and add texts, collection_name: %s", self._collection_name)
+        self._create_collection(len(embeddings[0]))
+        self.add_texts(texts, embeddings)
+        self._dimension = len(embeddings[0])
+        pass
+
+    def _create_collection(self, dimension: int):
+        logger.info("_create_collection, collection_name %s", self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
+        with redis_client.lock(lock_name, timeout=20):
+            collection_exist_cache_key = self._collection_exist_cache_key()
+            if redis_client.get(collection_exist_cache_key):
+                return
+            tidb_dist_func = self._get_distance_func()
+            fulltext_index_statement = (
+                f",\n                        FULLTEXT INDEX {FULLTEXT_INDEX_NAME} (text) WITH PARSER MULTILINGUAL"
+                if self._client_config.enable_fulltext_search
+                else ""
+            )
+            with sessionmaker(bind=self._engine).begin() as session:
+                create_statement = sql_text(f"""
+                    CREATE TABLE IF NOT EXISTS {self._collection_name} (
+                        id CHAR(36) PRIMARY KEY,
+                        text TEXT NOT NULL,
+                        meta JSON NOT NULL,
+                        doc_id VARCHAR(64) AS (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.doc_id'))) STORED,
+                        document_id VARCHAR(64) AS (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.document_id'))) STORED,
+                        vector VECTOR<FLOAT>({dimension}) NOT NULL,
+                        create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        KEY (doc_id),
+                        KEY (document_id),
+                        VECTOR INDEX idx_vector (({tidb_dist_func}(vector))) USING HNSW
+                        {fulltext_index_statement}
+                    );
+                """)
+                session.execute(create_statement)
+                if self._client_config.enable_fulltext_search:
+                    self._ensure_fulltext_index(session)
+            redis_client.set(collection_exist_cache_key, 1, ex=3600)
+
+    def _collection_exist_cache_key(self) -> str:
+        search_mode = "fulltext" if self._client_config.enable_fulltext_search else "semantic"
+        return f"vector_indexing_{self._collection_name}_{search_mode}"
+
+    def _ensure_fulltext_index(self, session) -> None:
+        index_check_statement = sql_text("""
+            SELECT COUNT(1)
+            FROM INFORMATION_SCHEMA.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND INDEX_NAME = :index_name
+        """)
+        result = session.execute(
+            index_check_statement,
+            params={
+                "index_name": FULLTEXT_INDEX_NAME,
+                "table_name": self._collection_name,
+            },
+        )
+        if result.scalar():
+            return
+
+        session.execute(
+            sql_text(
+                f"ALTER TABLE {self._collection_name} "
+                f"ADD FULLTEXT INDEX {FULLTEXT_INDEX_NAME} (text) WITH PARSER MULTILINGUAL;"
+            )
+        )
+
+    @staticmethod
+    def _document_ids_filter_condition(document_ids_filter: list[str] | None) -> tuple[str, dict[str, str]]:
+        if not document_ids_filter:
+            return "", {}
+
+        filter_params = {f"document_id_{index}": document_id for index, document_id in enumerate(document_ids_filter)}
+        placeholders = ", ".join(f":{param_name}" for param_name in filter_params)
+        return f"document_id IN ({placeholders})", filter_params
+
+    @override
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+        table = self._table(len(embeddings[0]))
+        ids = self._get_uuids(documents)
+        metas = [d.metadata for d in documents]
+        texts = [d.page_content for d in documents]
+
+        chunks_table_data = []
+        with self._engine.connect() as conn, conn.begin():
+            for doc_id, text, meta, embedding in zip(ids, texts, metas, embeddings):
+                chunks_table_data.append({"id": doc_id, "vector": embedding, "text": text, "meta": meta})
+
+                # Execute the batch insert when the batch size is reached
+                if len(chunks_table_data) == 500:
+                    conn.execute(insert(table).values(chunks_table_data))
+                    # Clear the chunks_table_data list for the next batch
+                    chunks_table_data.clear()
+
+            # Insert any remaining records that didn't make up a full batch
+            if chunks_table_data:
+                conn.execute(insert(table).values(chunks_table_data))
+        return ids
+
+    @override
+    def text_exists(self, id: str) -> bool:
+        result = self.get_ids_by_metadata_field("doc_id", id)
+        return bool(result)
+
+    @override
+    def delete_by_ids(self, ids: list[str]):
+        with Session(self._engine) as session:
+            ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
+            select_statement = sql_text(
+                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.doc_id' in ({ids_str}); """
+            )
+            result = session.execute(select_statement).fetchall()
+        if result:
+            ids = [item[0] for item in result]
+            self._delete_by_ids(ids)
+
+    def _delete_by_ids(self, ids: list[str]) -> bool:
+        if ids is None:
+            raise ValueError("No ids provided to delete.")
+        table = self._table(self._dimension)
+        try:
+            with self._engine.connect() as conn, conn.begin():
+                delete_condition = table.c.id.in_(ids)
+                conn.execute(table.delete().where(delete_condition))
+                return True
+        except Exception:
+            logger.exception("Delete operation failed for collection %s", self._collection_name)
+            return False
+
+    @override
+    def get_ids_by_metadata_field(self, key: str, value: str):
+        with Session(self._engine) as session:
+            select_statement = sql_text(
+                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.{key}' = '{value}'; """
+            )
+            result = session.execute(select_statement).fetchall()
+        if result:
+            return [item[0] for item in result]
+        else:
+            return None
+
+    @override
+    def delete_by_metadata_field(self, key: str, value: str):
+        ids = self.get_ids_by_metadata_field(key, value)
+        if ids:
+            self._delete_by_ids(ids)
+
+    @override
+    def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        top_k = kwargs.get("top_k", 4)
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
+        distance = 1 - score_threshold
+
+        query_vector_str = ", ".join(format(x) for x in query_vector)
+        query_vector_str = "[" + query_vector_str + "]"
+        logger.debug(
+            "_collection_name: %s, score_threshold: %s, distance: %s", self._collection_name, score_threshold, distance
+        )
+
+        docs = []
+        tidb_dist_func = self._get_distance_func()
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = ""
+        filter_params: dict[str, str] = {}
+        if document_ids_filter:
+            document_ids_filter_condition, filter_params = self._document_ids_filter_condition(document_ids_filter)
+            where_clause = f" WHERE {document_ids_filter_condition} "
+
+        with Session(self._engine) as session:
+            select_statement = sql_text(f"""
+                SELECT meta, text, distance
+                FROM (
+                  SELECT
+                    meta,
+                    text,
+                    {tidb_dist_func}(vector, :query_vector_str) AS distance
+                  FROM {self._collection_name}
+                  {where_clause}
+                  ORDER BY distance ASC
+                  LIMIT :top_k
+                ) t
+                WHERE distance <= :distance
+                """)
+            res = session.execute(
+                select_statement,
+                params={
+                    "query_vector_str": query_vector_str,
+                    "distance": distance,
+                    "top_k": top_k,
+                    **filter_params,
+                },
+            )
+            results = [(row[0], row[1], row[2]) for row in res]
+            for meta, text, distance in results:
+                metadata = parse_metadata_json(meta)
+                metadata["score"] = 1 - distance
+                docs.append(Document(page_content=text, metadata=metadata))
+        return docs
+
+    @override
+    def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
+        if not self._client_config.enable_fulltext_search or not query:
+            return []
+
+        top_k = kwargs.get("top_k", 4)
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
+        document_ids_filter = kwargs.get("document_ids_filter")
+
+        where_conditions = ["FTS_MATCH_WORD(text, :query)"]
+        filter_params: dict[str, str] = {}
+        if document_ids_filter:
+            document_ids_filter_condition, filter_params = self._document_ids_filter_condition(document_ids_filter)
+            where_conditions.append(document_ids_filter_condition)
+        where_clause = " AND ".join(where_conditions)
+
+        docs = []
+        with Session(self._engine) as session:
+            select_statement = sql_text(f"""
+                SELECT meta, text, score
+                FROM (
+                  SELECT
+                    meta,
+                    text,
+                    FTS_MATCH_WORD(text, :query) AS score
+                  FROM {self._collection_name}
+                  WHERE {where_clause}
+                  ORDER BY score DESC
+                  LIMIT :top_k
+                ) t
+                WHERE score >= :score_threshold
+                """)
+            res = session.execute(
+                select_statement,
+                params={
+                    "query": query,
+                    "score_threshold": score_threshold,
+                    "top_k": top_k,
+                    **filter_params,
+                },
+            )
+            results = [(row[0], row[1], row[2]) for row in res]
+            for meta, text, score in results:
+                metadata = parse_metadata_json(meta)
+                metadata["score"] = score
+                docs.append(Document(page_content=text, metadata=metadata))
+        return docs
+
+    @override
+    def delete(self):
+        with sessionmaker(bind=self._engine).begin() as session:
+            session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))
+
+    def _get_distance_func(self) -> str:
+        match self._distance_func:
+            case "l2":
+                tidb_dist_func = "VEC_L2_DISTANCE"
+            case "cosine":
+                tidb_dist_func = "VEC_COSINE_DISTANCE"
+            case _:
+                tidb_dist_func = "VEC_COSINE_DISTANCE"
+        return tidb_dist_func
+
+
+class TiDBVectorFactory(AbstractVectorFactory):
+    @override
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TiDBVector:
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
+            collection_name = class_prefix.lower()
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.TIDB_VECTOR, collection_name))
+
+        return TiDBVector(
+            collection_name=collection_name,
+            config=TiDBVectorConfig(
+                host=dify_config.TIDB_VECTOR_HOST or "",
+                port=dify_config.TIDB_VECTOR_PORT or 0,
+                user=dify_config.TIDB_VECTOR_USER or "",
+                password=dify_config.TIDB_VECTOR_PASSWORD or "",
+                database=dify_config.TIDB_VECTOR_DATABASE or "",
+                program_name=dify_config.APPLICATION_NAME,
+                enable_fulltext_search=dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH,
+            ),
+        )

@@ -3,11 +3,30 @@
 import logging
 import traceback
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, NotRequired, TypedDict, override
 
 import orjson
 
 from configs import dify_config
+
+
+class IdentityDict(TypedDict, total=False):
+    tenant_id: str
+    user_id: str
+    user_type: str
+
+
+class LogDict(TypedDict):
+    ts: str
+    severity: str
+    service: str
+    caller: str
+    message: str
+    trace_id: NotRequired[str]
+    span_id: NotRequired[str]
+    identity: NotRequired[IdentityDict]
+    attributes: NotRequired[dict[str, Any]]
+    stack_trace: NotRequired[str]
 
 
 class StructuredJSONFormatter(logging.Formatter):
@@ -39,6 +58,7 @@ class StructuredJSONFormatter(logging.Formatter):
         super().__init__()
         self._service_name = service_name or dify_config.APPLICATION_NAME
 
+    @override
     def format(self, record: logging.LogRecord) -> str:
         log_dict = self._build_log_dict(record)
         try:
@@ -49,9 +69,9 @@ class StructuredJSONFormatter(logging.Formatter):
 
             return json.dumps(log_dict, default=str, ensure_ascii=False)
 
-    def _build_log_dict(self, record: logging.LogRecord) -> dict[str, Any]:
+    def _build_log_dict(self, record: logging.LogRecord) -> LogDict:
         # Core fields
-        log_dict: dict[str, Any] = {
+        log_dict: LogDict = {
             "ts": datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
             "severity": self.SEVERITY_MAP.get(record.levelno, "INFO"),
             "service": self._service_name,
@@ -84,7 +104,7 @@ class StructuredJSONFormatter(logging.Formatter):
 
         return log_dict
 
-    def _extract_identity(self, record: logging.LogRecord) -> dict[str, str] | None:
+    def _extract_identity(self, record: logging.LogRecord) -> IdentityDict | None:
         tenant_id = getattr(record, "tenant_id", None)
         user_id = getattr(record, "user_id", None)
         user_type = getattr(record, "user_type", None)
@@ -92,7 +112,7 @@ class StructuredJSONFormatter(logging.Formatter):
         if not any([tenant_id, user_id, user_type]):
             return None
 
-        identity: dict[str, str] = {}
+        identity: IdentityDict = {}
         if tenant_id:
             identity["tenant_id"] = tenant_id
         if user_id:
