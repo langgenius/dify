@@ -270,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "Ruta del sistema de archivos",
   "agentDetail.configure.workingDirectory.description": "Archivos que el agente lee y escribe mientras se ejecuta. Todo lo que genere, como qna_report.pdf, aparecerá aquí.",
   "agentDetail.configure.workingDirectory.fileSystem": "Sistema de archivos",
-  "agentDetail.configure.workingDirectory.open": "Abrir directorio de trabajo",
   "agentDetail.configure.workingDirectory.persistentFiles": "Persistentes",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "Archivos que el agente conserva y puede usar en cualquier lugar donde se ejecute, incluidas las conversaciones de los usuarios finales y los flujos de trabajo. Cualquier cambio que hagas aquí durante este chat de compilación se aplicará cuando selecciones «Aplicar».",
   "agentDetail.configure.workingDirectory.temporaryFiles": "Temporales",
@@ -349,7 +348,6 @@
   "agentDetail.sections.logs": "Registros",
   "agentDetail.sections.monitoring": "Monitoreo",
   "agentDetail.title": "Agente",
-  "agentDetail.type": "AGENTE",
   "agentDetail.versionHistory.empty": "Aún no hay versiones",
   "agentDetail.versionHistory.exitVersions": "Salir de versiones",
   "agentDetail.versionHistory.filter": "Filtrar versiones",
@@ -409,8 +407,5 @@
   "roster.sort.lastModified": "Última modificación",
   "roster.sort.recentlyCreated": "Creados recientemente",
   "roster.title": "Agentes",
-  "roster.usageStatus.draft": "Borrador",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "Error al subir {{count}} archivo.",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "Error al subir {{count}} archivos.",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "Borrador"
 }

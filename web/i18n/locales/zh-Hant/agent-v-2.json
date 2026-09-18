@@ -270,7 +270,6 @@
   "agentDetail.configure.workingDirectory.breadcrumbLabel": "檔案系統路徑",
   "agentDetail.configure.workingDirectory.description": "Agent 執行時讀取和寫入的檔案。它產生的任何內容，例如 qna_report.pdf，都會顯示在這裡。",
   "agentDetail.configure.workingDirectory.fileSystem": "檔案系統",
-  "agentDetail.configure.workingDirectory.open": "開啟工作目錄",
   "agentDetail.configure.workingDirectory.persistentFiles": "長期",
   "agentDetail.configure.workingDirectory.persistentFilesTooltip": "長期保留的檔案。Agent 可在後續每次執行中使用這些檔案，包括終端使用者的對話和工作流程。在本次建構對話中對此類檔案的變更，會在點擊「套用」後生效。",
   "agentDetail.configure.workingDirectory.temporaryFiles": "臨時",
@@ -349,7 +348,6 @@
   "agentDetail.sections.logs": "日誌",
   "agentDetail.sections.monitoring": "監控",
   "agentDetail.title": "Agent",
-  "agentDetail.type": "Agent",
   "agentDetail.versionHistory.empty": "暫無版本",
   "agentDetail.versionHistory.exitVersions": "退出版本",
   "agentDetail.versionHistory.filter": "篩選版本",
@@ -409,8 +407,5 @@
   "roster.sort.lastModified": "最後修改",
   "roster.sort.recentlyCreated": "最近建立",
   "roster.title": "Agent",
-  "roster.usageStatus.draft": "草稿",
-  "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} 個檔案上傳失敗。",
-  "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} 個檔案上傳失敗。",
-  "skillManagement.title": "Skills"
+  "roster.usageStatus.draft": "草稿"
 }

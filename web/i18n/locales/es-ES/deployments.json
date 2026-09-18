@@ -27,7 +27,6 @@
   "list.emptyTitle": "Aún no hay despliegues",
   "overview.chip.latest": "última",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Desplegando",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Despliegue fallido",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "No válido",
   "status.RUNTIME_INSTANCE_STATUS_READY": "En ejecución",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "No desplegado",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Valor de la versión",
   "studio.versionsBehind_one": "{{count}} versión por detrás",
   "studio.versionsBehind_other": "{{count}} versiones por detrás",
-  "versions.checkingReleaseContent": "Comprobando el contenido de la versión...",
   "versions.deployTo": "Desplegar a {{name}}"
 }

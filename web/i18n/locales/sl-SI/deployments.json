@@ -27,7 +27,6 @@
   "list.emptyTitle": "Še ni uvedb",
   "overview.chip.latest": "najnovejša",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "Uvajanje",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Uvedba ni uspela",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Neveljavno",
   "status.RUNTIME_INSTANCE_STATUS_READY": "Se izvaja",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Ni uvedeno",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Vrednost različice",
   "studio.versionsBehind_one": "{{count}} različica zadaj",
   "studio.versionsBehind_other": "{{count}} različic zadaj",
-  "versions.checkingReleaseContent": "Preverjanje vsebine izdaje...",
   "versions.deployTo": "Uvedi v {{name}}"
 }

@@ -1,10 +1,12 @@
+// @vitest-environment node
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
-import { analyzeUnusedTranslations, removeUnusedTranslations } from '../i18n-prune/core'
+import { checkTranslationGraph } from '../i18n-prune/graph'
 
 let webRoot: string
+let modules: Map<string, string>
 
 function writeJson(relativePath: string, value: Record<string, string>) {
   mkdirSync(path.dirname(path.join(webRoot, relativePath)), { recursive: true })
@@ -12,23 +14,20 @@ function writeJson(relativePath: string, value: Record<string, string>) {
 }
 
 function writeSource(relativePath: string, content: string) {
+  modules.set(path.join(webRoot, relativePath), content)
   mkdirSync(path.dirname(path.join(webRoot, relativePath)), { recursive: true })
   writeFileSync(path.join(webRoot, relativePath), content, 'utf8')
 }
 
-function sortedUnusedKeysByNamespace(
-  result: Awaited<ReturnType<typeof analyzeUnusedTranslations>>,
-) {
+function sortedUnusedKeysByNamespace(result: ReturnType<typeof checkTranslationGraph>) {
   return Object.fromEntries(
-    Object.entries(result.unusedKeysByNamespace).map(([namespace, keys]) => [
-      namespace,
-      [...keys].sort(),
-    ]),
+    Object.entries(result.unused).map(([namespace, keys]) => [namespace, [...keys].sort()]),
   )
 }
 
-describe('prune-unused-i18n', () => {
+describe('translation graph analysis', () => {
   beforeEach(() => {
+    modules = new Map()
     webRoot = mkdtempSync(path.join(tmpdir(), 'dify-i18n-prune-'))
     writeSource('placeholder.ts', '')
   })
@@ -38,7 +37,99 @@ describe('prune-unused-i18n', () => {
   })
 
   describe('Usage Analysis', () => {
-    it('should keep flat keys selected by t and Trans', async () => {
+    it('resolves generic metadata selectors using the namespace at each call site', () => {
+      writeJson('i18n/locales/en-US/app.json', { resetPassword: 'Unused app key' })
+      writeJson('i18n/locales/en-US/login.json', {
+        resetPassword: 'Reset password',
+        unused: 'Unused',
+      })
+      writeJson('i18n/locales/en-US/common.json', { title: 'Title', unused: 'Unused' })
+      writeSource(
+        'src/metadata.ts',
+        `
+        type Namespace = 'app' | 'login' | 'common'
+        type SelectorParam<T extends Namespace> = (source: Record<string, string>) => string
+        export declare function getRouteMetadata<T extends Namespace>(namespace: T, selector: SelectorParam<T>): string
+      `,
+      )
+      writeSource(
+        'src/page.ts',
+        `
+        import { getRouteMetadata } from './metadata'
+        export const login = getRouteMetadata('login', $ => $.resetPassword)
+        const getTitle = getRouteMetadata
+        export const common = getTitle<'common'>('common', $ => $.title)
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['resetPassword'],
+        login: ['unused'],
+        common: ['unused'],
+      })
+    })
+
+    it('keeps possible matches across namespaces when a selector namespace cannot be resolved', () => {
+      writeJson('i18n/locales/en-US/app.json', { title: 'App', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/login.json', { title: 'Login', unused: 'Unused' })
+      writeSource(
+        'src/metadata.ts',
+        `
+        type SelectorParam<T> = (source: Record<string, string>) => string
+        declare function metadata<T>(namespace: T, selector: SelectorParam<T>): string
+        export function page<T>(namespace: T) {
+          return metadata(namespace, $ => $.title)
+        }
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['unused'],
+        login: ['unused'],
+      })
+    })
+
+    it('protects every possible namespace when the namespace is dynamic', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'App' })
+      writeJson('i18n/locales/en-US/common.json', { used: 'Common' })
+      writeSource(
+        'src/dynamic-namespace.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+        export function label(namespace: string, key: string) {
+          const { t } = useTranslation(['app', namespace])
+          return t($ => $[key])
+        }
+      `,
+      )
+
+      const result = checkTranslationGraph(webRoot, modules)
+
+      expect(result.protectedNamespaces).toEqual(['app', 'common'])
+      expect(result.unused).toEqual({})
+    })
+
+    it('matches dynamically namespaced keys without keeping unrelated keys', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'App', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/common.json', { used: 'Common', unused: 'Unused' })
+      writeSource(
+        'src/dynamic-namespace.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+        export function label(namespace: string) {
+          const { t } = useTranslation()
+          return t(\`\${namespace}:used\`)
+        }
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['unused'],
+        common: ['unused'],
+      })
+    })
+
+    it('should keep flat keys selected by t and Trans', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         'account.changeEmail.title': 'Change email',
@@ -67,7 +158,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -75,7 +166,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should use the default namespace for unresolved selectors', async () => {
+    it('should use the default namespace for unresolved selectors', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         'dynamic.app': 'Dynamic app key',
@@ -96,7 +187,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual(['app'])
@@ -105,7 +196,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should resolve selectors stored in variables', async () => {
+    it('should resolve selectors stored in variables', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         members_one: '1 member',
@@ -125,7 +216,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
@@ -134,7 +225,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should resolve finite selector maps with computed keys and optional entries', async () => {
+    it('should resolve finite selector maps with computed keys and optional entries', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         first: 'First',
@@ -166,7 +257,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
@@ -175,7 +266,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should protect a selector map namespace when any candidate is unresolved', async () => {
+    it('should protect a selector map namespace when any candidate is unresolved', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         hidden: 'Potentially used by the dynamic selector',
@@ -199,14 +290,14 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual(['app'])
       expect(sortedUnusedKeysByNamespace(result)).toEqual({})
     })
 
-    it('should protect known selector properties that dynamic entries can override', async () => {
+    it('should protect known selector properties that dynamic entries can override', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         hidden: 'Potentially used by the dynamic selector',
@@ -239,14 +330,14 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual(['app'])
       expect(sortedUnusedKeysByNamespace(result)).toEqual({})
     })
 
-    it('should resolve statically computed selector map properties', async () => {
+    it('should resolve statically computed selector map properties', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         unused: 'Unused',
@@ -270,7 +361,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
@@ -279,7 +370,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should ignore dotted literals passed to unrelated generic functions', async () => {
+    it('should ignore dotted literals passed to unrelated generic functions', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         used: 'Used',
@@ -301,16 +392,15 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
-      expect(result.unresolvedUsages).toEqual([])
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
         app: ['unused'],
       })
     })
 
-    it('should analyze translation adapter consumers without protecting their namespace', async () => {
+    it('should analyze translation adapter consumers without protecting their namespace', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         used: 'Used',
@@ -337,7 +427,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
@@ -346,7 +436,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should infer the namespace of a typed destructured translation parameter', async () => {
+    it('should infer the namespace of a typed destructured translation parameter', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app key',
@@ -372,18 +462,17 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
-      expect(result.unresolvedUsages).toEqual([])
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
         app: ['unused.app'],
         deployments: ['unused'],
       })
     })
 
-    it('should prefer checker namespaces for a translation parameter named t', async () => {
+    it('should prefer checker namespaces for a translation parameter named t', () => {
       // Arrange
       writeJson('i18n/locales/en-US/agent-v-2.json', {
         'agentDetail.used': 'Used agent key',
@@ -408,18 +497,17 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
-      expect(result.unresolvedUsages).toEqual([])
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
         agentV2: ['agentDetail.unused'],
         app: ['unused.app'],
       })
     })
 
-    it('should infer branded TFunction namespaces for direct and destructured parameters', async () => {
+    it('should infer branded TFunction namespaces for direct and destructured parameters', () => {
       // Arrange
       writeJson('i18n/locales/en-US/agent-v-2.json', {
         'agentDetail.direct': 'Direct use',
@@ -448,18 +536,17 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
-      expect(result.unresolvedUsages).toEqual([])
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
         agentV2: ['agentDetail.unused'],
         app: ['unused.app'],
       })
     })
 
-    it('should ignore typed selector forwarding inside an adapter block body', async () => {
+    it('should ignore typed selector forwarding inside an adapter block body', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         unused: 'Unused',
@@ -494,7 +581,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
@@ -504,7 +591,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should ignore a named adapter forwarding its typed selector parameter', async () => {
+    it('should ignore a named adapter forwarding its typed selector parameter', () => {
       // Arrange
       writeJson('i18n/locales/en-US/workflow.json', {
         unused: 'Unused',
@@ -537,7 +624,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
@@ -546,7 +633,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should resolve a selected field from nested selector map entries', async () => {
+    it('should resolve a selected field from nested selector map entries', () => {
       // Arrange
       writeJson('i18n/locales/en-US/plugin.json', {
         'source.first': 'First source',
@@ -591,7 +678,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
@@ -600,7 +687,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should conservatively protect untyped JavaScript translation adapters', async () => {
+    it('should conservatively protect untyped JavaScript translation adapters', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         hidden: 'Potentially used',
@@ -620,14 +707,14 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual(['app'])
       expect(sortedUnusedKeysByNamespace(result)).toEqual({})
     })
 
-    it('should protect the selected namespace for an open string-key adapter', async () => {
+    it('should protect the selected namespace for an open string-key adapter', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
@@ -649,7 +736,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual(['permissionKeys'])
@@ -658,7 +745,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should keep keys matching a dynamic selector pattern', async () => {
+    it('should keep keys matching a dynamic selector pattern', () => {
       // Arrange
       writeJson('i18n/locales/en-US/plugin.json', {
         'voice.language.enUS': 'English',
@@ -678,18 +765,15 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
         plugin: ['unrelated'],
       })
-      expect(result.dynamicKeyPatterns).toEqual([
-        expect.objectContaining({ namespace: 'plugin', prefix: 'voice.language.' }),
-      ])
     })
 
-    it('should keep selector keys from a typed union', async () => {
+    it('should keep selector keys from a typed union', () => {
       // Arrange
       writeJson('i18n/locales/en-US/common.json', {
         'status.ready': 'Ready',
@@ -711,7 +795,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -719,7 +803,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should keep selector keys from secondary namespaces', async () => {
+    it('should keep selector keys from secondary namespaces', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
@@ -741,7 +825,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -750,7 +834,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should keep property and element access selectors from secondary namespaces', async () => {
+    it('should keep property and element access selectors from secondary namespaces', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
@@ -774,7 +858,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(result.protectedNamespaces).toEqual([])
@@ -784,7 +868,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should only protect the selected namespace for an unresolved selector', async () => {
+    it('should only protect the selected namespace for an unresolved selector', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         'unused.app': 'Unused app',
@@ -805,7 +889,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -814,7 +898,7 @@ describe('prune-unused-i18n', () => {
       expect(result.protectedNamespaces).toEqual(['common'])
     })
 
-    it('should keep literal keys, aliased t functions, ns options, namespace separators, and Trans keys', async () => {
+    it('should keep literal keys, aliased t functions, ns options, namespace separators, and Trans keys', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         'literal.title': 'Title',
@@ -852,7 +936,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -861,7 +945,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should expand resolvable dynamic keys and keep matching prefixes for unresolved dynamic keys', async () => {
+    it('should expand resolvable dynamic keys and keep matching prefixes for unresolved dynamic keys', () => {
       // Arrange
       writeJson('i18n/locales/en-US/plugin.json', {
         'notice.fullMessage': 'Full message',
@@ -890,20 +974,15 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
         plugin: ['notice.reason.legacy', 'unrelated'],
       })
-      expect(result.dynamicKeyPatterns).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ namespace: 'plugin', prefix: 'voice.language.' }),
-        ]),
-      )
     })
 
-    it('should protect an entire namespace when a dynamic key has no static prefix', async () => {
+    it('should protect an entire namespace when a dynamic key has no static prefix', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         'maybe.used': 'Maybe used',
@@ -922,14 +1001,14 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({})
       expect(result.protectedNamespaces).toEqual(['app'])
     })
 
-    it('should keep typed key prefixes without protecting the whole namespace', async () => {
+    it('should keep typed key prefixes without protecting the whole namespace', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app-debug.json', {
         'duplicateError.name': 'Name',
@@ -950,21 +1029,16 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
         appDebug: ['outside.unused'],
       })
       expect(result.protectedNamespaces).toEqual([])
-      expect(result.dynamicKeyPatterns).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ namespace: 'appDebug', prefix: 'duplicateError.' }),
-        ]),
-      )
     })
 
-    it('should expand object map values when indexed with a dynamic key', async () => {
+    it('should expand object map values when indexed with a dynamic key', () => {
       // Arrange
       writeJson('i18n/locales/en-US/common.json', {
         'status.ready': 'Ready',
@@ -989,7 +1063,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -997,7 +1071,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should treat simple i18n key identity helpers as their literal argument', async () => {
+    it('should treat simple i18n key identity helpers as their literal argument', () => {
       // Arrange
       writeJson('i18n/locales/en-US/common.json', {
         'mainNav.workspace.searchPlaceholder': 'Search',
@@ -1012,13 +1086,13 @@ describe('prune-unused-i18n', () => {
 
         export function IdentityHelperExample() {
           const { t } = useTranslation()
-          return t(workspaceSwitchI18nKey('mainNav.workspace.searchPlaceholder'), { ns: 'common' })
+          return t($ => $[workspaceSwitchI18nKey('mainNav.workspace.searchPlaceholder')], { ns: 'common' })
         }
       `,
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -1026,7 +1100,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should keep i18next plural variants when the base key is referenced', async () => {
+    it('should keep i18next plural variants when the base key is referenced', () => {
       // Arrange
       writeJson('i18n/locales/en-US/deployments.json', {
         'overview.environments_one': '1 environment',
@@ -1047,7 +1121,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -1055,7 +1129,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should infer plural namespaces from typed TFunction parameters', async () => {
+    it('should infer plural namespaces from typed TFunction parameters', () => {
       // Arrange
       writeJson('i18n/locales/en-US/deployments.json', {
         'overview.chip.behind_one': '1 release behind',
@@ -1075,7 +1149,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -1083,7 +1157,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should keep literals when conditional i18n key types expand into unions', async () => {
+    it('should keep literals when conditional i18n key types expand into unions', () => {
       // Arrange
       writeJson('i18n/locales/en-US/agent-v-2.json', {
         'agentDetail.configure.tools.credential.authOne': 'Auth 1',
@@ -1117,7 +1191,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -1125,7 +1199,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should collect keys from i18next instance t calls', async () => {
+    it('should collect keys from i18next instance t calls', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         'gotoAnything.actions.createChatflow': 'Chatflow',
@@ -1148,7 +1222,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -1156,7 +1230,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should collect keys from imported and parameterized t functions', async () => {
+    it('should collect keys from imported and parameterized t functions', () => {
       // Arrange
       writeJson('i18n/locales/en-US/app.json', {
         noAccessPermission: 'No access',
@@ -1195,7 +1269,7 @@ describe('prune-unused-i18n', () => {
       )
 
       // Act
-      const result = await analyzeUnusedTranslations({ webRoot })
+      const result = checkTranslationGraph(webRoot, modules)
 
       // Assert
       expect(sortedUnusedKeysByNamespace(result)).toEqual({
@@ -1203,41 +1277,6 @@ describe('prune-unused-i18n', () => {
         appApi: ['unused.api'],
         tools: ['unused.tools'],
       })
-    })
-  })
-
-  describe('Removal', () => {
-    it('should remove unused keys from each locale', async () => {
-      // Arrange
-      writeJson('i18n/locales/en-US/app.json', {
-        kept: 'Kept',
-        unused: 'Unused',
-      })
-      writeJson('i18n/locales/zh-Hans/app.json', {
-        kept: '保留',
-        unused: '未使用',
-      })
-      writeSource(
-        'src/example.tsx',
-        `
-        import { useTranslation } from 'react-i18next'
-
-        export function Example() {
-          const { t } = useTranslation('app')
-          return t('kept')
-        }
-      `,
-      )
-      const result = await analyzeUnusedTranslations({ webRoot })
-
-      // Act
-      const removal = await removeUnusedTranslations({ webRoot, analysis: result })
-
-      // Assert
-      expect(removal.removedKeys).toEqual([
-        { locale: 'en-US', namespace: 'app', key: 'unused' },
-        { locale: 'zh-Hans', namespace: 'app', key: 'unused' },
-      ])
     })
   })
 })

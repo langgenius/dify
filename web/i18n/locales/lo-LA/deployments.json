@@ -27,7 +27,6 @@
   "list.emptyTitle": "ຍັງບໍ່ມີການຕິດຕັ້ງ",
   "overview.chip.latest": "ຫຼ້າສຸດ",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "ກຳລັງຕິດຕັ້ງ",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "ຕິດຕັ້ງບໍ່ສຳເລັດ",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "ບໍ່ຖືກຕ້ອງ",
   "status.RUNTIME_INSTANCE_STATUS_READY": "ກຳລັງເຮັດວຽກ",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "ຍັງບໍ່ໄດ້ຕິດຕັ້ງ",
@@ -87,6 +86,5 @@
   "studio.versionValue": "ຄ່າຂອງເວີຊັນ",
   "studio.versionsBehind_one": "ຊ້າກວ່າ {{count}} ເວີຊັນ",
   "studio.versionsBehind_other": "ຊ້າກວ່າ {{count}} ເວີຊັນ",
-  "versions.checkingReleaseContent": "ກຳລັງກວດສອບເນື້ອໃນຂອງລຸ້ນ...",
   "versions.deployTo": "ຕິດຕັ້ງໃສ່ {{name}}"
 }

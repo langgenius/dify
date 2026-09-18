@@ -27,7 +27,6 @@
   "list.emptyTitle": "Ancora nessuna distribuzione",
   "overview.chip.latest": "più recente",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "In distribuzione",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "Distribuzione non riuscita",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "Non valido",
   "status.RUNTIME_INSTANCE_STATUS_READY": "In esecuzione",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Non distribuito",
@@ -87,6 +86,5 @@
   "studio.versionValue": "Valore della versione",
   "studio.versionsBehind_one": "{{count}} versione indietro",
   "studio.versionsBehind_other": "{{count}} versioni indietro",
-  "versions.checkingReleaseContent": "Verifica del contenuto della release in corso...",
   "versions.deployTo": "Distribuisci in {{name}}"
 }

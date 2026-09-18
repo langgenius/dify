@@ -27,7 +27,6 @@
   "list.emptyTitle": "아직 배포가 없습니다",
   "overview.chip.latest": "최신",
   "status.RUNTIME_INSTANCE_STATUS_DEPLOYING": "배포 중",
-  "status.RUNTIME_INSTANCE_STATUS_FAILED": "배포 실패",
   "status.RUNTIME_INSTANCE_STATUS_INVALID": "유효하지 않음",
   "status.RUNTIME_INSTANCE_STATUS_READY": "실행 중",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "배포되지 않음",
@@ -87,6 +86,5 @@
   "studio.versionValue": "버전 값",
   "studio.versionsBehind_one": "{{count}}개 버전 뒤처짐",
   "studio.versionsBehind_other": "{{count}}개 버전 뒤처짐",
-  "versions.checkingReleaseContent": "릴리스 콘텐츠 확인 중...",
   "versions.deployTo": "{{name}}에 배포"
 }
