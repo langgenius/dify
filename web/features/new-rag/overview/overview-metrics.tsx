@@ -43,11 +43,7 @@ export function MetricCard({
       <div className="flex items-center gap-1 text-text-tertiary">
         <h2 className="system-xs-medium">{title}</h2>
         {help && (
-          <Infotip
-            aria-label={help}
-            className="size-4"
-            popupClassName="max-w-[260px] border-0 bg-text-primary text-text-primary-on-surface"
-          >
+          <Infotip aria-label={help} className="size-4" popupClassName="max-w-[260px]">
             {help}
           </Infotip>
         )}
@@ -64,28 +60,22 @@ export function MetricCard({
           >
             {empty ? '—' : value}
           </span>
-          {!empty && change && (
+          {!empty && change && change.direction !== 'neutral' && (
             <span
               className={cn(
                 'mb-0.5 flex shrink-0 items-center gap-0.5 system-xs-medium',
-                change.direction === 'increase'
-                  ? 'text-text-success'
-                  : change.direction === 'decrease'
-                    ? 'text-text-warning'
-                    : 'text-text-quaternary',
+                change.direction === 'increase' ? 'text-text-success' : 'text-text-warning',
               )}
             >
-              {change.direction !== 'neutral' && (
-                <span
-                  aria-hidden
-                  className={cn(
-                    'size-3',
-                    change.direction === 'increase'
-                      ? 'i-ri-arrow-up-s-fill'
-                      : 'i-ri-arrow-down-s-fill',
-                  )}
-                />
-              )}
+              <span
+                aria-hidden
+                className={cn(
+                  'size-3',
+                  change.direction === 'increase'
+                    ? 'i-ri-arrow-up-s-fill'
+                    : 'i-ri-arrow-down-s-fill',
+                )}
+              />
               {change.label}
             </span>
           )}
@@ -201,7 +191,7 @@ export function QueryOutcomesChart() {
             <Infotip
               aria-label={t(($) => $['overview.answerRateHelp'])}
               className="ml-1 inline-flex size-4 align-middle"
-              popupClassName="max-w-[260px] border-0 bg-text-primary text-text-primary-on-surface"
+              popupClassName="max-w-[260px]"
             >
               {t(($) => $['overview.answerRateHelp'])}
             </Infotip>
@@ -225,7 +215,7 @@ export function QueryOutcomesChart() {
           <Infotip
             aria-label={t(($) => $['overview.answerRateHelp'])}
             className="ml-1 inline-flex size-4 align-middle"
-            popupClassName="max-w-[260px] border-0 bg-text-primary text-text-primary-on-surface"
+            popupClassName="max-w-[260px]"
           >
             {t(($) => $['overview.answerRateHelp'])}
           </Infotip>
