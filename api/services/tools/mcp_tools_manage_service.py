@@ -17,10 +17,10 @@ from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.auth.auth_flow import auth
 from core.mcp.auth_client import MCPClientWithAuthRetry
-from core.mcp.types import Tool as MCPToolType
 from core.mcp.entities import AuthActionType, AuthResult
 from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.types import Tool as MCPTool
+from core.mcp.types import Tool as MCPToolType
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.utils.encryption import ProviderConfigEncrypter
 from models.tools import MCPToolProvider
